@@ -1,0 +1,55 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: kritis-pipeline
+  namespace: default
+spec:
+    tasks:
+        - name: unit-test-kritis          # 1.  Run unit Tests
+          taskRef:
+              name: make
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: kritis
+          params:
+              - name: makeTarget
+                value: test
+        - name: push-kritis               # 2.  Build And Push Tests
+          taskRef:
+              name: build-push
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: kritis
+          artifactStoreBindings:
+              - storeName: registry
+                storeKey: stagingRegistry
+                builtImage: kritis        # TODO Add Commit SHA
+          params:
+              - name: pathToDockerfile
+                value: deploy/Dockerfile
+          prevTasks: ['unit-test-kritis']
+        - name: deploy-test-env           # 3. Finally Deploy to Test environment
+          taskRef:
+              name: deploy-with-helm
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: kritis
+          paramBindings:                 # Implicit dependency on buildPush task.
+              - inputName: testImage
+                taskName: buildPush
+                taskOutputName: builtImage
+          params:
+              - name: pathToHelmCharts
+                value: kritis-charts
+          clusterBindings:
+              - clusterName: test
+          nextTasks: ['integration-test']
+        - name: integration-test          # 4. Run Integration Tests in test cluster
+          taskRef:
+              name: integration-test-in-docker
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: kritis
+          params:
+              - name: testArgs
+                value: "-e REMOTE_INTEGRATION=true"

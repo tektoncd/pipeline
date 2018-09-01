@@ -1,0 +1,83 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: guestbook-example
+  namespace: default
+spec:
+    tasks:
+        - name: build-guestbook                  # 1.a Build guestbook go sample code.
+          taskRef:
+              name: build-push
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: guestbook
+          artifactStoreBindings:
+              - storeName: registry
+                storeKey: stagingRegistry
+                builtImage: gb-frontend          # TODO Add Commit SHA
+          params:
+              - name: pathToDockerfile
+                value: guestbook-go/Dockerfile
+        - name: build-redis                      # 1.b Build and push redis docker image.
+          taskRef:
+              name: build-push
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: redis-docker          # TODO Add Commit SHA
+          artifactStoreBindings:
+              - storeName: registry
+                storeKey: stagingRegistry
+                builtImage: redis4
+          params:
+              - name: pathToDockerfile
+                value: 4/debian9/4.0/Dockerfile
+        - name: deploy-bundle-test               # 2. Deploy GuestBook and Redis to test cluster
+          taskRef:
+              name: deploy-with-kubectl
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: guestbook
+          params:
+              - name: pathToFiles
+                value: guestbook/all-in-one/guestbook-all-in-one.yaml
+          clusterBindings:
+              - clusterName: test
+          prevTasks:
+              -  build-redis4
+              -  build-guestbook
+        - name: int-test-osx                    # 3.a Run Integration tests for osx
+          taskRef:
+              name: integrationTestInDocker
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: guestbook
+          params:
+              - name: dockerBuildFile
+                value: guestbook-int/Dockerfile
+          prevTasks:
+              - deploy-test
+        - name: int-test-linux                  # 3.b Run Integration tests for linux
+          taskRef:
+              name: integration-test-in-docker
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: guestbook
+          params:
+              - name: dockerBuildFile
+                value: guestbook-int/Dockerfile
+          prevTasks:
+              - deploy-test
+        - name: deploy-bundle-staging           # 4. Deploy GuestBook and Redis to staging cluster
+          taskRef:
+              name: deploy-with-kubectl
+          sourceBindings:
+              - inputName: workspace
+                sourceKey: guestbook
+          params:
+              - name: pathToFiles
+                value: guestbook/all-in-one/guestbook-all-in-one.yaml
+          clusterBindings:
+              - clusterName: staging
+          prevTasks:
+              -  int-test-osx
+              -  int-test-linux

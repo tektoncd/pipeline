@@ -1,0 +1,59 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: TaskRun
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: unit-test-kritis-feature-x
+spec:
+    taskRef:
+        name: make
+    trigger:
+        triggerRef:
+            type: manual
+    inputs:
+        sources:
+            - name: 'kritis'
+              type: 'github'
+              url:  'github.com/grafeas/kritis'
+              branch: 'featureX'
+              commit: 'HEAD'
+        params:
+            - name: 'makeTarget'
+              type: 'string'
+              value: 'test'
+    results:
+        runs:
+        - name: 'runsBucket'
+          type: 'gcs'
+          url: 'gcs://somebucket/results/runs'
+        logs:
+        - name: 'logBucket'
+          type: 'gcs'
+          url: 'gcs://somebucket/results/logs'
+        tests:
+        - name: 'testBucket'
+          type: 'gcs'
+          url: 'gcs://somebucket/results/tests'
+# The status section will be filled in by the TaskRun controller once it
+# has started invoking the TaskRun.
+status:
+    steps:
+    - name: make
+      logsURL: 'gcs://somebucket/results/tests/unit-test-kritis-feature-x/make'
+      exitCode: 0
+    conditions:
+    - type: Started
+      status: True
+      lastTransitionTime: 1534204250
+      reason: pipelineRun
+      message: "Task has been triggered by a Pipeline run"
+    - type: Completed
+      status: True
+      lastTransitionTime: 1534250000
+      reason: done
+      message: "Pipeline execution has finished"
+    - type: Successful
+      status: True
+      lastTransitionTime: 1534250000
+      reason: zeroExitCode
+      message: "All steps completed with an exit code of 0"
