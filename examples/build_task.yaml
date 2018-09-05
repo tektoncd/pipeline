@@ -1,0 +1,25 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: Task
+metadata:
+  name: build-push
+  namespace: default
+spec:
+    inputs:
+        sources:
+            - name: workspace
+        params:
+            - name: pathToDockerFile
+              type: string
+    outputs:
+        artifacts:
+            - name: builtImage
+              type: image
+              storeKey: registry
+    buildSpec:
+        template:
+            name: kaniko
+            arguments:
+                - name: DOCKERFILE
+                  value: ${pathToDockerFile}
+                - name: REGISTRY
+                  value: ${registry}

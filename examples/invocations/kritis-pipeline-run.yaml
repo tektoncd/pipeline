@@ -1,0 +1,45 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: kritis-pipeline-run-12321312984
+  namespace: default
+spec:
+    pipelineRef:
+        name: kritis-pipeline
+    pipelineParamsRef:
+        name: pipelineparams-sample
+    trigger:
+        triggerRef:
+            type: manual
+# The status section will be filled in by the PipelineRun controller once it
+# has started invoking the PipelineRun.
+status:
+  taskRuns:
+    - taskRef:
+        name: unit-test-kritis-12321312984
+        nextTasks:
+          - taskRef:
+              name: push-kritis-12321312984
+        prevTasks: []
+    - taskRef:
+        name: push-kritis-12321312984
+        nextTasks: []
+        prevTasks:
+          - taskRef:
+            name: unit-test-kritis-12321312984
+  conditions:
+    - type: Started
+      status: True
+      lastTransitionTime: 1534204248
+      reason: manualTrigger
+      message: "Pipeline has been triggered manually"
+    - type: Completed
+      status: True
+      lastTransitionTime: 1535000000
+      reason: done
+      message: "Pipeline execution has finished"
+    - type: Successful
+      status: False
+      lastTransitionTime: 1535000000
+      reason: taskFailure
+      message: "TaskRun `push-kritis-12321312984` had non-zero exit code"

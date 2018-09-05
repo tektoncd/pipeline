@@ -1,0 +1,59 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: Task
+metadata:
+  name: make
+  namespace: default
+spec:
+    inputs:
+        sources:
+            - name: workspace
+        params:
+            - name: makeTarget
+              type: string
+    outputs:
+        results:
+            - name: testResults
+              format: junit
+              path: logs/tests.xml
+    buildSpec:
+        steps:
+            - name: runMake
+              image: ubuntu
+              args: ['make', '${makeTarget}']
+
+---
+apiVersion: pipeline.knative.dev/v1beta1
+kind: Task
+metadata:
+  name: integration-test-in-docker
+  namespace: default
+spec:
+    inputs:
+        sources:
+            - name: workspace
+        params:
+            - name: testImage
+              type: string
+            - name: testArgs
+              type: string
+    outputs:
+        results:
+            - name: testResults
+              format: junit
+              path: integration/logs/tests.xml
+    buildSpec:
+        steps:
+            - name: runTests
+              image: '${testImage}'
+              args: ['${testArgs}']
+        volumes:
+            - name: gac
+              source: ${workspace}/config/gac.json
+              destination: gac.json
+            - name: cloudconfig
+              source: ${workspace}/config/gcloud
+              destination: /root/.config/gcloud
+            - name: dockerSocket
+              source: /var/run/docker.sock
+              destination: /var/run/docker.sock
+
