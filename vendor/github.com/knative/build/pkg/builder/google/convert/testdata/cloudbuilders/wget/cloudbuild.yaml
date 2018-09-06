@@ -1,0 +1,17 @@
+steps:
+- name: gcr.io/cloud-builders/docker
+  args: ['build', '--tag=gcr.io/$PROJECT_ID/wget', '.']
+
+# Print version information.
+- name: gcr.io/$PROJECT_ID/wget
+  args: ['-V']
+
+# GET data from a server, specifying an Authorization header.
+- name: gcr.io/$PROJECT_ID/wget
+  args: ['-O=file.out', '--header="Authorization: Bearer foobar"', 'https://www.example.com']
+
+# POST information to a server, specifying a Content-type header.
+- name: gcr.io/$PROJECT_ID/wget
+  args: ['--header="Content-type: application/json"', '--post-data="{\"buildID\": \"$BUILD_ID\"}"', 'https://www.example.com']
+
+images: ['gcr.io/$PROJECT_ID/wget']

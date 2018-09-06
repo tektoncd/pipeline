@@ -1,0 +1,8 @@
+steps:
+# Build the "hello, world" Go binary.
+- name: 'gcr.io/cloud-builders/go'
+  args: ['install', 'hello']
+  env: ['PROJECT_ROOT=hello']
+# Upload it into a GCS bucket.
+- name: 'gcr.io/cloud-builders/gsutil'
+  args: ['cp', 'gopath/bin/hello', 'gs://$PROJECT_ID/hello']

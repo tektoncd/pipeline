@@ -1,0 +1,40 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud container builds submit . --config=cloudbuild.yaml
+#
+# TODO(franklinn): Stop tagging java/javac images once usage has dropped off.
+
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--no-cache'
+  - '--build-arg=BASE_IMAGE=launcher.gcr.io/google/openjdk8'
+  - '--build-arg=DOCKER_VERSION=17.06.0~ce-0~debian'
+  - '--tag=gcr.io/$PROJECT_ID/javac:8'
+  - '--tag=gcr.io/$PROJECT_ID/javac'
+  - '--tag=gcr.io/$PROJECT_ID/java/javac:8'
+  - '--tag=gcr.io/$PROJECT_ID/java/javac'
+  - '.'
+  waitFor: ['-']
+  id: 'BUILD_JDK_8'
+
+# Test that javac and docker are installed, for all built images, and that apt-get update will work
+# in child images
+
+- name: 'gcr.io/$PROJECT_ID/javac:8'
+  args: ['-version']
+  waitFor: ['BUILD_JDK_8']
+- name: 'gcr.io/$PROJECT_ID/javac:8'
+  entrypoint: 'docker'
+  args: ['version']
+  waitFor: ['BUILD_JDK_8']
+- name: 'gcr.io/$PROJECT_ID/javac:8'
+  entrypoint: 'apt-get'
+  args: ['update']
+  waitFor: ['BUILD_JDK_8']
+
+images:
+- 'gcr.io/$PROJECT_ID/javac:8'
+- 'gcr.io/$PROJECT_ID/javac'
+- 'gcr.io/$PROJECT_ID/java/javac:8'
+- 'gcr.io/$PROJECT_ID/java/javac'

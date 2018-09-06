@@ -1,0 +1,71 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud container builds submit . --config=cloudbuild.yaml
+
+steps:
+# Build all supported versions.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--file=Dockerfile-17.05.0'
+  - '--tag=gcr.io/$PROJECT_ID/docker:17.05'
+  - '.'
+  id: '17.05'
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--tag=gcr.io/$PROJECT_ID/docker:17.06.1'
+  - '--file=Dockerfile-17.06.1'
+  - '.'
+  id: '17.06.1'
+# Future supported versions of docker builder go here.
+
+# Test each version by using it to run "docker build" on itself.
+- name: 'gcr.io/$PROJECT_ID/docker:17.05'
+  args:
+  - 'build'
+  - '--file=Dockerfile-17.05.0'
+  - '.'
+  wait_for: ['17.05']
+- name: 'gcr.io/$PROJECT_ID/docker:17.06.1'
+  args:
+  - 'build'
+  - '--file=Dockerfile-17.06.1'
+  - '.'
+  wait_for: ['17.06.1']
+# Tests for future supported versions of docker builder go here.
+
+# Tag the latest version as :latest. We use gcr.io/cloud-builders/docker here
+# and not gcr.io/$PROJECT_ID/docker because the latter may not yet exist.
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['tag', 'gcr.io/$PROJECT_ID/docker:17.06.1', 'gcr.io/$PROJECT_ID/docker']
+  wait_for: ['17.06.1']
+  id: 'latest'
+
+# Here are some things that can be done with this builder:
+
+# Do the same build, but give the image a different name. Note that
+# "docker-again" is absent from the "images" list below, so this image is built
+# but is not pushed to the repository.
+- name: 'gcr.io/$PROJECT_ID/docker'
+  args:
+  - 'build'
+  - '--file=Dockerfile-17.06.1'
+  - '--tag=gcr.io/$PROJECT_ID/docker-again'
+  - '.'
+  wait_for: ['latest']
+
+# Get info about an image. This effectively runs the "docker inspect" command on
+# the image built above.
+- name: 'gcr.io/$PROJECT_ID/docker'
+  args: ['inspect', 'gcr.io/$PROJECT_ID/docker']
+  wait_for: ['latest']
+# Execute a container. The "busybox" container is executed within the docker
+# build step to echo "Hello, world!"
+- name: 'gcr.io/$PROJECT_ID/docker'
+  args: ['run', 'busybox', 'echo', 'Hello, world!']
+  wait_for: ['latest']
+
+images:
+- 'gcr.io/$PROJECT_ID/docker:latest'
+- 'gcr.io/$PROJECT_ID/docker:17.05'
+- 'gcr.io/$PROJECT_ID/docker:17.06.1'

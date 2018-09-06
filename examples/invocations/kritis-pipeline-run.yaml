@@ -11,35 +11,33 @@ spec:
     trigger:
         triggerRef:
             type: manual
-# The status section will be filled in by the PipelineRun controller once it
-# has started invoking the PipelineRun.
 status:
   taskRuns:
     - taskRef:
-        name: unit-test-kritis-12321312984
-        nextTasks:
-          - taskRef:
-              name: push-kritis-12321312984
-        prevTasks: []
+      name: unit-test-kritis-12321312984
+      nextTasks:
+        - taskRef:
+            name: push-kritis-12321312984
+      prevTasks: []
     - taskRef:
-        name: push-kritis-12321312984
-        nextTasks: []
-        prevTasks:
-          - taskRef:
-            name: unit-test-kritis-12321312984
+      name: push-kritis-12321312984
+      nextTasks: []
+      prevTasks:
+        - taskRef:
+          name: unit-test-kritis-12321312984
   conditions:
     - type: Started
-      status: True
-      lastTransitionTime: 1534204248
+      status: "True"
+      lastTransitionTime: "2018-10-04T12:25:39Z"
       reason: manualTrigger
       message: "Pipeline has been triggered manually"
     - type: Completed
-      status: True
-      lastTransitionTime: 1535000000
+      status: "True"
+      lastTransitionTime: "2018-10-04T13:25:39Z"
       reason: done
       message: "Pipeline execution has finished"
     - type: Successful
-      status: False
-      lastTransitionTime: 1535000000
+      status: "False"
+      lastTransitionTime: "2018-10-04T13:25:39Z"
       reason: taskFailure
       message: "TaskRun `push-kritis-12321312984` had non-zero exit code"

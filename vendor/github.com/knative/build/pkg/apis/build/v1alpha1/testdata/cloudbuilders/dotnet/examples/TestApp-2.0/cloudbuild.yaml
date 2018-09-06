@@ -1,0 +1,15 @@
+# Example build script to create a Docker image from a .NET Core 2.0 Web Api app.
+steps:
+
+# .NET Core 2.0 by default restores before any build, so we can
+# combine the restore and publish operations in a single statement.
+- name: 'gcr.io/cloud-builders/dotnet'
+  args: [ 'publish', '-c', 'Release' ]
+
+# Build the app image.
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'gcr.io/$PROJECT_ID/testapp:2.0', '.' ]
+  dir: './bin/Release/netcoreapp2.0/publish'
+
+# Publish the app.
+images: [ 'gcr.io/$PROJECT_ID/testapp:2.0' ]

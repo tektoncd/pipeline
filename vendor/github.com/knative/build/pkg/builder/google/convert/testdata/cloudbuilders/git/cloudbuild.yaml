@@ -1,0 +1,39 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud container builds submit . --config=cloudbuild.yaml
+
+steps:
+# Pull the latest gcloud image.
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['pull', 'gcr.io/cloud-builders/gcloud']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '--tag=gcr.io/$PROJECT_ID/git', '.']
+
+# Clone a public repo and write its revision to a VERSION file.
+- name: 'gcr.io/$PROJECT_ID/git'
+  args: ['clone', 'https://github.com/GoogleCloudPlatform/cloud-builders.git']
+  dir: 'examples/version-file'
+# The Dockerfile here uses this git builder as its base image.
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '--tag=version_file', '.']
+  dir: 'examples/version-file'
+- name: 'version_file'
+  args: ['VERSION']
+  dir: 'examples/version-file/cloud-builders'
+# Prove that the file exists.
+- name: 'alpine'
+  args: ['ash', '-c', 'echo "Version: $(cat VERSION)"']
+  dir: 'examples/version-file/cloud-builders'
+
+# Set a global configuration and check that it's persisted.
+# This configuration won't be included in the resulting builder image.
+- name: 'gcr.io/$PROJECT_ID/git'
+  args: ['config', '--global', 'test.foo', 'bar']
+- name: 'gcr.io/$PROJECT_ID/git'
+  entrypoint: 'bash'
+  args: ['-c', 'git config --global --get test.foo | grep ^bar$']
+
+# Clone a private repo belonging to the project.
+- name: 'gcr.io/$PROJECT_ID/git'
+  args: ['clone', 'https://source.developers.google.com/p/$PROJECT_ID/r/default']
+
+images: ['gcr.io/$PROJECT_ID/git']

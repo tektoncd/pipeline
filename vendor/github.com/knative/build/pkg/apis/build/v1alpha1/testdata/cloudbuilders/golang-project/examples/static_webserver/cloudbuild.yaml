@@ -1,0 +1,9 @@
+steps:
+# First we use the native Go builder to create an intermediate base image.
+- name: 'gcr.io/cloud-builders/golang-project'
+  args: ['server', '--tag=server_intermediate']
+# Then we use a Dockerfile to bring in the static resources and update the
+# entrypoint to use them.
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '--tag=gcr.io/$PROJECT_ID/golang_project_static_webserver', '.']
+images: 'gcr.io/$PROJECT_ID/golang_project_static_webserver'
