@@ -1,0 +1,3 @@
+version: "1"
+domain: knative.dev
+repo: github.com/knative/build-pipeline

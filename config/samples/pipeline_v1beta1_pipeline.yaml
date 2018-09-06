@@ -1,0 +1,52 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: wizzbang-pipeline
+  namespace: default
+spec:
+    tasks:
+        - name: 'test'
+          taskRef:
+              name: test-wizzbang-task
+          sourceBindings:
+              - inputName: 'repoUnderTest'
+                sourceKey: 'wizzbang'
+          nextTasks: ['buildPush']
+        - name: 'buildPush'
+          taskRef:
+              name: build-push-task
+          sourceBindings:
+              - inputName: 'workspace'
+                sourceKey: 'wizzbang'
+          artifactStoreBindings:
+              - storeName: 'registry'
+                storeKey: 'stagingRegistry'
+          params:
+              - name: 'pathToDockerfile'
+                value: 'build/Dockerfile'
+        - name: 'integrationTest'
+          taskRef:
+              name: integration-test-wizzbang-task
+          sourceBindings:
+              - inputName: 'repoUnderTest'
+                sourceKey: 'wizzbang'
+          paramBindings:
+              - inputName: testImage
+                taskName: buildPush
+                taskOutputName: builtImage
+        - name: 'deploy'
+          taskRef:
+              name: deploy-with-helm
+          params:
+              - name: pathToHelmCharts
+                value: deploy/helm
+          sourceBindings:
+              - inputName: 'repoToDeploy'
+                sourceKey: 'wizzbang'
+          clusterBindings:
+              - clusterName: prod
+          paramBindings:
+              - inputName: image
+                taskName: buildPush
+                taskOutputName: builtImage
+          prevTasks: ['integrationTest']
