@@ -1,0 +1,4 @@
+steps:
+- name: 'gcr.io/cloud-builders/golang-project'
+  args: ['hello', '--tag=gcr.io/$PROJECT_ID/golang_project_hello_world']
+images: ['gcr.io/$PROJECT_ID/golang_project_hello_world']

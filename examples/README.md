@@ -2,6 +2,15 @@
 
 This directory contains examples of [the Pipeline strawman CRDs](../README.md) in action.
 
+To deploy them to your cluster (after
+[installing the CRDs and running the controller](../DEVELOPMENT.md#installing-andrunning)):
+
+```bash
+kubectl apply -f examples/pipelines
+kubectl apply -f examples/
+kubectl apply -f examples/invocations
+```
+
 ## Example Tasks
 
 * Example [Tasks](../../README.md#task) are in:

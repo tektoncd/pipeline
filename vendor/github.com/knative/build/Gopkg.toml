@@ -1,0 +1,72 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#  name = "github.com/x/y"
+#  version = "2.4.0"
+
+# Required for Bazel
+required = [
+  "k8s.io/apimachinery/pkg/util/sets/types",
+  "k8s.io/apimachinery/pkg/apimachinery/registered",
+  "k8s.io/code-generator/cmd/deepcopy-gen",
+  "k8s.io/code-generator/cmd/defaulter-gen",
+  "k8s.io/code-generator/cmd/client-gen",
+  "k8s.io/code-generator/cmd/lister-gen",
+  "k8s.io/code-generator/cmd/informer-gen",
+  "github.com/google/go-containerregistry/cmd/ko",
+]
+
+
+# Use HEAD (2018-04-21) to pick up:
+# https://github.com/spf13/cobra/pull/662
+[[override]]
+  name = "github.com/spf13/cobra"
+  revision = "615425954c3b0d9485a7027d4d451fdcdfdee84e"
+[[override]]
+  name = "github.com/spf13/pflag"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+
+[[override]]
+  name = "gopkg.in/yaml.v2"
+  version = "v2.2.1"
+
+[[constraint]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.10.0"
+
+[[constraint]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.10.0"
+
+[[constraint]]
+  name = "k8s.io/code-generator"
+  version = "kubernetes-1.10.0"
+
+[[constraint]]
+  name = "k8s.io/client-go"
+  version = "kubernetes-1.10.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
+
+[[prune.project]]
+    name = "k8s.io/code-generator"
+    unused-packages = false
+    non-go = false

@@ -34,8 +34,6 @@ spec:
         - name: 'testBucket'
           type: 'gcs'
           url: 'gcs://somebucket/results/tests'
-# The status section will be filled in by the TaskRun controller once it
-# has started invoking the TaskRun.
 status:
     steps:
     - name: make
@@ -43,17 +41,17 @@ status:
       exitCode: 0
     conditions:
     - type: Started
-      status: True
-      lastTransitionTime: 1534204250
+      status: "True"
+      lastTransitionTime: "2018-10-04T12:25:39Z"
       reason: pipelineRun
       message: "Task has been triggered by a Pipeline run"
     - type: Completed
-      status: True
-      lastTransitionTime: 1534250000
+      status: "True"
+      lastTransitionTime: "2018-10-04T13:25:39Z"
       reason: done
       message: "Pipeline execution has finished"
     - type: Successful
-      status: True
-      lastTransitionTime: 1534250000
+      status: "True"
+      lastTransitionTime: "2018-10-04T13:25:39Z"
       reason: zeroExitCode
       message: "All steps completed with an exit code of 0"

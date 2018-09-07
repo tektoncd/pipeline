@@ -1,0 +1,62 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud container builds submit . --config=cloudbuild.yaml
+
+steps:
+# build the alpine version
+- name: 'gcr.io/cloud-builders/go:alpine'
+  args: ['install', 'golang_project']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-f', 'Dockerfile.alpine', '--tag=gcr.io/$PROJECT_ID/golang-project:alpine', '.']
+
+# clear out the alpine version of the binary
+- name: 'alpine'
+  args: ['rm', 'gopath/bin/golang_project']
+
+# alpine is the default
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['tag', 'gcr.io/$PROJECT_ID/golang-project:alpine', 'gcr.io/$PROJECT_ID/golang-project']
+
+# Test the examples.
+
+# examples/hello_world
+- name: 'gcr.io/$PROJECT_ID/golang-project'
+  args: ['hello', '--tag=hello_world']
+  dir: 'examples/hello_world'
+
+# examples/multi_bin
+- name: 'gcr.io/$PROJECT_ID/golang-project'
+  args:
+  - 'product/server'
+  - 'product/subtool'
+  - 'product/subtool/subpkg'
+  - '--entrypoint=server'
+  - '--tag=gcr.io/$PROJECT_ID/golang_project_multi_bin'
+  env: ['PROJECT_ROOT=product']
+  dir: 'examples/multi_bin'
+
+# examples/static_webserver
+- name: 'gcr.io/$PROJECT_ID/golang-project'
+  args: ['server', '--tag=server_intermediate']
+  dir: 'examples/static_webserver'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '--tag=server', '.']
+  dir: 'examples/static_webserver'
+
+# examples/custom_base
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '--tag=alpine-cacerts', '-f', 'Dockerfile.cacerts.alpine', '.']
+  dir: 'examples/custom_base'
+- name: 'gcr.io/$PROJECT_ID/golang-project:alpine'
+  args: ['client', '--base-image=alpine-cacerts', '--tag=gcr.io/$PROJECT_ID/golang_project_custom_base:alpine']
+  dir: 'examples/custom_base'
+- name: 'gcr.io/$PROJECT_ID/golang_project_custom_base:alpine'
+- name: 'alpine'
+  args: ['rm', 'gopath/bin/client']
+  dir: 'examples/custom_base'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '--tag=ubuntu-cacerts', '-f', 'Dockerfile.cacerts.ubuntu', '.']
+  dir: 'examples/custom_base'
+
+images:
+  - 'gcr.io/$PROJECT_ID/golang-project'
+  - 'gcr.io/$PROJECT_ID/golang-project:alpine'

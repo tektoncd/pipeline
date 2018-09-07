@@ -1,0 +1,62 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud container builds submit . --config=cloudbuild.yaml
+#
+# TODO(franklinn): Stop tagging java/mvn images once usage has dropped off.
+
+steps:
+# Build the java / maven matrix.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--build-arg=BASE_IMAGE=gcr.io/$PROJECT_ID/javac:8'
+  - '--build-arg=MAVEN_VERSION=3.3.9'
+  - '--build-arg=SHA=6e3e9c949ab4695a204f74038717aa7b2689b1be94875899ac1b3fe42800ff82'
+  - '--tag=gcr.io/$PROJECT_ID/mvn:3.3.9-jdk-8'
+  - '--tag=gcr.io/$PROJECT_ID/java/mvn:3.3.9-jdk-8'
+  - '.'
+  wait_for: ['-']
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--build-arg=BASE_IMAGE=gcr.io/$PROJECT_ID/javac:8'
+  - '--build-arg=MAVEN_VERSION=3.5.0'
+  - '--build-arg=SHA=beb91419245395bd69a4a6edad5ca3ec1a8b64e41457672dc687c173a495f034'
+  - '--tag=gcr.io/$PROJECT_ID/mvn:3.5.0-jdk-8'
+  - '--tag=gcr.io/$PROJECT_ID/java/mvn:3.5.0-jdk-8'
+  - '.'
+  wait_for: ['-']
+
+# Tag a default builder version.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'tag'
+  - 'gcr.io/$PROJECT_ID/mvn:3.5.0-jdk-8'
+  - 'gcr.io/$PROJECT_ID/java/mvn'
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'tag'
+  - 'gcr.io/$PROJECT_ID/mvn:3.5.0-jdk-8'
+  - 'gcr.io/$PROJECT_ID/mvn'
+
+# run examples
+- name: 'gcr.io/$PROJECT_ID/mvn:3.3.9-jdk-8'
+  args: ['install']
+  dir: 'examples/spring_boot'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '.']
+  dir: 'examples/spring_boot'
+
+- name: 'gcr.io/$PROJECT_ID/mvn:3.5.0-jdk-8'
+  args: ['install']
+  dir: 'examples/spring_boot'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '.']
+  dir: 'examples/spring_boot'
+
+images:
+- 'gcr.io/$PROJECT_ID/mvn:3.5.0-jdk-8'
+- 'gcr.io/$PROJECT_ID/mvn:3.3.9-jdk-8'
+- 'gcr.io/$PROJECT_ID/mvn'
+- 'gcr.io/$PROJECT_ID/java/mvn:3.5.0-jdk-8'
+- 'gcr.io/$PROJECT_ID/java/mvn:3.3.9-jdk-8'
+- 'gcr.io/$PROJECT_ID/java/mvn'

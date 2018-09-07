@@ -1,0 +1,129 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: pipelineparams.pipeline.knative.dev
+spec:
+  group: pipeline.knative.dev
+  names:
+    kind: PipelineParams
+    plural: pipelineparams
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            artifactStores:
+              items:
+                properties:
+                  name:
+                    type: string
+                  type:
+                    type: string
+                  url:
+                    type: string
+                required:
+                - name
+                - type
+                - url
+                type: object
+              type: array
+            results:
+              properties:
+                logs:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                      url:
+                        type: string
+                    required:
+                    - name
+                    - type
+                    - url
+                    type: object
+                  type: array
+                runs:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                      url:
+                        type: string
+                    required:
+                    - name
+                    - type
+                    - url
+                    type: object
+                  type: array
+                tests:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      type:
+                        type: string
+                      url:
+                        type: string
+                    required:
+                    - name
+                    - type
+                    - url
+                    type: object
+                  type: array
+              required:
+              - runs
+              - logs
+              type: object
+            serviceAccount:
+              type: string
+            sources:
+              items:
+                properties:
+                  branch:
+                    type: string
+                  commit:
+                    type: string
+                  name:
+                    type: string
+                  serviceAccount:
+                    type: string
+                  type:
+                    type: string
+                  url:
+                    type: string
+                required:
+                - name
+                - type
+                - url
+                - branch
+                type: object
+              type: array
+          required:
+          - serviceAccount
+          - sources
+          - artifactStores
+          - results
+          type: object
+        status:
+          type: object
+      type: object
+  version: v1beta1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null

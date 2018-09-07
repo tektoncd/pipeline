@@ -1,0 +1,71 @@
+# In this directory, run the following command to build this builder.
+# $ gcloud container builds submit . --config=cloudbuild.yaml
+
+steps:
+# Build all supported versions.
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--build-arg=NODE_VERSION=v6.11.2'
+  - '--tag=gcr.io/$PROJECT_ID/npm:node-6.11.2'
+  - '.'
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--build-arg=NODE_VERSION=v8.9.3'
+  - '--tag=gcr.io/$PROJECT_ID/npm:node-8.9.3'
+  # 8.9.3 is tagged :latest
+  - '--tag=gcr.io/$PROJECT_ID/npm:latest'
+  - '.'
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--build-arg=NODE_VERSION=v8.4.0'
+  - '--tag=gcr.io/$PROJECT_ID/npm:node-8.4.0'
+  - '--tag=gcr.io/$PROJECT_ID/npm:current'
+  - '.'
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  # 9.3.0 is tagged :current
+  - '--build-arg=NODE_VERSION=v9.3.0'
+  - '--tag=gcr.io/$PROJECT_ID/npm:node-9.3.0'
+  - '.'
+
+# Print for each version
+- name: 'gcr.io/$PROJECT_ID/npm:node-6.11.2'
+  args: ['version']
+- name: 'gcr.io/$PROJECT_ID/npm:node-8.9.3'
+  args: ['version']
+- name: 'gcr.io/$PROJECT_ID/npm:node-8.4.0'
+  args: ['version']
+- name: 'gcr.io/$PROJECT_ID/npm:node-9.3.0'
+  args: ['version']
+
+# Test the examples with :latest
+- name: 'gcr.io/$PROJECT_ID/npm:latest'
+  args: ['install']
+  dir: 'examples/hello_world'
+- name: 'gcr.io/$PROJECT_ID/npm:latest'
+  args: ['test']
+  dir: 'examples/hello_world'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '.']
+  dir: 'examples/hello_world'
+- name: 'gcr.io/$PROJECT_ID/npm:current'
+  args: ['install']
+  dir: 'examples/hello_world'
+- name: 'gcr.io/$PROJECT_ID/npm:current'
+  args: ['test']
+  dir: 'examples/hello_world'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '.']
+  dir: 'examples/hello_world'
+
+images:
+- 'gcr.io/$PROJECT_ID/npm:latest'
+- 'gcr.io/$PROJECT_ID/npm:current'
+- 'gcr.io/$PROJECT_ID/npm:node-6.11.2'
+- 'gcr.io/$PROJECT_ID/npm:node-8.9.3'
+- 'gcr.io/$PROJECT_ID/npm:node-8.4.0'
+- 'gcr.io/$PROJECT_ID/npm:node-9.3.0'

@@ -1,0 +1,3 @@
+baseImageOverrides:
+  github.com/knative/build/cmd/creds-init: gcr.io/cloud-builders/gcloud:latest
+  github.com/knative/build/cmd/git-init: gcr.io/cloud-builders/gcloud:latest
