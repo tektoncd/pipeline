@@ -92,9 +92,7 @@ type TaskRunCondition struct {
 
 	Status corev1.ConditionStatus `json:"status"`
 
-	// TODO(bobcatfish): when I use `metav1.Time` here I can't figure out
-	// how to serialize :(
-	LastTransitionTime string `json:"lastTransitionTime"`
+	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
 
 	Reason  string `json:"reason,omitempty"`
 	Message string `json:"message,omitempty"`
