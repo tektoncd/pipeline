@@ -40,4 +40,4 @@ status:
       status: "False"
       lastTransitionTime: "2018-10-04T13:25:39Z"
       reason: taskFailure
-      message: "TaskRun `push-kritis-12321312984` had non-zero exit code"
+      message: "TaskRun `build-push-kritis-12321312984` had non-zero exit code"
