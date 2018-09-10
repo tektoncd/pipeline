@@ -1,6 +1,6 @@
 # Examples
 
-This directory contains examples of [the Pipeline strawman CRDs](../README.md) in action.
+This directory contains examples of [the Pipeline CRDs](../README.md) in action.
 
 To deploy them to your cluster (after
 [installing the CRDs and running the controller](../DEVELOPMENT.md#installing-andrunning)):
@@ -10,6 +10,29 @@ kubectl apply -f examples/pipelines
 kubectl apply -f examples/
 kubectl apply -f examples/invocations
 ```
+
+## Example Pipelines
+
+We have 2 example [Pipelines](../README.md#pipeline) in [./pipelines](./pipelines)
+
+1. [The Kritis Pipline](./pipelines/kritis.yaml): This example builds a Pipeline for the
+   [kritis project](https://github.com/grafeas/kritis), and demonstrates how to configure
+    a pipeline which:
+
+    1. Runs unit tests
+    2. Build an image
+    3. Deploys it to a test environment
+    4. Runs integration tests
+
+   ![Pipeline Configuration](./pipelines/kritis-pipeline.png)
+
+2. [Guestbook](./pipelines/guestbook.yaml): This Pipeline is based on example application in
+   [the Kubernetes example Repo](https://github.com/kubernetes/examples/tree/master/guestbook)
+   This pipeline demonstartes how to integrate frontend
+   [guestbook app code](https://github.com/kubernetes/examples/tree/master/guestbook-go) with
+   backend [redis-docker image](https://github.com/GoogleCloudPlatform/redis-docker/tree/master/4) provided by GCP.
+
+   ![Pipeline Configuration](./pipelines/guestbook-pipeline.png)
 
 ## Example Tasks
 
@@ -34,16 +57,3 @@ The [runs](./runs/) dir contains an example [TaskRun](../README.md#taskrun) and 
 [run-kritis-test.yaml](./invocations/run-kritis-test.yaml) shows an example of how to manually run kritis unit test off your development branch.
 
 [kritis-pipeline-run.yaml](./invocations/kritis-pipeline-run.yaml) shows an example of what it would look like to invoke the [kritis example pipeline](#example-pipelines) manually and have it fail on the second task (building and pushing the image).
-
-## Example Pipelines
-
-Finally, we have 2 example [Pipelines](../README.md#pipeline) in [./pipelines](./pipelines)
-
-1. [Kritis](./pipelines/kritis.yaml): This exmaple demonstrates how to configure a pipeline which runs unit test, build an image, deploys it to test and then run integration tests. (This is the pipeline for [kritis](https://github.com/grafeas/kritis).)
-
-![Pipeline Configuration](./pipelines/kritis-pipeline.png)
-
-2. [Guestbook](./pipelines/guestbook.yaml): This is pipeline which is based on example application in [Kubernetes example Repo](https://github.com/kubernetes/examples/tree/master/guestbook)
-This pipeline demonstartes how to integrate frontend [guestbook app code](https://github.com/kubernetes/examples/tree/master/guestbook-go) with backed [redis-docker image](https://github.com/GoogleCloudPlatform/redis-docker/tree/master/4) provided by GCP.
-
-![Pipeline Configuration](./pipelines/guestbook-pipeline.png)
