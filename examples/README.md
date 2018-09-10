@@ -56,4 +56,10 @@ The [runs](./runs/) dir contains an example [TaskRun](../README.md#taskrun) and 
 
 [run-kritis-test.yaml](./invocations/run-kritis-test.yaml) shows an example of how to manually run kritis unit test off your development branch.
 
-[kritis-pipeline-run.yaml](./invocations/kritis-pipeline-run.yaml) shows an example of what it would look like to invoke the [kritis example pipeline](#example-pipelines) manually and have it fail on the second task (building and pushing the image).
+[kritis-pipeline-run.yaml](./invocations/kritis-pipeline-run.yaml) shows an example of
+what it would look like to invoke the [kritis example pipeline](#example-pipelines)
+manually. In the `conditions` field for type `Successful` you can see that the status
+is `False`, which indicates that the Pipeline was not run successfully. The field
+`message` contains a human readable error indicating that one of the `TaskRuns` failed.
+This `condition` (and everything else in the `status` section) would be populated by the
+controller as it realized the PipelineRun (i.e. ran the Pipeline).
