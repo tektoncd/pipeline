@@ -68,7 +68,7 @@ func DecodeTypeFromYamlSample(fileName string, intoObj k8sruntime.Object) error 
 	}
 
 	decode := scheme.Codecs.UniversalDeserializer().Decode
-	_, _, err = decode([]byte(yaml), nil, intoObj)
+	_, _, err = decode(yaml, nil, intoObj)
 	if err != nil {
 		return fmt.Errorf("error decoding the file at %s: %s", path, err)
 	}
