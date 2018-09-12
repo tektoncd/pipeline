@@ -10,7 +10,7 @@ Features the Pipeline CRD will support include:
 * Interaction with CI/CD resources such as source code, artifacts, resutls, deployments and clusters
 
 The goal of the Pipeline CRD is to fit into and cooperate with
-[the knative ecosystem](https://github.com/knative/docs#welcome-knative), specifically:
+[the Knative ecosystem](https://github.com/knative/docs#welcome-knative), specifically:
 
 * [The Build CRD](https://github.com/knative/docs/blob/master/build/builds.md)
 * [The Eventing APIs](https://github.com/knative/eventing/tree/master/docs/spec)
@@ -46,7 +46,7 @@ or from a [`BuildTemplate`](https://github.com/knative/docs/blob/master/build/bu
 It takes Knative Build and adds inputs and outputs. Where these inputs and outputs are provided
 from is not known to a task, so they can be provided by a Pipeline or by a user invoking a Task directly.
 
-`Tasks` are basically [knative BuildTemplates](https://github.com/knative/build-templates)
+`Tasks` are basically [Knative BuildTemplates](https://github.com/knative/build-templates)
 with additional input types and clearly defined outputs.
 
 ## Pipeline
@@ -77,7 +77,7 @@ Creating a `TaskRun` will invoke a [Task](#task), running all of the steps until
 or failure. Creating a `TaskRun` will require satisfying all of the input requirements of the
 `Task`.
 
-`TaskRuns` are basically [knative Builds](https://github.com/knative/build) with inputs and
+`TaskRuns` are basically [Knative Builds](https://github.com/knative/build) with inputs and
 outputs, and in the future we may want to transition `Builds` to become `Tasks`.
 
 `TaskRuns` can be created directly by a user or by a [PipelineRun](#pipelinerun).
@@ -107,7 +107,7 @@ A `PipelineRun` could be created:
 
 * By a user manually
 * In response to an event (e.g. in response to a Github event, possibly processed via
-  [knative eventing](https://github.com/knative/eventing))
+  [Knative eventing](https://github.com/knative/eventing))
 
 ### PipelineRun Status
 
