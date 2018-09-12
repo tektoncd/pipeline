@@ -52,7 +52,7 @@ Any changes will cause the `/lgtm` label to be removed and it will need to be re
 
 _See also [Knative docs on reviewing](https://github.com/knative/docs/blob/master/community/REVIEWING.md)._
 
-## Commit Messagse
+## Commit Messages
 
 All commit messages should follow [these best practices](https://chris.beams.io/posts/git-commit/),
 specifically:
@@ -69,7 +69,7 @@ Not sure what to put? Include:
 * What side effects will this approach have?
 * What future work remains to be done?
 
-## Roadmap and contributions
+## Roadmap and contributions wanted
 
 As of Sept 2018, our roadmap for the next few months is to:
 
