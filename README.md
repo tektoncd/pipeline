@@ -1,4 +1,4 @@
-# Pipeline CRD
+# Pipeline CRD - Now w/ Prow!
 
 This repo contains the API definition of the Pipeline CRD and an on cluster implementation of that API.
 The goal of the Pipeline CRD is to provide k8s-style resources that allow the
