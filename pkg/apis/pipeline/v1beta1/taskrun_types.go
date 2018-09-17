@@ -21,13 +21,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
 	TaskRef TaskRef       `json:"taskRef"`
-	Trigger Trigger       `json:"trigger"`
+	Trigger TaskTrigger   `json:"trigger"`
 	Inputs  TaskRunInputs `json:"inputs,omitempty"`
 	Outputs Outputs       `json:"outputs,omitempty"`
 	Results Results       `json:"results"`
@@ -39,19 +36,32 @@ type TaskRunInputs struct {
 	Params  []Param  `json:"params,omitempty"`
 }
 
-// Trigger defines a webhook style trigger to start a TaskRun
-type Trigger struct {
-	TriggerRef TriggerRef `json:"triggerRef"`
-	PrevTasks  []string   `json:"prevTasks,omitempty"`
-	NextTasks  []string   `json:"nextTasks,omitempty"`
+// TaskTrigger defines a webhook style trigger to start a TaskRun
+type TaskTrigger struct {
+	TriggerRef TaskTriggerRef `json:"triggerRef"`
+	PrevTasks  []string       `json:"prevTasks,omitempty"`
+	NextTasks  []string       `json:"nextTasks,omitempty"`
 }
 
-// TriggerRef describes what triggered this Task. It could be triggered manually,
+// TaskTriggerType indicates the mechanism by which this TaskRun was created.
+type TaskTriggerType string
+
+const (
+	// TaskTriggerTypeManual indicates that this TaskRun was invoked manually by a user.
+	TaskTriggerTypeManual TaskTriggerType = "manual"
+
+	// TaskTriggerTypePipelineRun indicates that this TaskRun was created by a controller
+	// attempting to realize a PipelineRun. In this case the `name` will refer to the name
+	// of the PipelineRun.
+	TaskTriggerTypePipelineRun TaskTriggerType = "pipelineRun"
+)
+
+// TaskTriggerRef describes what triggered this Task to run. It could be triggered manually,
 // or it may have been part of a PipelineRun in which case this ref would refer
 // to the corresponding PipelineRun.
-type TriggerRef struct {
-	Type string `json:"type"`
-	Name string `json:"name,omitempty"`
+type TaskTriggerRef struct {
+	Type TaskTriggerType `json:"type"`
+	Name string          `json:"name,omitempty"`
 }
 
 // TaskRunStatus defines the observed state of TaskRun

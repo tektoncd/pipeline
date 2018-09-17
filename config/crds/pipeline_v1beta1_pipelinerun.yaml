@@ -21,6 +21,38 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            pipelineParamsRef:
+              properties:
+                apiVersion:
+                  type: string
+                name:
+                  type: string
+              required:
+              - name
+              type: object
+            pipelineRef:
+              properties:
+                apiVersion:
+                  type: string
+                name:
+                  type: string
+              required:
+              - name
+              type: object
+            triggerRef:
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+              required:
+              - type
+              type: object
+          required:
+          - pipelineRef
+          - pipelineParamsRef
+          - triggerRef
           type: object
         status:
           properties:

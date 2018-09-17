@@ -8,9 +8,8 @@ spec:
         name: kritis-pipeline
     pipelineParamsRef:
         name: pipelineparams-sample
-    trigger:
-        triggerRef:
-            type: manual
+    triggerRef:
+        type: manual
 status:
   taskRuns:
     - taskRef:

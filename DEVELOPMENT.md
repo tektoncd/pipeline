@@ -33,6 +33,16 @@ This repo uses [`dep`](https://golang.github.io/dep/docs/daily-dep.html) for dep
 * `dep ensure` should be a no-op
 * Add a dep with `dep ensure -add $MY_DEP`
 
+### Changing types
+
+When updating types, you should regenerate any generated code with:
+
+```bash
+make generate
+```
+
+Then test this by [installing and running](#installing-and-running).
+
 ### Installing and running
 
 The skeleton for this project was generated using [kubebuilder](https://book.kubebuilder.io/quick_start.html),

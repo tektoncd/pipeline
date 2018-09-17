@@ -97,50 +97,44 @@ spec:
             results:
               properties:
                 logs:
-                  items:
-                    properties:
-                      name:
-                        type: string
-                      type:
-                        type: string
-                      url:
-                        type: string
-                    required:
-                    - name
-                    - type
-                    - url
-                    type: object
-                  type: array
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    url:
+                      type: string
+                  required:
+                  - name
+                  - type
+                  - url
+                  type: object
                 runs:
-                  items:
-                    properties:
-                      name:
-                        type: string
-                      type:
-                        type: string
-                      url:
-                        type: string
-                    required:
-                    - name
-                    - type
-                    - url
-                    type: object
-                  type: array
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    url:
+                      type: string
+                  required:
+                  - name
+                  - type
+                  - url
+                  type: object
                 tests:
-                  items:
-                    properties:
-                      name:
-                        type: string
-                      type:
-                        type: string
-                      url:
-                        type: string
-                    required:
-                    - name
-                    - type
-                    - url
-                    type: object
-                  type: array
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    url:
+                      type: string
+                  required:
+                  - name
+                  - type
+                  - url
+                  type: object
               required:
               - runs
               - logs

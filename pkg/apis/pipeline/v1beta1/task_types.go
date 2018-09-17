@@ -63,11 +63,19 @@ type SourceInput struct {
 	Name string `json:"name"`
 }
 
+// ParamType represents the type of the parameter.
+type ParamType string
+
+const (
+	// ParamTypeString indicates this parameter is just a string.
+	ParamTypeString ParamType = "string"
+)
+
 // Param defines arbitrary parameters needed by a task beyond typed inputs
 // such as Sources.
 type Param struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name string    `json:"name"`
+	Type ParamType `json:"type"`
 }
 
 // Outputs allow a task to declare what data the Build/Task will be producing,
@@ -86,12 +94,21 @@ type TestResult struct {
 	Path   string `json:"path"`
 }
 
+// ArtifactType indicates what type of artifact store this is, so the controller
+// will know how to publish artifacts from it.
+type ArtifactType string
+
+const (
+	// ArtifactTypeImage indicates that this artifact is a container image.
+	ArtifactTypeImage ArtifactType = "image"
+)
+
 // Artifact allows a Task to describe what artifacts it will be producing
 // and specify where they will be stored.
 type Artifact struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	StoreKey string `json:"storeKey"`
+	Name     string       `json:"name"`
+	Type     ArtifactType `json:"type"`
+	StoreKey string       `json:"storeKey"`
 }
 
 // BuildSpec describes how to create a Build for this Task.
