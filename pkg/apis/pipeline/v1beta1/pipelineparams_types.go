@@ -52,10 +52,11 @@ type Source struct {
 	ServiceAccount string     `json:"serviceAccount,omitempty"`
 }
 
-// PipelineParamsStatus defines the observed state of PipelineParams
+// PipelineParamsStatus defines the observed state of PipelineParams.
+// The controller will update the Conditions to indicate if the created
+// resource is valid.
 type PipelineParamsStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Conditions []Condition `json:"conditions"`
 }
 
 // +genclient

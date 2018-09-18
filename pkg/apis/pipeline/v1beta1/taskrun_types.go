@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -66,8 +65,8 @@ type TaskTriggerRef struct {
 
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
-	Steps      []StepRun          `json:"steps"`
-	Conditions []TaskRunCondition `json:"conditions"`
+	Steps      []StepRun   `json:"steps"`
+	Conditions []Condition `json:"conditions"`
 }
 
 // StepRun reports the results of running a step in the Task. Each
@@ -77,35 +76,6 @@ type StepRun struct {
 	Name     string `json:"name"`
 	LogsURL  string `json:"logsURL"`
 	ExitCode int    `json:"exitCode"`
-}
-
-// TaskRunConditionType indicates the status of the execution of the TaskRun.
-type TaskRunConditionType string
-
-const (
-	// TaskRunConditionTypeStarted indicates whether or not the TaskRun
-	// has started actually executing.
-	TaskRunConditionTypeStarted TaskRunConditionType = "Started"
-
-	//TaskRunConditionTypeCompleted indicates whether or not the TaskRun
-	// has finished executing.
-	TaskRunConditionTypeCompleted TaskRunConditionType = "Completed"
-
-	// TaskRunConditionTypeSucceeded indicates whether or not the TaskRun
-	// was successful.
-	TaskRunConditionTypeSucceeded TaskRunConditionType = "Successful"
-)
-
-// TaskRunCondition holds a Condition that the TaskRun has entered into while being executed.
-type TaskRunCondition struct {
-	Type TaskRunConditionType `json:"type"`
-
-	Status corev1.ConditionStatus `json:"status"`
-
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
-
-	Reason  string `json:"reason,omitempty"`
-	Message string `json:"message,omitempty"`
 }
 
 // +genclient

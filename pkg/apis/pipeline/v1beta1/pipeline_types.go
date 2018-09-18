@@ -25,10 +25,11 @@ type PipelineSpec struct {
 	Tasks []PipelineTask `json:"tasks"`
 }
 
-// PipelineStatus defines the observed state of Pipeline
+// PipelineStatus defines the observed state of Pipeline.
+// The controller will update the Conditions to indicate if the created
+// resource is valid.
 type PipelineStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Conditions []Condition `json:"conditions"`
 }
 
 // +genclient

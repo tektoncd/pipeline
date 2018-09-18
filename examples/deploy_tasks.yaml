@@ -21,6 +21,13 @@ spec:
         - name: deploy
           image: kubernetes-helm
           args: ['deploy', '--path=${pathToHelmChart}', '--set image=${image}', '${helmArgs}']
+status:
+    conditions:
+        - type: Valid
+          status: "True"
+          lastTransitionTime: "2018-10-04T12:25:39Z"
+          reason: created
+          message: "Task has been validated"
 
 ---
 apiVersion: pipeline.knative.dev/v1beta1
@@ -45,3 +52,10 @@ spec:
         - name: runKubectl
           image: k8s-kubectl
           args: ['--use-context', '${targetCluster}', '--namespace', '${targetCluster.namespace}', 'apply', '-c', '${pathToFiles}', '${kubectlArgs}']
+status:
+    conditions:
+        - type: Valid
+          status: "True"
+          lastTransitionTime: "2018-10-04T12:25:39Z"
+          reason: created
+          message: "Task has been validated"

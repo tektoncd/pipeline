@@ -113,6 +113,29 @@ spec:
           - results
           type: object
         status:
+          properties:
+            conditions:
+              items:
+                properties:
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  message:
+                    type: string
+                  reason:
+                    type: string
+                  status:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - type
+                - status
+                - lastTransitionTime
+                type: object
+              type: array
+          required:
+          - conditions
           type: object
       type: object
   version: v1beta1

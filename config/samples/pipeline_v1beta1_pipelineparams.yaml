@@ -38,3 +38,10 @@ spec:
         - name: 'prod'
           type: 'gke'
           endpoint: 'https://prod.gke.corp.com'
+status:
+    conditions:
+        - type: Valid
+          status: "True"
+          lastTransitionTime: "2018-10-04T12:25:39Z"
+          reason: created
+          message: "PipelineParams have been validated"

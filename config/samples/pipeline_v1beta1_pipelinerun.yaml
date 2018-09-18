@@ -25,6 +25,11 @@ status:
         - taskRef:
           name: test-wizzbang-task-run-sd8f8dfasdfasdfas
   conditions:
+    - type: Valid
+      status: "True"
+      lastTransitionTime: "2018-10-04T12:25:39Z"
+      reason: created
+      message: "PipelineRun has been validated"
     - type: Started
       status: "True"
       lastTransitionTime: "2018-10-04T12:25:39Z"
@@ -34,7 +39,7 @@ status:
       status: "True"
       lastTransitionTime: "2018-10-04T13:25:39Z"
       reason: done
-      message: "Pipeline execution has finished"
+      message: "PipelineRun execution has finished"
     - type: Successful
       status: "False"
       lastTransitionTime: "2018-10-04T13:25:39Z"

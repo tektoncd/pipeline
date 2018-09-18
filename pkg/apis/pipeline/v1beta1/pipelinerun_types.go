@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -63,8 +62,8 @@ type PipelineTriggerRef struct {
 
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
-	TaskRuns   []PipelineTaskRun      `json:"taskRuns,omitempty"`
-	Conditions []PipelineRunCondition `json:"conditions"`
+	TaskRuns   []PipelineTaskRun `json:"taskRuns,omitempty"`
+	Conditions []Condition       `json:"conditions"`
 }
 
 // +genclient
@@ -111,35 +110,6 @@ type TaskRunRef struct {
 	Name string `json:"name"`
 	// API version of the referent
 	APIVersion string `json:"apiVersion,omitempty"`
-}
-
-// PipelineRunConditionType indicates the status of the execution of the PipelineRun.
-type PipelineRunConditionType string
-
-const (
-	// PipelineRunConditionTypeStarted indicates whether or not the PipelineRun
-	// has started actually executing.
-	PipelineRunConditionTypeStarted PipelineRunConditionType = "Started"
-
-	//PipelineRunConditionTypeCompleted indicates whether or not the PipelineRun
-	// has finished executing.
-	PipelineRunConditionTypeCompleted PipelineRunConditionType = "Completed"
-
-	// PipelineRunConditionTypeSucceeded indicates whether or not the PipelineRun
-	// was successful.
-	PipelineRunConditionTypeSucceeded PipelineRunConditionType = "Successful"
-)
-
-// PipelineRunCondition holds a Condition that the PipelineRun has entered into while being executed.
-type PipelineRunCondition struct {
-	Type PipelineRunConditionType `json:"type"`
-
-	Status corev1.ConditionStatus `json:"status"`
-
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
-
-	Reason  string `json:"reason,omitempty"`
-	Message string `json:"message,omitempty"`
 }
 
 func init() {
