@@ -20,6 +20,13 @@ spec:
             - name: runMake
               image: ubuntu
               args: ['make', '${makeTarget}']
+status:
+    conditions:
+        - type: Valid
+          status: "True"
+          lastTransitionTime: "2018-10-04T12:25:39Z"
+          reason: created
+          message: "Task has been validated"
 
 ---
 apiVersion: pipeline.knative.dev/v1beta1
@@ -56,4 +63,10 @@ spec:
             - name: dockerSocket
               source: /var/run/docker.sock
               destination: /var/run/docker.sock
-
+status:
+    conditions:
+        - type: Valid
+          status: "True"
+          lastTransitionTime: "2018-10-04T12:25:39Z"
+          reason: created
+          message: "Task has been validated"

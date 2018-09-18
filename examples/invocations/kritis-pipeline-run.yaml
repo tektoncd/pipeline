@@ -26,6 +26,11 @@ status:
         - taskRef:
           name: unit-test-kritis-12321312984
   conditions:
+    - type: Valid
+      status: "True"
+      lastTransitionTime: "2018-10-04T12:25:39Z"
+      reason: created
+      message: "PipelineRun has been validated"
     - type: Started
       status: "True"
       lastTransitionTime: "2018-10-04T12:25:39Z"

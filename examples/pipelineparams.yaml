@@ -53,3 +53,10 @@ spec:
           type: 'gcs'
           url: 'gcs://somebucket/results/tests'
           token: 'todo'
+status:
+    conditions:
+        - type: Valid
+          status: "True"
+          lastTransitionTime: "2018-10-04T12:25:39Z"
+          reason: created
+          message: "PipelineParams have been validated"
