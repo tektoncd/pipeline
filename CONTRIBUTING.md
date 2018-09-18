@@ -10,7 +10,7 @@ In this file you'll find info on:
 
 * [Principles](#principles)
 * [The pull request process](#pull-request-process)
-* [Commit message requirements](#commit-messages)
+* [Standards](#standards) around [commit messages](#commit-messages) and [code](#coding-standards)
 * [The roadmap and contributions wanted](#roadmap-and-contributions-wanted)
 * [Contacting other contributors](#contact)
 
@@ -22,7 +22,7 @@ When possbile, try to practice:
 
 * **Documentation driven development** - Before implementing anything, write docs to explain
   how it will work
-* **Test drivent development** - Before implementing anything, write tests to cover it
+* **Test driven development** - Before implementing anything, write tests to cover it
 
 Minimize the number of integration tests written and maximize the unit tests! Unit test
 coverage should increase or stay the same with every PR.
@@ -52,7 +52,16 @@ Any changes will cause the `/lgtm` label to be removed and it will need to be re
 
 _See also [Knative docs on reviewing](https://github.com/knative/docs/blob/master/community/REVIEWING.md)._
 
-## Commit Messages
+### Review turnaround
+
+Pull requests opened by [maintainers](./OWNERS) should be left open, when possible, for at least a day in order
+to provide other maintainers a chance to review.
+
+## Standards
+
+This section describes the standards we will try to maintain in this repo.
+
+### Commit Messages
 
 All commit messages should follow [these best practices](https://chris.beams.io/posts/git-commit/),
 specifically:
@@ -68,6 +77,12 @@ Not sure what to put? Include:
 * What other approaches did you consider?
 * What side effects will this approach have?
 * What future work remains to be done?
+
+### Coding standards
+
+The code in this repo should follow best practices, specifically:
+
+* [Go code review comments](https://github.com/golang/go/wiki/CodeReviewComments)
 
 ## Roadmap and contributions wanted
 
