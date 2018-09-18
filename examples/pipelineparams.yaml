@@ -39,17 +39,17 @@ spec:
           endpoint: 'https://staging.gke.corp.com'
     results:
         runs:
-        - name: 'runsBucket'
+          name: 'runsBucket'
           type: 'gcs'
           url: 'gcs://somebucket/results/runs'
           token: 'todo'
         logs:
-        - name: 'logBucket'
+          name: 'logBucket'
           type: 'gcs'
           url: 'gcs://somebucket/results/logs'
           token: 'todo'
         tests:
-        - name: 'testBucket'
+          name: 'testBucket'
           type: 'gcs'
           url: 'gcs://somebucket/results/tests'
           token: 'todo'

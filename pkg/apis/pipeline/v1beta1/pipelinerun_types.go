@@ -21,13 +21,44 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	PipelineRef        PipelineRef        `json:"pipelineRef"`
+	PipelineParamsRef  PipelineParamsRef  `json:"pipelineParamsRef"`
+	PipelineTriggerRef PipelineTriggerRef `json:"triggerRef"`
+}
+
+// PipelineRef can be used to refer to a specific instance of a Pipeline.
+// Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
+type PipelineRef struct {
+	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	Name string `json:"name"`
+	// API version of the referent
+	APIVersion string `json:"apiVersion,omitempty"`
+}
+
+// PipelineParamsRef can be used to refer to a specific instance of a Pipeline.
+// Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
+type PipelineParamsRef struct {
+	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	Name string `json:"name"`
+	// API version of the referent
+	APIVersion string `json:"apiVersion,omitempty"`
+}
+
+// PipelineTriggerType indicates the mechanism by which this PipelineRun was created.
+type PipelineTriggerType string
+
+const (
+	// PipelineTriggerTypeManual indicates that this PipelineRun was invoked manually by a user.
+	PipelineTriggerTypeManual PipelineTriggerType = "manual"
+)
+
+// PipelineTriggerRef describes what triggered this Pipeline to run. It could be triggered manually,
+// or it could have been some kind of external event (not yet designed).
+type PipelineTriggerRef struct {
+	Type PipelineTriggerType `json:"type"`
+	Name string              `json:"name,omitempty"`
 }
 
 // PipelineRunStatus defines the observed state of PipelineRun
