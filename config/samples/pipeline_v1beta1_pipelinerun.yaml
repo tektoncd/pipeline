@@ -8,9 +8,8 @@ spec:
         name: wizzbang-pipeline
     pipelineParamsRef:
         name: wizzbang-pipeline-params
-    trigger:
-        triggerRef:
-            type: manual
+    triggerRef:
+        type: manual
 status:
   taskRuns:
     - taskRef:

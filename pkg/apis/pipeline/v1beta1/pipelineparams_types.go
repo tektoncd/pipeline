@@ -28,15 +28,28 @@ type PipelineParamsSpec struct {
 	Results        Results         `json:"results"`
 }
 
+// SourceType represents the type of endpoint the Source is, so that the
+// controller will know this Source should be fetched and optionally what
+// additional metatdata should be provided for it.
+type SourceType string
+
+const (
+	// SourceTypeGitHub indicates that this source is a GitHub repo.
+	SourceTypeGitHub SourceType = "github"
+
+	// SourceTypeGCS indicates that this source is a GCS bucket.
+	SourceTypeGCS SourceType = "gcs"
+)
+
 // Source is an endpoint from which to get data which is required
 // by a Build/Task for context (e.g. a repo from which to build an image).
 type Source struct {
-	Name           string `json:"name"`
-	Type           string `json:"type"`
-	URL            string `json:"url"`
-	Branch         string `json:"branch"`
-	Commit         string `json:"commit,omitempty"`
-	ServiceAccount string `json:"serviceAccount,omitempty"`
+	Name           string     `json:"name"`
+	Type           SourceType `json:"type"`
+	URL            string     `json:"url"`
+	Branch         string     `json:"branch"`
+	Commit         string     `json:"commit,omitempty"`
+	ServiceAccount string     `json:"serviceAccount,omitempty"`
 }
 
 // PipelineParamsStatus defines the observed state of PipelineParams
@@ -69,52 +82,30 @@ type ArtifactStore struct {
 // Results tells a pipeline where to persist the results of runnign the pipeline.
 type Results struct {
 	// Runs is used to store the yaml/json of TaskRuns and PipelineRuns.
-	// TODO(aaron-prindle) make this generic
-	// Runs []ResultTarget `json:"name"`
-	Runs []Run `json:"runs"`
+	Runs ResultTarget `json:"runs"`
 
 	// Logs will store all logs output from running a task.
-	// TODO(aaron-prindle) make this generic
-	// Logs []ResultTarget `json:"type"`
-	Logs []Log `json:"logs"`
+	Logs ResultTarget `json:"logs"`
 
 	// Tests will store test results, if a task provides them.
-	// TODO(aaron-prindle) make this generic
-	// Tests []ResultTarget `json:"tests,omitempty"`
-	Tests []Test `json:"tests,omitempty"`
+	Tests ResultTarget `json:"tests,omitempty"`
 }
 
-// TODO(aaron-prindle) make this generic
+// ResultTargetType represents the type of endpoint that this result target is,
+// so that the controller will know how to write results to it.
+type ResultTargetType string
+
+const (
+	// ResultTargetTypeGCS indicates that the URL endpoint is a GCS bucket.
+	ResultTargetTypeGCS = "gcs"
+)
+
 // ResultTarget is used to identify an endpoint where results can be uploaded. The
 // serviceaccount used for the pipeline must have access to this endpoint.
-// type ResultTarget struct {
-// 	Name string `json:"name"`
-// 	Type string `json:"type"`
-// 	URL  string `json:"url"`
-// }
-
-// Run is used to identify an endpoint where results can be uploaded. The
-// serviceaccount used for the pipeline must have access to this endpoint.
-type Run struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	URL  string `json:"url"`
-}
-
-// Log is used to identify an endpoint where results can be uploaded. The
-// serviceaccount used for the pipeline must have access to this endpoint.
-type Log struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	URL  string `json:"url"`
-}
-
-// Test is used to identify an endpoint where results can be uploaded. The
-// serviceaccount used for the pipeline must have access to this endpoint.
-type Test struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	URL  string `json:"url"`
+type ResultTarget struct {
+	Name string           `json:"name"`
+	Type ResultTargetType `json:"type"`
+	URL  string           `json:"url"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
