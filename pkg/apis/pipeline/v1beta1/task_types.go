@@ -50,17 +50,18 @@ type Task struct {
 
 // Inputs are the requirements that a task needs to run a Build.
 type Inputs struct {
-	Sources []SourceInput `json:"sources,omitempty"`
-	Params  []Param       `json:"params,omitempty"`
+	Sources []Source `json:"resources,omitempty"`
+	Params  []Param  `json:"params,omitempty"`
 }
 
-// SourceInput is data which is required by a Build/Task for context
+// Source is data which is required by a Build/Task for context
 // (e.g. a repo from which to build an image). The name of the input will be
 // used as the name of the volume containing this context which will be mounted
-// into the container executed by the Build/Task, e.g. a SourceInput with the
+// into the container executed by the Build/Task, e.g. a Source with the
 // name "workspace" would be mounted into "/workspace".
-type SourceInput struct {
-	Name string `json:"name"`
+type Source struct {
+	Name       string      `json:"name"`
+	ResouceRef ResourceRef `json:"resourceRef"`
 }
 
 // Param defines arbitrary parameters needed by a task beyond typed inputs
@@ -73,8 +74,8 @@ type Param struct {
 // Outputs allow a task to declare what data the Build/Task will be producing,
 // i.e. results such as logs and artifacts such as images.
 type Outputs struct {
-	Results   []TestResult `json:"results,omitempty"`
-	Artifacts []Artifact   `json:"artifacts,omitempty"`
+	Results []TestResult `json:"results,omitempty"`
+	Sources []Source     `json:"resources,omitempty"`
 }
 
 // TestResult allows a task to specify the location where test logs
@@ -84,23 +85,6 @@ type TestResult struct {
 	// TODO: maybe this is an enum with types like "go test", "junit", etc.
 	Format string `json:"format"`
 	Path   string `json:"path"`
-}
-
-// ArtifactType indicates what type of artifact store this is, so the controller
-// will know how to publish artifacts from it.
-type ArtifactType string
-
-const (
-	// ArtifactTypeImage indicates that this artifact is a container image.
-	ArtifactTypeImage ArtifactType = "image"
-)
-
-// Artifact allows a Task to describe what artifacts it will be producing
-// and specify where they will be stored.
-type Artifact struct {
-	Name     string       `json:"name"`
-	Type     ArtifactType `json:"type"`
-	StoreKey string       `json:"storeKey"`
 }
 
 // BuildSpec describes how to create a Build for this Task.

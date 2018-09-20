@@ -5,8 +5,10 @@ metadata:
   namespace: default
 spec:
     inputs:
-        sources:
-            - name: workspace
+        resources:
+            - resourceRef:
+                name: resource-name
+              name: workspace
         params:
             - name: pathToHelmCharts
               value: string
@@ -30,9 +32,10 @@ metadata:
   namespace: default
 spec:
     inputs:
-        sources:
-            - name: workspace
-              value: string
+        resources:
+          - resourceRef:
+              name: resource-name
+            name: workspace
         params:
             - name: kubectlArgs
               value: string

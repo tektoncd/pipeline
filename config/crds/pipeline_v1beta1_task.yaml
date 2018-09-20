@@ -66,31 +66,45 @@ spec:
                     - value
                     type: object
                   type: array
-                sources:
+                resources:
                   items:
                     properties:
                       name:
                         type: string
+                      resourceRef:
+                        properties:
+                          apiVersion:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                        - name
+                        type: object
                     required:
                     - name
+                    - resourceRef
                     type: object
                   type: array
               type: object
             outputs:
               properties:
-                artifacts:
+                resources:
                   items:
                     properties:
                       name:
                         type: string
-                      storeKey:
-                        type: string
-                      type:
-                        type: string
+                      resourceRef:
+                        properties:
+                          apiVersion:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                        - name
+                        type: object
                     required:
                     - name
-                    - type
-                    - storeKey
+                    - resourceRef
                     type: object
                   type: array
                 results:
