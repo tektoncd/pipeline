@@ -22,40 +22,60 @@ spec:
           type: object
         spec:
           properties:
+            resources:
+              items:
+                properties:
+                  name:
+                    type: string
+                  resourceRef:
+                    properties:
+                      apiVersion:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - name
+                    type: object
+                required:
+                - name
+                - resourceRef
+                type: object
+              type: array
             tasks:
               items:
                 properties:
-                  artifactStoreBindings:
+                  inputSourceBindings:
                     items:
                       properties:
-                        storeKey:
+                        name:
                           type: string
-                        storeName:
+                        passedConstraints:
+                          items:
+                            type: string
+                          type: array
+                        sourceKey:
                           type: string
                       required:
-                      - storeName
-                      - storeKey
+                      - name
+                      - sourceKey
                       type: object
                     type: array
                   name:
                     type: string
-                  nextTasks:
-                    items:
-                      type: string
-                    type: array
-                  paramBindings:
+                  outputSourceBindings:
                     items:
                       properties:
-                        inputName:
+                        name:
                           type: string
-                        taskName:
-                          type: string
-                        taskOutputName:
+                        passedConstraints:
+                          items:
+                            type: string
+                          type: array
+                        sourceKey:
                           type: string
                       required:
-                      - inputName
-                      - taskName
-                      - taskOutputName
+                      - name
+                      - sourceKey
                       type: object
                     type: array
                   params:
@@ -68,22 +88,6 @@ spec:
                       required:
                       - name
                       - value
-                      type: object
-                    type: array
-                  prevTasks:
-                    items:
-                      type: string
-                    type: array
-                  sourceBindings:
-                    items:
-                      properties:
-                        inputName:
-                          type: string
-                        sourceKey:
-                          type: string
-                      required:
-                      - inputName
-                      - sourceKey
                       type: object
                     type: array
                   taskRef:
@@ -102,6 +106,7 @@ spec:
               type: array
           required:
           - tasks
+          - resources
           type: object
         status:
           type: object

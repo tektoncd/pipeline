@@ -30,6 +30,7 @@ The CRDs involved are:
 * [PipelineParams](#pipelineparams)
 * [TaskRun](#taskrun)
 * [PipelineRun](#pipelinerun)
+* [Resources](#resources)
 
 High level details of this design:
 
@@ -41,6 +42,7 @@ High level details of this design:
   easily is powerful (e.g. see failures easily, dig into logs, e.g. like
   [the Jenkins test analyzer plugin](https://wiki.jenkins.io/display/JENKINS/Test+Results+Analyzer+Plugin))
 * [Tasks](#tasks) can depend on artifacts, output and parameters created by other tasks.
+* [Resources](#resources) are the artifacts used as inputs and outputs of TaskRuns.
 
 ## Task
 
@@ -57,9 +59,7 @@ with additional input types and clearly defined outputs.
 
 `Pipeline` describes a graph of [Tasks](#task) to execute. It defines the DAG
 and expresses how all inputs (including [PipelineParams](#pipelineparams) and outputs
-from previous `Tasks`) feed into each `Task`. It allows for fan in and fan out, and
-ordering can be expressed explicitly using `prev` and `next`, or it can be inferred
-from a `Task’s` inputs.
+from previous `Tasks`) feed into each `Task`.
 
 Dependencies between parameters or inputs/outputs are expressed as references to k8s objects.
 
@@ -70,9 +70,7 @@ can be invoked with many different instances of `PipelineParams`, which can allo
 for scenarios such as running against PRs and against a user’s personal setup.
 `PipelineParams` can control:
 
-* What **sources** the `Pipeline` runs against
 * Which **serviceAccount** to use (provided to all tasks)
-* What **artifact** stores are used (e.g. Docker registries)
 * Where **results** are stored (e.g. in GCS)
 
 ## TaskRun
@@ -129,3 +127,16 @@ completes (or fails).
 When the `PipelineRun` has completed, the `taskRuns` field will contain
 references to all `TaskRuns` which were executed and their next and
 previous `TaskRuns`.
+
+### Resources
+
+`Resources` in a pipelines are the set of objects that are going to be used 
+as inputs and outputs of a `TaskRun`. 
+
+* `Resources` is created directly in a pipeline configuration and bound 
+to `TaskRun` as an input and/or output source. 
+* The (optional) `passedConstraint` key on an `input source` defines a set of previous task names.
+* When the `passedConstraint` key is specified on an input source, only the version of 
+the resource that passed through the defined list of tasks is used.
+* The `passedConstraint` allows for `Tasks` to fan in and fan out, and ordering can be expressed explicitly 
+using this key since a task needing a resource from a another task would have to run after.

@@ -5,15 +5,17 @@ metadata:
   namespace: default
 spec:
     inputs:
-        sources:
-            - name: workspace
+        resources:
+            - resourceRef:
+                name: resource-name
+              name: workspace
         params:
             - name: pathToHelmCharts
-              type: string
+              value: string
             - name: helmArgs
-              type: string
+              value: string
             - name: image
-              type: string
+              value: string
         cluster:
             - name: clusterName
     buildSpec:
@@ -30,14 +32,15 @@ metadata:
   namespace: default
 spec:
     inputs:
-        sources:
-            - name: workspace
-              type: string
+        resources:
+          - resourceRef:
+              name: resource-name
+            name: workspace
         params:
             - name: kubectlArgs
-              type: string
+              value: string
             - name: pathToFiles
-              type: string
+              value: string
         cluster:
             - name: targetCluster
     buildSpec:

@@ -22,7 +22,8 @@ import (
 
 // PipelineSpec defines the desired state of PipeLine.
 type PipelineSpec struct {
-	Tasks []PipelineTask `json:"tasks"`
+	Tasks   []PipelineTask     `json:"tasks"`
+	Sources []PipelineResource `json:"resources"`
 }
 
 // PipelineStatus defines the observed state of Pipeline
@@ -50,22 +51,11 @@ type Pipeline struct {
 // PipelineTask defines a task in a Pipeline, passing inputs from both
 // PipelineParams and from the output of previous tasks.
 type PipelineTask struct {
-	Name                  string                     `json:"name"`
-	TaskRef               TaskRef                    `json:"taskRef"`
-	SourceBindings        []SourceBinding            `json:"sourceBindings,omitempty"`
-	ArtifactStoreBindings []ArtifactStoreBinding     `json:"artifactStoreBindings,omitempty"`
-	Params                []PipelineTaskParam        `json:"params,omitempty"`
-	ParamBindings         []PipelineTaskParamBinding `json:"paramBindings,omitempty"`
-
-	NextTasks []string `json:"nextTasks,omitempty"`
-	PrevTasks []string `json:"prevTasks,omitempty"`
-}
-
-// PipelineTaskParamBinding is used to bind the outputs of a Task to the inputs of another Task.
-type PipelineTaskParamBinding struct {
-	InputName      string `json:"inputName"`
-	TaskName       string `json:"taskName"`
-	TaskOutputName string `json:"taskOutputName"`
+	Name                 string          `json:"name"`
+	TaskRef              TaskRef         `json:"taskRef"`
+	InputSourceBindings  []SourceBinding `json:"inputSourceBindings,omitempty"`
+	OutputSourceBindings []SourceBinding `json:"outputSourceBindings,omitempty"`
+	Params               []Param         `json:"params,omitempty"`
 }
 
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.
@@ -77,19 +67,13 @@ type PipelineTaskParam struct {
 // SourceBinding is used to bind a Source from a PipelineParams to a source required
 // as an input for a task.
 type SourceBinding struct {
-	// InputName is the string the Task will use to identify this source in its inputs.
-	InputName string `json:"inputName"`
+	// InputName is the string the Task will use to identify this resource in its inputs.
+	Name string `json:"name"`
 	// SourceKey is the string that the PipelineParams will use to identify this source.
 	SourceKey string `json:"sourceKey"`
-}
-
-// ArtifactStoreBinding is used to bind an ArtifactStore from a PipelineParams to
-// artifacts that will be produced as output by a task.
-type ArtifactStoreBinding struct {
-	// InputName is the string the Task will use to identify this source in its outputs.
-	StoreName string `json:"storeName"`
-	// StoreKey is the string that the PipelineParams will use to identify this artifact store.
-	StoreKey string `json:"storeKey"`
+	// TODO: validate the passedConstraints values match previous Task names
+	// PassedConstraints is the list of Task names that the resource has to pass through.
+	PassedConstraints []string `json:"passedConstraints,omitempty"`
 }
 
 // TaskRef can be used to refer to a specific instance of a task.
@@ -99,6 +83,20 @@ type TaskRef struct {
 	Name string `json:"name"`
 	// API version of the referent
 	APIVersion string `json:"apiVersion,omitempty"`
+}
+
+// ResourceRef can be used to refer to a specific instance of a Resource
+type ResourceRef struct {
+	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	Name string `json:"name"`
+	// API version of the referent
+	APIVersion string `json:"apiVersion,omitempty"`
+}
+
+// PipelineResource defines set of resources required by all Tasks in the pipeline.
+type PipelineResource struct {
+	Name        string      `json:"name"`
+	ResourceRef ResourceRef `json:"resourceRef"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -29,53 +29,54 @@ spec:
                     properties:
                       name:
                         type: string
-                      type:
+                      value:
                         type: string
                     required:
                     - name
-                    - type
+                    - value
                     type: object
                   type: array
-                sources:
+                resourcesVersion:
                   items:
                     properties:
-                      branch:
-                        type: string
-                      commit:
-                        type: string
-                      name:
-                        type: string
-                      serviceAccount:
-                        type: string
-                      type:
-                        type: string
-                      url:
+                      resourceRef:
+                        properties:
+                          apiVersion:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      version:
                         type: string
                     required:
-                    - name
-                    - type
-                    - url
-                    - branch
+                    - resourceRef
+                    - version
                     type: object
                   type: array
               required:
-              - sources
+              - resourcesVersion
               type: object
             outputs:
               properties:
-                artifacts:
+                resources:
                   items:
                     properties:
                       name:
                         type: string
-                      storeKey:
-                        type: string
-                      type:
-                        type: string
+                      resourceRef:
+                        properties:
+                          apiVersion:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                        - name
+                        type: object
                     required:
                     - name
-                    - type
-                    - storeKey
+                    - resourceRef
                     type: object
                   type: array
                 results:
@@ -150,14 +151,6 @@ spec:
               type: object
             trigger:
               properties:
-                nextTasks:
-                  items:
-                    type: string
-                  type: array
-                prevTasks:
-                  items:
-                    type: string
-                  type: array
                 triggerRef:
                   properties:
                     name:

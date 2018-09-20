@@ -22,34 +22,8 @@ import (
 
 // PipelineParamsSpec is the spec for a Pipeline resource
 type PipelineParamsSpec struct {
-	ServiceAccount string          `json:"serviceAccount"`
-	Sources        []Source        `json:"sources"`
-	ArtifactStores []ArtifactStore `json:"artifactStores"`
-	Results        Results         `json:"results"`
-}
-
-// SourceType represents the type of endpoint the Source is, so that the
-// controller will know this Source should be fetched and optionally what
-// additional metatdata should be provided for it.
-type SourceType string
-
-const (
-	// SourceTypeGitHub indicates that this source is a GitHub repo.
-	SourceTypeGitHub SourceType = "github"
-
-	// SourceTypeGCS indicates that this source is a GCS bucket.
-	SourceTypeGCS SourceType = "gcs"
-)
-
-// Source is an endpoint from which to get data which is required
-// by a Build/Task for context (e.g. a repo from which to build an image).
-type Source struct {
-	Name           string     `json:"name"`
-	Type           SourceType `json:"type"`
-	URL            string     `json:"url"`
-	Branch         string     `json:"branch"`
-	Commit         string     `json:"commit,omitempty"`
-	ServiceAccount string     `json:"serviceAccount,omitempty"`
+	ServiceAccount string  `json:"serviceAccount"`
+	Results        Results `json:"results"`
 }
 
 // PipelineParamsStatus defines the observed state of PipelineParams
@@ -69,14 +43,6 @@ type PipelineParams struct {
 
 	Spec   PipelineParamsSpec   `json:"spec,omitempty"`
 	Status PipelineParamsStatus `json:"status,omitempty"`
-}
-
-// ArtifactStore defines an endpoint where artifacts can be stored, such as images.
-type ArtifactStore struct {
-	Name string `json:"name"`
-	// TODO: maybe an enum, with values like 'registry', GCS bucket
-	Type string `json:"type"`
-	URL  string `json:"url"`
 }
 
 // Results tells a pipeline where to persist the results of runnign the pipeline.

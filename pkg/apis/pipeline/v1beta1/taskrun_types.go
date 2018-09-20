@@ -32,15 +32,13 @@ type TaskRunSpec struct {
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
-	Sources []Source `json:"sources"`
-	Params  []Param  `json:"params,omitempty"`
+	Resources []ResourceVersion `json:"resourcesVersion"`
+	Params    []Param           `json:"params,omitempty"`
 }
 
 // TaskTrigger defines a webhook style trigger to start a TaskRun
 type TaskTrigger struct {
 	TriggerRef TaskTriggerRef `json:"triggerRef"`
-	PrevTasks  []string       `json:"prevTasks,omitempty"`
-	NextTasks  []string       `json:"nextTasks,omitempty"`
 }
 
 // TaskTriggerType indicates the mechanism by which this TaskRun was created.

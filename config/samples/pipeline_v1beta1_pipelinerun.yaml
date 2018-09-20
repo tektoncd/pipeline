@@ -14,16 +14,8 @@ status:
   taskRuns:
     - taskRef:
       name: test-wizzbang-task-run-sd8f8dfasdfasdfas
-      nextTasks:
-        - taskRef:
-            name: build-push-task-run-sd8f8dfasdfasdfas
-      prevTasks: []
     - taskRef:
       name: build-push-task-run-sd8f8dfasdfasdfas
-      nextTasks: []
-      prevTasks:
-        - taskRef:
-          name: test-wizzbang-task-run-sd8f8dfasdfasdfas
   conditions:
     - type: Started
       status: "True"
