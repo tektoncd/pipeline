@@ -1,8 +1,12 @@
 # Pipeline CRD
 
+[![Prow unit test results](https://prow.knative.dev/badge.svg?jobs=pull-knative-build-pipeline-unit-tests)](https://prow.knative.dev/?job=pull-knative-build-pipeline-unit-tests)
+[![Prow build results](https://prow.knative.dev/badge.svg?jobs=pull-knative-build-pipeline-build-tests)](https://prow.knative.dev/?job=pull-knative-build-pipeline-build-tests)
+[![Go Report Card](https://goreportcard.com/badge/knative/build-pipeline)](https://goreportcard.com/report/knative/build-pipeline)
+
 This repo contains the API definition of the Pipeline CRD and an on cluster implementation of that API.
 The goal of the Pipeline CRD is to provide k8s-style resources that allow the
-declaration of CI/CD-style pipelines, which can be backed by any arbitrary impelmentation.
+declaration of CI/CD-style pipelines, which can be backed by any arbitrary implementation.
 
 Features the Pipeline CRD will support include:
 
