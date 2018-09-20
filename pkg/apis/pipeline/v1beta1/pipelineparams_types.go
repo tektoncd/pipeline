@@ -48,7 +48,6 @@ type Resource interface {
 	getType() ResourceType
 	getParams() []Param
 	getVersion() string
-	getPassingConstraints() []TaskRef
 }
 
 // PipelineParamsStatus defines the observed state of PipelineParams
