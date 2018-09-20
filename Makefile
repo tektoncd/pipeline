@@ -6,7 +6,7 @@ all: test manager
 
 # Run tests
 test: generate fmt vet manifests
-	go test ./pkg/... ./cmd/... -coverprofile cover.out
+	@ ./test.sh
 
 # Build manager binary
 manager: generate fmt vet

@@ -36,7 +36,7 @@ const (
 )
 
 // WaitForReconcile will wait for the reconcile request to be received on channel c or for a timeout to occur.
-// If the request it recieved it will assert that the request is the expectedRequest.
+// If the request it received it will assert that the request is the expectedRequest.
 func WaitForReconcile(t *testing.T, c chan reconcile.Request, expectedRequest reconcile.Request) {
 	t.Helper()
 

@@ -46,7 +46,7 @@ func assertResourceIsEqual(t *testing.T, name string, expected, fetched runtime.
 
 	c := context.Background()
 	if err := client.Get(c, key, fetched); err != nil {
-		t.Errorf("Couldn't retreive created resource %s from namespace %s: %s", name, namespace, err)
+		t.Errorf("Couldn't retrieve created resource %s from namespace %s: %s", name, namespace, err)
 	}
 
 	if !reflect.DeepEqual(fetched, expected) {
@@ -69,7 +69,7 @@ func createResource(t *testing.T, fileName, name string, created, fetched runtim
 		t.Fatalf("Controller failed to create resource from %s: %s", fileName, err)
 	}
 
-	// Retreive it
+	// Retrieve it
 	assertResourceIsEqual(t, name, created, fetched)
 }
 
