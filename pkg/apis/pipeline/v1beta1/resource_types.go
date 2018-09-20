@@ -68,10 +68,15 @@ type ResourceItem struct {
 // Resource is the Schema for the resources API
 // +k8s:openapi-gen=true
 type Resource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ResourceSpec   `json:"spec,omitempty"`
+	// Spec holds the desired state of the Resource from the client
+	// +optional
+	Spec ResourceSpec `json:"spec,omitempty"`
+	// Status communicates the observed state of the Resource from the controller
+	// +optional
 	Status ResourceStatus `json:"status,omitempty"`
 }
 
@@ -86,6 +91,7 @@ type ResourceVersion struct {
 // ResourceList contains a list of Resources
 type ResourceList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Resource `json:"items"`
 }

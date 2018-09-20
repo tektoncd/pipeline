@@ -25,7 +25,8 @@ type GitResource struct {
 	// Git revision (branch, tag, commit SHA or ref) to clone.  See
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
-	Revision       string `json:"revision"`
+	Revision string `json:"revision"`
+	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 

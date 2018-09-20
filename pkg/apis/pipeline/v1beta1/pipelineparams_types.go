@@ -38,10 +38,15 @@ type PipelineParamsStatus struct {
 // PipelineParams is the Schema for the pipelineparams API
 // +k8s:openapi-gen=true
 type PipelineParams struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PipelineParamsSpec   `json:"spec,omitempty"`
+	// Spec holds the desired state of the PipelineParams from the client
+	// +optional
+	Spec PipelineParamsSpec `json:"spec,omitempty"`
+	// Status communicates the observed state of the PipelineParams from the controller
+	// +optional
 	Status PipelineParamsStatus `json:"status,omitempty"`
 }
 
@@ -54,7 +59,8 @@ type Results struct {
 	Logs ResultTarget `json:"logs"`
 
 	// Tests will store test results, if a task provides them.
-	Tests ResultTarget `json:"tests,omitempty"`
+	// +optional
+	Tests *ResultTarget `json:"tests,omitempty"`
 }
 
 // ResultTargetType represents the type of endpoint that this result target is,
@@ -79,6 +85,7 @@ type ResultTarget struct {
 // PipelineParamsList contains a list of PipelineParams
 type PipelineParamsList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []PipelineParams `json:"items"`
 }
