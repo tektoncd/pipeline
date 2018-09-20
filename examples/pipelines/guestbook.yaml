@@ -9,94 +9,98 @@ spec:
           taskRef:
               name: build-push
           inputSourceBindings:
-              - inputName: workspace
+              - name: workspace
                 sourceKey: guestbook
           outputSourceBindings:
-              - storeName: registry
-                storeKey: stagingRegistry
-                builtImage: gb-frontend          # TODO Add Commit SHA
+              - name: gb-frontend
+                sourceKey: stagingRegistry
           params:
               - name: pathToDockerfile
-                value: guestbook-go/Dockerfile
+                type: guestbook-go/Dockerfile
         - name: build-redis                      # 1.b Build and push redis docker image.
           taskRef:
               name: build-push
           inputSourceBindings:
-              - inputName: workspace
+              - name: workspace
                 sourceKey: redis-docker          # TODO Add Commit SHA
           outputSourceBindings:
-              - storeName: registry
-                storeKey: stagingRegistry
-                builtImage: redis
+              - name: redis
+                sourceKey: stagingRegistry
           params:
               - name: pathToDockerfile
-                value: 4/debian9/4.0/Dockerfile
+                type: 4/debian9/4.0/Dockerfile
         - name: deploy-bundle-test               # 2. Deploy GuestBook and Redis to test cluster
           taskRef:
               name: deploy-with-kubectl
           inputSourceBindings:
-            - inputName: workspace
-               sourceKey: guestbook
-               passedConstraint:
-               - build-guestbook
-            - inputName: workspace
+            - name: workspace
+              sourceKey: guestbook
+              passedConstraint: 
+                - build-guestbook
+                - build-redis
+            - name: workspace
               sourceKey: redis-docker   
               passedConstraint:
-               - build-redis
+               - build-push
           params:
               - name: pathToFiles
-                value: guestbook/all-in-one/guestbook-all-in-one.yaml
+                type: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
               - clusterName: test
         - name: int-test-osx                    # 3.a Run Integration tests for osx
           taskRef:
               name: integrationTestInDocker
           inputSourceBindings:
-              - inputName: workspace
+              - name: workspace
                 sourceKey: guestbook
                 passedConstraint:
                 - deploy-bundle-test
           params:
               - name: dockerBuildFile
-                value: guestbook-int/Dockerfile
+                type: guestbook-int/Dockerfile
         - name: int-test-linux                  # 3.b Run Integration tests for linux
           taskRef:
               name: integration-test-in-docker
           inputSourceBindings:
-              - inputName: workspace
+              - name: workspace
                 sourceKey: guestbook
                 passedConstraint:
                 - deploy-bundle-test
           params:
               - name: dockerBuildFile
-                value: guestbook-int/Dockerfile
+                type: guestbook-int/Dockerfile
         - name: deploy-bundle-staging           # 4. Deploy GuestBook and Redis to staging cluster
           taskRef:
               name: deploy-with-kubectl
           inputSourceBindings:
-              - inputName: workspace
+              - name: workspace
                 sourceKey: guestbook
                 passedConstraint:
                 - int-test-osx
                 - int-test-linux
           params:
               - name: pathToFiles
-                value: guestbook/all-in-one/guestbook-all-in-one.yaml
+                type: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
               - clusterName: staging
     resources:
     - name: guestbook
-      type: github
+      resourceRef:
+        name: guestbook
+      type: git
       url: github.com/kubernetes/examples
       serviceAccount: githubServiceAccount
-      branch: master
-      commit: HEAD
+      revision: HEAD
     - name: redis-docker
-      type: github
+      resourceRef:
+        name: redis-docker    
+      type: git
       url: github.com/GoogleCloudPlatform/redis-docker/blob/master/4/debian9/4.0/Dockerfile
-      serviceAccount: githubServiceAccount'
-      branch: master
-      commit: HEAD
+      serviceAccount: githubServiceAccount
+      revision: HEAD
     - name: stagingRegistry
-      type: imageRegistry
+      resourceRef:
+        name: stagingRegistry      
+      type: image
       url: gcr.io/demo-staging
+      digest: latest

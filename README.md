@@ -134,5 +134,5 @@ and bound to `TaskRun` as an input source. Also the output artifact is bound
 to another output `Resource`.
 * The (optional) `passedConstraint` key on an `input source` defines a set of previous task names.
 * When the `passedConstraint` key is specified on an input source, only the version of 
-the resouces the passed through the defined list of tasks is used.
+the resource that passed through the defined list of tasks is used.
 * The `passedConstraint` allows for `Tasks` to fan in and fan out, and ordering can be expressed explicitly using this key.

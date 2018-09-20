@@ -72,7 +72,7 @@ const (
 )
 
 // Param defines arbitrary parameters needed by a task beyond typed inputs
-// such as Sources.
+// such as resources.
 type Param struct {
 	Name string    `json:"name"`
 	Type ParamType `json:"type"`

@@ -97,23 +97,6 @@ type PipelineTaskRun struct {
 	Name string `json:"name"`
 }
 
-// PipelineTaskRunRef refers to a TaskRun and also indicates which TaskRuns
-// executed before and after it.
-type PipelineTaskRunRef struct {
-	TaskRunRef
-	NextTasks []TaskRunRef `json:"nextTasks"`
-	PrevTasks []TaskRunRef `json:"prevTasks"`
-}
-
-// TaskRunRef can be used to refer to a specific instance of a TaskRun.
-// Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
-type TaskRunRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
-	// API version of the referent
-	APIVersion string `json:"apiVersion,omitempty"`
-}
-
 // PipelineRunConditionType indicates the status of the execution of the PipelineRun.
 type PipelineRunConditionType string
 

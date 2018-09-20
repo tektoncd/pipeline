@@ -76,6 +76,36 @@ spec:
                 - lastTransitionTime
                 type: object
               type: array
+            resourceVersion:
+              items:
+                properties:
+                  apiVersion:
+                    type: string
+                  kind:
+                    type: string
+                  metadata:
+                    type: object
+                  spec:
+                    properties:
+                      resourceRef:
+                        properties:
+                          apiVersion:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      string:
+                        type: string
+                    required:
+                    - resourceRef
+                    - string
+                    type: object
+                  status:
+                    type: object
+                type: object
+              type: array
             taskRuns:
               items:
                 properties:

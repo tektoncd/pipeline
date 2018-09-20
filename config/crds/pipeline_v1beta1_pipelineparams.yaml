@@ -22,21 +22,6 @@ spec:
           type: object
         spec:
           properties:
-            artifactStores:
-              items:
-                properties:
-                  name:
-                    type: string
-                  type:
-                    type: string
-                  url:
-                    type: string
-                required:
-                - name
-                - type
-                - url
-                type: object
-              type: array
             results:
               properties:
                 logs:
@@ -84,32 +69,8 @@ spec:
               type: object
             serviceAccount:
               type: string
-            sources:
-              items:
-                properties:
-                  branch:
-                    type: string
-                  commit:
-                    type: string
-                  name:
-                    type: string
-                  serviceAccount:
-                    type: string
-                  type:
-                    type: string
-                  url:
-                    type: string
-                required:
-                - name
-                - type
-                - url
-                - branch
-                type: object
-              type: array
           required:
           - serviceAccount
-          - sources
-          - artifactStores
           - results
           type: object
         status:

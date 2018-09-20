@@ -36,30 +36,38 @@ spec:
                     - type
                     type: object
                   type: array
-                sources:
+                resourcesVersion:
                   items:
                     properties:
-                      branch:
+                      apiVersion:
                         type: string
-                      commit:
+                      kind:
                         type: string
-                      name:
-                        type: string
-                      serviceAccount:
-                        type: string
-                      type:
-                        type: string
-                      url:
-                        type: string
-                    required:
-                    - name
-                    - type
-                    - url
-                    - branch
+                      metadata:
+                        type: object
+                      spec:
+                        properties:
+                          resourceRef:
+                            properties:
+                              apiVersion:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                            - name
+                            type: object
+                          string:
+                            type: string
+                        required:
+                        - resourceRef
+                        - string
+                        type: object
+                      status:
+                        type: object
                     type: object
                   type: array
               required:
-              - sources
+              - resourcesVersion
               type: object
             outputs:
               properties:
@@ -150,14 +158,6 @@ spec:
               type: object
             trigger:
               properties:
-                nextTasks:
-                  items:
-                    type: string
-                  type: array
-                prevTasks:
-                  items:
-                    type: string
-                  type: array
                 triggerRef:
                   properties:
                     name:

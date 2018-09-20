@@ -39,8 +39,6 @@ type TaskRunInputs struct {
 // TaskTrigger defines a webhook style trigger to start a TaskRun
 type TaskTrigger struct {
 	TriggerRef TaskTriggerRef `json:"triggerRef"`
-	PrevTasks  []string       `json:"prevTasks,omitempty"`
-	NextTasks  []string       `json:"nextTasks,omitempty"`
 }
 
 // TaskTriggerType indicates the mechanism by which this TaskRun was created.
