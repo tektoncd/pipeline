@@ -9,11 +9,11 @@ spec:
             - name: workspace
         params:
             - name: pathToHelmCharts
-              type: string
+              value: string
             - name: helmArgs
-              type: string
+              value: string
             - name: image
-              type: string
+              value: string
         cluster:
             - name: clusterName
     buildSpec:
@@ -32,12 +32,12 @@ spec:
     inputs:
         sources:
             - name: workspace
-              type: string
+              value: string
         params:
             - name: kubectlArgs
-              type: string
+              value: string
             - name: pathToFiles
-              type: string
+              value: string
         cluster:
             - name: targetCluster
     buildSpec:

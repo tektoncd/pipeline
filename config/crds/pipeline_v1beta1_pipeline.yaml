@@ -27,23 +27,18 @@ spec:
                 properties:
                   name:
                     type: string
-                  params:
-                    items:
-                      properties:
-                        name:
-                          type: string
-                        type:
-                          type: string
-                      required:
-                      - name
-                      - type
-                      type: object
-                    type: array
-                  type:
-                    type: string
+                  resourceRef:
+                    properties:
+                      apiVersion:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                    - name
+                    type: object
                 required:
                 - name
-                - type
+                - resourceRef
                 type: object
               type: array
             tasks:
@@ -88,11 +83,11 @@ spec:
                       properties:
                         name:
                           type: string
-                        type:
+                        value:
                           type: string
                       required:
                       - name
-                      - type
+                      - value
                       type: object
                     type: array
                   taskRef:

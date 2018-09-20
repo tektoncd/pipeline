@@ -9,7 +9,7 @@ spec:
             - name: workspace
         params:
             - name: PATH_TO_DOCKERFILE
-              type: string
+              value: string
     outputs:
         artifacts:
             - name: builtImage

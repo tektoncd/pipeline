@@ -16,7 +16,7 @@ spec:
                 sourceKey: stagingRegistry
           params:
               - name: pathToDockerfile
-                type: guestbook-go/Dockerfile
+                value: guestbook-go/Dockerfile
         - name: build-redis                      # 1.b Build and push redis docker image.
           taskRef:
               name: build-push
@@ -28,7 +28,7 @@ spec:
                 sourceKey: stagingRegistry
           params:
               - name: pathToDockerfile
-                type: 4/debian9/4.0/Dockerfile
+                value: 4/debian9/4.0/Dockerfile
         - name: deploy-bundle-test               # 2. Deploy GuestBook and Redis to test cluster
           taskRef:
               name: deploy-with-kubectl
@@ -44,7 +44,7 @@ spec:
                - build-push
           params:
               - name: pathToFiles
-                type: guestbook/all-in-one/guestbook-all-in-one.yaml
+                value: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
               - clusterName: test
         - name: int-test-osx                    # 3.a Run Integration tests for osx
@@ -57,7 +57,7 @@ spec:
                 - deploy-bundle-test
           params:
               - name: dockerBuildFile
-                type: guestbook-int/Dockerfile
+                value: guestbook-int/Dockerfile
         - name: int-test-linux                  # 3.b Run Integration tests for linux
           taskRef:
               name: integration-test-in-docker
@@ -68,7 +68,7 @@ spec:
                 - deploy-bundle-test
           params:
               - name: dockerBuildFile
-                type: guestbook-int/Dockerfile
+                value: guestbook-int/Dockerfile
         - name: deploy-bundle-staging           # 4. Deploy GuestBook and Redis to staging cluster
           taskRef:
               name: deploy-with-kubectl
@@ -80,20 +80,16 @@ spec:
                 - int-test-linux
           params:
               - name: pathToFiles
-                type: guestbook/all-in-one/guestbook-all-in-one.yaml
+                value: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
               - clusterName: staging
     resources:
     - name: guestbook
-      type: git
-      url: github.com/kubernetes/examples
-      serviceAccount: githubServiceAccount
-      revision: HEAD
+      resourceRef:
+        name: guestbook  
     - name: redis-docker
-      type: git
-      url: github.com/GoogleCloudPlatform/redis-docker/blob/master/4/debian9/4.0/Dockerfile
-      serviceAccount: githubServiceAccount
-      revision: HEAD
+      resourceRef:
+        name: redis-docker  
     - name: stagingRegistry
-      type: image
-      url: gcr.io/demo-staging
+      resourceRef:
+        name: stagingRegistry  

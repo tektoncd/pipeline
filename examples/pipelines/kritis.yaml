@@ -13,7 +13,7 @@ spec:
             sourceKey: kritis-app-github
         params:
           - name: makeTarget
-            type: test
+            value: test
       - name: push-kritis               # 2.  Build And Push Tests
         taskRef:
           name: build-push
@@ -27,7 +27,7 @@ spec:
             sourceKey: stagingRegistry
         params:
           - name: pathToDockerfile
-            type: deploy/Dockerfile
+            value: deploy/Dockerfile
       - name: deploy-test-env           # 3. Finally Deploy to Test environment
         taskRef:
           name: deploy-with-helm
@@ -37,7 +37,7 @@ spec:
             passedConstraint: [build-push]
         params:
           - name: pathToHelmCharts
-            type: kritis-charts
+            value: kritis-charts
         clusterBindings:
           - clusterName: test
       - name: integration-test          # 4. Run Integration Tests in test cluster
@@ -49,16 +49,14 @@ spec:
             passedConstraint: [deploy-with-helm]
         params:
           - name: testArgs
-            type: "-e REMOTE_INTEGRATION=true"
+            value: "-e REMOTE_INTEGRATION=true"
     resources:
       - name: kritis-app-github
-        type: git
-        url: https://github.com/grafeas/kritis
-        revision: master
+        resourceRef:
+          name: kritis-app-github-resource
       - name: kritis-test-github
-        type: git
-        url: https://github.com/grafeas/kritis-test
-        revision: master
+        resourceRef:
+          name: kritis-test-github-resource
       - name: stagingRegistry
-        type: image
-        url: gcr.io/staging-image                      
+        resourceRef:
+          name: stagingRegistry-resource                    

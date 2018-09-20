@@ -9,11 +9,11 @@ spec:
             - name: workspace
         params:
             - name: pathToDockerFile
-              type: string
+              value: string
     outputs:
         artifacts:
             - name: builtImage
-              type: image
+              value: image
               storeKey: registry
     buildSpec:
         template:

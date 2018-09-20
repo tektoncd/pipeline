@@ -12,7 +12,8 @@ spec:
             name: wizzbangPipeline-sd8f8dfasdfasdfas
     inputs:
         resourcesVersion:
-          - name: wizzbang
+          - resourceRef:
+              name: wizzbang
             version: HEAD
         params:
           - name: 'image'

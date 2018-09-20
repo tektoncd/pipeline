@@ -1,0 +1,26 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: Resource
+metadata:
+  name: kritis-resources-sample
+  namespace: default
+spec:
+  resources:
+  - name: kritis-app-github-resource
+    type: git
+    params:
+    - name: url
+      value: https://github.com/grafeas/kritis
+    - name: revision
+      value: master
+  - name: kritis-test-github-resource
+    type: git
+    params:
+    - name: revision
+      value: master
+    - name: url
+      value: https://github.com/grafeas/kritis-test  
+  - name: stagingRegistry-resource
+    type: image
+    params:
+    - name: url
+      value: gcr.io/staging-image

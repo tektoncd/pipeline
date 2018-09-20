@@ -26,30 +26,6 @@ type PipelineParamsSpec struct {
 	Results        Results `json:"results"`
 }
 
-// ResourceType represents the type of endpoint the resource is, so that the
-// controller will know this resource should be fetched and optionally what
-// additional metatdata should be provided for it.
-type ResourceType string
-
-const (
-	// ResourceTypeGit indicates that this source is a GitHub repo.
-	ResourceTypeGit ResourceType = "git"
-
-	// ResourceTypeGCS indicates that this source is a GCS bucket.
-	ResourceTypeGCS ResourceType = "gcs"
-
-	// ResourceTypeImage indicates that this source is a docker Image.
-	ResourceTypeImage ResourceType = "image"
-)
-
-// Resource interface to be implemented by different resource types
-type Resource interface {
-	getName() string
-	getType() ResourceType
-	getParams() []Param
-	getVersion() string
-}
-
 // PipelineParamsStatus defines the observed state of PipelineParams
 type PipelineParamsStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster

@@ -63,19 +63,11 @@ type SourceInput struct {
 	Name string `json:"name"`
 }
 
-// ParamType represents the type of the parameter.
-type ParamType string
-
-const (
-	// ParamTypeString indicates this parameter is just a string.
-	ParamTypeString ParamType = "string"
-)
-
 // Param defines arbitrary parameters needed by a task beyond typed inputs
 // such as resources.
 type Param struct {
-	Name string    `json:"name"`
-	Type ParamType `json:"type"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 // Outputs allow a task to declare what data the Build/Task will be producing,

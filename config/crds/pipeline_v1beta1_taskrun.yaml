@@ -29,34 +29,30 @@ spec:
                     properties:
                       name:
                         type: string
-                      type:
+                      value:
                         type: string
                     required:
                     - name
-                    - type
+                    - value
                     type: object
                   type: array
                 resourcesVersion:
                   items:
                     properties:
-                      apiVersion:
-                        type: string
-                      kind:
-                        type: string
-                      metadata:
-                        type: object
-                      spec:
+                      resourceRef:
                         properties:
-                          name:
+                          apiVersion:
                             type: string
-                          string:
+                          name:
                             type: string
                         required:
                         - name
-                        - string
                         type: object
-                      status:
-                        type: object
+                      version:
+                        type: string
+                    required:
+                    - resourceRef
+                    - version
                     type: object
                   type: array
               required:

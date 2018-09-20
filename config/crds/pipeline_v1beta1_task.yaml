@@ -59,11 +59,11 @@ spec:
                     properties:
                       name:
                         type: string
-                      type:
+                      value:
                         type: string
                     required:
                     - name
-                    - type
+                    - value
                     type: object
                   type: array
                 sources:

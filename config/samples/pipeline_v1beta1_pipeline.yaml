@@ -5,58 +5,56 @@ metadata:
   namespace: default
 spec:
     tasks:
-        - name: 'test'
-          taskRef:
-            name: test-wizzbang-task
-          inputsourceBindings:
-            - name: repoUnderTest
-              sourceKey: wizzbang
-        - name: 'buildPush'
-          taskRef:
-            name: build-push-task
-          inputSourceBindings:
-            - name: 'workspace'
-              sourceKey: 'wizzbang'
-              passedConstraint: [test-wizzbang-task]
-          outputSourceBindings:
-            - name: registry
-              sourceKey: wizzbangStagingImage
-          params:
-            - name: pathToDockerfile
-              type: build/Dockerfile
-        - name: integrationTest
-          taskRef:
-            name: integration-test-wizzbang-task
-          inputSourceBindings:
-            - name: repoUnderTest
-              sourceKey: wizzbang
-              passedConstraint: [test]
-          outputSourceBindings:
-            - name: registry
-              sourceKey: wizzbangStagingImage
-              passedConstraint: [build-push-task]
-        - name: deploy
-          taskRef:
-              name: deploy-with-helm
-          params:
-            - name: pathToHelmCharts
-              type: deploy/helm
-          inputSourceBindings:
-            - name: repoToDeploy
-              sourceKey: wizzbang
-              passedConstraint: [integration-test-wizzbang-task]
-          clusterBindings:
-            - clusterName: prod
-          outputSourceBindings:
-            - name: registry
-              sourceKey: wizzbangStagingImage
-              passedConstraint: [build-push-task]
+      - name: 'test'
+        taskRef:
+          name: test-wizzbang-task
+        inputsourceBindings:
+          - name: repoUnderTest
+            sourceKey: wizzbang
+      - name: 'buildPush'
+        taskRef:
+          name: build-push-task
+        inputSourceBindings:
+          - name: 'workspace'
+            sourceKey: 'wizzbang'
+            passedConstraint: [test-wizzbang-task]
+        outputSourceBindings:
+          - name: registry
+            sourceKey: wizzbangStagingImage
+        params:
+          - name: pathToDockerfile
+            value: build/Dockerfile
+      - name: integrationTest
+        taskRef:
+          name: integration-test-wizzbang-task
+        inputSourceBindings:
+          - name: repoUnderTest
+            sourceKey: wizzbang
+            passedConstraint: [test]
+        outputSourceBindings:
+          - name: registry
+            sourceKey: wizzbangStagingImage
+            passedConstraint: [build-push-task]
+      - name: deploy
+        taskRef:
+            name: deploy-with-helm
+        params:
+          - name: pathToHelmCharts
+            value: deploy/helm
+        inputSourceBindings:
+          - name: repoToDeploy
+            sourceKey: wizzbang
+            passedConstraint: [integration-test-wizzbang-task]
+        clusterBindings:
+          - clusterName: prod
+        outputSourceBindings:
+          - name: registry
+            sourceKey: wizzbangStagingImage
+            passedConstraint: [build-push-task]
     resources:
     - name: wizzbang
-      type: github
-      url: github.com/wizzbangcorp/wizzbang
-      branch: master
-      commit: HEAD
+      resourceRef:
+        name: wizzbang
     - name: wizzbangStagingImage
-      type: image
-      url: gcr.io/wizzbang-staging
+      resourceRef:
+        name: wizzbangStagingImage   
