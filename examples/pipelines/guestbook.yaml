@@ -12,7 +12,7 @@ spec:
               - name: workspace
                 sourceKey: guestbook
           outputSourceBindings:
-              - name: gb-frontend
+              - name: registry
                 sourceKey: stagingRegistry
           params:
               - name: pathToDockerfile
@@ -24,7 +24,7 @@ spec:
               - name: workspace
                 sourceKey: redis-docker          # TODO Add Commit SHA
           outputSourceBindings:
-              - name: redis
+              - name: registry
                 sourceKey: stagingRegistry
           params:
               - name: pathToDockerfile
@@ -85,22 +85,15 @@ spec:
               - clusterName: staging
     resources:
     - name: guestbook
-      resourceRef:
-        name: guestbook
       type: git
       url: github.com/kubernetes/examples
       serviceAccount: githubServiceAccount
       revision: HEAD
     - name: redis-docker
-      resourceRef:
-        name: redis-docker    
       type: git
       url: github.com/GoogleCloudPlatform/redis-docker/blob/master/4/debian9/4.0/Dockerfile
       serviceAccount: githubServiceAccount
       revision: HEAD
     - name: stagingRegistry
-      resourceRef:
-        name: stagingRegistry      
       type: image
       url: gcr.io/demo-staging
-      digest: latest

@@ -52,20 +52,13 @@ spec:
             type: "-e REMOTE_INTEGRATION=true"
     resources:
       - name: kritis-app-github
-        resourceRef:
-          name: kritis-app-github
         type: git
         url: https://github.com/grafeas/kritis
         revision: master
       - name: kritis-test-github
-        resourceRef:
-          name: kritis-test-github
         type: git
         url: https://github.com/grafeas/kritis-test
         revision: master
       - name: stagingRegistry
-        resourceRef:
-          name: stagingRegistry
         type: image
-        digest: latest
-                      
+        url: gcr.io/staging-image                      

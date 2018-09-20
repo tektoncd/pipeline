@@ -19,12 +19,12 @@ spec:
               sourceKey: 'wizzbang'
               passedConstraint: [test-wizzbang-task]
           outputSourceBindings:
-            - name: 'registry'
-              sourceKey: 'stagingRegistry'
+            - name: registry
+              sourceKey: wizzbangStagingImage
           params:
-            - name: 'pathToDockerfile'
-              type: 'build/Dockerfile'
-        - name: 'integrationTest'
+            - name: pathToDockerfile
+              type: build/Dockerfile
+        - name: integrationTest
           taskRef:
             name: integration-test-wizzbang-task
           inputSourceBindings:
@@ -32,8 +32,8 @@ spec:
               sourceKey: wizzbang
               passedConstraint: [test]
           outputSourceBindings:
-            - name: stagingRegistry
-              sourceKey: stagingRegistry
+            - name: registry
+              sourceKey: wizzbangStagingImage
               passedConstraint: [build-push-task]
         - name: deploy
           taskRef:
@@ -48,19 +48,15 @@ spec:
           clusterBindings:
             - clusterName: prod
           outputSourceBindings:
-            - name: stagingRegistry
-              sourceKey: stagingRegistry
+            - name: registry
+              sourceKey: wizzbangStagingImage
               passedConstraint: [build-push-task]
     resources:
     - name: wizzbang
-      resourceRef: 
-        name: wizzbang
       type: github
       url: github.com/wizzbangcorp/wizzbang
       branch: master
       commit: HEAD
-    - name: stagingRegistry
-      resourceRef: 
-        name: stagingRegistry
-      type: imageRegistry
+    - name: wizzbangStagingImage
+      type: image
       url: gcr.io/wizzbang-staging

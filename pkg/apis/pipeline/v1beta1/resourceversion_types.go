@@ -22,8 +22,8 @@ import (
 
 // ResourceVersionSpec defines the desired state of SourceVersion
 type ResourceVersionSpec struct {
-	ResourceRef ResourceRef `json:"resourceRef"`
-	Version     string      `json:"string"`
+	ResourceName string `json:"name"`
+	Version      string `json:"string"`
 }
 
 // ResourceVersionStatus defines the observed state of TaskRun

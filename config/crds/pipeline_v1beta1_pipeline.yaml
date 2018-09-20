@@ -39,21 +39,11 @@ spec:
                       - type
                       type: object
                     type: array
-                  resourceRef:
-                    properties:
-                      apiVersion:
-                        type: string
-                      name:
-                        type: string
-                    required:
-                    - name
-                    type: object
                   type:
                     type: string
                 required:
                 - name
                 - type
-                - resourceRef
                 type: object
               type: array
             tasks:

@@ -87,18 +87,9 @@ type TaskRef struct {
 
 // PipelineResource defines set of resources required by all Tasks in the pipeline.
 type PipelineResource struct {
-	Name        string      `json:"name"`
-	Type        string      `json:"type"`
-	ResourceRef ResourceRef `json:"resourceRef"`
-	Params      []Param     `json:"params,omitempty"`
-}
-
-// ResourceRef can be used to refer to a specific instance of a Source.
-type ResourceRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
-	// API version of the referent
-	APIVersion string `json:"apiVersion,omitempty"`
+	Name   string  `json:"name"`
+	Type   string  `json:"type"`
+	Params []Param `json:"params,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

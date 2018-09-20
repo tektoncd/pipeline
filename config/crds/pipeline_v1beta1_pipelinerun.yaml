@@ -87,19 +87,12 @@ spec:
                     type: object
                   spec:
                     properties:
-                      resourceRef:
-                        properties:
-                          apiVersion:
-                            type: string
-                          name:
-                            type: string
-                        required:
-                        - name
-                        type: object
+                      name:
+                        type: string
                       string:
                         type: string
                     required:
-                    - resourceRef
+                    - name
                     - string
                     type: object
                   status:
