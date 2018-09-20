@@ -63,8 +63,9 @@ type PipelineTriggerRef struct {
 
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
-	TaskRuns   []PipelineTaskRun      `json:"taskRuns,omitempty"`
-	Conditions []PipelineRunCondition `json:"conditions"`
+	TaskRuns      []PipelineTaskRun      `json:"taskRuns,omitempty"`
+	SourceVersion []SourceVersion        `json:"sourceVersion, omitempty"`
+	Conditions    []PipelineRunCondition `json:"conditions"`
 }
 
 // +genclient

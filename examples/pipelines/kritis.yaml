@@ -8,7 +8,7 @@ spec:
         - name: unit-test-kritis          # 1.  Run unit Tests
           taskRef:
               name: make
-          sourceBindings:
+          inputSourceBindings:
               - inputName: workspace
                 sourceKey: kritis
           params:
@@ -17,13 +17,12 @@ spec:
         - name: push-kritis               # 2.  Build And Push Tests
           taskRef:
               name: build-push
-          sourceBindings:
-              - inputName: workspace
+          inputSourceBindings:
+              - name: workspace
                 sourceKey: kritis
-          artifactStoreBindings:
-              - storeName: registry
-                storeKey: stagingRegistry
-                builtImage: kritis        # TODO Add Commit SHA
+          outputSourceBindings:
+              - name: registry
+                sourceKey: stagingRegistry
           params:
               - name: pathToDockerfile
                 value: deploy/Dockerfile
@@ -31,13 +30,12 @@ spec:
         - name: deploy-test-env           # 3. Finally Deploy to Test environment
           taskRef:
               name: deploy-with-helm
-          sourceBindings:
-              - inputName: workspace
+          inputSourceBindings:
+              - name: workspace
                 sourceKey: kritis
-          paramBindings:                 # Implicit dependency on buildPush task.
-              - inputName: testImage
-                taskName: buildPush
-                taskOutputName: builtImage
+              - name: registry
+                sourceKey: stagingRegistry
+                passedConstraints: [push-kritis]
           params:
               - name: pathToHelmCharts
                 value: kritis-charts
@@ -47,9 +45,24 @@ spec:
         - name: integration-test          # 4. Run Integration Tests in test cluster
           taskRef:
               name: integration-test-in-docker
-          sourceBindings:
-              - inputName: workspace
+          inputSourceBindings:
+              - name: workspace
                 sourceKey: kritis
           params:
               - name: testArgs
                 value: "-e REMOTE_INTEGRATION=true"
+    sources:
+      - name: kritis
+        type: git
+        params:
+          - name: url
+            value: https://github.com/grafeas/kritis
+          - name: branch
+            value: master
+      - name: stagingRegistry
+        type: image
+        params:
+          - name: buildImage
+            value: kritis       
+  
+                      
