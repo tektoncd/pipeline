@@ -129,10 +129,10 @@ previous `TaskRuns`.
 `Resources` in a pipelines are the set of objects that are going to be used 
 as inputs and outputs of a `TaskRun`. 
 
-* `Resources` should be created directly by a user in pipeline configuration 
-and bound to `TaskRun` as an input source. Also the output artifact is bound 
-to another output `Resource`.
+* `Resources` is created directly in a pipeline configuration and bound 
+to `TaskRun` as an input and/or output source. 
 * The (optional) `passedConstraint` key on an `input source` defines a set of previous task names.
 * When the `passedConstraint` key is specified on an input source, only the version of 
 the resource that passed through the defined list of tasks is used.
-* The `passedConstraint` allows for `Tasks` to fan in and fan out, and ordering can be expressed explicitly using this key.
+* The `passedConstraint` allows for `Tasks` to fan in and fan out, and ordering can be expressed explicitly 
+using this key since a task needing a resource from a another task would have to run after.
