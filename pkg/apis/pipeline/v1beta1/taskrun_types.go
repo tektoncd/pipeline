@@ -32,8 +32,8 @@ type TaskRunSpec struct {
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
-	Sources []SourceVersion `json:"sourcesVersion"`
-	Params  []Param         `json:"params,omitempty"`
+	Resources []ResourceVersion `json:"resourcesVersion"`
+	Params    []Param           `json:"params,omitempty"`
 }
 
 // TaskTrigger defines a webhook style trigger to start a TaskRun

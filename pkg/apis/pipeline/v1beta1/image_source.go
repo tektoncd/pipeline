@@ -16,28 +16,25 @@ limitations under the License.
 
 package v1beta1
 
-// ImageSource defines an endpoint where artifacts can be stored, such as images.
-type ImageSource struct {
+// ImageResource defines an endpoint where artifacts can be stored, such as images.
+type ImageResource struct {
 	Name string `json:"name"`
 	// TODO: maybe an enum, with values like 'registry', GCS bucket
-	Type string `json:"type"`
-	URL  string `json:"url"`
-	Sha  string `json:"sha"`
+	Type   string `json:"type"`
+	URL    string `json:"url"`
+	Digest string `json:"digest"`
 }
 
-func (s ImageSource) getName() string {
+func (s ImageResource) getName() string {
 	return s.Name
 }
 
-func (s ImageSource) getType() string {
-	return "image"
+func (s ImageResource) getType() ResourceType {
+	return ResourceTypeImage
 }
 
-func (s ImageSource) getVersion() string {
-	return s.Sha
+func (s ImageResource) getVersion() string {
+	return s.Digest
 }
 
-func (s ImageSource) getParams() []Param {
-	var result []Param
-	return result
-}
+func (s ImageResource) getParams() []Param { return []Param{} }

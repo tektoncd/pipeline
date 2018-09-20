@@ -26,22 +26,26 @@ type PipelineParamsSpec struct {
 	Results        Results `json:"results"`
 }
 
-// SourceType represents the type of endpoint the Source is, so that the
-// controller will know this Source should be fetched and optionally what
+// ResourceType represents the type of endpoint the resource is, so that the
+// controller will know this resource should be fetched and optionally what
 // additional metatdata should be provided for it.
-type SourceType string
+type ResourceType string
 
 const (
-	// SourceTypeGitHub indicates that this source is a GitHub repo.
-	SourceTypeGitHub SourceType = "github"
+	// ResourceTypeGit indicates that this source is a GitHub repo.
+	ResourceTypeGit ResourceType = "git"
 
-	// SourceTypeGCS indicates that this source is a GCS bucket.
-	SourceTypeGCS SourceType = "gcs"
+	// ResourceTypeGCS indicates that this source is a GCS bucket.
+	ResourceTypeGCS ResourceType = "gcs"
+
+	// ResourceTypeImage indicates that this source is a docker Image.
+	ResourceTypeImage ResourceType = "image"
 )
 
-type Source interface {
+// Resource interface to be implemented by different resource types
+type Resource interface {
 	getName() string
-	getType() string
+	getType() ResourceType
 	getParams() []Param
 	getVersion() string
 	getPassingConstraints() []TaskRef

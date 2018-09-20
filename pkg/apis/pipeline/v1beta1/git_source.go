@@ -16,30 +16,29 @@ limitations under the License.
 
 package v1beta1
 
-// GitSource is an endpoint from which to get data which is required
+// GitResource is an endpoint from which to get data which is required
 // by a Build/Task for context (e.g. a repo from which to build an image).
-type GitSource struct {
-	Name           string `json:"name"`
-	Type           string `json:"type"`
-	URL            string `json:"url"`
-	Branch         string `json:"branch"`
-	Commit         string `json:"commit,omitempty"`
+type GitResource struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+	URL  string `json:"url"`
+	// Git revision (branch, tag, commit SHA or ref) to clone.  See
+	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
+	// information.
+	Revision       string `json:"revision"`
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
-func (s GitSource) getName() string {
+func (s GitResource) getName() string {
 	return s.Name
 }
 
-func (s GitSource) getType() string {
-	return "git"
+func (s GitResource) getType() ResourceType {
+	return ResourceTypeGit
 }
 
-func (s GitSource) getVersion() string {
-	return s.Commit
+func (s GitResource) getVersion() string {
+	return s.Revision
 }
 
-func (s GitSource) getParams() []Param {
-	var result []Param
-	return result
-}
+func (s GitResource) getParams() []Param { return []Param{} }

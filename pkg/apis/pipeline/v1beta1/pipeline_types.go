@@ -97,14 +97,14 @@ type TaskRef struct {
 
 // PipelineSource
 type PipelineSource struct {
-	Name      string    `json:"name"`
-	Type      string    `json:"type"`
-	SourceRef SourceRef `json:"sourceRef"`
-	Params    []Param   `json:"params,omitempty"`
+	Name        string      `json:"name"`
+	Type        string      `json:"type"`
+	ResourceRef ResourceRef `json:"resourceRef"`
+	Params      []Param     `json:"params,omitempty"`
 }
 
-// SourceRef can be used to refer to a specific instance of a Source.
-type SourceRef struct {
+// ResourceRef can be used to refer to a specific instance of a Source.
+type ResourceRef struct {
 	// Kind of the referent; More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds"
 	Kind string `json:"kind"`
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names

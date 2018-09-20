@@ -5,31 +5,6 @@ metadata:
   namespace: default
 spec:
     serviceAccount: 'demoServiceAccount'
-    sources:
-        - name: 'guestbook'
-          type: 'github'
-          url: 'github.com/kubernetes/examples'
-          serviceAccount: 'githubServiceAccount'
-          branch: 'master'
-          commit: 'HEAD'
-        - name: 'redis-docker'
-          type: 'github'
-          url: 'github.com/GoogleCloudPlatform/redis-docker/blob/master/4/debian9/4.0/Dockerfile'
-          serviceAccount: 'githubServiceAccount'
-          branch: 'master'
-          commit: 'HEAD'
-        - name: 'kritis'
-          type: 'github'
-          url:  'github.com/grafeas/kritis'
-          branch: 'master'
-          commit: 'HEAD'
-    artifactStores:
-        - name: 'prodRegistry'
-          type: 'imageRegistry'
-          url: 'gcr.io/demo'
-        - name: 'stagingRegistry'
-          type: 'imageRegistry'
-          url: 'gcr.io/demo-staging'
     clusters:
         - name: 'testCluster'
           type: 'gke'

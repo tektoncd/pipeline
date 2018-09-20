@@ -20,38 +20,38 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// SourceVersionSpec defines the desired state of SourceVersion
-type SourceVersionSpec struct {
-	SourceRef SourceRef `json:"sourceRef"`
-	Version   string    `json:"string"`
+// ResourceVersionSpec defines the desired state of SourceVersion
+type ResourceVersionSpec struct {
+	ResourceRef ResourceRef `json:"resourceRef"`
+	Version     string      `json:"string"`
 }
 
-// SourceVersionStatus defines the observed state of TaskRun
-type SourceVersionStatus struct {
+// ResourceVersionStatus defines the observed state of TaskRun
+type ResourceVersionStatus struct {
 }
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// SourceVersion is the Schema for the sourceversion API
+// ResourceVersion is the Schema for the sourceversion API
 // +k8s:openapi-gen=true
-type SourceVersion struct {
+type ResourceVersion struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   SourceVersionSpec   `json:"spec,omitempty"`
-	Status SourceVersionStatus `json:"status,omitempty"`
+	Spec   ResourceVersionSpec   `json:"spec,omitempty"`
+	Status ResourceVersionStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// SourceVersionList contains a list of SourceVersion
-type SourceVersionList struct {
+// ResourceVersionList contains a list of ResourceVersion
+type ResourceVersionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []SourceVersion `json:"items"`
+	Items           []ResourceVersion `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&SourceVersion{}, &SourceVersionList{})
+	SchemeBuilder.Register(&ResourceVersion{}, &ResourceVersionList{})
 }

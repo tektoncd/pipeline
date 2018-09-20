@@ -8,10 +8,10 @@ spec:
         - name: build-guestbook                  # 1.a Build guestbook go sample code.
           taskRef:
               name: build-push
-          sourceBindings:
+          inputSourceBindings:
               - inputName: workspace
                 sourceKey: guestbook
-          artifactStoreBindings:
+          outputSourceBindings:
               - storeName: registry
                 storeKey: stagingRegistry
                 builtImage: gb-frontend          # TODO Add Commit SHA
@@ -21,63 +21,82 @@ spec:
         - name: build-redis                      # 1.b Build and push redis docker image.
           taskRef:
               name: build-push
-          sourceBindings:
+          inputSourceBindings:
               - inputName: workspace
                 sourceKey: redis-docker          # TODO Add Commit SHA
-          artifactStoreBindings:
+          outputSourceBindings:
               - storeName: registry
                 storeKey: stagingRegistry
-                builtImage: redis4
+                builtImage: redis
           params:
               - name: pathToDockerfile
                 value: 4/debian9/4.0/Dockerfile
         - name: deploy-bundle-test               # 2. Deploy GuestBook and Redis to test cluster
           taskRef:
               name: deploy-with-kubectl
-          sourceBindings:
-              - inputName: workspace
-                sourceKey: guestbook
+          inputSourceBindings:
+            - inputName: workspace
+               sourceKey: guestbook
+               passedConstraint:
+               - build-guestbook
+            - inputName: workspace
+              sourceKey: redis-docker   
+              passedConstraint:
+               - build-redis
           params:
               - name: pathToFiles
                 value: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
               - clusterName: test
-          prevTasks:
-              -  build-redis4
-              -  build-guestbook
         - name: int-test-osx                    # 3.a Run Integration tests for osx
           taskRef:
               name: integrationTestInDocker
-          sourceBindings:
+          inputSourceBindings:
               - inputName: workspace
                 sourceKey: guestbook
+                passedConstraint:
+                - deploy-bundle-test
           params:
               - name: dockerBuildFile
                 value: guestbook-int/Dockerfile
-          prevTasks:
-              - deploy-test
         - name: int-test-linux                  # 3.b Run Integration tests for linux
           taskRef:
               name: integration-test-in-docker
-          sourceBindings:
+          inputSourceBindings:
               - inputName: workspace
                 sourceKey: guestbook
+                passedConstraint:
+                - deploy-bundle-test
           params:
               - name: dockerBuildFile
                 value: guestbook-int/Dockerfile
-          prevTasks:
-              - deploy-test
         - name: deploy-bundle-staging           # 4. Deploy GuestBook and Redis to staging cluster
           taskRef:
               name: deploy-with-kubectl
-          sourceBindings:
+          inputSourceBindings:
               - inputName: workspace
                 sourceKey: guestbook
+                passedConstraint:
+                - int-test-osx
+                - int-test-linux
           params:
               - name: pathToFiles
                 value: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
               - clusterName: staging
-          prevTasks:
-              -  int-test-osx
-              -  int-test-linux
+    resources:
+    - name: guestbook
+      type: github
+      url: github.com/kubernetes/examples
+      serviceAccount: githubServiceAccount
+      branch: master
+      commit: HEAD
+    - name: redis-docker
+      type: github
+      url: github.com/GoogleCloudPlatform/redis-docker/blob/master/4/debian9/4.0/Dockerfile
+      serviceAccount: githubServiceAccount'
+      branch: master
+      commit: HEAD
+    - name: stagingRegistry
+      type: imageRegistry
+      url: gcr.io/demo-staging
