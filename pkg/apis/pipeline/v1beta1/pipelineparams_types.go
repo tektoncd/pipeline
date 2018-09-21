@@ -22,9 +22,10 @@ import (
 
 // PipelineParamsSpec is the spec for a Pipeline resource
 type PipelineParamsSpec struct {
-	ServiceAccount string    `json:"serviceAccount"`
-	Results        Results   `json:"results"`
-	Clusters       []Cluster `json:"clusters,omitempty"`
+	ServiceAccount string  `json:"serviceAccount"`
+	Results        Results `json:"results"`
+	// +optional
+	Clusters []Cluster `json:"clusters,omitempty"`
 }
 
 // PipelineParamsStatus defines the observed state of PipelineParams

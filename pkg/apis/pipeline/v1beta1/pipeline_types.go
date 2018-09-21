@@ -72,7 +72,7 @@ type PipelineTaskParam struct {
 	Value string `json:"value"`
 }
 
-// ClusterBinding is used to bind a clister from a PipelineParams to a cluster required
+// ClusterBinding is used to bind a cluster from a PipelineParams to a cluster required
 // as an input for a task.
 type ClusterBinding struct {
 	// ClusterName is the string that the PipelineParams will use to identify this source.
