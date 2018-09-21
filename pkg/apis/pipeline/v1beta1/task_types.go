@@ -57,10 +57,16 @@ type Task struct {
 
 // Inputs are the requirements that a task needs to run a Build.
 type Inputs struct {
+<<<<<<< HEAD
 	// +optional
 	Sources []Source `json:"resources,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
+=======
+	Sources  []Source  `json:"resources,omitempty"`
+	Params   []Param   `json:"params,omitempty"`
+	Clusters []Cluster `json:"clusters,omitempty"`
+>>>>>>> Fixed typos
 }
 
 // Source is data which is required by a Build/Task for context

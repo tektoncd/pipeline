@@ -54,7 +54,7 @@ spec:
               type: object
             inputs:
               properties:
-                cluster:
+                clusters:
                   items:
                     properties:
                       endpoint:

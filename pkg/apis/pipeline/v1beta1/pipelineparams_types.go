@@ -24,7 +24,7 @@ import (
 type PipelineParamsSpec struct {
 	ServiceAccount string    `json:"serviceAccount"`
 	Results        Results   `json:"results"`
-	Cluster        []Cluster `json:"clusters,omitempty"`
+	Clusters       []Cluster `json:"clusters,omitempty"`
 }
 
 // PipelineParamsStatus defines the observed state of PipelineParams
