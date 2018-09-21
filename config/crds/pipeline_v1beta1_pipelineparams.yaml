@@ -22,6 +22,21 @@ spec:
           type: object
         spec:
           properties:
+            clusters:
+              items:
+                properties:
+                  endpoint:
+                    type: string
+                  name:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - name
+                - type
+                - endpoint
+                type: object
+              type: array
             results:
               properties:
                 logs:
