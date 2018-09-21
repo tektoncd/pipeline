@@ -44,6 +44,18 @@ spec:
             tasks:
               items:
                 properties:
+                  clusterBindings:
+                    items:
+                      properties:
+                        clusterName:
+                          type: string
+                        inputName:
+                          type: string
+                      required:
+                      - clusterName
+                      - inputName
+                      type: object
+                    type: array
                   inputSourceBindings:
                     items:
                       properties:
