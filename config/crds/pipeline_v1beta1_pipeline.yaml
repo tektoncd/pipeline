@@ -47,29 +47,29 @@ spec:
                   clusterBindings:
                     items:
                       properties:
-                        clusterName:
-                          type: string
                         inputName:
                           type: string
+                        key:
+                          type: string
                       required:
-                      - clusterName
+                      - key
                       - inputName
                       type: object
                     type: array
                   inputSourceBindings:
                     items:
                       properties:
+                        key:
+                          type: string
                         name:
                           type: string
                         passedConstraints:
                           items:
                             type: string
                           type: array
-                        sourceKey:
-                          type: string
                       required:
                       - name
-                      - sourceKey
+                      - key
                       type: object
                     type: array
                   name:
@@ -77,17 +77,17 @@ spec:
                   outputSourceBindings:
                     items:
                       properties:
+                        key:
+                          type: string
                         name:
                           type: string
                         passedConstraints:
                           items:
                             type: string
                           type: array
-                        sourceKey:
-                          type: string
                       required:
                       - name
-                      - sourceKey
+                      - key
                       type: object
                     type: array
                   params:

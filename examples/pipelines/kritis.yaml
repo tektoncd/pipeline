@@ -10,7 +10,7 @@ spec:
           name: make
         inputSourceBindings:
           - name: workspace
-            sourceKey: kritis-app-github
+            key: kritis-app-github
         params:
           - name: makeTarget
             value: test
@@ -19,12 +19,12 @@ spec:
           name: build-push
         inputSourceBindings:
           - name: workspace
-            sourceKey: kritis-app-github
+            key: kritis-app-github
             passedConstraint: 
               - make
         outputSourceBindings:
           - name: registry
-            sourceKey: stagingRegistry
+            key: stagingRegistry
         params:
           - name: pathToDockerfile
             value: deploy/Dockerfile
@@ -33,7 +33,7 @@ spec:
           name: deploy-with-helm
         inputSourceBindings:
           - name: registry
-            sourceKey: stagingRegistry
+            key: stagingRegistry
             passedConstraint: [build-push]
         params:
           - name: pathToHelmCharts
@@ -45,7 +45,7 @@ spec:
           name: integration-test-in-docker
         inputSourceBindings:
           - name: workspace
-            sourceKey: kritis-test-github
+            key: kritis-test-github
             passedConstraint: [deploy-with-helm]
         params:
           - name: testArgs
