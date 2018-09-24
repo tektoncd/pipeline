@@ -23,17 +23,20 @@ import (
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
-	TaskRef TaskRef       `json:"taskRef"`
-	Trigger TaskTrigger   `json:"trigger"`
-	Inputs  TaskRunInputs `json:"inputs,omitempty"`
-	Outputs Outputs       `json:"outputs,omitempty"`
-	Results Results       `json:"results"`
+	TaskRef TaskRef     `json:"taskRef"`
+	Trigger TaskTrigger `json:"trigger"`
+	// +optional
+	Inputs TaskRunInputs `json:"inputs,omitempty"`
+	// +optional
+	Outputs Outputs `json:"outputs,omitempty"`
+	Results Results `json:"results"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
 	Resources []ResourceVersion `json:"resourcesVersion"`
-	Params    []Param           `json:"params,omitempty"`
+	// +optional
+	Params []Param `json:"params,omitempty"`
 }
 
 // TaskTrigger defines a webhook style trigger to start a TaskRun
@@ -59,7 +62,8 @@ const (
 // to the corresponding PipelineRun.
 type TaskTriggerRef struct {
 	Type TaskTriggerType `json:"type"`
-	Name string          `json:"name,omitempty"`
+	// +optional
+	Name string `json:"name,omitempty"`
 }
 
 // TaskRunStatus defines the observed state of TaskRun
@@ -101,8 +105,9 @@ type TaskRunCondition struct {
 	Status corev1.ConditionStatus `json:"status"`
 
 	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
-
-	Reason  string `json:"reason,omitempty"`
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// +optional
 	Message string `json:"message,omitempty"`
 }
 
@@ -112,10 +117,13 @@ type TaskRunCondition struct {
 // TaskRun is the Schema for the taskruns API
 // +k8s:openapi-gen=true
 type TaskRun struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TaskRunSpec   `json:"spec,omitempty"`
+	// +optional
+	Spec TaskRunSpec `json:"spec,omitempty"`
+	// +optional
 	Status TaskRunStatus `json:"status,omitempty"`
 }
 
@@ -124,6 +132,7 @@ type TaskRun struct {
 // TaskRunList contains a list of TaskRun
 type TaskRunList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TaskRun `json:"items"`
 }

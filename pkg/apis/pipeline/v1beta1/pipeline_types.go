@@ -41,21 +41,29 @@ type PipelineStatus struct {
 // from the 'prev' and 'next' of each PipelineTask as well as Task dependencies.
 // +k8s:openapi-gen=true
 type Pipeline struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PipelineSpec   `json:"spec,omitempty"`
+	// Spec holds the desired state of the Pipeline from the client
+	// +optional
+	Spec PipelineSpec `json:"spec,omitempty"`
+	// Status communicates the observed state of the Pipeline form the controller
+	// +optional
 	Status PipelineStatus `json:"status,omitempty"`
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
 // PipelineParams and from the output of previous tasks.
 type PipelineTask struct {
-	Name                 string          `json:"name"`
-	TaskRef              TaskRef         `json:"taskRef"`
-	InputSourceBindings  []SourceBinding `json:"inputSourceBindings,omitempty"`
+	Name    string  `json:"name"`
+	TaskRef TaskRef `json:"taskRef"`
+	// +optional
+	InputSourceBindings []SourceBinding `json:"inputSourceBindings,omitempty"`
+	// +optional
 	OutputSourceBindings []SourceBinding `json:"outputSourceBindings,omitempty"`
-	Params               []Param         `json:"params,omitempty"`
+	// +optional
+	Params []Param `json:"params,omitempty"`
 }
 
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.
@@ -73,6 +81,7 @@ type SourceBinding struct {
 	SourceKey string `json:"sourceKey"`
 	// TODO: validate the passedConstraints values match previous Task names
 	// PassedConstraints is the list of Task names that the resource has to pass through.
+	// +optional
 	PassedConstraints []string `json:"passedConstraints,omitempty"`
 }
 
@@ -82,6 +91,7 @@ type TaskRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name"`
 	// API version of the referent
+	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
@@ -90,6 +100,7 @@ type ResourceRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name"`
 	// API version of the referent
+	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
@@ -104,6 +115,7 @@ type PipelineResource struct {
 // PipelineList contains a list of Pipeline
 type PipelineList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Pipeline `json:"items"`
 }

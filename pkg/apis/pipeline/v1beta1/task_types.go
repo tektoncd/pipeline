@@ -24,8 +24,10 @@ import (
 
 // TaskSpec defines the desired state of Task
 type TaskSpec struct {
-	Inputs    Inputs    `json:"inputs,omitempty"`
-	Outputs   Outputs   `json:"outputs,omitempty"`
+	// +optional
+	Inputs *Inputs `json:"inputs,omitempty"`
+	// +optional
+	Outputs   *Outputs  `json:"outputs,omitempty"`
 	BuildSpec BuildSpec `json:"buildSpec"`
 }
 
@@ -41,17 +43,24 @@ type TaskStatus struct {
 // Task is the Schema for the tasks API
 // +k8s:openapi-gen=true
 type Task struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TaskSpec   `json:"spec,omitempty"`
+	// Spec holds the desired state of the Task from the client
+	// +optional
+	Spec TaskSpec `json:"spec,omitempty"`
+	// Status communicates the observed state of the Task from the controller
+	// +optional
 	Status TaskStatus `json:"status,omitempty"`
 }
 
 // Inputs are the requirements that a task needs to run a Build.
 type Inputs struct {
+	// +optional
 	Sources []Source `json:"resources,omitempty"`
-	Params  []Param  `json:"params,omitempty"`
+	// +optional
+	Params []Param `json:"params,omitempty"`
 }
 
 // Source is data which is required by a Build/Task for context
@@ -74,8 +83,10 @@ type Param struct {
 // Outputs allow a task to declare what data the Build/Task will be producing,
 // i.e. results such as logs and artifacts such as images.
 type Outputs struct {
+	// +optional
 	Results []TestResult `json:"results,omitempty"`
-	Sources []Source     `json:"resources,omitempty"`
+	// +optional
+	Sources []Source `json:"resources,omitempty"`
 }
 
 // TestResult allows a task to specify the location where test logs
@@ -91,7 +102,9 @@ type TestResult struct {
 // A BuildSpec will contain either a Template or a series of Steps.
 type BuildSpec struct {
 	// Trying to emulate https://github.com/knative/build/blob/master/pkg/apis/build/v1alpha1/build_types.go
-	Steps    []corev1.Container                      `json:"steps,omitempty"`
+	// +optional
+	Steps []corev1.Container `json:"steps,omitempty"`
+	// +optional
 	Template buildv1alpha1.TemplateInstantiationSpec `json:"template,omitempty"`
 }
 
@@ -100,6 +113,7 @@ type BuildSpec struct {
 // TaskList contains a list of Task
 type TaskList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Task `json:"items"`
 }

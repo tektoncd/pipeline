@@ -34,6 +34,7 @@ type PipelineRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name"`
 	// API version of the referent
+	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
@@ -43,6 +44,7 @@ type PipelineParamsRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name"`
 	// API version of the referent
+	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
@@ -58,12 +60,16 @@ const (
 // or it could have been some kind of external event (not yet designed).
 type PipelineTriggerRef struct {
 	Type PipelineTriggerType `json:"type"`
-	Name string              `json:"name,omitempty"`
+	// +optional
+	Name string `json:"name,omitempty"`
 }
 
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
-	TaskRuns        []PipelineTaskRun      `json:"taskRuns,omitempty"`
+	//+optional
+	TaskRuns []PipelineTaskRun `json:"taskRuns,omitempty"`
+	// If there is no version, that means use latest
+	// +optional
 	ResourceVersion []ResourceVersion      `json:"resourceVersion,omitempty"`
 	Conditions      []PipelineRunCondition `json:"conditions"`
 }
@@ -74,10 +80,13 @@ type PipelineRunStatus struct {
 // PipelineRun is the Schema for the pipelineruns API
 // +k8s:openapi-gen=true
 type PipelineRun struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PipelineRunSpec   `json:"spec,omitempty"`
+	// +optional
+	Spec PipelineRunSpec `json:"spec,omitempty"`
+	// +optional
 	Status PipelineRunStatus `json:"status,omitempty"`
 }
 
@@ -86,6 +95,7 @@ type PipelineRun struct {
 // PipelineRunList contains a list of PipelineRun
 type PipelineRunList struct {
 	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []PipelineRun `json:"items"`
 }
@@ -121,8 +131,9 @@ type PipelineRunCondition struct {
 	Status corev1.ConditionStatus `json:"status"`
 
 	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
-
-	Reason  string `json:"reason,omitempty"`
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// +optional
 	Message string `json:"message,omitempty"`
 }
 
