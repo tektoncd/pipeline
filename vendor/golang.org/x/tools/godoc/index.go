@@ -1532,6 +1532,7 @@ func (c *Corpus) RunIndexer() {
 	}
 
 	// Repeatedly update the package directory tree and index.
+	// TODO(bgarcia): Use fsnotify to only update when notified of a filesystem change.
 	for {
 		c.initFSTree()
 		c.UpdateIndex()

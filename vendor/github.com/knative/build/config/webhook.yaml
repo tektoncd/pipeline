@@ -32,7 +32,6 @@ spec:
         # and substituted here.
         image: github.com/knative/build/cmd/webhook
         args: [
-          "-builder", "cluster",
           "-logtostderr",
           "-stderrthreshold", "INFO",
         ]

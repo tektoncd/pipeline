@@ -12,22 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gnostic can be extended with plugins.  
-// A plugin is uset a program that reads a Request from stdin 
+// openapic (aka the OpenAPI Compiler) can be extended via plugins.  
+// A plugin is just a program that reads a Request from stdin 
 // and writes a Response to stdout.
 //
 // A plugin executable needs only to be placed somewhere in the path.  The
-// plugin should be named "gnostic_$NAME", and will then be used when the
-// flag "--${NAME}_out" is passed to gnostic.
+// plugin should be named "openapi_$NAME", and will then be used when the
+// flag "--${NAME}_out" is passed to openapic.
 
 syntax = "proto3";
 
-import "github.com/googleapis/gnostic/OpenAPIv2/OpenAPIv2.proto";
-import "github.com/googleapis/gnostic/OpenAPIv3/OpenAPIv3.proto";
-import "github.com/googleapis/gnostic/discovery/discovery.proto";
-import "github.com/googleapis/gnostic/surface/surface.proto";
-
-package gnostic.plugin.v1;
+package openapi.plugin.v1;
 
 // This option lets the proto compiler generate Java code inside the package
 // name (see below) instead of inside an outer class. It creates a simpler
@@ -38,10 +33,10 @@ option java_multiple_files = true;
 // The Java outer classname should be the filename in UpperCamelCase. This
 // class is only used to hold proto descriptor, so developers don't need to
 // work with it directly.
-option java_outer_classname = "GnosticPlugin";
+option java_outer_classname = "OpenAPICompilerPlugin";
 
 // The Java package name must be proto package name with proper prefix.
-option java_package = "org.gnostic.v1";
+option java_package = "org.openapic.v1";
 
 // A reasonable prefix for the Objective-C symbols generated from the package.
 // It should at a minimum be 3 characters long, all uppercase, and convention
@@ -49,9 +44,9 @@ option java_package = "org.gnostic.v1";
 // hopefully unique enough to not conflict with things that may come along in
 // the future. 'GPB' is reserved for the protocol buffer implementation itself.
 //
-option objc_class_prefix = "GNO";
+option objc_class_prefix = "OAC"; // "OpenAPI Compiler"
 
-// The version number of gnostic.
+// The version number of OpenAPI compiler.
 message Version {
   int32 major = 1;
   int32 minor = 2;
@@ -61,7 +56,7 @@ message Version {
   string suffix = 4;
 }
 
-// A parameter passed to the plugin from (or through) gnostic.
+// A parameter passed to the plugin from (or through) the OpenAPI compiler.
 message Parameter {
   // The name of the parameter as specified in the option string
   string name = 1;
@@ -73,8 +68,8 @@ message Parameter {
 // An encoded Request is written to the plugin's stdin.
 message Request {
 
-  // filename or URL of the original source document
-  string source_name = 1;
+  // A wrapped OpenAPI document to process.
+  Wrapper wrapper = 1;
   
   // Output path specified in the plugin invocation.
   string output_path = 2;
@@ -82,20 +77,8 @@ message Request {
   // Plugin parameters parsed from the invocation string.
   repeated Parameter parameters = 3;
 
-  // The version number of gnostic.
+  // The version number of openapi compiler.
   Version compiler_version = 4;
-  
-  // OpenAPI v2 API representation
-  openapi.v2.Document openapi2 = 5;
-
-  // OpenAPI v3 API representation
-  openapi.v3.Document openapi3 = 6;
-
-  // Discovery API representation
-  discovery.v1.Document discovery = 7;
-  
-  // generated code surface representation
-  surface.v1.Model surface = 8;
 }
 
 // The plugin writes an encoded Response to stdout.
@@ -126,4 +109,15 @@ message File {
   bytes data = 2; 
 }
 
+// Wrapper wraps an OpenAPI document with its version.
+message Wrapper {
 
+  // filename or URL of the wrapped document
+  string name = 1;
+  
+  // version of the OpenAPI specification that is used by the wrapped document
+  string version = 2;
+
+  // valid serialized protocol buffer of the named OpenAPI specification version
+  bytes value = 3;
+}

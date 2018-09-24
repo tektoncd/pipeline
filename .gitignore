@@ -1,15 +1,38 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
 *.so
 *.dylib
+*.dll
 
-# Test binary, build with `go test -c`
-*.test
+# Fortran module files
+*.mod
+*.smod
 
-# Output of the go coverage tool, specifically when used with LiteIDE
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
 *.out
+*.app
 
-# bin folder
-bin/
+# Emacs garbage
+*~
+
+# VSCode config
+.vscode
+
+# JetBrains IDE config
+.idea

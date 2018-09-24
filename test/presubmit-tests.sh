@@ -18,21 +18,20 @@
 
 function build_tests() {
   echo "Running build tests"
-  make generate
+  # TODO(aaron-prindle) add build tests
+  echo "TODO(aaron-prindle) add build tests"
+
 }
 
 function unit_tests() {
   echo "Running unit tests"
-  export version=1.0.0
-  export arch=amd64
-  curl -LO https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${version}/kubebuilder_${version}_linux_${arch}.tar.gz
-  tar -zxvf kubebuilder_${version}_linux_${arch}.tar.gz
-  mv kubebuilder_${version}_linux_${arch} /usr/local/kubebuilder
-  make test
+  # TODO(aaron-prindle) add unit tests
+  echo "TODO(aaron-prindle) add unit tests"
 }
 
 function integration_tests() {
-  header "Running integration tests"
+  echo "Running integration tests"
+  # TODO(aaron-prindle) add integration tests
   echo "TODO(aaron-prindle): add integration tests"
 }
 

@@ -45,8 +45,8 @@ import (
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/build/pkg/builder"
 	buildclientset "github.com/knative/build/pkg/client/clientset/versioned"
-	"github.com/knative/build/pkg/logging"
-	"github.com/knative/build/pkg/logging/logkey"
+	"github.com/knative/pkg/logging"
+	"github.com/knative/pkg/logging/logkey"
 )
 
 const (
@@ -58,7 +58,7 @@ const (
 	buildWebhookDeployment = "build-webhook"
 )
 
-var resources = []string{"builds", "buildtemplates"}
+var resources = []string{"builds", "buildtemplates", "clusterbuildtemplates"}
 
 // ControllerOptions contains the configuration for the webhook
 type ControllerOptions struct {
@@ -131,6 +131,7 @@ type genericCRD interface {
 
 var _ genericCRD = (*v1alpha1.Build)(nil)
 var _ genericCRD = (*v1alpha1.BuildTemplate)(nil)
+var _ genericCRD = (*v1alpha1.ClusterBuildTemplate)(nil)
 
 // getAPIServerExtensionCACert gets the Kubernetes aggregate apiserver
 // client CA cert used by validator.
@@ -216,13 +217,17 @@ func NewAdmissionController(client kubernetes.Interface, buildClient buildclient
 		logger:      logger,
 	}
 	ac.handlers = map[string]genericCRDHandler{
-		"Build": genericCRDHandler{
+		"Build": {
 			Factory:   &v1alpha1.Build{},
 			Validator: ac.validateBuild,
 		},
-		"BuildTemplate": genericCRDHandler{
+		"BuildTemplate": {
 			Factory:   &v1alpha1.BuildTemplate{},
 			Validator: ac.validateBuildTemplate,
+		},
+		"ClusterBuildTemplate": {
+			Factory:   &v1alpha1.ClusterBuildTemplate{},
+			Validator: ac.validateClusterBuildTemplate,
 		},
 	}
 	return ac

@@ -18,33 +18,19 @@ package webhook
 import (
 	"context"
 	"errors"
-	"regexp"
 
 	"github.com/mattbaird/jsonpatch"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
-	"github.com/knative/build/pkg/logging"
+	"github.com/knative/pkg/logging"
 )
-
-var nestedPlaceholderRE = regexp.MustCompile(`\${[^}]+\$`)
 
 func (ac *AdmissionController) validateBuildTemplate(ctx context.Context, _ *[]jsonpatch.JsonPatchOperation, old, new genericCRD) error {
 	_, tmpl, err := unmarshalBuildTemplates(ctx, old, new)
 	if err != nil {
 		return err
 	}
-
-	if err := validateSteps(tmpl.Spec.Steps); err != nil {
-		return err
-	}
-	if err := validateVolumes(tmpl.Spec.Volumes); err != nil {
-		return err
-	}
-	if err := validateParameters(tmpl.Spec.Parameters); err != nil {
-		return err
-	}
-	if err := validatePlaceholders(tmpl.Spec.Steps); err != nil {
+	if err := validateTemplate(tmpl); err != nil {
 		return err
 	}
 	return nil
@@ -72,43 +58,4 @@ func unmarshalBuildTemplates(ctx context.Context, old, new genericCRD) (*v1alpha
 	logger.Infof("NEW BuildTemplate is\n%+v", newbt)
 
 	return oldbt, newbt, nil
-}
-
-func validateParameters(params []v1alpha1.ParameterSpec) error {
-	// Template must not duplicate parameter names.
-	seen := map[string]struct{}{}
-	for _, p := range params {
-		if _, ok := seen[p.Name]; ok {
-			return validationError("DuplicateParamName", "duplicate template parameter name %q", p.Name)
-		}
-		seen[p.Name] = struct{}{}
-	}
-	return nil
-}
-
-func validatePlaceholders(steps []corev1.Container) error {
-	for si, s := range steps {
-		if nestedPlaceholderRE.MatchString(s.Name) {
-			return validationError("NestedPlaceholder", "nested placeholder in step name %d: %q", si, s.Name)
-		}
-		for i, a := range s.Args {
-			if nestedPlaceholderRE.MatchString(a) {
-				return validationError("NestedPlaceholder", "nested placeholder in step %d arg %d: %q", si, i, a)
-			}
-		}
-		for i, e := range s.Env {
-			if nestedPlaceholderRE.MatchString(e.Value) {
-				return validationError("NestedPlaceholder", "nested placeholder in step %d env value %d: %q", si, i, e.Value)
-			}
-		}
-		if nestedPlaceholderRE.MatchString(s.WorkingDir) {
-			return validationError("NestedPlaceholder", "nested placeholder in step %d working dir %q", si, s.WorkingDir)
-		}
-		for i, c := range s.Command {
-			if nestedPlaceholderRE.MatchString(c) {
-				return validationError("NestedPlaceholder", "nested placeholder in step %d command %d: %q", si, i, c)
-			}
-		}
-	}
-	return nil
 }

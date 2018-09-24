@@ -57,17 +57,6 @@ message Simple {
   optional bytes o_cast_bytes = 12 [(gogoproto.casttype) = "Bytes"];
 }
 
-// Test message for holding special non-finites primitives.
-message NonFinites {
-    optional float f_nan = 1;
-    optional float f_pinf = 2;
-    optional float f_ninf = 3;
-    optional double d_nan = 4;
-    optional double d_pinf = 5;
-    optional double d_ninf = 6;
-}
-
-
 // Test message for holding repeated primitives.
 message Repeats {
   repeated bool r_bool = 1;
@@ -111,7 +100,6 @@ message MsgWithOneof {
     int64 salary = 2;
     string Country = 3;
     string home_address = 4;
-    MsgWithRequired msg_with_required = 5;
   }
 }
 
@@ -137,8 +125,6 @@ message KnownTypes {
   optional google.protobuf.Duration dur = 1;
   optional google.protobuf.Struct st = 12;
   optional google.protobuf.Timestamp ts = 2;
-  optional google.protobuf.ListValue lv = 15;
-  optional google.protobuf.Value val = 16;
 
   optional google.protobuf.DoubleValue dbl = 3;
   optional google.protobuf.FloatValue flt = 4;
@@ -149,27 +135,4 @@ message KnownTypes {
   optional google.protobuf.BoolValue bool = 9;
   optional google.protobuf.StringValue str = 10;
   optional google.protobuf.BytesValue bytes = 11;
-}
-
-// Test messages for marshaling/unmarshaling required fields.
-message MsgWithRequired {
-  required string str = 1;
-}
-
-message MsgWithIndirectRequired {
-  optional MsgWithRequired subm = 1;
-  map<string, MsgWithRequired> map_field = 2;
-  repeated MsgWithRequired slice_field = 3;
-}
-
-message MsgWithRequiredBytes {
-  required bytes byts = 1;
-}
-
-message MsgWithRequiredWKT {
-  required google.protobuf.StringValue str = 1;
-}
-
-extend Real {
-  optional MsgWithRequired extm = 125;
 }

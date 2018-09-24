@@ -2,19 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package cryptobyte contains types that help with parsing and constructing
-// length-prefixed, binary messages, including ASN.1 DER. (The asn1 subpackage
-// contains useful ASN.1 constants.)
-//
-// The String type is for parsing. It wraps a []byte slice and provides helper
-// functions for consuming structures, value by value.
-//
-// The Builder type is for constructing messages. It providers helper functions
-// for appending values and also for appending length-prefixed submessages –
-// without having to worry about calculating the length prefix ahead of time.
-//
-// See the documentation and examples for the Builder and String types to get
-// started.
+// Package cryptobyte implements building and parsing of byte strings for
+// DER-encoded ASN.1 and TLS messages. See the examples for the Builder and
+// String types to get started.
 package cryptobyte // import "golang.org/x/crypto/cryptobyte"
 
 // String represents a string of bytes. It provides methods for parsing
@@ -37,8 +27,8 @@ func (s *String) Skip(n int) bool {
 	return s.read(n) != nil
 }
 
-// ReadUint8 decodes an 8-bit value into out and advances over it.
-// It reports whether the read was successful.
+// ReadUint8 decodes an 8-bit value into out and advances over it. It
+// returns true on success and false on error.
 func (s *String) ReadUint8(out *uint8) bool {
 	v := s.read(1)
 	if v == nil {
@@ -49,7 +39,7 @@ func (s *String) ReadUint8(out *uint8) bool {
 }
 
 // ReadUint16 decodes a big-endian, 16-bit value into out and advances over it.
-// It reports whether the read was successful.
+// It returns true on success and false on error.
 func (s *String) ReadUint16(out *uint16) bool {
 	v := s.read(2)
 	if v == nil {
@@ -60,7 +50,7 @@ func (s *String) ReadUint16(out *uint16) bool {
 }
 
 // ReadUint24 decodes a big-endian, 24-bit value into out and advances over it.
-// It reports whether the read was successful.
+// It returns true on success and false on error.
 func (s *String) ReadUint24(out *uint32) bool {
 	v := s.read(3)
 	if v == nil {
@@ -71,7 +61,7 @@ func (s *String) ReadUint24(out *uint32) bool {
 }
 
 // ReadUint32 decodes a big-endian, 32-bit value into out and advances over it.
-// It reports whether the read was successful.
+// It returns true on success and false on error.
 func (s *String) ReadUint32(out *uint32) bool {
 	v := s.read(4)
 	if v == nil {
@@ -119,27 +109,28 @@ func (s *String) readLengthPrefixed(lenLen int, outChild *String) bool {
 }
 
 // ReadUint8LengthPrefixed reads the content of an 8-bit length-prefixed value
-// into out and advances over it. It reports whether the read was successful.
+// into out and advances over it. It returns true on success and false on
+// error.
 func (s *String) ReadUint8LengthPrefixed(out *String) bool {
 	return s.readLengthPrefixed(1, out)
 }
 
 // ReadUint16LengthPrefixed reads the content of a big-endian, 16-bit
-// length-prefixed value into out and advances over it. It reports whether the
-// read was successful.
+// length-prefixed value into out and advances over it. It returns true on
+// success and false on error.
 func (s *String) ReadUint16LengthPrefixed(out *String) bool {
 	return s.readLengthPrefixed(2, out)
 }
 
 // ReadUint24LengthPrefixed reads the content of a big-endian, 24-bit
-// length-prefixed value into out and advances over it. It reports whether
-// the read was successful.
+// length-prefixed value into out and advances over it. It returns true on
+// success and false on error.
 func (s *String) ReadUint24LengthPrefixed(out *String) bool {
 	return s.readLengthPrefixed(3, out)
 }
 
-// ReadBytes reads n bytes into out and advances over them. It reports
-// whether the read was successful.
+// ReadBytes reads n bytes into out and advances over them. It returns true on
+// success and false and error.
 func (s *String) ReadBytes(out *[]byte, n int) bool {
 	v := s.read(n)
 	if v == nil {
@@ -149,8 +140,8 @@ func (s *String) ReadBytes(out *[]byte, n int) bool {
 	return true
 }
 
-// CopyBytes copies len(out) bytes into out and advances over them. It reports
-// whether the copy operation was successful
+// CopyBytes copies len(out) bytes into out and advances over them. It returns
+// true on success and false on error.
 func (s *String) CopyBytes(out []byte) bool {
 	n := len(out)
 	v := s.read(n)

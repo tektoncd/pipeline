@@ -21,7 +21,6 @@ import (
 	"golang.org/x/text/internal/gen"
 	"golang.org/x/text/internal/triegen"
 	"golang.org/x/text/internal/ucd"
-	"golang.org/x/text/unicode/bidi"
 )
 
 func main() {
@@ -36,12 +35,6 @@ var runes = map[rune]info{}
 func genTables() {
 	t := triegen.NewTrie("idna")
 
-	ucd.Parse(gen.OpenUCDFile("DerivedNormalizationProps.txt"), func(p *ucd.Parser) {
-		r := p.Rune(0)
-		if p.String(1) == "NFC_QC" { // p.String(2) is "N" or "M"
-			runes[r] = mayNeedNorm
-		}
-	})
 	ucd.Parse(gen.OpenUCDFile("UnicodeData.txt"), func(p *ucd.Parser) {
 		r := p.Rune(0)
 
@@ -51,17 +44,7 @@ func genTables() {
 		}
 		switch {
 		case unicode.In(r, unicode.Mark):
-			runes[r] |= modifier | mayNeedNorm
-		}
-		// TODO: by using UnicodeData.txt we don't mark undefined codepoints
-		// that are earmarked as RTL properly. However, an undefined cp will
-		// always fail, so there is no need to store this info.
-		switch p, _ := bidi.LookupRune(r); p.Class() {
-		case bidi.R, bidi.AL, bidi.AN:
-			if x := runes[r]; x != 0 && x != mayNeedNorm {
-				log.Fatalf("%U: rune both modifier and RTL letter/number", r)
-			}
-			runes[r] = rtl
+			runes[r] |= modifier
 		}
 	})
 
@@ -100,7 +83,7 @@ func genTables() {
 	})
 
 	w := gen.NewCodeWriter()
-	defer w.WriteVersionedGoFile("tables.go", "idna")
+	defer w.WriteGoFile("tables.go", "idna")
 
 	gen.WriteUnicodeVersion(w)
 

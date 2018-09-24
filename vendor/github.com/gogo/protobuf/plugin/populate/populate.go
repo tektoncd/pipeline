@@ -443,7 +443,7 @@ func (p *plugin) GenerateField(file *generator.FileDescriptor, message *generato
 	}
 }
 
-func (p *plugin) hasLoop(pkg string, field *descriptor.FieldDescriptorProto, visited []*generator.Descriptor, excludes []*generator.Descriptor) *generator.Descriptor {
+func (p *plugin) hasLoop(field *descriptor.FieldDescriptorProto, visited []*generator.Descriptor, excludes []*generator.Descriptor) *generator.Descriptor {
 	if field.IsMessage() || p.IsGroup(field) || p.IsMap(field) {
 		var fieldMessage *generator.Descriptor
 		if p.IsMap(field) {
@@ -467,11 +467,11 @@ func (p *plugin) hasLoop(pkg string, field *descriptor.FieldDescriptorProto, vis
 				return fieldMessage
 			}
 		}
-
+		pkg := strings.Split(field.GetTypeName(), ".")[1]
 		for _, f := range fieldMessage.Field {
-			if strings.HasPrefix(f.GetTypeName(), "."+pkg) {
+			if strings.HasPrefix(f.GetTypeName(), "."+pkg+".") {
 				visited = append(visited, fieldMessage)
-				loopTo := p.hasLoop(pkg, f, visited, excludes)
+				loopTo := p.hasLoop(f, visited, excludes)
 				if loopTo != nil {
 					return loopTo
 				}
@@ -481,13 +481,13 @@ func (p *plugin) hasLoop(pkg string, field *descriptor.FieldDescriptorProto, vis
 	return nil
 }
 
-func (p *plugin) loops(pkg string, field *descriptor.FieldDescriptorProto, message *generator.Descriptor) int {
+func (p *plugin) loops(field *descriptor.FieldDescriptorProto, message *generator.Descriptor) int {
 	//fmt.Fprintf(os.Stderr, "loops %v %v\n", field.GetTypeName(), generator.CamelCaseSlice(message.TypeName()))
 	excludes := []*generator.Descriptor{}
 	loops := 0
 	for {
 		visited := []*generator.Descriptor{}
-		loopTo := p.hasLoop(pkg, field, visited, excludes)
+		loopTo := p.hasLoop(field, visited, excludes)
 		if loopTo == nil {
 			break
 		}
@@ -522,7 +522,7 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 		loopLevels := make([]int, len(message.Field))
 		maxLoopLevel := 0
 		for i, field := range message.Field {
-			loopLevels[i] = p.loops(file.GetPackage(), field, message)
+			loopLevels[i] = p.loops(field, message)
 			if loopLevels[i] > maxLoopLevel {
 				maxLoopLevel = loopLevels[i]
 			}
@@ -534,7 +534,7 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 		p.P(`func NewPopulated`, ccTypeName, `(r randy`, p.localName, `, easy bool) *`, ccTypeName, ` {`)
 		p.In()
 		p.P(`this := &`, ccTypeName, `{}`)
-		if gogoproto.IsUnion(message.File().FileDescriptorProto, message.DescriptorProto) && len(message.Field) > 0 {
+		if gogoproto.IsUnion(message.File(), message.DescriptorProto) && len(message.Field) > 0 {
 			p.P(`fieldNum := r.Intn(`, fmt.Sprintf("%d", ranTotal), `)`)
 			p.P(`switch fieldNum {`)
 			k := 0
@@ -667,7 +667,7 @@ func (p *plugin) Generate(file *generator.FileDescriptor) {
 			p.P(`func NewPopulated`, ccTypeName, `(r randy`, p.localName, `, easy bool) *`, ccTypeName, ` {`)
 			p.In()
 			p.P(`this := &`, ccTypeName, `{}`)
-			vanity.TurnOffNullableForNativeTypes(f)
+			vanity.TurnOffNullableForNativeTypesWithoutDefaultsOnly(f)
 			p.GenerateField(file, message, f)
 			p.P(`return this`)
 			p.Out()

@@ -48,9 +48,6 @@ func CommandLine(w io.Writer, fs vfs.NameSpace, pres *Presentation, args []strin
 		// the fake built-in package contains unexported identifiers
 		mode = NoFiltering | NoTypeAssoc
 	}
-	if pres.AllMode {
-		mode |= NoFiltering
-	}
 	if srcMode {
 		// only filter exports if we don't have explicit command-line filter arguments
 		if len(args) > 1 {
@@ -72,8 +69,8 @@ func CommandLine(w io.Writer, fs vfs.NameSpace, pres *Presentation, args []strin
 		abspath = pathpkg.Join(pres.PkgFSRoot(), toolsPath+path)
 		cinfo = pres.GetCmdPageInfo(abspath, relpath, mode)
 		if cinfo.IsEmpty() {
-			// Then try $GOROOT/src/cmd.
-			abspath = pathpkg.Join(pres.CmdFSRoot(), cmdPrefix, path)
+			// Then try $GOROOT/cmd.
+			abspath = pathpkg.Join(pres.CmdFSRoot(), path)
 			cinfo = pres.GetCmdPageInfo(abspath, relpath, mode)
 		}
 	}
@@ -134,25 +131,18 @@ func CommandLine(w io.Writer, fs vfs.NameSpace, pres *Presentation, args []strin
 // for this.  That is, if we get passed a directory like the above, we map that
 // directory so that getPageInfo sees it as /target.
 // Returns the absolute and relative paths.
-func paths(fs vfs.NameSpace, pres *Presentation, path string) (abspath, relpath string) {
+func paths(fs vfs.NameSpace, pres *Presentation, path string) (string, string) {
 	if filepath.IsAbs(path) {
 		fs.Bind(target, vfs.OS(path), "/", vfs.BindReplace)
 		return target, target
 	}
 	if build.IsLocalImport(path) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			log.Printf("error while getting working directory: %v", err)
-		}
+		cwd, _ := os.Getwd() // ignore errors
 		path = filepath.Join(cwd, path)
 		fs.Bind(target, vfs.OS(path), "/", vfs.BindReplace)
 		return target, target
 	}
-	bp, err := build.Import(path, "", build.FindOnly)
-	if err != nil {
-		log.Printf("error while importing build package: %v", err)
-	}
-	if bp.Dir != "" && bp.ImportPath != "" {
+	if bp, _ := build.Import(path, "", build.FindOnly); bp.Dir != "" && bp.ImportPath != "" {
 		fs.Bind(target, vfs.OS(bp.Dir), "/", vfs.BindReplace)
 		return target, bp.ImportPath
 	}

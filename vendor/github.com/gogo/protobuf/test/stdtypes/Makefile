@@ -35,5 +35,3 @@ regenerate:
 	:. \
 	--proto_path=../../../../../:../../protobuf/:. stdtypes.proto
 
-test:
-	go test -race -run=TestConcurrentTextMarshal .

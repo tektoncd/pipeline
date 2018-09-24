@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/glog"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,14 +34,14 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/knative/build/pkg/builder"
-	"github.com/knative/build/pkg/controller"
-
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-
+	"github.com/knative/build/pkg/builder"
 	clientset "github.com/knative/build/pkg/client/clientset/versioned"
 	informers "github.com/knative/build/pkg/client/informers/externalversions"
 	listers "github.com/knative/build/pkg/client/listers/build/v1alpha1"
+	"github.com/knative/build/pkg/controller"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/logging/logkey"
 )
 
 const controllerAgentName = "build-controller"
@@ -65,9 +65,10 @@ type Controller struct {
 	// buildclientset is a clientset for our own API group
 	buildclientset clientset.Interface
 
-	buildsLister         listers.BuildLister
-	buildTemplatesLister listers.BuildTemplateLister
-	buildsSynced         cache.InformerSynced
+	buildsLister                listers.BuildLister
+	buildTemplatesLister        listers.BuildTemplateLister
+	clusterBuildTemplatesLister listers.ClusterBuildTemplateLister
+	buildsSynced                cache.InformerSynced
 
 	// The builder through which work will be done.
 	builder builder.Interface
@@ -81,6 +82,12 @@ type Controller struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
+	// Sugared logger is easier to use but is not as performant as the
+	// raw logger. In performance critical paths, call logger.Desugar()
+	// and use the returned raw logger instead. In addition to the
+	// performance benefits, raw logger also preserves type-safety at
+	// the expense of slightly greater verbosity.
+	logger *zap.SugaredLogger
 }
 
 // NewController returns a new build controller
@@ -89,31 +96,40 @@ func NewController(
 	kubeclientset kubernetes.Interface,
 	buildclientset clientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	buildInformerFactory informers.SharedInformerFactory) controller.Interface {
+	buildInformerFactory informers.SharedInformerFactory,
+	logger *zap.SugaredLogger,
+) controller.Interface {
 
 	// obtain a reference to a shared index informer for the Build type.
 	buildInformer := buildInformerFactory.Build().V1alpha1().Builds()
 	buildTemplateInformer := buildInformerFactory.Build().V1alpha1().BuildTemplates()
+	clusterBuildTemplateInformer := buildInformerFactory.Build().V1alpha1().ClusterBuildTemplates()
+
+	// Enrich the logs with controller name
+	logger = logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
 
 	// Create event broadcaster
-	glog.V(4).Info("Creating event broadcaster")
+	logger.Info("Creating event broadcaster")
+
 	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(glog.Infof)
+	eventBroadcaster.StartLogging(logger.Infof)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	controller := &Controller{
-		builder:              builder,
-		kubeclientset:        kubeclientset,
-		buildclientset:       buildclientset,
-		buildsLister:         buildInformer.Lister(),
-		buildTemplatesLister: buildTemplateInformer.Lister(),
-		buildsSynced:         buildInformer.Informer().HasSynced,
-		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Builds"),
-		recorder:             recorder,
+		builder:                     builder,
+		kubeclientset:               kubeclientset,
+		buildclientset:              buildclientset,
+		buildsLister:                buildInformer.Lister(),
+		buildTemplatesLister:        buildTemplateInformer.Lister(),
+		clusterBuildTemplatesLister: clusterBuildTemplateInformer.Lister(),
+		buildsSynced:                buildInformer.Informer().HasSynced,
+		workqueue:                   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Builds"),
+		recorder:                    recorder,
+		logger:                      logger,
 	}
 
-	glog.Info("Setting up event handlers")
+	logger.Info("Setting up event handlers")
 	// Set up an event handler for when Build resources change
 	buildInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueBuild,
@@ -134,23 +150,23 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer c.workqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
-	glog.Info("Starting Build controller")
+	c.logger.Info("Starting Build controller")
 
 	// Wait for the caches to be synced before starting workers
-	glog.Info("Waiting for informer caches to sync")
+	c.logger.Info("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.buildsSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	glog.Info("Starting workers")
+	c.logger.Info("Starting workers")
 	// Launch two workers to process Build resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 
-	glog.Info("Started workers")
+	c.logger.Info("Started workers")
 	<-stopCh
-	glog.Info("Shutting down workers")
+	c.logger.Info("Shutting down workers")
 
 	return nil
 }
@@ -203,7 +219,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		glog.Infof("Successfully synced '%s'", key)
+		c.logger.Infof("Successfully synced '%s'", key)
 		return nil
 	}(obj); err != nil {
 		runtime.HandleError(err)
@@ -260,23 +276,63 @@ func (c *Controller) syncHandler(key string) error {
 			if err != nil {
 				return err
 			}
-			if err := c.waitForOperationAsync(build, op); err != nil {
-				return err
+
+			// Check if build has timed out
+			if builder.IsTimeout(&build.Status, build.Spec.Timeout) {
+				//cleanup operation and update status
+				timeoutMsg := fmt.Sprintf("Build %q failed to finish within %q", build.Name, build.Spec.Timeout.Duration.String())
+
+				if err := op.Terminate(); err != nil {
+					c.logger.Errorf("Failed to terminate pod: %v", err)
+					return err
+				}
+
+				build.Status.SetCondition(&duckv1alpha1.Condition{
+					Type:    v1alpha1.BuildSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  "BuildTimeout",
+					Message: timeoutMsg,
+				})
+				// update build completed time
+				build.Status.CompletionTime = metav1.Now()
+				c.recorder.Eventf(build, corev1.EventTypeWarning, "BuildTimeout", timeoutMsg)
+
+				if _, err := c.updateStatus(build); err != nil {
+					c.logger.Errorf("Failed to update status for pod: %v", err)
+					return err
+				}
+
+				c.logger.Errorf("Timeout: %v", timeoutMsg)
+				return nil
 			}
+
+			// if not timed out then wait async
+			go c.waitForOperation(build, op)
 		} else {
 			build.Status.Builder = c.builder.Builder()
 			// If the build hasn't even started, then start it and record the operation in our status.
 			// Note that by recording our status, we will trigger a reconciliation, so the wait above
 			// will kick in.
-			var tmpl *v1alpha1.BuildTemplate
+			var tmpl v1alpha1.BuildTemplateInterface
 			if build.Spec.Template != nil {
-				tmpl, err = c.buildTemplatesLister.BuildTemplates(namespace).Get(build.Spec.Template.Name)
-				if err != nil {
-					// The BuildTemplate resource may not exist.
-					if errors.IsNotFound(err) {
-						runtime.HandleError(fmt.Errorf("build template %q in namespace %q does not exist", key, namespace))
+				if build.Spec.Template.Kind == v1alpha1.ClusterBuildTemplateKind {
+					tmpl, err = c.clusterBuildTemplatesLister.Get(build.Spec.Template.Name)
+					if err != nil {
+						// The ClusterBuildTemplate resource may not exist.
+						if errors.IsNotFound(err) {
+							runtime.HandleError(fmt.Errorf("cluster build template %q does not exist", key))
+						}
+						return err
 					}
-					return err
+				} else {
+					tmpl, err = c.buildTemplatesLister.BuildTemplates(namespace).Get(build.Spec.Template.Name)
+					if err != nil {
+						// The BuildTemplate resource may not exist.
+						if errors.IsNotFound(err) {
+							runtime.HandleError(fmt.Errorf("build template %q in namespace %q does not exist", key, namespace))
+						}
+						return err
+					}
 				}
 			}
 			build, err = builder.ApplyTemplate(build, tmpl)
@@ -290,18 +346,21 @@ func (c *Controller) syncHandler(key string) error {
 			}
 			op, err := b.Execute()
 			if err != nil {
-				build.Status.SetCondition(&v1alpha1.BuildCondition{
+				build.Status.SetCondition(&duckv1alpha1.Condition{
 					Type:    v1alpha1.BuildSucceeded,
 					Status:  corev1.ConditionFalse,
 					Reason:  "BuildExecuteFailed",
 					Message: err.Error(),
 				})
+
+				c.recorder.Eventf(build, corev1.EventTypeWarning, "BuildExecuteFailed", "Failed to execute Build %q: %v", build.Name, err)
+
 				if _, err := c.updateStatus(build); err != nil {
 					return err
 				}
 				return err
 			}
-			if err := op.Checkpoint(&build.Status); err != nil {
+			if err := op.Checkpoint(build, &build.Status); err != nil {
 				return err
 			}
 			build, err = c.updateStatus(build)
@@ -315,18 +374,17 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) waitForOperationAsync(build *v1alpha1.Build, op builder.Operation) error {
-	go func() {
-		status, err := op.Wait()
-		if err != nil {
-			glog.Errorf("Error while waiting for operation: %v", err)
-			return
-		}
-		build.Status = *status
-		if _, err := c.updateStatus(build); err != nil {
-			glog.Errorf("Error updating build status: %v", err)
-		}
-	}()
+func (c *Controller) waitForOperation(build *v1alpha1.Build, op builder.Operation) error {
+	status, err := op.Wait()
+	if err != nil {
+		c.logger.Errorf("Error while waiting for operation: %v", err)
+		return err
+	}
+	build.Status = *status
+	if _, err := c.updateStatus(build); err != nil {
+		c.logger.Errorf("Error updating build status: %v", err)
+		return err
+	}
 	return nil
 }
 

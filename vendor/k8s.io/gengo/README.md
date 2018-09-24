@@ -51,6 +51,3 @@ Package namer defines a naming system, for:
 * and defining parallel tracks of names, for making public interfaces and
   private implementations.
 
-## Contributing
-
-Please see [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to contribute.

@@ -31,13 +31,9 @@ import (
 	"github.com/knative/build/pkg/credentials"
 )
 
-const (
-	annotationPrefix = "build.knative.dev/docker-"
-)
+const annotationPrefix = "build.knative.dev/docker-"
 
-var (
-	config dockerConfig
-)
+var config dockerConfig
 
 func flags(fs *flag.FlagSet) {
 	config = dockerConfig{make(map[string]entry)}
@@ -118,16 +114,15 @@ func newEntry(secret string) (*entry, error) {
 	}, nil
 }
 
-type DockerConfigBuilder struct{}
+type dockerConfigBuilder struct{}
 
-func NewBuilder() credentials.Builder {
-	return &DockerConfigBuilder{}
-}
+// NewBuilder returns a new builder for Docker credentials.
+func NewBuilder() credentials.Builder { return &dockerConfigBuilder{} }
 
 // MatchingAnnotations extracts flags for the credential helper
 // from the supplied secret and returns a slice (of length 0 or
 // greater) of applicable domains.
-func (dcb *DockerConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
+func (*dockerConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	var flags []string
 	switch secret.Type {
 	case corev1.SecretTypeBasicAuth:
@@ -144,7 +139,7 @@ func (dcb *DockerConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []str
 	return flags
 }
 
-func (dcb *DockerConfigBuilder) Write() error {
+func (*dockerConfigBuilder) Write() error {
 	dockerDir := filepath.Join(os.Getenv("HOME"), ".docker")
 	dockerConfig := filepath.Join(dockerDir, "config.json")
 	if err := os.MkdirAll(dockerDir, os.ModePerm); err != nil {

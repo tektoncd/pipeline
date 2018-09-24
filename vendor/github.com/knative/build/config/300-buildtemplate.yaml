@@ -21,4 +21,11 @@ spec:
   names:
     kind: BuildTemplate
     plural: buildtemplates
+    categories:
+    - all
+    - knative
   scope: Namespaced
+  additionalPrinterColumns:
+  - name: Age
+    type: date
+    JSONPath: .metadata.creationTimestamp

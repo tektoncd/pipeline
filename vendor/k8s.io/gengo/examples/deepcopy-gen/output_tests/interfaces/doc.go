@@ -20,7 +20,7 @@ limitations under the License.
 package interfaces
 
 type Inner interface {
-	Function() float64
+	function() float64
 	DeepCopyInner() Inner
 }
 

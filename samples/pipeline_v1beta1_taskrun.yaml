@@ -1,0 +1,64 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: integration-test-wizzbang-task-run-sd8f8dfasdfasdfas
+  namespace: default
+spec:
+    taskRef:
+        name: integration-test-wizzbang-task
+    trigger:
+        triggerRef:
+            type: PipelineRun
+            name: wizzbangPipeline-sd8f8dfasdfasdfas
+        prevTasks: [""]
+        nextTasks: ["build-push-sd8f8dfasdfasdfas"]
+    inputs:
+        sources:
+            - name: 'wizzbang'
+              type: 'github'
+              url: 'github.com/wizzbangcorp/wizzbang'
+              branch: 'master'
+              commit: 'HEAD'
+        params:
+            - name: 'image'
+              type: 'string'
+              value: 'gcr.io/wizzbang-staging/wizzbang@234324k32j432k32l4k2a'
+    outputs:
+        artifacts:
+            - name: builtImage
+              type: image
+              storeKey: registry # registy is the name of the ArtifactStore
+    results:
+        runs:
+          name: 'runsBucket'
+          type: 'gcs'
+          url: 'gcs://somebucket/results/runs'
+        logs:
+          name: 'logBucket'
+          type: 'gcs'
+          url: 'gcs://somebucket/results/logs'
+        tests:
+          name: 'testBucket'
+          type: 'gcs'
+          url: 'gcs://somebucket/results/tests'
+status:
+    steps:
+    - name: test
+      logsURL: 'gcs://somebucket/results/tests/test-wizzbang-task-run-sd8f8dfasdfasdfas/test'
+      exitCode: 0
+    conditions:
+    - type: Started
+      status: "True"
+      lastTransitionTime: "2018-10-04T12:25:39Z"
+      reason: pipelineRun
+      message: "Task has been triggered by a Pipeline run"
+    - type: Completed
+      status: "True"
+      lastTransitionTime: "2018-10-04T13:25:39Z"
+      reason: done
+      message: "Pipeline execution has finished"
+    - type: Successful
+      status: "True"
+      lastTransitionTime: "2018-10-04T13:25:39Z"
+      reason: zeroExitCode
+      message: "All steps completed with an exit code of 0"

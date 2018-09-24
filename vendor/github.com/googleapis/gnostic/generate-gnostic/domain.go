@@ -51,8 +51,6 @@ func NewDomain(schema *jsonschema.Schema, version string) *Domain {
 
 // TypeNameForStub returns a capitalized name to use for a generated type.
 func (domain *Domain) TypeNameForStub(stub string) string {
-
-
 	return domain.Prefix + strings.ToUpper(stub[0:1]) + stub[1:len(stub)]
 }
 

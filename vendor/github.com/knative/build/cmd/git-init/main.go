@@ -21,7 +21,8 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/golang/glog"
+	"github.com/knative/pkg/logging"
+	"go.uber.org/zap"
 )
 
 var (
@@ -29,18 +30,31 @@ var (
 	revision = flag.String("revision", "", "The Git revision to make the repository HEAD")
 )
 
-func runOrFail(cmd string, args ...string) {
+func run(logger *zap.SugaredLogger, cmd string, args ...string) {
 	c := exec.Command(cmd, args...)
 	var output bytes.Buffer
 	c.Stderr = &output
 	c.Stdout = &output
 	if err := c.Run(); err != nil {
-		glog.Fatalf("Unexpected error running %v %v: %v\n%v", cmd, args, err, output.String())
+		logger.Errorf("Error running %v %v: %v\n%v", cmd, args, err, output.String())
+	}
+}
+
+func runOrFail(logger *zap.SugaredLogger, cmd string, args ...string) {
+	c := exec.Command(cmd, args...)
+	var output bytes.Buffer
+	c.Stderr = &output
+	c.Stdout = &output
+
+	if err := c.Run(); err != nil {
+		logger.Fatalf("Unexpected error running %v %v: %v\n%v", cmd, args, err, output.String())
 	}
 }
 
 func main() {
 	flag.Parse()
+	logger, _ := logging.NewLogger("", "git-init")
+	defer logger.Sync()
 
 	// HACK HACK HACK
 	// Git seems to ignore $HOME/.ssh and look in /root/.ssh for unknown reasons.
@@ -49,13 +63,13 @@ func main() {
 	// custom steps.
 	err := os.Symlink("/builder/home/.ssh", "/root/.ssh")
 	if err != nil {
-		glog.Fatalf("Unexpected error creating symlink: %v", err)
+		logger.Fatalf("Unexpected error creating symlink: %v", err)
 	}
 
-	runOrFail("git", "init")
-	runOrFail("git", "remote", "add", "origin", *url)
-	runOrFail("git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision)
-	runOrFail("git", "reset", "--hard", "FETCH_HEAD")
+	run(logger, "git", "init")
+	run(logger, "git", "remote", "add", "origin", *url)
+	runOrFail(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision)
+	runOrFail(logger, "git", "reset", "--hard", "FETCH_HEAD")
 
-	glog.Infof("Successfully cloned %q @ %q", *url, *revision)
+	logger.Infof("Successfully cloned %q @ %q", *url, *revision)
 }

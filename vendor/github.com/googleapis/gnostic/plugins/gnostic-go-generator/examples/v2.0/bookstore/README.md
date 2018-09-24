@@ -2,11 +2,11 @@
 
 This directory contains an OpenAPI description of a simple bookstore API.
 
-Use this example to try the `gnostic-go-generator` plugin, which implements
-`gnostic-go-client` and `gnostic-go-server` for generating API client and
+Use this example to try the `openapi_go_generator` plugin, which implements
+`openapi_go_client` and `openapi_go_server` for generating API client and
 server code, respectively.
 
-Run "make all" to build and install `gnostic` and the Go plugins.
+Run "make all" to build and install `openapic` and the Go plugins.
 It will generate both client and server code. The API client and
 server code will be in the `bookstore` package. 
 

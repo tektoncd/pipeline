@@ -6,13 +6,17 @@
 
 package blake2s
 
-import "golang.org/x/sys/cpu"
-
 var (
 	useSSE4  = false
-	useSSSE3 = cpu.X86.HasSSSE3
-	useSSE2  = cpu.X86.HasSSE2
+	useSSSE3 = supportSSSE3()
+	useSSE2  = supportSSE2()
 )
+
+//go:noescape
+func supportSSE2() bool
+
+//go:noescape
+func supportSSSE3() bool
 
 //go:noescape
 func hashBlocksSSE2(h *[8]uint32, c *[2]uint32, flag uint32, blocks []byte)
@@ -21,12 +25,11 @@ func hashBlocksSSE2(h *[8]uint32, c *[2]uint32, flag uint32, blocks []byte)
 func hashBlocksSSSE3(h *[8]uint32, c *[2]uint32, flag uint32, blocks []byte)
 
 func hashBlocks(h *[8]uint32, c *[2]uint32, flag uint32, blocks []byte) {
-	switch {
-	case useSSSE3:
+	if useSSSE3 {
 		hashBlocksSSSE3(h, c, flag, blocks)
-	case useSSE2:
+	} else if useSSE2 {
 		hashBlocksSSE2(h, c, flag, blocks)
-	default:
+	} else {
 		hashBlocksGeneric(h, c, flag, blocks)
 	}
 }

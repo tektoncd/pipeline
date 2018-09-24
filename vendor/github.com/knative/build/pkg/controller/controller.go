@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"go.uber.org/zap"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -34,8 +35,17 @@ func init() {
 	buildscheme.AddToScheme(scheme.Scheme)
 }
 
+// Interface is the interface of a controller.
 type Interface interface {
 	Run(threadiness int, stopCh <-chan struct{}) error
 }
 
-type Constructor func(builder.Interface, kubernetes.Interface, clientset.Interface, kubeinformers.SharedInformerFactory, informers.SharedInformerFactory) Interface
+// Constructor defines the method signature for a controller constructor.
+type Constructor func(
+	builder.Interface,
+	kubernetes.Interface,
+	clientset.Interface,
+	kubeinformers.SharedInformerFactory,
+	informers.SharedInformerFactory,
+	*zap.SugaredLogger,
+) Interface

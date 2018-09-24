@@ -1,2 +1,0 @@
-NAME	BUILDER	TYPE	STATUS	START	END
-.metadata.name	.status.builder	.status.conditions[*].state	.status.conditions[*].status	.status.startTime	.status.completionTime

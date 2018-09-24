@@ -47,16 +47,15 @@ func init() {
 	flags(flag.CommandLine)
 }
 
-type GitConfigBuilder struct{}
+type gitConfigBuilder struct{}
 
-func NewBuilder() credentials.Builder {
-	return &GitConfigBuilder{}
-}
+// NewBuilder returns a new builder for Git credentials.
+func NewBuilder() credentials.Builder { return &gitConfigBuilder{} }
 
 // MatchingAnnotations extracts flags for the credential helper
 // from the supplied secret and returns a slice (of length 0 or
 // greater) of applicable domains.
-func (dcb *GitConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
+func (*gitConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	var flagName string
 	var flags []string
 	switch secret.Type {
@@ -78,7 +77,7 @@ func (dcb *GitConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string
 	return flags
 }
 
-func (dcb *GitConfigBuilder) Write() error {
+func (*gitConfigBuilder) Write() error {
 	if err := basicConfig.Write(); err != nil {
 		return err
 	}

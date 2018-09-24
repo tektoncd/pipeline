@@ -37,10 +37,6 @@ func (fs gatefs) String() string {
 	return fmt.Sprintf("gated(%s, %d)", fs.fs.String(), cap(fs.gate))
 }
 
-func (fs gatefs) RootType(path string) vfs.RootType {
-	return fs.fs.RootType(path)
-}
-
 func (fs gatefs) Open(p string) (vfs.ReadSeekCloser, error) {
 	fs.enter()
 	defer fs.leave()

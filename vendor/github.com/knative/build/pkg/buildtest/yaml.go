@@ -39,6 +39,7 @@ func convert(i interface{}) interface{} {
 	return i
 }
 
+// YAMLToJSON converts the given YAML bytes to JSON bytes.
 func YAMLToJSON(y []byte) ([]byte, error) {
 	var body interface{}
 	if err := yaml.Unmarshal(y, &body); err != nil {

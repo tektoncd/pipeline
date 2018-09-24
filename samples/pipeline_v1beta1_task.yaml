@@ -1,0 +1,25 @@
+apiVersion: pipeline.knative.dev/v1beta1
+kind: Task
+metadata:
+  name: build-push-task
+  namespace: default
+spec:
+    inputs:
+        sources:
+            - name: workspace
+        params:
+            - name: PATH_TO_DOCKERFILE
+              type: string
+    outputs:
+        artifacts:
+            - name: builtImage
+              type: image
+              storeKey: registry # registy is the name of the ArtifactStore
+    buildSpec:
+        template:
+            name: kaniko
+            arguments:
+                - name: DOCKERFILE
+                  value: ${PATH_TO_DOCKERFILE}
+                - name: REGISTRY
+                  value: ${REGISTRY}

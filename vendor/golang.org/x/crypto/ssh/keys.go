@@ -276,8 +276,7 @@ type PublicKey interface {
 	Type() string
 
 	// Marshal returns the serialized key data in SSH wire format,
-	// with the name prefix. To unmarshal the returned data, use
-	// the ParsePublicKey function.
+	// with the name prefix.
 	Marshal() []byte
 
 	// Verify that sig is a signature on the given data using this
@@ -364,19 +363,8 @@ func (r *rsaPublicKey) CryptoPublicKey() crypto.PublicKey {
 
 type dsaPublicKey dsa.PublicKey
 
-func (k *dsaPublicKey) Type() string {
+func (r *dsaPublicKey) Type() string {
 	return "ssh-dss"
-}
-
-func checkDSAParams(param *dsa.Parameters) error {
-	// SSH specifies FIPS 186-2, which only provided a single size
-	// (1024 bits) DSA key. FIPS 186-3 allows for larger key
-	// sizes, which would confuse SSH.
-	if l := param.P.BitLen(); l != 1024 {
-		return fmt.Errorf("ssh: unsupported DSA key size %d", l)
-	}
-
-	return nil
 }
 
 // parseDSA parses an DSA key according to RFC 4253, section 6.6.
@@ -389,18 +377,13 @@ func parseDSA(in []byte) (out PublicKey, rest []byte, err error) {
 		return nil, nil, err
 	}
 
-	param := dsa.Parameters{
-		P: w.P,
-		Q: w.Q,
-		G: w.G,
-	}
-	if err := checkDSAParams(&param); err != nil {
-		return nil, nil, err
-	}
-
 	key := &dsaPublicKey{
-		Parameters: param,
-		Y:          w.Y,
+		Parameters: dsa.Parameters{
+			P: w.P,
+			Q: w.Q,
+			G: w.G,
+		},
+		Y: w.Y,
 	}
 	return key, w.Rest, nil
 }
@@ -482,12 +465,12 @@ func (k *dsaPrivateKey) Sign(rand io.Reader, data []byte) (*Signature, error) {
 
 type ecdsaPublicKey ecdsa.PublicKey
 
-func (k *ecdsaPublicKey) Type() string {
-	return "ecdsa-sha2-" + k.nistID()
+func (key *ecdsaPublicKey) Type() string {
+	return "ecdsa-sha2-" + key.nistID()
 }
 
-func (k *ecdsaPublicKey) nistID() string {
-	switch k.Params().BitSize {
+func (key *ecdsaPublicKey) nistID() string {
+	switch key.Params().BitSize {
 	case 256:
 		return "nistp256"
 	case 384:
@@ -500,7 +483,7 @@ func (k *ecdsaPublicKey) nistID() string {
 
 type ed25519PublicKey ed25519.PublicKey
 
-func (k ed25519PublicKey) Type() string {
+func (key ed25519PublicKey) Type() string {
 	return KeyAlgoED25519
 }
 
@@ -519,23 +502,23 @@ func parseED25519(in []byte) (out PublicKey, rest []byte, err error) {
 	return (ed25519PublicKey)(key), w.Rest, nil
 }
 
-func (k ed25519PublicKey) Marshal() []byte {
+func (key ed25519PublicKey) Marshal() []byte {
 	w := struct {
 		Name     string
 		KeyBytes []byte
 	}{
 		KeyAlgoED25519,
-		[]byte(k),
+		[]byte(key),
 	}
 	return Marshal(&w)
 }
 
-func (k ed25519PublicKey) Verify(b []byte, sig *Signature) error {
-	if sig.Format != k.Type() {
-		return fmt.Errorf("ssh: signature type %s for key type %s", sig.Format, k.Type())
+func (key ed25519PublicKey) Verify(b []byte, sig *Signature) error {
+	if sig.Format != key.Type() {
+		return fmt.Errorf("ssh: signature type %s for key type %s", sig.Format, key.Type())
 	}
 
-	edKey := (ed25519.PublicKey)(k)
+	edKey := (ed25519.PublicKey)(key)
 	if ok := ed25519.Verify(edKey, b, sig.Blob); !ok {
 		return errors.New("ssh: signature did not verify")
 	}
@@ -596,9 +579,9 @@ func parseECDSA(in []byte) (out PublicKey, rest []byte, err error) {
 	return (*ecdsaPublicKey)(key), w.Rest, nil
 }
 
-func (k *ecdsaPublicKey) Marshal() []byte {
+func (key *ecdsaPublicKey) Marshal() []byte {
 	// See RFC 5656, section 3.1.
-	keyBytes := elliptic.Marshal(k.Curve, k.X, k.Y)
+	keyBytes := elliptic.Marshal(key.Curve, key.X, key.Y)
 	// ECDSA publickey struct layout should match the struct used by
 	// parseECDSACert in the x/crypto/ssh/agent package.
 	w := struct {
@@ -606,20 +589,20 @@ func (k *ecdsaPublicKey) Marshal() []byte {
 		ID   string
 		Key  []byte
 	}{
-		k.Type(),
-		k.nistID(),
+		key.Type(),
+		key.nistID(),
 		keyBytes,
 	}
 
 	return Marshal(&w)
 }
 
-func (k *ecdsaPublicKey) Verify(data []byte, sig *Signature) error {
-	if sig.Format != k.Type() {
-		return fmt.Errorf("ssh: signature type %s for key type %s", sig.Format, k.Type())
+func (key *ecdsaPublicKey) Verify(data []byte, sig *Signature) error {
+	if sig.Format != key.Type() {
+		return fmt.Errorf("ssh: signature type %s for key type %s", sig.Format, key.Type())
 	}
 
-	h := ecHash(k.Curve).New()
+	h := ecHash(key.Curve).New()
 	h.Write(data)
 	digest := h.Sum(nil)
 
@@ -636,7 +619,7 @@ func (k *ecdsaPublicKey) Verify(data []byte, sig *Signature) error {
 		return err
 	}
 
-	if ecdsa.Verify((*ecdsa.PublicKey)(k), digest, ecSig.R, ecSig.S) {
+	if ecdsa.Verify((*ecdsa.PublicKey)(key), digest, ecSig.R, ecSig.S) {
 		return nil
 	}
 	return errors.New("ssh: signature did not verify")
@@ -647,26 +630,17 @@ func (k *ecdsaPublicKey) CryptoPublicKey() crypto.PublicKey {
 }
 
 // NewSignerFromKey takes an *rsa.PrivateKey, *dsa.PrivateKey,
-// *ecdsa.PrivateKey or any other crypto.Signer and returns a
-// corresponding Signer instance. ECDSA keys must use P-256, P-384 or
-// P-521. DSA keys must use parameter size L1024N160.
+// *ecdsa.PrivateKey or any other crypto.Signer and returns a corresponding
+// Signer instance. ECDSA keys must use P-256, P-384 or P-521.
 func NewSignerFromKey(key interface{}) (Signer, error) {
 	switch key := key.(type) {
 	case crypto.Signer:
 		return NewSignerFromSigner(key)
 	case *dsa.PrivateKey:
-		return newDSAPrivateKey(key)
+		return &dsaPrivateKey{key}, nil
 	default:
 		return nil, fmt.Errorf("ssh: unsupported key type %T", key)
 	}
-}
-
-func newDSAPrivateKey(key *dsa.PrivateKey) (Signer, error) {
-	if err := checkDSAParams(&key.PublicKey.Parameters); err != nil {
-		return nil, err
-	}
-
-	return &dsaPrivateKey{key}, nil
 }
 
 type wrappedSigner struct {
@@ -759,7 +733,7 @@ func NewPublicKey(key interface{}) (PublicKey, error) {
 		return (*rsaPublicKey)(key), nil
 	case *ecdsa.PublicKey:
 		if !supportedEllipticCurve(key.Curve) {
-			return nil, errors.New("ssh: only P-256, P-384 and P-521 EC keys are supported")
+			return nil, errors.New("ssh: only P-256, P-384 and P-521 EC keys are supported.")
 		}
 		return (*ecdsaPublicKey)(key), nil
 	case *dsa.PublicKey:

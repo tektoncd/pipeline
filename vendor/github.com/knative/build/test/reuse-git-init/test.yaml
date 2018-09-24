@@ -1,0 +1,60 @@
+# Copyright 2018 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: build.knative.dev/v1alpha1
+kind: Build
+metadata:
+  name: test-reuse-git-init
+  labels:
+    expect: succeeded
+spec:
+  # First, implicitly use git-init to fetch and checkout master.
+  source:
+    git:
+      url: https://github.com/bazelbuild/rules_docker
+      revision: master
+  steps:
+  # Dump WORKSPACE from this revision.
+  - name: cat-workspace
+    image: busybox
+    args: ['cat', 'WORKSPACE']
+
+  # Then fetch and checkout a tag, and cat WORKSPACE.
+  - name: checkout-tag
+    image: github.com/knative/build/cmd/git-init
+    args:
+    - -url=https://github.com/bazelbuild/rules_docker
+    - -revision=v0.4.0
+  - name: cat-workspace-tag
+    image: busybox
+    args: ['cat', 'WORKSPACE']
+
+  # Fetch and checkout the master branch again, and cat WORKSPACE.
+  - name: checkout-branch
+    image: github.com/knative/build/cmd/git-init
+    args:
+    - -url=https://github.com/bazelbuild/rules_docker
+    - -revision=master
+  - name: cat-workspace-branch
+    image: busybox
+    args: ['cat', 'WORKSPACE']
+
+  # Fetch and checkout another repo entirely, and cat its WORKSPACE.
+  - name: checkout-other-repo
+    image: github.com/knative/build/cmd/git-init
+    args:
+    - -url=https://github.com/bazelbuild/rules_k8s
+    - -revision=master
+  - name: cat-workspace-other-repo
+    image: busybox
+    args: ['cat', 'WORKSPACE']

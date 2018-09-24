@@ -93,10 +93,7 @@ func (dc *basicGitConfig) Write() error {
 	}
 	gitCredentials = append(gitCredentials, "") // Get a trailing newline
 	gitCredentialsContent := strings.Join(gitCredentials, "\n")
-	if err := ioutil.WriteFile(gitCredentialsPath, []byte(gitCredentialsContent), 0600); err != nil {
-		return err
-	}
-	return nil
+	return ioutil.WriteFile(gitCredentialsPath, []byte(gitCredentialsContent), 0600)
 }
 
 type basicEntry struct {

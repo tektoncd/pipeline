@@ -59,7 +59,7 @@ func (c *FakeBuildTemplates) List(opts v1.ListOptions) (result *v1alpha1.BuildTe
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha1.BuildTemplateList{}
+	list := &v1alpha1.BuildTemplateList{ListMeta: obj.(*v1alpha1.BuildTemplateList).ListMeta}
 	for _, item := range obj.(*v1alpha1.BuildTemplateList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)

@@ -8,7 +8,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"golang.org/x/sys/windows/svc"
@@ -27,7 +26,6 @@ func (m *myservice) Execute(args []string, r <-chan svc.ChangeRequest, changes c
 	slowtick := time.Tick(2 * time.Second)
 	tick := fasttick
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
-	elog.Info(1, strings.Join(args, "-"))
 loop:
 	for {
 		select {

@@ -19,8 +19,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
-	"runtime"
 	"runtime/pprof"
 	"strings"
 	"sync"
@@ -40,14 +38,6 @@ var (
 
 func init() {
 	flag.Var((*buildutil.TagsFlag)(&build.Default.BuildTags), "tags", buildutil.TagsFlagDoc)
-
-	// gccgo does not provide a GOROOT with standard library sources.
-	// If we have one in the environment, force gc mode.
-	if build.Default.Compiler == "gccgo" {
-		if _, err := os.Stat(filepath.Join(runtime.GOROOT(), "src", "runtime", "runtime.go")); err == nil {
-			build.Default.Compiler = "gc"
-		}
-	}
 }
 
 const useHelp = "Run 'guru -help' for more information.\n"

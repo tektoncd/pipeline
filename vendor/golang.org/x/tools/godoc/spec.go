@@ -74,7 +74,7 @@ func (p *ebnfParser) parseTerm() bool {
 	case scanner.Ident:
 		p.parseIdentifier(false)
 
-	case scanner.String, scanner.RawString:
+	case scanner.String:
 		p.next()
 		const ellipsis = '…' // U+2026, the horizontal ellipsis character
 		if p.tok == ellipsis {

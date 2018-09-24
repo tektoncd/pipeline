@@ -28,7 +28,6 @@ type options struct {
 	width         transform.SpanningTransformer
 	disallowEmpty bool
 	bidiRule      bool
-	repeat        bool
 
 	// Comparison options
 	ignorecase bool
@@ -78,9 +77,6 @@ var (
 	}
 	bidiRule = func(o *options) {
 		o.bidiRule = true
-	}
-	repeat = func(o *options) {
-		o.repeat = true
 	}
 )
 

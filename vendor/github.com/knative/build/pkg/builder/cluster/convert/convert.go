@@ -13,12 +13,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package convert provides methods to convert a Build CRD to a k8s Pod
+// resource.
 package convert
 
 import (
 	"flag"
 	"fmt"
-	"reflect"
+	"path/filepath"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +36,8 @@ import (
 	"github.com/knative/build/pkg/credentials/gitcreds"
 )
 
+const workspaceDir = "/workspace"
+
 // These are effectively const, but Go doesn't have such an annotation.
 var (
 	emptyVolumeSource = corev1.VolumeSource{
@@ -45,7 +50,7 @@ var (
 	}}
 	implicitVolumeMounts = []corev1.VolumeMount{{
 		Name:      "workspace",
-		MountPath: "/workspace",
+		MountPath: workspaceDir,
 	}, {
 		Name:      "home",
 		MountPath: "/builder/home",
@@ -57,13 +62,6 @@ var (
 		Name:         "home",
 		VolumeSource: emptyVolumeSource,
 	}}
-	// A benign placeholder for when a container is required, but none was specified.
-	nopContainer = corev1.Container{
-		Name:    "nop",
-		Image:   "busybox",
-		Command: []string{"/bin/echo"},
-		Args:    []string{"Nothing to push"},
-	}
 )
 
 func validateVolumes(vs []corev1.Volume) error {
@@ -84,7 +82,7 @@ const (
 	initContainerPrefix        = "build-step-"
 	unnamedInitContainerPrefix = "build-step-unnamed-"
 	// A label with the following is added to the pod to identify the pods belonging to a build.
-	buildNameLabelKey = "build-name"
+	buildNameLabelKey = "build.knative.dev/buildName"
 	// Name of the credential initialization container.
 	credsInit = "credential-initializer"
 	// Names for source containers.
@@ -100,6 +98,9 @@ var (
 	// The container with Git that we use to implement the Git source step.
 	gitImage = flag.String("git-image", "override-with-git:latest",
 		"The container image containing our Git binary.")
+	// The container that just prints build successful.
+	nopImage = flag.String("nop-image", "override-with-nop:latest",
+		"The container image run at the end of the build to log build success")
 	gcsFetcherImage = flag.String("gcs-fetcher-image", "gcr.io/cloud-builders/gcs-fetcher:latest",
 		"The container image containing our GCS fetcher binary.")
 )
@@ -123,12 +124,15 @@ func gitToContainer(git *v1alpha1.GitSourceSpec) (*corev1.Container, error) {
 		return nil, validation.NewError("MissingRevision", "git sources are expected to specify a Revision, got: %v", git)
 	}
 	return &corev1.Container{
-		Name:  gitSource,
+		Name:  initContainerPrefix + gitSource,
 		Image: *gitImage,
 		Args: []string{
 			"-url", git.Url,
 			"-revision", git.Revision,
 		},
+		VolumeMounts: implicitVolumeMounts,
+		WorkingDir:   workspaceDir,
+		Env:          implicitEnvVars,
 	}, nil
 }
 
@@ -153,9 +157,12 @@ func gcsToContainer(gcs *v1alpha1.GCSSourceSpec) (*corev1.Container, error) {
 		return nil, validation.NewError("MissingLocation", "gcs sources are expected to specify a Location, got: %v", gcs)
 	}
 	return &corev1.Container{
-		Name:  gcsSource,
-		Image: *gcsFetcherImage,
-		Args:  []string{"--type", string(gcs.Type), "--location", gcs.Location},
+		Name:         initContainerPrefix + gcsSource,
+		Image:        *gcsFetcherImage,
+		Args:         []string{"--type", string(gcs.Type), "--location", gcs.Location},
+		VolumeMounts: implicitVolumeMounts,
+		WorkingDir:   workspaceDir,
+		Env:          implicitEnvVars,
 	}, nil
 }
 
@@ -192,21 +199,6 @@ func containerToCustom(custom corev1.Container) (*v1alpha1.SourceSpec, error) {
 	return &v1alpha1.SourceSpec{Custom: c}, nil
 }
 
-func sourceToContainer(source *v1alpha1.SourceSpec) (*corev1.Container, error) {
-	switch {
-	case source == nil:
-		return nil, nil
-	case source.Git != nil:
-		return gitToContainer(source.Git)
-	case source.GCS != nil:
-		return gcsToContainer(source.GCS)
-	case source.Custom != nil:
-		return customToContainer(source.Custom)
-	default:
-		return nil, validation.NewError("UnrecognizedSource", "saw SourceSpec with no supported contents: %v", source)
-	}
-}
-
 func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Container, []corev1.Volume, error) {
 	serviceAccountName := build.Spec.ServiceAccountName
 	if serviceAccountName == "" {
@@ -222,7 +214,7 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 
 	// Collect the volume declarations, there mounts into the cred-init container, and the arguments to it.
 	volumes := []corev1.Volume{}
-	volumeMounts := []corev1.VolumeMount{}
+	volumeMounts := implicitVolumeMounts
 	args := []string{}
 	for _, secretEntry := range sa.Secrets {
 		secret, err := kubeclient.CoreV1().Secrets(build.Namespace).Get(secretEntry.Name, metav1.GetOptions{})
@@ -256,13 +248,17 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 	}
 
 	return &corev1.Container{
-		Name:         credsInit,
+		Name:         initContainerPrefix + credsInit,
 		Image:        *credsImage,
 		Args:         args,
 		VolumeMounts: volumeMounts,
+		Env:          implicitEnvVars,
+		WorkingDir:   workspaceDir,
 	}, volumes, nil
 }
 
+// FromCRD converts a Build object to a Pod which implements the build specified
+// by the supplied CRD.
 func FromCRD(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
 	build = build.DeepCopy()
 
@@ -270,36 +266,73 @@ func FromCRD(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 	if err != nil {
 		return nil, err
 	}
-	setupContainers := []corev1.Container{*cred}
-	extraVolumes := append(implicitVolumes, secrets...)
 
-	if build.Spec.Source != nil {
-		scm, err := sourceToContainer(build.Spec.Source)
-		if err != nil {
-			return nil, err
+	initContainers := []corev1.Container{*cred}
+	workspaceSubPath := ""
+	if source := build.Spec.Source; source != nil {
+		switch {
+		case source.Git != nil:
+			git, err := gitToContainer(source.Git)
+			if err != nil {
+				return nil, err
+			}
+			initContainers = append(initContainers, *git)
+		case source.GCS != nil:
+			gcs, err := gcsToContainer(source.GCS)
+			if err != nil {
+				return nil, err
+			}
+			initContainers = append(initContainers, *gcs)
+		case source.Custom != nil:
+			cust, err := customToContainer(source.Custom)
+			if err != nil {
+				return nil, err
+			}
+			// Prepend the custom container to the steps, to be augmented later with env, volume mounts, etc.
+			build.Spec.Steps = append([]corev1.Container{*cust}, build.Spec.Steps...)
 		}
-		setupContainers = append(setupContainers, *scm)
+
+		workspaceSubPath = build.Spec.Source.SubPath
 	}
 
-	// Add the implicit volume mounts to each step container.
-	var initContainers []corev1.Container
-	for i, step := range append(setupContainers, build.Spec.Steps...) {
+	for i, step := range build.Spec.Steps {
+		step.Env = append(implicitEnvVars, step.Env...)
+		// TODO(mattmoor): Check that volumeMounts match volumes.
+
+		// Add implicit volume mounts, unless the user has requested
+		// their own volume mount at that path.
+		requestedVolumeMounts := map[string]bool{}
+		for _, vm := range step.VolumeMounts {
+			requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
+		}
+		for _, imp := range implicitVolumeMounts {
+			if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
+				// If the build's source specifies a subpath,
+				// use that in the implicit workspace volume
+				// mount.
+				if workspaceSubPath != "" && imp.Name == "workspace" {
+					imp.SubPath = workspaceSubPath
+				}
+				step.VolumeMounts = append(step.VolumeMounts, imp)
+			}
+		}
+
 		if step.WorkingDir == "" {
-			step.WorkingDir = "/workspace"
+			step.WorkingDir = workspaceDir
 		}
 		if step.Name == "" {
 			step.Name = fmt.Sprintf("%v%d", unnamedInitContainerPrefix, i)
 		} else {
 			step.Name = fmt.Sprintf("%v%v", initContainerPrefix, step.Name)
 		}
-		step.Env = append(implicitEnvVars, step.Env...)
-		// TODO(mattmoor): Check that volumeMounts match volumes.
-		step.VolumeMounts = append(step.VolumeMounts, implicitVolumeMounts...)
+
 		initContainers = append(initContainers, step)
 	}
+
 	// Add our implicit volumes and any volumes needed for secrets to the explicitly
 	// declared user volumes.
-	volumes := append(build.Spec.Volumes, extraVolumes...)
+	volumes := append(build.Spec.Volumes, implicitVolumes...)
+	volumes = append(volumes, secrets...)
 	if err := validateVolumes(volumes); err != nil {
 		return nil, err
 	}
@@ -328,11 +361,16 @@ func FromCRD(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 		},
 		Spec: corev1.PodSpec{
 			// If the build fails, don't restart it.
-			RestartPolicy:      corev1.RestartPolicyNever,
-			InitContainers:     initContainers,
-			Containers:         []corev1.Container{nopContainer},
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: initContainers,
+			Containers: []corev1.Container{{
+				Name:  "nop",
+				Image: *nopImage,
+			}},
 			ServiceAccountName: build.Spec.ServiceAccountName,
 			Volumes:            volumes,
+			NodeSelector:       build.Spec.NodeSelector,
+			Affinity:           build.Spec.Affinity,
 		},
 	}, nil
 }
@@ -400,21 +438,27 @@ func filterImplicitVolumes(vs []corev1.Volume) []corev1.Volume {
 	return volumes
 }
 
+// ToCRD coverts a Pod generated by FromCRD back to a custom resource
+// definition. This function is only used for testing.
 func ToCRD(pod *corev1.Pod) (*v1alpha1.Build, error) {
 	podSpec := pod.Spec.DeepCopy()
 
-	for _, c := range podSpec.Containers {
-		if !reflect.DeepEqual(c, nopContainer) {
-			return nil, fmt.Errorf("unrecognized container spec, got: %v", podSpec.Containers)
-		}
+	if len(podSpec.Containers) != 1 {
+		return nil, fmt.Errorf("unrecognized container spec, got: %v", podSpec.Containers)
 	}
 
+	subPath := ""
 	var steps []corev1.Container
 	for _, step := range podSpec.InitContainers {
-		if step.WorkingDir == "/workspace" {
+		if step.WorkingDir == workspaceDir {
 			step.WorkingDir = ""
 		}
 		step.Env = filterImplicitEnvVars(step.Env)
+		for _, m := range step.VolumeMounts {
+			if m.Name == "workspace" && m.SubPath != "" && subPath == "" {
+				subPath = m.SubPath
+			}
+		}
 		step.VolumeMounts = filterImplicitVolumeMounts(step.VolumeMounts)
 		// Strip the init container prefix that is added automatically.
 		if strings.HasPrefix(step.Name, unnamedInitContainerPrefix) {
@@ -440,6 +484,9 @@ func ToCRD(pod *corev1.Pod) (*v1alpha1.Build, error) {
 		// The first init container is actually a source step.  Convert
 		// it to our source spec and pop it off the list of steps.
 		scm = src
+		if subPath != "" {
+			scm.SubPath = subPath
+		}
 		steps = steps[1:]
 	}
 
@@ -450,6 +497,8 @@ func ToCRD(pod *corev1.Pod) (*v1alpha1.Build, error) {
 			Steps:              steps,
 			ServiceAccountName: podSpec.ServiceAccountName,
 			Volumes:            volumes,
+			NodeSelector:       podSpec.NodeSelector,
+			Affinity:           podSpec.Affinity,
 		},
 	}, nil
 }

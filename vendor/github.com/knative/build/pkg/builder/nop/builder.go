@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package nop provides a no-op builder implementation.
 package nop
 
 import (
@@ -23,38 +25,40 @@ import (
 
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	buildercommon "github.com/knative/build/pkg/builder"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 )
 
-const (
-	OperationName = "nop"
-)
+const operationName = "nop"
 
 var (
-	StartTime      = metav1.NewTime(time.Unix(0, 0))
-	CompletionTime = metav1.NewTime(time.Unix(30, 0))
+	startTime      = metav1.NewTime(time.Unix(0, 0))
+	completionTime = metav1.NewTime(time.Unix(30, 0))
 )
 
 type operation struct {
 	builder *Builder
 }
 
-func (nb *operation) Name() string {
-	return OperationName
-}
+func (nb *operation) Name() string { return operationName }
 
-func (nb *operation) Checkpoint(status *v1alpha1.BuildStatus) error {
+func (nb *operation) Checkpoint(_ *v1alpha1.Build, status *v1alpha1.BuildStatus) error {
 	// Masquerade as the Google builder.
 	status.Builder = v1alpha1.GoogleBuildProvider
 	if status.Google == nil {
 		status.Google = &v1alpha1.GoogleSpec{}
 	}
 	status.Google.Operation = nb.Name()
-	status.StartTime = StartTime
-	status.SetCondition(&v1alpha1.BuildCondition{
+	status.CreationTime = startTime
+	status.StartTime = startTime
+	status.SetCondition(&duckv1alpha1.Condition{
 		Type:   v1alpha1.BuildSucceeded,
 		Status: corev1.ConditionUnknown,
 		Reason: "Building",
 	})
+	return nil
+}
+
+func (nb *operation) Terminate() error {
 	return nil
 }
 
@@ -65,19 +69,20 @@ func (nb *operation) Wait() (*v1alpha1.BuildStatus, error) {
 		Google: &v1alpha1.GoogleSpec{
 			Operation: nb.Name(),
 		},
-		StartTime:      StartTime,
-		CompletionTime: CompletionTime,
+		CreationTime:   startTime,
+		StartTime:      startTime,
+		CompletionTime: completionTime,
 	}
 
 	if nb.builder.ErrorMessage != "" {
-		bs.SetCondition(&v1alpha1.BuildCondition{
+		bs.SetCondition(&duckv1alpha1.Condition{
 			Type:    v1alpha1.BuildSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  "NopFailed",
 			Message: nb.builder.ErrorMessage,
 		})
 	} else {
-		bs.SetCondition(&v1alpha1.BuildCondition{
+		bs.SetCondition(&duckv1alpha1.Condition{
 			Type:   v1alpha1.BuildSucceeded,
 			Status: corev1.ConditionTrue,
 		})
@@ -88,14 +93,24 @@ func (nb *operation) Wait() (*v1alpha1.BuildStatus, error) {
 
 type build struct {
 	builder *Builder
+	err     error
 }
 
 func (nb *build) Execute() (buildercommon.Operation, error) {
+	if nb.err != nil {
+		return nil, nb.err
+	}
 	return &operation{builder: nb.builder}, nil
 }
 
+// Builder is a no-op Builder implementation.
 type Builder struct {
+	// ErrorMessage is the error message that should be returned by builds
+	// executed by this builder.
 	ErrorMessage string
+
+	// Err is the error that should be returned from calls to this builder.
+	Err error
 }
 
 func (nb *Builder) Builder() v1alpha1.BuildProvider {
@@ -103,11 +118,19 @@ func (nb *Builder) Builder() v1alpha1.BuildProvider {
 	return v1alpha1.GoogleBuildProvider
 }
 
-func (nb *Builder) Validate(u *v1alpha1.Build, tmpl *v1alpha1.BuildTemplate) error { return nil }
+// Validate does nothing.
+func (nb *Builder) Validate(u *v1alpha1.Build) error { return nil }
+
+// BuildFromSpec returns the converted build, or the builder's predefined error.
 func (nb *Builder) BuildFromSpec(*v1alpha1.Build) (buildercommon.Build, error) {
-	return &build{builder: nb}, nil
+	b := &build{builder: nb}
+	if nb.Err != nil {
+		b.err = nb.Err
+	}
+	return b, nil
 }
 
+// OperationFromStatus returns the no-op operation.
 func (nb *Builder) OperationFromStatus(*v1alpha1.BuildStatus) (buildercommon.Operation, error) {
 	return &operation{builder: nb}, nil
 }

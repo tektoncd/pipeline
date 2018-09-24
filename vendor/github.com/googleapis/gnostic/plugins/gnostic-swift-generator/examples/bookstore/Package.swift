@@ -17,7 +17,8 @@ import PackageDescription
 let package = Package(
   name: "BookstoreExample",
   targets: [
-    Target(name: "Server", dependencies: ["Bookstore"]),
+    Target(name: "Server",
+           dependencies: ["Bookstore"]),
   ],
   dependencies: [
     .Package(url: "https://github.com/IBM-Swift/Kitura.git", majorVersion: 1, minor: 7)

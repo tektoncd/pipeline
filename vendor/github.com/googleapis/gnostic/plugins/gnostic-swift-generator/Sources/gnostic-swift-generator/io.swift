@@ -19,88 +19,82 @@ import Foundation
 // BEGIN swift-protobuf derivation
 
 #if os(Linux)
-import Glibc
+  import Glibc
 #else
-import Darwin.C
+  import Darwin.C
 #endif
 
 enum PluginError: Error {
-    /// Raised for any errors reading the input
-    case readFailure
+  /// Raised for any errors reading the input
+  case readFailure
 }
 
 // Alias clib's write() so Stdout.write(bytes:) can call it.
 private let _write = write
 
 class Stdin {
-    static func readall() throws -> Data {
-        let fd: Int32 = 0
-        let buffSize = 32
-        var buff = [UInt8]()
-        while true {
-            var fragment = [UInt8](repeating: 0, count: buffSize)
-            let count = read(fd, &fragment, buffSize)
-            if count < 0 {
-                throw PluginError.readFailure
-            }
-            if count < buffSize {
-                buff += fragment[0..<count]
-                return Data(bytes: buff)
-            }
-            buff += fragment
-        }
+  static func readall() throws -> Data {
+    let fd: Int32 = 0
+    let buffSize = 32
+    var buff = [UInt8]()
+    while true {
+      var fragment = [UInt8](repeating: 0, count: buffSize)
+      let count = read(fd, &fragment, buffSize)
+      if count < 0 {
+        throw PluginError.readFailure
+      }
+      if count < buffSize {
+        buff += fragment[0..<count]
+        return Data(bytes: buff)
+      }
+      buff += fragment
     }
+  }
 }
 
 class Stdout {
-    static func write(bytes: Data) {
-        bytes.withUnsafeBytes { (p: UnsafePointer<UInt8>) -> () in
-            _ = _write(1, p, bytes.count)
-        }
+  static func write(bytes: Data) {
+    bytes.withUnsafeBytes { (p: UnsafePointer<UInt8>) -> () in
+      _ = _write(1, p, bytes.count)
     }
+  }
 }
 
 struct CodePrinter {
-    private(set) var content = ""
-    private var currentIndentDepth = 0
-    private var currentIndent = ""
-    private var atLineStart = true
+  private(set) var content = ""
+  private var currentIndentDepth = 0
+  private var currentIndent = ""
+  private var atLineStart = true
 
-    mutating func print() {
-        print("")
-    }
-
-    mutating func print(_ text: String...) {
-        for t in text {
-            for c in t.characters {
-                if c == "\n" {
-                    content.append(c)
-                    atLineStart = true
-                } else {
-                    if atLineStart {
-                        content.append(currentIndent)
-                        atLineStart = false
-                    }
-                    content.append(c)
-                }
-            }
+  mutating func print(_ text: String...) {
+    for t in text {
+      for c in t.characters {
+        if c == "\n" {
+          content.append(c)
+          atLineStart = true
+        } else {
+          if atLineStart {
+            content.append(currentIndent)
+            atLineStart = false
+          }
+          content.append(c)
         }
-        content.append("\n")
-        atLineStart = true
+      }
     }
+  }
 
-    mutating private func resetIndent() {
-        currentIndent = (0..<currentIndentDepth).map { Int -> String in return "  " } .joined(separator:"")
-    }
+  mutating private func resetIndent() {
+    currentIndent = (0..<currentIndentDepth).map { Int -> String in return "  " } .joined(separator:"")
+  }
 
-    mutating func indent() {
-        currentIndentDepth += 1
-        resetIndent()
-    }
-    mutating func outdent() {
-        currentIndentDepth -= 1
-        resetIndent()
-    }
+  mutating func indent() {
+    currentIndentDepth += 1
+    resetIndent()
+  }
+  mutating func outdent() {
+    currentIndentDepth -= 1
+    resetIndent()
+  }
 }
 
 // END swift-protobuf derivation
