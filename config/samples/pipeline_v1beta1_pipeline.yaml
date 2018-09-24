@@ -10,17 +10,17 @@ spec:
           name: test-wizzbang-task
         inputsourceBindings:
           - name: repoUnderTest
-            sourceKey: wizzbang
+            key: wizzbang
       - name: 'buildPush'
         taskRef:
           name: build-push-task
         inputSourceBindings:
           - name: 'workspace'
-            sourceKey: 'wizzbang'
+            key: 'wizzbang'
             passedConstraint: [test-wizzbang-task]
         outputSourceBindings:
           - name: registry
-            sourceKey: wizzbangStagingImage
+            key: wizzbangStagingImage
         params:
           - name: pathToDockerfile
             value: build/Dockerfile
@@ -29,11 +29,11 @@ spec:
           name: integration-test-wizzbang-task
         inputSourceBindings:
           - name: repoUnderTest
-            sourceKey: wizzbang
+            key: wizzbang
             passedConstraint: [test]
         outputSourceBindings:
           - name: registry
-            sourceKey: wizzbangStagingImage
+            key: wizzbangStagingImage
             passedConstraint: [build-push-task]
       - name: deploy
         taskRef:
@@ -43,13 +43,13 @@ spec:
             value: deploy/helm
         inputSourceBindings:
           - name: repoToDeploy
-            sourceKey: wizzbang
+            key: wizzbang
             passedConstraint: [integration-test-wizzbang-task]
         clusterBindings:
           - clusterName: prod
         outputSourceBindings:
           - name: registry
-            sourceKey: wizzbangStagingImage
+            key: wizzbangStagingImage
             passedConstraint: [build-push-task]
     resources:
     - name: wizzbang

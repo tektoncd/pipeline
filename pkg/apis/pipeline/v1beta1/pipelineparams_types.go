@@ -24,6 +24,8 @@ import (
 type PipelineParamsSpec struct {
 	ServiceAccount string  `json:"serviceAccount"`
 	Results        Results `json:"results"`
+	// +optional
+	Clusters []Cluster `json:"clusters,omitempty"`
 }
 
 // PipelineParamsStatus defines the observed state of PipelineParams
@@ -48,6 +50,22 @@ type PipelineParams struct {
 	// Status communicates the observed state of the PipelineParams from the controller
 	// +optional
 	Status PipelineParamsStatus `json:"status,omitempty"`
+}
+
+// ClusterType represents the type of cluster,
+// so that the controller will know how to deploy to it.
+type ClusterType string
+
+const (
+	// ClusterTypeGKE indicates that the URL endpoint is a GKE cluster.
+	ClusterTypeGKE = "gke"
+)
+
+// Cluster contains information about the cluster on which task is being deployed
+type Cluster struct {
+	Name     string      `json:"name"`
+	Type     ClusterType `json:"type"`
+	Endpoint string      `json:"endpoint"`
 }
 
 // Results tells a pipeline where to persist the results of runnign the pipeline.

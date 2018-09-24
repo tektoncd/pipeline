@@ -61,6 +61,8 @@ type Inputs struct {
 	Sources []Source `json:"resources,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// +optional
+	Clusters []Cluster `json:"clusters,omitempty"`
 }
 
 // Source is data which is required by a Build/Task for context

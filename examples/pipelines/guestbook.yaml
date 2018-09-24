@@ -10,10 +10,10 @@ spec:
               name: build-push
           inputSourceBindings:
               - name: workspace
-                sourceKey: guestbook
+                key: guestbook
           outputSourceBindings:
               - name: registry
-                sourceKey: stagingRegistry
+                key: stagingRegistry
           params:
               - name: pathToDockerfile
                 value: guestbook-go/Dockerfile
@@ -22,10 +22,10 @@ spec:
               name: build-push
           inputSourceBindings:
               - name: workspace
-                sourceKey: redis-docker          # TODO Add Commit SHA
+                key: redis-docker          # TODO Add Commit SHA
           outputSourceBindings:
               - name: registry
-                sourceKey: stagingRegistry
+                key: stagingRegistry
           params:
               - name: pathToDockerfile
                 value: 4/debian9/4.0/Dockerfile
@@ -34,12 +34,12 @@ spec:
               name: deploy-with-kubectl
           inputSourceBindings:
             - name: workspace
-              sourceKey: guestbook
+              key: guestbook
               passedConstraint: 
                 - build-guestbook
                 - build-redis
             - name: workspace
-              sourceKey: redis-docker   
+              key: redis-docker
               passedConstraint:
                - build-push
           params:
@@ -52,7 +52,7 @@ spec:
               name: integrationTestInDocker
           inputSourceBindings:
               - name: workspace
-                sourceKey: guestbook
+                key: guestbook
                 passedConstraint:
                 - deploy-bundle-test
           params:
@@ -63,7 +63,7 @@ spec:
               name: integration-test-in-docker
           inputSourceBindings:
               - name: workspace
-                sourceKey: guestbook
+                key: guestbook
                 passedConstraint:
                 - deploy-bundle-test
           params:
@@ -74,7 +74,7 @@ spec:
               name: deploy-with-kubectl
           inputSourceBindings:
               - name: workspace
-                sourceKey: guestbook
+                key: guestbook
                 passedConstraint:
                 - int-test-osx
                 - int-test-linux
@@ -89,7 +89,7 @@ spec:
         name: guestbook  
     - name: redis-docker
       resourceRef:
-        name: redis-docker  
+        name: redis-docker
     - name: stagingRegistry
       resourceRef:
         name: stagingRegistry  

@@ -72,13 +72,22 @@ type PipelineTaskParam struct {
 	Value string `json:"value"`
 }
 
+// ClusterBinding is used to bind a cluster from a PipelineParams to a cluster required
+// as an input for a task.
+type ClusterBinding struct {
+	// Key is the string that the PipelineParams will use to identify this source.
+	Key string `json:"key"`
+	// InputName is the string the Task will use to identify this cluster in its inputs.
+	InputName string `json:"inputName"`
+}
+
 // SourceBinding is used to bind a Source from a PipelineParams to a source required
 // as an input for a task.
 type SourceBinding struct {
 	// InputName is the string the Task will use to identify this resource in its inputs.
 	Name string `json:"name"`
-	// SourceKey is the string that the PipelineParams will use to identify this source.
-	SourceKey string `json:"sourceKey"`
+	// Key is the string that the PipelineParams will use to identify this source.
+	Key string `json:"key"`
 	// TODO: validate the passedConstraints values match previous Task names
 	// PassedConstraints is the list of Task names that the resource has to pass through.
 	// +optional
