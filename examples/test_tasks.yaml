@@ -1,4 +1,4 @@
-apiVersion: pipeline.knative.dev/v1beta1
+apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
   name: make
@@ -24,7 +24,7 @@ spec:
               args: ['make', '${makeTarget}']
 
 ---
-apiVersion: pipeline.knative.dev/v1beta1
+apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
   name: integration-test-in-docker

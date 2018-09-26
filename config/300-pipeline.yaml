@@ -123,7 +123,7 @@ spec:
         status:
           type: object
       type: object
-  version: v1beta1
+  version: v1alpha1
 status:
   acceptedNames:
     kind: ""

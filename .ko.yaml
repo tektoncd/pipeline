@@ -1,3 +1,0 @@
-baseImageOverrides:
-  github.com/knative/build-pipeline/cmd/creds-init: gcr.io/knative-releases/build-base:latest
-  github.com/knative/build-pipeline/cmd/git-init: gcr.io/knative-releases/build-base:latest

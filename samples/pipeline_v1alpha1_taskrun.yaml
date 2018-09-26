@@ -1,4 +1,4 @@
-apiVersion: pipeline.knative.dev/v1beta1
+apiVersion: pipeline.knative.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: integration-test-wizzbang-task-run-sd8f8dfasdfasdfas

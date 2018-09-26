@@ -1,4 +1,4 @@
-apiVersion: pipeline.knative.dev/v1beta1
+apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineParams
 metadata:
   name: wizzbang-pipeline-params

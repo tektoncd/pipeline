@@ -48,5 +48,3 @@ data:
   # Log level overrides
   loglevel.controller: "info"
   loglevel.webhook: "info"
-  loglevel.creds-init: "info"
-  loglevel.git-init: "info"

@@ -30,8 +30,6 @@ spec:
         args: [
           "-logtostderr",
           "-stderrthreshold", "INFO",
-          "-creds-image", "github.com/knative/build-pipeline/cmd/creds-init",
-          "-git-image", "github.com/knative/build-pipeline/cmd/git-init",
         ]
         volumeMounts:
         - name: config-logging
