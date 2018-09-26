@@ -25,25 +25,35 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"github.com/golang/glog"
 	"github.com/knative/build/pkg"
-	"github.com/knative/build/pkg/builder"
 	onclusterbuilder "github.com/knative/build/pkg/builder/cluster"
-	gcb "github.com/knative/build/pkg/builder/google"
 	buildclientset "github.com/knative/build/pkg/client/clientset/versioned"
-	"github.com/knative/build/pkg/logging"
-	"github.com/knative/build/pkg/signals"
 	"github.com/knative/build/pkg/webhook"
+	"github.com/knative/pkg/configmap"
+	"github.com/knative/pkg/logging"
+	"github.com/knative/pkg/logging/logkey"
+	"github.com/knative/pkg/signals"
 )
 
-var (
-	builderName = flag.String("builder", "", "The builder implementation to use to execute builds (supports: cluster, google).")
+const (
+	logLevelKey = "webhook"
 )
 
 func main() {
+
 	flag.Parse()
-	logger := logging.NewLoggerFromDefaultConfigMap("loglevel.webhook").Named("webhook")
+	cm, err := configmap.Load("/etc/config-logging")
+	if err != nil {
+		log.Fatalf("Error loading logging configuration %v", err)
+	}
+
+	config, err := logging.NewConfigFromMap(cm)
+	if err != nil {
+		log.Fatalf("Error parsing logging configuration: %v", err)
+	}
+	logger, _ := logging.NewLoggerFromConfig(config, logLevelKey)
 	defer logger.Sync()
+	logger = logger.With(zap.String(logkey.ControllerType, "webhook"))
 
 	logger.Info("Starting the Configuration Webhook")
 
@@ -65,16 +75,8 @@ func main() {
 		log.Fatalf("Error building Build clientset: %s", err.Error())
 	}
 
-	var bldr builder.Interface
-	switch *builderName {
-	case "cluster":
-		kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-		bldr = onclusterbuilder.NewBuilder(kubeClient, kubeInformerFactory)
-	case "google":
-		bldr = gcb.NewBuilder(nil, "")
-	default:
-		glog.Fatalf("Unrecognized builder: %v (supported: google, cluster)", builderName)
-	}
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	bldr := onclusterbuilder.NewBuilder(kubeClient, kubeInformerFactory, logger)
 
 	options := webhook.ControllerOptions{
 		ServiceName:      "build-webhook",

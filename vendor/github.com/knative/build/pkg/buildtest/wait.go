@@ -21,17 +21,18 @@ import (
 	"time"
 )
 
-// This extends WaitGroup with a few useful methods to avoid tests having a failure mode of hanging.
+// Wait extends WaitGroup with a few useful methods to avoid tests having a
+// failure mode of hanging.
 type Wait struct {
 	sync.WaitGroup
 }
 
-// Override Add so folks don't call it.
+// Add should be overridden by implementors.
 func (w *Wait) Add(delta int) {
 	panic("Don't call Add(int) on wait!")
 }
 
-// This calls Done() after the specified duration.
+// In calls Done() after the specified duration.
 func (w *Wait) In(d time.Duration) {
 	go func() {
 		time.Sleep(d)
@@ -39,12 +40,12 @@ func (w *Wait) In(d time.Duration) {
 	}()
 }
 
-// A convenience for passing into WaitUntil
+// WaitNop is a convenience for passing into WaitUntil.
 func WaitNop() {}
 
-// This waits until Done() has been called or the specified duration has elapsed.
-// If Done() is called, then onSuccess is called.
-// If the duration elapses without Done() being called, then onTimeout is called.
+// WaitUntil waits until Done() has been called or the specified duration has
+// elapsed.  If Done() is called, then onSuccess is called.  If the duration
+// elapses without Done() being called, then onTimeout is called.
 func (w *Wait) WaitUntil(d time.Duration, onSuccess func(), onTimeout func()) {
 	ch := make(chan struct{})
 	go func() {
@@ -59,7 +60,7 @@ func (w *Wait) WaitUntil(d time.Duration, onSuccess func(), onTimeout func()) {
 	}
 }
 
-// A convenience for creating a "wait" object.
+// NewWait is a convenience for creating a Wait object.
 func NewWait() *Wait {
 	w := Wait{}
 	w.WaitGroup.Add(1)

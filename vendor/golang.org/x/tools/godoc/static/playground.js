@@ -40,11 +40,10 @@ here's a skeleton implementation of a playground transport.
         }
 */
 
-// HTTPTransport is the default transport.
-// enableVet enables running vet if a program was compiled and ran successfully.
-// If vet returned any errors, display them before the output of a program.
-function HTTPTransport(enableVet) {
+function HTTPTransport() {
 	'use strict';
+
+	// TODO(adg): support stderr
 
 	function playback(output, events) {
 		var timeout;
@@ -56,12 +55,12 @@ function HTTPTransport(enableVet) {
 			}
 			var e = events.shift();
 			if (e.Delay === 0) {
-				output({Kind: e.Kind, Body: e.Message});
+				output({Kind: 'stdout', Body: e.Message});
 				next();
 				return;
 			}
 			timeout = setTimeout(function() {
-				output({Kind: e.Kind, Body: e.Message});
+				output({Kind: 'stdout', Body: e.Message});
 				next();
 			}, e.Delay / 1000000);
 		}
@@ -70,7 +69,7 @@ function HTTPTransport(enableVet) {
 			Stop: function() {
 				clearTimeout(timeout);
 			}
-		};
+		}
 	}
 
 	function error(output, msg) {
@@ -97,31 +96,7 @@ function HTTPTransport(enableVet) {
 						error(output, data.Errors);
 						return;
 					}
-
-					if (!enableVet) {
-						playing = playback(output, data.Events);
-						return;
-					}
-
-					$.ajax("/vet", {
-						data: {"body": body},
-						type: "POST",
-						dataType: "json",
-						success: function(dataVet) {
-							if (dataVet.Errors) {
-								if (!data.Events) {
-									data.Events = [];
-								}
-								// inject errors from the vet as the first events in the output
-								data.Events.unshift({Message: 'Go vet exited.\n\n', Kind: 'system', Delay: 0});
-								data.Events.unshift({Message: dataVet.Errors, Kind: 'stderr', Delay: 0});
-							}
-							playing = playback(output, data.Events);
-						},
-						error: function() {
-							playing = playback(output, data.Events);
-						}
-					});
+					playing = playback(output, data.Events);
 				},
 				error: function() {
 					error(output, 'Error communicating with remote server.');
@@ -143,16 +118,11 @@ function SocketTransport() {
 	var id = 0;
 	var outputs = {};
 	var started = {};
-	var websocket;
-	if (window.location.protocol == "http:") {
-		websocket = new WebSocket('ws://' + window.location.host + '/socket');
-	} else if (window.location.protocol == "https:") {
-		websocket = new WebSocket('wss://' + window.location.host + '/socket');
-	}
+	var websocket = new WebSocket('ws://' + window.location.host + '/socket');
 
 	websocket.onclose = function() {
 		console.log('websocket connection closed');
-	};
+	}
 
 	websocket.onmessage = function(e) {
 		var m = JSON.parse(e.data);
@@ -164,7 +134,7 @@ function SocketTransport() {
 			started[m.Id] = true;
 		}
 		output({Kind: m.Kind, Body: m.Body});
-	};
+	}
 
 	function send(m) {
 		websocket.send(JSON.stringify(m));
@@ -232,7 +202,7 @@ function PlaygroundOutput(el) {
 
 		if (needScroll)
 			el.scrollTop = el.scrollHeight - el.offsetHeight;
-	};
+	}
 }
 
 (function() {
@@ -248,7 +218,7 @@ function PlaygroundOutput(el) {
     return function(write) {
       if (write.Body) lineHighlight(write.Body);
       wrappedOutput(write);
-    };
+    }
   }
   function lineClear() {
     $(".lineerror").removeClass("lineerror");
@@ -267,10 +237,9 @@ function PlaygroundOutput(el) {
   //  enableHistory - enable using HTML5 history API (optional)
   //  transport - playground transport to use (default is HTTPTransport)
   //  enableShortcuts - whether to enable shortcuts (Ctrl+S/Cmd+S to save) (default is false)
-  //  enableVet - enable running vet and displaying its errors
   function playground(opts) {
     var code = $(opts.codeEl);
-    var transport = opts['transport'] || new HTTPTransport(opts['enableVet']);
+    var transport = opts['transport'] || new HTTPTransport();
     var running;
 
     // autoindent helpers.

@@ -29,7 +29,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/knative/build/pkg"
-	"github.com/knative/build/pkg/logging"
+	"github.com/knative/pkg/logging"
 )
 
 const (

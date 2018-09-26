@@ -587,13 +587,13 @@ func (p *parser) parseInterfaceType(pkg *types.Package) types.Type {
 	p.expectKeyword("interface")
 
 	var methods []*types.Func
-	var embeddeds []types.Type
+	var typs []*types.Named
 
 	p.expect('{')
 	for p.tok != '}' && p.tok != scanner.EOF {
 		if p.tok == '?' {
 			p.next()
-			embeddeds = append(embeddeds, p.parseType(pkg))
+			typs = append(typs, p.parseType(pkg).(*types.Named))
 		} else {
 			method := p.parseFunc(pkg)
 			methods = append(methods, method)
@@ -602,7 +602,7 @@ func (p *parser) parseInterfaceType(pkg *types.Package) types.Type {
 	}
 	p.expect('}')
 
-	return newInterface(methods, embeddeds)
+	return types.NewInterface(methods, typs)
 }
 
 // PointerType = "*" ("any" | Type) .

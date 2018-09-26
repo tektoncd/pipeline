@@ -29,14 +29,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 all:	install
 
 install:
-	go install ./proto ./jsonpb ./ptypes ./protoc-gen-go
+	go install ./proto ./jsonpb ./ptypes
+	go install ./protoc-gen-go
 
 test:
-	go test ./... ./protoc-gen-go/testdata
-	make -C conformance test
+	go test ./proto ./jsonpb ./ptypes
+	make -C protoc-gen-go/testdata test
 
 clean:
 	go clean ./...
@@ -45,4 +47,9 @@ nuke:
 	go clean -i ./...
 
 regenerate:
-	./regenerate.sh
+	make -C protoc-gen-go/descriptor regenerate
+	make -C protoc-gen-go/plugin regenerate
+	make -C protoc-gen-go/testdata regenerate
+	make -C proto/testdata regenerate
+	make -C jsonpb/jsonpb_test_proto regenerate
+	make -C _conformance regenerate

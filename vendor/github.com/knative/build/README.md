@@ -1,130 +1,51 @@
-# Build CRD
+# Knative build
 
-This repository implements `Build` and `BuildTemplate` custom resources
-for Kubernetes, and a controller for making them work.
+[![GoDoc](https://godoc.org/github.com/knative/build?status.svg)](https://godoc.org/github.com/knative/build)
+[![Go Report Card](https://goreportcard.com/badge/knative/build)](https://goreportcard.com/report/knative/build)
 
-If you are interested in contributing, see [CONTRIBUTING.md](./CONTRIBUTING.md)
-and [DEVELOPMENT.md](./DEVELOPMENT.md).
+This repository contains a work-in-progress build system that is designed to 
+address a common need for cloud native development.
 
-## Objective
+A Knative build extends 
+[Kubernetes](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
+and utilizes existing Kubernetes primitives to provide you with the
+ability to run on-cluster container builds from source. For example, you can 
+write a build that uses Kubernetes-native resources to obtain your source code
+from a repository, build it into container a image, and then run that image. 
 
-Kubernetes is emerging as the predominant (if not de facto) container
-orchestration layer. It is also quickly becoming the foundational layer on top
-of which the ecosystem is building higher-level compute abstractions (PaaS,
-FaaS). In order to increase developer velocity, these higher-level compute
-abstractions typically operate on source, not just containers, which must be
-built.
+While Knative builds are optimized for building, testing, and deploying source 
+code, you are still responsible for developing the corresponding components 
+that:
 
-This repository provides an implementation of the Build [CRD](
-https://kubernetes.io/docs/concepts/api-extension/custom-resources/) that runs
-Builds on-cluster (by default), because that is the lowest common denominator
-that we expect users to have available. It is also possible to write a
-[pkg/builder](./pkg/builder) implementation that delegates Builds to hosted
-services (e.g. [Google Container Builder](./pkg/builder/google)), but these are
-typically more restrictive.
+* Retrieve source code from repositories.
+* Run multiple sequential jobs against a shared filesystem, for example:
+  * Install dependencies.
+  * Run unit and integration tests.
+* Build container images.
+* Push container images to an image registry, or deploy them to a cluster.
 
-This project as it exists today is not a complete standalone product that could
-be used for CI/CD, but it provides a building block to facilitate the
-expression of Builds as part of larger systems. It might provide a building
-block for CI/CD in [the future](./roadmap-2018.md)
+The goal of a Knative build is to provide a standard, portable, reusable, 
+and performance optimized method for defining and running on-cluster container 
+image builds. By providing the “boring but difficult” task of running builds on
+Kubernetes, Knative saves you from having to independently develop and reproduce
+these common Kubernetes-based development processes.
 
-## Terminology and Conventions
+While today, a Knative build does not provide a complete standalone CI/CD 
+solution, it does however, provide a lower-level building block that was 
+purposefully designed to enable integration and utilization in larger systems.
 
-* [Builds](./docs/builds.md)
-* [Build Templates](./docs/build-templates.md)
-* [Builders](./docs/builder-contract.md)
-* [Authentication](./docs/auth.md)
+### Learn more
 
-## Getting Started
+To learn more about builds in Knative, see the 
+[Knative build documentation](https://github.com/knative/docs/tree/master/build).
 
-You can install the latest release of the Build CRD by running:
-```shell
-kubectl create -f https://storage.googleapis.com/build-crd/latest/release.yaml
-```
+To learn more about Knative in general, see the 
+[Overview](https://github.com/knative/docs/blob/master/README.md).
 
-Your account must have the `cluster-admin` role in order to do this. If your
-account does not have this role, you can add it:
+### Developing Knative builds
 
-```
-kubectl create clusterrolebinding myname-cluster-admin-binding \
-    --clusterrole=cluster-admin \
-    --user=myname@example.org
-```
+If you are interested in contributing to Knative builds:
 
-### Run your first `Build`
-
-```yaml
-apiVersion: build.knative.dev/v1alpha1
-kind: Build
-metadata:
-  name: hello-build
-spec:
-  steps:
-  - name: hello
-    image: busybox
-    args: ['echo', 'hello', 'build']
-```
-
-Run it on your Kubernetes cluster:
-
-```shell
-$ kubectl apply -f build.yaml
-build "hello-build" created
-```
-
-Check that it was created:
-
-```shell
-$ kubectl get builds
-NAME          AGE
-hello-build   4s
-```
-
-Get more information about the build:
-
-```shell
-$ kubectl get build hello-build -oyaml
-apiVersion: build.knative.dev/v1alpha1
-kind: Build
-...
-status:
-  builder: Cluster
-  cluster:
-    namespace: default
-    podName: hello-build-jx4ql
-  conditions:
-  - state: Complete
-    status: "True"
-  stepStates:
-  - terminated:
-      reason: Completed
-  - terminated:
-      reason: Completed
-```
-
-This indicates that the build finished successfully, and that it ran on a
-pod named `hello-build-jx4ql` -- your build will run on a pod with a
-different name. Let's dive into that pod!
-
-```shell
-$ kubectl get pod hello-build-jx4ql -oyaml
-...lots of interesting stuff!
-```
-
-Here's a shortcut for getting a build's underlying `podName`:
-
-```shell
-$ kubectl get build hello-build -ojsonpath={.status.cluster.podName}
-```
-
-The build's underlying pod also contains the build's logs, in an init
-container named after the build step's name. In the case of this example, the
-build step's name was `hello`, so the pod will have an init container named
-`build-step-hello` which ran the step.
-
-```shell
-$ kubectl logs $(kubectl get build hello-build -ojsonpath={.status.cluster.podName}) -c build-step-hello
-hello build
-```
-
-:tada:
+1. Visit the [How to contribute](./CONTRIBUTING.md) page for information about
+   how to become a Knative contributor.
+2. Learn how to [set up your development environment](DEVELOPMENT.md).

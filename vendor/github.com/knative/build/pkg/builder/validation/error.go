@@ -13,11 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package validation provides methods to surface validation errors.
 package validation
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // Error is for use with a FooInvalid Status Condition.
 type Error struct {
@@ -29,6 +29,7 @@ func (ve *Error) Error() string {
 	return fmt.Sprintf("%s: %s", ve.Reason, ve.Message)
 }
 
+// NewError returns a new validation error.
 func NewError(reason, format string, fmtArgs ...interface{}) error {
 	return &Error{
 		Reason:  reason,

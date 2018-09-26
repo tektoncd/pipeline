@@ -33,8 +33,7 @@ func NewPopulatedMyType(r randyAsym) *MyType {
 	return this
 }
 
-// TODO: rename this to Marshal once https://github.com/gogo/protobuf/issues/388 is fixed
-func (m MyType) DisabledMarshal() (data []byte, err error) {
+func (m MyType) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)

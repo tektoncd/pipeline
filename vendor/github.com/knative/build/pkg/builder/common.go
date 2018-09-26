@@ -13,6 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package builder provides common methods for Builder implementations.
 package builder
 
 import (
@@ -26,19 +28,19 @@ import (
 
 // ApplyTemplate applies the values in the template to the build, and replaces
 // placeholders for declared parameters with the build's matching arguments.
-func ApplyTemplate(u *v1alpha1.Build, tmpl *v1alpha1.BuildTemplate) (*v1alpha1.Build, error) {
+func ApplyTemplate(u *v1alpha1.Build, tmpl v1alpha1.BuildTemplateInterface) (*v1alpha1.Build, error) {
 	build := u.DeepCopy()
 	if tmpl == nil {
 		return build, nil
 	}
-	tmpl = tmpl.DeepCopy()
-	build.Spec.Steps = tmpl.Spec.Steps
-	build.Spec.Volumes = append(build.Spec.Volumes, tmpl.Spec.Volumes...)
+	tmpl = tmpl.Copy()
+	build.Spec.Steps = tmpl.TemplateSpec().Steps
+	build.Spec.Volumes = append(build.Spec.Volumes, tmpl.TemplateSpec().Volumes...)
 
 	// Apply template arguments or parameter defaults.
 	replacements := map[string]string{}
 	if tmpl != nil {
-		for _, p := range tmpl.Spec.Parameters {
+		for _, p := range tmpl.TemplateSpec().Parameters {
 			if p.Default != nil {
 				replacements[p.Name] = *p.Default
 			}
@@ -61,6 +63,7 @@ func ApplyTemplate(u *v1alpha1.Build, tmpl *v1alpha1.BuildTemplate) (*v1alpha1.B
 	steps := build.Spec.Steps
 	for i := range steps {
 		steps[i].Name = applyReplacements(steps[i].Name)
+		steps[i].Image = applyReplacements(steps[i].Image)
 		for ia, a := range steps[i].Args {
 			steps[i].Args[ia] = applyReplacements(a)
 		}
@@ -79,7 +82,7 @@ func ApplyTemplate(u *v1alpha1.Build, tmpl *v1alpha1.BuildTemplate) (*v1alpha1.B
 	}
 
 	if buildTmpl := build.Spec.Template; buildTmpl != nil && len(buildTmpl.Env) > 0 {
-		// Apply variable expansion to the build's overriden
+		// Apply variable expansion to the build's overridden
 		// environment variables
 		for i, e := range buildTmpl.Env {
 			buildTmpl.Env[i].Value = applyReplacements(e.Value)

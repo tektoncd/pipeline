@@ -166,8 +166,6 @@ type Group struct {
 	// concurrent callers.
 	loadGroup flightGroup
 
-	_ int32 // force Stats to be 8-byte aligned on 32-bit platforms
-
 	// Stats are statistics on the group.
 	Stats Stats
 }
@@ -200,7 +198,7 @@ func (g *Group) Name() string {
 
 func (g *Group) initPeers() {
 	if g.peers == nil {
-		g.peers = getPeers(g.name)
+		g.peers = getPeers()
 	}
 }
 

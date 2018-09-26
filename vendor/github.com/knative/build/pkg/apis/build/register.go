@@ -16,4 +16,5 @@ limitations under the License.
 
 package build
 
+// GroupName is the Kubernetes resource group name for Build types.
 const GroupName = "build.knative.dev"

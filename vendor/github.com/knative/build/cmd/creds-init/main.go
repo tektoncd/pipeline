@@ -18,21 +18,24 @@ package main
 import (
 	"flag"
 
-	"github.com/golang/glog"
-
 	"github.com/knative/build/pkg/credentials"
 	"github.com/knative/build/pkg/credentials/dockercreds"
 	"github.com/knative/build/pkg/credentials/gitcreds"
+	"github.com/knative/pkg/logging"
 )
 
 func main() {
 	flag.Parse()
 
+	// ignore atomic level because we are not watching this config for any updates
+	logger, _ := logging.NewLogger("", "git-init")
+	defer logger.Sync()
+
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
 		if err := c.Write(); err != nil {
-			glog.Fatalf("Error initializing credentials: %v", err)
+			logger.Fatalf("Error initializing credentials: %v", err)
 		}
 	}
-	glog.Infof("Credentials initialized.")
+	logger.Infof("Credentials initialized.")
 }

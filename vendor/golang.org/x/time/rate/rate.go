@@ -253,12 +253,8 @@ func (lim *Limiter) waitN(ctx contextContext, n int) (err error) {
 	if !r.ok {
 		return fmt.Errorf("rate: Wait(n=%d) would exceed context deadline", n)
 	}
-	// Wait if necessary
-	delay := r.DelayFrom(now)
-	if delay == 0 {
-		return nil
-	}
-	t := time.NewTimer(delay)
+	// Wait
+	t := time.NewTimer(r.DelayFrom(now))
 	defer t.Stop()
 	select {
 	case <-t.C:

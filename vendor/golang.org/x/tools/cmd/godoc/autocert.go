@@ -32,28 +32,21 @@ var (
 )
 
 func init() {
-	runHTTPS = runHTTPSAutocert
-	certInit = certInitAutocert
-	wrapHTTPMux = wrapHTTPMuxAutocert
+	serveAutoCertHook = serveAutoCert
 }
 
-var autocertManager *autocert.Manager
-
-func certInitAutocert() {
-	autocertManager = &autocert.Manager{
+func serveAutoCert(h http.Handler) error {
+	m := autocert.Manager{
 		Cache:  autocert.DirCache(*autoCertDirFlag),
 		Prompt: autocert.AcceptTOS,
 	}
 	if *autoCertHostFlag != "" {
-		autocertManager.HostPolicy = autocert.HostWhitelist(*autoCertHostFlag)
+		m.HostPolicy = autocert.HostWhitelist(*autoCertHostFlag)
 	}
-}
-
-func runHTTPSAutocert(h http.Handler) error {
 	srv := &http.Server{
 		Handler: h,
 		TLSConfig: &tls.Config{
-			GetCertificate: autocertManager.GetCertificate,
+			GetCertificate: m.GetCertificate,
 		},
 		IdleTimeout: 60 * time.Second,
 	}
@@ -63,10 +56,6 @@ func runHTTPSAutocert(h http.Handler) error {
 		return err
 	}
 	return srv.Serve(tls.NewListener(tcpKeepAliveListener{ln.(*net.TCPListener)}, srv.TLSConfig))
-}
-
-func wrapHTTPMuxAutocert(h http.Handler) http.Handler {
-	return autocertManager.HTTPHandler(h)
 }
 
 // tcpKeepAliveListener sets TCP keep-alive timeouts on accepted

@@ -25,9 +25,7 @@ import (
 	"sync"
 	"unicode"
 
-	"golang.org/x/text/collate"
 	"golang.org/x/text/internal/gen"
-	"golang.org/x/text/language"
 )
 
 var (
@@ -74,24 +72,14 @@ func main() {
 		fmt.Printf("Requested Unicode version %s; core unicode version is %s.\n",
 			gen.UnicodeVersion(),
 			unicode.Version)
-		c := collate.New(language.Und, collate.Numeric)
-		if c.CompareString(gen.UnicodeVersion(), unicode.Version) < 0 && !*force {
+		// TODO: use collate to compare. Simple comparison will work, though,
+		// until Unicode reaches version 10. To avoid circular dependencies, we
+		// could use the NumericWeighter without using package collate using a
+		// trivial Weighter implementation.
+		if gen.UnicodeVersion() < unicode.Version && !*force {
 			os.Exit(2)
 		}
 		updateCore = true
-		goroot := os.Getenv("GOROOT")
-		appendToFile(
-			filepath.Join(goroot, "api", "except.txt"),
-			fmt.Sprintf("pkg unicode, const Version = %q\n", unicode.Version),
-		)
-		const lines = `pkg unicode, const Version = %q
-// TODO: add a new line of the following form for each new script and property.
-pkg unicode, var <new script or property> *RangeTable
-`
-		appendToFile(
-			filepath.Join(goroot, "api", "next.txt"),
-			fmt.Sprintf(lines, gen.UnicodeVersion()),
-		)
 	}
 
 	var unicode = &dependency{}
@@ -117,15 +105,14 @@ pkg unicode, var <new script or property> *RangeTable
 		width      = generate("./width", unicode)
 		bidi       = generate("./unicode/bidi", unicode, norm, rangetable)
 		mib        = generate("./encoding/internal/identifier", unicode)
-		number     = generate("./internal/number", unicode, cldr, language, internal)
 		_          = generate("./encoding/htmlindex", unicode, language, mib)
 		_          = generate("./encoding/ianaindex", unicode, language, mib)
 		_          = generate("./secure/precis", unicode, norm, rangetable, cases, width, bidi)
-		_          = generate("./internal/cldrtree", language)
-		_          = generate("./currency", unicode, cldr, language, internal, number)
-		_          = generate("./feature/plural", unicode, cldr, language, internal, number)
+		_          = generate("./currency", unicode, cldr, language, internal)
+		_          = generate("./internal/number", unicode, cldr, language, internal)
+		_          = generate("./feature/plural", unicode, cldr, language, internal)
 		_          = generate("./internal/export/idna", unicode, bidi, norm)
-		_          = generate("./language/display", unicode, cldr, language, internal, number)
+		_          = generate("./language/display", unicode, cldr, language, internal)
 		_          = generate("./collate", unicode, norm, cldr, language, rangetable)
 		_          = generate("./search", unicode, norm, cldr, language, rangetable)
 	)
@@ -143,20 +130,6 @@ pkg unicode, var <new script or property> *RangeTable
 		os.Exit(1)
 	}
 	vprintf("SUCCESS\n")
-}
-
-func appendToFile(file, text string) {
-	fmt.Println("Augmenting", file)
-	w, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		fmt.Println("Failed to open file:", err)
-		os.Exit(1)
-	}
-	defer w.Close()
-	if _, err := w.WriteString(text); err != nil {
-		fmt.Println("Failed to write to file:", err)
-		os.Exit(1)
-	}
 }
 
 var (
@@ -271,7 +244,7 @@ func copyPackage(dirSrc, dirDst, search, replace string) {
 		base := filepath.Base(file)
 		if err != nil || info.IsDir() ||
 			!strings.HasSuffix(base, ".go") ||
-			strings.HasSuffix(base, "_test.go") ||
+			strings.HasSuffix(base, "_test.go") && !strings.HasPrefix(base, "example") ||
 			// Don't process subdirectories.
 			filepath.Dir(file) != dirSrc {
 			return nil

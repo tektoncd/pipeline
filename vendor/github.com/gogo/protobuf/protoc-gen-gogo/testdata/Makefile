@@ -29,7 +29,39 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-all: test
+all:
+	@echo run make test
 
-test:
+test:	regenerate testbuild
+
+#test:	regenerate testbuild extension_test
+#	./extension_test
+#	@echo PASS
+
+my_test/test.pb.go: my_test/test.proto
+	protoc --gogo_out=Mmulti/multi1.proto=github.com/gogo/protobuf/protoc-gen-gogo/testdata/multi:. $<
+
+regenerate: my_test/test.pb.go
+	go install github.com/gogo/protobuf/protoc-min-version
+	protoc-min-version --version="3.0.0" --gogo_out=. ./my_test/test.proto
+
+nuke:	clean
+
+testbuild:	buildprotos
 	go test
+
+buildprotos:
+	# Invoke protoc once to generate three independent .pb.go files in the same package.
+	protoc --gogo_out=. multi/multi1.proto multi/multi2.proto multi/multi3.proto
+
+#extension_test:	extension_test.$O
+#	$(LD) -L. -o $@ $<
+
+#multi.a: multi3.pb.$O multi2.pb.$O multi1.pb.$O
+#	rm -f multi.a
+#	$(QUOTED_GOBIN)/gopack grc $@ $<
+
+#test.pb.go:	imp.pb.go
+#multi1.pb.go:	multi2.pb.go multi3.pb.go
+#main.$O: imp.pb.$O test.pb.$O multi.a
+#extension_test.$O: extension_base.pb.$O extension_extra.pb.$O extension_user.pb.$O

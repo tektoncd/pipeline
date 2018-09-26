@@ -1,0 +1,49 @@
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+
+required = [
+  "k8s.io/apimachinery/pkg/util/sets/types",
+  "k8s.io/code-generator/cmd/deepcopy-gen",
+  "k8s.io/code-generator/cmd/defaulter-gen",
+  "k8s.io/code-generator/cmd/client-gen",
+  "k8s.io/code-generator/cmd/lister-gen",
+  "k8s.io/code-generator/cmd/informer-gen",
+  "github.com/knative/test-infra",
+]
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.11.0"
+
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.11.0"
+
+[[override]]
+  name = "k8s.io/code-generator"
+  version = "kubernetes-1.11.0"
+
+[[override]]
+  name = "k8s.io/client-go"
+  version = "kubernetes-1.11.0"
+
+[[override]]
+  name = "github.com/json-iterator/go"
+  # This is the commit at which k8s depends on this in 1.11
+  # It seems to be broken at HEAD.
+  revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
+
+[[prune.project]]
+  name = "k8s.io/code-generator"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
+  name = "github.com/knative/test-infra"
+  unused-packages = false
+  non-go = false

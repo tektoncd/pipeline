@@ -399,7 +399,7 @@ func (domain *Domain) generateConstructorForType(code *printer.Code, typeName st
 			}
 			code.Print("// " + line)
 
-			fieldName := strings.Title(snakeCaseToCamelCase(propertyName))
+			fieldName := strings.Title(propertyName)
 			if propertyName == "$ref" {
 				fieldName = "XRef"
 			}

@@ -82,7 +82,7 @@ func (typeProperty *TypeProperty) FieldName() string {
 	if propertyName == "$ref" {
 		return "XRef"
 	}
-	return strings.Title(snakeCaseToCamelCase(propertyName))
+	return strings.Title(propertyName)
 }
 
 // TypeModel models types.

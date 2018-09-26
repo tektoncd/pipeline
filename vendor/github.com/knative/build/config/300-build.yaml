@@ -21,4 +21,14 @@ spec:
   names:
     kind: Build
     plural: builds
+    categories:
+    - all
+    - knative
   scope: Namespaced
+  additionalPrinterColumns:
+  - name: Age
+    type: date
+    JSONPath: .metadata.creationTimestamp
+  - name: Completed
+    type: date
+    JSONPath: .status.completionTime

@@ -30,9 +30,7 @@ import (
 	"github.com/knative/build/pkg/credentials"
 )
 
-const (
-	SSHKnownHosts = "known_hosts"
-)
+const sshKnownHosts = "known_hosts"
 
 // As the flag is read, this status is populated.
 // sshGitConfig implements flag.Value
@@ -107,10 +105,7 @@ func (dc *sshGitConfig) Write() error {
 	}
 	knownHostsPath := filepath.Join(sshDir, "known_hosts")
 	knownHostsContent := strings.Join(knownHosts, "\n")
-	if err := ioutil.WriteFile(knownHostsPath, []byte(knownHostsContent), 0600); err != nil {
-		return err
-	}
-	return nil
+	return ioutil.WriteFile(knownHostsPath, []byte(knownHostsContent), 0600)
 }
 
 type sshEntry struct {
@@ -120,7 +115,7 @@ type sshEntry struct {
 }
 
 func (be *sshEntry) path(sshDir string) string {
-	return fmt.Sprintf("%s/id_%s", sshDir, be.secret)
+	return filepath.Join(sshDir, "id_"+be.secret)
 }
 
 func sshKeyScan(domain string) ([]byte, error) {
@@ -147,7 +142,7 @@ func newSshEntry(u, secret string) (*sshEntry, error) {
 	}
 	privateKey := string(pk)
 
-	kh, err := ioutil.ReadFile(filepath.Join(secretPath, SSHKnownHosts))
+	kh, err := ioutil.ReadFile(filepath.Join(secretPath, sshKnownHosts))
 	if err != nil {
 		kh, err = sshKeyScan(u)
 		if err != nil {

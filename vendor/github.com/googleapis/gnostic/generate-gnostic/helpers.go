@@ -14,14 +14,10 @@
 
 package main
 
-import (
-	"strings"
-	"unicode"
-)
-
 // Returns a "snake case" form of a camel-cased string.
 func camelCaseToSnakeCase(input string) string {
-	out := ""
+	var out = ""
+
 	for index, runeValue := range input {
 		//fmt.Printf("%#U starts at byte position %d\n", runeValue, index)
 		if runeValue >= 'A' && runeValue <= 'Z' {
@@ -32,24 +28,7 @@ func camelCaseToSnakeCase(input string) string {
 		} else {
 			out += string(runeValue)
 		}
+
 	}
-	return out
-}
-
-func snakeCaseToCamelCase(input string) string {
-	out := ""
-
-	words := strings.Split(input, "_")
-
-	for i, word := range words {
-		if (i > 0) && len(word) > 0 {
-			w := []rune(word)
-			w[0] = unicode.ToUpper(w[0])
-			out += string(w)
-		} else {
-			out += word
-		}
-	}
-
 	return out
 }

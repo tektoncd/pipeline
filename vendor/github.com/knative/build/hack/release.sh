@@ -14,42 +14,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/release.sh
+
+# Set default GCS/GCR
+: ${BUILD_RELEASE_GCS:="knative-releases/build"}
+: ${BUILD_RELEASE_GCR:="gcr.io/knative-releases"}
+readonly BUILD_RELEASE_GCS
+readonly BUILD_RELEASE_GCR
+
+# Local generated yaml file
+readonly OUTPUT_YAML=release.yaml
+
+# Script entry point
+
+parse_flags $@
+
 set -o errexit
 set -o pipefail
 
-source "$(dirname $(readlink -f ${BASH_SOURCE}))/../tests/library.sh"
+run_validation_tests ./test/presubmit-tests.sh
 
-function cleanup() {
-  restore_override_vars
-}
+banner "Building the release"
 
-cd ${BUILD_ROOT_DIR}
-trap cleanup EXIT
+# Build and push the base image for creds-init and git images.
+docker build -t $BUILD_RELEASE_GCR/build-base -f images/Dockerfile images/
+docker push $BUILD_RELEASE_GCR/build-base
 
-install_ko
+# Set the repository
+export KO_DOCKER_REPO=${BUILD_RELEASE_GCR}
+# Build should not try to deploy anything, use a bogus value for cluster.
+export K8S_CLUSTER_OVERRIDE=CLUSTER_NOT_SET
+export K8S_USER_OVERRIDE=USER_NOT_SET
+export DOCKER_REPO_OVERRIDE=DOCKER_NOT_SET
 
-echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-echo "@@@@ RUNNING RELEASE VALIDATION TESTS @@@@"
-echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-
-# Run tests.
-./tests/presubmit-tests.sh
-
-echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-echo "@@@@     BUILDING THE RELEASE    @@@@"
-echo "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
-
-# Set the repository to the official one:
-export KO_DOCKER_REPO=gcr.io/build-crd
-
-# If this is a prow job, authenticate against GCR.
-(( IS_PROW )) && gcr_auth
+if (( PUBLISH_RELEASE )); then
+  echo "- Destination GCR: ${BUILD_RELEASE_GCR}"
+  echo "- Destination GCS: ${BUILD_RELEASE_GCS}"
+fi
 
 echo "Building build-crd"
-ko resolve -f config/ > release.yaml
+ko resolve ${KO_FLAGS} -f config/ > ${OUTPUT_YAML}
+tag_images_in_yaml ${OUTPUT_YAML} ${BUILD_RELEASE_GCR} ${TAG}
 
-echo "Publishing release.yaml"
-gsutil cp release.yaml gs://build-crd/latest/release.yaml
+echo "New release built successfully"
+
+if (( ! PUBLISH_RELEASE )); then
+ exit 0
+fi
+
+echo "Publishing ${OUTPUT_YAML}"
+publish_yaml ${OUTPUT_YAML} ${BUILD_RELEASE_GCS} ${TAG}
 
 echo "New release published successfully"
 

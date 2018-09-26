@@ -1,4 +1,4 @@
-apiVersion: pipeline.knative.dev/v1beta1
+apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
   name: deploy-with-helm
@@ -25,7 +25,7 @@ spec:
           args: ['deploy', '--path=${pathToHelmChart}', '--set image=${image}', '${helmArgs}']
 
 ---
-apiVersion: pipeline.knative.dev/v1beta1
+apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
   name: deploy-with-kubectl

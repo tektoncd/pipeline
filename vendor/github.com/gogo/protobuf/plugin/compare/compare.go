@@ -512,7 +512,7 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 		p.In()
 
 		p.generateMsgNullAndTypeCheck(ccTypeName)
-		vanity.TurnOffNullableForNativeTypes(field)
+		vanity.TurnOffNullableForNativeTypesWithoutDefaultsOnly(field)
 		p.generateField(file, message, field)
 
 		p.P(`return 0`)

@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 )
 
+// Data returns the contents of a file at the given path.
 func Data(relpath string) ([]byte, error) {
 	b, err := ioutil.ReadFile(relpath)
 	if err != nil {
@@ -29,6 +30,8 @@ func Data(relpath string) ([]byte, error) {
 	return b, nil
 }
 
+// DataAs interprets the YAML contents of the file at the given path as the
+// given type.
 func DataAs(relpath string, obj interface{}) error {
 	b, err := Data(relpath)
 	if err != nil {
@@ -38,8 +41,5 @@ func DataAs(relpath string, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err := json.Unmarshal(jb, &obj); err != nil {
-		return err
-	}
-	return nil
+	return json.Unmarshal(jb, &obj)
 }

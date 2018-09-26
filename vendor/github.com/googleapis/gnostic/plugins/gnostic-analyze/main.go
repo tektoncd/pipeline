@@ -26,13 +26,17 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	plugins "github.com/googleapis/gnostic/plugins"
 	"github.com/googleapis/gnostic/plugins/gnostic-analyze/statistics"
+
+	openapi "github.com/googleapis/gnostic/OpenAPIv2"
+	plugins "github.com/googleapis/gnostic/plugins"
 )
 
 // Record an error, then serialize and return a response.
@@ -50,33 +54,48 @@ func sendAndExit(response *plugins.Response) {
 	os.Exit(0)
 }
 
-// This is the main function for the plugin.
 func main() {
-	env, err := plugins.NewEnvironment()
-	env.RespondAndExitIfError(err)
+	// Initialize the response.
+	response := &plugins.Response{}
 
-	var stats *statistics.DocumentStatistics
-	if env.Request.Openapi2 != nil {
-		// Analyze the API document.
-		stats = statistics.NewDocumentStatistics(env.Request.SourceName, env.Request.Openapi2)
+	// Read the request.
+	data, err := ioutil.ReadAll(os.Stdin)
+	sendAndExitIfError(err, response)
+	if len(data) == 0 {
+		sendAndExitIfError(fmt.Errorf("no input data"), response)
 	}
 
-	if env.Request.Openapi3 != nil {
-		// Analyze the API document.
-		stats = statistics.NewDocumentStatisticsV3(env.Request.SourceName, env.Request.Openapi3)
+	// Unmarshal the request.
+	request := &plugins.Request{}
+	err = proto.Unmarshal(data, request)
+	sendAndExitIfError(err, response)
+
+	// Verify that the passed-in description is supported.
+	wrapper := request.Wrapper
+	if wrapper.Version != "v2" {
+		err = fmt.Errorf("%s requires an OpenAPI v2 description.",
+			os.Args[0])
+		sendAndExitIfError(err, response)
 	}
 
-	if stats != nil {
-		// Return the analysis results with an appropriate filename.
-		// Results are in files named "summary.json" in the same relative
-		// locations as the description source files.
-		file := &plugins.File{}
-		file.Name = strings.Replace(stats.Name, path.Base(stats.Name), "summary.json", -1)
-		file.Data, err = json.MarshalIndent(stats, "", "  ")
-		file.Data = append(file.Data, []byte("\n")...)
-		env.RespondAndExitIfError(err)
-		env.Response.Files = append(env.Response.Files, file)
-	}
+	// Unmarshal the description.
+	document := &openapi.Document{}
+	err = proto.Unmarshal(wrapper.Value, document)
+	sendAndExitIfError(err, response)
 
-	env.RespondAndExit()
+	// Analyze the API document.
+	stats := statistics.NewDocumentStatistics(wrapper.Name, document)
+
+	// Return the analysis results with an appropriate filename.
+	// Results are in files named "summary.json" in the same relative
+	// locations as the description source files.
+	file := &plugins.File{}
+	file.Name = strings.Replace(stats.Name, path.Base(stats.Name), "summary.json", -1)
+	file.Data, err = json.MarshalIndent(stats, "", "  ")
+	file.Data = append(file.Data, []byte("\n")...)
+	sendAndExitIfError(err, response)
+	response.Files = append(response.Files, file)
+
+	// Send the final results. Success!
+	sendAndExit(response)
 }

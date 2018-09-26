@@ -12,155 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-func hasParameters(_ value : Any?) -> Bool {
-    let method : ServiceMethod = value as! ServiceMethod
-    return method.parametersType != nil
-}
+import Foundation
 
-func hasResponses(_ value : Any?) -> Bool {
-    let method : ServiceMethod = value as! ServiceMethod
-    return method.responsesType != nil
-}
+// Code templates use "//-" prefixes to comment-out template operators
+// to keep them from interfering with Swift code formatting tools.
+// Use this to remove them after templates have been expanded.
+func stripMarkers(_ code:String) -> String {
+  let inputLines = code.components(separatedBy:"\n")
 
-func syncClientParametersDeclaration(_ value: Any?) -> String {
-    let method : ServiceMethod = value as! ServiceMethod
-    var result = ""
-    if let parametersType = method.parametersType {
-        for field in parametersType.fields {
-            if result != "" {
-                result += ", "
-            }
-            result += field.name + " : " + field.typeName
-        }
-    }
-    return result
-}
-
-func syncClientReturnDeclaration(_ value : Any?) -> String {
-    let method : ServiceMethod = value as! ServiceMethod
-    var result = ""
-    if let resultTypeName = method.resultTypeName {
-        result = " -> " + resultTypeName
-    }
-    return result
-}
-
-func asyncClientParametersDeclaration(_ value : Any?) -> String {
-    let method : ServiceMethod = value as! ServiceMethod
-    var result = ""
-    if let parametersType = method.parametersType {
-        for field in parametersType.fields {
-            if result != "" {
-                result += ", "
-            }
-            result += field.name + " : " + field.typeName
-        }
-    }
-    // add callback
-    if result != "" {
-        result += ", "
-    }
-    if let resultTypeName = method.resultTypeName {
-        result += "callback : @escaping (" + resultTypeName + "?, Swift.Error?)->()"
+  var outputLines : [String] = []
+  for line in inputLines {
+    if line.contains("//-") {
+      let removed = line.replacingOccurrences(of:"//-", with:"")
+      if (removed.trimmingCharacters(in:CharacterSet.whitespaces) != "") {
+        outputLines.append(removed)
+      }
     } else {
-        result += "callback : @escaping (Swift.Error?)->()"
+      outputLines.append(line)
     }
-    return result
-}
-
-func protocolParametersDeclaration(_ value: Any?) -> String {
-    let method : ServiceMethod = value as! ServiceMethod
-    var result = ""
-    if let parametersTypeName = method.parametersTypeName {
-        result = "_ parameters : " + parametersTypeName
-    }
-    return result
-}
-
-func protocolReturnDeclaration(_ value: Any?) -> String {
-    let method : ServiceMethod = value as! ServiceMethod
-    var result = ""
-    if let responsesTypeName = method.responsesTypeName {
-        result = "-> " + responsesTypeName
-    }
-    return result
-}
-
-func parameterFieldNames(_ value: Any?) -> String {
-    let method : ServiceMethod = value as! ServiceMethod
-    var result = ""
-    if let parametersType = method.parametersType {
-        for field in parametersType.fields {
-            if result != "" {
-                result += ", "
-            }
-            result += field.name + ":" + field.name
-        }
-    }
-    return result
-}
-
-func parametersTypeFields(_ value: Any?) -> [ServiceTypeField] {
-    let method : ServiceMethod = value as! ServiceMethod
-    if let parametersType = method.parametersType {
-        return parametersType.fields
-    } else {
-        return []
-    }
-}
-
-func kituraPath(_ value: Any?) -> String {
-    let method : ServiceMethod = value as! ServiceMethod
-    var path = method.path
-    if let parametersType = method.parametersType {
-        for field in parametersType.fields {
-            if field.position == "path" {
-                let original = "{" + field.jsonName + "}"
-                let replacement = ":" + field.jsonName
-                path = path.replacingOccurrences(of:original, with:replacement)
-            }
-        }
-    }
-    return path
-}
-
-func bodyParameterFieldName(_ value: Any?) -> String {
-    let method : ServiceMethod = value as! ServiceMethod
-    if let parametersType = method.parametersType {
-        for field in parametersType.fields {
-            if field.position == "body" {
-                return field.name
-            }
-        }
-    }
-    return ""
-}
-
-func responsesHasFieldNamedOK(_ value: Any?) -> Bool {
-    let method : ServiceMethod = value as! ServiceMethod
-    if let responsesType = method.responsesType {
-        for field in responsesType.fields {
-            if field.name == "ok" {
-                return true
-            }
-        }
-    }
-    return false
-}
-
-func responsesHasFieldNamedError(_ value: Any?) -> Bool {
-    let method : ServiceMethod = value as! ServiceMethod
-    if let responsesType = method.responsesType {
-        for field in responsesType.fields {
-            if field.name == "error" {
-                return true
-            }
-        }
-    }
-    return false
-}
-
-func lowercase(_ s : String) -> String {
-    return s.lowercased()
+  }
+  return outputLines.joined(separator:"\n")
 }
 

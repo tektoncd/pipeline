@@ -1,0 +1,2 @@
+NAME	TYPE	STATUS	CREATED  START	END
+.metadata.name	.status.conditions[*].state	.status.conditions[*].status .status.creationTime .status.startTime	.status.completionTime

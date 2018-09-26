@@ -17,10 +17,14 @@ import PackageDescription
 let package = Package(
   name: "SwiftOpenAPIPlugin",
   targets: [
-    Target(name: "gnostic-swift-generator", dependencies: ["Gnostic"]),
-    Target(name: "Gnostic")
+    Target(name: "gnostic-swift-generator",
+           dependencies: [
+            "TemplateEncoder",
+            ]),
+    Target(name: "TemplateEncoder")
   ],
   dependencies: [
-    .Package(url: "https://github.com/apple/swift-protobuf.git", Version(0,9,904)),
+    .Package(url: "https://github.com/apple/swift-protobuf.git", Version(0,9,903)),
+    .Package(url: "https://github.com/kylef/Stencil.git", Version(0,8,0))
   ]
 )

@@ -5,9 +5,37 @@
 1. Create [a GitHub account](https://github.com/join)
 1. Setup [GitHub access via
    SSH](https://help.github.com/articles/connecting-to-github-with-ssh/)
+1. [Create and checkout a repo fork](#checkout-your-fork)
+1. Set up your [shell environment](#environment-setup)
 1. Install [requirements](#requirements)
 1. [Set up a kubernetes cluster](https://github.com/knative/serving/blob/master/docs/creating-a-kubernetes-cluster.md)
 1. [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+1. [Set up a docker repository you can push to](https://github.com/knative/serving/blob/master/docs/setting-up-a-docker-registry.md)
+
+Then you can [iterate](#iterating) (including [runing the controllers with `ko`](#running-controllers)).
+
+### Checkout your fork
+
+The Go tools require that you clone the repository to the `src/github.com/knative/build-pipeline` directory
+in your [`GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
+
+To check out this repository:
+
+1. Create your own [fork of this
+  repo](https://help.github.com/articles/fork-a-repo/)
+1. Clone it to your machine:
+
+  ```shell
+  mkdir -p ${GOPATH}/src/github.com/knative
+  cd ${GOPATH}/src/github.com/knative
+  git clone git@github.com:${YOUR_GITHUB_USERNAME}/build-pipeline.git
+  cd build-pipeline
+  git remote add upstream git@github.com:knative/build-pipeline.git
+  git remote set-url --push upstream no_push
+  ```
+
+_Adding the `upstream` remote sets you up nicely for regularly [syncing your
+fork](https://help.github.com/articles/syncing-a-fork/)._
 
 ### Requirements
 
@@ -17,64 +45,66 @@ You must install these tools:
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`dep`](https://github.com/golang/dep): For managing external Go
    dependencies.
+1. [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko): For
+   development.
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For interacting with your kube cluster (also required for kubebuidler)
-1. [`kustomize`](https://github.com/kubernetes-sigs/kustomize): Required for kubebuilder
-1. [`kubebuilder`](https://book.kubebuilder.io/quick_start.html): For generating CRD related
-boilerplate (see [docs on iterating with kubebuilder](#installing-and-running)) - Note that
-the installation instructions default to `mac`, use the tabs at the top to switch to `linux`
+
+## Environment Setup
+
+To [run your controllers with `ko`](#running-controllers) you'll need to set these environment
+variables (we recommend adding them to your `.bashrc`):
+
+1. `GOPATH`: If you don't have one, simply pick a directory and add `export GOPATH=...`
+1. `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will work properly.
+1. `KO_DOCKER_REPO`: The docker repository to which developer images should be pushed (e.g. `gcr.io/[gcloud-project]`).
+
+`.bashrc` example:
+
+```shell
+export GOPATH="$HOME/go"
+export PATH="${PATH}:${GOPATH}/bin"
+export KO_DOCKER_REPO='gcr.io/my-gcloud-project-name'
+```
+
+Make sure to configure [authentication](
+https://cloud.google.com/container-registry/docs/advanced-authentication#standalone_docker_credential_helper)
+for your `KO_DOCKER_REPO` if required. To be able to push images to `gcr.io/<project>`, you need to run this once:
+
+```shell
+gcloud auth configure-docker
+```
 
 ## Iterating
 
-### Dependencies
+While iterating on the project, you may need to:
 
-This repo uses [`dep`](https://golang.github.io/dep/docs/daily-dep.html) for dependency management:
-
-* Update the deps with `dep ensure -update`
-* `dep ensure` should be a no-op
-* Add a dep with `dep ensure -add $MY_DEP`
-
-### Changing types
-
-When updating types, you should regenerate any generated code with:
-
-```bash
-make generate
-```
-
-Then test this by [installing and running](#installing-and-running).
-
-### Installing and running
-
-The skeleton for this project was generated using [kubebuilder](https://book.kubebuilder.io/quick_start.html),
-which created our [Makefile](./Makefile). The `Makefile` will call out to `kubectl`,
-so you must [configure your `kubeconfig` to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/).
-
-Then a typical development cycle will look like this:
-
-```bash
-# Add/update CRDs in your kubernetes cluster
-make install
-
-# Run your controller locally, (stop execution with `ctrl-c`)
-make run
-
-# In another terminal, deploy tasks
-kubectl apply -f config/samples
-```
-
-You will also want to [run tests](#running-tests).
-
-### Running tests
-
-Run the tests with:
-
-```bash
-make test
-```
-
-### Where's the code?
+1. [Run controllers](#running-controllers)
+1. Update your (external) dependencies with: `./hack/update-deps.sh`.
+1. Update your type definitions with: `./hack/update-codegen.sh`.
 
 To make changes to these CRDs, you will probably interact with:
 
-* The CRD type definitions in [./pkg/apis/pipeline/v1beta1](./pkg/apis/pipeline/v1beta1)
+* The CRD type definitions in [./pkg/apis/pipeline/alpha1](./pkg/apis/pipeline/v1alpha1)
 * The controllers in [./pkg/controller](./pkg/controller)
+* The clients are in [./pkg/client](./pkg/controller) (these are generated by `./hack/update-codegen.sh`)
+
+## Running controllers
+
+You can stand up a version of this controller on-cluster (to your `kubectl config current-context`) with:
+
+```shell
+# This will register the CRD and deploy the controller to start acting on them.
+ko apply -f config/
+```
+
+As you make changes to the code, you can redeploy your controller with:
+
+```shell
+ko apply -f config/controller.yaml
+```
+
+You can clean up everything with:
+
+```shell
+ko delete -f config/
+```

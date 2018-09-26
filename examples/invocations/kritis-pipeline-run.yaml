@@ -1,4 +1,4 @@
-apiVersion: pipeline.knative.dev/v1beta1
+apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineRun
 metadata:
   name: kritis-pipeline-run-12321312984

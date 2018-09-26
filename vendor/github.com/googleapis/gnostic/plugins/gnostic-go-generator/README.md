@@ -1,18 +1,17 @@
-# Go Generator Plugin
+# OpenAPI Go Generator Plugin
 
-This directory contains a `gnostic` plugin that can be used to generate a Go client library and scaffolding for a Go server for an API with an OpenAPI description.
+This directory contains an `openapic` plugin that can be used to generate a Go client library and scaffolding for a Go server for an API with an OpenAPI description.
 
 The plugin can be invoked like this:
 
-	gnostic bookstore.json --go-generator-out=bookstore
+	openapic bookstore.json --go_generator_out=package=bookstore:bookstore
 
-`bookstore` is the name of a directory where the generated code will be written.
-`bookstore` will also be the package name used for generated code.
+Where `bookstore` is the name of a directory where the generated code will be written and `package=bookstore` indicates that "bookstore" should also be the package name used for generated code. 
 
-By default, both client and server code will be generated. If the `gnostic-go-generator` binary is also linked from the names `gnostic-go-client` and `gnostic-go-server`, then only client or only server code can be generated as follows:
+By default, both client and server code will be generated. If the `openapi_go_generator` binary is also linked from the names `openapi_go_client` and `openapi_go_server`, then only client or only server code can be generated as follows:
 
-	gnostic bookstore.json --go-client-out=bookstore
+	openapic bookstore.json --go_client_out=package=bookstore:bookstore
 
-	gnostic bookstore.json --go-server-out=bookstore
+	openapic bookstore.json --go_server_out=package=bookstore:bookstore
 
-For example usage, see the [examples/v2.0/bookstore](examples/v2.0/bookstore) directory.
+For example usage, see the [examples/bookstore](examples/bookstore) directory.

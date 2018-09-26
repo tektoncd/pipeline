@@ -72,7 +72,6 @@ var (
 	// layout control
 	html    = flag.Bool("html", false, "print HTML in command-line mode")
 	srcMode = flag.Bool("src", false, "print (exported) source in command-line mode")
-	allMode = flag.Bool("all", false, "include unexported identifiers in command-line mode")
 	urlFlag = flag.String("url", "", "print HTML for named URL")
 
 	// command-line searches
@@ -82,7 +81,7 @@ var (
 
 	// file system roots
 	// TODO(gri) consider the invariant that goroot always end in '/'
-	goroot = flag.String("goroot", findGOROOT(), "Go root directory")
+	goroot = flag.String("goroot", runtime.GOROOT(), "Go root directory")
 
 	// layout control
 	tabWidth       = flag.Int("tabwidth", 4, "tab width")
@@ -165,10 +164,6 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
-	if certInit != nil {
-		certInit()
-	}
-
 	playEnabled = *showPlayground
 
 	// Check usage: server and no args.
@@ -250,10 +245,6 @@ func main() {
 		}
 	}
 
-	// Initialize the version info before readTemplates, which saves
-	// the map value in a method value.
-	corpus.InitVersionInfo()
-
 	pres = godoc.NewPresentation(corpus)
 	pres.TabWidth = *tabWidth
 	pres.ShowTimestamps = *showTimestamps
@@ -262,7 +253,6 @@ func main() {
 	pres.DeclLinks = *declLinks
 	pres.SrcMode = *srcMode
 	pres.HTMLMode = *html
-	pres.AllMode = *allMode
 	if *notesRx != "" {
 		pres.NotesRx = regexp.MustCompile(*notesRx)
 	}
@@ -333,9 +323,9 @@ func main() {
 			go analysis.Run(pointerAnalysis, &corpus.Analysis)
 		}
 
-		if runHTTPS != nil {
+		if serveAutoCertHook != nil {
 			go func() {
-				if err := runHTTPS(handler); err != nil {
+				if err := serveAutoCertHook(handler); err != nil {
 					log.Fatalf("ListenAndServe TLS: %v", err)
 				}
 			}()
@@ -343,10 +333,7 @@ func main() {
 
 		// Start http server.
 		if *verbose {
-			log.Println("starting HTTP server")
-		}
-		if wrapHTTPMux != nil {
-			handler = wrapHTTPMux(handler)
+			log.Println("starting http server")
 		}
 		if err := http.ListenAndServe(*httpAddr, handler); err != nil {
 			log.Fatalf("ListenAndServe %s: %v", *httpAddr, err)
@@ -360,16 +347,11 @@ func main() {
 		return
 	}
 
-	build.Default.GOROOT = *goroot
 	if err := godoc.CommandLine(os.Stdout, fs, pres, flag.Args()); err != nil {
 		log.Print(err)
 	}
 }
 
-// Hooks that are set non-nil in autocert.go if the "autocert" build tag
-// is used.
-var (
-	certInit    func()
-	runHTTPS    func(http.Handler) error
-	wrapHTTPMux func(http.Handler) http.Handler
-)
+// serveAutoCertHook if non-nil specifies a function to listen on port 443.
+// See autocert.go.
+var serveAutoCertHook func(http.Handler) error

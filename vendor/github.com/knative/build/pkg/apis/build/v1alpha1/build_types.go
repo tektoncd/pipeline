@@ -21,6 +21,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/knative/pkg/apis/duck"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/kmeta"
 )
 
 // +genclient
@@ -37,6 +42,12 @@ type Build struct {
 	Spec   BuildSpec   `json:"spec"`
 	Status BuildStatus `json:"status"`
 }
+
+// Check that our resource implements several interfaces.
+var _ kmeta.OwnerRefable = (*Build)(nil)
+
+// Check that Build implements the Conditions duck type.
+var _ = duck.VerifyType(&Build{}, &duckv1alpha1.Conditions{})
 
 // BuildSpec is the spec for a Build resource.
 type BuildSpec struct {
@@ -63,9 +74,34 @@ type BuildSpec struct {
 
 	// Template, if specified, references a BuildTemplate resource to use to
 	// populate fields in the build, and optional Arguments to pass to the
-	// template.
+	// template. The default Kind of template is BuildTemplate
 	Template *TemplateInstantiationSpec `json:"template,omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Time after which the build times out. Defaults to 10 minutes.
+	// Specified build timeout should be less than 24h.
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	Timeout metav1.Duration `json:"timeout,omitempty"`
+
+	// If specified, the pod's scheduling constraints
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
+
+// TemplateKind defines the type of BuildTemplate used by the build.
+type TemplateKind string
+
+const (
+	// BuildTemplateKind indicates that the template type has a namepace scope.
+	BuildTemplateKind TemplateKind = "BuildTemplate"
+	// ClusterBuildTemplateKind indicates that template type has a cluster scope.
+	ClusterBuildTemplateKind TemplateKind = "ClusterBuildTemplate"
+)
 
 // TemplateInstantiationSpec specifies how a BuildTemplate is instantiated into
 // a Build.
@@ -74,6 +110,10 @@ type TemplateInstantiationSpec struct {
 	//
 	// The template is assumed to exist in the Build's namespace.
 	Name string `json:"name"`
+
+	// The Kind of the template to be used, possible values are BuildTemplate
+	// or ClusterBuildTemplate. If nothing is specified, the default if is BuildTemplate
+	Kind TemplateKind `json:"kind,omitempty"`
 
 	// Arguments, if specified, lists values that should be applied to the
 	// parameters specified by the template.
@@ -87,16 +127,30 @@ type TemplateInstantiationSpec struct {
 // ArgumentSpec defines the actual values to use to populate a template's
 // parameters.
 type ArgumentSpec struct {
-	Name  string `json:"name"`
+	// Name is the name of the argument.
+	Name string `json:"name"`
+	// Value is the value of the argument.
 	Value string `json:"value"`
 	// TODO(jasonhall): ValueFrom?
 }
 
 // SourceSpec defines the input to the Build
 type SourceSpec struct {
-	Git    *GitSourceSpec    `json:"git,omitempty"`
-	GCS    *GCSSourceSpec    `json:"gcs,omitempty"`
+	// Git represents source in a Git repository.
+	Git *GitSourceSpec `json:"git,omitempty"`
+
+	// GCS represents source in Google Cloud Storage.
+	GCS *GCSSourceSpec `json:"gcs,omitempty"`
+
+	// Custom indicates that source should be retrieved using a custom
+	// process defined in a container invocation.
 	Custom *corev1.Container `json:"custom,omitempty"`
+
+	// SubPath specifies a path within the fetched source which should be
+	// built. This option makes parent directories *inaccessible* to the
+	// build steps. (The specific source type may, in fact, not even fetch
+	// files not in the SubPath.)
+	SubPath string `json:"subPath,omitempty"`
 }
 
 // GitSourceSpec describes a Git repo source input to the Build.
@@ -113,21 +167,30 @@ type GitSourceSpec struct {
 // GCSSourceSpec describes source input to the Build in the form of an archive,
 // or a source manifest describing files to fetch.
 type GCSSourceSpec struct {
-	Type     GCSSourceType `json:"type,omitempty"`
-	Location string        `json:"location,omitempty"`
+	// Type declares the style of source to fetch.
+	Type GCSSourceType `json:"type,omitempty"`
+
+	// Location specifies the location of the source archive or manifest file.
+	Location string `json:"location,omitempty"`
 }
 
+// GCSSourceType defines a type of GCS source fetch.
 type GCSSourceType string
 
 const (
-	GCSArchive  GCSSourceType = "Archive"
+	// GCSArchive indicates that source should be fetched from a typical archive file.
+	GCSArchive GCSSourceType = "Archive"
+
+	// GCSManifest indicates that source should be fetched using a
+	// manifest-based protocol which enables incremental source upload.
 	GCSManifest GCSSourceType = "Manifest"
 )
 
+// BuildProvider defines a build execution implementation.
 type BuildProvider string
 
 const (
-	// GoogleBuildProvider indicates that this build was performed with Google Container Builder.
+	// GoogleBuildProvider indicates that this build was performed with Google Cloud Build.
 	GoogleBuildProvider BuildProvider = "Google"
 	// ClusterBuildProvider indicates that this build was performed on-cluster.
 	ClusterBuildProvider BuildProvider = "Cluster"
@@ -137,51 +200,53 @@ const (
 type BuildStatus struct {
 	Builder BuildProvider `json:"builder,omitempty"`
 
-	// Additional information based on the Builder executing this build.
+	// Cluster provides additional information if the builder is Cluster.
 	Cluster *ClusterSpec `json:"cluster,omitempty"`
-	Google  *GoogleSpec  `json:"google,omitempty"`
+	// Google provides additional information if the builder is Google.
+	Google *GoogleSpec `json:"google,omitempty"`
 
-	// Information about the execution of the build.
-	StartTime      metav1.Time `json:"startTime,omitEmpty"`
+	// Creation is the time the build is created.
+	CreationTime metav1.Time `json:"creationTime,omitEmpty"`
+	// StartTime is the time the build is actually started.
+	StartTime metav1.Time `json:"startTime,omitEmpty"`
+	// CompletionTime is the time the build completed.
 	CompletionTime metav1.Time `json:"completionTime,omitEmpty"`
 
-	// Parallel list to spec.Containers
+	// StepStates describes the state of each build step container.
 	StepStates []corev1.ContainerState `json:"stepStates,omitEmpty"`
-	Conditions []BuildCondition        `json:"conditions,omitempty"`
+
+	// StepsCompleted lists the name of build steps completed.
+	StepsCompleted []string `json:"stepsCompleted"`
+
+	// Conditions describes the set of conditions of this build.
+	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
 }
 
+// Check that BuildStatus may have its conditions managed.
+var _ duckv1alpha1.ConditionsAccessor = (*BuildStatus)(nil)
+
+// ClusterSpec provides information about the on-cluster build, if applicable.
 type ClusterSpec struct {
+	// Namespace is the namespace in which the pod is running.
 	Namespace string `json:"namespace"`
-	PodName   string `json:"podName"`
+	// PodName is the name of the pod responsible for executing this build's steps.
+	PodName string `json:"podName"`
 }
 
+// GoogleSpec provides information about the GCB build, if applicable.
 type GoogleSpec struct {
+	// Operation is the unique name of the GCB API Operation for the build.
 	Operation string `json:"operation"`
 }
 
-type BuildConditionType string
+// BuildSucceeded is set when the build is running, and becomes True when the
+// build finishes successfully.
+//
+// If the build is ongoing, its status will be Unknown. If it fails, its status
+// will be False.
+const BuildSucceeded = duckv1alpha1.ConditionSucceeded
 
-const (
-	// BuildSucceeded is set when the build is running, and becomes True
-	// when the build finishes successfully.
-	//
-	// If the build is ongoing, its status will be Unknown. If it fails,
-	// its status will be False.
-	BuildSucceeded BuildConditionType = "Succeeded"
-)
-
-// BuildCondition defines a readiness condition for a Build.
-// See: https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#typical-status-properties
-type BuildCondition struct {
-	Type BuildConditionType `json:"state"`
-
-	Status corev1.ConditionStatus `json:"status" description:"status of the condition, one of True, False, Unknown"`
-
-	// +optional
-	Reason string `json:"reason,omitempty" description:"one-word CamelCase reason for the condition's last transition"`
-	// +optional
-	Message string `json:"message,omitempty" description:"human-readable message indicating details about last transition"`
-}
+var buildCondSet = duckv1alpha1.NewBatchConditionSet()
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -190,44 +255,44 @@ type BuildList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
+	// Items is the list of Build items in this list.
 	Items []Build `json:"items"`
 }
 
-func (bs *BuildStatus) GetCondition(t BuildConditionType) *BuildCondition {
-	for _, cond := range bs.Conditions {
-		if cond.Type == t {
-			return &cond
-		}
-	}
-	return nil
+// GetCondition returns the Condition matching the given type.
+func (bs *BuildStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
+	return buildCondSet.Manage(bs).GetCondition(t)
 }
 
-func (b *BuildStatus) SetCondition(newCond *BuildCondition) {
-	if newCond == nil {
-		return
+// SetCondition sets the condition, unsetting previous conditions with the same
+// type as necessary.
+func (bs *BuildStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+	if newCond != nil {
+		buildCondSet.Manage(bs).SetCondition(*newCond)
 	}
-
-	t := newCond.Type
-	var conditions []BuildCondition
-	for _, cond := range b.Conditions {
-		if cond.Type != t {
-			conditions = append(conditions, cond)
-		}
-	}
-	conditions = append(conditions, *newCond)
-	b.Conditions = conditions
 }
 
-func (b *BuildStatus) RemoveCondition(t BuildConditionType) {
-	var conditions []BuildCondition
-	for _, cond := range b.Conditions {
-		if cond.Type != t {
-			conditions = append(conditions, cond)
-		}
-	}
-	b.Conditions = conditions
+// GetConditions returns the Conditions array. This enables generic handling of
+// conditions by implementing the duckv1alpha1.Conditions interface.
+func (bs *BuildStatus) GetConditions() duckv1alpha1.Conditions {
+	return bs.Conditions
 }
 
-func (b *Build) GetGeneration() int64           { return b.Spec.Generation }
+// SetConditions sets the Conditions array. This enables generic handling of
+// conditions by implementing the duckv1alpha1.Conditions interface.
+func (bs *BuildStatus) SetConditions(conditions duckv1alpha1.Conditions) {
+	bs.Conditions = conditions
+}
+
+// GetGeneration returns the generation number of this object.
+func (b *Build) GetGeneration() int64 { return b.Spec.Generation }
+
+// SetGeneration sets the generation number of this object.
 func (b *Build) SetGeneration(generation int64) { b.Spec.Generation = generation }
-func (b *Build) GetSpecJSON() ([]byte, error)   { return json.Marshal(b.Spec) }
+
+// GetSpecJSON returns the JSON serialization of this build's Spec.
+func (b *Build) GetSpecJSON() ([]byte, error) { return json.Marshal(b.Spec) }
+
+func (b *Build) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind("Build")
+}

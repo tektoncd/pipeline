@@ -107,7 +107,10 @@ given to the equal plugin, will generate the following code:
 
 	func (this *B) Equal(that interface{}) bool {
 		if that == nil {
-			return this == nil
+			if this == nil {
+				return true
+			}
+			return false
 		}
 
 		that1, ok := that.(*B)
@@ -115,7 +118,10 @@ given to the equal plugin, will generate the following code:
 			return false
 		}
 		if that1 == nil {
-			return this == nil
+			if this == nil {
+				return true
+			}
+			return false
 		} else if this == nil {
 			return false
 		}
@@ -230,15 +236,19 @@ func (p *plugin) generateNullableField(fieldname string, verbose bool) {
 func (p *plugin) generateMsgNullAndTypeCheck(ccTypeName string, verbose bool) {
 	p.P(`if that == nil {`)
 	p.In()
+	p.P(`if this == nil {`)
+	p.In()
 	if verbose {
-		p.P(`if this == nil {`)
-		p.In()
 		p.P(`return nil`)
-		p.Out()
-		p.P(`}`)
+	} else {
+		p.P(`return true`)
+	}
+	p.Out()
+	p.P(`}`)
+	if verbose {
 		p.P(`return `, p.fmtPkg.Use(), `.Errorf("that == nil && this != nil")`)
 	} else {
-		p.P(`return this == nil`)
+		p.P(`return false`)
 	}
 	p.Out()
 	p.P(`}`)
@@ -264,15 +274,19 @@ func (p *plugin) generateMsgNullAndTypeCheck(ccTypeName string, verbose bool) {
 	p.P(`}`)
 	p.P(`if that1 == nil {`)
 	p.In()
+	p.P(`if this == nil {`)
+	p.In()
 	if verbose {
-		p.P(`if this == nil {`)
-		p.In()
 		p.P(`return nil`)
-		p.Out()
-		p.P(`}`)
+	} else {
+		p.P(`return true`)
+	}
+	p.Out()
+	p.P(`}`)
+	if verbose {
 		p.P(`return `, p.fmtPkg.Use(), `.Errorf("that is type *`, ccTypeName, ` but is nil && this != nil")`)
 	} else {
-		p.P(`return this == nil`)
+		p.P(`return false`)
 	}
 	p.Out()
 	p.P(`} else if this == nil {`)
@@ -613,7 +627,7 @@ func (p *plugin) generateMessage(file *generator.FileDescriptor, message *genera
 		p.In()
 
 		p.generateMsgNullAndTypeCheck(ccTypeName, verbose)
-		vanity.TurnOffNullableForNativeTypes(field)
+		vanity.TurnOffNullableForNativeTypesWithoutDefaultsOnly(field)
 		p.generateField(file, message, field, verbose)
 
 		if verbose {

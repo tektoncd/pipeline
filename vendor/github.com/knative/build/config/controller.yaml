@@ -28,9 +28,16 @@ spec:
       - name: build-controller
         image: github.com/knative/build/cmd/controller
         args: [
-          "-builder", "cluster",
           "-logtostderr",
           "-stderrthreshold", "INFO",
           "-creds-image", "github.com/knative/build/cmd/creds-init",
           "-git-image", "github.com/knative/build/cmd/git-init",
+          "-nop-image", "github.com/knative/build/cmd/nop",
         ]
+        volumeMounts:
+        - name: config-logging
+          mountPath: /etc/config-logging
+      volumes:
+        - name: config-logging
+          configMap:
+            name: config-logging

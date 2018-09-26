@@ -15,12 +15,8 @@
 import PackageDescription
 
 let package = Package(
-    name: "gnostic-swift-sample",
-    targets: [
-        Target(name: "gnostic-swift-sample", dependencies: [ "Gnostic" ]),
-        Target(name: "Gnostic")
-    ],
+    name: "openapi-swift-sample",
     dependencies: [
-        .Package(url: "https://github.com/apple/swift-protobuf.git", Version(0,9,904))
+        .Package(url: "https://github.com/apple/swift-protobuf.git", Version(0,9,903))
     ]
 )

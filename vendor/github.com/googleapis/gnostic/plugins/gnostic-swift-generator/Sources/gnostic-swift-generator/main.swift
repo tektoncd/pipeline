@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import Foundation
-import Gnostic
 
 func Log(_ message : String) {
   FileHandle.standardError.write((message + "\n").data(using:.utf8)!)
@@ -21,33 +20,28 @@ func Log(_ message : String) {
 
 func main() throws {
   
-  // read the code generation request
+  // read the OpenAPI document
   let rawRequest = try Stdin.readall()
-  let request = try Gnostic_Plugin_V1_Request(serializedData:rawRequest)
+  let request = try Openapi_Plugin_V1_Request(serializedData:rawRequest)
+  let wrapper = request.wrapper
+  let document = try Openapi_V2_Document(serializedData:wrapper.value)
 
-  var response = Gnostic_Plugin_V1_Response()
+  // build the service renderer
+  let renderer = ServiceRenderer(document:document)
 
-  if request.hasOpenapi2 && request.hasSurface {
-    let document = request.openapi2
-    let surface = request.surface
+  // generate the desired files
+  var response = Openapi_Plugin_V1_Response()
 
-    Log("\(request.surface)")
-
-    // build the service renderer
-    let renderer = ServiceRenderer(surface:surface, document:document)
-
-    // generate the desired files
-    var filenames : [String]
-    switch CommandLine.arguments[0] {
-    case "openapi_swift_client":
-      filenames = ["client.swift", "types.swift", "fetch.swift"]
-    case "openapi_swift_server":
-      filenames = ["server.swift", "types.swift"]
-    default:
-      filenames = ["client.swift", "server.swift", "types.swift", "fetch.swift"]
-    }
-    try renderer.generate(filenames:filenames, response:&response)
+  var filenames : [String]
+  switch CommandLine.arguments[0] {
+  case "openapi_swift_client":
+    filenames = ["client.swift", "types.swift", "fetch.swift"]
+  case "openapi_swift_server":
+    filenames = ["server.swift", "types.swift"]
+  default:
+    filenames = ["client.swift", "server.swift", "types.swift", "fetch.swift"]
   }
+  try renderer.generate(filenames:filenames, response:&response)
 
   // return the results
   let serializedResponse = try response.serializedData()
