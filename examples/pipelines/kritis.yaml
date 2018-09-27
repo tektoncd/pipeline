@@ -23,8 +23,8 @@ spec:
             passedConstraint: 
               - make
         outputSourceBindings:
-          - name: registry
-            key: stagingRegistry
+          - name: kritisImage
+            key: staging-image
         params:
           - name: pathToDockerfile
             value: deploy/Dockerfile
@@ -32,8 +32,8 @@ spec:
         taskRef:
           name: deploy-with-helm
         inputSourceBindings:
-          - name: registry
-            key: stagingRegistry
+          - name: kritisImage
+            key: staging-image
             passedConstraint: [build-push]
         params:
           - name: pathToHelmCharts
@@ -58,6 +58,6 @@ spec:
       - name: kritis-test-github
         resourceRef:
           name: kritis-test-github-resource
-      - name: stagingRegistry
+      - name: stagingImage
         resourceRef:
-          name: stagingRegistry-resource                    
+          name: stagingImage                   

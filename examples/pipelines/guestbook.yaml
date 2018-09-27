@@ -12,8 +12,8 @@ spec:
               - name: workspace
                 key: guestbook
           outputSourceBindings:
-              - name: registry
-                key: stagingRegistry
+              - name: guestbookImage
+                key: stagingImage
           params:
               - name: pathToDockerfile
                 value: guestbook-go/Dockerfile
@@ -22,10 +22,10 @@ spec:
               name: build-push
           inputSourceBindings:
               - name: workspace
-                key: redis-docker          # TODO Add Commit SHA
+                key: redis-docker          
           outputSourceBindings:
-              - name: registry
-                key: stagingRegistry
+              - name: redisImage
+                key: stagingImage
           params:
               - name: pathToDockerfile
                 value: 4/debian9/4.0/Dockerfile
@@ -92,6 +92,6 @@ spec:
     - name: redis-docker
       resourceRef:
         name: redis-docker
-    - name: stagingRegistry
+    - name: stagingImage
       resourceRef:
-        name: stagingRegistry  
+        name: stagingImage

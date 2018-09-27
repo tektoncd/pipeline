@@ -32,7 +32,7 @@ metadata:
   name: kritis-resources-image
   namespace: default
 spec:  
-  name: stagingRegistry-resource
+  name: staging-image
   type: image
   params:
   - name: url

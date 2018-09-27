@@ -33,10 +33,10 @@ spec:
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Resource
 metadata:
-  name: guestbookstagingregistry
+  name: guestbookstagingimage
   namespace: default
 spec:        
-    name: stagingRegistry
+    name: stagingImage
     type: image
     params:
       - name: url

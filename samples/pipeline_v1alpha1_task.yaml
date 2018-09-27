@@ -16,7 +16,7 @@ spec:
         resources:
          - resourceRef:
              name: registry
-           name: builtImage # registy is the name of the ArtifactStore
+           name: builtImage 
     buildSpec:
         template:
             name: kaniko
