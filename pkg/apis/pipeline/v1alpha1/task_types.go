@@ -72,7 +72,7 @@ type Inputs struct {
 // name "workspace" would be mounted into "/workspace".
 type Source struct {
 	Name        string              `json:"name"`
-	ResourceRef StandardResourceRef `json:"resourceRef"`
+	ResourceRef PipelineResourceRef `json:"resourceRef"`
 }
 
 // Param defines arbitrary parameters needed by a task beyond typed inputs

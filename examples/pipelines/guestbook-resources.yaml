@@ -1,30 +1,43 @@
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Resource
 metadata:
-  name: guestbook-resources-sample
+  name: guestbook-resources-git
   namespace: default
 spec:
-  resources:
-    - name: guestbook
-      type: git
-      params:
+    name: guestbook
+    type: git
+    params:
+    - name: url
+      value: github.com/kubernetes/examples
+    - name: revision
+      value: HEAD      
+    - name: serviceAccount
+      value: githubServiceAccount
+---      
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Resource
+metadata:
+  name: guestbook-resources-redis-docker
+  namespace: default
+spec:
+    name: redis-docker
+    type: git
+    params:
       - name: url
-        value: github.com/kubernetes/examples
-      - name: revision
-        value: HEAD      
+        value: github.com/GoogleCloudPlatform/redis-docker/blob/master/4/debian9/4.0/Dockerfile
       - name: serviceAccount
         value: githubServiceAccount
-    - name: redis-docker
-      type: git
-      params:
-        - name: url
-          value: github.com/GoogleCloudPlatform/redis-docker/blob/master/4/debian9/4.0/Dockerfile
-        - name: serviceAccount
-          value: githubServiceAccount
-        - name: revision
-          value: HEAD
-    - name: stagingRegistry
-      type: image
-      params:
-        - name: url
-          value: gcr.io/demo-staging
+      - name: revision
+        value: HEAD
+---        
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Resource
+metadata:
+  name: guestbookstagingregistry
+  namespace: default
+spec:        
+    name: stagingRegistry
+    type: image
+    params:
+      - name: url
+        value: gcr.io/demo-staging

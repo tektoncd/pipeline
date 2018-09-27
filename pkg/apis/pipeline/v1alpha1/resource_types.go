@@ -1,0 +1,93 @@
+/*
+Copyright 2018 The Knative Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1
+
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// PipelineResourceType represents the type of endpoint the pipelineResource is, so that the
+// controller will know this pipelineResource should be fetched and optionally what
+// additional metatdata should be provided for it.
+type PipelineResourceType string
+
+const (
+	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	PipelineResourceTypeGit PipelineResourceType = "git"
+
+	// PipelineResourceTypeGCS indicates that this source is a GCS bucket.
+	PipelineResourceTypeGCS PipelineResourceType = "gcs"
+
+	// PipelineResourceTypeImage indicates that this source is a docker Image.
+	PipelineResourceTypeImage PipelineResourceType = "image"
+)
+
+// PipelineResourceInterface interface to be implemented by different PipelineResource types
+type PipelineResourceInterface interface {
+	GetName() string
+	GetType() PipelineResourceType
+	GetParams() []Param
+	GetVersion() string
+	GetServiceAccountName() string
+}
+
+// PipelineResourceStatus should implment status for PipelineResource
+type PipelineResourceStatus struct {
+	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
+}
+
+// PipelineResourceSpec defines  an individual resources used in the pipeline.
+type PipelineResourceSpec struct {
+	Name   string               `json:"name"`
+	Type   PipelineResourceType `json:"type"`
+	Params []Param              `json:"params"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// PipelineResource is the Schema for the pipelineResources API
+// +k8s:openapi-gen=true
+type PipelineResource struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec holds the desired state of the PipelineResource from the client
+	// +optional
+	Spec PipelineResourceSpec `json:"spec,omitempty"`
+	// Status communicates the observed state of the PipelineResource from the controller
+	// +optional
+	Status PipelineResourceStatus `json:"status,omitempty"`
+}
+
+// PipelineResourceVersion defines the desired state of version of the PipelineResource
+type PipelineResourceVersion struct {
+	ResourceRef PipelineResourceRef `json:"resourceRef"`
+	Version     string              `json:"version"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// PipelineResourceList contains a list of PipelineResources
+type PipelineResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []PipelineResource `json:"items"`
+}

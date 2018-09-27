@@ -36,7 +36,7 @@ type TaskRunSpec struct {
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
-	Resources []StandardResourceVersion `json:"standardResourcesVersion"`
+	Resources []PipelineResourceVersion `json:"resourcesVersion"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
 }

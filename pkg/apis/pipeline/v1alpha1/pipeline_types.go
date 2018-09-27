@@ -22,8 +22,8 @@ import (
 
 // PipelineSpec defines the desired state of PipeLine.
 type PipelineSpec struct {
-	Tasks   []PipelineTask     `json:"tasks"`
-	Sources []PipelineResource `json:"resources"`
+	Tasks   []PipelineTask   `json:"tasks"`
+	Sources []PipelineSource `json:"resources"`
 }
 
 // PipelineStatus defines the observed state of Pipeline
@@ -104,8 +104,8 @@ type TaskRef struct {
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
-// StandardResourceRef can be used to refer to a specific instance of a Resource
-type StandardResourceRef struct {
+// PipelineResourceRef can be used to refer to a specific instance of a Resource
+type PipelineResourceRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name"`
 	// API version of the referent
@@ -113,10 +113,10 @@ type StandardResourceRef struct {
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
-// PipelineResource defines set of resources required by all Tasks in the pipeline.
-type PipelineResource struct {
+// PipelineSource defines set of resources required by all Tasks in the pipeline.
+type PipelineSource struct {
 	Name        string              `json:"name"`
-	ResourceRef StandardResourceRef `json:"resourceRef"`
+	ResourceRef PipelineResourceRef `json:"resourceRef"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

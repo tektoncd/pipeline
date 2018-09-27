@@ -39,7 +39,8 @@ spec:
           - name: pathToHelmCharts
             value: kritis-charts
         clusterBindings:
-          - clusterName: test
+          - inputName: test
+            key: test
       - name: integration-test          # 4. Run Integration Tests in test cluster
         taskRef:
           name: integration-test-in-docker

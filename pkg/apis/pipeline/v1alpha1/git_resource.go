@@ -19,9 +19,9 @@ package v1alpha1
 // GitResource is an endpoint from which to get data which is required
 // by a Build/Task for context (e.g. a repo from which to build an image).
 type GitResource struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	URL  string `json:"url"`
+	Name string               `json:"name"`
+	Type PipelineResourceType `json:"type"`
+	URL  string               `json:"url"`
 	// Git revision (branch, tag, commit SHA or ref) to clone.  See
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
@@ -30,16 +30,27 @@ type GitResource struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
-func (s GitResource) getName() string {
+// GetName returns the name of the resource
+func (s GitResource) GetName() string {
 	return s.Name
 }
 
-func (s GitResource) getType() StandardResourceType {
-	return StandardResourceTypeGit
+// GetType returns the type of the resource, in this case "Git"
+func (s GitResource) GetType() PipelineResourceType {
+	return PipelineResourceTypeGit
 }
 
-func (s GitResource) getVersion() string {
+// GetVersion returns the revision of the resource, See
+// https://git-scm.com/docs/gitrevisions#_specifying_revisions for
+// more details what the revison in github is
+func (s GitResource) GetVersion() string {
 	return s.Revision
 }
 
-func (s GitResource) getParams() []Param { return []Param{} }
+// GetServiceAccountName returns the service account to be used with this resource
+func (s *GitResource) GetServiceAccountName() string {
+	return s.ServiceAccount
+}
+
+// GetParams returns the resoruce params
+func (s GitResource) GetParams() []Param { return []Param{} }
