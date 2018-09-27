@@ -74,13 +74,26 @@ for your `KO_DOCKER_REPO` if required. To be able to push images to `gcr.io/<pro
 gcloud auth configure-docker
 ```
 
+4. The user you are using to interact with your k8s cluster must be a cluster admin to create role bindings:
+
+```shell
+# Using gcloud to get your current user
+USER=$(gcloud config get-value core/account)
+# Make that user a cluster admin
+kubectl create clusterrolebinding cluster-admin-binding \
+  --clusterrole=cluster-admin \
+  --user="${USER}"
+```
+
 ## Iterating
 
 While iterating on the project, you may need to:
 
 1. [Run controllers](#running-controllers)
+1. Verify it's working by [looking at the logs](#accessing-controller-logs)
 1. Update your (external) dependencies with: `./hack/update-deps.sh`.
 1. Update your type definitions with: `./hack/update-codegen.sh`.
+1. [Add new CRD types](#adding-new-types)
 
 To make changes to these CRDs, you will probably interact with:
 
@@ -108,3 +121,17 @@ You can clean up everything with:
 ```shell
 ko delete -f config/
 ```
+## Accessing controller logs
+
+To look at the controller logs, run:
+
+```shell
+kubectl -n knative-build-pipeline logs $(kubectl -n knative-build-pipeline get pods -l app=build-pipeline-controller -o name)
+```
+
+## Adding new types
+
+If you need to add a new CRD type, you will need to add:
+
+1. A yaml definition in [config/](./config)
+1. Add the type to the cluster roles in [200-clusterrole.yaml](./config/200-clusterrole.yaml)
