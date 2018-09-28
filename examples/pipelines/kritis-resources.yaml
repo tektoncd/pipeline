@@ -4,7 +4,6 @@ metadata:
   name: kritis-resources-git
   namespace: default
 spec:
-  name: kritis-app-github-resource
   type: git
   params:
   - name: url
@@ -18,7 +17,6 @@ metadata:
   name: kritis-resources-test-git
   namespace: default
 spec:    
-  name: kritis-test-github-resource
   type: git
   params:
   - name: revision
@@ -32,7 +30,6 @@ metadata:
   name: kritis-resources-image
   namespace: default
 spec:  
-  name: staging-image
   type: image
   params:
   - name: url

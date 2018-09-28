@@ -71,8 +71,8 @@ type Inputs struct {
 // into the container executed by the Build/Task, e.g. a Source with the
 // name "workspace" would be mounted into "/workspace".
 type Source struct {
-	Name        string              `json:"name"`
-	ResourceRef PipelineResourceRef `json:"resourceRef"`
+	// name of the source should match the name of the SourceBinding in the pipeline
+	Name string `json:"name"`
 }
 
 // Param defines arbitrary parameters needed by a task beyond typed inputs

@@ -22,8 +22,7 @@ import (
 
 // PipelineSpec defines the desired state of PipeLine.
 type PipelineSpec struct {
-	Tasks   []PipelineTask   `json:"tasks"`
-	Sources []PipelineSource `json:"resources"`
+	Tasks []PipelineTask `json:"tasks"`
 }
 
 // PipelineStatus defines the observed state of Pipeline
@@ -84,10 +83,12 @@ type ClusterBinding struct {
 // SourceBinding is used to bind a Source from a PipelineParams to a source required
 // as an input for a task.
 type SourceBinding struct {
-	// InputName is the string the Task will use to identify this resource in its inputs.
+	// Name is the string the Task will use to identify this resource in its inputs.
 	Name string `json:"name"`
 	// Key is the string that the PipelineParams will use to identify this source.
 	Key string `json:"key"`
+	// The Resource this binding is referring to
+	ResourceRef PipelineResourceRef `json:"resourceRef"`
 	// TODO: validate the passedConstraints values match previous Task names
 	// PassedConstraints is the list of Task names that the resource has to pass through.
 	// +optional
@@ -111,12 +112,6 @@ type PipelineResourceRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
-}
-
-// PipelineSource defines set of resources required by all Tasks in the pipeline.
-type PipelineSource struct {
-	Name        string              `json:"name"`
-	ResourceRef PipelineResourceRef `json:"resourceRef"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

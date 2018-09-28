@@ -1,10 +1,9 @@
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Resource
 metadata:
-  name: wizzbang-resources-git
+  name: wizzbang-git
   namespace: default
 spec:
-  name: wizzbang-git
   type: git
   params:
   - name: url
@@ -15,10 +14,9 @@ spec:
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Resource
 metadata:
-  name: wizzbang-resources-image
+  name: wizzbang-image
   namespace: default
 spec:
-  name: wizzbangStagingImage
   type: image
   params:
   - name: url

@@ -53,7 +53,6 @@ type PipelineResourceStatus struct {
 
 // PipelineResourceSpec defines  an individual resources used in the pipeline.
 type PipelineResourceSpec struct {
-	Name   string               `json:"name"`
 	Type   PipelineResourceType `json:"type"`
 	Params []Param              `json:"params"`
 }

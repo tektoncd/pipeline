@@ -39,7 +39,6 @@ spec:
             type:
               type: string
           required:
-          - name
           - type
           - params
           type: object

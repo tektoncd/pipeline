@@ -86,18 +86,8 @@ spec:
                     properties:
                       name:
                         type: string
-                      resourceRef:
-                        properties:
-                          apiVersion:
-                            type: string
-                          name:
-                            type: string
-                        required:
-                        - name
-                        type: object
                     required:
                     - name
-                    - resourceRef
                     type: object
                   type: array
               type: object
@@ -108,18 +98,8 @@ spec:
                     properties:
                       name:
                         type: string
-                      resourceRef:
-                        properties:
-                          apiVersion:
-                            type: string
-                          name:
-                            type: string
-                        required:
-                        - name
-                        type: object
                     required:
                     - name
-                    - resourceRef
                     type: object
                   type: array
                 results:

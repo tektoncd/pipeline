@@ -9,8 +9,10 @@ spec:
         taskRef:
           name: make
         inputSourceBindings:
-          - name: workspace
-            key: kritis-app-github
+          - name: kritis-app-github
+            key: workspace # bind to the name in the task
+            resourceRef:
+              name: kritis-resources-git
         params:
           - name: makeTarget
             value: test
@@ -18,13 +20,17 @@ spec:
         taskRef:
           name: build-push
         inputSourceBindings:
-          - name: workspace
-            key: kritis-app-github
+          - name: kritis-app-github
+            key: workspace # bind to the name in the task
+            resourceRef:
+              name: kritis-resources-git
             passedConstraint: 
               - make
         outputSourceBindings:
           - name: kritisImage
-            key: staging-image
+            key: builtImage # bind to the name in the task
+            resourceRef:
+              name: kritis-resources-image            
         params:
           - name: pathToDockerfile
             value: deploy/Dockerfile
@@ -32,8 +38,10 @@ spec:
         taskRef:
           name: deploy-with-helm
         inputSourceBindings:
-          - name: kritisImage
-            key: staging-image
+          - name: guestbookImage
+            key: workspace
+            resourceRef:
+              name: kritis-resources-image
             passedConstraint: [build-push]
         params:
           - name: pathToHelmCharts
@@ -45,19 +53,11 @@ spec:
         taskRef:
           name: integration-test-in-docker
         inputSourceBindings:
-          - name: workspace
-            key: kritis-test-github
+          - name: kritis-test-github
+            key: workspace
+            resourceRef:
+                name: kritis-resources-test-git            
             passedConstraint: [deploy-with-helm]
         params:
           - name: testArgs
-            value: "-e REMOTE_INTEGRATION=true"
-    resources:
-      - name: kritis-app-github
-        resourceRef:
-          name: kritis-app-github-resource
-      - name: kritis-test-github
-        resourceRef:
-          name: kritis-test-github-resource
-      - name: stagingImage
-        resourceRef:
-          name: stagingImage                   
+            value: "-e REMOTE_INTEGRATION=true"               

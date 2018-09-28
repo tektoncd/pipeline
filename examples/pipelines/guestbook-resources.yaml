@@ -4,7 +4,6 @@ metadata:
   name: guestbook-resources-git
   namespace: default
 spec:
-    name: guestbook
     type: git
     params:
     - name: url
@@ -20,7 +19,6 @@ metadata:
   name: guestbook-resources-redis-docker
   namespace: default
 spec:
-    name: redis-docker
     type: git
     params:
       - name: url
@@ -36,8 +34,18 @@ metadata:
   name: guestbookstagingimage
   namespace: default
 spec:        
-    name: stagingImage
     type: image
     params:
       - name: url
         value: gcr.io/demo-staging
+---        
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Resource
+metadata:
+  name: redisstagingimage
+  namespace: default
+spec:        
+    type: image
+    params:
+      - name: url
+        value: gcr.io/redis-demo-staging       

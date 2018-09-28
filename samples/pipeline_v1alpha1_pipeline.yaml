@@ -5,22 +5,28 @@ metadata:
   namespace: default
 spec:
     tasks:
-      - name: 'test'
+      - name: test
         taskRef:
           name: test-wizzbang-task
         inputsourceBindings:
           - name: repoUnderTest
-            key: wizzbang
-      - name: 'buildPush'
+            key: workspace
+            resourceRef:
+              name: wizzbang-git
+      - name: buildPush
         taskRef:
           name: build-push-task
         inputSourceBindings:
-          - name: 'workspace'
-            key: 'wizzbang'
+          - name: wizzbangSrc
+            key: workspace
+            resourceRef:
+              name: wizzbang-git
             passedConstraint: [test-wizzbang-task]
         outputSourceBindings:
-          - name: registry
-            key: wizzbangStagingImage
+          - name: wizzbangImage
+            key: builtImage
+            resourceRef:
+              name: wizzbang-image
         params:
           - name: pathToDockerfile
             value: build/Dockerfile
@@ -30,10 +36,14 @@ spec:
         inputSourceBindings:
           - name: repoUnderTest
             key: wizzbang
+            resourceRef:
+              name: wizzbang-git
             passedConstraint: [test]
         outputSourceBindings:
-          - name: registry
-            key: wizzbangStagingImage
+          - name: wizzbangImage
+            key: builtImage
+            resourceRef:
+              name: wizzbang-image
             passedConstraint: [build-push-task]
       - name: deploy
         taskRef:
@@ -42,20 +52,17 @@ spec:
           - name: pathToHelmCharts
             value: deploy/helm
         inputSourceBindings:
-          - name: repoToDeploy
+          - name: wizzbangSrc
             key: wizzbang
+            resourceRef:
+              name: wizzbang-git
             passedConstraint: [integration-test-wizzbang-task]
         clusterBindings:
           - inputName: prod
             key: prod
         outputSourceBindings:
-          - name: registry
-            key: wizzbangStagingImage
-            passedConstraint: [build-push-task]
-    resources:
-      - name: wizzbang
-        resourceRef:
-          name: wizzbang
-      - name: wizzbangStagingImage
-        resourceRef:
-          name: wizzbangStagingImage   
+          - name: wizzbangImage
+            key: builtImage
+            resourceRef:
+              name: wizzbang-image
+            passedConstraint: [build-push-task] 
