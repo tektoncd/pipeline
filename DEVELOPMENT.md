@@ -74,7 +74,7 @@ for your `KO_DOCKER_REPO` if required. To be able to push images to `gcr.io/<pro
 gcloud auth configure-docker
 ```
 
-4. The user you are using to interact with your k8s cluster must be a cluster admin to create role bindings:
+The user you are using to interact with your k8s cluster must be a cluster admin to create role bindings:
 
 ```shell
 # Using gcloud to get your current user
@@ -94,6 +94,7 @@ While iterating on the project, you may need to:
 1. Update your (external) dependencies with: `./hack/update-deps.sh`.
 1. Update your type definitions with: `./hack/update-codegen.sh`.
 1. [Add new CRD types](#adding-new-types)
+1. [Add and run tests](./test/README.md#tests)
 
 To make changes to these CRDs, you will probably interact with:
 
