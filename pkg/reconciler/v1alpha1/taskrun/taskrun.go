@@ -22,6 +22,7 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/reconciler/constants"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
 	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
 	"github.com/knative/pkg/controller"
@@ -36,8 +37,6 @@ import (
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 )
-
-const controllerAgentName = "taskrun-controller"
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
@@ -67,14 +66,14 @@ func NewController(
 ) *controller.Impl {
 
 	c := &Reconciler{
-		Base:                       reconciler.NewBase(opt, controllerAgentName),
+		Base:                       reconciler.NewBase(opt, constants.TaskRunAgentName),
 		taskRunLister:              taskRunInformer.Lister(),
 		taskLister:                 taskInformer.Lister(),
 		buildLister:                buildInformer.Lister(),
 		buildTemplateLister:        buildTemplateInformer.Lister(),
 		clusterBuildTemplateLister: clusterBuildTemplateInformer.Lister(),
 	}
-	impl := controller.NewImpl(c, c.Logger, "TaskRun")
+	impl := controller.NewImpl(c, c.Logger, constants.TaskRunControllerName)
 
 	c.Logger.Info("Setting up event handlers")
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
