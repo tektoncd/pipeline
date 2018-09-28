@@ -40,6 +40,15 @@ and [Gubernator](https://github.com/kubernetes/test-infra/tree/master/gubernator
 (see [Knative Prow](https://github.com/knative/test-infra/blob/master/ci/prow/prow_setup.md)).
 This means that automation will be applied to your pull requests.
 
+_See also [Knative docs on reviewing](https://github.com/knative/docs/blob/master/community/REVIEWING.md)._
+
+## Prow configuration
+
+Prow is configured in [the knative `config.yaml` in `knative/test-infra`](https://github.com/knative/test-infra/blob/master/ci/prow/config.yaml)
+via the sections for `knative/build-pipeline`.
+
+## Prow commands
+
 Prow has a [number of commands](https://prow.knative.dev/command-help) you can use to interact with it,
 in particular:
 
@@ -49,8 +58,6 @@ in particular:
 * You can add dog and cat pictures with `/woof` and `/meow`
 
 Any changes will cause the `/lgtm` label to be removed and it will need to be re-applied.
-
-_See also [Knative docs on reviewing](https://github.com/knative/docs/blob/master/community/REVIEWING.md)._
 
 ### Review turnaround
 
