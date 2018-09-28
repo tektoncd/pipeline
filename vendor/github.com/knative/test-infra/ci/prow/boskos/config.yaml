@@ -1,0 +1,152 @@
+# Copyright 2018 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Boskos deployment for Knative Prow instance
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    app: boskos
+  name: boskos-storage
+  namespace: test-pods
+spec:
+  claimRef:
+    name: boskos-volume-boskos-0
+    namespace: test-pods
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  gcePersistentDisk:
+    pdName: boskos-storage
+    fsType: ext4
+---
+# Start of StatefulSet
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: boskos
+  namespace: test-pods
+spec:
+  serviceName: "boskos"
+  replicas: 1  # one canonical source of resources
+  template:
+    metadata:
+      labels:
+        app: boskos
+      namespace: test-pods
+    spec:
+      serviceAccountName: "boskos"
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: boskos
+        image: gcr.io/k8s-testimages/boskos:v20180405-12e892d69
+        args:
+        - --storage=/store/boskos.json
+        - --config=/etc/config/config
+        - --namespace=test-pods
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+        volumeMounts:
+        - name: boskos-volume
+          mountPath: /store
+        - name: boskos-config
+          mountPath: /etc/config
+          readOnly: true
+      volumes:
+        - name: boskos-config
+          configMap:
+            name: resources
+  volumeClaimTemplates:
+  - metadata:
+      name: boskos-volume
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: boskos
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: boskos
+  namespace: test-pods
+spec:
+  selector:
+    app: boskos
+  ports:
+  - name: default
+    protocol: TCP
+    port: 80
+    targetPort: 8080
+---
+# Janitor
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: boskos-janitor
+  labels:
+    app: boskos-janitor
+  namespace: test-pods
+spec:
+  replicas: 3  # 3 distributed janitor instances
+  template:
+    metadata:
+      labels:
+        app: boskos-janitor
+    spec:
+      serviceAccountName: "boskos"
+      terminationGracePeriodSeconds: 300
+      containers:
+      - name: boskos-janitor
+        image: gcr.io/k8s-testimages/janitor:v20180619-83c62c891
+        args:
+        - --service-account=/etc/service-account/service-account.json
+        - --resource-type=gke-project
+        - --pool-size=10
+        volumeMounts:
+        - mountPath: /etc/service-account
+          name: service
+          readOnly: true
+      volumes:
+      - name: service
+        secret:
+          secretName: service-account
+---
+# Reaper
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: boskos-reaper
+  labels:
+    app: boskos-reaper
+  namespace: test-pods
+spec:
+  replicas: 1  # one canonical source of resources
+  template:
+    metadata:
+      labels:
+        app: boskos-reaper
+    spec:
+      serviceAccountName: "boskos"
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: boskos-reaper
+        image: gcr.io/k8s-testimages/reaper:v20180402-43203f868
+        args:
+        - --resource-type=gke-project

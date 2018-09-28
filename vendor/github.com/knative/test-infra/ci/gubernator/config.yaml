@@ -1,0 +1,58 @@
+
+# Copyright 2018 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+default_external_services:
+  gcs_pull_prefix: knative-prow/pr-logs/pull
+  prow_url: prow.knative.dev
+default_org: knative
+default_repo: serving
+external_services:
+  knative:
+    gcs_bucket: knative-prow/
+    gcs_pull_prefix: knative-prow/pr-logs/pull
+    prow_url: prow.knative.dev
+jobs:
+  knative-prow/pr-logs/directory/:
+  - pull-knative-serving-build-tests
+  - pull-knative-serving-integration-tests
+  - pull-knative-serving-unit-tests
+  - pull-knative-eventing-build-tests
+  - pull-knative-eventing-integration-tests
+  - pull-knative-eventing-unit-tests
+  - pull-knative-docs-build-tests
+  - pull-knative-docs-unit-tests
+  - pull-knative-docs-integration-tests
+  - pull-knative-build-templates-unit-tests
+  - pull-knative-build-templates-build-tests
+  - pull-knative-build-templates-integration-tests
+  - pull-knative-build-pipeline-build-tests
+  - pull-knative-build-pipeline-unit-tests
+  - pull-knative-build-build-tests
+  - pull-knative-build-unit-tests
+  - pull-knative-build-integration-tests
+  - pull-knative-pkg-build-tests
+  - pull-knative-pkg-unit-tests
+  - pull-knative-pkg-integration-tests
+  - ci-knative-serving-continuous
+  - ci-knative-serving-release
+  - ci-knative-serving-playground
+  - ci-knative-build-continuous
+  - ci-knative-build-release
+  - ci-knative-eventing-continuous
+  - ci-knative-eventing-release
+  - ci-knative-build-templates-continuous
+  - ci-knative-docs-continuous
+  - ci-knative-pkg-continuous
+recursive_artifacts: false

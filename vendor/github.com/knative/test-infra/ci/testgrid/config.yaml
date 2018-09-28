@@ -1,0 +1,167 @@
+# Copyright 2018 The Knative Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default testgroup and dashboardtab, please do not change them
+default_test_group:
+  days_of_results: 14            # Number of days of test results to gather and serve
+  tests_name_policy: 2           # Replace the name of the test
+  ignore_pending: false          # Show in-progress tests
+  column_header:
+  - configuration_value: Commit  # Shows the commit number on column header
+  - configuration_value: infra-commit
+  num_columns_recent: 10         # The number of columns to consider "recent" for a variety of purposes
+  use_kubernetes_client: true    # ** This field is deprecated and should always be true **
+  is_external: true              # ** This field is deprecated and should always be true **
+  alert_stale_results_hours: 0   # Don't alert for staleness by default
+  num_failures_to_alert: 3       # Consider a test failed if it has 3 or more consecutive failures
+  num_passes_to_disable_alert: 1 # Consider a failing test passing if it has 1 or more consecutive passes
+
+default_dashboard_tab:
+  open_test_template:            # The URL template to visit after clicking on a cell
+    url: https://gubernator.knative.dev/build/<gcs_prefix>/<changelist>
+  file_bug_template:             # The URL template to visit when filing a bug
+    url: https://github.com/knative/serving/issues/new
+    options:
+    - key: title
+      value: 'Test "<test-name>" failed'
+    - key: body
+      value: <test-url>
+  attach_bug_template:           # The URL template to visit when attaching a bug
+    url:                         # Empty
+    options:                     # Empty
+  # Text to show in the about menu as a link to another view of the results
+  results_text: See these results in Gubernator
+  results_url_template:          # The URL template to visit after clicking
+    url: https://gubernator.knative.dev/builds/<gcs_prefix>
+  # URL for regression search links.
+  code_search_path: github.com/knative/serving/search
+  num_columns_recent: 10
+  code_search_url_template:      # The URL template to visit when searching for changelists
+    url: https://github.com/knative/serving/compare/<start-custom-0>...<end-custom-0>
+
+# Test groups
+
+test_groups:
+- name: ci-knative-serving-continuous
+  gcs_prefix: knative-prow/logs/ci-knative-serving-continuous
+- name: ci-knative-serving-release
+  gcs_prefix: knative-prow/logs/ci-knative-serving-release
+- name: ci-knative-serving-playground
+  gcs_prefix: knative-prow/logs/ci-knative-serving-playground
+- name: pull-knative-serving-test-coverage
+  gcs_prefix: knative-prow/logs/ci-knative-serving-go-coverage
+  short_text_metric: coverage
+- name: ci-knative-serving-latency
+  gcs_prefix: knative-prow/logs/ci-knative-serving-latency
+  short_text_metric: latency
+- name: ci-knative-serving-api-coverage
+  gcs_prefix: knative-prow/logs/ci-knative-serving-api-coverage
+  short_text_metric: api_coverage
+- name: ci-knative-build-continuous
+  gcs_prefix: knative-prow/logs/ci-knative-build-continuous
+- name: ci-knative-build-release
+  gcs_prefix: knative-prow/logs/ci-knative-build-release
+- name: pull-knative-build-test-coverage
+  gcs_prefix: knative-prow/logs/ci-knative-build-go-coverage
+  short_text_metric: coverage
+- name: ci-knative-eventing-continuous
+  gcs_prefix: knative-prow/logs/ci-knative-eventing-continuous
+- name: ci-knative-eventing-release
+  gcs_prefix: knative-prow/logs/ci-knative-eventing-release
+- name: pull-knative-eventing-test-coverage
+  gcs_prefix: knative-prow/logs/ci-knative-eventing-go-coverage
+  short_text_metric: coverage
+- name: ci-knative-build-templates-continuous
+  gcs_prefix: knative-prow/logs/ci-knative-build-templates-continuous
+- name: ci-knative-docs-continuous
+  gcs_prefix: knative-prow/logs/ci-knative-docs-continuous
+- name: pull-knative-docs-test-coverage
+  gcs_prefix: knative-prow/logs/ci-knative-docs-go-coverage
+  short_text_metric: coverage
+- name: ci-knative-pkg-continuous
+  gcs_prefix: knative-prow/logs/ci-knative-pkg-continuous
+- name: pull-knative-pkg-test-coverage
+  gcs_prefix: knative-prow/logs/ci-knative-pkg-go-coverage
+  short_text_metric: coverage
+
+# Dashboards
+
+dashboards:
+- name: knative-serving
+  dashboard_tab:
+  - name: continuous
+    test_group_name: ci-knative-serving-continuous
+  - name: release
+    test_group_name: ci-knative-serving-release
+  - name: playground
+    test_group_name: ci-knative-serving-playground
+  - name: coverage
+    test_group_name: pull-knative-serving-test-coverage
+    base_options: 'exclude-filter-by-regex=Overall&group-by-directory=&expand-groups=&sort-by-name='
+  - name: latency
+    test_group_name: ci-knative-serving-latency
+    description: '95% latency in ms'
+    base_options: 'exclude-filter-by-regex=Overall&group-by-directory=&expand-groups=&sort-by-name='
+  - name: api-coverage
+    test_group_name: ci-knative-serving-api-coverage
+    description: 'Conformance tests API coverage.'
+    base_options: 'exclude-filter-by-regex=Overall$&group-by-directory=&expand-groups=&sort-by-name='
+- name: knative-build
+  dashboard_tab:
+  - name: continuous
+    test_group_name: ci-knative-build-continuous
+  - name: release
+    test_group_name: ci-knative-build-release
+  - name: coverage
+    test_group_name: pull-knative-build-test-coverage
+    base_options: 'exclude-filter-by-regex=Overall&group-by-directory=&expand-groups=&sort-by-name='
+- name: knative-eventing
+  dashboard_tab:
+  - name: continuous
+    test_group_name: ci-knative-eventing-continuous
+  - name: release
+    test_group_name: ci-knative-eventing-release
+  - name: coverage
+    test_group_name: pull-knative-eventing-test-coverage
+    base_options: 'exclude-filter-by-regex=Overall&group-by-directory=&expand-groups=&sort-by-name='
+- name: knative-build-templates
+  dashboard_tab:
+  - name: continuous
+    test_group_name: ci-knative-build-templates-continuous
+- name: knative-docs
+  dashboard_tab:
+  - name: continuous
+    test_group_name: ci-knative-docs-continuous
+  - name: coverage
+    test_group_name: pull-knative-docs-test-coverage
+    base_options: 'exclude-filter-by-regex=Overall&group-by-directory=&expand-groups=&sort-by-name='
+- name: knative-pkg
+  dashboard_tab:
+  - name: continuous
+    test_group_name: ci-knative-pkg-continuous
+  - name: coverage
+    test_group_name: pull-knative-pkg-test-coverage
+    base_options: 'exclude-filter-by-regex=Overall&group-by-directory=&expand-groups=&sort-by-name='
+
+# Dashboard groups
+
+dashboard_groups:
+- name: knative
+  dashboard_names:
+  - knative-serving
+  - knative-build
+  - knative-eventing
+  - knative-build-templates
+  - knative-docs
+  - knative-pkg
