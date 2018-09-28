@@ -38,7 +38,7 @@ function build_tests() {
 
 function unit_tests() {
   echo "Running unit tests"
-  echo "TODO(#78) add unit tests"
+  report_go_test ./...
 }
 
 function integration_tests() {
