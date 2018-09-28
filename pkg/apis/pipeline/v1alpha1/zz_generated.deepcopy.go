@@ -21,6 +21,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	build_v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -35,7 +36,15 @@ func (in *BuildSpec) DeepCopyInto(out *BuildSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	in.Template.DeepCopyInto(&out.Template)
+	if in.Template != nil {
+		in, out := &in.Template, &out.Template
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(build_v1alpha1.TemplateInstantiationSpec)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	return
 }
 
@@ -1155,7 +1164,15 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
-	in.BuildSpec.DeepCopyInto(&out.BuildSpec)
+	if in.BuildSpec != nil {
+		in, out := &in.BuildSpec, &out.BuildSpec
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(build_v1alpha1.BuildSpec)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	return
 }
 

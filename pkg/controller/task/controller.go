@@ -23,6 +23,8 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
@@ -33,6 +35,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/controller"
 	"github.com/knative/build/pkg/builder"
 	"github.com/knative/pkg/logging/logkey"
@@ -44,6 +47,14 @@ import (
 
 const controllerAgentName = "pipeline-controller"
 
+var (
+	groupVersionKind = schema.GroupVersionKind{
+		Group:   v1alpha1.SchemeGroupVersion.Group,
+		Version: v1alpha1.SchemeGroupVersion.Version,
+		Kind:    "Task", // TODO(aaron-prindle) verify Task is correct here
+	}
+)
+
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a Task
 	// is synced
@@ -52,6 +63,9 @@ const (
 	// to sync due to a Deployment of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
 
+	// MessageResourceExists is the message used for Events when a resource
+	// fails to sync due to a Deployment already existing
+	MessageResourceExists = "Resource %q already exists and is not managed by TaskRun"
 	// MessageResourceSynced is the message used for an Event fired when a Task
 	// is synced successfully
 	MessageResourceSynced = "Task synced successfully"
@@ -61,11 +75,12 @@ const (
 type Controller struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
-	// buildclientset is a clientset for our own API group
-	buildclientset clientset.Interface
+	// pipelineclientset is a clientset for our own API group
+	pipelineclientset clientset.Interface
 
-	tasksLister listers.TaskLister
-	tasksSynced cache.InformerSynced
+	tasksLister    listers.TaskLister
+	taskrunsLister listers.TaskRunLister
+	tasksSynced    cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This means
@@ -88,14 +103,15 @@ type Controller struct {
 func NewController(
 	_ builder.Interface,
 	kubeclientset kubernetes.Interface,
-	buildclientset clientset.Interface,
+	pipelineclientset clientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	buildInformerFactory informers.SharedInformerFactory,
+	pipelineInformerFactory informers.SharedInformerFactory,
 	logger *zap.SugaredLogger,
 ) controller.Interface {
 
 	// obtain a reference to a shared index informer for the Task type.
-	taskInformer := buildInformerFactory.Pipeline().V1alpha1().Tasks()
+	tasksInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
+	taskrunsInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
 
 	// Enrich the logs with controller name
 	logger = logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
@@ -109,18 +125,19 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	controller := &Controller{
-		kubeclientset:  kubeclientset,
-		buildclientset: buildclientset,
-		tasksLister:    taskInformer.Lister(),
-		tasksSynced:    taskInformer.Informer().HasSynced,
-		workqueue:      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Tasks"),
-		recorder:       recorder,
-		logger:         logger,
+		kubeclientset:     kubeclientset,
+		pipelineclientset: pipelineclientset,
+		tasksLister:       tasksInformer.Lister(),
+		taskrunsLister:    taskrunsInformer.Lister(),
+		tasksSynced:       tasksInformer.Informer().HasSynced,
+		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Tasks"),
+		recorder:          recorder,
+		logger:            logger,
 	}
 
 	logger.Info("Setting up event handlers")
 	// Set up an event handler for when Task resources change
-	taskInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	tasksInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueTemplate,
 		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueTemplate(new)
@@ -238,6 +255,7 @@ func (c *Controller) enqueueTemplate(obj interface{}) {
 // converge the two. It then updates the Status block of the Task
 // resource with the current status of the resource.
 func (c *Controller) syncHandler(key string) error {
+	fmt.Println("Task synchandler running...")
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -246,19 +264,82 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the Task resource with this namespace/name
-	tmpl, err := c.tasksLister.Tasks(namespace).Get(name)
+	task, err := c.tasksLister.Tasks(namespace).Get(name)
 	if err != nil {
 		// The Task resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
-			runtime.HandleError(fmt.Errorf("build template '%s' in work queue no longer exists", key))
+			runtime.HandleError(fmt.Errorf("task '%s' in work queue no longer exists", key))
 			return nil
 		}
 		return err
 	}
 
 	// Don't modify the informer's copy.
-	tmpl = tmpl.DeepCopy()
-	c.recorder.Event(tmpl, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+	task = task.DeepCopy()
+
+	// Get the TaskRun with the name specified in Task
+	taskrun, err := c.getTaskRun(namespace, name)
+
+	// If the resource doesn't exist, we'll create it
+	if errors.IsNotFound(err) {
+		// taken from https://github.com/kubernetes/test-infra/blob/8faa040989cf8552683dcdd4400505ca62a3c408/prow/cmd/build/controller.go#L255
+		if taskrun, err = makeTaskRun(*task); err != nil {
+			return fmt.Errorf("make taskrun: %v", err)
+		}
+		fmt.Printf("create taskrun /%s", key)
+		if taskrun, err = c.createTaskRun(namespace, taskrun); err != nil {
+			return fmt.Errorf("create taskrun: %v", err)
+		}
+	}
+
+	// If an error occurs during Get/Create, we'll requeue the item so we can
+	// attempt processing again later. This could have been caused by a
+	// temporary network failure, or any other transient reason.
+	if err != nil {
+		return err
+	}
+
+	// If the TaskRun is not controlled by this Foo resource, we should log
+	// a warning to the event recorder and ret
+	if !metav1.IsControlledBy(taskrun, task) {
+		msg := fmt.Sprintf(MessageResourceExists, taskrun.Name)
+		c.recorder.Event(task, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf(msg)
+	}
+
+	// Finally, we update the status block of the Task resource to reflect the
+	// current state of the world
+	// err = c.updateTaskStatus(task, taskrun)
+	// if err != nil {
+	// 	return err
+	// }
+
+	c.recorder.Event(task, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
+}
+
+func (c *Controller) getTaskRun(namespace, name string) (*v1alpha1.TaskRun, error) {
+	return c.taskrunsLister.TaskRuns(namespace).Get(name)
+}
+
+func (c *Controller) createTaskRun(namespace string, t *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
+	return c.pipelineclientset.PipelineV1alpha1().TaskRuns(namespace).Create(t)
+}
+
+// makeTaskRun creates a build from a task, using the tasks's buildspec.
+func makeTaskRun(task v1alpha1.Task) (*v1alpha1.TaskRun, error) {
+	// if task.Spec.BuildSpec == nil {
+	// 	return nil, fmt.Errorf("nil BuildSpec")
+	// }
+	return &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      task.Name,
+			Namespace: task.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(&task, groupVersionKind),
+			},
+		},
+		// Spec: *task.Spec.BuildSpec,
+	}, nil
 }

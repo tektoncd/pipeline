@@ -27,8 +27,8 @@ type TaskSpec struct {
 	// +optional
 	Inputs *Inputs `json:"inputs,omitempty"`
 	// +optional
-	Outputs   *Outputs  `json:"outputs,omitempty"`
-	BuildSpec BuildSpec `json:"buildSpec"`
+	Outputs   *Outputs                 `json:"outputs,omitempty"`
+	BuildSpec *buildv1alpha1.BuildSpec `json:"buildSpec"`
 }
 
 // TaskStatus defines the observed state of Task
@@ -107,7 +107,7 @@ type BuildSpec struct {
 	// +optional
 	Steps []corev1.Container `json:"steps,omitempty"`
 	// +optional
-	Template buildv1alpha1.TemplateInstantiationSpec `json:"template,omitempty"`
+	Template *buildv1alpha1.TemplateInstantiationSpec `json:"template,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -9,7 +9,7 @@ spec:
             - name: workspace
         params:
             - name: PATH_TO_DOCKERFILE
-              type: string
+              value: string # TODO(aaron-prindle) change to 'type'?
     outputs:
         artifacts:
             - name: builtImage

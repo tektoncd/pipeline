@@ -18,3 +18,6 @@ rules:
   - apiGroups: ["pipeline.knative.dev"]
     resources: ["tasks", "taskruns", "pipelines", "pipelineruns", "pipelineparams", "resources"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["caching.internal.knative.dev"]
+    resources: ["images"]
+    verbs: ["get", "list", "create", "update", "delete", "deletecollection", "patch", "watch"]
