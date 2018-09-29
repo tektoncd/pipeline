@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
@@ -42,9 +43,22 @@ import (
 	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
+
+	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	buildclientset "github.com/knative/build/pkg/client/clientset/versioned"
+	buildinformers "github.com/knative/build/pkg/client/informers/externalversions"
+	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
 )
 
 const controllerAgentName = "pipeline-controller"
+
+var (
+	groupVersionKind = schema.GroupVersionKind{
+		Group:   v1alpha1.SchemeGroupVersion.Group,
+		Version: v1alpha1.SchemeGroupVersion.Version,
+		Kind:    "Task", // TODO(aaron-prindle) verify Task is correct here
+	}
+)
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a Build is synced
@@ -53,6 +67,9 @@ const (
 	// to sync due to a Deployment of the same name already existing.
 	ErrResourceExists = "ErrResourceExists"
 
+	// MessageResourceExists is the message used for Events when a resource
+	// fails to sync due to a Deployment already existing
+	MessageResourceExists = "Resource %q already exists and is not managed by TaskRun"
 	// MessageResourceSynced is the message used for an Event fired when a Build
 	// is synced successfully
 	MessageResourceSynced = "Build synced successfully"
@@ -62,13 +79,15 @@ const (
 type Controller struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
-	// taskrunclientset is a clientset for our own API group
-	taskrunclientset clientset.Interface
+	// pipelineclientset is a clientset for our own API group
+	pipelineclientset clientset.Interface
+	buildclientset    buildclientset.Interface
 
 	// taskrunsLister listers.BuildLister
 	// tasksLister    listers.BuildTemplateLister
 	taskrunsLister listers.TaskRunLister
 	tasksLister    listers.TaskLister
+	buildsLister   buildlisters.BuildLister
 
 	taskrunsSynced cache.InformerSynced
 
@@ -97,17 +116,20 @@ type Controller struct {
 func NewController(
 	builder builder.Interface,
 	kubeclientset kubernetes.Interface,
-	taskrunclientset clientset.Interface,
+	pipelineclientset clientset.Interface,
+	buildclientset buildclientset.Interface,
 	kubeInformerFactory kubeinformers.SharedInformerFactory,
-	buildInformerFactory informers.SharedInformerFactory,
+	pipelineInformerFactory informers.SharedInformerFactory,
+	buildInformerFactory buildinformers.SharedInformerFactory,
 	logger *zap.SugaredLogger,
 ) controller.Interface {
 
 	// obtain a reference to a shared index informer for the Build type.
-	// buildInformer := buildInformerFactory.Pipeline().V1alpha1().Builds()
-	// buildTemplateInformer := buildInformerFactory.Pipeline().V1alpha1().BuildTemplates()
-	taskrunInformer := buildInformerFactory.Pipeline().V1alpha1().TaskRuns()
-	taskInformer := buildInformerFactory.Pipeline().V1alpha1().Tasks()
+	// buildInformer := pipelineInformerFactory.Pipeline().V1alpha1().Builds()
+	// buildTemplateInformer := pipelineInformerFactory.Pipeline().V1alpha1().BuildTemplates()
+	taskrunInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
+	taskInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
+	buildInformer := buildInformerFactory.Build().V1alpha1().Builds()
 
 	// Enrich the logs with controller name
 	logger = logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
@@ -121,15 +143,16 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	controller := &Controller{
-		builder:          builder,
-		kubeclientset:    kubeclientset,
-		taskrunclientset: taskrunclientset,
-		taskrunsLister:   taskrunInformer.Lister(),
-		tasksLister:      taskInformer.Lister(),
-		taskrunsSynced:   taskrunInformer.Informer().HasSynced,
-		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Builds"),
-		recorder:         recorder,
-		logger:           logger,
+		builder:           builder,
+		kubeclientset:     kubeclientset,
+		pipelineclientset: pipelineclientset,
+		taskrunsLister:    taskrunInformer.Lister(),
+		tasksLister:       taskInformer.Lister(),
+		buildsLister:      buildInformer.Lister(),
+		taskrunsSynced:    taskrunInformer.Informer().HasSynced,
+		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Builds"),
+		recorder:          recorder,
+		logger:            logger,
 	}
 
 	logger.Info("Setting up event handlers")
@@ -255,9 +278,6 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
-	// Get the Build resource with this namespace/name
-	// CHANGME(aaron-prindle) VERIFY
-	// taskrun, err := c.taskrunsLister.Builds(namespace).Get(name)
 	taskrun, err := c.taskrunsLister.TaskRuns(namespace).Get(name)
 	if err != nil {
 		// The Build resource may no longer exist, in which case we stop
@@ -266,14 +286,61 @@ func (c *Controller) syncHandler(key string) error {
 			runtime.HandleError(fmt.Errorf("build '%s' in work queue no longer exists", key))
 			return nil
 		}
-
 		return err
 	}
 	// Don't mutate the informer's copy of our object.
 	taskrun = taskrun.DeepCopy()
 
+	// Get related task for taskrun
+	task, err := c.pipelineclientset.PipelineV1alpha1().Tasks("tasknamespace").Get(
+		"name", metav1.GetOptions{})
+
+	build, err := c.getBuild(namespace, name)
+	if errors.IsNotFound(err) {
+		// taken from https://github.com/kubernetes/test-infra/blob/8faa040989cf8552683dcdd4400505ca62a3c408/prow/cmd/build/controller.go#L255
+		if build, err = makeBuild(*task); err != nil {
+			return fmt.Errorf("make build: %v", err)
+		}
+		fmt.Printf("Create builds/%s", key)
+		if build, err = c.createBuild(namespace, build); err != nil {
+			return fmt.Errorf("create build: %v", err)
+		}
+	}
+
+	// If an error occurs during Get/Create, we'll requeue the item so we can
+	// attempt processing again later. This could have been caused by a
+	// temporary network failure, or any other transient reason.
+	if err != nil {
+		return err
+	}
+
+	// If the build is not controlled by this taskrun resource, we should log
+	// a warning to the event recorder and ret
+	if !metav1.IsControlledBy(build, taskrun) { // TODO(aaron-prindle) taskrun OR task?
+		msg := fmt.Sprintf(MessageResourceExists, build.Name)
+		c.recorder.Event(taskrun, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return fmt.Errorf(msg)
+	}
+
+	// TODO(aaron-prindle) TaskRun status monitoring?
+
+	// Finally, we update the status block of the Foo resource to reflect the
+	// current state of the world
+	// err = c.updateTaskRunStatus(taskrun, build)
+	// if err != nil {
+	// 	return err
+	// }
+
 	c.recorder.Event(taskrun, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
+}
+
+func (c *Controller) getBuild(namespace, name string) (*buildv1alpha1.Build, error) {
+	return c.buildsLister.Builds(namespace).Get(name)
+}
+
+func (c *Controller) createBuild(namespace string, b *buildv1alpha1.Build) (*buildv1alpha1.Build, error) {
+	return c.buildclientset.BuildV1alpha1().Builds(namespace).Create(b)
 }
 
 func (c *Controller) waitForOperationAsync(taskrun *v1alpha1.TaskRun, op builder.Operation) error {
@@ -292,7 +359,7 @@ func (c *Controller) waitForOperationAsync(taskrun *v1alpha1.TaskRun, op builder
 }
 
 func (c *Controller) updateStatus(u *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
-	taskrunClient := c.taskrunclientset.PipelineV1alpha1().TaskRuns(u.Namespace)
+	taskrunClient := c.pipelineclientset.PipelineV1alpha1().TaskRuns(u.Namespace)
 	newu, err := taskrunClient.Get(u.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -304,4 +371,21 @@ func (c *Controller) updateStatus(u *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error
 	// allow changes to the Spec of the resource, which is ideal for ensuring
 	// nothing other than resource status has been updated.
 	return taskrunClient.Update(newu)
+}
+
+// makeBuild creates a build from a task, using the tasks's buildspec.
+func makeBuild(task v1alpha1.Task) (*buildv1alpha1.Build, error) {
+	if task.Spec.BuildSpec == nil {
+		return nil, fmt.Errorf("nil BuildSpec")
+	}
+	return &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      task.Name,
+			Namespace: task.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(&task, groupVersionKind),
+			},
+		},
+		Spec: *task.Spec.BuildSpec,
+	}, nil
 }
