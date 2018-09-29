@@ -86,8 +86,11 @@ spec:
                     properties:
                       name:
                         type: string
+                      type:
+                        type: string  
                     required:
                     - name
+                    - type
                     type: object
                   type: array
               type: object

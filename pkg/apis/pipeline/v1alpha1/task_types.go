@@ -72,7 +72,8 @@ type Inputs struct {
 // name "workspace" would be mounted into "/workspace".
 type Source struct {
 	// name of the source should match the name of the SourceBinding in the pipeline
-	Name string `json:"name"`
+	Name string               `json:"name"`
+	Type PipelineResourceType `json:"type"`
 }
 
 // Param defines arbitrary parameters needed by a task beyond typed inputs

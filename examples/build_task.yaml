@@ -7,12 +7,14 @@ spec:
     inputs:
         resources:
             - name: workspace
+              type: git
         params:
             - name: pathToDockerFile
               value: string
     outputs:
         resources:
             - name: builtImage
+              type: image
     buildSpec:
         template:
             name: kaniko

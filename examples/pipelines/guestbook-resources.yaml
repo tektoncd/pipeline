@@ -22,7 +22,7 @@ spec:
     type: git
     params:
       - name: url
-        value: github.com/GoogleCloudPlatform/redis-docker/blob/master/4/debian9/4.0/Dockerfile
+        value: github.com/GoogleCloudPlatform/redis-docker/
       - name: serviceAccount
         value: githubServiceAccount
       - name: revision
