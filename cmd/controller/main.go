@@ -21,41 +21,34 @@ import (
 	"log"
 	"time"
 
-	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"github.com/knative/build-pipeline/pkg/logging"
 
-	"github.com/knative/build-pipeline/pkg/controller"
-	"github.com/knative/build-pipeline/pkg/controller/task"
-	"github.com/knative/build-pipeline/pkg/controller/taskrun"
-	onclusterbuilder "github.com/knative/build/pkg/builder/cluster"
+	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/knative/build-pipeline/pkg/system"
+	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
+	"github.com/knative/pkg/controller"
 
-	buildclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
-	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
+	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
+	pipelineinformers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
 	knativebuildclientset "github.com/knative/build/pkg/client/clientset/versioned"
 	knativeinformers "github.com/knative/build/pkg/client/informers/externalversions"
-	cachingclientset "github.com/knative/caching/pkg/client/clientset/versioned"
-	cachinginformers "github.com/knative/caching/pkg/client/informers/externalversions"
 	"github.com/knative/pkg/configmap"
-	"github.com/knative/pkg/logging"
-	"github.com/knative/pkg/logging/logkey"
 	"github.com/knative/pkg/signals"
 )
 
 const (
 	threadsPerController = 2
-	logLevelKey          = "controller"
 )
 
 var (
-	kubeconfig = flag.String("kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	masterURL  = flag.String("master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	masterURL  string
+	kubeconfig string
 )
 
 func main() {
@@ -68,16 +61,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error parsing logging configuration: %v", err)
 	}
-	logger, _ := logging.NewLoggerFromConfig(loggingConfig, logLevelKey)
+	logger, atomicLevel := logging.NewLoggerFromConfig(loggingConfig, logging.ControllerLogKey)
 	defer logger.Sync()
-	logger = logger.With(zap.String(logkey.ControllerType, logLevelKey))
 
 	logger.Info("Starting the Pipeline Controller")
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 
-	cfg, err := clientcmd.BuildConfigFromFlags(*masterURL, *kubeconfig)
+	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
 		logger.Fatalf("Error building kubeconfig: %v", err)
 	}
@@ -87,9 +79,14 @@ func main() {
 		logger.Fatalf("Error building kubernetes clientset: %v", err)
 	}
 
-	buildClient, err := buildclientset.NewForConfig(cfg)
+	sharedClient, err := sharedclientset.NewForConfig(cfg)
 	if err != nil {
-		logger.Fatalf("Error building Build clientset: %v", err)
+		logger.Fatalf("Error building shared clientset: %v", err)
+	}
+
+	pipelineClient, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		logger.Fatalf("Error building serving clientset: %v", err)
 	}
 
 	knativebuildClient, err := knativebuildclientset.NewForConfig(cfg)
@@ -97,70 +94,76 @@ func main() {
 		logger.Fatalf("Error building Build clientset: %v", err)
 	}
 
-	cachingClient, err := cachingclientset.NewForConfig(cfg)
-	if err != nil {
-		logger.Fatalf("Error building Caching clientset: %v", err)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
+	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, time.Second*30)
+	knativebuildInformerFactory := knativeinformers.NewSharedInformerFactory(knativebuildClient, time.Second*30)
+
+	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
+
+	opt := reconciler.Options{
+		KubeClientSet:     kubeClient,
+		SharedClientSet:   sharedClient,
+		PipelineClientSet: pipelineClient,
+		Logger:            logger,
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	buildInformerFactory := informers.NewSharedInformerFactory(buildClient, time.Second*30)
-	knativebuildInformerFactory := knativeinformers.NewSharedInformerFactory(knativebuildClient, time.Second*30)
-	cachingInformerFactory := cachinginformers.NewSharedInformerFactory(cachingClient, time.Second*30)
-
+	taskInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
+	taskRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
 	buildInformer := knativebuildInformerFactory.Build().V1alpha1().Builds()
-	taskInformer := buildInformerFactory.Pipeline().V1alpha1().Tasks()
-	taskRunInformer := buildInformerFactory.Pipeline().V1alpha1().TaskRuns()
 	buildTemplateInformer := knativebuildInformerFactory.Build().V1alpha1().BuildTemplates()
 	clusterBuildTemplateInformer := knativebuildInformerFactory.Build().V1alpha1().ClusterBuildTemplates()
-	imageInformer := cachingInformerFactory.Caching().V1alpha1().Images()
-
-	bldr := onclusterbuilder.NewBuilder(kubeClient, kubeInformerFactory, logger)
 
 	// Build all of our controllers, with the clients constructed above.
-	controllers := []controller.Interface{
+	controllers := []*controller.Impl{
 		// Pipeline Controllers
-		task.NewController(bldr, kubeClient, buildClient,
-			kubeInformerFactory, buildInformerFactory, logger),
-		taskrun.NewController(bldr, kubeClient, buildClient,
-			kubeInformerFactory, buildInformerFactory, logger),
-		// pipeline.NewController(logger, kubeClient, buildClient,
-		// 	cachingClient, buildTemplateInformer, imageInformer),
-		// pipelinerun.NewController(logger, kubeClient, buildClient,
-		// 	cachingClient, buildTemplateInformer, imageInformer),
-		// pipelineparams.NewController(logger, kubeClient, buildClient,
-		// 	cachingClient, buildTemplateInformer, imageInformer),
+		taskrun.NewController(opt,
+			taskRunInformer,
+			taskInformer,
+			buildInformer,
+			buildTemplateInformer,
+			clusterBuildTemplateInformer,
+		),
 	}
 
-	go kubeInformerFactory.Start(stopCh)
-	go buildInformerFactory.Start(stopCh)
-	go cachingInformerFactory.Start(stopCh)
+	// Watch the logging config map and dynamically update logging levels.
+	configMapWatcher.Watch(logging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logging.ControllerLogKey))
 
+	kubeInformerFactory.Start(stopCh)
+	pipelineInformerFactory.Start(stopCh)
+	knativebuildInformerFactory.Start(stopCh)
+	if err := configMapWatcher.Start(stopCh); err != nil {
+		logger.Fatalf("failed to start configuration manager: %v", err)
+	}
+
+	// Wait for the caches to be synced before starting controllers.
+	logger.Info("Waiting for informer caches to sync")
 	for i, synced := range []cache.InformerSynced{
+		taskInformer.Informer().HasSynced,
+		taskRunInformer.Informer().HasSynced,
 		buildInformer.Informer().HasSynced,
 		buildTemplateInformer.Informer().HasSynced,
 		clusterBuildTemplateInformer.Informer().HasSynced,
-		imageInformer.Informer().HasSynced,
-		taskInformer.Informer().HasSynced,
-		taskRunInformer.Informer().HasSynced,
 	} {
 		if ok := cache.WaitForCacheSync(stopCh, synced); !ok {
 			logger.Fatalf("failed to wait for cache at index %v to sync", i)
 		}
 	}
-	var g errgroup.Group
 
 	// Start all of the controllers.
 	for _, ctrlr := range controllers {
-		ctrlr := ctrlr
-		g.Go(func() error {
+		go func(ctrlr *controller.Impl) {
 			// We don't expect this to return until stop is called,
 			// but if it does, propagate it back.
-			return ctrlr.Run(threadsPerController, stopCh)
-		})
+			if runErr := ctrlr.Run(threadsPerController, stopCh); runErr != nil {
+				logger.Fatalf("Error running controller: %v", runErr)
+			}
+		}(ctrlr)
 	}
 
-	// Wait for all controllers to finish and log errors if there are any
-	if err := g.Wait(); err != nil {
-		logger.Fatalf("Error running controller: %s", err.Error())
-	}
+	<-stopCh
+}
+
+func init() {
+	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 }

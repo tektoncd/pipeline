@@ -128,15 +128,11 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:229ad990036cb12f366d343588d1baa8304b6e9dec8ef01946d5b123054cd502"
+  digest = "1:96f4f2a6c88c285e18e17d8c6dac8798d17fac8f468254fbfe75de793b77529d"
   name = "github.com/knative/build"
   packages = [
     "pkg/apis/build",
     "pkg/apis/build/v1alpha1",
-    "pkg/builder",
-    "pkg/builder/cluster",
-    "pkg/builder/cluster/convert",
-    "pkg/builder/validation",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/scheme",
     "pkg/client/clientset/versioned/typed/build/v1alpha1",
@@ -145,9 +141,6 @@
     "pkg/client/informers/externalversions/build/v1alpha1",
     "pkg/client/informers/externalversions/internalinterfaces",
     "pkg/client/listers/build/v1alpha1",
-    "pkg/credentials",
-    "pkg/credentials/dockercreds",
-    "pkg/credentials/gitcreds",
   ]
   pruneopts = "NUT"
   revision = "e63ec56b2f1f1d1eb23d7a4dcf86940610232aaa"
@@ -162,27 +155,34 @@
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/scheme",
     "pkg/client/clientset/versioned/typed/caching/v1alpha1",
-    "pkg/client/informers/externalversions",
-    "pkg/client/informers/externalversions/caching",
-    "pkg/client/informers/externalversions/caching/v1alpha1",
-    "pkg/client/informers/externalversions/internalinterfaces",
-    "pkg/client/listers/caching/v1alpha1",
   ]
   pruneopts = "T"
   revision = "f0d7bb60956f88d4743f5fea66b5607b96d262c9"
 
 [[projects]]
-  digest = "1:846216b23f7f9bfc210738321d76ac30330342fe18f049fd51c8c76ecf4a0162"
+  digest = "1:b393301aa125dd6e3540876fc9c5c102920882d7f0d21674eb3d34216212b980"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
     "apis/duck",
     "apis/duck/v1alpha1",
+    "apis/istio",
+    "apis/istio/authentication",
+    "apis/istio/authentication/v1alpha1",
+    "apis/istio/common/v1alpha1",
+    "apis/istio/v1alpha3",
+    "client/clientset/versioned",
+    "client/clientset/versioned/scheme",
+    "client/clientset/versioned/typed/authentication/v1alpha1",
+    "client/clientset/versioned/typed/istio/v1alpha3",
     "configmap",
+    "controller",
     "kmeta",
     "logging",
     "logging/logkey",
     "signals",
+    "tracker",
+    "webhook",
   ]
   pruneopts = "NUT"
   revision = "fd1e3cc5c9bfc33d54afbcf59e8739dd54533034"
@@ -294,14 +294,6 @@
   revision = "1c05540f6879653db88113bc4a2b70aec4bd491f"
 
 [[projects]]
-  branch = "master"
-  digest = "1:39ebcc2b11457b703ae9ee2e8cca0f68df21969c6102cb3b705f76cca0ea0239"
-  name = "golang.org/x/sync"
-  packages = ["errgroup"]
-  pruneopts = "NUT"
-  revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
-
-[[projects]]
   digest = "1:d80b37b725351dfdd74022614569420d65e377cf9bf1d58dbf91c3aacc1e27c6"
   name = "golang.org/x/sys"
   packages = [
@@ -364,9 +356,10 @@
   version = "v2.2.1"
 
 [[projects]]
-  digest = "1:8627576fb671ee25455068884d59f8038b67b516db984ef66f8792e953ff3b8a"
+  digest = "1:901adc2b5cec68bcc4568ebfb909520940739c0670089ff3f6a298dcd757276d"
   name = "k8s.io/api"
   packages = [
+    "admission/v1beta1",
     "admissionregistration/v1alpha1",
     "admissionregistration/v1beta1",
     "apps/v1",
@@ -645,22 +638,27 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/ghodss/yaml",
     "github.com/knative/build/pkg/apis/build/v1alpha1",
-    "github.com/knative/build/pkg/builder",
-    "github.com/knative/build/pkg/builder/cluster",
     "github.com/knative/build/pkg/client/clientset/versioned",
     "github.com/knative/build/pkg/client/informers/externalversions",
+    "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1",
+    "github.com/knative/build/pkg/client/listers/build/v1alpha1",
     "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/caching/pkg/client/clientset/versioned",
-    "github.com/knative/caching/pkg/client/informers/externalversions",
+    "github.com/knative/pkg/client/clientset/versioned",
     "github.com/knative/pkg/configmap",
+    "github.com/knative/pkg/controller",
     "github.com/knative/pkg/logging",
     "github.com/knative/pkg/logging/logkey",
     "github.com/knative/pkg/signals",
+    "github.com/knative/pkg/tracker",
+    "github.com/knative/pkg/webhook",
     "github.com/knative/test-infra",
     "go.uber.org/zap",
-    "golang.org/x/sync/errgroup",
+    "go.uber.org/zap/zapcore",
     "k8s.io/api/core/v1",
+    "k8s.io/apimachinery/pkg/api/equality",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/labels",
@@ -668,9 +666,7 @@
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
-    "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/sets/types",
-    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
@@ -684,7 +680,6 @@
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/flowcontrol",
-    "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "k8s.io/code-generator/cmd/defaulter-gen",
