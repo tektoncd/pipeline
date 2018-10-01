@@ -32,16 +32,18 @@ type Clients struct {
 // NewClients instantiates and returns several clientsets required for making requests to the
 // Pipeline cluster specified by the combination of clusterName and configPath. Clients can
 // make requests within namespace.
-func NewClients(configPath string, clusterName string, namespace string) (*Clients, error) {
+func NewClients(configPath, clusterName, namespace string) (*Clients, error) {
+	var err error
 	clients := &Clients{}
-	cfg, err := knativetest.BuildClientConfig(configPath, clusterName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create configuration obj from %s for cluster %s: %s", configPath, clusterName, err)
-	}
 
 	clients.KubeClient, err = knativetest.NewKubeClient(configPath, clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubeclient from config file at %s: %s", configPath, err)
+	}
+
+	cfg, err := knativetest.BuildClientConfig(configPath, clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create configuration obj from %s for cluster %s: %s", configPath, clusterName, err)
 	}
 
 	cs, err := versioned.NewForConfig(cfg)

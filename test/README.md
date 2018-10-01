@@ -106,6 +106,18 @@ func tearDown(clients *test.Clients) {
 
 _See [clients.go](./clients.go)._
 
+
+#### Generate random names
+
+You can use the function `AppendRandomString` to create random names for `crd`s or anything else,
+so that your tests can use unique names each time they run.
+
+```go
+namespace := test.AppendRandomString('arendelle')
+```
+
+_See [randstring.go](./randstring.go)._
+
 ## Presubmit tests
 
 [`presubmit-tests.sh`](./presubmit-tests.sh) is the entry point for all tests

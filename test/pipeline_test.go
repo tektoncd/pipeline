@@ -26,12 +26,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
-// TODO: randomly create a namespace on start of test execution, tear it down at the end
-const (
-	namespace = "arendelle"
-)
-
-func setup(t *testing.T) *Clients {
+func setup(t *testing.T, namespace string) *Clients {
 	clients, err := NewClients(knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	if err != nil {
 		t.Fatalf("Couldn't initialize clients: %v", err)
@@ -39,11 +34,18 @@ func setup(t *testing.T) *Clients {
 	return clients
 }
 
+func tearDown(logger *logging.BaseLogger) {
+	logger.Infof("TODO: implement teardown of any resources created once this test is implemented")
+}
+
 // TestPipeline is just a dummy test right now to make sure the whole integration test
 // setup and execution is working.
 func TestPipeline(t *testing.T) {
-	clients := setup(t)
+	clients := setup(t, Namespace)
 	logger := logging.GetContextLogger(t.Name())
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(logger) }, logger)
+	defer tearDown(logger)
 
 	p, err := clients.PipelineClient.List(metav1.ListOptions{})
 	if err != nil {

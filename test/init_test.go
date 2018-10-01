@@ -22,17 +22,49 @@ import (
 	"os"
 	"testing"
 
-	"github.com/knative/pkg/test"
+	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// Namespace is the namespace that will be created before all tests run and will be torn down once
+// the tests complete. It will be generated randomly so that tests can run back to back without
+// interfering with each other.
+var Namespace string
 
 func initializeLogsAndMetrics() {
 	flag.Parse()
 	flag.Set("alsologtostderr", "true")
-	logging.InitializeLogger(test.Flags.LogVerbose)
+	logging.InitializeLogger(knativetest.Flags.LogVerbose)
 
-	if test.Flags.EmitMetrics {
+	if knativetest.Flags.EmitMetrics {
 		logging.InitializeMetricExporter()
+	}
+}
+
+func createNamespace(namespace string, logger *logging.BaseLogger) *knativetest.KubeClient {
+	kubeClient, err := knativetest.NewKubeClient(knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
+	if err != nil {
+		logger.Fatalf("failed to create kubeclient from config file at %s: %s", knativetest.Flags.Kubeconfig, err)
+	}
+	logger.Infof("Create namespace %s to deploy to", namespace)
+	if _, err := kubeClient.Kube.CoreV1().Namespaces().Create(&corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: Namespace,
+		},
+	}); err != nil {
+		logger.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
+	}
+	return kubeClient
+}
+
+func tearDownMain(kubeClient *knativetest.KubeClient, namespace string, logger *logging.BaseLogger) {
+	if kubeClient != nil {
+		logger.Infof("Deleting namespace %s", namespace)
+		if err := kubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
+			logger.Errorf("Failed to delete namespace %s: %s", namespace, err)
+		}
 	}
 }
 
@@ -40,5 +72,14 @@ func initializeLogsAndMetrics() {
 // setup since the log and metric libs we're using use global state :(
 func TestMain(m *testing.M) {
 	initializeLogsAndMetrics()
-	os.Exit(m.Run())
+	logger := logging.GetContextLogger("TestMain")
+
+	Namespace = AppendRandomString("arendelle")
+	kubeClient := createNamespace(Namespace, logger)
+	knativetest.CleanupOnInterrupt(func() { tearDownMain(kubeClient, Namespace, logger) }, logger)
+
+	c := m.Run()
+
+	tearDownMain(kubeClient, Namespace, logger)
+	os.Exit(c)
 }
