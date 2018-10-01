@@ -14,10 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package duck defines logic for defining and consuming "duck typed"
-// Kubernetes resources.  Producers define partial resource definitions
-// that resource authors may choose to implement to interoperate with
-// consumers of these "duck typed" interfaces.
-// For more information see:
-// https://docs.google.com/document/d/16j8C91jML4fQRQPhnHihNJUJDcbvW0RM1YAX2REHgyY/edit#
 package duck
+
+import (
+	"encoding/json"
+)
+
+// Marshallable is implementated by the Unstructured K8s types.
+type Marshalable interface {
+	MarshalJSON() ([]byte, error)
+}
+
+// FromUnstructured takes unstructured object from (say from client-go/dynamic) and
+// converts it into our duck types.
+func FromUnstructured(obj Marshalable, target interface{}) error {
+	// Use the unstructured marshaller to ensure it's proper JSON
+	raw, err := obj.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(raw, &target)
+}

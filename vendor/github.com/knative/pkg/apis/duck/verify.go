@@ -48,11 +48,10 @@ type Populatable interface {
 //   type ConcreteResource struct { ... }
 //
 //   // Check that ConcreteResource properly implement Fooable.
-//   var _ = duck.VerifyType(&ConcreteResource{}, &something.Fooable{})
+//   err := duck.VerifyType(&ConcreteResource{}, &something.Fooable{})
 //
-// This will panic on startup if the duck typing is not satisfied.  The return
-// value is purely cosmetic to enable the `var _ = ...` shorthand.
-func VerifyType(instance interface{}, iface Implementable) (nothing interface{}) {
+// This will return an error if the duck typing is not satisfied.
+func VerifyType(instance interface{}, iface Implementable) error {
 	// Create instances of the full resource for our input and ultimate result
 	// that we will compare at the end.
 	input, output := iface.GetFullType(), iface.GetFullType()
@@ -63,24 +62,24 @@ func VerifyType(instance interface{}, iface Implementable) (nothing interface{})
 	// Serialize the input to JSON and deserialize that into the provided instance
 	// of the type that we are checking.
 	if before, err := json.Marshal(input); err != nil {
-		panic(fmt.Sprintf("Error serializing duck type %T", input))
+		return fmt.Errorf("error serializing duck type %T", input)
 	} else if err := json.Unmarshal(before, instance); err != nil {
-		panic(fmt.Sprintf("Error deserializing duck type %T into %T", input, instance))
+		return fmt.Errorf("error deserializing duck type %T into %T", input, instance)
 	}
 
 	// Serialize the instance we are checking to JSON and deserialize that into the
 	// output resource.
 	if after, err := json.Marshal(instance); err != nil {
-		panic(fmt.Sprintf("Error serializing %T", instance))
+		return fmt.Errorf("error serializing %T", instance)
 	} else if err := json.Unmarshal(after, output); err != nil {
-		panic(fmt.Sprintf("Error deserializing %T into dock type %T", instance, output))
+		return fmt.Errorf("error deserializing %T into dock type %T", instance, output)
 	}
 
 	// Now verify that we were able to roundtrip all of our fields through the type
 	// we are checking.
 	if diff := cmp.Diff(input, output); diff != "" {
-		panic(fmt.Sprintf("%T does not implement the duck type %T, the following fields were lost: %s",
-			instance, iface, diff))
+		return fmt.Errorf("%T does not implement the duck type %T, the following fields were lost: %s",
+			instance, iface, diff)
 	}
-	return
+	return nil
 }

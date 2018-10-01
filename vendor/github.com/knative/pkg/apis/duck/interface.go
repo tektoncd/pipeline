@@ -14,10 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package duck defines logic for defining and consuming "duck typed"
-// Kubernetes resources.  Producers define partial resource definitions
-// that resource authors may choose to implement to interoperate with
-// consumers of these "duck typed" interfaces.
-// For more information see:
-// https://docs.google.com/document/d/16j8C91jML4fQRQPhnHihNJUJDcbvW0RM1YAX2REHgyY/edit#
 package duck
+
+import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/tools/cache"
+)
+
+// InformerFactory is used to create Informer/Lister pairs for a schema.GroupVersionResource
+type InformerFactory interface {
+	// Get returns a synced Informer/Lister pair for the provided schema.GroupVersionResource.
+	Get(schema.GroupVersionResource) (cache.SharedIndexInformer, cache.GenericLister, error)
+}

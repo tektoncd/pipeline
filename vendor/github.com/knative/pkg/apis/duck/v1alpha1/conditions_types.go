@@ -21,6 +21,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/apis/duck"
@@ -92,8 +93,6 @@ func (c *Condition) IsUnknown() bool {
 	return c.Status == corev1.ConditionUnknown
 }
 
-// Implementations can verify that they implement Conditions via:
-var _ = duck.VerifyType(&KResource{}, &Conditions{})
 
 // Conditions is an Implementable "duck type".
 var _ duck.Implementable = (*Conditions)(nil)
@@ -118,8 +117,22 @@ type KResourceStatus struct {
 	Conditions Conditions `json:"conditions,omitempty"`
 }
 
+func (krs *KResourceStatus) GetConditions() Conditions {
+	return krs.Conditions
+}
+
+func (krs *KResourceStatus) SetConditions(conditions Conditions) {
+	krs.Conditions = conditions
+}
+
+// Ensure KResourceStatus satisfies ConditionsAccessor
+var _ ConditionsAccessor = (*KResourceStatus)(nil)
+
 // In order for Conditions to be Implementable, KResource must be Populatable.
 var _ duck.Populatable = (*KResource)(nil)
+
+// Ensure KResource satisfies apis.Listable
+var _ apis.Listable = (*KResource)(nil)
 
 // GetFullType implements duck.Implementable
 func (_ *Conditions) GetFullType() duck.Populatable {
@@ -136,6 +149,11 @@ func (t *KResource) Populate() {
 		Reason:             "Celebrate",
 		Message:            "n3wScott, find your party hat :tada:",
 	}}
+}
+
+// GetListType implements apis.Listable
+func (r *KResource) GetListType() runtime.Object {
+	return &KResourceList{}
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
