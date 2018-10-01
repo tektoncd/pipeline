@@ -18,16 +18,15 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/apis/duck"
 )
 
 // Generation is the schema for the generational portion of the payload
 type Generation int64
 
-// Implementations can verify that they implement Generation via:
-var emptyGen Generation
-var _ = duck.VerifyType(&Generational{}, &emptyGen)
 
 // Generation is an Implementable "duck type".
 var _ duck.Implementable = (*Generation)(nil)
@@ -55,6 +54,9 @@ type GenerationalSpec struct {
 // In order for Generation to be Implementable, Generational must be Populatable.
 var _ duck.Populatable = (*Generational)(nil)
 
+// Ensure Generational satisfies apis.Listable
+var _ apis.Listable = (*Generational)(nil)
+
 // GetFullType implements duck.Implementable
 func (_ *Generation) GetFullType() duck.Populatable {
 	return &Generational{}
@@ -63,6 +65,11 @@ func (_ *Generation) GetFullType() duck.Populatable {
 // Populate implements duck.Populatable
 func (t *Generational) Populate() {
 	t.Spec.Generation = 1234
+}
+
+// GetListType implements apis.Listable
+func (r *Generational) GetListType() runtime.Object {
+	return &GenerationalList{}
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -74,12 +74,12 @@ required = [
   unused-packages = false
   non-go = false
 
-[[constraint]]
+[[override]]
   name = "github.com/knative/pkg"
-  # HEAD as of 2018-09-18
-  revision = "c15d7c8f2220a7578b33504df6edefa948c845ae"
+  # HEAD as of 2018-10-01
+  revision = "fd1e3cc5c9bfc33d54afbcf59e8739dd54533034"
 
 
 [[constraint]]
   name = "github.com/knative/build"
-  revision = "95e3199746a50f0a4e4ba62f1d8760e9a203b30e"
+  revision = "e63ec56b2f1f1d1eb23d7a4dcf86940610232aaa"

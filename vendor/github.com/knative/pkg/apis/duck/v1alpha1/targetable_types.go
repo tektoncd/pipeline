@@ -18,18 +18,21 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/apis/duck"
 )
 
+// Targetable is very similar concept as Sinkable. However, at the
+// transport level they have different contracts and hence Sinkable
+// and Targetable are two distinct resources.
+
 // Targetable is the schema for the targetable portion of the payload
 type Targetable struct {
-	// TODO(vaikas): Give me a schema!
-	Field string `json:"field,omitempty"`
+	DomainInternal string `json:"domainInternal,omitempty"`
 }
 
-// Implementations can verify that they implement Targetable via:
-var _ = duck.VerifyType(&Target{}, &Targetable{})
 
 // Targetable is an Implementable "duck type".
 var _ duck.Implementable = (*Targetable)(nil)
@@ -57,6 +60,9 @@ type TargetStatus struct {
 // In order for Targetable to be Implementable, Target must be Populatable.
 var _ duck.Populatable = (*Target)(nil)
 
+// Ensure Target satisfies apis.Listable
+var _ apis.Listable = (*Target)(nil)
+
 // GetFullType implements duck.Implementable
 func (_ *Targetable) GetFullType() duck.Populatable {
 	return &Target{}
@@ -64,10 +70,17 @@ func (_ *Targetable) GetFullType() duck.Populatable {
 
 // Populate implements duck.Populatable
 func (t *Target) Populate() {
-	t.Status.Targetable = &Targetable{
-		// Populate ALL fields
-		Field: "this is not empty",
+	t.Status = TargetStatus{
+		&Targetable{
+			// Populate ALL fields
+			DomainInternal: "this is not empty",
+		},
 	}
+}
+
+// GetListType implements apis.Listable
+func (r *Target) GetListType() runtime.Object {
+	return &TargetList{}
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

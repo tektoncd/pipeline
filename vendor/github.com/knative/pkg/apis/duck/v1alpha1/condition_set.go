@@ -129,11 +129,32 @@ type conditionsImpl struct {
 	accessor ConditionsAccessor
 }
 
-// Manage creates a ConditionManager from an object that implements
-// ConditionsAccessopr using the original ConditionSet as a reference.
-func (r ConditionSet) Manage(accessor ConditionsAccessor) ConditionManager {
+// Manage creates a ConditionManager from a accessor object using the original
+// ConditionSet as a reference. Status must be or point to a struct.
+func (r ConditionSet) Manage(status interface{}) ConditionManager {
+
+	// First try to see if status implements ConditionsAccessor
+	ca, ok := status.(ConditionsAccessor)
+	if ok {
+		return conditionsImpl{
+			accessor:     ca,
+			ConditionSet: r,
+		}
+	}
+
+	// Next see if we can use reflection to gain access to Conditions
+	ca = NewReflectedConditionsAccessor(status)
+	if ca != nil {
+		return conditionsImpl{
+			accessor:     ca,
+			ConditionSet: r,
+		}
+	}
+
+	// We tried. This object is not understood by the the condition manager.
+	//panic(fmt.Sprintf("Error converting %T into a ConditionsAccessor", status))
+	// TODO: not sure which way. using panic above means passing nil status panics the system.
 	return conditionsImpl{
-		accessor:     accessor,
 		ConditionSet: r,
 	}
 }
@@ -153,6 +174,7 @@ func (r conditionsImpl) GetCondition(t ConditionType) *Condition {
 	if r.accessor == nil {
 		return nil
 	}
+
 	for _, c := range r.accessor.GetConditions() {
 		if c.Type == t {
 			return &c
@@ -182,7 +204,7 @@ func (r conditionsImpl) SetCondition(new Condition) {
 	}
 	new.LastTransitionTime = apis.VolatileTime{Inner: metav1.NewTime(time.Now())}
 	conditions = append(conditions, new)
-	// Sorted for convince of the consumer, i.e.: kubectl.
+	// Sorted for convenience of the consumer, i.e. kubectl.
 	sort.Slice(conditions, func(i, j int) bool { return conditions[i].Type < conditions[j].Type })
 	r.accessor.SetConditions(conditions)
 }
@@ -276,5 +298,51 @@ func (r conditionsImpl) InitializeCondition(t ConditionType) {
 			Type:   t,
 			Status: corev1.ConditionUnknown,
 		})
+	}
+}
+
+// NewReflectedConditionsAccessor uses reflection to return a ConditionsAccessor
+// to access the field called "Conditions".
+func NewReflectedConditionsAccessor(status interface{}) ConditionsAccessor {
+	statusValue := reflect.Indirect(reflect.ValueOf(status))
+
+	// If status is not a struct, don't even try to use it.
+	if statusValue.Kind() != reflect.Struct {
+		return nil
+	}
+
+	conditionsField := statusValue.FieldByName("Conditions")
+
+	if conditionsField.IsValid() && conditionsField.CanInterface() && conditionsField.CanSet() {
+		if _, ok := conditionsField.Interface().(Conditions); ok {
+			return &reflectedConditionsAccessor{
+				conditions: conditionsField,
+			}
+		}
+	}
+	return nil
+}
+
+// reflectedConditionsAccessor is an internal wrapper object to act as the
+// ConditionsAccessor for status objects that do not implement ConditionsAccessor
+// directly, but do expose the field using the "Conditions" field name.
+type reflectedConditionsAccessor struct {
+	conditions reflect.Value
+}
+
+// GetConditions uses reflection to return Conditions from the held status object.
+func (r *reflectedConditionsAccessor) GetConditions() Conditions {
+	if r != nil && r.conditions.IsValid() && r.conditions.CanInterface() {
+		if conditions, ok := r.conditions.Interface().(Conditions); ok {
+			return conditions
+		}
+	}
+	return Conditions(nil)
+}
+
+// SetConditions uses reflection to set Conditions on the held status object.
+func (r *reflectedConditionsAccessor) SetConditions(conditions Conditions) {
+	if r != nil && r.conditions.IsValid() && r.conditions.CanSet() {
+		r.conditions.Set(reflect.ValueOf(conditions))
 	}
 }

@@ -16,6 +16,10 @@ limitations under the License.
 
 package apis
 
+import (
+	"k8s.io/apimachinery/pkg/runtime"
+)
+
 // Defaultable defines an interface for setting the defaults for the
 // uninitialized fields of this instance.
 type Defaultable interface {
@@ -34,4 +38,12 @@ type Immutable interface {
 	// CheckImmutableFields checks that the current instance's immutable
 	// fields haven't changed from the provided original.
 	CheckImmutableFields(original Immutable) *FieldError
+}
+
+// Listable indicates that a particular type can be returned via the returned
+// list type by the API server.
+type Listable interface {
+	runtime.Object
+
+	GetListType() runtime.Object
 }

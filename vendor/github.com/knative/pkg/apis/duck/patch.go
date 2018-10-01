@@ -14,10 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package duck defines logic for defining and consuming "duck typed"
-// Kubernetes resources.  Producers define partial resource definitions
-// that resource authors may choose to implement to interoperate with
-// consumers of these "duck typed" interfaces.
-// For more information see:
-// https://docs.google.com/document/d/16j8C91jML4fQRQPhnHihNJUJDcbvW0RM1YAX2REHgyY/edit#
 package duck
+
+import (
+	"encoding/json"
+
+	"github.com/mattbaird/jsonpatch"
+)
+
+func CreatePatch(before, after interface{}) (JSONPatch, error) {
+	// Marshal the before and after.
+	rawBefore, err := json.Marshal(before)
+	if err != nil {
+		return nil, err
+	}
+
+	rawAfter, err := json.Marshal(after)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsonpatch.CreatePatch(rawBefore, rawAfter)
+}
+
+type JSONPatch []jsonpatch.JsonPatchOperation
+
+func (p JSONPatch) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]jsonpatch.JsonPatchOperation(p))
+}
