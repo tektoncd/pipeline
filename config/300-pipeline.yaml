@@ -22,25 +22,6 @@ spec:
           type: object
         spec:
           properties:
-            resources:
-              items:
-                properties:
-                  name:
-                    type: string
-                  resourceRef:
-                    properties:
-                      apiVersion:
-                        type: string
-                      name:
-                        type: string
-                    required:
-                    - name
-                    type: object
-                required:
-                - name
-                - resourceRef
-                type: object
-              type: array
             tasks:
               items:
                 properties:
@@ -63,6 +44,15 @@ spec:
                           type: string
                         name:
                           type: string
+                        resourceRef:
+                          properties:
+                            apiVersion:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                          - name
+                          type: object                          
                         passedConstraints:
                           items:
                             type: string
@@ -81,6 +71,15 @@ spec:
                           type: string
                         name:
                           type: string
+                        resourceRef:
+                          properties:
+                            apiVersion:
+                              type: string
+                            name:
+                              type: string
+                          required:
+                          - name
+                          type: object                          
                         passedConstraints:
                           items:
                             type: string
@@ -118,7 +117,6 @@ spec:
               type: array
           required:
           - tasks
-          - resources
           type: object
         status:
           type: object

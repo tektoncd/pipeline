@@ -9,8 +9,10 @@ spec:
         taskRef:
           name: make
         inputSourceBindings:
-          - name: workspace
-            key: kritis-app-github
+          - name: kritis-app-github
+            key: workspace # bind to the name in the task
+            resourceRef:
+              name: kritis-resources-git
         params:
           - name: makeTarget
             value: test
@@ -18,13 +20,17 @@ spec:
         taskRef:
           name: build-push
         inputSourceBindings:
-          - name: workspace
-            key: kritis-app-github
+          - name: kritis-app-github
+            key: workspace # bind to the name in the task
+            resourceRef:
+              name: kritis-resources-git
             passedConstraint: 
               - make
         outputSourceBindings:
-          - name: registry
-            key: stagingRegistry
+          - name: kritisImage
+            key: builtImage # bind to the name in the task
+            resourceRef:
+              name: kritis-resources-image            
         params:
           - name: pathToDockerfile
             value: deploy/Dockerfile
@@ -32,31 +38,26 @@ spec:
         taskRef:
           name: deploy-with-helm
         inputSourceBindings:
-          - name: registry
-            key: stagingRegistry
+          - name: guestbookImage
+            key: workspace
+            resourceRef:
+              name: kritis-resources-image
             passedConstraint: [build-push]
         params:
           - name: pathToHelmCharts
             value: kritis-charts
         clusterBindings:
-          - clusterName: test
+          - inputName: test
+            key: test
       - name: integration-test          # 4. Run Integration Tests in test cluster
         taskRef:
           name: integration-test-in-docker
         inputSourceBindings:
-          - name: workspace
-            key: kritis-test-github
+          - name: kritis-test-github
+            key: workspace
+            resourceRef:
+                name: kritis-resources-test-git            
             passedConstraint: [deploy-with-helm]
         params:
           - name: testArgs
-            value: "-e REMOTE_INTEGRATION=true"
-    resources:
-      - name: kritis-app-github
-        resourceRef:
-          name: kritis-app-github-resource
-      - name: kritis-test-github
-        resourceRef:
-          name: kritis-test-github-resource
-      - name: stagingRegistry
-        resourceRef:
-          name: stagingRegistry-resource                    
+            value: "-e REMOTE_INTEGRATION=true"               

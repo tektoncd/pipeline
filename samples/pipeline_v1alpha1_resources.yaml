@@ -1,0 +1,23 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Resource
+metadata:
+  name: wizzbang-git
+  namespace: default
+spec:
+  type: git
+  params:
+  - name: url
+    value: github.com/wizzbangcorp/wizzbang
+  - name: revision
+    value: HEAD
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Resource
+metadata:
+  name: wizzbang-image
+  namespace: default
+spec:
+  type: image
+  params:
+  - name: url
+    value: gcr.io/wizzbang-staging

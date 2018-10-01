@@ -33,12 +33,12 @@ func (c *FakePipelineV1alpha1) PipelineParamses(namespace string) v1alpha1.Pipel
 	return &FakePipelineParamses{c, namespace}
 }
 
-func (c *FakePipelineV1alpha1) PipelineRuns(namespace string) v1alpha1.PipelineRunInterface {
-	return &FakePipelineRuns{c, namespace}
+func (c *FakePipelineV1alpha1) PipelineResources(namespace string) v1alpha1.PipelineResourceInterface {
+	return &FakePipelineResources{c, namespace}
 }
 
-func (c *FakePipelineV1alpha1) StandardResources(namespace string) v1alpha1.StandardResourceInterface {
-	return &FakeStandardResources{c, namespace}
+func (c *FakePipelineV1alpha1) PipelineRuns(namespace string) v1alpha1.PipelineRunInterface {
+	return &FakePipelineRuns{c, namespace}
 }
 
 func (c *FakePipelineV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {

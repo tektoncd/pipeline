@@ -25,10 +25,10 @@ type Interface interface {
 	Pipelines() PipelineInformer
 	// PipelineParamses returns a PipelineParamsInformer.
 	PipelineParamses() PipelineParamsInformer
+	// PipelineResources returns a PipelineResourceInformer.
+	PipelineResources() PipelineResourceInformer
 	// PipelineRuns returns a PipelineRunInformer.
 	PipelineRuns() PipelineRunInformer
-	// StandardResources returns a StandardResourceInformer.
-	StandardResources() StandardResourceInformer
 	// Tasks returns a TaskInformer.
 	Tasks() TaskInformer
 	// TaskRuns returns a TaskRunInformer.
@@ -56,14 +56,14 @@ func (v *version) PipelineParamses() PipelineParamsInformer {
 	return &pipelineParamsInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
+// PipelineResources returns a PipelineResourceInformer.
+func (v *version) PipelineResources() PipelineResourceInformer {
+	return &pipelineResourceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // PipelineRuns returns a PipelineRunInformer.
 func (v *version) PipelineRuns() PipelineRunInformer {
 	return &pipelineRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// StandardResources returns a StandardResourceInformer.
-func (v *version) StandardResources() StandardResourceInformer {
-	return &standardResourceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Tasks returns a TaskInformer.

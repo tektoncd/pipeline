@@ -9,11 +9,15 @@ spec:
           taskRef:
               name: build-push
           inputSourceBindings:
-              - name: workspace
-                key: guestbook
+              - name: guestbookSource
+                key: workspace # bind to the name in the task
+                resourceRef:
+                  name: guestbook-resources-git
           outputSourceBindings:
-              - name: registry
-                key: stagingRegistry
+              - name: guestbookImage 
+                key: builtImage # bind to the name in the task
+                resourceRef:
+                  name: guestbookstagingimage
           params:
               - name: pathToDockerfile
                 value: guestbook-go/Dockerfile
@@ -21,11 +25,15 @@ spec:
           taskRef:
               name: build-push
           inputSourceBindings:
-              - name: workspace
-                key: redis-docker          # TODO Add Commit SHA
+              - name: redis-ocker
+                key: workspace        
+                resourceRef:
+                  name: guestbook-resources-redis-docker                    
           outputSourceBindings:
-              - name: registry
-                key: stagingRegistry
+              - name: redisImage
+                key: builtImage
+                resourceRef:
+                  name: redisstagingimage                
           params:
               - name: pathToDockerfile
                 value: 4/debian9/4.0/Dockerfile
@@ -33,26 +41,33 @@ spec:
           taskRef:
               name: deploy-with-kubectl
           inputSourceBindings:
-            - name: workspace
-              key: guestbook
+            - name: guestbookSource
+              key: workspace
+              resourceRef:
+                  name: guestbook-resources-git  
               passedConstraint: 
                 - build-guestbook
                 - build-redis
             - name: workspace
               key: redis-docker
+              resourceRef:
+                  name: guestbook-resources-redis-docker  
               passedConstraint:
                - build-push
           params:
               - name: pathToFiles
                 value: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
-              - clusterName: test
+              - inputName: test
+                key: test
         - name: int-test-osx                    # 3.a Run Integration tests for osx
           taskRef:
               name: integrationTestInDocker
           inputSourceBindings:
-              - name: workspace
-                key: guestbook
+              - name: guestbookSource
+                key: workspace
+                resourceRef:
+                  name: guestbook-resources-git  
                 passedConstraint:
                 - deploy-bundle-test
           params:
@@ -62,8 +77,10 @@ spec:
           taskRef:
               name: integration-test-in-docker
           inputSourceBindings:
-              - name: workspace
-                key: guestbook
+              - name: guestbookSource
+                key: workspace
+                resourceRef:
+                  name: guestbook-resources-git  
                 passedConstraint:
                 - deploy-bundle-test
           params:
@@ -73,8 +90,10 @@ spec:
           taskRef:
               name: deploy-with-kubectl
           inputSourceBindings:
-              - name: workspace
-                key: guestbook
+              - name: guestbookSource
+                key: workspace
+                resourceRef:
+                  name: guestbook-resources-git  
                 passedConstraint:
                 - int-test-osx
                 - int-test-linux
@@ -82,14 +101,5 @@ spec:
               - name: pathToFiles
                 value: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
-              - clusterName: staging
-    resources:
-    - name: guestbook
-      resourceRef:
-        name: guestbook  
-    - name: redis-docker
-      resourceRef:
-        name: redis-docker
-    - name: stagingRegistry
-      resourceRef:
-        name: stagingRegistry  
+              - inputName: staging
+                key: staging

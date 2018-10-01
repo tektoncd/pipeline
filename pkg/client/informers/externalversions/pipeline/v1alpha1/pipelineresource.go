@@ -28,59 +28,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// StandardResourceInformer provides access to a shared informer and lister for
-// StandardResources.
-type StandardResourceInformer interface {
+// PipelineResourceInformer provides access to a shared informer and lister for
+// PipelineResources.
+type PipelineResourceInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.StandardResourceLister
+	Lister() v1alpha1.PipelineResourceLister
 }
 
-type standardResourceInformer struct {
+type pipelineResourceInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewStandardResourceInformer constructs a new informer for StandardResource type.
+// NewPipelineResourceInformer constructs a new informer for PipelineResource type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewStandardResourceInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredStandardResourceInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewPipelineResourceInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredPipelineResourceInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredStandardResourceInformer constructs a new informer for StandardResource type.
+// NewFilteredPipelineResourceInformer constructs a new informer for PipelineResource type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredStandardResourceInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredPipelineResourceInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PipelineV1alpha1().StandardResources(namespace).List(options)
+				return client.PipelineV1alpha1().PipelineResources(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PipelineV1alpha1().StandardResources(namespace).Watch(options)
+				return client.PipelineV1alpha1().PipelineResources(namespace).Watch(options)
 			},
 		},
-		&pipeline_v1alpha1.StandardResource{},
+		&pipeline_v1alpha1.PipelineResource{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *standardResourceInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredStandardResourceInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *pipelineResourceInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredPipelineResourceInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *standardResourceInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pipeline_v1alpha1.StandardResource{}, f.defaultInformer)
+func (f *pipelineResourceInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&pipeline_v1alpha1.PipelineResource{}, f.defaultInformer)
 }
 
-func (f *standardResourceInformer) Lister() v1alpha1.StandardResourceLister {
-	return v1alpha1.NewStandardResourceLister(f.Informer().GetIndexer())
+func (f *pipelineResourceInformer) Lister() v1alpha1.PipelineResourceLister {
+	return v1alpha1.NewPipelineResourceLister(f.Informer().GetIndexer())
 }

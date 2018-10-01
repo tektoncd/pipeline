@@ -70,7 +70,7 @@ type PipelineRunStatus struct {
 	TaskRuns []PipelineTaskRun `json:"taskRuns,omitempty"`
 	// If there is no version, that means use latest
 	// +optional
-	ResourceVersion []StandardResourceVersion `json:"resourceVersion,omitempty"`
+	ResourceVersion []PipelineResourceVersion `json:"resourceVersion,omitempty"`
 	Conditions      []PipelineRunCondition    `json:"conditions"`
 }
 
