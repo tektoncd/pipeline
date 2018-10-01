@@ -6,9 +6,8 @@ metadata:
 spec:
     inputs:
         resources:
-          - resourceRef:
-              name: resource-name
-            name: workspace
+          - name: workspace
+            type: git
         params:
           - name: makeTarget
             value: string
@@ -32,9 +31,8 @@ metadata:
 spec:
     inputs:
         resources:
-           - resourceRef:
-               name: resource-name
-             name: workspace
+           - name: workspace
+             type: git
         params:
             - name: testImage
               value: string

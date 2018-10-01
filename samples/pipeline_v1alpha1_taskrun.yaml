@@ -10,24 +10,19 @@ spec:
         triggerRef:
             type: PipelineRun
             name: wizzbangPipeline-sd8f8dfasdfasdfas
-        prevTasks: [""]
-        nextTasks: ["build-push-sd8f8dfasdfasdfas"]
     inputs:
-        sources:
-            - name: 'wizzbang'
-              type: 'github'
-              url: 'github.com/wizzbangcorp/wizzbang'
-              branch: 'master'
-              commit: 'HEAD'
+        resourcesVersion:
+          - resourceRef:
+              name: wizzbang
+            version: HEAD
         params:
-            - name: 'image'
-              type: 'string'
-              value: 'gcr.io/wizzbang-staging/wizzbang@234324k32j432k32l4k2a'
+          - name: 'image'
+            type: 'string'
+            value: 'gcr.io/wizzbang-staging/wizzbang@234324k32j432k32l4k2a'
     outputs:
         artifacts:
-            - name: builtImage
-              type: image
-              storeKey: registry # registy is the name of the ArtifactStore
+          - name: builtImage
+            type: image
     results:
         runs:
           name: 'runsBucket'

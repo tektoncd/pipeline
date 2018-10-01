@@ -6,9 +6,8 @@ metadata:
 spec:
     inputs:
         resources:
-            - resourceRef:
-                name: resource-name
-              name: workspace
+              - name: workspace
+                type: git
         params:
             - name: pathToHelmCharts
               value: string
@@ -33,9 +32,8 @@ metadata:
 spec:
     inputs:
         resources:
-          - resourceRef:
-              name: resource-name
-            name: workspace
+            - name: workspace
+              type: git
         params:
             - name: kubectlArgs
               value: string

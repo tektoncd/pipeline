@@ -22,33 +22,25 @@ spec:
           type: object
         spec:
           properties:
-            resources:
+            name:
+              type: string
+            params:
               items:
                 properties:
                   name:
                     type: string
-                  params:
-                    items:
-                      properties:
-                        name:
-                          type: string
-                        value:
-                          type: string
-                      required:
-                      - name
-                      - value
-                      type: object
-                    type: array
-                  type:
+                  value:
                     type: string
                 required:
                 - name
-                - type
-                - params
+                - value
                 type: object
               type: array
+            type:
+              type: string
           required:
-          - resources
+          - type
+          - params
           type: object
         status:
           type: object

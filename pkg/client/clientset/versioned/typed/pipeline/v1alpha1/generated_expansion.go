@@ -19,9 +19,9 @@ type PipelineExpansion interface{}
 
 type PipelineParamsExpansion interface{}
 
-type PipelineRunExpansion interface{}
+type PipelineResourceExpansion interface{}
 
-type StandardResourceExpansion interface{}
+type PipelineRunExpansion interface{}
 
 type TaskExpansion interface{}
 
