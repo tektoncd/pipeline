@@ -28,8 +28,8 @@ type TaskSpec struct {
 	// +optional
 	Inputs *Inputs `json:"inputs,omitempty"`
 	// +optional
-	Outputs   *Outputs                `json:"outputs,omitempty"`
-	BuildSpec buildv1alpha1.BuildSpec `json:"buildSpec"`
+	Outputs   *Outputs                 `json:"outputs,omitempty"`
+	BuildSpec *buildv1alpha1.BuildSpec `json:"buildSpec"`
 }
 
 // TaskStatus defines the observed state of Task
