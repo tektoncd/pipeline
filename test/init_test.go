@@ -28,10 +28,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Namespace is the namespace that will be created before all tests run and will be torn down once
+// namespace is the namespace that will be created before all tests run and will be torn down once
 // the tests complete. It will be generated randomly so that tests can run back to back without
 // interfering with each other.
-var Namespace string
+var namespace string
 
 func initializeLogsAndMetrics() {
 	flag.Parse()
@@ -51,7 +51,7 @@ func createNamespace(namespace string, logger *logging.BaseLogger) *knativetest.
 	logger.Infof("Create namespace %s to deploy to", namespace)
 	if _, err := kubeClient.Kube.CoreV1().Namespaces().Create(&corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: Namespace,
+			Name: namespace,
 		},
 	}); err != nil {
 		logger.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
@@ -59,7 +59,7 @@ func createNamespace(namespace string, logger *logging.BaseLogger) *knativetest.
 	return kubeClient
 }
 
-func tearDownMain(kubeClient *knativetest.KubeClient, namespace string, logger *logging.BaseLogger) {
+func tearDownMain(kubeClient *knativetest.KubeClient, logger *logging.BaseLogger) {
 	if kubeClient != nil {
 		logger.Infof("Deleting namespace %s", namespace)
 		if err := kubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
@@ -74,12 +74,12 @@ func TestMain(m *testing.M) {
 	initializeLogsAndMetrics()
 	logger := logging.GetContextLogger("TestMain")
 
-	Namespace = AppendRandomString("arendelle")
-	kubeClient := createNamespace(Namespace, logger)
-	knativetest.CleanupOnInterrupt(func() { tearDownMain(kubeClient, Namespace, logger) }, logger)
+	namespace = AppendRandomString("arendelle")
+	kubeClient := createNamespace(namespace, logger)
+	knativetest.CleanupOnInterrupt(func() { tearDownMain(kubeClient, logger) }, logger)
 
 	c := m.Run()
 
-	tearDownMain(kubeClient, Namespace, logger)
+	tearDownMain(kubeClient, logger)
 	os.Exit(c)
 }

@@ -26,7 +26,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
-func setup(t *testing.T, namespace string) *Clients {
+func setup(t *testing.T) *Clients {
 	clients, err := NewClients(knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	if err != nil {
 		t.Fatalf("Couldn't initialize clients: %v", err)
@@ -41,7 +41,7 @@ func tearDown(logger *logging.BaseLogger) {
 // TestPipeline is just a dummy test right now to make sure the whole integration test
 // setup and execution is working.
 func TestPipeline(t *testing.T) {
-	clients := setup(t, Namespace)
+	clients := setup(t)
 	logger := logging.GetContextLogger(t.Name())
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(logger) }, logger)
