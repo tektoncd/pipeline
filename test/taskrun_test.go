@@ -16,7 +16,11 @@ limitations under the License.
 package test
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
 
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
@@ -32,8 +36,12 @@ import (
 )
 
 const (
-	hwTaskName    = "helloworld"
-	hwTaskRunName = "helloworld-run"
+	hwTaskName      = "helloworld"
+	hwTaskRunName   = "helloworld-run"
+	hwContainerName = "helloworld-busybox"
+
+	taskOutput  = "do you want to build a snowman"
+	buildOutput = "Build successful"
 )
 
 func getHelloWorldTask(namespace string) *v1alpha1.Task {
@@ -43,13 +51,13 @@ func getHelloWorldTask(namespace string) *v1alpha1.Task {
 			Name:      hwTaskName,
 		},
 		Spec: v1alpha1.TaskSpec{
-			BuildSpec: buildv1alpha1.BuildSpec{
+			BuildSpec: &buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{
 					corev1.Container{
-						Name:  "helloworld-busybox",
+						Name:  hwContainerName,
 						Image: "busybox",
 						Args: []string{
-							"echo", "hello world",
+							"echo", taskOutput,
 						},
 					},
 				},
@@ -80,8 +88,6 @@ func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
 // TestTaskRun is an integration test that will verify a very simple "hello world" TaskRun can be
 // executed.
 func TestTaskRun(t *testing.T) {
-	t.Skip("Will fail until #59 is completed :D")
-
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 
@@ -100,8 +106,7 @@ func TestTaskRun(t *testing.T) {
 
 	// Verify status of TaskRun (wait for it)
 	if err := WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
-		if len(tr.Status.Conditions) > 0 {
-			// TODO: use actual conditions
+		if len(tr.Status.Conditions) > 0 && tr.Status.Conditions[0].Status == corev1.ConditionTrue {
 			return true, nil
 		}
 		return false, nil
@@ -121,5 +126,17 @@ func TestTaskRun(t *testing.T) {
 	podName := cluster.PodName
 	pods := c.KubeClient.Kube.CoreV1().Pods(namespace)
 	fmt.Printf("Retrieved pods for podname %s: %s\n", podName, pods)
-	// TODO(#59): Verify logs from the pod, should output hello world
+
+	req := pods.GetLogs(podName, &corev1.PodLogOptions{})
+	readCloser, err := req.Stream()
+	if err != nil {
+		t.Fatalf("Failed to open stream to read: %v", err)
+	}
+	defer readCloser.Close()
+	var buf bytes.Buffer
+	out := bufio.NewWriter(&buf)
+	_, err = io.Copy(out, readCloser)
+	if !strings.Contains(buf.String(), buildOutput) {
+		t.Fatalf("Expected output %s from pod %s but got %s", buildOutput, podName, buf.String())
+	}
 }

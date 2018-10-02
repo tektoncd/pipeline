@@ -17,16 +17,21 @@ package taskrun
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
 	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/logging"
 	"github.com/knative/pkg/tracker"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -42,6 +47,14 @@ const (
 	taskRunAgentName = "taskrun-controller"
 	// taskRunControllerName defines name for TaskRun Controller
 	taskRunControllerName = "TaskRun"
+)
+
+var (
+	groupVersionKind = schema.GroupVersionKind{
+		Group:   v1alpha1.SchemeGroupVersion.Group,
+		Version: v1alpha1.SchemeGroupVersion.Version,
+		Kind:    "TaskRun",
+	}
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -66,18 +79,14 @@ func NewController(
 	taskRunInformer informers.TaskRunInformer,
 	taskInformer informers.TaskInformer,
 	buildInformer buildinformers.BuildInformer,
-	buildTemplateInformer buildinformers.BuildTemplateInformer,
-	clusterBuildTemplateInformer buildinformers.ClusterBuildTemplateInformer,
 
 ) *controller.Impl {
 
 	c := &Reconciler{
-		Base:                       reconciler.NewBase(opt, taskRunAgentName),
-		taskRunLister:              taskRunInformer.Lister(),
-		taskLister:                 taskInformer.Lister(),
-		buildLister:                buildInformer.Lister(),
-		buildTemplateLister:        buildTemplateInformer.Lister(),
-		clusterBuildTemplateLister: clusterBuildTemplateInformer.Lister(),
+		Base:          reconciler.NewBase(opt, taskRunAgentName),
+		taskRunLister: taskRunInformer.Lister(),
+		taskLister:    taskInformer.Lister(),
+		buildLister:   buildInformer.Lister(),
 	}
 	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
@@ -85,31 +94,19 @@ func NewController(
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    impl.Enqueue,
 		UpdateFunc: controller.PassNew(impl.Enqueue),
-		DeleteFunc: impl.Enqueue,
 	})
 
-	taskInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    impl.Enqueue,
-		UpdateFunc: controller.PassNew(impl.Enqueue),
-		DeleteFunc: impl.Enqueue,
-	})
+	// TODO(aaron-prindle) what to do if a task is deleted?
+	// taskInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	// 	AddFunc:    impl.Enqueue,
+	// 	UpdateFunc: controller.PassNew(impl.Enqueue),
+	// 	DeleteFunc: impl.Enqueue,
+	// })
 
 	c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
 	buildInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.tracker.OnChanged,
 		UpdateFunc: controller.PassNew(c.tracker.OnChanged),
 	})
-
-	buildTemplateInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.tracker.OnChanged,
-		UpdateFunc: controller.PassNew(c.tracker.OnChanged),
-	})
-
-	clusterBuildTemplateInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.tracker.OnChanged,
-		UpdateFunc: controller.PassNew(c.tracker.OnChanged),
-	})
-
 	return impl
 }
 
@@ -128,9 +125,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// Get the Task Run resource with this namespace/name
 	original, err := c.taskRunLister.TaskRuns(namespace).Get(name)
 	if errors.IsNotFound(err) {
-
-		// TODO: create taskRun here
-
 		// The resource no longer exists, in which case we stop processing.
 		logger.Errorf("task run %q in work queue no longer exists", key)
 		return nil
@@ -140,6 +134,18 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	tr := original.DeepCopy()
+
+	// TODO(aaron-prindle) verify that build does not have to exist to create a tracker
+	buildRef := corev1.ObjectReference{
+		APIVersion: "build.knative.dev/v1alpha1",
+		Kind:       "Build",
+		Namespace:  tr.Namespace,
+		Name:       tr.Name,
+	}
+	if err := c.tracker.Track(buildRef, tr); err != nil {
+		logger.Errorf("failed to create tracker for build %s for taskrun %s: %v", buildRef, tr.Name, err)
+		return err
+	}
 
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
@@ -159,23 +165,52 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
 	logger := logging.FromContext(ctx)
 
-	// fetch the equivelant task for this task Run
-	taskName := tr.Spec.TaskRef.Name
-	task, err := c.taskLister.Tasks(tr.Namespace).Get(taskName)
-	if err != nil {
-		logger.Errorf("Failed to reconcile TaskRun: %q failed to Get Task: %q", tr.Name, taskName)
-		return err
+	haveBuild := false
+	// get build the same as the taskrun, this is the value we use for 1:1 mapping and retrieval
+	b, err := c.getBuild(tr.Namespace, tr.Name)
+	if errors.IsNotFound(err) {
+		// haveBuild = false
+	} else if err != nil {
+		return fmt.Errorf("retrieving build %s for taskRun %s: %v", tr.Name, tr.Name, err)
+	} else {
+		haveBuild = true
 	}
-	// fetch the build that should exist for the current task run
-	buildSpec := task.Spec.BuildSpec
-	if len(buildSpec.Steps) == 0 && buildSpec.Template.Name == "" {
-		logger.Errorf("Failed to reconcile TaskRun: %q failed to Get BuildSpec: %q", tr.Name, taskName)
-		return err
+
+	// handle cases where build with name exists but handled by another controller
+
+	// switch ownerref := metav1.GetControllerOf(b); {
+	// case ownerref == nil, ownerref.APIVersion != groupVersionKind.GroupVersion().String(), ownerref.Kind != groupVersionKind.Kind:
+	// 	logger.Infof("build %s not controlled by taskrun controller", b.Name)
+	// 	return nil
+	// }
+
+	// taskrun has finished (as child build has finished and status is synced)
+	if len(tr.Status.Conditions) > 0 && tr.Status.Conditions[0].Status != corev1.ConditionUnknown {
+		logger.Infof("finished %s", tr.Name)
+		return nil
 	}
-	// TODO use build tracker to fetch build
 
-	// check status of build and update status of taskRun
+	if !haveBuild {
+		// Get related task for taskrun
+		t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
+		if err != nil {
+			return err
+		}
 
+		// make build obj from task buildspec
+		logger.Infof("make build: %s", tr.Name)
+		if b, err = c.makeBuild(t, tr); err != nil {
+			return fmt.Errorf("failed to create a build for taskrun: %v", err)
+		}
+	}
+
+	// sync build status with taskrun status
+	if len(b.Status.Conditions) > 0 {
+		logger.Infof("syncing taskrun conditions with build conditions %s", b.Status.Conditions[0])
+	} else {
+		logger.Infof("syncing taskrun conditions with build conditions []")
+	}
+	tr.Status.Conditions = b.Status.Conditions
 	return nil
 }
 
@@ -184,11 +219,45 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 	if err != nil {
 		return nil, err
 	}
-	if !reflect.DeepEqual(newtaskrun.Status, taskrun.Status) {
+	if !reflect.DeepEqual(taskrun.Status, newtaskrun.Status) {
 		newtaskrun.Status = taskrun.Status
 		// TODO: for CRD there's no updatestatus, so use normal update
 		return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(taskrun.Namespace).Update(newtaskrun)
 		//	return configClient.UpdateStatus(newtaskrun)
 	}
 	return newtaskrun, nil
+}
+
+func (c *Reconciler) getBuild(namespace, name string) (*buildv1alpha1.Build, error) {
+	return c.buildLister.Builds(namespace).Get(name)
+}
+
+func (c *Reconciler) deleteBuild(namespace, name string) error {
+	return c.BuildClientSet.BuildV1alpha1().Builds(namespace).Delete(name, &metav1.DeleteOptions{})
+}
+
+func (c *Reconciler) deleteTaskRun(namespace, name string) error {
+	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(namespace).Delete(name, &metav1.DeleteOptions{})
+}
+
+// makeBuild creates a build from the task, using the task's buildspec.
+func (c *Reconciler) makeBuild(t *v1alpha1.Task, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
+	if t.Spec.BuildSpec == nil {
+		return nil, fmt.Errorf("nil BuildSpec")
+	}
+	b := &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tr.Name,
+			Namespace: tr.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(tr, groupVersionKind),
+			},
+		},
+		Spec: *t.Spec.BuildSpec,
+	}
+	return c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Create(b)
+}
+
+func (c *Reconciler) now() metav1.Time {
+	return metav1.Now()
 }
