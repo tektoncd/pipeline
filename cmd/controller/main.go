@@ -86,7 +86,7 @@ func main() {
 
 	pipelineClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
-		logger.Fatalf("Error building serving clientset: %v", err)
+		logger.Fatalf("Error building pipeline clientset: %v", err)
 	}
 
 	knativebuildClient, err := knativebuildclientset.NewForConfig(cfg)
