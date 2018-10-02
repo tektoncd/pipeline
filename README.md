@@ -8,6 +8,14 @@ This repo contains the API definition of the Pipeline CRD and an on cluster impl
 The goal of the Pipeline CRD is to provide k8s-style resources that allow the
 declaration of CI/CD-style pipelines, which can be backed by any arbitrary implementation.
 
+## Status
+
+Right now the Pipeline CRD exists as [an API only](#features), and work is in progress to create
+an implementation of the API. Once [we hit our first milestone](https://github.com/knative/build-pipeline/milestone/1),
+you will be able to use this implementation to deploy and execute a simple Pipeline.
+
+## Features
+
 Features the Pipeline CRD will support include:
 
 * Conditional, parallel and distributed execution
@@ -44,7 +52,7 @@ High level details of this design:
 * [Tasks](#tasks) can depend on artifacts, output and parameters created by other tasks.
 * [Resources](#resources) are the artifacts used as inputs and outputs of TaskRuns.
 
-## Task
+### Task
 
 `Task` is a CRD that knows how to instantiate a [Knative Build](https://github.com/knative/build),
 either from a series of `steps` (i.e. [Builders](https://github.com/knative/docs/blob/master/build/builder-contract.md))
@@ -55,7 +63,7 @@ from is not known to a task, so they can be provided by a Pipeline or by a user 
 `Tasks` are basically [Knative BuildTemplates](https://github.com/knative/build-templates)
 with additional input types and clearly defined outputs.
 
-## Pipeline
+### Pipeline
 
 `Pipeline` describes a graph of [Tasks](#task) to execute. It defines the DAG
 and expresses how all inputs (including [PipelineParams](#pipelineparams) and outputs
@@ -63,7 +71,7 @@ from previous `Tasks`) feed into each `Task`.
 
 Dependencies between parameters or inputs/outputs are expressed as references to k8s objects.
 
-## PipelineParams
+### PipelineParams
 
 `PipelineParams` contains parameters for a [Pipeline](#pipeline). One `Pipeline`
 can be invoked with many different instances of `PipelineParams`, which can allow
@@ -73,7 +81,7 @@ for scenarios such as running against PRs and against a user’s personal setup.
 * Which **serviceAccount** to use (provided to all tasks)
 * Where **results** are stored (e.g. in GCS)
 
-## TaskRun
+### TaskRun
 
 Creating a `TaskRun` will invoke a [Task](#task), running all of the steps until completion
 or failure. Creating a `TaskRun` will require satisfying all of the input requirements of the
@@ -84,7 +92,7 @@ outputs, and in the future we may want to transition `Builds` to become `Tasks`.
 
 `TaskRuns` can be created directly by a user or by a [PipelineRun](#pipelinerun).
 
-### TaskRun Status
+#### TaskRun Status
 
 Once a `TaskRun` has been created, it will start excuting its steps
 sequentially. The `conditions` field will be updated as the `TaskRun`
@@ -99,7 +107,7 @@ executes:
 When the `TaskRun` has completed, the `steps` field will indicate
 the exit code of all steps that completed.
 
-## PipelineRun
+### PipelineRun
 
 Creating a `PipelineRun` executes the pipeline, creating [TaskRuns](#taskrun) for each task
 in the pipeline.
@@ -111,7 +119,7 @@ A `PipelineRun` could be created:
 * In response to an event (e.g. in response to a Github event, possibly processed via
   [Knative eventing](https://github.com/knative/eventing))
 
-### PipelineRun Status
+#### PipelineRun Status
 
 Once a `PipelineRun` has been created, it will start excuting the DAG
 of its Tasks by creating a [`TaskRun`](#taskrun) for each of them. The
