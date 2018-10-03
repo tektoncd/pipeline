@@ -85,6 +85,14 @@ kubectl create clusterrolebinding cluster-admin-binding \
   --user="${USER}"
 ```
 
+## Deploy Knative Build
+
+build-pipeline has a dependency on [build](https://github.com/knative/build)
+
+```
+kubectl deploy -f ./third_party/config/build/release.yaml
+```
+
 ## Iterating
 
 While iterating on the project, you may need to:
