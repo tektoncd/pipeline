@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
@@ -92,7 +93,8 @@ func TestReconcile(t *testing.T) {
 			if tc.log == "" && logs.Len() > 0 {
 				t.Errorf("expected to see no error log. However found errors in logs: %v", logs)
 			} else if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
-				t.Errorf("expected to see error log %s. However found no matching logs in %v", tc.log, logs)
+				m := getLogMessages(logs)
+				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
 			}
 		})
 	}
@@ -117,6 +119,14 @@ func getController(prs []*v1alpha1.PipelineRun, ps []*v1alpha1.Pipeline, t *test
 		pipelineFactory.Pipeline().V1alpha1().PipelineRuns(),
 		pipelineFactory.Pipeline().V1alpha1().Pipelines(),
 		rc), logs
+}
+
+func getLogMessages(logs *observer.ObservedLogs) []string {
+	messages := []string{}
+	for _, l := range logs.All() {
+		messages = append(messages, l.Message)
+	}
+	return messages
 }
 
 // mockPipelineRunsLister implements the the interface lister.PipelineRunsLister and
