@@ -44,7 +44,9 @@ You must install these tools:
 1. [`go`](https://golang.org/doc/install): The language `Pipeline CRD` is built in
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`dep`](https://github.com/golang/dep): For managing external Go
-   dependencies.
+   dependencies. 
+   
+   Please Install dep v0.5.0 or greater.
 1. [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko): For
    development.
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For interacting with your kube cluster (also required for kubebuidler)
@@ -91,7 +93,9 @@ While iterating on the project, you may need to:
 
 1. [Run everything](#running-everything)
 1. Verify it's working by [looking at the logs](#accessing-logs)
-1. Update your (external) dependencies with: `./hack/update-deps.sh`.
+1. Update your (external) dependencies with: `./hack/update-deps.sh`. 
+   
+   __Running dep ensure manually, will pull a bunch of scripts deleted [here](./hack/update-deps.sh#L29)__
 1. Update your type definitions with: `./hack/update-codegen.sh`.
 1. [Add new CRD types](#adding-new-types)
 1. [Add and run tests](./test/README.md#tests)
