@@ -101,7 +101,7 @@ func TestReconcile(t *testing.T) {
 func getController(prs []*v1alpha1.PipelineRun, ps []*v1alpha1.Pipeline, t *testing.T) (*controller.Impl, *observer.ObservedLogs) {
 	pipelineClient := fakepipelineclientset.NewSimpleClientset()
 	pipelineFactory := informers.NewSharedInformerFactory(pipelineClient, time.Second*30)
-	// Confugure mock methods to get pipeline runs and pipelines for the mock data.
+	// Configure mock methods to get pipeline runs and pipelines for the mock data.
 	rc := &reconcilerConfig{
 		pipelineRunLister: &mockPipelineRunsLister{runs: prs},
 		pipelineLister:    &mockPipelinesLister{p: ps},
@@ -162,7 +162,6 @@ func (m *mockPipelinesLister) Pipelines(namespace string) listers.PipelineNamesp
 
 func (m *mockPipelinesLister) Get(name string) (*v1alpha1.Pipeline, error) {
 	for _, p := range m.p {
-		fmt.Println("$$$$$$$$", p)
 		if p.Name == name {
 			return p, nil
 		}

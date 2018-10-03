@@ -143,7 +143,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
-
 	// fetch the equivelant pipeline for this pipelinerun Run
 	name := pr.Spec.PipelineRef.Name
 	if _, err := c.pipelineLister.Pipelines(pr.Namespace).Get(name); err != nil {
