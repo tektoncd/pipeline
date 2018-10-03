@@ -59,6 +59,11 @@ func TestReconcile(t *testing.T) {
 			Namespace: "foo",
 		}},
 	}
+	rc := &reconcilerConfig{
+		pipelineRunLister: &mockPipelineRunsLister{runs: prs},
+		pipelineLister:    &mockPipelinesLister{p: ps},
+		taskLister:        &mockTasksLister{},
+	}
 	tcs := []struct {
 		name        string
 		pipelineRun string
@@ -69,13 +74,13 @@ func TestReconcile(t *testing.T) {
 		{"invalid-pipeline-run-shd-succeed-with-logs", "foo/test-pipeline-run-doesnot-exist", false,
 			"pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists"},
 		{"invalid-pipeline-shd-succeed-with-logs", "foo/invalid-pipeline", false,
-			"\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\""},
+			"\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\". not found"},
 		{"invalid-pipeline-run-name-shd-succed-with-logs", "test/pipeline-fail/t", false,
 			"invalid resource key: test/pipeline-fail/t"},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs := getController(prs, ps, t)
+			c, logs, _ := getController(rc, t)
 			err := c.Reconciler.Reconcile(context.TODO(), tc.pipelineRun)
 			if tc.shdErr != (err != nil) {
 				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
@@ -85,6 +90,70 @@ func TestReconcile(t *testing.T) {
 			} else if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
 				m := getLogMessages(logs)
 				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
+			}
+		})
+	}
+}
+func TestCreatePipeline(t *testing.T) {
+	successPipeline := v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{{
+				Name:    "unit-test-frontend",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
+			}, {
+				Name:    "unit-test-backend",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
+			}},
+		}}
+	failPipeline := v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-invalid",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{{
+				Name:    "unit-test-frontend",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
+			}, {
+				Name:    "random-task",
+				TaskRef: v1alpha1.TaskRef{Name: "random-task", APIVersion: "t"},
+			}},
+		}}
+	ps := []*v1alpha1.Pipeline{&successPipeline, &failPipeline}
+	tasks := []*v1alpha1.Task{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-task",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{},
+	}}
+	rc := &reconcilerConfig{
+		pipelineRunLister: &mockPipelineRunsLister{},
+		pipelineLister:    &mockPipelinesLister{p: ps},
+		taskLister:        &mockTasksLister{t: tasks},
+	}
+	tcs := []struct {
+		name        string
+		pipeline    v1alpha1.Pipeline
+		shdErr      bool
+		createCalls int
+	}{
+		{"success", successPipeline, false, 2},
+		{"invalidPipeline", failPipeline, true, 0},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, client := getController(rc, t)
+			err := c.Reconciler.(*Reconciler).createPipelineRun(context.TODO(), &tc.pipeline)
+			if tc.shdErr != (err != nil) {
+				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
+			}
+			if len(client.Actions()) != tc.createCalls {
+				t.Errorf("expected to see %d create call call. Found %d", tc.createCalls, len(client.Actions()))
 			}
 		})
 	}
