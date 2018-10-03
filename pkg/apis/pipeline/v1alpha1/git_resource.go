@@ -16,6 +16,10 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	"strings"
+)
+
 // GitResource is an endpoint from which to get data which is required
 // by a Build/Task for context (e.g. a repo from which to build an image).
 type GitResource struct {
@@ -28,6 +32,25 @@ type GitResource struct {
 	Revision string `json:"revision"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`
+}
+
+// NewGitResource create a new git resource to pass to Knativve Build
+func NewGitResource(r *PipelineResource) *GitResource {
+	gitResource := GitResource{
+		Name: r.Name,
+		Type: r.Spec.Type,
+	}
+	for _, param := range r.Spec.Params {
+		switch {
+		case strings.EqualFold(param.Name, "URL"):
+			gitResource.URL = param.Value
+		case strings.EqualFold(param.Name, "serviceAccount"):
+			gitResource.ServiceAccount = param.Value
+		case strings.EqualFold(param.Name, "Revision"):
+			gitResource.Revision = param.Value
+		}
+	}
+	return &gitResource
 }
 
 // GetName returns the name of the resource
@@ -50,6 +73,11 @@ func (s GitResource) GetVersion() string {
 // GetServiceAccountName returns the service account to be used with this resource
 func (s *GitResource) GetServiceAccountName() string {
 	return s.ServiceAccount
+}
+
+// GetURL returns the url to be used with this resource
+func (s *GitResource) GetURL() string {
+	return s.URL
 }
 
 // GetParams returns the resoruce params
