@@ -129,6 +129,7 @@ func main() {
 		pipelinerun.NewController(opt,
 			pipelineRunInformer,
 			pipelineInformer,
+			taskInformer,
 		),
 	}
 

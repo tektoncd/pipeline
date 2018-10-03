@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package test
+package util
 
 import (
 	"math/rand"
@@ -41,10 +41,8 @@ func initSeed() {
 	rndMutex = &sync.Mutex{}
 }
 
-// AppendRandomString will generate a random string that begins with prefix. This is useful
-// if you want to make sure that your tests can run at the same time against the same
-// environment without conflicting. This method will seed rand with the current time when
-// called for the first time.
+// AppendRandomString will generate a random string that begins with prefix.
+// This method will seed rand with the current time when called for the first time.
 func AppendRandomString(prefix string) string {
 	once.Do(initSeed)
 	suffix := make([]byte, randSuffixLen)

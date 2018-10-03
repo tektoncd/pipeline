@@ -23,6 +23,7 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/util"
 	"github.com/knative/pkg/controller"
 
 	"go.uber.org/zap"
@@ -32,6 +33,7 @@ import (
 
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -48,6 +50,7 @@ type Reconciler struct {
 	// listers index properties about resources
 	pipelineRunLister listers.PipelineRunLister
 	pipelineLister    listers.PipelineLister
+	taskLister        listers.TaskLister
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -58,6 +61,7 @@ func NewController(
 	opt reconciler.Options,
 	pipelineRunInformer informers.PipelineRunInformer,
 	pipelineInformer informers.PipelineInformer,
+	taskInformer informers.TaskInformer,
 ) *controller.Impl {
 
 	r := &Reconciler{
@@ -85,7 +89,7 @@ func NewController(
 }
 
 // Reconcile compares the actual state with the desired, and attempts to
-// converge the two. It then updates the Status block of the Task Run
+// converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// Convert the namespace/name string into a distinct namespace and name
@@ -98,7 +102,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// Get the Pipeline Run resource with this namespace/name
 	original, err := c.pipelineRunLister.PipelineRuns(namespace).Get(name)
 	if errors.IsNotFound(err) {
-		// TODO: create pipelineRun here
 		// The resource no longer exists, in which case we stop processing.
 		c.Logger.Errorf("pipeline run %q in work queue no longer exists", key)
 		return nil
@@ -126,19 +129,72 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
 	// fetch the equivelant pipeline for this pipelinerun Run
-	name := pr.Spec.PipelineRef.Name
-	if _, err := c.pipelineLister.Pipelines(pr.Namespace).Get(name); err != nil {
-		c.Logger.Errorf("%q failed to Get Pipeline: %q",
-			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
-			fmt.Sprintf("%s/%s", pr.Namespace, name))
-		return nil
+	if _, err := c.getPipelineIfExists(pr); err != nil {
+		return err
 	}
-
 	// TODO fetch the taskruns status for this pipeline run.
 
 	// TODO check status of tasks and update status of PipelineRuns
 
 	return nil
+}
+
+func (c *Reconciler) createPipelineRun(ctx context.Context, p *v1alpha1.Pipeline) error {
+	tasks, err := c.getTasks(p)
+	if err != nil {
+		return errors.NewBadRequest(fmt.Sprintf("pipeline %q is not valid due to %v", p.Name, err))
+	}
+	for _, t := range tasks {
+		tr, err := createTaskRun(t)
+		if err != nil {
+			return err
+		}
+		c.PipelineClientSet.PipelineV1alpha1().TaskRuns(p.Namespace).Create(tr)
+	}
+	return nil
+}
+
+func (c *Reconciler) getTasks(p *v1alpha1.Pipeline) ([]*v1alpha1.Task, error) {
+	tasks := make([]*v1alpha1.Task, len(p.Spec.Tasks))
+	for i, t := range p.Spec.Tasks {
+		tObj, err := c.taskLister.Tasks(p.Namespace).Get(t.TaskRef.Name)
+		if err != nil {
+			c.Logger.Errorf("failed to get tasks for Pipeline %q: Error getting task %q : %s",
+				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
+				fmt.Sprintf("%s/%s", p.Namespace, t.Name), err)
+			return nil, err
+		}
+		tasks[i] = tObj
+	}
+	return tasks, nil
+}
+
+func createTaskRun(t *v1alpha1.Task) (*v1alpha1.TaskRun, error) {
+	// Create empty tasks
+	trName := randomizeTaskRunName(t)
+	tr := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      trName,
+			Namespace: t.Namespace,
+		},
+	}
+	return tr, nil
+}
+
+func randomizeTaskRunName(t *v1alpha1.Task) string {
+	return util.AppendRandomString(t.Name)
+}
+
+func (c *Reconciler) getPipelineIfExists(pr *v1alpha1.PipelineRun) (*v1alpha1.Pipeline, error) {
+	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
+	if errors.IsNotFound(err) {
+		// to stop processing if pipeline is not found, return nil
+		c.Logger.Errorf("%q failed to Get Pipeline: %q. not found",
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
+		return nil, nil
+	}
+	return p, err
 }
 
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
