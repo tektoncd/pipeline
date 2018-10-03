@@ -28,6 +28,14 @@ readonly KNATIVE_SERVING_RELEASE=https://storage.googleapis.com/knative-releases
 readonly KNATIVE_BUILD_RELEASE=https://storage.googleapis.com/knative-releases/build/latest/release.yaml
 readonly KNATIVE_EVENTING_RELEASE=https://storage.googleapis.com/knative-releases/eventing/latest/release.yaml
 
+# Conveniently set GOPATH if unset
+if [[ -z "${GOPATH:-}" ]]; then
+  export GOPATH="$(go env GOPATH)"
+  if [[ -z "${GOPATH}" ]]; then
+    echo "WARNING: GOPATH not set and go binary unable to provide it"
+  fi
+fi
+
 # Useful environment variables
 [[ -n "${PROW_JOB_ID:-}" ]] && IS_PROW=1 || IS_PROW=0
 readonly IS_PROW
@@ -146,6 +154,24 @@ function wait_until_service_has_external_ip() {
   return 1
 }
 
+# Waits for the endpoint to be routable.
+# Parameters: $1 - External ingress IP address.
+#             $2 - cluster hostname.
+function wait_until_routable() {
+  echo -n "Waiting until cluster $2 at $1 has a routable endpoint"
+  for i in {1..150}; do  # timeout after 5 minutes
+    local val=$(curl -H "Host: $2" "http://$1" 2>/dev/null)
+    if [[ -n "$val" ]]; then
+      echo "\nEndpoint is now routable"
+      return 0
+    fi
+    echo -n "."
+    sleep 2
+  done
+  echo -e "\n\nERROR: Timed out waiting for endpoint to be routable"
+  return 1
+}
+
 # Returns the name of the pod of the given app.
 # Parameters: $1 - app name.
 #             $2 - namespace (optional).
@@ -192,19 +218,20 @@ function acquire_cluster_admin_role() {
 # Runs a go test and generate a junit summary through bazel.
 # Parameters: $1... - parameters to go test
 function report_go_test() {
-  # Just run regular go tests if not on Prow.
-  if (( ! IS_PROW )); then
-    go test $@
-    return
-  fi
-  local report=$(mktemp)
-  local failed=0
-  local test_count=0
   # Run tests in verbose mode to capture details.
   # go doesn't like repeating -v, so remove if passed.
   local args=("${@/-v}")
-  echo "Running tests with 'go test ${args[@]}'"
-  go test -race -v ${args[@]} > ${report} || failed=$?
+  local go_test="go test -race -v ${args[@]}"
+  # Just run regular go tests if not on Prow.
+  if (( ! IS_PROW )); then
+    ${go_test}
+    return
+  fi
+  echo "Running tests with '${go_test}'"
+  local report=$(mktemp)
+  local failed=0
+  local test_count=0
+  ${go_test} > ${report} || failed=$?
   echo "Finished run, return code is ${failed}"
   # Tests didn't run.
   [[ ! -s ${report} ]] && return 1
@@ -217,30 +244,39 @@ function report_go_test() {
     local fields=(`echo -n ${line}`)
     local field0="${fields[0]}"
     local field1="${fields[1]}"
-    local name=${fields[2]}
+    local name="${fields[2]}"
     # Ignore subtests (those containing slashes)
     if [[ -n "${name##*/*}" ]]; then
+      local error=""
+      # Deal with a fatal log entry, which has a different format:
+      # fatal   TestFoo   foo_test.go:275 Expected "foo" but got "bar"
+      if [[ "${field0}" == "fatal" ]]; then
+        name="${fields[1]}"
+        field1="FAIL:"
+        error="${fields[@]:3}"
+      fi
+      # Handle regular go test pass/fail entry for a test.
       if [[ "${field1}" == "PASS:" || "${field1}" == "FAIL:" ]]; then
         echo "- ${name} :${field1}"
         test_count=$(( test_count + 1 ))
-        # Populate BUILD.bazel
         local src="${name}.sh"
         echo "exit 0" > ${src}
         if [[ "${field1}" == "FAIL:" ]]; then
-          read error
+          [[ -z "${error}" ]] && read error
           echo "cat <<ERROR-EOF" > ${src}
           echo "${error}" >> ${src}
           echo "ERROR-EOF" >> ${src}
           echo "exit 1" >> ${src}
         fi
         chmod +x ${src}
+        # Populate BUILD.bazel
         echo "sh_test(name=\"${name}\", srcs=[\"${src}\"])" >> BUILD.bazel
       elif [[ "${field0}" == "FAIL" || "${field0}" == "ok" ]] && [[ -n "${field1}" ]]; then
         echo "- ${field0} ${field1}"
         # Create the package structure, move tests and BUILD file
         local package=${field1/github.com\//}
         local bazel_files="$(ls -1 *.sh BUILD.bazel 2> /dev/null)"
-        if [[ $? -eq 0 ]]; then
+        if [[ -n "${bazel_files}" ]]; then
           mkdir -p ${package}
           targets="${targets} //${package}/..."
           mv ${bazel_files} ${package}
@@ -255,6 +291,7 @@ function report_go_test() {
   # Otherwise, we already shown the summary.
   # Exception: when emitting metrics, dump the full report.
   if (( failed )) || [[ "$@" == *" -emitmetrics"* ]]; then
+    echo "At least one test failed, full log:"
     cat ${report}
   fi
   # Always generate the junit summary.

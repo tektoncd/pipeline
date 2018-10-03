@@ -52,20 +52,9 @@ function integration_tests() {
   # this from Prow we need to provide our own.
   export BUILD_NUMBER=${BUILD_NUMBER:-$RANDOM}
 
-  # Use knative test-infra scripts to make `fail-test` and `success` available.
-  # which will output helpful information for debugging failures, and ensure test
-  # results are made available.
-  source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/e2e-tests.sh
-  # Setup the cluster (if not using an existing cluster) and deploy the Pipeline CRD
-  source $(dirname $0)/cluster-setup.sh
-
   options=""
   (( EMIT_METRICS )) && options="-emitmetrics"
-  report_go_test \
-    -v -tags=e2e -count=1 -timeout=20m ./test \
-    ${options} || fail_test
-
-  success
+   ./test/e2e-tests.sh ${options}
 }
 
 main $@
