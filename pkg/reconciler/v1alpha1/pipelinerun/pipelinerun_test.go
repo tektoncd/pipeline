@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
+	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
@@ -31,7 +31,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
-	fakerestclientset "k8s.io/client-go/rest/fake"
 )
 
 func TestReconcile(t *testing.T) {
@@ -76,10 +75,10 @@ func TestReconcile(t *testing.T) {
 	}{
 		{"success", "foo/test-pipeline-run-success", false, ""},
 		{"pipeline-fetching-error-shd-error", "test-pipeline-run-fetch-error", true, ""},
-		{"invalid-pipeline-run-shd-succeed-with-logs", "test-pipeline-run-doesnot-exist", false,
-			"pipeline run \"test-pipeline-run-doesnot-exist\" in work queue no longer exists"},
-		{"invalid-pipeline-shd-succeed-with-logs", "invalid-pipeline", false,
-			"\"invalid-pipeline\" failed to Get Pipeline: \"pipeline-not-exist\""},
+		{"invalid-pipeline-run-shd-succeed-with-logs", "foo/test-pipeline-run-doesnot-exist", false,
+			"pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists"},
+		{"invalid-pipeline-shd-succeed-with-logs", "foo/invalid-pipeline", false,
+			"\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\""},
 		{"invalid-pipeline-run-name-shd-succed-with-logs", "test/pipeline-fail/t", false,
 			"invalid resource key: test/pipeline-fail/t"},
 	}
@@ -90,7 +89,9 @@ func TestReconcile(t *testing.T) {
 			if tc.shdErr != (err != nil) {
 				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
 			}
-			if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
+			if tc.log == "" && logs.Len() > 0 {
+				t.Errorf("expected to see no error log. However found errors in logs: %v", logs)
+			} else if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
 				t.Errorf("expected to see error log %s. However found no matching logs in %v", tc.log, logs)
 			}
 		})
@@ -98,7 +99,7 @@ func TestReconcile(t *testing.T) {
 }
 
 func getController(prs []*v1alpha1.PipelineRun, ps []*v1alpha1.Pipeline, t *testing.T) (*controller.Impl, *observer.ObservedLogs) {
-	pipelineClient := clientset.New(&fakerestclientset.RESTClient{})
+	pipelineClient := fakepipelineclientset.NewSimpleClientset()
 	pipelineFactory := informers.NewSharedInformerFactory(pipelineClient, time.Second*30)
 	// Confugure mock methods to get pipeline runs and pipelines for the mock data.
 	rc := &reconcilerConfig{
@@ -107,10 +108,11 @@ func getController(prs []*v1alpha1.PipelineRun, ps []*v1alpha1.Pipeline, t *test
 	}
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
-	return newController(
+	return new(
 		reconciler.Options{
-			Logger:        zap.New(observer).Sugar(),
-			KubeClientSet: fakekubeclientset.NewSimpleClientset(),
+			Logger:            zap.New(observer).Sugar(),
+			KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
+			PipelineClientSet: pipelineClient,
 		},
 		pipelineFactory.Pipeline().V1alpha1().PipelineRuns(),
 		pipelineFactory.Pipeline().V1alpha1().Pipelines(),
@@ -132,7 +134,7 @@ func (m *mockPipelineRunsLister) PipelineRuns(namespace string) listers.Pipeline
 }
 
 func (m *mockPipelineRunsLister) Get(name string) (*v1alpha1.PipelineRun, error) {
-	// return error to mimic runtime error when fetching pipeline.
+	///return error to mimic runtime error when fetching pipeline.
 	if name == "test-pipeline-run-fetch-error" {
 		return nil, fmt.Errorf("random error while fetching")
 	}
@@ -160,6 +162,7 @@ func (m *mockPipelinesLister) Pipelines(namespace string) listers.PipelineNamesp
 
 func (m *mockPipelinesLister) Get(name string) (*v1alpha1.Pipeline, error) {
 	for _, p := range m.p {
+		fmt.Println("$$$$$$$$", p)
 		if p.Name == name {
 			return p, nil
 		}

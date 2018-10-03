@@ -18,11 +18,11 @@ package pipelinerun
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
-	"github.com/knative/build-pipeline/pkg/reconciler/constants"
 	"github.com/knative/pkg/controller"
 
 	"go.uber.org/zap"
@@ -32,6 +32,13 @@ import (
 
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
+)
+
+const (
+	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
+	pipelineRunAgentName = "pipeline-controller"
+	// pipelineRunControllerName defines name for PipelineRun Controller
+	pipelineRunControllerName = "PipelineRun"
 )
 
 type reconcilerConfig struct {
@@ -62,22 +69,22 @@ func NewController(
 		pipelineRunLister: pipelineRunInformer.Lister(),
 		pipelineLister:    pipelineInformer.Lister(),
 	}
-	return newController(opt, pipelineRunInformer, pipelineInformer, rc)
+	return new(opt, pipelineRunInformer, pipelineInformer, rc)
 }
 
-func newController(opt reconciler.Options,
+func new(opt reconciler.Options,
 	pipelineRunInformer informers.PipelineRunInformer,
 	pipelineInformer informers.PipelineInformer,
 	rc *reconcilerConfig,
 ) *controller.Impl {
 
 	r := &Reconciler{
-		Base:              reconciler.NewBase(opt, constants.PipelineRunAgentName),
+		Base:              reconciler.NewBase(opt, pipelineRunAgentName),
 		pipelineRunLister: rc.pipelineRunLister,
 		pipelineLister:    rc.pipelineLister,
 	}
 
-	impl := controller.NewImpl(r, r.Logger, constants.PipelineRunControllerName)
+	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
 
 	r.Logger.Info("Setting up event handlers")
 	pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -129,7 +136,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		// cache may be stale and we don't want to overwrite a prior update
 		// to status with this stale state.
 	} else if _, err := c.updateStatus(pr); err != nil {
-		c.Logger.Warn("Failed to update taskPipeline status", zap.Error(err))
+		c.Logger.Warn("Failed to update PipelineRun status", zap.Error(err))
 		return err
 	}
 	return err
@@ -140,7 +147,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	// fetch the equivelant pipeline for this pipelinerun Run
 	name := pr.Spec.PipelineRef.Name
 	if _, err := c.pipelineLister.Pipelines(pr.Namespace).Get(name); err != nil {
-		c.Logger.Errorf("%q failed to Get Pipeline: %q", pr.Name, name)
+		c.Logger.Errorf("%q failed to Get Pipeline: %q",
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
+			fmt.Sprintf("%s/%s", pr.Namespace, name))
 		return nil
 	}
 
