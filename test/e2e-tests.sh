@@ -23,10 +23,25 @@ set -o xtrace
 set -o errexit
 set -o pipefail
 
+# The logic to create resource names (which are used by kubetest) in `e2e-tests.sh` requires
+# that the variable `BUILD_NUMBER` be set, which is provided by Prow, so if we aren't running
+# this from Prow we need to provide our own.
+export BUILD_NUMBER=${BUILD_NUMBER:-$RANDOM}
+
+# The scripts were initially setup to use the knative/serving style `DOCKER_REPO_OVERRIDE`
+# before knative/serving was updated to use `ko` + `KO_DOCKER_REPO`. If the scripts were
+# called with `KO_DOCKER_REPO` already set (i.e. using a user's own local cluster, we should
+# respect that).
+if ! [[ -z ${KO_DOCKER_REPO} ]]; then
+    export DOCKER_REPO_OVERRIDE=${KO_DOCKER_REPO}
+fi
+
 function take_down_pipeline() {
     header "Tearing down Pipeline CRD"
     ko delete --ignore-not-found=true -f config/
 }
+# TODO: add a wait for resources to be up and change take_down_pipeline to
+# teardown so that it will be called auto-magically.
 trap take_down_pipeline EXIT
 
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
@@ -44,24 +59,14 @@ function dump_extra_cluster_state() {
 
 set +o xtrace
 header "Setting up environment"
-# The intialize method will attempt to create a new cluster in $PROJECT_ID unless
-# the `--run-tests` parameter is provided and `K8S_CLUSTER_OVERRIDE` is set, however
-# since knative/test-infra/scripts/presubmit-tests.sh doesn't propagate `--run-tests`
-# (and it's kind of a confusing param name), we'll infer it from the presence of
-# `K8S_CLUSTER_OVERRIDE`
-if [[ -z ${K8S_CLUSTER_OVERRIDE} ]]; then
-    initialize
-else
-    initialize --run-tests
-fi
+initialize $@
 set -o xtrace
 
-# The scripts were initially setup to use the knative/serving style `DOCKER_REPO_OVERRIDE`
-# before knative/serving was updated to use `ko` + `KO_DOCKER_REPO`. If the scripts were
-# called with `KO_DOCKER_REPO` already set (i.e. using a user's own local cluster, we should
-# respect that).
-if ! [[ -z ${KO_DOCKER_REPO} ]]; then
-    export DOCKER_REPO_OVERRIDE=${KO_DOCKER_REPO}
+# If this was kicked off from Prow, then `DOCKER_REPO_OVERRIDE` will be set (by `initialize`) but
+# `KO_DOCKER_REPO` will not be, and we need the latter to run `ko` so we should set that to
+# the same value
+if [[ -z ${KO_DOCKER_REPO} ]]; then
+    export KO_DOCKER_REPO=${DOCKER_REPO_OVERRIDE}
 fi
 
 # Deploy the latest version of the Pipeline CRD.
@@ -73,3 +78,9 @@ ko apply -f config/
 set +o xtrace
 wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
 set -o xtrace
+
+report_go_test \
+-v -tags=e2e -count=1 -timeout=20m ./test \
+${options} || fail_test
+
+success

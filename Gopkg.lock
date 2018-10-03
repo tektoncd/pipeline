@@ -200,11 +200,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2ee94e6988f348c1c6bd0393d8093b4262dbe95f8635f5b59ee211ec1ff66837"
+  digest = "1:e2b69720fb704bbd32b9440b9a74f3be9e8b5ab7879281c69981f51c6ae40e35"
   name = "github.com/knative/test-infra"
   packages = ["."]
   pruneopts = "T"
-  revision = "dc3a4e38d9f942d3df262e5b6b59a8e61c15ed15"
+  revision = "13055d769cc5e1756e605fcb3bcc1c25376699f1"
 
 [[projects]]
   branch = "master"

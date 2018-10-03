@@ -191,12 +191,13 @@ have access to.
 
 If you would like to run the integration tests against your cluster, you can use the
 `K8S_CLUSTER_OVERRIDE` environment variable to force the scripts to use your own cluster,
-and provide `KO_DOCKER_REPO` (as specified in the [DEVELOPMENT.md](../DEVELOPMENT.md#environment-setup)):
+provide `KO_DOCKER_REPO` (as specified in the [DEVELOPMENT.md](../DEVELOPMENT.md#environment-setup)),
+use `e2e-tests.sh` directly and provide the `--run-tests` argument:
 
 ```shell
 export K8S_CLUSTER_OVERRIDE=my_k8s_cluster # corresponds to a `context` in your kubeconfig
 export KO_DOCKER_REPO=gcr.io/my_docker_repo # required for deployments using `ko`
-test/presubmit-tests.sh --integration-tests
+test/e2e-tests.sh --run-tests
 ```
 
 Or you can set `$PROJECT_ID` to a GCP project and rely on
