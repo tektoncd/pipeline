@@ -73,6 +73,7 @@ func tearDownMain(kubeClient *knativetest.KubeClient, logger *logging.BaseLogger
 func TestMain(m *testing.M) {
 	initializeLogsAndMetrics()
 	logger := logging.GetContextLogger("TestMain")
+	logger.Infof("Using kubeconfig at `%s` with cluster `%s`", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
 
 	namespace = AppendRandomString("arendelle")
 	kubeClient := createNamespace(namespace, logger)

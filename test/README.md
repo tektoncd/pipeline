@@ -175,4 +175,37 @@ You can run this locally with:
 
 ```shell
 test/presubmit-tests.sh
+test/presubmit-tests.sh --build-tests
+test/presubmit-tests.sh --unit-tests
+```
+
+Prow is configured in [the knative `config.yaml` in `knative/test-infra`](https://github.com/knative/test-infra/blob/master/ci/prow/config.yaml)
+via the sections for `knative/build-pipeline`.
+
+### Running presubmit integration tests
+
+When run using Prow, integration tests will try to get a new cluster using [boskos](https://github.com/kubernetes/test-infra/tree/master/boskos) and
+[these hardcoded GKE projects](https://github.com/knative/test-infra/blob/master/ci/prow/boskos/resources.yaml#L15),
+which only [the `knative/test-infra` OWNERS](https://github.com/knative/test-infra/blob/master/OWNERS)
+have access to.
+
+If you would like to run the integration tests against your cluster, you can use the
+`K8S_CLUSTER_OVERRIDE` environment variable to force the scripts to use your own cluster,
+and provide `KO_DOCKER_REPO` (as specified in the [DEVELOPMENT.md](../DEVELOPMENT.md#environment-setup)):
+
+```shell
+export K8S_CLUSTER_OVERRIDE=my_k8s_cluster # corresponds to a `context` in your kubeconfig
+export KO_DOCKER_REPO=gcr.io/my_docker_repo # required for deployments using `ko`
+test/presubmit-tests.sh --integration-tests
+```
+
+Or you can set `$PROJECT_ID` to a GCP project and rely on
+[kubetest](https://github.com/kubernetes/test-infra/tree/master/kubetest)
+to setup a cluster for you:
+
+```shell
+export K8S_CLUSTER_OVERRIDE=
+export PROJECT_ID=my_gcp_project
+export KO_DOCKER_REPO=gcr.io/my_docker_repo # required for deployments using `ko`
+test/presubmit-tests.sh --integration-tests
 ```
