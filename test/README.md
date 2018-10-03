@@ -12,9 +12,9 @@ _By default `go test` will not run [the integration tests](#integration-tests), 
 `-tags=e2e` to be enabled._
 
 ### Unit testing Controllers
-Kubernetes client-go provides a umber of fake clients and objects for unit testing. The ones we will be using are:
+Kubernetes client-go provides a number of fake clients and objects for unit testing. The ones we will be using are:
 
-1. [fake kubernetes client](k8s.io/client-go/kubernetes/fake): Provides a fake REST interface to interacti with Kubernetes API
+1. [fake kubernetes client](k8s.io/client-go/kubernetes/fake): Provides a fake REST interface to interact with Kubernetes API
 1. [fake pipeline client](./../pkg/client/clientset/versioned/fake/clientset_generated.go) : Provides a fake REST PipelineClient Interface to interact with Pipeline CRDs.
 
 You can create a fake PipelineClient for the Controller under test like [this](./../pkg/reconciler/v1alpha1/pipelinerun/pipelinerun_test.go#L102).
@@ -39,21 +39,25 @@ This [pipelineClient](./../pkg/client/clientset/versioned/clientset.go#L34) is i
 }}
 pipelineClient := fakepipelineclientset.NewSimpleClientset(obj)
 objs := pipelineClient.Pipeline().PipelineRuns("namespace").List(v1.ListOptions{})
-//You can verify if List was called in yout test using
+//You can verify if List was called in yout test like this
 action :=  pipelineClient.Actions()[0]
 if action.GetVerb() != "list" {
     t.Errorf("expected list to be called, found %s", action.GetVerb())
 }
 ```
 
-To test the Controller for crd objects, we need to provide mocks for [listers](./../pkg/client/listers). If mocks are not provider, the lister will return empty objects.
-The Controller does not use the pipelineClient to list  CRDs. To mock listers, we need to implement the following interfaces
-To mock listers for PipelineRuns.
+To test the Controller for crd objects, we need to provide mocks for [listers](./../pkg/client/listers).
+The Controller does not use the pipelineClient to list CRDs hence lister will return empty list of objects.
+To mock listers, we need to implement the following interfaces
+For PipelineRuns.
 1. [PipelineRunLister](./../pkg/client/listers/pipeline/v1alpha1/pipelinerun.go#L26)
 1. [PipelineRunNamespaceLister](./../pkg/client/listers/pipeline/v1alpha1/pipelinerun.go#L58)
 
+Similarly, for TaskRuns, we need to implement corresponding [TaskRunLister](./../pkg/client/listers/pipeline/v1alpha1/taskrun.go#L26) and [TaskRunNamespaceLister](./../pkg/client/listers/pipeline/v1alpha1/taskrun.go#L58)
+
 You can look at example mock for PipelineRunContollerTest [here](./../pkg/reconciler/v1alpha1/pipelinerun/pipelinerun_test.go#L123)
-In this example, we have used the same struct which implements both the interfaces.
+
+In this example, the same struct which implements both the interfaces.
 
 ## Integration tests
 
