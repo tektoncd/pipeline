@@ -24,7 +24,6 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/constants"
 	"github.com/knative/pkg/controller"
-	"github.com/knative/pkg/logging"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -74,8 +73,8 @@ func newController(opt reconciler.Options,
 
 	r := &Reconciler{
 		Base:              reconciler.NewBase(opt, constants.PipelineRunAgentName),
-		pipelineRunLister: pipelineRunInformer.Lister(),
-		pipelineLister:    pipelineInformer.Lister(),
+		pipelineRunLister: rc.pipelineRunLister,
+		pipelineLister:    rc.pipelineLister,
 	}
 
 	impl := controller.NewImpl(r, r.Logger, constants.PipelineRunControllerName)
@@ -106,14 +105,13 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Errorf("invalid resource key: %s", key)
 		return nil
 	}
-	logger := logging.FromContext(ctx)
 
 	// Get the Pipeline Run resource with this namespace/name
 	original, err := c.pipelineRunLister.PipelineRuns(namespace).Get(name)
 	if errors.IsNotFound(err) {
 		// TODO: create pipelineRun here
 		// The resource no longer exists, in which case we stop processing.
-		logger.Errorf("pipeline run %q in work queue no longer exists", key)
+		c.Logger.Errorf("pipeline run %q in work queue no longer exists", key)
 		return nil
 	} else if err != nil {
 		return err
@@ -131,26 +129,24 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		// cache may be stale and we don't want to overwrite a prior update
 		// to status with this stale state.
 	} else if _, err := c.updateStatus(pr); err != nil {
-		logger.Warn("Failed to update taskPipeline status", zap.Error(err))
+		c.Logger.Warn("Failed to update taskPipeline status", zap.Error(err))
 		return err
 	}
 	return err
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
-	logger := logging.FromContext(ctx)
 
-	// fetch the equivelant task for this task Run
+	// fetch the equivelant pipeline for this pipelinerun Run
 	name := pr.Spec.PipelineRef.Name
-	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(name)
-	if err != nil {
-		logger.Errorf("Failed to reconcile PipelineRun: %q failed to Get Pipeline: %q", pr.Name, p)
-		return err
+	if _, err := c.pipelineLister.Pipelines(pr.Namespace).Get(name); err != nil {
+		c.Logger.Errorf("%q failed to Get Pipeline: %q", pr.Name, name)
+		return nil
 	}
 
-	// TODO fetch the taskruns status
+	// TODO fetch the taskruns status for this pipeline run.
 
-	// check status of tasks and update status of PipelineRuns
+	// TODO check status of tasks and update status of PipelineRuns
 
 	return nil
 }
