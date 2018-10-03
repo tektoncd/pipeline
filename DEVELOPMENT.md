@@ -49,7 +49,7 @@ You must install these tools:
    Please Install dep v0.5.0 or greater.
 1. [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko): For
    development.
-1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For interacting with your kube cluster (also required for kubebuidler)
+1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For interacting with your kube cluster
 
 ## Environment Setup
 
