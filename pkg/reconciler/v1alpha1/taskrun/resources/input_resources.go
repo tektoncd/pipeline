@@ -37,24 +37,25 @@ func AddInputResource(
 	for _, input := range task.Spec.Inputs.Sources {
 		resource, err := pipelineResourceLister.PipelineResources(task.Namespace).Get(input.Name)
 		if err != nil {
-
 			logger.Errorf("Failed to reconcile TaskRun: %q failed to Get Pipeline Resource: %q", task.Name, input.Name)
 			return nil, err
 		}
 		if resource.Spec.Type == v1alpha1.PipelineResourceTypeGit {
-			gitResource = v1alpha1.NewGitResource(resource)
+			gitResource, err = v1alpha1.NewGitResource(resource)
+			if err != nil {
+				logger.Errorf("Failed to reconcile TaskRun: %q Invalid Pipeline Resource: %q", task.Name, input.Name)
+				return nil, err
+			}
 			for _, trInput := range taskRun.Spec.Inputs.Resources {
 				if trInput.ResourceRef.Name == input.Name {
-					gitResource.Revision = trInput.Version
+					if trInput.Version != "" {
+						gitResource.Revision = trInput.Version
+					}
 					break
 				}
 			}
 			break
 		}
-	}
-	// default revision to master is nothing is provided
-	if gitResource.Revision == "" {
-		gitResource.Revision = "master"
 	}
 
 	gitSourceSpec := &buildv1alpha1.GitSourceSpec{

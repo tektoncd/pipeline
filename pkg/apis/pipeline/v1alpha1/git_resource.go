@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -34,8 +35,11 @@ type GitResource struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
-// NewGitResource create a new git resource to pass to Knativve Build
-func NewGitResource(r *PipelineResource) *GitResource {
+// NewGitResource create a new git resource to pass to Knative Build
+func NewGitResource(r *PipelineResource) (*GitResource, error) {
+	if r.Spec.Type != PipelineResourceTypeGit {
+		return nil, fmt.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
+	}
 	gitResource := GitResource{
 		Name: r.Name,
 		Type: r.Spec.Type,
@@ -50,7 +54,11 @@ func NewGitResource(r *PipelineResource) *GitResource {
 			gitResource.Revision = param.Value
 		}
 	}
-	return &gitResource
+	// default revision to master is nothing is provided
+	if gitResource.Revision == "" {
+		gitResource.Revision = "master"
+	}
+	return &gitResource, nil
 }
 
 // GetName returns the name of the resource
