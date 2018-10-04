@@ -41,11 +41,6 @@ const (
 	pipelineRunControllerName = "PipelineRun"
 )
 
-type reconcilerConfig struct {
-	pipelineRunLister listers.PipelineRunLister
-	pipelineLister    listers.PipelineLister
-}
-
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	*reconciler.Base
@@ -65,23 +60,10 @@ func NewController(
 	pipelineInformer informers.PipelineInformer,
 ) *controller.Impl {
 
-	rc := &reconcilerConfig{
-		pipelineRunLister: pipelineRunInformer.Lister(),
-		pipelineLister:    pipelineInformer.Lister(),
-	}
-	return new(opt, pipelineRunInformer, pipelineInformer, rc)
-}
-
-func new(opt reconciler.Options,
-	pipelineRunInformer informers.PipelineRunInformer,
-	pipelineInformer informers.PipelineInformer,
-	rc *reconcilerConfig,
-) *controller.Impl {
-
 	r := &Reconciler{
 		Base:              reconciler.NewBase(opt, pipelineRunAgentName),
-		pipelineRunLister: rc.pipelineRunLister,
-		pipelineLister:    rc.pipelineLister,
+		pipelineRunLister: pipelineRunInformer.Lister(),
+		pipelineLister:    pipelineInformer.Lister(),
 	}
 
 	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
