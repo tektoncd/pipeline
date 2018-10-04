@@ -18,6 +18,8 @@ package v1alpha1
 
 import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+
+	"github.com/knative/pkg/webhook"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,7 +28,7 @@ type TaskSpec struct {
 	// +optional
 	Inputs *Inputs `json:"inputs,omitempty"`
 	// +optional
-	Outputs   *Outputs                 `json:"outputs,omitempty"`
+	Outputs   *Outputs                `json:"outputs,omitempty"`
 	BuildSpec buildv1alpha1.BuildSpec `json:"buildSpec"`
 }
 
@@ -35,6 +37,9 @@ type TaskStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
+
+// Assert that Task implements the GenericCRD interface.
+var _ webhook.GenericCRD = (*Task)(nil)
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
