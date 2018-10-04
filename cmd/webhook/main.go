@@ -20,6 +20,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+
 	"go.uber.org/zap"
 
 	"github.com/knative/build-pipeline/pkg/logging"
@@ -78,10 +80,12 @@ func main() {
 	}
 	//TODO add validations here
 	controller := webhook.AdmissionController{
-		Client:   kubeClient,
-		Options:  options,
-		Handlers: map[schema.GroupVersionKind]webhook.GenericCRD{},
-		Logger:   logger,
+		Client:  kubeClient,
+		Options: options,
+		Handlers: map[schema.GroupVersionKind]webhook.GenericCRD{
+			v1alpha1.SchemeGroupVersion.WithKind("Pipeline"): &v1alpha1.Pipeline{},
+		},
+		Logger: logger,
 	}
 	if err != nil {
 		logger.Fatal("Failed to create the admission controller", zap.Error(err))
