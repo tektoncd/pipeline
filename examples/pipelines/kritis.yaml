@@ -24,13 +24,13 @@ spec:
             key: workspace # bind to the name in the task
             resourceRef:
               name: kritis-resources-git
-            passedConstraint: 
-              - make
+            passedConstraint:
+              - unit-test-make
         outputSourceBindings:
           - name: kritisImage
             key: builtImage # bind to the name in the task
             resourceRef:
-              name: kritis-resources-image            
+              name: kritis-resources-image
         params:
           - name: pathToDockerfile
             value: deploy/Dockerfile
@@ -56,8 +56,8 @@ spec:
           - name: kritis-test-github
             key: workspace
             resourceRef:
-                name: kritis-resources-test-git            
+                name: kritis-resources-test-git
             passedConstraint: [deploy-with-helm]
         params:
           - name: testArgs
-            value: "-e REMOTE_INTEGRATION=true"               
+            value: "-e REMOTE_INTEGRATION=true"

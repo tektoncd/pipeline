@@ -130,6 +130,7 @@ func main() {
 			pipelineRunInformer,
 			pipelineInformer,
 			taskInformer,
+			taskRunInformer,
 		),
 	}
 

@@ -22,7 +22,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/knative/build-pipeline/pkg/util"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
@@ -76,7 +75,7 @@ func TestMain(m *testing.M) {
 	logger := logging.GetContextLogger("TestMain")
 	logger.Infof("Using kubeconfig at `%s` with cluster `%s`", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
 
-	namespace = util.AppendRandomString("arendelle")
+	namespace = AppendRandomString("arendelle")
 	kubeClient := createNamespace(namespace, logger)
 	knativetest.CleanupOnInterrupt(func() { tearDownMain(kubeClient, logger) }, logger)
 
