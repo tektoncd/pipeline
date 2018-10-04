@@ -46,18 +46,29 @@ if action.GetVerb() != "list" {
 }
 ```
 
-To test the Controller for crd objects, we need to provide mocks for [listers](./../pkg/client/listers).
-The Controller does not use the pipelineClient to list CRDs hence lister will return empty list of objects.
-To mock listers, we need to implement the following interfaces
-For PipelineRuns.
-1. [PipelineRunLister](./../pkg/client/listers/pipeline/v1alpha1/pipelinerun.go#L26)
-1. [PipelineRunNamespaceLister](./../pkg/client/listers/pipeline/v1alpha1/pipelinerun.go#L58)
+To test the Controller for crd objects, we need to add test crd objects to the [informers](./../pkg/client/informers)
+so that the [listers](./../pkg/client/listers) can access these.
 
-Similarly, for TaskRuns, we need to implement corresponding [TaskRunLister](./../pkg/client/listers/pipeline/v1alpha1/taskrun.go#L26) and [TaskRunNamespaceLister](./../pkg/client/listers/pipeline/v1alpha1/taskrun.go#L58)
+To add test `PipelineRun` objects to the listers, you can
 
-You can look at example mock for PipelineRunContollerTest [here](./../pkg/reconciler/v1alpha1/pipelinerun/pipelinerun_test.go#L123)
+```
+pipelineClient := fakepipelineclientset.NewSimpleClientset()
+sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
+pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
 
-In this example, the same struct which implements both the interfaces.
+obj := *v1alpha1.PipelineRun{
+  ObjectMeta: metav1.ObjectMeta{
+	Name:      "name",
+	Namespace: "namespace",
+  },
+  Spec: v1alpha1.PipelineRunSpec{
+	PipelineRef: v1alpha1.PipelineRef{
+	  Name:       "test-pipeline",
+	  APIVersion: "a1",
+	},
+}}
+pipelineRunsInformer.Informer().GetIndexer().Add(obj)
+```
 
 ## Integration tests
 

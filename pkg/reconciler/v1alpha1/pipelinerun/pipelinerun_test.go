@@ -15,22 +15,17 @@ package pipelinerun
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
-	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/pkg/controller"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -45,10 +40,6 @@ func TestReconcile(t *testing.T) {
 				Name:       "test-pipeline",
 				APIVersion: "a1",
 			},
-		}}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-fetch-error",
-			Namespace: "foo",
 		}}, {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "invalid-pipeline",
@@ -75,7 +66,6 @@ func TestReconcile(t *testing.T) {
 		log         string
 	}{
 		{"success", "foo/test-pipeline-run-success", false, ""},
-		{"pipeline-fetching-error-shd-error", "test-pipeline-run-fetch-error", true, ""},
 		{"invalid-pipeline-run-shd-succeed-with-logs", "foo/test-pipeline-run-doesnot-exist", false,
 			"pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists"},
 		{"invalid-pipeline-shd-succeed-with-logs", "foo/invalid-pipeline", false,
@@ -102,23 +92,28 @@ func TestReconcile(t *testing.T) {
 
 func getController(prs []*v1alpha1.PipelineRun, ps []*v1alpha1.Pipeline, t *testing.T) (*controller.Impl, *observer.ObservedLogs) {
 	pipelineClient := fakepipelineclientset.NewSimpleClientset()
-	pipelineFactory := informers.NewSharedInformerFactory(pipelineClient, time.Second*30)
-	// Configure mock methods to get pipeline runs and pipelines for the mock data.
-	rc := &reconcilerConfig{
-		pipelineRunLister: &mockPipelineRunsLister{runs: prs},
-		pipelineLister:    &mockPipelinesLister{p: ps},
+	sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
+	pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
+	pipelineInformer := sharedInfomer.Pipeline().V1alpha1().Pipelines()
+
+	for _, pr := range prs {
+		pipelineRunsInformer.Informer().GetIndexer().Add(pr)
 	}
+	for _, p := range ps {
+		pipelineInformer.Informer().GetIndexer().Add(p)
+	}
+
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
-	return new(
+	return NewController(
 		reconciler.Options{
 			Logger:            zap.New(observer).Sugar(),
 			KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
 			PipelineClientSet: pipelineClient,
 		},
-		pipelineFactory.Pipeline().V1alpha1().PipelineRuns(),
-		pipelineFactory.Pipeline().V1alpha1().Pipelines(),
-		rc), logs
+		pipelineRunsInformer,
+		pipelineInformer,
+	), logs
 }
 
 func getLogMessages(logs *observer.ObservedLogs) []string {
@@ -127,54 +122,4 @@ func getLogMessages(logs *observer.ObservedLogs) []string {
 		messages = append(messages, l.Message)
 	}
 	return messages
-}
-
-// mockPipelineRunsLister implements the the interface lister.PipelineRunsLister and
-// lister.PipelineRunsNamespaceLister.
-type mockPipelineRunsLister struct {
-	runs []*v1alpha1.PipelineRun
-}
-
-func (m *mockPipelineRunsLister) List(selector labels.Selector) (ret []*v1alpha1.PipelineRun, err error) {
-	return m.runs, nil
-}
-
-func (m *mockPipelineRunsLister) PipelineRuns(namespace string) listers.PipelineRunNamespaceLister {
-	return m
-}
-
-func (m *mockPipelineRunsLister) Get(name string) (*v1alpha1.PipelineRun, error) {
-	///return error to mimic runtime error when fetching pipeline.
-	if name == "test-pipeline-run-fetch-error" {
-		return nil, fmt.Errorf("random error while fetching")
-	}
-	for _, run := range m.runs {
-		if run.Name == name {
-			return run, nil
-		}
-	}
-	return nil, errors.NewNotFound(v1alpha1.Resource("pipelinerun"), name)
-}
-
-// mockPipelineRunsLister implements the the interface lister.PipelineLister and
-// lister.PipelineNamespaceLister
-type mockPipelinesLister struct {
-	p []*v1alpha1.Pipeline
-}
-
-func (m *mockPipelinesLister) List(selector labels.Selector) (ret []*v1alpha1.Pipeline, err error) {
-	return m.p, nil
-}
-
-func (m *mockPipelinesLister) Pipelines(namespace string) listers.PipelineNamespaceLister {
-	return m
-}
-
-func (m *mockPipelinesLister) Get(name string) (*v1alpha1.Pipeline, error) {
-	for _, p := range m.p {
-		if p.Name == name {
-			return p, nil
-		}
-	}
-	return nil, errors.NewNotFound(v1alpha1.Resource("pipeline"), name)
 }
