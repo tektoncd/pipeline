@@ -89,10 +89,9 @@ kubectl create clusterrolebinding cluster-admin-binding \
 
 ## Deploy Knative Build
 
-build-pipeline has a dependency on [build](https://github.com/knative/build)
 
 ```
-kubectl deploy -f ./third_party/config/build/release.yaml
+kubectl apply -f ./third_party/config/build/release.yaml
 ```
 
 ## Iterating
@@ -116,11 +115,12 @@ To make changes to these CRDs, you will probably interact with:
 
 ## Running everything
 
-You can stand up a version of this controller on-cluster (to your `kubectl config current-context`) with:
+You can stand up a version of this controller on-cluster (to your `kubectl config current-context`),
+including `knative/build` (which is wrapped by [`Task`](README.md#task)):
 
 ```shell
-# This will register the CRD and deploy the controller to start acting on them.
 ko apply -f config/
+kubectl deploy -f ./third_party/config/build/release.yaml
 ```
 
 As you make changes to the code, you can redeploy your controller with:
@@ -133,7 +133,9 @@ You can clean up everything with:
 
 ```shell
 ko delete -f config/
+kubectl delete -f ./third_party/config/build/release.yaml
 ```
+
 ## Accessing logs
 
 To look at the controller logs, run:

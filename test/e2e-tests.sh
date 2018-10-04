@@ -36,13 +36,16 @@ if ! [[ -z ${KO_DOCKER_REPO} ]]; then
     export DOCKER_REPO_OVERRIDE=${KO_DOCKER_REPO}
 fi
 
-function take_down_pipeline() {
+function teardown() {
     header "Tearing down Pipeline CRD"
     ko delete --ignore-not-found=true -f config/
+    kubectl delete --ignore-not-found=true -f ./third_party/config/build/release.yaml
+    # teardown will be called when run against an existing cluster to cleanup before
+    # continuing, so we must wait for the cleanup to complete or the subsequent attempt
+    # to deploy to the same namespace will fail
+    wait_until_object_does_not_exist namespace knative-build-pipeline
+    wait_until_object_does_not_exist namespace knative-build
 }
-# TODO: add a wait for resources to be up and change take_down_pipeline to
-# teardown so that it will be called auto-magically.
-trap take_down_pipeline EXIT
 
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
 function dump_extra_cluster_state() {
@@ -69,16 +72,19 @@ if [[ -z ${KO_DOCKER_REPO} ]]; then
     export KO_DOCKER_REPO=${DOCKER_REPO_OVERRIDE}
 fi
 
-# Deploy the latest version of the Pipeline CRD.
-# TODO(#59) do we need to deploy the Build CRD as well?
+header "Deploying Build CRD"
+kubectl apply -f ./third_party/config/build/release.yaml
+
 header "Deploying Pipeline CRD"
 ko apply -f config/
 
-# Wait for pods to be running in the namespaces we are deploying to
+# The functions we are calling out to get pretty noisy when tracing is on
 set +o xtrace
-wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
-set -o xtrace
 
+# Wait for pods to be running in the namespaces we are deploying to
+wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
+
+# Actually run the tests
 report_go_test \
 -v -tags=e2e -count=1 -timeout=20m ./test \
 ${options} || fail_test
