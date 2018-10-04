@@ -29,6 +29,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/logging"
 
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
 	"github.com/knative/build-pipeline/pkg/system"
 	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
@@ -64,7 +65,7 @@ func main() {
 	logger, atomicLevel := logging.NewLoggerFromConfig(loggingConfig, logging.ControllerLogKey)
 	defer logger.Sync()
 
-	logger.Info("Starting the Pipeline Controller")
+	logger.Info("Starting the Build Controller")
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -113,6 +114,8 @@ func main() {
 	buildTemplateInformer := knativebuildInformerFactory.Build().V1alpha1().BuildTemplates()
 	clusterBuildTemplateInformer := knativebuildInformerFactory.Build().V1alpha1().ClusterBuildTemplates()
 
+	pipelineInformer := pipelineInformerFactory.Pipeline().V1alpha1().Pipelines()
+	pipelineRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineRuns()
 	// Build all of our controllers, with the clients constructed above.
 	controllers := []*controller.Impl{
 		// Pipeline Controllers
@@ -122,6 +125,10 @@ func main() {
 			buildInformer,
 			buildTemplateInformer,
 			clusterBuildTemplateInformer,
+		),
+		pipelinerun.NewController(opt,
+			pipelineRunInformer,
+			pipelineInformer,
 		),
 	}
 

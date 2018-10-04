@@ -37,7 +37,12 @@ import (
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 )
 
-const controllerAgentName = "taskrun-controller"
+const (
+	// taskRunAgentName defines logging agent name for TaskRun Controller
+	taskRunAgentName = "taskrun-controller"
+	// taskRunControllerName defines name for TaskRun Controller
+	taskRunControllerName = "TaskRun"
+)
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
@@ -67,14 +72,14 @@ func NewController(
 ) *controller.Impl {
 
 	c := &Reconciler{
-		Base:                       reconciler.NewBase(opt, controllerAgentName),
+		Base:                       reconciler.NewBase(opt, taskRunAgentName),
 		taskRunLister:              taskRunInformer.Lister(),
 		taskLister:                 taskInformer.Lister(),
 		buildLister:                buildInformer.Lister(),
 		buildTemplateLister:        buildTemplateInformer.Lister(),
 		clusterBuildTemplateLister: clusterBuildTemplateInformer.Lister(),
 	}
-	impl := controller.NewImpl(c, c.Logger, "TaskRun")
+	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
 	c.Logger.Info("Setting up event handlers")
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
