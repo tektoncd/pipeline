@@ -27,6 +27,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func TestReconcile(t *testing.T) {
@@ -57,12 +58,14 @@ func TestReconcile(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline",
 			Namespace: "foo",
-		}},
+		},
+		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{}}},
 	}
-	rc := &reconcilerConfig{
-		pipelineRunLister: &mockPipelineRunsLister{runs: prs},
-		pipelineLister:    &mockPipelinesLister{p: ps},
-		taskLister:        &mockTasksLister{},
+	d := testData{
+		prs: prs,
+		ps:  ps,
+		ts:  []*v1alpha1.Task{},
+		trs: []*v1alpha1.TaskRun{},
 	}
 	tcs := []struct {
 		name        string
@@ -74,13 +77,13 @@ func TestReconcile(t *testing.T) {
 		{"invalid-pipeline-run-shd-succeed-with-logs", "foo/test-pipeline-run-doesnot-exist", false,
 			"pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists"},
 		{"invalid-pipeline-shd-succeed-with-logs", "foo/invalid-pipeline", false,
-			"\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\". not found"},
+			"\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\""},
 		{"invalid-pipeline-run-name-shd-succed-with-logs", "test/pipeline-fail/t", false,
 			"invalid resource key: test/pipeline-fail/t"},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs, _ := getController(rc, t)
+			c, logs, _ := getController(d)
 			err := c.Reconciler.Reconcile(context.TODO(), tc.pipelineRun)
 			if tc.shdErr != (err != nil) {
 				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
@@ -102,10 +105,10 @@ func TestCreatePipeline(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{{
-				Name:    "unit-test-frontend",
+				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
 			}, {
-				Name:    "unit-test-backend",
+				Name:    "unit-test-2",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
 			}},
 		}}
@@ -116,7 +119,7 @@ func TestCreatePipeline(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{{
-				Name:    "unit-test-frontend",
+				Name:    "unit-test",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
 			}, {
 				Name:    "random-task",
@@ -131,47 +134,85 @@ func TestCreatePipeline(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskSpec{},
 	}}
-	rc := &reconcilerConfig{
-		pipelineRunLister: &mockPipelineRunsLister{},
-		pipelineLister:    &mockPipelinesLister{p: ps},
-		taskLister:        &mockTasksLister{t: tasks},
+	trs := []*v1alpha1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "shd-kick-second-task-unit-test-1",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{},
+	}}
+	testData := testData{
+		prs: []*v1alpha1.PipelineRun{},
+		ps:  ps,
+		ts:  tasks,
+		trs: trs,
 	}
 	tcs := []struct {
-		name        string
-		pipeline    v1alpha1.Pipeline
-		shdErr      bool
-		createCalls int
+		name            string
+		pipeline        v1alpha1.Pipeline
+		shdErr          bool
+		expectedTaskRun v1alpha1.TaskRun
 	}{
-		{"success", successPipeline, false, 2},
-		{"invalidPipeline", failPipeline, true, 0},
+		{
+			"shd-kick-first-task", successPipeline, false,
+			v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "shd-kick-first-task-unit-test-1",
+					Namespace: "foo",
+				},
+				Spec: v1alpha1.TaskRunSpec{},
+			},
+		},
+		{
+			"shd-kick-second-task", successPipeline, false,
+			v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "shd-kick-second-task-unit-test-2",
+					Namespace: "foo",
+				},
+				Spec: v1alpha1.TaskRunSpec{},
+			},
+		},
+		{"invalidPipeline", failPipeline, true, v1alpha1.TaskRun{}},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, client := getController(rc, t)
-			err := c.Reconciler.(*Reconciler).createPipelineRun(context.TODO(), &tc.pipeline)
+			c, _, client := getController(testData)
+			err := c.Reconciler.(*Reconciler).createPipelineRunTaskRuns(&tc.pipeline, tc.name)
 			if tc.shdErr != (err != nil) {
 				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
 			}
-			if len(client.Actions()) != tc.createCalls {
-				t.Errorf("expected to see %d create call call. Found %d", tc.createCalls, len(client.Actions()))
+			if err == nil {
+				actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
+				if d := cmp.Diff(actual, &tc.expectedTaskRun); d != "" {
+					t.Errorf("expected to see resource %v created. Diff %s", tc.expectedTaskRun, d)
+				}
 			}
 		})
 	}
 }
 
-func getController(prs []*v1alpha1.PipelineRun, ps []*v1alpha1.Pipeline, t *testing.T) (*controller.Impl, *observer.ObservedLogs) {
+func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
 	pipelineClient := fakepipelineclientset.NewSimpleClientset()
 	sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
 	pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
 	pipelineInformer := sharedInfomer.Pipeline().V1alpha1().Pipelines()
+	taskRunInformer := sharedInfomer.Pipeline().V1alpha1().TaskRuns()
+	taskInformer := sharedInfomer.Pipeline().V1alpha1().Tasks()
 
-	for _, pr := range prs {
+	for _, pr := range d.prs {
 		pipelineRunsInformer.Informer().GetIndexer().Add(pr)
 	}
-	for _, p := range ps {
+	for _, p := range d.ps {
 		pipelineInformer.Informer().GetIndexer().Add(p)
 	}
 
+	for _, tr := range d.trs {
+		taskRunInformer.Informer().GetIndexer().Add(tr)
+	}
+	for _, t := range d.ts {
+		taskInformer.Informer().GetIndexer().Add(t)
+	}
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
 	return NewController(
@@ -182,7 +223,9 @@ func getController(prs []*v1alpha1.PipelineRun, ps []*v1alpha1.Pipeline, t *test
 		},
 		pipelineRunsInformer,
 		pipelineInformer,
-	), logs
+		taskInformer,
+		taskRunInformer,
+	), logs, pipelineClient
 }
 
 func getLogMessages(logs *observer.ObservedLogs) []string {
@@ -191,4 +234,11 @@ func getLogMessages(logs *observer.ObservedLogs) []string {
 		messages = append(messages, l.Message)
 	}
 	return messages
+}
+
+type testData struct {
+	prs []*v1alpha1.PipelineRun
+	ps  []*v1alpha1.Pipeline
+	trs []*v1alpha1.TaskRun
+	ts  []*v1alpha1.Task
 }

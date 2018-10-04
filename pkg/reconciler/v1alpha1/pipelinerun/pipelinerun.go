@@ -23,7 +23,6 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
-	"github.com/knative/build-pipeline/pkg/util"
 	"github.com/knative/pkg/controller"
 
 	"go.uber.org/zap"
@@ -50,6 +49,7 @@ type Reconciler struct {
 	// listers index properties about resources
 	pipelineRunLister listers.PipelineRunLister
 	pipelineLister    listers.PipelineLister
+	taskRunLister     listers.TaskRunLister
 	taskLister        listers.TaskLister
 }
 
@@ -62,12 +62,15 @@ func NewController(
 	pipelineRunInformer informers.PipelineRunInformer,
 	pipelineInformer informers.PipelineInformer,
 	taskInformer informers.TaskInformer,
+	taskRunInformer informers.TaskRunInformer,
 ) *controller.Impl {
 
 	r := &Reconciler{
 		Base:              reconciler.NewBase(opt, pipelineRunAgentName),
 		pipelineRunLister: pipelineRunInformer.Lister(),
 		pipelineLister:    pipelineInformer.Lister(),
+		taskLister:        taskInformer.Lister(),
+		taskRunLister:     taskRunInformer.Lister(),
 	}
 
 	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
@@ -129,7 +132,14 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
 	// fetch the equivelant pipeline for this pipelinerun Run
-	if _, err := c.getPipelineIfExists(pr); err != nil {
+	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
+	if err != nil {
+		c.Logger.Errorf("%q failed to Get Pipeline: %q",
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
+		return nil
+	}
+	if err := c.createPipelineRunTaskRuns(p, pr.Name); err != nil {
 		return err
 	}
 	// TODO fetch the taskruns status for this pipeline run.
@@ -139,62 +149,64 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	return nil
 }
 
-func (c *Reconciler) createPipelineRun(ctx context.Context, p *v1alpha1.Pipeline) error {
-	tasks, err := c.getTasks(p)
+// createPipelineRunTaskRuns goes through all the `Task` in the `PipelineSpec`
+// and creates a `TaskRun` for the first `Task` for which no corresponding
+// `TaskRun` exist.
+func (c *Reconciler) createPipelineRunTaskRuns(p *v1alpha1.Pipeline, prName string) error {
+	taskRefMap, err := c.getTaskMap(p)
 	if err != nil {
 		return errors.NewBadRequest(fmt.Sprintf("pipeline %q is not valid due to %v", p.Name, err))
 	}
-	for _, t := range tasks {
-		tr, err := createTaskRun(t)
-		if err != nil {
+	for _, pt := range p.Spec.Tasks {
+		trName := getTaskRunName(prName, &pt)
+		_, listErr := c.taskRunLister.TaskRuns(p.Namespace).Get(trName)
+		if errors.IsNotFound(listErr) && c.canTaskRun(&pt) {
+			if _, err := c.createTaskRun(taskRefMap[pt.Name], trName); err != nil {
+				return err
+			}
+		} else if err != nil {
 			return err
 		}
-		c.PipelineClientSet.PipelineV1alpha1().TaskRuns(p.Namespace).Create(tr)
 	}
 	return nil
 }
 
-func (c *Reconciler) getTasks(p *v1alpha1.Pipeline) ([]*v1alpha1.Task, error) {
-	tasks := make([]*v1alpha1.Task, len(p.Spec.Tasks))
-	for i, t := range p.Spec.Tasks {
-		tObj, err := c.taskLister.Tasks(p.Namespace).Get(t.TaskRef.Name)
+// getTaskMap returns a map of task in pipeline spec to `Task` mentioned in taskRef.
+func (c *Reconciler) getTaskMap(p *v1alpha1.Pipeline) (map[string]*v1alpha1.Task, error) {
+	tMap := make(map[string]*v1alpha1.Task, 0)
+	for _, pt := range p.Spec.Tasks {
+		tObj, err := c.taskLister.Tasks(p.Namespace).Get(pt.TaskRef.Name)
 		if err != nil {
 			c.Logger.Errorf("failed to get tasks for Pipeline %q: Error getting task %q : %s",
 				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
-				fmt.Sprintf("%s/%s", p.Namespace, t.Name), err)
+				fmt.Sprintf("%s/%s", p.Namespace, pt.TaskRef.Name), err)
 			return nil, err
 		}
-		tasks[i] = tObj
+		tMap[pt.Name] = tObj
 	}
-	return tasks, nil
+	return tMap, nil
 }
 
-func createTaskRun(t *v1alpha1.Task) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) canTaskRun(pt *v1alpha1.PipelineTask) bool {
+	// Check if Task can run now. Go through all the input constraints and see if
+	// the upstream tasks have completed successfully and inputs are available.
+	return true
+}
+
+func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string) (*v1alpha1.TaskRun, error) {
 	// Create empty tasks
-	trName := randomizeTaskRunName(t)
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
 			Namespace: t.Namespace,
 		},
 	}
-	return tr, nil
+	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)
 }
 
-func randomizeTaskRunName(t *v1alpha1.Task) string {
-	return util.AppendRandomString(t.Name)
-}
-
-func (c *Reconciler) getPipelineIfExists(pr *v1alpha1.PipelineRun) (*v1alpha1.Pipeline, error) {
-	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
-	if errors.IsNotFound(err) {
-		// to stop processing if pipeline is not found, return nil
-		c.Logger.Errorf("%q failed to Get Pipeline: %q. not found",
-			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
-			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
-		return nil, nil
-	}
-	return p, err
+// getTaskRunName should return a uniquie name for a `TaskRun`.
+func getTaskRunName(prName string, pt *v1alpha1.PipelineTask) string {
+	return fmt.Sprintf("%s-%s", prName, pt.Name)
 }
 
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
