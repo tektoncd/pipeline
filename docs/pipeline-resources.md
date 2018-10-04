@@ -19,6 +19,10 @@ spec:
   params:
   - name: url
     value: github.com/wizzbangcorp/wizzbang
+  - name: Revision
+    value: master
+  - name: ServiceAccount
+    value: pipeline-sa    
  ```
 
    Params that can be added are the following:
