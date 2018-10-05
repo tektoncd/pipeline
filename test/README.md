@@ -1,5 +1,15 @@
 # Tests
 
+To run tests:
+
+```shell
+# Unit tests
+go test ./...
+
+# Integration tests (against your current kube cluster)
+go test -v -count=1 -tags=e2e ./test
+```
+
 ## Unit tests
 
 Unit tests live side by side with the code they are testing and can be run with:
@@ -12,6 +22,7 @@ _By default `go test` will not run [the integration tests](#integration-tests), 
 `-tags=e2e` to be enabled._
 
 ### Unit testing Controllers
+
 Kubernetes client-go provides a number of fake clients and objects for unit testing. The ones we will be using are:
 
 1. [fake kubernetes client](k8s.io/client-go/kubernetes/fake): Provides a fake REST interface to interact with Kubernetes API
@@ -21,21 +32,21 @@ You can create a fake PipelineClient for the Controller under test like [this](.
 
 This [pipelineClient](./../pkg/client/clientset/versioned/clientset.go#L34) is initialized with no runtime objects. You can also initialie the client with kubernetes objects and can interact with them using the `pipelineClient.Pipeline()`
 
-```
+```go
  import (
      v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
  )
 
  obj := *v1alpha1.PipelineRun{
   ObjectMeta: metav1.ObjectMeta{
-	Name:      "name",
-	Namespace: "namespace",
+    Name:      "name",
+    Namespace: "namespace",
   },
   Spec: v1alpha1.PipelineRunSpec{
-	PipelineRef: v1alpha1.PipelineRef{
-	  Name:       "test-pipeline",
-	  APIVersion: "a1",
-	},
+    PipelineRef: v1alpha1.PipelineRef{
+      Name:       "test-pipeline",
+      APIVersion: "a1",
+    },
 }}
 pipelineClient := fakepipelineclientset.NewSimpleClientset(obj)
 objs := pipelineClient.Pipeline().PipelineRuns("namespace").List(v1.ListOptions{})
@@ -51,21 +62,21 @@ so that the [listers](./../pkg/client/listers) can access these.
 
 To add test `PipelineRun` objects to the listers, you can
 
-```
+```go
 pipelineClient := fakepipelineclientset.NewSimpleClientset()
 sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
 pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
 
 obj := *v1alpha1.PipelineRun{
   ObjectMeta: metav1.ObjectMeta{
-	Name:      "name",
-	Namespace: "namespace",
+    Name:      "name",
+    Namespace: "namespace",
   },
   Spec: v1alpha1.PipelineRunSpec{
-	PipelineRef: v1alpha1.PipelineRef{
-	  Name:       "test-pipeline",
-	  APIVersion: "a1",
-	},
+    PipelineRef: v1alpha1.PipelineRef{
+      Name:       "test-pipeline",
+      APIVersion: "a1",
+    },
 }}
 pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 ```
@@ -117,6 +128,8 @@ The libs in this dir can:
 
 * [`init.go`](./init.go) initializes anything needed globally be the tests
 * [Get access to client objects](#get-access-to-client-objects)
+* [Generate random names](#generate-random-names)
+* [Poll Pipeline resources](#poll-pipeline-resources)
 
 All integration tests _must_ be marked with the `e2e` [build constraint](https://golang.org/pkg/go/build/)
 so that `go test ./...` can be used to run only [the unit tests](#unit-tests), i.e.:
@@ -165,7 +178,6 @@ func tearDown(clients *test.Clients) {
 
 _See [clients.go](./clients.go)._
 
-
 #### Generate random names
 
 You can use the function `AppendRandomString` to create random names for `crd`s or anything else,
@@ -176,6 +188,32 @@ namespace := test.AppendRandomString('arendelle')
 ```
 
 _See [randstring.go](./randstring.go)._
+
+#### Poll Pipeline resources
+
+After creating Pipeline resources or making changes to them, you will need to wait for the system
+to realize those changes. You can use polling methods to check the resources reach the desired state.
+
+The `WaitFor*` functions use the kubernetes [`wait` package](https://godoc.org/k8s.io/apimachinery/pkg/util/wait).
+To poll they use [`PollImmediate`](https://godoc.org/k8s.io/apimachinery/pkg/util/wait#PollImmediate)
+and the return values of the function you provide behave the same as
+[`ConditionFunc`](https://godoc.org/k8s.io/apimachinery/pkg/util/wait#ConditionFunc):
+a `bool` to indicate if the function should stop or continue polling, and an `error` to indicate if
+there has been an error.
+
+For example, you can poll a `TaskRun` object to wait for it to have a `Status.Condition`:
+
+```go
+err = WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
+    if len(tr.Status.Conditions) > 0 {
+        return true, nil
+    }
+    return false, nil
+}, "TaskRunHasCondition")
+```
+
+_[Metrics will be emitted](https://github.com/knative/pkg/tree/master/test#emit-metrics)
+for these `Wait` method tracking how long test poll for._
 
 ## Presubmit tests
 

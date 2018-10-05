@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,8 +26,8 @@ type TaskSpec struct {
 	// +optional
 	Inputs *Inputs `json:"inputs,omitempty"`
 	// +optional
-	Outputs   *Outputs  `json:"outputs,omitempty"`
-	BuildSpec BuildSpec `json:"buildSpec"`
+	Outputs   *Outputs                 `json:"outputs,omitempty"`
+	BuildSpec buildv1alpha1.BuildSpec `json:"buildSpec"`
 }
 
 // TaskStatus defines the observed state of Task
@@ -70,6 +69,9 @@ type Inputs struct {
 // used as the name of the volume containing this context which will be mounted
 // into the container executed by the Build/Task, e.g. a Source with the
 // name "workspace" would be mounted into "/workspace".
+//
+// TODO(#62): Something is wrong here, this should be a reference to a resource,
+// could just be that the names and comments are out of date.
 type Source struct {
 	// name of the source should match the name of the SourceBinding in the pipeline
 	Name string               `json:"name"`
@@ -99,16 +101,6 @@ type TestResult struct {
 	// TODO: maybe this is an enum with types like "go test", "junit", etc.
 	Format string `json:"format"`
 	Path   string `json:"path"`
-}
-
-// BuildSpec describes how to create a Build for this Task.
-// A BuildSpec will contain either a Template or a series of Steps.
-type BuildSpec struct {
-	// Trying to emulate https://github.com/knative/build/blob/master/pkg/apis/build/v1alpha1/build_types.go
-	// +optional
-	Steps []corev1.Container `json:"steps,omitempty"`
-	// +optional
-	Template buildv1alpha1.TemplateInstantiationSpec `json:"template,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -19,8 +19,6 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 )
 
 // TaskRunSpec defines the desired state of TaskRun
@@ -36,7 +34,8 @@ type TaskRunSpec struct {
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
-	Resources []PipelineResourceVersion `json:"resourcesVersion"`
+	// +optional
+	Resources []PipelineResourceVersion `json:"resourcesVersion,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
 }
@@ -127,8 +126,7 @@ type TaskRun struct {
 	// +optional
 	Spec TaskRunSpec `json:"spec,omitempty"`
 	// +optional
-	//TODO(aaron-prindle) change back to TaskRunStatus
-	Status buildv1alpha1.BuildStatus `json:"status,omitempty"`
+	Status TaskRunStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

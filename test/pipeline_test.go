@@ -26,28 +26,16 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
-func setup(t *testing.T) *Clients {
-	clients, err := NewClients(knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
-	if err != nil {
-		t.Fatalf("Couldn't initialize clients: %v", err)
-	}
-	return clients
-}
-
-func tearDown(logger *logging.BaseLogger) {
-	logger.Infof("TODO: implement teardown of any resources created once this test is implemented")
-}
-
 // TestPipeline is just a dummy test right now to make sure the whole integration test
 // setup and execution is working.
 func TestPipeline(t *testing.T) {
-	clients := setup(t)
 	logger := logging.GetContextLogger(t.Name())
+	c, namespace := setup(t, logger)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(logger) }, logger)
-	defer tearDown(logger)
+	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
+	defer tearDown(logger, c.KubeClient, namespace)
 
-	p, err := clients.PipelineClient.List(metav1.ListOptions{})
+	p, err := c.PipelineClient.List(metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't list Pipelines in the cluster (did you deploy the CRDs to %s?): %s", knativetest.Flags.Cluster, err)
 	}
