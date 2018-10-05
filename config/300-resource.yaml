@@ -11,40 +11,6 @@ spec:
     kind: Resource
     plural: resources
   scope: Namespaced
-  validation:
-    openAPIV3Schema:
-      properties:
-        apiVersion:
-          type: string
-        kind:
-          type: string
-        metadata:
-          type: object
-        spec:
-          properties:
-            name:
-              type: string
-            params:
-              items:
-                properties:
-                  name:
-                    type: string
-                  value:
-                    type: string
-                required:
-                - name
-                - value
-                type: object
-              type: array
-            type:
-              type: string
-          required:
-          - type
-          - params
-          type: object
-        status:
-          type: object
-      type: object
   version: v1alpha1
 status:
   acceptedNames:
