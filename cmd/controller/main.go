@@ -158,6 +158,7 @@ func main() {
 		}
 	}
 
+	logger.Info("Starting controllers")
 	// Start all of the controllers.
 	for _, ctrlr := range controllers {
 		go func(ctrlr *controller.Impl) {
