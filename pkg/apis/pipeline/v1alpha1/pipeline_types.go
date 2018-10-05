@@ -17,12 +17,14 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/knative/pkg/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // PipelineSpec defines the desired state of PipeLine.
 type PipelineSpec struct {
-	Tasks []PipelineTask `json:"tasks"`
+	Tasks      []PipelineTask `json:"tasks"`
+	Generation int64          `json:"generation,omitempty"`
 }
 
 // PipelineStatus defines the observed state of Pipeline
@@ -30,6 +32,10 @@ type PipelineStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
+
+// Check that Pipeline may be validated and defaulted.
+var _ apis.Validatable = (*Pipeline)(nil)
+var _ apis.Defaultable = (*Pipeline)(nil)
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
