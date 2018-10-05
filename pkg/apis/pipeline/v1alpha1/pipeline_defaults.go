@@ -20,6 +20,4 @@ func (p *Pipeline) SetDefaults() {
 	p.Spec.SetDefaults()
 }
 
-func (ps *PipelineSpec) SetDefaults() {
-	ps.SetDefaults()
-}
+func (ps *PipelineSpec) SetDefaults() {}
