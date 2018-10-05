@@ -28,10 +28,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// namespace is the namespace that will be created before all tests run and will be torn down once
-// the tests complete. It will be generated randomly so that tests can run back to back without
-// interfering with each other.
-var namespace string
+func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
+	namespace := AppendRandomString("arendelle")
+
+	c, err := newClients(knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
+	if err != nil {
+		t.Fatalf("Couldn't initialize clients: %v", err)
+	}
+
+	createNamespace(namespace, logger, c.KubeClient)
+
+	return c, namespace
+}
+
+func tearDown(logger *logging.BaseLogger, kubeClient *knativetest.KubeClient, namespace string) {
+	if kubeClient != nil {
+		logger.Infof("Deleting namespace %s", namespace)
+		if err := kubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
+			logger.Errorf("Failed to delete namespace %s: %s", namespace, err)
+		}
+	}
+}
 
 func initializeLogsAndMetrics() {
 	flag.Parse()
@@ -43,11 +60,7 @@ func initializeLogsAndMetrics() {
 	}
 }
 
-func createNamespace(namespace string, logger *logging.BaseLogger) *knativetest.KubeClient {
-	kubeClient, err := knativetest.NewKubeClient(knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
-	if err != nil {
-		logger.Fatalf("failed to create kubeclient from config file at %s: %s", knativetest.Flags.Kubeconfig, err)
-	}
+func createNamespace(namespace string, logger *logging.BaseLogger, kubeClient *knativetest.KubeClient) {
 	logger.Infof("Create namespace %s to deploy to", namespace)
 	if _, err := kubeClient.Kube.CoreV1().Namespaces().Create(&corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
@@ -55,16 +68,6 @@ func createNamespace(namespace string, logger *logging.BaseLogger) *knativetest.
 		},
 	}); err != nil {
 		logger.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
-	}
-	return kubeClient
-}
-
-func tearDownMain(kubeClient *knativetest.KubeClient, logger *logging.BaseLogger) {
-	if kubeClient != nil {
-		logger.Infof("Deleting namespace %s", namespace)
-		if err := kubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
-			logger.Errorf("Failed to delete namespace %s: %s", namespace, err)
-		}
 	}
 }
 
@@ -74,13 +77,6 @@ func TestMain(m *testing.M) {
 	initializeLogsAndMetrics()
 	logger := logging.GetContextLogger("TestMain")
 	logger.Infof("Using kubeconfig at `%s` with cluster `%s`", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
-
-	namespace = AppendRandomString("arendelle")
-	kubeClient := createNamespace(namespace, logger)
-	knativetest.CleanupOnInterrupt(func() { tearDownMain(kubeClient, logger) }, logger)
-
 	c := m.Run()
-
-	tearDownMain(kubeClient, logger)
 	os.Exit(c)
 }

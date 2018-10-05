@@ -20,23 +20,30 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/client/clientset/versioned"
 	"github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	buildversioned "github.com/knative/build/pkg/client/clientset/versioned"
+	buildv1alpha1 "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 )
 
-// Clients holds instances of interfaces for making requests to the Pipeline controllers.
-type Clients struct {
-	KubeClient     *knativetest.KubeClient
+// clients holds instances of interfaces for making requests to the Pipeline controllers.
+type clients struct {
+	KubeClient *knativetest.KubeClient
+
 	PipelineClient v1alpha1.PipelineInterface
+	TaskClient     v1alpha1.TaskInterface
+	TaskRunClient  v1alpha1.TaskRunInterface
+
+	BuildClient buildv1alpha1.BuildInterface
 }
 
-// NewClients instantiates and returns several clientsets required for making requests to the
+// newClients instantiates and returns several clientsets required for making requests to the
 // Pipeline cluster specified by the combination of clusterName and configPath. Clients can
 // make requests within namespace.
-func NewClients(configPath, clusterName, namespace string) (*Clients, error) {
+func newClients(configPath, clusterName, namespace string) (*clients, error) {
 	var err error
-	clients := &Clients{}
+	c := &clients{}
 
-	clients.KubeClient, err = knativetest.NewKubeClient(configPath, clusterName)
+	c.KubeClient, err = knativetest.NewKubeClient(configPath, clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubeclient from config file at %s: %s", configPath, err)
 	}
@@ -50,7 +57,15 @@ func NewClients(configPath, clusterName, namespace string) (*Clients, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
 	}
-	clients.PipelineClient = cs.PipelineV1alpha1().Pipelines(namespace)
+	c.PipelineClient = cs.PipelineV1alpha1().Pipelines(namespace)
+	c.TaskClient = cs.PipelineV1alpha1().Tasks(namespace)
+	c.TaskRunClient = cs.PipelineV1alpha1().TaskRuns(namespace)
 
-	return clients, nil
+	bcs, err := buildversioned.NewForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create build clientset from config file at %s: %s", configPath, err)
+	}
+	c.BuildClient = bcs.BuildV1alpha1().Builds(namespace)
+
+	return c, nil
 }
