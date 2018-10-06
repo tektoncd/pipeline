@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
@@ -40,6 +41,14 @@ const (
 	pipelineRunAgentName = "pipeline-controller"
 	// pipelineRunControllerName defines name for PipelineRun Controller
 	pipelineRunControllerName = "PipelineRun"
+)
+
+var (
+	groupVersionKind = schema.GroupVersionKind{
+		Group:   v1alpha1.SchemeGroupVersion.Group,
+		Version: v1alpha1.SchemeGroupVersion.Version,
+		Kind:    pipelineRunControllerName,
+	}
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -132,7 +141,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		return nil
 	}
-	if err := c.createPipelineRunTaskRuns(p, pr.Name); err != nil {
+	if err := c.createPipelineRunTaskRuns(p, pr); err != nil {
 		return err
 	}
 	// TODO fetch the taskruns status for this pipeline run.
@@ -145,16 +154,16 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 // createPipelineRunTaskRuns goes through all the `Task` in the `PipelineSpec`
 // and creates a `TaskRun` for the first `Task` for which no corresponding
 // `TaskRun` exist.
-func (c *Reconciler) createPipelineRunTaskRuns(p *v1alpha1.Pipeline, prName string) error {
+func (c *Reconciler) createPipelineRunTaskRuns(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) error {
 	taskRefMap, err := c.getTaskMap(p)
 	if err != nil {
 		return errors.NewBadRequest(fmt.Sprintf("pipeline %q is not valid due to %v", p.Name, err))
 	}
 	for _, pt := range p.Spec.Tasks {
-		trName := getTaskRunName(prName, &pt)
+		trName := getTaskRunName(pr.Name, &pt)
 		_, listErr := c.taskRunLister.TaskRuns(p.Namespace).Get(trName)
 		if errors.IsNotFound(listErr) && c.canTaskRun(&pt) {
-			if _, err := c.createTaskRun(taskRefMap[pt.Name], trName); err != nil {
+			if _, err := c.createTaskRun(taskRefMap[pt.Name], trName, pr); err != nil {
 				return err
 			}
 		} else if err != nil {
@@ -186,12 +195,15 @@ func (c *Reconciler) canTaskRun(pt *v1alpha1.PipelineTask) bool {
 	return true
 }
 
-func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun) (*v1alpha1.TaskRun, error) {
 	// Create empty tasks
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
 			Namespace: t.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(pr, groupVersionKind),
+			},
 		},
 	}
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)

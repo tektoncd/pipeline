@@ -98,6 +98,7 @@ func TestReconcile(t *testing.T) {
 	}
 }
 func TestCreatePipeline(t *testing.T) {
+	trueB := true
 	successPipeline := v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline",
@@ -178,12 +179,24 @@ func TestCreatePipeline(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			c, _, client := getController(testData)
-			err := c.Reconciler.(*Reconciler).createPipelineRunTaskRuns(&tc.pipeline, tc.name)
+			pr := v1alpha1.PipelineRun{ObjectMeta: metav1.ObjectMeta{
+				Name:      tc.name,
+				Namespace: "foo",
+			}}
+			err := c.Reconciler.(*Reconciler).createPipelineRunTaskRuns(&tc.pipeline, &pr)
 			if tc.shdErr != (err != nil) {
 				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
 			}
 			if err == nil {
 				actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
+				eOwnerRef := []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "PipelineRun",
+					Name:               tc.name,
+					Controller:         &trueB,
+					BlockOwnerDeletion: &trueB,
+				}}
+				tc.expectedTaskRun.OwnerReferences = eOwnerRef
 				if d := cmp.Diff(actual, &tc.expectedTaskRun); d != "" {
 					t.Errorf("expected to see resource %v created. Diff %s", tc.expectedTaskRun, d)
 				}
