@@ -57,6 +57,16 @@ type PipelineResourceSpec struct {
 	Params []Param              `json:"params"`
 }
 
+// TaskResource defines an input or output Resource declared as a requirement
+// by a Task. The Name field will be used to refer to these Resources within
+// the Task definition, and when provided as an Input, the Name will be the
+// path to the volume mounted containing this Resource as an input (e.g.
+// an input Resource named `workspace` will be mounted at `/workspace`).
+type TaskResource struct {
+	Name string               `json:"name"`
+	Type PipelineResourceType `json:"type"`
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

@@ -87,8 +87,8 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
-				Sources: []v1alpha1.Source{
-					v1alpha1.Source{
+				Resources: []v1alpha1.TaskResource{
+					v1alpha1.TaskResource{
 						Name: "workspace",
 						Type: "git",
 					},
@@ -288,8 +288,8 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
-					Sources: []v1alpha1.Source{
-						v1alpha1.Source{
+					Resources: []v1alpha1.TaskResource{
+						v1alpha1.TaskResource{
 							Name: "workspace-sa",
 							Type: "git",
 						},
@@ -336,8 +336,8 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
-					Sources: []v1alpha1.Source{
-						v1alpha1.Source{
+					Resources: []v1alpha1.TaskResource{
+						v1alpha1.TaskResource{
 							Name: "workspace-invalid",
 							Type: "git",
 						},
