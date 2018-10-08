@@ -24,7 +24,7 @@ spec:
             key: workspace # bind to the name in the task
             resourceRef:
               name: kritis-resources-git
-            passedConstraint:
+            passedConstraints:
               - unit-test-make
         outputSourceBindings:
           - name: kritisImage
@@ -42,13 +42,13 @@ spec:
             key: workspace
             resourceRef:
               name: kritis-resources-image
-            passedConstraint: [build-push]
+            passedConstraints: [build-push]
         params:
           - name: pathToHelmCharts
             value: kritis-charts
         clusterBindings:
-          - inputName: test
-            key: test
+          - inputName: targetCluster
+            key: testCluster
       - name: integration-test          # 4. Run Integration Tests in test cluster
         taskRef:
           name: integration-test-in-docker
@@ -57,7 +57,7 @@ spec:
             key: workspace
             resourceRef:
                 name: kritis-resources-test-git
-            passedConstraint: [deploy-with-helm]
+            passedConstraints: [deploy-with-helm]
         params:
           - name: testArgs
             value: "-e REMOTE_INTEGRATION=true"

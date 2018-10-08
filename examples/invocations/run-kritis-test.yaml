@@ -9,31 +9,19 @@ spec:
         name: make
     trigger:
         triggerRef:
-            type: manual
+            type: PipelineRun
+            name: kritis-pipeline-run-12321312984
+    pipelineParamsRef:
+        name: pipelineparams-sample
     inputs:
-        sources:
-            - name: 'kritis'
-              type: 'github'
-              url:  'github.com/grafeas/kritis'
-              branch: 'featureX'
-              commit: 'HEAD'
+        resourcesVersion:
+          - resourceRef:
+              name: kritis-resources-git
+            version: 4da79b91e8e37ea441cfe4972565e2184c1a127f
         params:
             - name: 'makeTarget'
               type: 'string'
               value: 'test'
-    results:
-        runs:
-          name: 'runsBucket'
-          type: 'gcs'
-          url: 'gcs://somebucket/results/runs'
-        logs:
-          name: 'logBucket'
-          type: 'gcs'
-          url: 'gcs://somebucket/results/logs'
-        tests:
-          name: 'testBucket'
-          type: 'gcs'
-          url: 'gcs://somebucket/results/tests'
 status:
     steps:
     - name: make

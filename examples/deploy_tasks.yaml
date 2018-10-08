@@ -16,12 +16,12 @@ spec:
             - name: image
               value: string
         cluster:
-            - name: clusterName
+            - name: targetCluster
     buildSpec:
         steps:
         - name: deploy
           image: kubernetes-helm
-          args: ['deploy', '--path=${pathToHelmChart}', '--set image=${image}', '${helmArgs}']
+          args: ['install', '--kube-context=${targetCluster}', '--set image=${image}', '${helmArgs}', '${pathToHelmChart}']
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1

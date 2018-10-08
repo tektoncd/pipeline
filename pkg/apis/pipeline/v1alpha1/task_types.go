@@ -69,25 +69,12 @@ type Task struct {
 // Inputs are the requirements that a task needs to run a Build.
 type Inputs struct {
 	// +optional
-	Sources []Source `json:"resources,omitempty"`
+	Resources []TaskResource `json:"resources,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// TODO(#68) a cluster and/or deployment should be a type of Resource
 	// +optional
 	Clusters []Cluster `json:"clusters,omitempty"`
-}
-
-// Source is data which is required by a Build/Task for context
-// (e.g. a repo from which to build an image). The name of the input will be
-// used as the name of the volume containing this context which will be mounted
-// into the container executed by the Build/Task, e.g. a Source with the
-// name "workspace" would be mounted into "/workspace".
-//
-// TODO(#62): Something is wrong here, this should be a reference to a resource,
-// could just be that the names and comments are out of date.
-type Source struct {
-	// name of the source should match the name of the SourceBinding in the pipeline
-	Name string               `json:"name"`
-	Type PipelineResourceType `json:"type"`
 }
 
 // Param defines arbitrary parameters needed by a task beyond typed inputs
@@ -103,7 +90,7 @@ type Outputs struct {
 	// +optional
 	Results []TestResult `json:"results,omitempty"`
 	// +optional
-	Sources []Source `json:"resources,omitempty"`
+	Resources []TaskResource `json:"resources,omitempty"`
 }
 
 // TestResult allows a task to specify the location where test logs

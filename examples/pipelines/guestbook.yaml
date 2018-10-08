@@ -45,21 +45,21 @@ spec:
               key: workspace
               resourceRef:
                   name: guestbook-resources-git  
-              passedConstraint: 
+              passedConstraints: 
                 - build-guestbook
                 - build-redis
             - name: workspace
               key: redis-docker
               resourceRef:
                   name: guestbook-resources-redis-docker  
-              passedConstraint:
+              passedConstraints:
                - build-push
           params:
               - name: pathToFiles
                 value: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
-              - inputName: test
-                key: test
+              - inputName: clusterName
+                key: testCluster
         - name: int-test-osx                    # 3.a Run Integration tests for osx
           taskRef:
               name: integrationTestInDocker
@@ -68,7 +68,7 @@ spec:
                 key: workspace
                 resourceRef:
                   name: guestbook-resources-git  
-                passedConstraint:
+                passedConstraints:
                 - deploy-bundle-test
           params:
               - name: dockerBuildFile
@@ -81,7 +81,7 @@ spec:
                 key: workspace
                 resourceRef:
                   name: guestbook-resources-git  
-                passedConstraint:
+                passedConstraints:
                 - deploy-bundle-test
           params:
               - name: dockerBuildFile
@@ -94,12 +94,12 @@ spec:
                 key: workspace
                 resourceRef:
                   name: guestbook-resources-git  
-                passedConstraint:
+                passedConstraints:
                 - int-test-osx
                 - int-test-linux
           params:
               - name: pathToFiles
                 value: guestbook/all-in-one/guestbook-all-in-one.yaml
           clusterBindings:
-              - inputName: staging
-                key: staging
+              - inputName: targetCluster
+                key: stagingCluster

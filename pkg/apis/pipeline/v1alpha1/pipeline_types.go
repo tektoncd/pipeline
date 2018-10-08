@@ -67,6 +67,9 @@ type PipelineTask struct {
 	InputSourceBindings []SourceBinding `json:"inputSourceBindings,omitempty"`
 	// +optional
 	OutputSourceBindings []SourceBinding `json:"outputSourceBindings,omitempty"`
+	// TODO(#68) Cluster should become a type of Resource
+	// +optional
+	ClusterBindings []ClusterBinding `json:"clusterBindings,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
 }

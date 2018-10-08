@@ -84,10 +84,12 @@ pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 ## Integration tests
 
 Integration tests live in this directory. To run these tests, you must provide `go` with
-`-tags=e2e`, and you may want to use some of the [common flags](#common-flags):
+`-tags=e2e`. By default the tests run agains your current kubeconfig context,
+ but you can change that and other settings with [the flags](#flags):
 
 ```shell
 go test -v -count=1 -tags=e2e ./test
+go test -v -tags=e2e -count=1 ./test --kubeconfig ~/special/kubeconfig --cluster myspecialcluster
 ```
 
 You can also use
@@ -232,6 +234,11 @@ Prow is configured in [the knative `config.yaml` in `knative/test-infra`](https:
 via the sections for `knative/build-pipeline`.
 
 ### Running presubmit integration tests
+
+The presubmit integration tests entrypoint will run:
+
+* [The integration tests](#integration-tests)
+* A sanity check deployment of [our example CRDs](../examples)
 
 When run using Prow, integration tests will try to get a new cluster using [boskos](https://github.com/kubernetes/test-infra/tree/master/boskos) and
 [these hardcoded GKE projects](https://github.com/knative/test-infra/blob/master/ci/prow/boskos/resources.yaml#L15),

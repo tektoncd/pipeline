@@ -3,11 +3,11 @@
 This directory contains examples of [the Pipeline CRDs](../README.md) in action.
 
 To deploy them to your cluster (after
-[installing the CRDs and running the controller](../DEVELOPMENT.md#installing-andrunning)):
+[installing the CRDs and running the controller](../DEVELOPMENT.md#getting-started)):
 
 ```bash
-kubectl apply -f examples/pipelines
 kubectl apply -f examples/
+kubectl apply -f examples/pipelines
 kubectl apply -f examples/invocations
 ```
 

@@ -84,7 +84,10 @@ set +o xtrace
 # Wait for pods to be running in the namespaces we are deploying to
 wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
 
-# Actually run the tests
+# Run the smoke tests for the examples dir to make sure they are valid
+./examples/smoke-test.sh || fail_test
+
+# Run the integration tests
 report_go_test \
 -v -tags=e2e -count=1 -timeout=20m ./test \
 ${options} || fail_test

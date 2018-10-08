@@ -34,7 +34,7 @@ func AddInputResource(
 
 	var gitResource *v1alpha1.GitResource
 
-	for _, input := range task.Spec.Inputs.Sources {
+	for _, input := range task.Spec.Inputs.Resources {
 		resource, err := pipelineResourceLister.PipelineResources(task.Namespace).Get(input.Name)
 		if err != nil {
 			logger.Errorf("Failed to reconcile TaskRun: %q failed to Get Pipeline Resource: %q", task.Name, input.Name)
