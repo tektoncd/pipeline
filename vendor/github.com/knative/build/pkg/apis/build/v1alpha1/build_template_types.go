@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"encoding/json"
 
+	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -47,6 +48,11 @@ type BuildTemplate struct {
 // Check that our resource implements several interfaces.
 var _ kmeta.OwnerRefable = (*BuildTemplate)(nil)
 var _ Template = (*BuildTemplate)(nil)
+var _ BuildTemplateInterface = (*BuildTemplate)(nil)
+
+// Check that BuildTemplate may be validated and defaulted.
+var _ apis.Validatable = (*BuildTemplate)(nil)
+var _ apis.Defaultable = (*BuildTemplate)(nil)
 
 // BuildTemplateSpec is the spec for a BuildTemplate.
 type BuildTemplateSpec struct {
@@ -112,6 +118,10 @@ func (bt *BuildTemplate) Copy() BuildTemplateInterface {
 	return bt.DeepCopy()
 }
 
+// GetGroupVersionKind gives kind
 func (bt *BuildTemplate) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("BuildTemplate")
 }
+
+// SetDefaults for build template
+func (bt *BuildTemplate) SetDefaults() {}

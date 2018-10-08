@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/kmeta"
 )
 
@@ -41,6 +42,11 @@ type ClusterBuildTemplate struct {
 // Check that our resource implements several interfaces.
 var _ kmeta.OwnerRefable = (*ClusterBuildTemplate)(nil)
 var _ Template = (*ClusterBuildTemplate)(nil)
+var _ BuildTemplateInterface = (*ClusterBuildTemplate)(nil)
+
+// Check that ClusterBuildTemplate may be validated and defaulted.
+var _ apis.Validatable = (*ClusterBuildTemplate)(nil)
+var _ apis.Defaultable = (*ClusterBuildTemplate)(nil)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -74,3 +80,6 @@ func (bt *ClusterBuildTemplate) Copy() BuildTemplateInterface {
 func (bt *ClusterBuildTemplate) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("ClusterBuildTemplate")
 }
+
+// SetDefaults
+func (b *ClusterBuildTemplate) SetDefaults() {}

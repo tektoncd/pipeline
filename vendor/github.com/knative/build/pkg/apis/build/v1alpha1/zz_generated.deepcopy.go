@@ -23,6 +23,7 @@ package v1alpha1
 import (
 	duck_v1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -145,7 +146,15 @@ func (in *BuildSpec) DeepCopyInto(out *BuildSpec) {
 			(*out)[key] = val
 		}
 	}
-	out.Timeout = in.Timeout
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(meta_v1.Duration)
+			**out = **in
+		}
+	}
 	if in.Affinity != nil {
 		in, out := &in.Affinity, &out.Affinity
 		if *in == nil {

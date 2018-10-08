@@ -82,4 +82,5 @@ required = [
 
 [[constraint]]
   name = "github.com/knative/build"
-  revision = "e63ec56b2f1f1d1eb23d7a4dcf86940610232aaa"
+  # HEAD as of 2018-10-08
+  revision = "cc4451408f52b86fec87f6b7e4bc88848d3b1088"
