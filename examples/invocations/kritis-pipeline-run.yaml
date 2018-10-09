@@ -17,18 +17,8 @@ status:
     - taskRef:
       name: push-kritis-12321312984
   conditions:
-    - type: Started
-      status: "True"
-      lastTransitionTime: "2018-10-04T12:25:39Z"
-      reason: manualTrigger
-      message: "Pipeline has been triggered manually"
-    - type: Completed
-      status: "True"
-      lastTransitionTime: "2018-10-04T13:25:39Z"
-      reason: done
-      message: "Pipeline execution has finished"
-    - type: Successful
+    - type: Succeeded
       status: "False"
-      lastTransitionTime: "2018-10-04T13:25:39Z"
+      lastTransitionTime: "2018-10-04T12:25:39Z"
       reason: taskFailure
       message: "TaskRun `build-push-kritis-12321312984` had non-zero exit code"
