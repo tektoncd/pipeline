@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 
+	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/webhook"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,6 +31,8 @@ type TaskSpec struct {
 	// +optional
 	Outputs   *Outputs                 `json:"outputs,omitempty"`
 	BuildSpec *buildv1alpha1.BuildSpec `json:"buildSpec"`
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
 }
 
 // TaskStatus defines the observed state of Task
@@ -37,6 +40,10 @@ type TaskStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
+
+// Check that Task may be validated and defaulted.
+var _ apis.Validatable = (*Task)(nil)
+var _ apis.Defaultable = (*Task)(nil)
 
 // Assert that Task implements the GenericCRD interface.
 var _ webhook.GenericCRD = (*Task)(nil)
