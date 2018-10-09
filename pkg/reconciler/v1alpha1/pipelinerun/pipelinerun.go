@@ -23,6 +23,7 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/knative/pkg/controller"
 
 	"go.uber.org/zap"
@@ -147,7 +148,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	if err != nil {
 		return fmt.Errorf("error getting map of created TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
-	pipelineTaskName, trName, err := getNextPipelineRunTaskRun(c.taskRunLister, p, pr.Name)
+	pipelineTaskName, trName, err := resources.GetNextPipelineRunTaskRun(
+		func(namespace, name string)(*v1alpha1.TaskRun, error){
+			return c.taskRunLister.TaskRuns(namespace).Get(name)},
+		p, pr.Name)
 	if err != nil {
 		return fmt.Errorf("error getting next TaskRun to create for PipelineRun %s: %s", pr.Name, err)
 	}
