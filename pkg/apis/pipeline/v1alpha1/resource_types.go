@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/knative/pkg/apis"
+	"github.com/knative/pkg/webhook"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -46,17 +48,26 @@ type PipelineResourceInterface interface {
 	GetVersion() string
 }
 
+// PipelineResourceSpec defines  an individual resources used in the pipeline.
+type PipelineResourceSpec struct {
+	Type   PipelineResourceType `json:"type"`
+	Params []Param              `json:"params"`
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
+}
+
 // PipelineResourceStatus should implment status for PipelineResource
 type PipelineResourceStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-// PipelineResourceSpec defines  an individual resources used in the pipeline.
-type PipelineResourceSpec struct {
-	Type   PipelineResourceType `json:"type"`
-	Params []Param              `json:"params"`
-}
+// Check that PipelineResource may be validated and defaulted.
+var _ apis.Validatable = (*PipelineResource)(nil)
+var _ apis.Defaultable = (*PipelineResource)(nil)
+
+// Assert that PipelineResource implements the GenericCRD interface.
+var _ webhook.GenericCRD = (*PipelineResource)(nil)
 
 // TaskResource defines an input or output Resource declared as a requirement
 // by a Task. The Name field will be used to refer to these Resources within

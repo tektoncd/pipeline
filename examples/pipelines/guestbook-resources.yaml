@@ -1,5 +1,5 @@
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: guestbook-resources-git
   namespace: default
@@ -12,7 +12,7 @@ spec:
       value: HEAD      
 ---      
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: guestbook-resources-redis-docker
   namespace: default
@@ -25,7 +25,7 @@ spec:
         value: HEAD
 ---        
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: guestbookstagingimage
   namespace: default
@@ -36,7 +36,7 @@ spec:
         value: gcr.io/demo-staging
 ---        
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: redisstagingimage
   namespace: default

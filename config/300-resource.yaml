@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: resources.pipeline.knative.dev
+  name: pipelineresources.pipeline.knative.dev
 spec:
   group: pipeline.knative.dev
   names:
-    kind: Resource
-    plural: resources
+    kind: PipelineResource
+    plural: pipelineresources
   scope: Namespaced
   version: v1alpha1
 status:

@@ -32,8 +32,11 @@ func AddInputResource(
 	logger *zap.SugaredLogger,
 ) (*buildv1alpha1.Build, error) {
 
-	var gitResource *v1alpha1.GitResource
+	if task.Spec.Inputs == nil {
+		return build, nil
+	}
 
+	var gitResource *v1alpha1.GitResource
 	for _, input := range task.Spec.Inputs.Resources {
 		resource, err := pipelineResourceLister.PipelineResources(task.Namespace).Get(input.Name)
 		if err != nil {

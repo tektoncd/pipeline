@@ -10,7 +10,7 @@ Use the following example to understand the syntax and strucutre of a Git Resour
  
  ```
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: wizzbang-git
   namespace: default

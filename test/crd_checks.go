@@ -33,7 +33,7 @@ const (
 	// we can get to that failure faster - knative/serving is currently using `6 * time.Minute`
 	// which we could use, or we could use timeouts more specific to what each `Task` is
 	// actually expected to do.
-	timeout = 60 * time.Second
+	timeout = 120 * time.Second
 )
 
 // WaitForTaskRunState polls the status of the TaskRun called name from client every

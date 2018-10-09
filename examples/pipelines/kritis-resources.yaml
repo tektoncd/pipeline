@@ -1,5 +1,5 @@
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: kritis-resources-git
   namespace: default
@@ -12,7 +12,7 @@ spec:
     value: master
 ---    
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: kritis-resources-test-git
   namespace: default
@@ -25,7 +25,7 @@ spec:
     value: https://github.com/grafeas/kritis-test  
 ---    
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: kritis-resources-image
   namespace: default

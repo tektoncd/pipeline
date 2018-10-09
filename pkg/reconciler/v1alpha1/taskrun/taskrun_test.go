@@ -126,6 +126,7 @@ func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakeb
 
 	taskRunInformer := sharedInformer.Pipeline().V1alpha1().TaskRuns()
 	taskInformer := sharedInformer.Pipeline().V1alpha1().Tasks()
+	resourceInformer := sharedInformer.Pipeline().V1alpha1().PipelineResources()
 
 	for _, tr := range d.taskruns {
 		taskRunInformer.Informer().GetIndexer().Add(tr)
@@ -145,6 +146,7 @@ func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakeb
 		taskRunInformer,
 		taskInformer,
 		buildInformer,
+		resourceInformer,
 	), logs, buildClient
 }
 
