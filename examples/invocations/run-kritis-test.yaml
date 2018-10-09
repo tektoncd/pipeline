@@ -27,18 +27,8 @@ status:
       logsURL: 'gcs://somebucket/results/tests/unit-test-kritis-feature-x/make'
       exitCode: 0
     conditions:
-    - type: Started
+    - type: Succeeded
       status: "True"
       lastTransitionTime: "2018-10-04T12:25:39Z"
-      reason: pipelineRun
-      message: "Task has been triggered by a Pipeline run"
-    - type: Completed
-      status: "True"
-      lastTransitionTime: "2018-10-04T13:25:39Z"
-      reason: done
-      message: "Pipeline execution has finished"
-    - type: Successful
-      status: "True"
-      lastTransitionTime: "2018-10-04T13:25:39Z"
       reason: zeroExitCode
       message: "All steps completed with an exit code of 0"
