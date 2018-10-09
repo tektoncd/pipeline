@@ -32,6 +32,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func TestReconcile(t *testing.T) {
@@ -87,10 +88,6 @@ func TestReconcile(t *testing.T) {
 		log          string
 	}{
 		{"success", "foo/test-taskrun-run-success", false, true, ""},
-		// all test modes
-		// create a build
-		// update a status
-		// say finished
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -108,6 +105,10 @@ func TestReconcile(t *testing.T) {
 				if err == nil {
 					if len(client.Actions()) == 0 {
 						t.Errorf("Expected actions to be logged in the buildclient, got none")
+					}
+					build := client.Actions()[0].(ktesting.CreateAction).GetObject().(*buildv1alpha1.Build)
+					if d := cmp.Diff(build.Spec, buildSpec); d != "" {
+						t.Errorf("Expected created resource to be %v, but was %v", build.Spec, buildSpec)
 					}
 				}
 			}
