@@ -19,12 +19,23 @@ package v1alpha1
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 )
 
-var validSource = Source{
+var validResource = TaskResource{
 	Name: "source",
 	Type: "git",
+}
+
+var validBuild = &buildv1alpha1.BuildSpec{
+	Steps: []corev1.Container{
+		{
+			Name:  "mystep",
+			Image: "myimage",
+		},
+	},
 }
 
 func TestTaskSpec_Validate(t *testing.T) {
@@ -41,27 +52,30 @@ func TestTaskSpec_Validate(t *testing.T) {
 			name: "valid inputs",
 			fields: fields{
 				Inputs: &Inputs{
-					Sources: []Source{validSource},
+					Resources: []TaskResource{validResource},
 				},
+				BuildSpec: validBuild,
 			},
 		},
 		{
 			name: "valid outputs",
 			fields: fields{
 				Outputs: &Outputs{
-					Sources: []Source{validSource},
+					Resources: []TaskResource{validResource},
 				},
+				BuildSpec: validBuild,
 			},
 		},
 		{
 			name: "both valid",
 			fields: fields{
 				Inputs: &Inputs{
-					Sources: []Source{validSource},
+					Resources: []TaskResource{validResource},
 				},
 				Outputs: &Outputs{
-					Sources: []Source{validSource},
+					Resources: []TaskResource{validResource},
 				},
+				BuildSpec: validBuild,
 			},
 		},
 	}
@@ -93,72 +107,95 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			name: "nil",
 		},
 		{
+			name: "no build",
+			fields: fields{
+				Inputs: &Inputs{
+					Resources: []TaskResource{validResource},
+				},
+			},
+		},
+		{
 			name: "one invalid input",
 			fields: fields{
 				Inputs: &Inputs{
-					Sources: []Source{
+					Resources: []TaskResource{
 						{
 							Name: "source",
 							Type: "what",
 						},
-						validSource,
+						validResource,
 					},
 				},
 				Outputs: &Outputs{
-					Sources: []Source{
-						validSource,
+					Resources: []TaskResource{
+						validResource,
 					},
 				},
+				BuildSpec: validBuild,
 			},
 		},
 		{
 			name: "one invalid output",
 			fields: fields{
 				Inputs: &Inputs{
-					Sources: []Source{
-						validSource,
+					Resources: []TaskResource{
+						validResource,
 					},
 				},
 				Outputs: &Outputs{
-					Sources: []Source{
+					Resources: []TaskResource{
 						{
 							Name: "who",
 							Type: "what",
 						},
-						validSource,
+						validResource,
 					},
 				},
+				BuildSpec: validBuild,
 			},
 		},
 		{
 			name: "duplicated inputs",
 			fields: fields{
 				Inputs: &Inputs{
-					Sources: []Source{
-						validSource,
-						validSource,
+					Resources: []TaskResource{
+						validResource,
+						validResource,
 					},
 				},
 				Outputs: &Outputs{
-					Sources: []Source{
-						validSource,
+					Resources: []TaskResource{
+						validResource,
 					},
 				},
+				BuildSpec: validBuild,
 			},
 		},
 		{
 			name: "duplicated outputs",
 			fields: fields{
 				Inputs: &Inputs{
-					Sources: []Source{
-						validSource,
+					Resources: []TaskResource{
+						validResource,
 					},
 				},
 				Outputs: &Outputs{
-					Sources: []Source{
-						validSource,
-						validSource,
+					Resources: []TaskResource{
+						validResource,
+						validResource,
 					},
+				},
+				BuildSpec: validBuild,
+			},
+		},
+		{
+			name: "invalid build",
+			fields: fields{
+				Inputs: &Inputs{
+					Resources: []TaskResource{validResource},
+				},
+				BuildSpec: &buildv1alpha1.BuildSpec{
+					Steps: []corev1.Container{},
 				},
 			},
 		},
