@@ -35,25 +35,33 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 
+	// A Task must have a valid BuildSpec.
+	if ts.BuildSpec == nil {
+		return apis.ErrMissingField("taskspec.BuildSpec")
+	}
+	if err := ts.BuildSpec.Validate(); err != nil {
+		return err
+	}
+
 	// A task doesn't have to have inputs or outputs, but if it does they must be valid.
 	// A task can't duplicate input or output names.
 
 	if ts.Inputs != nil {
-		for _, source := range ts.Inputs.Sources {
-			if err := validateResourceType(source, fmt.Sprintf("taskspec.Inputs.Sources.%s.Type", source.Name)); err != nil {
+		for _, resource := range ts.Inputs.Resources {
+			if err := validateResourceType(resource, fmt.Sprintf("taskspec.Inputs.Resources.%s.Type", resource.Name)); err != nil {
 				return err
 			}
 		}
-		if err := checkForDuplicates(ts.Inputs.Sources, "taskspec.Inputs.Sources.Name"); err != nil {
+		if err := checkForDuplicates(ts.Inputs.Resources, "taskspec.Inputs.Resources.Name"); err != nil {
 			return err
 		}
 	}
 	if ts.Outputs != nil {
-		for _, source := range ts.Outputs.Sources {
-			if err := validateResourceType(source, fmt.Sprintf("taskspec.Outputs.Sources.%s.Type", source.Name)); err != nil {
+		for _, source := range ts.Outputs.Resources {
+			if err := validateResourceType(source, fmt.Sprintf("taskspec.Outputs.Resources.%s.Type", source.Name)); err != nil {
 				return err
 			}
-			if err := checkForDuplicates(ts.Outputs.Sources, "taskspec.Outputs.Sources.Name"); err != nil {
+			if err := checkForDuplicates(ts.Outputs.Resources, "taskspec.Outputs.Resources.Name"); err != nil {
 				return err
 			}
 		}
@@ -61,22 +69,22 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 	return nil
 }
 
-func checkForDuplicates(sources []Source, path string) *apis.FieldError {
+func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {
 	encountered := map[string]struct{}{}
-	for _, s := range sources {
-		if _, ok := encountered[s.Name]; ok {
+	for _, r := range resources {
+		if _, ok := encountered[r.Name]; ok {
 			return apis.ErrMultipleOneOf(path)
 		}
-		encountered[s.Name] = struct{}{}
+		encountered[r.Name] = struct{}{}
 	}
 	return nil
 }
 
-func validateResourceType(s Source, path string) *apis.FieldError {
+func validateResourceType(r TaskResource, path string) *apis.FieldError {
 	for _, allowed := range AllResourceTypes {
-		if s.Type == allowed {
+		if r.Type == allowed {
 			return nil
 		}
 	}
-	return apis.ErrInvalidValue(string(s.Type), path)
+	return apis.ErrInvalidValue(string(r.Type), path)
 }
