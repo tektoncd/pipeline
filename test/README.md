@@ -25,19 +25,26 @@ _By default `go test` will not run [the integration tests](#integration-tests), 
 
 Kubernetes client-go provides a number of fake clients and objects for unit testing. The ones we will be using are:
 
-1. [fake kubernetes client](k8s.io/client-go/kubernetes/fake): Provides a fake REST interface to interact with Kubernetes API
-1. [fake pipeline client](./../pkg/client/clientset/versioned/fake/clientset_generated.go) : Provides a fake REST PipelineClient Interface to interact with Pipeline CRDs.
+1. [Fake kubernetes client](https://godoc.org/k8s.io/client-go/kubernetes/fake): Provides a fake REST interface to interact with Kubernetes API
+1. [Fake pipeline client](./../pkg/client/clientset/versioned/fake/clientset_generated.go) : Provides a fake REST PipelineClient Interface to interact with Pipeline CRDs.
 
-You can create a fake PipelineClient for the Controller under test like [this](./../pkg/reconciler/v1alpha1/pipelinerun/pipelinerun_test.go#L102).
+You can create a fake PipelineClient for the Controller under test like [this](https://github.com/knative/build-pipeline/blob/d97057a58e16c11ca5e38b780a7bb3ddae42bae1/pkg/reconciler/v1alpha1/pipelinerun/pipelinerun_test.go#L209):
 
-This [pipelineClient](./../pkg/client/clientset/versioned/clientset.go#L34) is initialized with no runtime objects. You can also initialie the client with kubernetes objects and can interact with them using the `pipelineClient.Pipeline()`
+```go
+import (
+    fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake
+)
+pipelineClient := fakepipelineclientset.NewSimpleClientset()
+```
+
+This [pipelineClient](https://github.com/knative/build-pipeline/blob/d97057a58e16c11ca5e38b780a7bb3ddae42bae1/pkg/client/clientset/versioned/clientset.go#L34) is initialized with no runtime objects. You can also initialie the client with kubernetes objects and can interact with them using the `pipelineClient.Pipeline()`
 
 ```go
  import (
      v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
  )
 
- obj := *v1alpha1.PipelineRun{
+ obj := &v1alpha1.PipelineRun{
   ObjectMeta: metav1.ObjectMeta{
     Name:      "name",
     Namespace: "namespace",
@@ -57,8 +64,9 @@ if action.GetVerb() != "list" {
 }
 ```
 
-To test the Controller for crd objects, we need to add test crd objects to the [informers](./../pkg/client/informers)
-so that the [listers](./../pkg/client/listers) can access these.
+To test the Controller for crd objects, we need to adding test crd objects to
+the [informers](./../pkg/client/informers) so that the
+[listers](./../pkg/client/listers) can access these.
 
 To add test `PipelineRun` objects to the listers, you can
 
@@ -67,7 +75,7 @@ pipelineClient := fakepipelineclientset.NewSimpleClientset()
 sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
 pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
 
-obj := *v1alpha1.PipelineRun{
+obj := &v1alpha1.PipelineRun{
   ObjectMeta: metav1.ObjectMeta{
     Name:      "name",
     Namespace: "namespace",
