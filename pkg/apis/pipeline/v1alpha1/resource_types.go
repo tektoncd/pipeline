@@ -36,6 +36,8 @@ const (
 	PipelineResourceTypeImage PipelineResourceType = "image"
 )
 
+var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeGCS, PipelineResourceTypeImage}
+
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {
 	GetName() string
