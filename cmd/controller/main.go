@@ -111,6 +111,7 @@ func main() {
 
 	taskInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
 	taskRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
+	resourceInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineResources()
 	buildInformer := buildInformerFactory.Build().V1alpha1().Builds()
 
 	pipelineInformer := pipelineInformerFactory.Pipeline().V1alpha1().Pipelines()
@@ -122,6 +123,7 @@ func main() {
 			taskRunInformer,
 			taskInformer,
 			buildInformer,
+			resourceInformer,
 		),
 		pipelinerun.NewController(opt,
 			pipelineRunInformer,
@@ -147,6 +149,7 @@ func main() {
 		taskInformer.Informer().HasSynced,
 		taskRunInformer.Informer().HasSynced,
 		buildInformer.Informer().HasSynced,
+		resourceInformer.Informer().HasSynced,
 	} {
 		if ok := cache.WaitForCacheSync(stopCh, synced); !ok {
 			logger.Fatalf("failed to wait for cache at index %v to sync", i)
