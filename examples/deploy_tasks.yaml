@@ -15,7 +15,7 @@ spec:
               value: string
             - name: image
               value: string
-        cluster:
+        clusters:
             - name: targetCluster
     buildSpec:
         steps:
@@ -39,7 +39,7 @@ spec:
               value: string
             - name: pathToFiles
               value: string
-        cluster:
+        clusters:
             - name: targetCluster
     buildSpec:
         steps:
