@@ -14,16 +14,8 @@ status:
   taskRuns:
     - taskRef:
       name: unit-test-kritis-12321312984
-      nextTasks:
-        - taskRef:
-            name: push-kritis-12321312984
-      prevTasks: []
     - taskRef:
       name: push-kritis-12321312984
-      nextTasks: []
-      prevTasks:
-        - taskRef:
-          name: unit-test-kritis-12321312984
   conditions:
     - type: Started
       status: "True"
