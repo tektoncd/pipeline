@@ -34,7 +34,6 @@ import (
 
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipeline"
 )
 
 const (
@@ -142,7 +141,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		return nil
 	}
-	pipelineTasks, err := pipeline.GetTasks(c.taskLister, p)
+	pipelineTasks, err := p.GetTasks(func(namespace, name string) (*v1alpha1.Task, error) {
+		return c.taskLister.Tasks(namespace).Get(name)
+	})
 	if err != nil {
 		return fmt.Errorf("error getting map of created TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
