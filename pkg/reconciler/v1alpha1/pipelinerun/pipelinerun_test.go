@@ -58,7 +58,7 @@ func TestReconcile(t *testing.T) {
 	ts := []*v1alpha1.Task{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "unit-test-task",
-			Namespace: namespace,
+			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskSpec{},
 	}}
@@ -80,7 +80,7 @@ func TestReconcile(t *testing.T) {
 	}
 	actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
 	trueB := true
-	expectedTaskRun := v1alpha1.TaskRun{
+	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline-run-success-unit-test-1",
 			Namespace: "foo",
@@ -94,7 +94,7 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{},
 	}
-	if d := cmp.Diff(actual, &expectedTaskRun); d != "" {
+	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
 	}
 }
