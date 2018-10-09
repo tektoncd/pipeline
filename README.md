@@ -1,8 +1,5 @@
 # Pipeline CRD
 
-[![Prow integration test results](https://prow.knative.dev/badge.svg?jobs=pull-knative-build-pipeline-integration-tests)](https://prow.knative.dev/?job=pull-knative-build-pipeline-integration-tests)
-[![Prow unit test results](https://prow.knative.dev/badge.svg?jobs=pull-knative-build-pipeline-unit-tests)](https://prow.knative.dev/?job=pull-knative-build-pipeline-unit-tests)
-[![Prow build results](https://prow.knative.dev/badge.svg?jobs=pull-knative-build-pipeline-build-tests)](https://prow.knative.dev/?job=pull-knative-build-pipeline-build-tests)
 [![Go Report Card](https://goreportcard.com/badge/knative/build-pipeline)](https://goreportcard.com/report/knative/build-pipeline)
 
 This repo contains the API definition of the Pipeline CRD and an on cluster implementation of that API.
