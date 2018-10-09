@@ -146,11 +146,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return c.taskLister.Tasks(namespace).Get(name)
 	})
 	if err != nil {
-		return fmt.Errorf("error getting map of created TaskRuns for Pipeline %s: %s", p.Name, err)
+		return fmt.Errorf("error getting Tasks for Pipeline %s, Pipeline is invalid!: %s", p.Name, err)
 	}
 	pipelineTaskName, trName, err := resources.GetNextPipelineRunTaskRun(
-		func(namespace, name string)(*v1alpha1.TaskRun, error){
-			return c.taskRunLister.TaskRuns(namespace).Get(name)},
+		func(namespace, name string) (*v1alpha1.TaskRun, error) {
+			return c.taskRunLister.TaskRuns(namespace).Get(name)
+		},
 		p, pr.Name)
 	if err != nil {
 		return fmt.Errorf("error getting next TaskRun to create for PipelineRun %s: %s", pr.Name, err)
