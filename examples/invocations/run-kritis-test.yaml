@@ -20,7 +20,6 @@ spec:
             version: 4da79b91e8e37ea441cfe4972565e2184c1a127f
         params:
             - name: 'makeTarget'
-              type: 'string'
               value: 'test'
 status:
     steps:
