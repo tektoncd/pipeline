@@ -48,14 +48,21 @@ spec:
             - name: runTests
               image: '${testImage}'
               args: ['${testArgs}']
+              volumeMounts:
+              - name: gac
+                mountPath: gac.json
+              - name: cloudconfig
+                mountPath: /root/.config/gcloud
+              - name: dockerSocket
+                mountPath: /var/run/docker.sock
         volumes:
             - name: gac
-              source: ${workspace}/config/gac.json
-              destination: gac.json
+              hostPath:
+                path: ${workspace}/config/gac.json
             - name: cloudconfig
-              source: ${workspace}/config/gcloud
-              destination: /root/.config/gcloud
+              hostPath:
+                path: ${workspace}/config/gcloud
             - name: dockerSocket
-              source: /var/run/docker.sock
-              destination: /var/run/docker.sock
+              hostPath:
+                path: /var/run/docker.sock
 
