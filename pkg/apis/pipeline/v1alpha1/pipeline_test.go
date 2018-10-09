@@ -14,9 +14,9 @@ package v1alpha1
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -54,8 +54,8 @@ func TestGetTasks(t *testing.T) {
 		"mytask1": task,
 		"mytask2": task,
 	}
-	if !reflect.DeepEqual(tasks, expectedTasks) {
-		t.Fatalf("Expected to get map of tasks %v but got %v instead", expectedTasks, tasks)
+	if d := cmp.Diff(tasks, expectedTasks); d != "" {
+		t.Fatalf("Expected to get map of tasks %v, but actual differed: %s", expectedTasks, d)
 	}
 }
 
