@@ -21,6 +21,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
+	informersv1alpha1 "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/pkg/controller"
 	"go.uber.org/zap"
@@ -38,174 +39,124 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineRunSpec{
 			PipelineRef: v1alpha1.PipelineRef{
-				Name:       "test-pipeline",
-				APIVersion: "a1",
+				Name: "test-pipeline",
 			},
-		}}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "invalid-pipeline",
-			Namespace: "foo",
 		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name:       "pipeline-not-exist",
-				APIVersion: "a1",
-			},
-		}},
-	}
+	}}
 
 	ps := []*v1alpha1.Pipeline{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline",
 			Namespace: "foo",
 		},
-		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{}}},
+		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
+			Name:    "unit-test-1",
+			TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+		}},
+		}},
 	}
+	ts := []*v1alpha1.Task{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-task",
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.TaskSpec{},
+	}}
 	d := testData{
 		prs: prs,
 		ps:  ps,
-		ts:  []*v1alpha1.Task{},
-		trs: []*v1alpha1.TaskRun{},
+		ts:  ts,
+	}
+	c, logs, client := getController(d)
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
+	}
+	if logs.Len() > 0 {
+		t.Errorf("expected to see no error log. However found errors in logs: %v", logs)
+	}
+	if len(client.Actions()) == 0 {
+		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
+	}
+	actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
+	trueB := true
+	expectedTaskRun := v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-success-unit-test-1",
+			Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "pipeline.knative.dev/v1alpha1",
+				Kind:               "PipelineRun",
+				Name:               "test-pipeline-run-success",
+				Controller:         &trueB,
+				BlockOwnerDeletion: &trueB,
+			}},
+		},
+		Spec: v1alpha1.TaskRunSpec{},
+	}
+	if d := cmp.Diff(actual, &expectedTaskRun); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+	}
+}
+
+func TestReconcileInvalid(t *testing.T) {
+	prs := []*v1alpha1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "invalid-pipeline",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipeline-not-exist",
+			},
+		}},
+	}
+	d := testData{
+		prs: prs,
 	}
 	tcs := []struct {
 		name        string
 		pipelineRun string
-		shdErr      bool
 		log         string
 	}{
-		{"success", "foo/test-pipeline-run-success", false, ""},
-		{"invalid-pipeline-run-shd-succeed-with-logs", "foo/test-pipeline-run-doesnot-exist", false,
+		{"invalid-pipeline-run-shd-succeed-with-logs", "foo/test-pipeline-run-doesnot-exist",
 			"pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists"},
-		{"invalid-pipeline-shd-succeed-with-logs", "foo/invalid-pipeline", false,
+		{"invalid-pipeline-shd-succeed-with-logs", "foo/invalid-pipeline",
 			"\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\""},
-		{"invalid-pipeline-run-name-shd-succed-with-logs", "test/pipeline-fail/t", false,
+		{"invalid-pipeline-run-name-shd-succed-with-logs", "test/pipeline-fail/t",
 			"invalid resource key: test/pipeline-fail/t"},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			c, logs, _ := getController(d)
-			err := c.Reconciler.Reconcile(context.TODO(), tc.pipelineRun)
-			if tc.shdErr != (err != nil) {
-				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
+			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
+			if err != nil {
+				t.Errorf("Did not expect to see error when reconciling but saw %s", err)
 			}
-			if tc.log == "" && logs.Len() > 0 {
-				t.Errorf("expected to see no error log. However found errors in logs: %v", logs)
-			} else if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
+			if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
 				m := getLogMessages(logs)
 				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
 			}
 		})
 	}
 }
-func TestCreatePipeline(t *testing.T) {
-	trueB := true
-	successPipeline := v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{{
-				Name:    "unit-test-1",
-				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
-			}, {
-				Name:    "unit-test-2",
-				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
-			}},
-		}}
-	failPipeline := v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-invalid",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{{
-				Name:    "unit-test",
-				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task", APIVersion: "t"},
-			}, {
-				Name:    "random-task",
-				TaskRef: v1alpha1.TaskRef{Name: "random-task", APIVersion: "t"},
-			}},
-		}}
-	ps := []*v1alpha1.Pipeline{&successPipeline, &failPipeline}
-	tasks := []*v1alpha1.Task{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-test-task",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{},
-	}}
-	trs := []*v1alpha1.TaskRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "shd-kick-second-task-unit-test-1",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{},
-	}}
-	testData := testData{
-		prs: []*v1alpha1.PipelineRun{},
-		ps:  ps,
-		ts:  tasks,
-		trs: trs,
+
+func getLogMessages(logs *observer.ObservedLogs) []string {
+	messages := []string{}
+	for _, l := range logs.All() {
+		messages = append(messages, l.Message)
 	}
-	tcs := []struct {
-		name            string
-		pipeline        v1alpha1.Pipeline
-		shdErr          bool
-		expectedTaskRun v1alpha1.TaskRun
-	}{
-		{
-			"shd-kick-first-task", successPipeline, false,
-			v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "shd-kick-first-task-unit-test-1",
-					Namespace: "foo",
-				},
-				Spec: v1alpha1.TaskRunSpec{},
-			},
-		},
-		{
-			"shd-kick-second-task", successPipeline, false,
-			v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "shd-kick-second-task-unit-test-2",
-					Namespace: "foo",
-				},
-				Spec: v1alpha1.TaskRunSpec{},
-			},
-		},
-		{"invalidPipeline", failPipeline, true, v1alpha1.TaskRun{}},
-	}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			c, _, client := getController(testData)
-			pr := v1alpha1.PipelineRun{ObjectMeta: metav1.ObjectMeta{
-				Name:      tc.name,
-				Namespace: "foo",
-			}}
-			err := c.Reconciler.(*Reconciler).createPipelineRunTaskRuns(&tc.pipeline, &pr)
-			if tc.shdErr != (err != nil) {
-				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
-			}
-			if err == nil {
-				actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
-				eOwnerRef := []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "PipelineRun",
-					Name:               tc.name,
-					Controller:         &trueB,
-					BlockOwnerDeletion: &trueB,
-				}}
-				tc.expectedTaskRun.OwnerReferences = eOwnerRef
-				if d := cmp.Diff(actual, &tc.expectedTaskRun); d != "" {
-					t.Errorf("expected to see resource %v created. Diff %s", tc.expectedTaskRun, d)
-				}
-			}
-		})
-	}
+	return messages
 }
 
-func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
+type testData struct {
+	prs []*v1alpha1.PipelineRun
+	ps  []*v1alpha1.Pipeline
+	trs []*v1alpha1.TaskRun
+	ts  []*v1alpha1.Task
+}
+
+func seedTestData(d testData) (*fakepipelineclientset.Clientset, informersv1alpha1.PipelineRunInformer, informersv1alpha1.PipelineInformer, informersv1alpha1.TaskRunInformer, informersv1alpha1.TaskInformer) {
 	pipelineClient := fakepipelineclientset.NewSimpleClientset()
 	sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
 	pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
@@ -226,6 +177,11 @@ func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakep
 	for _, t := range d.ts {
 		taskInformer.Informer().GetIndexer().Add(t)
 	}
+	return pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer
+}
+
+func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
+	pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer := seedTestData(d)
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
 	return NewController(
@@ -239,19 +195,4 @@ func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakep
 		taskInformer,
 		taskRunInformer,
 	), logs, pipelineClient
-}
-
-func getLogMessages(logs *observer.ObservedLogs) []string {
-	messages := []string{}
-	for _, l := range logs.All() {
-		messages = append(messages, l.Message)
-	}
-	return messages
-}
-
-type testData struct {
-	prs []*v1alpha1.PipelineRun
-	ps  []*v1alpha1.Pipeline
-	trs []*v1alpha1.TaskRun
-	ts  []*v1alpha1.Task
 }

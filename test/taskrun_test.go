@@ -23,67 +23,17 @@ import (
 	"strings"
 	"testing"
 
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-
-	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 const (
-	hwTaskName      = "helloworld"
-	hwTaskRunName   = "helloworld-run"
-	hwContainerName = "helloworld-busybox"
-
-	taskOutput  = "do you want to build a snowman"
 	buildOutput = "Build successful"
 )
-
-func getHelloWorldTask(namespace string) *v1alpha1.Task {
-	return &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      hwTaskName,
-		},
-		Spec: v1alpha1.TaskSpec{
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{
-					corev1.Container{
-						Name:  hwContainerName,
-						Image: "busybox",
-						Args: []string{
-							"echo", taskOutput,
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
-	return &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      hwTaskRunName,
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: hwTaskName,
-			},
-			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
-			},
-		},
-	}
-}
 
 // TestTaskRun is an integration test that will verify a very simple "hello world" TaskRun can be
 // executed.
@@ -94,12 +44,11 @@ func TestTaskRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
 	defer tearDown(logger, c.KubeClient, namespace)
 
-	// Create task
+	logger.Infof("Creating Tasks and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
 	}
 
-	// Create TaskRun
 	if _, err := c.TaskRunClient.Create(getHelloWorldTaskRun(namespace)); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", hwTaskRunName, err)
 	}

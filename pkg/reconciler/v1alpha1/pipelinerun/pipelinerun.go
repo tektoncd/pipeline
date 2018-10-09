@@ -28,12 +28,13 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipeline"
 )
 
 const (
@@ -141,58 +142,26 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		return nil
 	}
-	if err := c.createPipelineRunTaskRuns(p, pr); err != nil {
-		return err
+	pipelineTasks, err := pipeline.GetTasks(c.taskLister, p)
+	if err != nil {
+		return fmt.Errorf("error getting map of created TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
+	pipelineTaskName, trName, err := getNextPipelineRunTaskRun(c.taskRunLister, p, pr.Name)
+	if err != nil {
+		return fmt.Errorf("error getting next TaskRun to create for PipelineRun %s: %s", pr.Name, err)
+	}
+	if pipelineTaskName != "" {
+		_, err = c.createTaskRun(pipelineTasks[pipelineTaskName], trName, pr)
+		if err != nil {
+			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", trName, pipelineTaskName, pr.Name, err)
+		}
+	}
+
 	// TODO fetch the taskruns status for this pipeline run.
 
 	// TODO check status of tasks and update status of PipelineRuns
 
 	return nil
-}
-
-// createPipelineRunTaskRuns goes through all the `Task` in the `PipelineSpec`
-// and creates a `TaskRun` for the first `Task` for which no corresponding
-// `TaskRun` exist.
-func (c *Reconciler) createPipelineRunTaskRuns(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) error {
-	taskRefMap, err := c.getTaskMap(p)
-	if err != nil {
-		return errors.NewBadRequest(fmt.Sprintf("pipeline %q is not valid due to %v", p.Name, err))
-	}
-	for _, pt := range p.Spec.Tasks {
-		trName := getTaskRunName(pr.Name, &pt)
-		_, listErr := c.taskRunLister.TaskRuns(p.Namespace).Get(trName)
-		if errors.IsNotFound(listErr) && c.canTaskRun(&pt) {
-			if _, err := c.createTaskRun(taskRefMap[pt.Name], trName, pr); err != nil {
-				return err
-			}
-		} else if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// getTaskMap returns a map of task in pipeline spec to `Task` mentioned in taskRef.
-func (c *Reconciler) getTaskMap(p *v1alpha1.Pipeline) (map[string]*v1alpha1.Task, error) {
-	tMap := make(map[string]*v1alpha1.Task, 0)
-	for _, pt := range p.Spec.Tasks {
-		tObj, err := c.taskLister.Tasks(p.Namespace).Get(pt.TaskRef.Name)
-		if err != nil {
-			c.Logger.Errorf("failed to get tasks for Pipeline %q: Error getting task %q : %s",
-				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
-				fmt.Sprintf("%s/%s", p.Namespace, pt.TaskRef.Name), err)
-			return nil, err
-		}
-		tMap[pt.Name] = tObj
-	}
-	return tMap, nil
-}
-
-func (c *Reconciler) canTaskRun(pt *v1alpha1.PipelineTask) bool {
-	// Check if Task can run now. Go through all the input constraints and see if
-	// the upstream tasks have completed successfully and inputs are available.
-	return true
 }
 
 func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun) (*v1alpha1.TaskRun, error) {
@@ -207,11 +176,6 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 		},
 	}
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)
-}
-
-// getTaskRunName should return a uniquie name for a `TaskRun`.
-func getTaskRunName(prName string, pt *v1alpha1.PipelineTask) string {
-	return fmt.Sprintf("%s-%s", prName, pt.Name)
 }
 
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {

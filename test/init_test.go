@@ -26,6 +26,9 @@ import (
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
