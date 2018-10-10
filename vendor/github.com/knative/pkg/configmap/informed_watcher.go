@@ -34,14 +34,8 @@ func NewDefaultWatcher(kc kubernetes.Interface, namespace string) *InformedWatch
 	return NewInformedWatcher(kc, namespace)
 }
 
-// NewInformedWatcher watchers a Kubernetes namespace for configmap changs
-func NewInformedWatcher(kc kubernetes.Interface, namespace string) *InformedWatcher {
-	sif := informers.NewSharedInformerFactoryWithOptions(
-		kc,
-		5*time.Minute,
-		informers.WithNamespace(namespace),
-	)
-
+// NewInformedWatcherFromFactory watchers a Kubernetes namespace for configmap changs
+func NewInformedWatcherFromFactory(sif informers.SharedInformerFactory, namespace string) *InformedWatcher {
 	return &InformedWatcher{
 		sif:      sif,
 		informer: sif.Core().V1().ConfigMaps(),
@@ -49,6 +43,16 @@ func NewInformedWatcher(kc kubernetes.Interface, namespace string) *InformedWatc
 			Namespace: namespace,
 		},
 	}
+}
+
+// NewInformedWatcher watchers a Kubernetes namespace for configmap changs
+func NewInformedWatcher(kc kubernetes.Interface, namespace string) *InformedWatcher {
+	return NewInformedWatcherFromFactory(informers.NewSharedInformerFactoryWithOptions(
+		kc,
+		// This is the default resync period from controller-runtime.
+		10*time.Hour,
+		informers.WithNamespace(namespace),
+	), namespace)
 }
 
 // InformedWatcher provides an informer-based implementation of Watcher.

@@ -26,6 +26,13 @@ import (
 
 // The methods in this file are used for managing subresources in cases where
 // a controller instantiates different resources for each version of itself.
+// There are two sets of methods available here:
+// * `*VersionLabel*`: these methods act on `metadata.resourceVersion` and
+//  create new labels for EVERY change to the resource (incl. `/status`).
+// * `*GenerationLabel*`: these methods act on `metadata.generation` and
+//  create new labels for changes to the resource's "spec" (typically, but
+//  some K8s resources change `metadata.generation` for annotations as well
+//  e.g. Deployment).
 //
 // For example, if an A might instantiate N B's at version 1 and M B's at
 // version 2 then it can use MakeVersionLabels to decorate each subresource
@@ -64,6 +71,37 @@ func MakeOldVersionLabelSelector(om metav1.ObjectMetaAccessor) labels.Selector {
 		mustNewRequirement("controller", selection.Equals, []string{string(om.GetObjectMeta().GetUID())}),
 		mustNewRequirement("version", selection.NotEquals, []string{om.GetObjectMeta().GetResourceVersion()}),
 	)
+}
+
+// MakeGenerationLabels constructs a set of labels to apply to subresources
+// instantiated at this version of the parent resource, so that we can
+// efficiently select them.
+func MakeGenerationLabels(om metav1.ObjectMetaAccessor) labels.Set {
+	return map[string]string{
+		"controller": string(om.GetObjectMeta().GetUID()),
+		"generation": genStr(om),
+	}
+}
+
+// MakeGenerationLabelSelector constructs a selector for subresources
+// instantiated at this version of the parent resource.  This keys
+// off of the labels populated by MakeGenerationLabels.
+func MakeGenerationLabelSelector(om metav1.ObjectMetaAccessor) labels.Selector {
+	return labels.SelectorFromSet(MakeGenerationLabels(om))
+}
+
+// MakeOldGenerationLabelSelector constructs a selector for subresources
+// instantiated at an older version of the parent resource.  This keys
+// off of the labels populated by MakeGenerationLabels.
+func MakeOldGenerationLabelSelector(om metav1.ObjectMetaAccessor) labels.Selector {
+	return labels.NewSelector().Add(
+		mustNewRequirement("controller", selection.Equals, []string{string(om.GetObjectMeta().GetUID())}),
+		mustNewRequirement("generation", selection.NotEquals, []string{genStr(om)}),
+	)
+}
+
+func genStr(om metav1.ObjectMetaAccessor) string {
+	return fmt.Sprintf("%05d", om.GetObjectMeta().GetGeneration())
 }
 
 // mustNewRequirement panics if there are any errors constructing our selectors.
