@@ -89,6 +89,17 @@ type accessor interface {
 	GetName() string
 }
 
+func objectReference(item accessor) corev1.ObjectReference {
+	gvk := item.GroupVersionKind()
+	apiVersion, kind := gvk.ToAPIVersionAndKind()
+	return corev1.ObjectReference{
+		APIVersion: apiVersion,
+		Kind:       kind,
+		Namespace:  item.GetNamespace(),
+		Name:       item.GetName(),
+	}
+}
+
 // OnChanged implements Interface.
 func (i *impl) OnChanged(obj interface{}) {
 	item, ok := obj.(accessor)
@@ -97,14 +108,7 @@ func (i *impl) OnChanged(obj interface{}) {
 		return
 	}
 
-	gvk := item.GroupVersionKind()
-	apiVersion, kind := gvk.ToAPIVersionAndKind()
-	or := corev1.ObjectReference{
-		APIVersion: apiVersion,
-		Kind:       kind,
-		Namespace:  item.GetNamespace(),
-		Name:       item.GetName(),
-	}
+	or := objectReference(item)
 
 	// TODO(mattmoor): Consider locking the mapping (global) for a
 	// smaller scope and leveraging a per-set lock to guard its access.
@@ -123,5 +127,9 @@ func (i *impl) OnChanged(obj interface{}) {
 			continue
 		}
 		i.cb(key)
+	}
+
+	if len(s) == 0 {
+		delete(i.mapping, or)
 	}
 }
