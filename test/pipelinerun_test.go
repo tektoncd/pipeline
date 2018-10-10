@@ -37,7 +37,7 @@ func TestPipelineRun(t *testing.T) {
 	defer tearDown(logger, c.KubeClient, namespace)
 
 	logger.Infof("Creating Pipeline Resources in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace)); err != nil {
+	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace, []string{"echo", taskOutput})); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
 	}
 	if _, err := c.PipelineClient.Create(getHelloWorldPipeline(namespace)); err != nil {
@@ -63,4 +63,7 @@ func TestPipelineRun(t *testing.T) {
 	}
 
 	// TODO check that TaskRuns created
+
+	// Verify that the init containers Build ran had 'taskOutput' written
+	// VerifyBuildOutput(t, c, namespace, taskOutput)
 }
