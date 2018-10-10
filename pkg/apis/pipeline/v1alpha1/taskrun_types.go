@@ -74,6 +74,13 @@ type TaskRunStatus struct {
 	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
 }
 
+var taskRunCondSet = duckv1alpha1.NewBatchConditionSet()
+
+// GetCondition returns the Condition matching the given type.
+func (tr *TaskRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
+	return taskRunCondSet.Manage(tr).GetCondition(t)
+}
+
 // StepRun reports the results of running a step in the Task. Each
 // task has the potential to succeed or fail (based on the exit code)
 // and produces logs.

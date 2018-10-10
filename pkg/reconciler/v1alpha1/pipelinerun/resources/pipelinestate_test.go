@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -71,6 +73,39 @@ var trs = []v1alpha1.TaskRun{{
 	Spec: v1alpha1.TaskRunSpec{},
 }}
 
+func makeStarted(tr v1alpha1.TaskRun) *v1alpha1.TaskRun {
+	newTr := newTaskRun(tr)
+	newTr.Status.Conditions[0].Status = corev1.ConditionUnknown
+	return newTr
+}
+
+func makeSucceeded(tr v1alpha1.TaskRun) *v1alpha1.TaskRun {
+	newTr := newTaskRun(tr)
+	newTr.Status.Conditions[0].Status = corev1.ConditionTrue
+	return newTr
+}
+
+func makeFailed(tr v1alpha1.TaskRun) *v1alpha1.TaskRun {
+	newTr := newTaskRun(tr)
+	newTr.Status.Conditions[0].Status = corev1.ConditionFalse
+	return newTr
+}
+
+func newTaskRun(tr v1alpha1.TaskRun) *v1alpha1.TaskRun {
+	return &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: tr.Namespace,
+			Name:      tr.Name,
+		},
+		Spec: tr.Spec,
+		Status: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type: duckv1alpha1.ConditionSucceeded,
+			}},
+		},
+	}
+}
+
 func TestGetNextTask_NoneStarted(t *testing.T) {
 	noneStartedState := []*PipelineRunTaskRun{{
 		Task:         task,
@@ -83,19 +118,61 @@ func TestGetNextTask_NoneStarted(t *testing.T) {
 		TaskRunName:  "pipelinerun-mytask2",
 		TaskRun:      nil,
 	}}
-	// TODO: one started
-	firstFinishedState := []*PipelineRunTaskRun{{
+	oneStartedState := []*PipelineRunTaskRun{{
 		Task:         task,
 		PipelineTask: &pts[0],
 		TaskRunName:  "pipelinerun-mytask1",
-		TaskRun:      &trs[0],
+		TaskRun:      makeStarted(trs[0]),
 	}, {
 		Task:         task,
 		PipelineTask: &pts[1],
 		TaskRunName:  "pipelinerun-mytask2",
 		TaskRun:      nil,
 	}}
-	// TODO: all finished
+	oneFinishedState := []*PipelineRunTaskRun{{
+		Task:         task,
+		PipelineTask: &pts[0],
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun:      makeSucceeded(trs[0]),
+	}, {
+		Task:         task,
+		PipelineTask: &pts[1],
+		TaskRunName:  "pipelinerun-mytask2",
+		TaskRun:      nil,
+	}}
+	oneFailedState := []*PipelineRunTaskRun{{
+		Task:         task,
+		PipelineTask: &pts[0],
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun:      makeFailed(trs[0]),
+	}, {
+		Task:         task,
+		PipelineTask: &pts[1],
+		TaskRunName:  "pipelinerun-mytask2",
+		TaskRun:      nil,
+	}}
+	firstFinishedState := []*PipelineRunTaskRun{{
+		Task:         task,
+		PipelineTask: &pts[0],
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun:      makeSucceeded(trs[0]),
+	}, {
+		Task:         task,
+		PipelineTask: &pts[1],
+		TaskRunName:  "pipelinerun-mytask2",
+		TaskRun:      nil,
+	}}
+	allFinishedState := []*PipelineRunTaskRun{{
+		Task:         task,
+		PipelineTask: &pts[0],
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun:      makeSucceeded(trs[0]),
+	}, {
+		Task:         task,
+		PipelineTask: &pts[1],
+		TaskRunName:  "pipelinerun-mytask2",
+		TaskRun:      makeSucceeded(trs[0]),
+	}}
 	tcs := []struct {
 		name         string
 		state        []*PipelineRunTaskRun
@@ -107,9 +184,29 @@ func TestGetNextTask_NoneStarted(t *testing.T) {
 			expectedTask: noneStartedState[0],
 		},
 		{
+			name:         "one-task-started",
+			state:        oneStartedState,
+			expectedTask: nil,
+		},
+		{
+			name:         "one-task-finished",
+			state:        oneFinishedState,
+			expectedTask: oneFinishedState[1],
+		},
+		{
+			name:         "one-task-failed",
+			state:        oneFailedState,
+			expectedTask: nil,
+		},
+		{
 			name:         "first-task-finished",
 			state:        firstFinishedState,
 			expectedTask: firstFinishedState[1],
+		},
+		{
+			name:         "all-finished",
+			state:        allFinishedState,
+			expectedTask: nil,
 		},
 	}
 	for _, tc := range tcs {
