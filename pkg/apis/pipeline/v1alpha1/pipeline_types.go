@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
 	"github.com/knative/pkg/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -132,25 +131,4 @@ type PipelineList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Pipeline `json:"items"`
-}
-
-// GetTask is a function that will retrieve the Task name from namespace.
-type GetTask func(namespace, name string) (*Task, error)
-
-// GetTasks retrieves all Tasks instances which the pipeline p references, getting
-// instances from function g. If it is unable to retrieve an instance of a referenced
-// Task, it will return an error, otherwise it returns a map from the name of the
-// Task in the Pipeline to the name of the Task object itself.
-func (p *Pipeline)GetTasks(g GetTask) (map[string]*Task, error) {
-	tasks := map[string]*Task{}
-	for _, pt := range p.Spec.Tasks {
-		t, err := g(p.Namespace, pt.TaskRef.Name)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get tasks for Pipeline %q: Error getting task %q : %s",
-				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
-				fmt.Sprintf("%s/%s", p.Namespace, pt.TaskRef.Name), err)
-		}
-		tasks[pt.Name] = t
-	}
-	return tasks, nil
 }

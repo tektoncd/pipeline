@@ -134,7 +134,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
-	// fetch the equivelant pipeline for this pipelinerun Run
 	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
 	if err != nil {
 		c.Logger.Errorf("%q failed to Get Pipeline: %q",
@@ -142,30 +141,29 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		return nil
 	}
-	pipelineTasks, err := p.GetTasks(func(namespace, name string) (*v1alpha1.Task, error) {
-		return c.taskLister.Tasks(namespace).Get(name)
-	})
-	if err != nil {
-		return fmt.Errorf("error getting Tasks for Pipeline %s, Pipeline is invalid!: %s", p.Name, err)
-	}
-	pipelineTaskName, trName, err := resources.GetNextPipelineRunTaskRun(
+	pipelineTaskRuns, err := resources.GetPipelineState(
+		func(namespace, name string) (*v1alpha1.Task, error) {
+			return c.taskLister.Tasks(namespace).Get(name)
+		},
 		func(namespace, name string) (*v1alpha1.TaskRun, error) {
 			return c.taskRunLister.TaskRuns(namespace).Get(name)
 		},
-		p, pr.Name)
+		p, pr.Name,
+	)
 	if err != nil {
-		return fmt.Errorf("error getting next TaskRun to create for PipelineRun %s: %s", pr.Name, err)
+		return fmt.Errorf("error getting Tasks for Pipeline %s, Pipeline may be invalid!: %s", p.Name, err)
 	}
-	if pipelineTaskName != "" {
-		_, err = c.createTaskRun(pipelineTasks[pipelineTaskName], trName, pr)
-		if err != nil {
-			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", trName, pipelineTaskName, pr.Name, err)
-		}
+	prtr := resources.GetNextTask(pipelineTaskRuns)
+	prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr)
+	if err != nil {
+		return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
 	}
 
 	// TODO fetch the taskruns status for this pipeline run.
+	// get all taskruns for all tasks
 
-	// TODO check status of tasks and update status of PipelineRuns
+	// if any either dont exist yet or are themselves unknown, status is unknown
+	// if the status of any is failed, then this pipeline run is failed and we should stop trying to run more
 
 	return nil
 }

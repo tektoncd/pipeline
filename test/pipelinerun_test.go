@@ -28,8 +28,6 @@ import (
 )
 
 func TestPipelineRun(t *testing.T) {
-	t.Skip("Will fail until #61 is completed :D")
-
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 
