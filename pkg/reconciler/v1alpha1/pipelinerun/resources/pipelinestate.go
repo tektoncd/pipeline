@@ -19,6 +19,8 @@ package resources
 import (
 	"fmt"
 
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -28,7 +30,17 @@ import (
 // not have a corresponding TaskRun and can run.
 func GetNextTask(pipelineTaskRuns []*PipelineRunTaskRun) *PipelineRunTaskRun {
 	for _, prtr := range pipelineTaskRuns {
-		if prtr.TaskRun == nil && canTaskRun(prtr.PipelineTask) {
+		if prtr.TaskRun != nil {
+			switch s := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded); s.Status {
+			// if any of the TaskRuns failed, there is no new TaskRun to start
+			case corev1.ConditionFalse:
+				return nil
+			// if the current TaskRun is currently running, don't start another one
+			case corev1.ConditionUnknown:
+				return nil
+			}
+			// otherwise the TaskRun has finished successfully, so we should move on
+		} else if canTaskRun(prtr.PipelineTask) {
 			return prtr
 		}
 	}
@@ -36,11 +48,7 @@ func GetNextTask(pipelineTaskRuns []*PipelineRunTaskRun) *PipelineRunTaskRun {
 }
 
 func canTaskRun(pt *v1alpha1.PipelineTask) bool {
-	// Check if Task can run now. Go through all the input constraints and see if
-	// the upstream tasks have completed successfully and inputs are available.
-
-	// TODO: only should try to run this Task if the previous one has completed
-
+	// Check if Task can run now. Go through all the input constraints
 	return true
 }
 
