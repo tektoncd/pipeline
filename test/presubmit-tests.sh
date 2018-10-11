@@ -15,9 +15,11 @@
 # limitations under the License.
 
 # This script runs the presubmit tests; it is started by prow for each PR.
-# When running `--integration-tests`, use `K8S_CLUSTER_OVERRIDE` to point at your
-# own cluster (a context in your kubeconfig), or the script will attempt to invoke
-# boskos to obtain one of the knative testing clusters in GKE.
+# For convenience, it can also be executed manually.
+# Running the script without parameters, or with the --all-tests
+# flag, causes all tests to be executed, in the right order.
+# Use the flags --build-tests, --unit-tests and --integration-tests
+# to run a specific set of tests.
 
 set -o xtrace
 
@@ -40,20 +42,14 @@ function build_tests() {
 }
 
 function unit_tests() {
-  echo "Running unit tests"
+  header "Running unit tests"
   report_go_test ./...
 }
 
 function integration_tests() {
-  echo "Running integration tests"
-
-  # The logic to create resource names (which are used by kubetest) in `e2e-tests.sh` requires
-  # that the variable `BUILD_NUMBER` be set, which is provided by Prow, so if we aren't running
-  # this from Prow we need to provide our own.
-  export BUILD_NUMBER=${BUILD_NUMBER:-$RANDOM}
-
-  options=""
-  (( EMIT_METRICS )) && options="-emitmetrics"
+  header "Running integration tests"
+  local options=""
+  (( EMIT_METRICS )) && options="--emit-metrics"
    ./test/e2e-tests.sh ${options}
 }
 

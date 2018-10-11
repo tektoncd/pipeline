@@ -23,16 +23,12 @@ set -o xtrace
 set -o errexit
 set -o pipefail
 
-# The logic to create resource names (which are used by kubetest) in `e2e-tests.sh` requires
-# that the variable `BUILD_NUMBER` be set, which is provided by Prow, so if we aren't running
-# this from Prow we need to provide our own.
-export BUILD_NUMBER=${BUILD_NUMBER:-$RANDOM}
-
 # The scripts were initially setup to use the knative/serving style `DOCKER_REPO_OVERRIDE`
 # before knative/serving was updated to use `ko` + `KO_DOCKER_REPO`. If the scripts were
 # called with `KO_DOCKER_REPO` already set (i.e. using a user's own local cluster, we should
 # respect that).
-if ! [[ -z ${KO_DOCKER_REPO} ]]; then
+# Note that this will only be used when this script is called with the --run-tests flag.
+if [[ -n ${KO_DOCKER_REPO} ]]; then
     export DOCKER_REPO_OVERRIDE=${KO_DOCKER_REPO}
 fi
 
@@ -65,12 +61,7 @@ header "Setting up environment"
 initialize $@
 set -o xtrace
 
-# If this was kicked off from Prow, then `DOCKER_REPO_OVERRIDE` will be set (by `initialize`) but
-# `KO_DOCKER_REPO` will not be, and we need the latter to run `ko` so we should set that to
-# the same value
-if [[ -z ${KO_DOCKER_REPO} ]]; then
-    export KO_DOCKER_REPO=${DOCKER_REPO_OVERRIDE}
-fi
+export KO_DOCKER_REPO=${DOCKER_REPO_OVERRIDE}
 
 header "Deploying Build CRD"
 kubectl apply -f ./third_party/config/build/release.yaml
@@ -88,8 +79,6 @@ wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did no
 ./examples/smoke-test.sh || fail_test
 
 # Run the integration tests
-report_go_test \
--v -tags=e2e -count=1 -timeout=20m ./test \
-${options} || fail_test
+go_test_e2e -timeout=20m ./test || fail_test
 
 success
