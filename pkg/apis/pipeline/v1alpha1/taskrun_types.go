@@ -39,6 +39,8 @@ type TaskRunSpec struct {
 	// +optional
 	Outputs Outputs `json:"outputs,omitempty"`
 	Results Results `json:"results"`
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.
