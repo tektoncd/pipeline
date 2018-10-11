@@ -52,6 +52,9 @@ type PipelineParams struct {
 	Status PipelineParamsStatus `json:"status,omitempty"`
 }
 
+// AllClusterTypes is a list of all ClusterTypes, used for validation
+var AllClusterTypes = []ClusterType{ClusterTypeGKE}
+
 // ClusterType represents the type of cluster,
 // so that the controller will know how to deploy to it.
 type ClusterType string
@@ -80,6 +83,9 @@ type Results struct {
 	// +optional
 	Tests *ResultTarget `json:"tests,omitempty"`
 }
+
+// AllResultTargetTypes is a list of all ResultTargetTypes, used for validation
+var AllResultTargetTypes = []ResultTargetType{ResultTargetTypeGCS}
 
 // ResultTargetType represents the type of endpoint that this result target is,
 // so that the controller will know how to write results to it.
