@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -106,7 +107,7 @@ func checkForPipelineResourceDuplicates(resources []PipelineResourceVersion, pat
 		// Check the unique combination of resource+version. Covers the use case of inputs with same resource name
 		// and different versions
 		key := fmt.Sprintf("%s%s", r.ResourceRef.Name, r.Version)
-		if _, ok := encountered[key]; ok {
+		if _, ok := encountered[strings.ToLower(key)]; ok {
 			return apis.ErrMultipleOneOf(path)
 		}
 		encountered[key] = struct{}{}
@@ -119,7 +120,7 @@ func validateTaskTriggerType(r TaskTriggerRef, path string) *apis.FieldError {
 		return nil
 	}
 	for _, allowed := range []TaskTriggerType{TaskTriggerTypePipelineRun, TaskTriggerTypeManual} {
-		if r.Type == allowed {
+		if strings.ToLower(string(r.Type)) == strings.ToLower(string(allowed)) {
 			return nil
 		}
 	}
@@ -130,7 +131,7 @@ func validateParameters(params []Param) *apis.FieldError {
 	// Template must not duplicate parameter names.
 	seen := map[string]struct{}{}
 	for _, p := range params {
-		if _, ok := seen[p.Name]; ok {
+		if _, ok := seen[strings.ToLower(p.Name)]; ok {
 			return apis.ErrMultipleOneOf("spec.inputs.params")
 		}
 		seen[p.Name] = struct{}{}
