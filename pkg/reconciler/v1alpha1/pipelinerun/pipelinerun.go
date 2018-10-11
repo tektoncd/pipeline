@@ -171,7 +171,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		p, pr.Name,
 	)
 	if err != nil {
-		return fmt.Errorf("error getting Tasks for Pipeline %s, Pipeline may be invalid!: %s", p.Name, err)
+		if errors.IsNotFound(err) {
+			c.Logger.Infof("PipelineRun %s's Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
+				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
+				fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err)
+			// The PipelineRun is Invalid so we want to stop trying to Reconcile it
+			return nil
+		}
+		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s, Pipeline may be invalid!: %s", p.Name, err)
 	}
 	prtr := resources.GetNextTask(pr.Name, state, c.Logger)
 	if prtr != nil {

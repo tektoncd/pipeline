@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"testing"
 
 	"go.uber.org/zap"
@@ -255,7 +254,7 @@ func TestGetPipelineState(t *testing.T) {
 
 func TestGetPipelineState_TaskDoesntExist(t *testing.T) {
 	getTask := func(namespace, name string) (*v1alpha1.Task, error) {
-		return nil, fmt.Errorf("Task %s doesn't exist", name)
+		return nil, errors.NewNotFound(v1alpha1.Resource("task"), name)
 	}
 	getTaskRun := func(namespace, name string) (*v1alpha1.TaskRun, error) {
 		return nil, nil
@@ -263,6 +262,9 @@ func TestGetPipelineState_TaskDoesntExist(t *testing.T) {
 	_, err := GetPipelineState(getTask, getTaskRun, p, "pipelinerun")
 	if err == nil {
 		t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
+	}
+	if !errors.IsNotFound(err) {
+		t.Fatalf("Expected same error type returned by func for non-existent Task for Pipeline %s but got %s", p.Name, err)
 	}
 }
 
