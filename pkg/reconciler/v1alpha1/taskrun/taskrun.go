@@ -21,27 +21,25 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/knative/build/pkg/builder"
-
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler"
-	resources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/knative/build/pkg/builder"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
 	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler"
+	resources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
 const (
@@ -49,6 +47,7 @@ const (
 	taskRunAgentName = "taskrun-controller"
 	// taskRunControllerName defines name for TaskRun Controller
 	taskRunControllerName = "TaskRun"
+	taskRunNameLabelKey   = "taskrun.knative.dev/taskName"
 )
 
 var (
@@ -137,10 +136,12 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	tr := original.DeepCopy()
-
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
 	err = c.reconcile(ctx, tr)
+	if err != nil {
+		c.Logger.Errorf("Reconcile error: %v", err.Error())
+	}
 	if equality.Semantic.DeepEqual(original.Status, tr.Status) {
 		// If we didn't change anything then don't call updateStatus.
 		// This is important because the copy we loaded from the informer's
@@ -155,15 +156,25 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
 	// get build the same as the taskrun, this is the value we use for 1:1 mapping and retrieval
-	b, err := c.getBuild(tr.Namespace, tr.Name)
+	//build, err := c.buildLister.Builds(tr.Namespace).Get(tr.Name)
+	build, err := c.buildLister.Builds(tr.Namespace).Get(tr.Name)
 	if errors.IsNotFound(err) {
-		if b, err = c.makeBuild(tr, c.Logger); err != nil {
-			return fmt.Errorf("Failed to create a build for taskrun: %v", err)
+		// Build is not present, create build
+		build, err = c.createBuild(tr)
+		if err != nil {
+			c.Logger.Errorf("Failed to create build for task %q :%v", err, tr.Name)
+			return err
 		}
 	} else if err != nil {
-		return fmt.Errorf("Failed retrieving build %s for taskRun %s: %v", tr.Name, tr.Name, err)
+		c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get build %q; %v", tr.Name, tr.Name, err)
+		return err
 	}
-	// handle cases where build with name exists but handled by another controller
+
+	// TODO(aaron-prindle) verify that build does not have to exist to create a tracker
+	if err := c.tracker.Track(tr.GetBuildRef(), tr); err != nil {
+		c.Logger.Errorf("Failed to create tracker for build %q for taskrun %q: %v", tr.Name, tr.Name, err)
+		return err
+	}
 
 	// switch ownerref := metav1.GetControllerOf(b); {
 	// case ownerref == nil, ownerref.APIVersion != groupVersionKind.GroupVersion().String(), ownerref.Kind != groupVersionKind.Kind:
@@ -171,19 +182,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// 	return nil
 	// }
 
-	// taskrun has finished (as child build has finished and status is synced)
-	if len(tr.Status.Conditions) > 0 && tr.Status.Conditions[0].Status != corev1.ConditionUnknown {
-		c.Logger.Infof("Finished %s", tr.Name)
-		return nil
-	}
-
 	// sync build status with taskrun status
-	if len(b.Status.Conditions) > 0 {
-		c.Logger.Infof("Syncing taskrun conditions with build conditions %s", b.Status.Conditions[0])
-	} else {
-		c.Logger.Infof("Syncing taskrun conditions with build conditions []")
-	}
-	tr.Status.Conditions = b.Status.Conditions
+	tr.Status.SetCondition(build.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+
+	c.Logger.Infof("Successfully reconciled taskrun %s/%s", tr.Name, tr.Namespace)
+
 	return nil
 }
 
@@ -199,29 +202,19 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 	return newtaskrun, nil
 }
 
-func (c *Reconciler) getBuild(namespace, name string) (*buildv1alpha1.Build, error) {
-	return c.buildLister.Builds(namespace).Get(name)
-}
-
-func (c *Reconciler) deleteBuild(namespace, name string) error {
-	return c.BuildClientSet.BuildV1alpha1().Builds(namespace).Delete(name, &metav1.DeleteOptions{})
-}
-
-func (c *Reconciler) deleteTaskRun(namespace, name string) error {
-	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(namespace).Delete(name, &metav1.DeleteOptions{})
-}
-
-// makeBuild creates a build from the task, using the task's buildspec.
-func (c *Reconciler) makeBuild(tr *v1alpha1.TaskRun, logger *zap.SugaredLogger) (*buildv1alpha1.Build, error) {
+// createBuild creates a build from the task, using the task's buildspec.
+func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
 	// Get related task for taskrun
 	t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error when listing tasks %v", err)
 	}
 
+	// TODO: Preferably use Validate on task.spec to catch validation error
 	if t.Spec.BuildSpec == nil {
-		return nil, fmt.Errorf("BuildSpec for task %s is nil", t.Name)
+		return nil, fmt.Errorf("Task has nil BuildSpec")
 	}
+
 	b := &buildv1alpha1.Build{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tr.Name,
@@ -229,38 +222,34 @@ func (c *Reconciler) makeBuild(tr *v1alpha1.TaskRun, logger *zap.SugaredLogger) 
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(tr, groupVersionKind),
 			},
+			// Attach new label and pass taskrun labels to build
+			Labels: makeLabels(tr),
 		},
 		Spec: *t.Spec.BuildSpec,
 	}
 
-	build, err := resources.AddInputResource(b, t, tr, c.resourceLister, logger)
+	build, err := resources.AddInputResource(b, t, tr, c.resourceLister, c.Logger)
 	if err != nil {
-		logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
+		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
 	// Apply parameters from the taskrun.
 	build = applyParameters(b, t, tr)
 
-	createdBuild, err := c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Create(build)
-	if err != nil {
-		logger.Errorf("Failed to create build for taskrun %s, %v", tr.Name, err)
-		return nil, err
-	}
-
-	buildRef := corev1.ObjectReference{
-		APIVersion: "build.knative.dev/v1alpha1",
-		Kind:       "Build",
-		Namespace:  tr.Namespace,
-		Name:       tr.Name,
-	}
-	if err := c.tracker.Track(buildRef, tr); err != nil {
-		logger.Errorf("Failed to create tracker for build %s for taskrun %s: %v", buildRef, tr.Name, err)
-		return nil, err
-	}
-	return createdBuild, nil
+	return c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Create(build)
 }
 
+// makeLabels constructs the labels we will apply to TaskRun resources.
+func makeLabels(s *v1alpha1.TaskRun) map[string]string {
+	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
+	labels[taskRunNameLabelKey] = s.Name
+	for k, v := range s.ObjectMeta.Labels {
+		labels[k] = v
+	}
+	return labels
+
+}
 func applyParameters(b *buildv1alpha1.Build, t *v1alpha1.Task, tr *v1alpha1.TaskRun) *buildv1alpha1.Build {
 	// This assumes that the TaskRun inputs have been validated against what the Task requests.
 	replacements := map[string]string{}
