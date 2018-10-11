@@ -42,6 +42,8 @@ const (
 	hwPipelineName       = "helloworld-pipeline"
 	hwPipelineRunName    = "helloworld-pipelinerun"
 	hwPipelineParamsName = "helloworld-pipelineparams"
+	hwPipelineTaskName1  = "helloworld-task-1"
+	hwPipelineTaskName2  = "helloworld-task-2"
 
 	logPath = "/workspace"
 	logFile = "out.txt"
@@ -170,19 +172,13 @@ func getHelloWorldPipeline(namespace string) *v1alpha1.Pipeline {
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{
 				v1alpha1.PipelineTask{
-					Name: "helloworld-task-1",
+					Name: hwPipelineTaskName1,
 					TaskRef: v1alpha1.TaskRef{
 						Name: hwTaskName,
 					},
 				},
 				v1alpha1.PipelineTask{
-					Name: "helloworld-task-2",
-					TaskRef: v1alpha1.TaskRef{
-						Name: hwTaskName,
-					},
-				},
-				v1alpha1.PipelineTask{
-					Name: "helloworld-task-3",
+					Name: hwPipelineTaskName2,
 					TaskRef: v1alpha1.TaskRef{
 						Name: hwTaskName,
 					},

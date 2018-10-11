@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"strings"
 	"testing"
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -63,17 +64,18 @@ func TestPipelineRun(t *testing.T) {
 	}
 	logger.Infof("Making sure the expected TaskRuns were created")
 	expectedTaskRuns := []string{
-		hwPipelineName + hwPipelineTaskName1,
-		hwPipelineName + hwPipelineTaskName2,
+		strings.Join([]string{hwPipelineRunName, hwPipelineTaskName1}, "-"),
+		strings.Join([]string{hwPipelineRunName, hwPipelineTaskName2}, "-"),
 	}
 	for _, runName := range expectedTaskRuns {
 		r, err := c.TaskRunClient.Get(runName, metav1.GetOptions{})
 		if err != nil {
 			t.Errorf("Couldn't get expected TaskRun %s: %s", runName, err)
-		}
-		c := r.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c.Status != corev1.ConditionTrue {
-			t.Errorf("Expected TaskRun %s to have succeeded but Status is %s", runName, c.Status)
+		} else {
+			c := r.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			if c.Status != corev1.ConditionTrue {
+				t.Errorf("Expected TaskRun %s to have succeeded but Status is %s", runName, c.Status)
+			}
 		}
 	}
 	VerifyBuildOutput(t, c, namespace, taskOutput)

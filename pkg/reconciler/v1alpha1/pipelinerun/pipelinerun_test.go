@@ -23,10 +23,13 @@ import (
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
 	informersv1alpha1 "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -78,6 +81,18 @@ func TestReconcile(t *testing.T) {
 	if len(client.Actions()) == 0 {
 		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
 	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := client.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	condition := reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected PipelineRun status to be in progress, but was %s", condition)
+	}
+
+	// Check that the expected TaskRun was created
 	actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
 	trueB := true
 	expectedTaskRun := &v1alpha1.TaskRun{
@@ -92,7 +107,11 @@ func TestReconcile(t *testing.T) {
 				BlockOwnerDeletion: &trueB,
 			}},
 		},
-		Spec: v1alpha1.TaskRunSpec{},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name: "unit-test-task",
+			},
+		},
 	}
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
