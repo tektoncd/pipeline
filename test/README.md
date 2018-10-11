@@ -131,7 +131,7 @@ and not by this project, will override the cluster used by the integration tests
 To run one e2e test case, e.g. TestTaskRun, use [the `-run` flag with `go test`](https://golang.org/cmd/go/#hdr-Testing_flags):
 
 ```bash
-go test -v -tags=e2e -count=1 ./test/e2e -run ^TestTaskRun$
+go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun$
 ```
 
 
