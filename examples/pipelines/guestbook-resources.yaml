@@ -10,8 +10,6 @@ spec:
       value: github.com/kubernetes/examples
     - name: revision
       value: HEAD      
-    - name: serviceAccount
-      value: githubServiceAccount
 ---      
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Resource
@@ -23,8 +21,6 @@ spec:
     params:
       - name: url
         value: github.com/GoogleCloudPlatform/redis-docker/
-      - name: serviceAccount
-        value: githubServiceAccount
       - name: revision
         value: HEAD
 ---        

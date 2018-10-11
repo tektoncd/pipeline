@@ -64,11 +64,6 @@ func AddInputResource(
 	}
 
 	build.Spec.Source = &buildv1alpha1.SourceSpec{Git: gitSourceSpec}
-	// add service account name if available, otherwise Build will
-	// use the default service account in the namespace
-	if gitResource.ServiceAccount != "" {
-		build.Spec.ServiceAccountName = gitResource.ServiceAccount
-	}
 
 	return build, nil
 }

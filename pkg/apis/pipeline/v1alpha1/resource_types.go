@@ -44,7 +44,6 @@ type PipelineResourceInterface interface {
 	GetType() PipelineResourceType
 	GetParams() []Param
 	GetVersion() string
-	GetServiceAccountName() string
 }
 
 // PipelineResourceStatus should implment status for PipelineResource

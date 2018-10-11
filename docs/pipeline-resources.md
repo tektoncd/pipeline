@@ -21,15 +21,12 @@ spec:
     value: github.com/wizzbangcorp/wizzbang
   - name: Revision
     value: master
-  - name: ServiceAccount
-    value: pipeline-sa    
  ```
 
    Params that can be added are the following:
 
    1. URL: represents the location of the git repository 
    1. Revision: Git [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions ) (branch, tag, commit SHA or ref) to clone. If no revision is specified, the resource will default to `latest` from `master`
-   1. Service Account: specifies the `name` of a `ServiceAccount` resource object. Add this paramater to run your task with the privileges of the specified service account. If no serviceAccountName field is specified, your task runs using the default service account that is in the namespace of the Pipeline resource object.  
 
  #### Use the defined git resource in a `Task` definition
 

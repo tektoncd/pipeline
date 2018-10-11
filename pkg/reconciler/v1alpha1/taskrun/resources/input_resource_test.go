@@ -54,27 +54,7 @@ func setUp() {
 			},
 		},
 	}
-	resWithServiceAccount := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "workspace-sa",
-			Namespace: "marshmallow",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "git",
-			Params: []v1alpha1.Param{
-				v1alpha1.Param{
-					Name:  "Url",
-					Value: "https://github.com/grafeas/kritis",
-				},
-				v1alpha1.Param{
-					Name:  "ServiceAccount",
-					Value: "kritis-service-account",
-				},
-			},
-		},
-	}
 	pipelineResourceInformer.Informer().GetIndexer().Add(res)
-	pipelineResourceInformer.Informer().GetIndexer().Add(resWithServiceAccount)
 }
 
 func TestAddResourceToBuild(t *testing.T) {
@@ -277,54 +257,6 @@ func TestAddResourceToBuild(t *testing.T) {
 						Revision: "master",
 					},
 				},
-			},
-		},
-	}, {
-		desc: "set service account if provided",
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{
-						v1alpha1.TaskResource{
-							Name: "workspace-sa",
-							Type: "git",
-						},
-					},
-				},
-			},
-		},
-		taskRun: taskRun,
-		build:   build,
-		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Source: &buildv1alpha1.SourceSpec{
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://github.com/grafeas/kritis",
-						Revision: "master",
-					},
-				},
-				ServiceAccountName: "kritis-service-account",
 			},
 		},
 	}, {

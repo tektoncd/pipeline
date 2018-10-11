@@ -22,8 +22,6 @@ type ImageResource struct {
 	Type   PipelineResourceType `json:"type"`
 	URL    string               `json:"url"`
 	Digest string               `json:"digest"`
-	// +optional
-	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // GetName returns the name of the resource
@@ -39,11 +37,6 @@ func (s ImageResource) GetType() PipelineResourceType {
 // GetVersion returns the version of the resource
 func (s ImageResource) GetVersion() string {
 	return s.Digest
-}
-
-// GetServiceAccountName returns the service account to be used with this resource
-func (s *ImageResource) GetServiceAccountName() string {
-	return s.ServiceAccount
 }
 
 // GetParams returns the resoruce params
