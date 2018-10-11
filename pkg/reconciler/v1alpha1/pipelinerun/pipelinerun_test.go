@@ -46,7 +46,6 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}}
-
 	ps := []*v1alpha1.Pipeline{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline",
@@ -118,7 +117,7 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func TestReconcileInvalid(t *testing.T) {
+func TestReconcile_InvalidPipeline(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "invalid-pipeline",
@@ -157,6 +156,40 @@ func TestReconcileInvalid(t *testing.T) {
 				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
 			}
 		})
+	}
+}
+
+func TestReconcile_MissingTasks(t *testing.T) {
+	ps := []*v1alpha1.Pipeline{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline-missing-tasks",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
+			Name:    "myspecialtask",
+			TaskRef: v1alpha1.TaskRef{Name: "sometask"},
+		}},
+		}},
+	}
+	prs := []*v1alpha1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipelinerun-missing-tasks",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipeline-missing-tasks",
+			},
+		}},
+	}
+	d := testData{
+		prs: prs,
+		ps:  ps,
+	}
+	c, _, _ := getController(d)
+	err := c.Reconciler.Reconcile(context.Background(), "foo/pipelinerun-missing-tasks")
+	if err != nil {
+		t.Errorf("When Pipeline's Tasks can't be found, expected no error to be returned (i.e. controller should stop trying to reconcile) but got: %s", err)
 	}
 }
 

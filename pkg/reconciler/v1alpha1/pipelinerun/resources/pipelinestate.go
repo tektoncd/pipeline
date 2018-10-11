@@ -85,9 +85,9 @@ func GetPipelineState(getTask GetTask, getTaskRun GetTaskRun, p *v1alpha1.Pipeli
 		pt := p.Spec.Tasks[i]
 		t, err := getTask(p.Namespace, pt.TaskRef.Name)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get tasks for Pipeline %q: Error getting task %q : %s",
-				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
-				fmt.Sprintf("%s/%s", p.Namespace, pt.TaskRef.Name), err)
+			// If the Task can't be found, it means the PipelineRun is invalid. Return the same error
+			// type so it can be used by the caller.
+			return nil, err
 		}
 		prtr := PipelineRunTaskRun{
 			Task:         t,
