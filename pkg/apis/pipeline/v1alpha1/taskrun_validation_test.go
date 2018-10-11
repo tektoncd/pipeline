@@ -176,7 +176,6 @@ func TestTaskRunSpecValidate(t *testing.T) {
 					}},
 				},
 			},
-			// TODO(shashwathi): wrong error msg
 			wantErr: apis.ErrInvalidValue("invalidtype", "spec.Outputs.Resources.resourceName.Type"),
 		},
 		{
