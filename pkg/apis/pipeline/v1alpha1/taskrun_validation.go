@@ -46,7 +46,7 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 	}
 
 	// check for input resources
-	if err := checkForipelineResourceDuplicates(ts.Inputs.Resources, "spec.Inputs.Resources.Name"); err != nil {
+	if err := checkForPipelineResourceDuplicates(ts.Inputs.Resources, "spec.Inputs.Resources.Name"); err != nil {
 		return err
 	}
 	if err := validateParameters(ts.Inputs.Params); err != nil {
@@ -100,7 +100,7 @@ func validateResultTarget(r ResultTarget, path string) *apis.FieldError {
 	return nil
 }
 
-func checkForipelineResourceDuplicates(resources []PipelineResourceVersion, path string) *apis.FieldError {
+func checkForPipelineResourceDuplicates(resources []PipelineResourceVersion, path string) *apis.FieldError {
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
 		// Check the unique combination of resource+version. Covers the use case of inputs with same resource name

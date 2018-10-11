@@ -171,12 +171,13 @@ func TestTaskRunSpecValidate(t *testing.T) {
 				},
 				Outputs: Outputs{
 					Resources: []TaskResource{{
+						Name: "resourceName",
 						Type: "invalidtype",
 					}},
 				},
 			},
 			// TODO(shashwathi): wrong error msg
-			wantErr: apis.ErrInvalidValue("invalidtype", "spec.Outputs.Resources..Type"),
+			wantErr: apis.ErrInvalidValue("invalidtype", "spec.Outputs.Resources.resourceName.Type"),
 		},
 		{
 			name: "duplicate task output name",
