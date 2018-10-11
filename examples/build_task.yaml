@@ -15,10 +15,9 @@ spec:
             - name: builtImage
               type: image
     buildSpec:
-        template:
-            name: kaniko
-            arguments:
-                - name: DOCKERFILE
-                  value: ${pathToDockerFile}
-                - name: REGISTRY
-                  value: ${registry}
+          steps:
+          - name: build-and-push
+            image: gcr.io/kaniko-project/executor
+            args:
+            - --dockerfile=${pathToDockerFile}
+            - --destination=$builtImage

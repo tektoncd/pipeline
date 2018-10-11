@@ -44,6 +44,11 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 		return err
 	}
 
+	// We also require that a BuildSpec is NOT a template.
+	if ts.BuildSpec.Template != nil {
+		return apis.ErrDisallowedFields("taskspec.BuildSpec.Template")
+	}
+
 	// A task doesn't have to have inputs or outputs, but if it does they must be valid.
 	// A task can't duplicate input or output names.
 
