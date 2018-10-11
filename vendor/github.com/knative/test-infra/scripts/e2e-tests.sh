@@ -27,7 +27,9 @@ function build_resource_name() {
   if [[ -n "${suffix}" ]]; then
     suffix=${suffix:${#suffix}<20?0:-20}
   fi
-  echo "${prefix:0:20}${suffix}"
+  local name="${prefix:0:20}${suffix}"
+  # Ensure name doesn't end with "-"
+  echo "${name%-}"
 }
 
 # Test cluster parameters
@@ -68,11 +70,11 @@ function fail_test() {
 }
 
 # Run the given E2E tests (must be tagged as such).
-# Parameters: $1..$n - directories containing the tests to run.
+# Parameters: $1..$n - any go test flags, then directories containing the tests to run.
 function go_test_e2e() {
   local options=""
   (( EMIT_METRICS )) && options="-emitmetrics"
-  report_go_test -v -tags=e2e -count=1 -timeout=20m $@ ${options}
+  report_go_test -v -tags=e2e -count=1 $@ ${options}
 }
 
 # Download the k8s binaries required by kubetest.

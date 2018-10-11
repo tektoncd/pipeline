@@ -57,7 +57,7 @@ function tag_images_in_yaml() {
 #             $3 - tag to apply (optional).
 function publish_yaml() {
   gsutil cp $1 gs://$2/latest/
-  [[ -n $3 ]] && gsutil cp $1 gs://$2/previous/$3/
+  [[ -n $3 ]] && gsutil cp $1 gs://$2/previous/$3/ || true
 }
 
 SKIP_TESTS=0

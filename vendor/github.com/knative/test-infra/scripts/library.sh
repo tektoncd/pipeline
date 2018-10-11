@@ -94,7 +94,7 @@ function wait_until_object_does_not_exist() {
   fi
   echo -n "Waiting until ${DESCRIPTION} does not exist"
   for i in {1..150}; do  # timeout after 5 minutes
-    kubectl ${KUBECTL_ARGS} 2>&1 > /dev/null || return 0
+    kubectl ${KUBECTL_ARGS} > /dev/null 2>&1 || return 0
     echo -n "."
     sleep 2
   done
@@ -235,9 +235,16 @@ function report_go_test() {
   echo "Finished run, return code is ${failed}"
   # Tests didn't run.
   [[ ! -s ${report} ]] && return 1
-  # Create WORKSPACE file, required to use bazel
-  touch WORKSPACE
+  # Create WORKSPACE file, required to use bazel, if necessary
+  local has_workspace=0
+  if [[ -e WORKSPACE ]]; then
+    has_workspace=1
+  else
+    touch WORKSPACE
+  fi
   local targets=""
+  local last_run=""
+  local test_files=""
   # Parse the report and generate fake tests for each passing/failing test.
   echo "Start parsing results, summary:"
   while read line ; do
@@ -245,15 +252,34 @@ function report_go_test() {
     local field0="${fields[0]}"
     local field1="${fields[1]}"
     local name="${fields[2]}"
+    # Deal with a SIGQUIT log entry (usually a test timeout).
+    # This is a fallback in case there's no kill signal log entry.
+    # SIGQUIT: quit
+    if [[ "${field0}" == "SIGQUIT:" ]]; then
+      name="${last_run}"
+      field1="FAIL:"
+      error="${fields[@]}"
+    fi
     # Ignore subtests (those containing slashes)
     if [[ -n "${name##*/*}" ]]; then
       local error=""
+      # Deal with a kill signal log entry (usually a test timeout).
+      # *** Test killed with quit: ran too long (10m0s).
+      if [[ "${field0}" == "***" ]]; then
+        name="${last_run}"
+        field1="FAIL:"
+        error="${fields[@]:1}"
+      fi
       # Deal with a fatal log entry, which has a different format:
       # fatal   TestFoo   foo_test.go:275 Expected "foo" but got "bar"
       if [[ "${field0}" == "fatal" ]]; then
-        name="${fields[1]}"
+        name="${field1}"
         field1="FAIL:"
         error="${fields[@]:3}"
+      fi
+      # Keep track of the test currently running.
+      if [[ "${field1}" == "RUN" ]]; then
+        last_run="${name}"
       fi
       # Handle regular go test pass/fail entry for a test.
       if [[ "${field1}" == "PASS:" || "${field1}" == "FAIL:" ]]; then
@@ -269,13 +295,14 @@ function report_go_test() {
           echo "exit 1" >> ${src}
         fi
         chmod +x ${src}
+        test_files="${test_files} ${src}"
         # Populate BUILD.bazel
         echo "sh_test(name=\"${name}\", srcs=[\"${src}\"])" >> BUILD.bazel
       elif [[ "${field0}" == "FAIL" || "${field0}" == "ok" ]] && [[ -n "${field1}" ]]; then
         echo "- ${field0} ${field1}"
         # Create the package structure, move tests and BUILD file
         local package=${field1/github.com\//}
-        local bazel_files="$(ls -1 *.sh BUILD.bazel 2> /dev/null)"
+        local bazel_files="$(ls -1 ${test_files} BUILD.bazel 2> /dev/null)"
         if [[ -n "${bazel_files}" ]]; then
           mkdir -p ${package}
           targets="${targets} //${package}/..."
@@ -283,6 +310,7 @@ function report_go_test() {
         else
           echo "*** INTERNAL ERROR: missing tests for ${package}, got [${bazel_files/$'\n'/, }]"
         fi
+        test_files=""
       fi
     fi
   done < ${report}
@@ -295,7 +323,10 @@ function report_go_test() {
     cat ${report}
   fi
   # Always generate the junit summary.
-  bazel test ${targets} > /dev/null 2>&1
+  bazel test ${targets} > /dev/null 2>&1 || true
+  # Cleanup bazel stuff we created.
+  rm -fr knative
+  (( ! has_workspace )) && rm -fr WORKSPACE bazel-*
   return ${failed}
 }
 
