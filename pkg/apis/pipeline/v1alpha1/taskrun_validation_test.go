@@ -41,7 +41,7 @@ func TestTaskRunValidate(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.task.Validate()
 			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
-				t.Errorf("Unexpected error for taskrun.Validate()/%s; err %v", ts.name, err)
+				t.Errorf("Validate/%s (-want, +got) = %v", ts.name, d)
 			}
 		})
 	}
@@ -306,7 +306,7 @@ func TestTaskRunSpecValidate(t *testing.T) {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.spec.Validate()
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
-				t.Errorf("Unexpected error for taskrunspec.Validate()/%s; err %v", ts.name, err)
+				t.Errorf("Validate/%s (-want, +got) = %v", ts.name, d)
 			}
 		})
 	}
