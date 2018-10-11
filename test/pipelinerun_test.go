@@ -21,8 +21,11 @@ package test
 import (
 	"testing"
 
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
@@ -48,20 +51,30 @@ func TestPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", hwPipelineRunName, err)
 	}
 
-	// TODO wait for the Run to be successful
-	logger.Infof("Waiting for PipelineRun %s in namespace %s to be updated by controller", hwPipelineRunName, namespace)
+	logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", hwPipelineRunName, namespace)
 	if err := WaitForPipelineRunState(c, hwPipelineRunName, func(tr *v1alpha1.PipelineRun) (bool, error) {
-		if len(tr.Status.Conditions) > 0 {
-			// TODO: use actual conditions
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil && c.Status == corev1.ConditionTrue {
 			return true, nil
 		}
 		return false, nil
-	}, "TaskRunCompleted"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
+	}, "PipelineRunSuccess"); err != nil {
+		t.Errorf("Error waiting for PipelineRun %s to finish: %s", hwTaskRunName, err)
 	}
-
-	// TODO check that TaskRuns created
-
-	// Verify that the init containers Build ran had 'taskOutput' written
-	// VerifyBuildOutput(t, c, namespace, taskOutput)
+	logger.Infof("Making sure the expected TaskRuns were created")
+	expectedTaskRuns := []string{
+		hwPipelineName + hwPipelineTaskName1,
+		hwPipelineName + hwPipelineTaskName2,
+	}
+	for _, runName := range expectedTaskRuns {
+		r, err := c.TaskRunClient.Get(runName, metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Couldn't get expected TaskRun %s: %s", runName, err)
+		}
+		c := r.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c.Status != corev1.ConditionTrue {
+			t.Errorf("Expected TaskRun %s to have succeeded but Status is %s", runName, c.Status)
+		}
+	}
+	VerifyBuildOutput(t, c, namespace, taskOutput)
 }

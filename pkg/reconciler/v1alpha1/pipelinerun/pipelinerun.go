@@ -141,7 +141,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		return nil
 	}
-	pipelineTaskRuns, err := resources.GetPipelineState(
+	state, err := resources.GetPipelineState(
 		func(namespace, name string) (*v1alpha1.Task, error) {
 			return c.taskLister.Tasks(namespace).Get(name)
 		},
@@ -153,18 +153,17 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	if err != nil {
 		return fmt.Errorf("error getting Tasks for Pipeline %s, Pipeline may be invalid!: %s", p.Name, err)
 	}
-	prtr := resources.GetNextTask(pipelineTaskRuns)
-	prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr)
-	if err != nil {
-		return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
+	prtr := resources.GetNextTask(pr.Name, state, c.Logger)
+	if prtr != nil {
+		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
+		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr)
+		if err != nil {
+			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
+		}
 	}
 
-	// TODO fetch the taskruns status for this pipeline run.
-	// get all taskruns for all tasks
-
-	// if any either dont exist yet or are themselves unknown, status is unknown
-	// if the status of any is failed, then this pipeline run is failed and we should stop trying to run more
-
+	pr.Status.SetCondition(resources.GetPipelineConditionStatus(pr.Name, state, c.Logger))
+	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
 	return nil
 }
 
@@ -185,7 +184,7 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error getting PipelineRun %s when updating status: %s", pr.Name, err)
 	}
 	if !reflect.DeepEqual(newPr.Status, pr.Status) {
 		newPr.Status = pr.Status

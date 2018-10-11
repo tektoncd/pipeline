@@ -157,7 +157,21 @@ type testData struct {
 }
 
 func seedTestData(d testData) (*fakepipelineclientset.Clientset, informersv1alpha1.PipelineRunInformer, informersv1alpha1.PipelineInformer, informersv1alpha1.TaskRunInformer, informersv1alpha1.TaskInformer) {
-	pipelineClient := fakepipelineclientset.NewSimpleClientset()
+	objs := []runtime.Object{}
+	for _, pr := range d.prs {
+		objs = append(objs, pr)
+	}
+	for _, p := range d.ps {
+		objs = append(objs, p)
+	}
+	for _, tr := range d.trs {
+		objs = append(objs, tr)
+	}
+	for _, t := range d.ts {
+		objs = append(objs, t)
+	}
+	pipelineClient := fakepipelineclientset.NewSimpleClientset(objs...)
+
 	sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
 	pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
 	pipelineInformer := sharedInfomer.Pipeline().V1alpha1().Pipelines()
@@ -170,7 +184,6 @@ func seedTestData(d testData) (*fakepipelineclientset.Clientset, informersv1alph
 	for _, p := range d.ps {
 		pipelineInformer.Informer().GetIndexer().Add(p)
 	}
-
 	for _, tr := range d.trs {
 		taskRunInformer.Informer().GetIndexer().Add(tr)
 	}

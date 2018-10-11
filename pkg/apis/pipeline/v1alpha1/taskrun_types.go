@@ -81,6 +81,14 @@ func (tr *TaskRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha
 	return taskRunCondSet.Manage(tr).GetCondition(t)
 }
 
+// SetCondition sets the condition, unsetting previous conditions with the same
+// type as necessary.
+func (bs *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+	if newCond != nil {
+		taskRunCondSet.Manage(bs).SetCondition(*newCond)
+	}
+}
+
 // StepRun reports the results of running a step in the Task. Each
 // task has the potential to succeed or fail (based on the exit code)
 // and produces logs.

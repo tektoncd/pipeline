@@ -20,30 +20,37 @@ import (
 	"fmt"
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// GetNextTask returns the first Task in pipelineTaskRuns that does
-// not have a corresponding TaskRun and can run.
-func GetNextTask(pipelineTaskRuns []*PipelineRunTaskRun) *PipelineRunTaskRun {
-	for _, prtr := range pipelineTaskRuns {
+// GetNextTask returns the next Task for which a TaskRun should be created,
+// or nil if no TaskRun should be created.
+func GetNextTask(prName string, state []*PipelineRunTaskRun, logger *zap.SugaredLogger) *PipelineRunTaskRun {
+	for _, prtr := range state {
 		if prtr.TaskRun != nil {
-			switch s := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded); s.Status {
-			// if any of the TaskRuns failed, there is no new TaskRun to start
-			case corev1.ConditionFalse:
-				return nil
-			// if the current TaskRun is currently running, don't start another one
-			case corev1.ConditionUnknown:
+			c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			if c == nil {
+				logger.Infof("TaskRun %s doesn't have a condition so it is just starting and we shouldn't start more for PipelineRun %s", prtr.TaskRunName, prName)
 				return nil
 			}
-			// otherwise the TaskRun has finished successfully, so we should move on
+			switch c.Status {
+			case corev1.ConditionFalse:
+				logger.Infof("TaskRun %s has failed; we don't need to run PipelineRun %s", prtr.TaskRunName, prName)
+				return nil
+			case corev1.ConditionUnknown:
+				logger.Infof("TaskRun %s is still running so we shouldn't start more for PipelineRun %s", prtr.TaskRunName, prName)
+				return nil
+			}
 		} else if canTaskRun(prtr.PipelineTask) {
+			logger.Infof("TaskRun %s should be started for PipelineRun %s", prtr.TaskRunName, prName)
 			return prtr
 		}
 	}
+	logger.Infof("No TaskRuns to start for PipelineRun %s", prName)
 	return nil
 }
 
@@ -104,4 +111,53 @@ func GetPipelineState(getTask GetTask, getTaskRun GetTaskRun, p *v1alpha1.Pipeli
 // getTaskRunName should return a uniquie name for a `TaskRun`.
 func getTaskRunName(prName string, pt *v1alpha1.PipelineTask) string {
 	return fmt.Sprintf("%s-%s", prName, pt.Name)
+}
+
+// GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
+// updated with, based on the status of the TaskRuns in state.
+func GetPipelineConditionStatus(prName string, state []*PipelineRunTaskRun, logger *zap.SugaredLogger) *duckv1alpha1.Condition {
+	allFinished := true
+	for _, prtr := range state {
+		if prtr.TaskRun == nil {
+			logger.Infof("TaskRun %s doesn't have a Status, so PipelineRun %s isn't finished", prtr.TaskRunName, prName)
+			allFinished = false
+			break
+		}
+		c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c == nil {
+			logger.Infof("TaskRun %s doens't have a condition, so PipelineRun %s isn't finished", prtr.TaskRunName, prName)
+			allFinished = false
+			break
+		}
+		// If any TaskRuns have failed, we should halt execution and consider the run failed
+		if c.Status == corev1.ConditionFalse {
+			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed", prtr.TaskRunName, prName)
+			return &duckv1alpha1.Condition{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "Failed",
+				Message: fmt.Sprintf("TaskRun %s for Task %s has failed", prtr.TaskRun.Name, prtr.Task.Name),
+			}
+		}
+		if c.Status != corev1.ConditionTrue {
+			logger.Infof("TaskRun %s is still running so PipelineRun %s is still running", prtr.TaskRunName, prName)
+			allFinished = false
+		}
+	}
+	if !allFinished {
+		logger.Infof("PipelineRun %s still has running TaskRuns so it isn't yet done", prName)
+		return &duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  "Running",
+			Message: "Not all Tasks in the Pipeline have finished executing",
+		}
+	}
+	logger.Infof("All TaskRuns have finished for PipelineRun %s so it has finished", prName)
+	return &duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  "Finished",
+		Message: "All Tasks have completed executing",
+	}
 }
