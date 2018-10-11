@@ -98,6 +98,19 @@ func TestTaskRunSpecValidate(t *testing.T) {
 			},
 		},
 		{
+			name: "valid task trigger run type with different capitalization",
+			spec: &TaskRunSpec{
+				TaskRef: TaskRef{
+					Name: "taskrefname",
+				},
+				Trigger: TaskTrigger{
+					TriggerRef: TaskTriggerRef{
+						Type: "PipelineRun",
+					},
+				},
+			},
+		},
+		{
 			name: "valid task inputs",
 			spec: &TaskRunSpec{
 				TaskRef: TaskRef{
