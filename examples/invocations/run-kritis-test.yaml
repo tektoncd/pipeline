@@ -11,8 +11,6 @@ spec:
         triggerRef:
             type: PipelineRun
             name: kritis-pipeline-run-12321312984
-    pipelineParamsRef:
-        name: pipelineparams-sample
     inputs:
         resourcesVersion:
           - resourceRef:
