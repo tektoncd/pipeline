@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
@@ -54,13 +55,14 @@ func TestTaskRun(t *testing.T) {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", hwTaskRunName, err)
 	}
 
-	// Verify status of TaskRun (wait for it)
+	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", hwTaskRunName, namespace)
 	if err := WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
-		if len(tr.Status.Conditions) > 0 && tr.Status.Conditions[0].Status == corev1.ConditionTrue {
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil && c.Status == corev1.ConditionTrue {
 			return true, nil
 		}
 		return false, nil
-	}, "TaskRunCompleted"); err != nil {
+	}, "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 

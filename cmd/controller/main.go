@@ -65,7 +65,7 @@ func main() {
 	logger, atomicLevel := logging.NewLoggerFromConfig(loggingConfig, logging.ControllerLogKey)
 	defer logger.Sync()
 
-	logger.Info("Starting the Build Controller")
+	logger.Info("Starting the Pipeline Controller")
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()

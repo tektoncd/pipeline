@@ -30,11 +30,7 @@ import (
 
 const (
 	interval = 1 * time.Second
-	// Currently using a super short timeout b/c tests are expected to fail so this way
-	// we can get to that failure faster - knative/serving is currently using `6 * time.Minute`
-	// which we could use, or we could use timeouts more specific to what each `Task` is
-	// actually expected to do.
-	timeout = 120 * time.Second
+	timeout  = 2 * time.Minute
 )
 
 // WaitForTaskRunState polls the status of the TaskRun called name from client every

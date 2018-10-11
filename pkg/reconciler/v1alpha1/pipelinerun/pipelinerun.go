@@ -20,13 +20,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/knative/pkg/controller"
 
+	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,6 +64,7 @@ type Reconciler struct {
 	pipelineLister    listers.PipelineLister
 	taskRunLister     listers.TaskRunLister
 	taskLister        listers.TaskLister
+	tracker           tracker.Interface
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -91,6 +95,11 @@ func NewController(
 		UpdateFunc: controller.PassNew(impl.Enqueue),
 		DeleteFunc: impl.Enqueue,
 	})
+
+	r.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
+	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: controller.PassNew(r.tracker.OnChanged),
+	})
 	return impl
 }
 
@@ -117,6 +126,17 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	pr := original.DeepCopy()
+
+	taskRunRef := corev1.ObjectReference{
+		APIVersion: "build-pipeline.knative.dev/v1alpha1",
+		Kind:       "TaskRun",
+		Namespace:  pr.Namespace,
+		Name:       pr.Name,
+	}
+	if err := c.tracker.Track(taskRunRef, pr); err != nil {
+		c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
+		return err
+	}
 
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
@@ -175,6 +195,11 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			Namespace: t.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pr, groupVersionKind),
+			},
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name: t.Name,
 			},
 		},
 	}
