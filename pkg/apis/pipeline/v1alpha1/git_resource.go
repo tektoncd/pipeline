@@ -31,8 +31,6 @@ type GitResource struct {
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
 	Revision string `json:"revision"`
-	// +optional
-	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // NewGitResource create a new git resource to pass to Knative Build
@@ -48,8 +46,6 @@ func NewGitResource(r *PipelineResource) (*GitResource, error) {
 		switch {
 		case strings.EqualFold(param.Name, "URL"):
 			gitResource.URL = param.Value
-		case strings.EqualFold(param.Name, "serviceAccount"):
-			gitResource.ServiceAccount = param.Value
 		case strings.EqualFold(param.Name, "Revision"):
 			gitResource.Revision = param.Value
 		}
@@ -76,11 +72,6 @@ func (s GitResource) GetType() PipelineResourceType {
 // more details what the revison in github is
 func (s GitResource) GetVersion() string {
 	return s.Revision
-}
-
-// GetServiceAccountName returns the service account to be used with this resource
-func (s *GitResource) GetServiceAccountName() string {
-	return s.ServiceAccount
 }
 
 // GetURL returns the url to be used with this resource
