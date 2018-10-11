@@ -17,9 +17,18 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/webhook"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// Check that Task may be validated and defaulted.
+var _ apis.Validatable = (*TaskRun)(nil)
+var _ apis.Defaultable = (*TaskRun)(nil)
+
+// Assert that Task implements the GenericCRD interface.
+var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
@@ -123,3 +132,5 @@ type TaskRunList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TaskRun `json:"items"`
 }
+
+func (t *TaskRun) SetDefaults() {}
