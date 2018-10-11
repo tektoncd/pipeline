@@ -20,6 +20,7 @@ import (
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/webhook"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -78,6 +79,8 @@ type TaskTriggerRef struct {
 	Name string `json:"name,omitempty"`
 }
 
+var taskRunCondSet = duckv1alpha1.NewBatchConditionSet()
+
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
 	Steps []StepRun `json:"steps"`
@@ -85,18 +88,19 @@ type TaskRunStatus struct {
 	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
 }
 
-var taskRunCondSet = duckv1alpha1.NewBatchConditionSet()
-
 // GetCondition returns the Condition matching the given type.
 func (tr *TaskRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
 	return taskRunCondSet.Manage(tr).GetCondition(t)
 }
+func (ts *TaskRunStatus) InitializeConditions() {
+	taskRunCondSet.Manage(ts).InitializeConditions()
+}
 
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
-func (bs *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+func (ts *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
 	if newCond != nil {
-		taskRunCondSet.Manage(bs).SetCondition(*newCond)
+		taskRunCondSet.Manage(ts).SetCondition(*newCond)
 	}
 }
 
@@ -136,3 +140,13 @@ type TaskRunList struct {
 }
 
 func (t *TaskRun) SetDefaults() {}
+
+// GetBuildRef for task
+func (tr *TaskRun) GetBuildRef() corev1.ObjectReference {
+	return corev1.ObjectReference{
+		APIVersion: "build.knative.dev/v1alpha1",
+		Kind:       "Build",
+		Namespace:  tr.Namespace,
+		Name:       tr.Name,
+	}
+}
