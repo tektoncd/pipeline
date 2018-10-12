@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
@@ -26,7 +28,6 @@ import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	fakebuildclientset "github.com/knative/build/pkg/client/clientset/versioned/fake"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions"
-
 	"github.com/knative/pkg/controller"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
@@ -35,8 +36,42 @@ import (
 	ktesting "k8s.io/client-go/testing"
 )
 
-func TestReconcile(t *testing.T) {
-	taskname := "test-task"
+var simpleTask = &v1alpha1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-task",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.TaskSpec{
+		BuildSpec: &buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				{
+					Name:  "simple-step",
+					Image: "foo",
+				},
+			},
+		},
+	},
+}
+
+var templatedTask = &v1alpha1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "task-with-templating",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.TaskSpec{
+		BuildSpec: &buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				{
+					Name:  "mycontainer",
+					Image: "myimage",
+					Args:  []string{"--my-arg=${inputs.params.myarg}"},
+				},
+			},
+		},
+	},
+}
+
+func TestReconcileBuildsCreated(t *testing.T) {
 	taskruns := []*v1alpha1.TaskRun{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -45,77 +80,134 @@ func TestReconcile(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskRunSpec{
 				TaskRef: v1alpha1.TaskRef{
-					Name:       taskname,
+					Name:       "test-task",
 					APIVersion: "a1",
 				},
-			}},
-	}
-
-	buildSpec := buildv1alpha1.BuildSpec{
-		Template: &buildv1alpha1.TemplateInstantiationSpec{
-			Name: "kaniko",
-			Arguments: []buildv1alpha1.ArgumentSpec{
-				buildv1alpha1.ArgumentSpec{
-					Name:  "DOCKERFILE",
-					Value: "${PATH_TO_DOCKERFILE}",
-				},
-				buildv1alpha1.ArgumentSpec{
-					Name:  "REGISTRY",
-					Value: "${REGISTRY}",
-				},
-			}},
-	}
-
-	tasks := []*v1alpha1.Task{
+			},
+		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      taskname,
+				Name:      "test-taskrun-templating",
 				Namespace: "foo",
 			},
-			Spec: v1alpha1.TaskSpec{
-				BuildSpec: &buildSpec,
-			}},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: v1alpha1.TaskRef{
+					Name:       "task-with-templating",
+					APIVersion: "a1",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Params: []v1alpha1.Param{
+						{
+							Name:  "myarg",
+							Value: "foo",
+						},
+					},
+				},
+			},
+		},
 	}
+
 	d := testData{
 		taskruns: taskruns,
-		tasks:    tasks,
+		tasks:    []*v1alpha1.Task{simpleTask, templatedTask},
 	}
 	testcases := []struct {
-		name         string
-		taskRun      string
-		shdErr       bool
-		shdMakebuild bool
-		log          string
+		name            string
+		taskRun         string
+		wantedBuildSpec buildv1alpha1.BuildSpec
 	}{
-		{"success", "foo/test-taskrun-run-success", false, true, ""},
+		{
+			name:    "success",
+			taskRun: "foo/test-taskrun-run-success",
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{
+					{
+						Name:  "simple-step",
+						Image: "foo",
+					},
+				},
+			},
+		},
+		{
+			name:    "params",
+			taskRun: "foo/test-taskrun-templating",
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{
+					{
+						Name:  "mycontainer",
+						Image: "myimage",
+						Args:  []string{"--my-arg=foo"},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs, client := getController(d)
-			err := c.Reconciler.Reconcile(context.Background(), tc.taskRun)
-			if tc.shdErr != (err != nil) {
-				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
+			c, _, client := getController(d)
+			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err != nil {
+				t.Errorf("expected no error. Got error %v", err)
 			}
-			if tc.log == "" && logs.Len() > 0 {
-				t.Errorf("expected to see no error log. However found errors in logs: %v", logs)
-			} else if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
-				m := getLogMessages(logs)
-				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
-			} else if tc.shdMakebuild {
-				if err == nil {
-					if len(client.Actions()) == 0 {
-						t.Errorf("Expected actions to be logged in the buildclient, got none")
-					}
-					build := client.Actions()[0].(ktesting.CreateAction).GetObject().(*buildv1alpha1.Build)
-					if d := cmp.Diff(build.Spec, buildSpec); d != "" {
-						t.Errorf("Expected created resource to be %v, but was %v", build.Spec, buildSpec)
-					}
-				}
+
+			if len(client.Actions()) == 0 {
+				t.Errorf("Expected actions to be logged in the buildclient, got none")
+			}
+			build := client.Actions()[0].(ktesting.CreateAction).GetObject().(*buildv1alpha1.Build)
+			if d := cmp.Diff(build.Spec, tc.wantedBuildSpec); d != "" {
+				t.Errorf("buildspec doesn't match, diff: %s", d)
 			}
 		})
 	}
 }
 
+func TestReconcileBuildCreationErrors(t *testing.T) {
+	taskRuns := []*v1alpha1.TaskRun{
+		&v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "notaskrun",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: v1alpha1.TaskRef{
+					Name:       "notask",
+					APIVersion: "a1",
+				},
+			},
+		},
+	}
+
+	tasks := []*v1alpha1.Task{
+		simpleTask,
+	}
+
+	d := testData{
+		taskruns: taskRuns,
+		tasks:    tasks,
+	}
+
+	testcases := []struct {
+		name    string
+		taskRun string
+	}{
+		{
+			name:    "task run with no task",
+			taskRun: "foo/notaskrun",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, client := getController(d)
+			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err == nil {
+				t.Error("Expected reconcile to error. Got nil")
+			}
+			if len(client.Actions()) != 0 {
+				t.Errorf("expected no actions to be created by the reconciler, got %v", client.Actions())
+			}
+		})
+	}
+
+}
 func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakebuildclientset.Clientset) {
 	pipelineClient := fakepipelineclientset.NewSimpleClientset()
 	buildClient := fakebuildclientset.NewSimpleClientset()
