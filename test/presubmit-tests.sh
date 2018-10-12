@@ -50,7 +50,7 @@ function integration_tests() {
   header "Running integration tests"
   local options=""
   (( EMIT_METRICS )) && options="--emit-metrics"
-   ./test/e2e-tests.sh ${options}
+  ./test/e2e-tests.sh ${options}
 }
 
 main $@
