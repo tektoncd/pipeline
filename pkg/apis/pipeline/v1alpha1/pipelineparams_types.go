@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/knative/pkg/webhook"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,6 +27,8 @@ type PipelineParamsSpec struct {
 	Results        Results `json:"results"`
 	// +optional
 	Clusters []Cluster `json:"clusters,omitempty"`
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
 }
 
 // PipelineParamsStatus defines the observed state of PipelineParams
@@ -51,6 +54,9 @@ type PipelineParams struct {
 	// +optional
 	Status PipelineParamsStatus `json:"status,omitempty"`
 }
+
+// Assert that PipelineParams implements the GenericCRD interface.
+var _ webhook.GenericCRD = (*PipelineParams)(nil)
 
 // AllClusterTypes is a list of all ClusterTypes, used for validation
 var AllClusterTypes = []ClusterType{ClusterTypeGKE}
