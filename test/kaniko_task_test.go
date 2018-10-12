@@ -61,11 +61,11 @@ func getGitResource(namespace string) *v1alpha1.PipelineResource {
 
 func getTask(namespace string, t *testing.T) *v1alpha1.Task {
 	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)
-	// the DOCKER_REPO_OVERRIDE will be set with according to the porject where the cluster is created
+	// the KO_DOCKER_REPO will be set with according to the porject where the cluster is created
 	// it is used here to dunamically get the docker registery to push the image to
-	dockerRepo := os.Getenv("DOCKER_REPO_OVERRIDE")
+	dockerRepo := os.Getenv("KO_DOCKER_REPO")
 	if dockerRepo == "" {
-		t.Fatalf("DOCKER_REPO_OVERRIDE env variable is required")
+		t.Fatalf("KO_DOCKER_REPO env variable is required")
 	}
 
 	return &v1alpha1.Task{
@@ -89,8 +89,7 @@ func getTask(namespace string, t *testing.T) *v1alpha1.Task {
 					Image: "gcr.io/kaniko-project/executor",
 					Args: []string{"--dockerfile=/workspace/Dockerfile",
 						fmt.Sprintf("--destination=%s/kanikotasktest", dockerRepo),
-						// no-push flag is used as a workaround for issue with access to uploading images
-						"--no-push"},
+					},
 				}},
 			},
 		},
