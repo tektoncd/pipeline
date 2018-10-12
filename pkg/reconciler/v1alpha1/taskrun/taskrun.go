@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
@@ -104,15 +103,10 @@ func NewController(
 	// 	DeleteFunc: impl.Enqueue,
 	// })
 
-	c.tracker = tracker.New(impl.EnqueueKey, 30*time.Second)
+	c.tracker = tracker.New(impl.EnqueueKey, opt.GetTrackerLease())
 	buildInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.tracker.OnChanged,
 		UpdateFunc: controller.PassNew(c.tracker.OnChanged),
-	})
-
-	resourceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    impl.Enqueue,
-		UpdateFunc: controller.PassNew(impl.Enqueue),
 	})
 
 	return impl

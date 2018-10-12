@@ -32,9 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-
-	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 const (
@@ -63,6 +60,9 @@ func getGitResource(namespace string) *v1alpha1.PipelineResource {
 }
 
 func getTask(namespace string, t *testing.T) *v1alpha1.Task {
+	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)
+	// the DOCKER_REPO_OVERRIDE will be set with according to the porject where the cluster is created
+	// it is used here to dunamically get the docker registery to push the image to
 	dockerRepo := os.Getenv("DOCKER_REPO_OVERRIDE")
 	if dockerRepo == "" {
 		t.Fatalf("DOCKER_REPO_OVERRIDE env variable is required")
@@ -89,6 +89,7 @@ func getTask(namespace string, t *testing.T) *v1alpha1.Task {
 					Image: "gcr.io/kaniko-project/executor",
 					Args: []string{"--dockerfile=/workspace/Dockerfile",
 						fmt.Sprintf("--destination=%s/kanikotasktest", dockerRepo),
+						// no-push flag is used as a workaround for issue with access to uploading images
 						"--no-push"},
 				}},
 			},
@@ -133,16 +134,17 @@ func TestKanikoTaskRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
 	defer tearDown(logger, c.KubeClient, namespace)
 
+	logger.Infof("Creating Git PipelineResource %s", kanikoResourceName)
 	if _, err := c.PipelineResourceClient.Create(getGitResource(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
 	}
 
-	// Create task
+	logger.Infof("Creating Task %s", kanikoTaskName)
 	if _, err := c.TaskClient.Create(getTask(namespace, t)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", kanikoTaskName, err)
 	}
 
-	// Create TaskRun
+	logger.Infof("Creating TaskRun %s", kanikoTaskRunName)
 	if _, err := c.TaskRunClient.Create(getTaskRun(namespace)); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", kanikoTaskRunName, err)
 	}
@@ -182,4 +184,5 @@ func TestKanikoTaskRun(t *testing.T) {
 	if !strings.Contains(buf.String(), kanikoBuildOutput) {
 		t.Fatalf("Expected output %s from pod %s but got %s", kanikoBuildOutput, podName, buf.String())
 	}
+
 }

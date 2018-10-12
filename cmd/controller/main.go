@@ -95,10 +95,6 @@ func main() {
 		logger.Fatalf("Error building Build clientset: %v", err)
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, time.Second*30)
-	buildInformerFactory := buildinformers.NewSharedInformerFactory(buildClient, time.Second*30)
-
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
 
 	opt := reconciler.Options{
@@ -106,8 +102,13 @@ func main() {
 		BuildClientSet:    buildClient,
 		SharedClientSet:   sharedClient,
 		PipelineClientSet: pipelineClient,
+		ResyncPeriod:      time.Second * 30,
 		Logger:            logger,
 	}
+
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, opt.ResyncPeriod)
+	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, opt.ResyncPeriod)
+	buildInformerFactory := buildinformers.NewSharedInformerFactory(buildClient, opt.ResyncPeriod)
 
 	taskInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
 	taskRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
