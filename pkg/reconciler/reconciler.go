@@ -17,6 +17,8 @@ limitations under the License.
 package reconciler
 
 import (
+	"time"
+
 	"k8s.io/client-go/kubernetes/scheme"
 
 	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
@@ -46,6 +48,16 @@ type Options struct {
 
 	ConfigMapWatcher configmap.Watcher
 	Logger           *zap.SugaredLogger
+
+	ResyncPeriod time.Duration
+}
+
+// GetTrackerLease returns a multiple of the resync period to use as the
+// duration for tracker leases. This attempts to ensure that resyncs happen to
+// refresh leases frequently enough that we don't miss updates to tracked
+// objects.
+func (o Options) GetTrackerLease() time.Duration {
+	return o.ResyncPeriod * 3
 }
 
 // Base implements the core controller logic, given a Reconciler.
