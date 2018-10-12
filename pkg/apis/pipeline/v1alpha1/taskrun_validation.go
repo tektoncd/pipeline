@@ -42,50 +42,63 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 	}
 
 	// Check for Trigger
-	if err := validateTaskTriggerType(ts.Trigger.TriggerRef, "spec.trigger.triggerref.type"); err != nil {
+	if err := ts.Trigger.TriggerRef.Validate("spec.trigger.triggerref"); err != nil {
 		return err
 	}
 
 	// check for input resources
-	if err := checkForPipelineResourceDuplicates(ts.Inputs.Resources, "spec.Inputs.Resources.Name"); err != nil {
-		return err
-	}
-	if err := validateParameters(ts.Inputs.Params); err != nil {
+	if err := ts.Inputs.Validate("spec.Inputs"); err != nil {
 		return err
 	}
 
 	// check for outputs
-	for _, source := range ts.Outputs.Resources {
-		if err := validateResourceType(source, fmt.Sprintf("spec.Outputs.Resources.%s.Type", source.Name)); err != nil {
-			return err
-		}
-		if err := checkForDuplicates(ts.Outputs.Resources, "spec.Outputs.Resources.Name"); err != nil {
-			return err
-		}
+	if err := ts.Outputs.Validate("spec.Outputs"); err != nil {
+		return err
 	}
 
 	// check for results
-	if err := validateResultTarget(ts.Results.Logs, "spec.results.logs"); err != nil {
-		return err
-	}
-	if err := validateResultTarget(ts.Results.Runs, "spec.results.runs"); err != nil {
-		return err
-	}
-	if ts.Results.Tests != nil {
-		if err := validateResultTarget(*ts.Results.Tests, "spec.results.tests"); err != nil {
-			return err
-		}
-	}
+	return ts.Results.Validate("spec.results")
+}
 
+func (r *Results) Validate(path string) *apis.FieldError {
+	if err := r.Logs.Validate(fmt.Sprintf("%s.logs", path)); err != nil {
+		return err
+	}
+	if err := r.Runs.Validate(fmt.Sprintf("%s.runs", path)); err != nil {
+		return err
+	}
+	if r.Tests != nil {
+		return r.Tests.Validate(fmt.Sprintf("%s.tests", path))
+	}
 	return nil
 }
 
-func validateResultTarget(r ResultTarget, path string) *apis.FieldError {
+func (i TaskRunInputs) Validate(path string) *apis.FieldError {
+	if err := checkForPipelineResourceDuplicates(i.Resources, fmt.Sprintf("%s.Resources.Name", path)); err != nil {
+		return err
+	}
+	return validateParameters(i.Params)
+}
+
+func (o Outputs) Validate(path string) *apis.FieldError {
+	for _, source := range o.Resources {
+		if err := validateResourceType(source, fmt.Sprintf("%s.Resources.%s.Type", path, source.Name)); err != nil {
+			return err
+		}
+		if err := checkForDuplicates(o.Resources, fmt.Sprintf("%s.Resources.%s.Name", path, source.Name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r ResultTarget) Validate(path string) *apis.FieldError {
 	// if result target is not set then do not error
 	var emptyTarget = ResultTarget{}
 	if r == emptyTarget {
 		return nil
 	}
+
 	// If set then verify all variables pass the validation
 	if r.Name == "" {
 		return apis.ErrMissingField(fmt.Sprintf("%s.name", path))
@@ -115,16 +128,24 @@ func checkForPipelineResourceDuplicates(resources []PipelineResourceVersion, pat
 	return nil
 }
 
-func validateTaskTriggerType(r TaskTriggerRef, path string) *apis.FieldError {
+func (r TaskTriggerRef) Validate(path string) *apis.FieldError {
 	if r.Type == "" {
 		return nil
 	}
+
+	taskType := strings.ToLower(string(r.Type))
 	for _, allowed := range []TaskTriggerType{TaskTriggerTypePipelineRun, TaskTriggerTypeManual} {
-		if strings.ToLower(string(r.Type)) == strings.ToLower(string(allowed)) {
+		allowedType := strings.ToLower(string(allowed))
+
+		if taskType == allowedType {
+			if allowedType == strings.ToLower(string(TaskTriggerTypePipelineRun)) && r.Name == "" {
+				fmt.Println("HERE")
+				return apis.ErrMissingField(fmt.Sprintf("%s.name", path))
+			}
 			return nil
 		}
 	}
-	return apis.ErrInvalidValue(string(r.Type), path)
+	return apis.ErrInvalidValue(string(r.Type), fmt.Sprintf("%s.type", path))
 }
 
 func validateParameters(params []Param) *apis.FieldError {

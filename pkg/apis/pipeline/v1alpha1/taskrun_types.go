@@ -23,11 +23,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Check that Task may be validated and defaulted.
+// Check that TaskRun may be validated and defaulted.
 var _ apis.Validatable = (*TaskRun)(nil)
 var _ apis.Defaultable = (*TaskRun)(nil)
 
-// Assert that Task implements the GenericCRD interface.
+// Assert that TaskRun implements the GenericCRD interface.
 var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
