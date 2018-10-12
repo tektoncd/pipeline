@@ -11,18 +11,18 @@ These resources run on-cluster and are implemeted by [Kubernetes Custom Resource
 # Building Blocks of Pipeline CRDs
 Below diagram lists the main custom resources created by Pipeline CRDs
 
-![Building Blocks](./images/building-blocks.png)
+![Building Blocks](./docs/images/building-blocks.png)
 
 ## Task
-A Task is a collection of sequential steps you would want to run as part of your continous integration flow. 
+A Task is a collection of sequential steps you would want to run as part of your continous integration flow.
 A task will run inside a container on your cluster. A Task declares,
-1. Inputs the task needs. 
+1. Inputs the task needs.
 1. Outputs the task will produce.
-1. Sequence of steps to execute. 
-   
+1. Sequence of steps to execute.
+
    Each step defines an container image. This image is of type [Builder Image](https://github.com/knative/docs/blob/master/build/builder-contract.md). A Builder Image is an image whose entrypoint is a tool that performs some action and exits with a zero status on success. These entrypoints are often command-line tools, for example, git, docker, mvn, and so on.
 
-Here is an example simple Task definition which echoes "hello world". The `hello-world` task does not define any inputs or outputs. 
+Here is an example simple Task definition which echoes "hello world". The `hello-world` task does not define any inputs or outputs.
 
 It only has one step named `echo`. The step uses the builder image `busybox` whose entrypoint set to `\bin\sh`.
 
@@ -38,7 +38,7 @@ spec:
       - name: echo
         image: busybox
         args:
-          - echo  
+          - echo
           - "hello world!"
 ```
 Examples of `Task` definitions with inputs and outputs are [here](./examples)
@@ -60,10 +60,10 @@ metadata:
   namespace: default
 spec:
   tasks:
-    - name: hello-world-first         
+    - name: hello-world-first
       taskRef:
         name: hello-world
-    - name: hello-world-again         
+    - name: hello-world-again
       taskRef:
         name: hello-world
 ```
@@ -75,7 +75,7 @@ Examples of pipelines with complex DAGs are [here](./examples/pipelines)
 ## PipelineResources
 `PipelinesResources` in a pipeline are the set of objects that are going to be used as inputs to a [`Task`](#Task) and can be output of [`Task`](#Task) .
 For e.g.:
-A task's input could be a github source which contains your application code. 
+A task's input could be a github source which contains your application code.
 A task's output can be your application container image which can be then deployed in a cluster.
 Read more on PipelineResources and their types [here](./docs/pipeline-resources.md)
 
