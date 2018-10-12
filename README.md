@@ -27,7 +27,7 @@ The goal of the Pipeline CRD is to fit into and cooperate with
 
 _See [examples](./examples) for some examples of how this is intended to work._
 
-![Overview of the 5 CRDs](./crds.png)
+![Overview of the 5 CRDs](./images/crds.png)
 
 The CRDs involved are:
 
