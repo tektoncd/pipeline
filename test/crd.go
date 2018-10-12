@@ -23,10 +23,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"strings"
-	"testing"
 
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,7 +52,7 @@ const (
 	buildOutput     = "Build successful"
 )
 
-func getHelloWorldValidationPod(namespace string) *corev1.Pod {
+func getHelloWorldValidationPod(namespace, volumeClaimName string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -80,7 +79,7 @@ func getHelloWorldValidationPod(namespace string) *corev1.Pod {
 					Name: "scratch",
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "scratch",
+							ClaimName: volumeClaimName,
 						},
 					},
 				},
@@ -121,27 +120,32 @@ func getHelloWorldTask(namespace string, args []string) *v1alpha1.Task {
 						Name:  hwContainerName,
 						Image: "busybox",
 						Args:  args,
-						VolumeMounts: []corev1.VolumeMount{
-							corev1.VolumeMount{
-								Name:      "scratch",
-								MountPath: logPath,
-							},
-						},
-					},
-				},
-				Volumes: []corev1.Volume{
-					corev1.Volume{
-						Name: "scratch",
-						VolumeSource: corev1.VolumeSource{
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: "scratch",
-							},
-						},
 					},
 				},
 			},
 		},
 	}
+}
+
+func getHelloWorldTaskWithVolume(namespace string, args []string) *v1alpha1.Task {
+	t := getHelloWorldTask(namespace, args)
+	t.Spec.BuildSpec.Steps[0].VolumeMounts = []corev1.VolumeMount{
+		corev1.VolumeMount{
+			Name:      "scratch",
+			MountPath: logPath,
+		},
+	}
+	t.Spec.BuildSpec.Volumes = []corev1.Volume{
+		corev1.Volume{
+			Name: "scratch",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: hwVolumeName,
+				},
+			},
+		},
+	}
+	return t
 }
 
 func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
@@ -217,15 +221,15 @@ func getHelloWorldPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	}
 }
 
-func VerifyBuildOutput(t *testing.T, c *clients, namespace string, testStr string) {
+func getBuildOutputFromVolume(logger *logging.BaseLogger, c *clients, namespace, testStr string) (string, error) {
 	// Create Validation Pod
 	pods := c.KubeClient.Kube.CoreV1().Pods(namespace)
 
-	if _, err := pods.Create(getHelloWorldValidationPod(namespace)); err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", hwTaskRunName, err)
+	if _, err := pods.Create(getHelloWorldValidationPod(namespace, hwVolumeName)); err != nil {
+		return "", fmt.Errorf("failed to create Volume `%s`: %s", hwVolumeName, err)
 	}
 
-	// Verify status of Pod (wait for it)
+	logger.Infof("Waiting for pod with test volume %s to come up so we can read logs from it", hwVolumeName)
 	if err := WaitForPodState(c, hwValidationPodName, namespace, func(p *corev1.Pod) (bool, error) {
 		// the "Running" status is used as "Succeeded" caused issues as the pod succeeds and restarts quickly
 		// there might be a race condition here and possibly a better way of handling this, perhaps using a Job or different state validation
@@ -234,20 +238,18 @@ func VerifyBuildOutput(t *testing.T, c *clients, namespace string, testStr strin
 		}
 		return false, nil
 	}, "ValidationPodCompleted"); err != nil {
-		t.Errorf("Error waiting for Pod %s to finish: %s", hwValidationPodName, err)
+		return "", fmt.Errorf("error waiting for Pod %s to finish: %s", hwValidationPodName, err)
 	}
 
 	// Get validation pod logs and verify that the build executed a container w/ desired output
 	req := pods.GetLogs(hwValidationPodName, &corev1.PodLogOptions{})
 	readCloser, err := req.Stream()
 	if err != nil {
-		t.Fatalf("Failed to open stream to read: %v", err)
+		return "", fmt.Errorf("failed to open stream to read: %v", err)
 	}
 	defer readCloser.Close()
 	var buf bytes.Buffer
 	out := bufio.NewWriter(&buf)
 	_, err = io.Copy(out, readCloser)
-	if !strings.Contains(buf.String(), testStr) {
-		t.Fatalf("Expected output %s from pod %s but got %s", buildOutput, hwValidationPodName, buf.String())
-	}
+	return buf.String(), nil
 }
