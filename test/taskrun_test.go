@@ -31,10 +31,6 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-const (
-	buildOutput = "Build successful"
-)
-
 // TestTaskRun is an integration test that will verify a very simple "hello world" TaskRun can be
 // executed.
 func TestTaskRun(t *testing.T) {
@@ -44,8 +40,13 @@ func TestTaskRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
 	defer tearDown(logger, c.KubeClient, namespace)
 
-	logger.Infof("Creating Tasks and TaskRun in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace)); err != nil {
+	// Create Volume
+	if _, err := c.KubeClient.Kube.CoreV1().PersistentVolumeClaims(namespace).Create(getHelloWorldVolumeClaim(namespace)); err != nil {
+		t.Fatalf("Failed to create Volume `%s`: %s", hwTaskName, err)
+	}
+
+	// Create Task
+	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s > %s/%s", taskOutput, logPath, logFile)})); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
 	}
 
@@ -74,7 +75,6 @@ func TestTaskRun(t *testing.T) {
 	}
 	podName := cluster.PodName
 	pods := c.KubeClient.Kube.CoreV1().Pods(namespace)
-	fmt.Printf("Retrieved pods for podname %s: %s\n", podName, pods)
 
 	req := pods.GetLogs(podName, &corev1.PodLogOptions{})
 	readCloser, err := req.Stream()
@@ -88,4 +88,7 @@ func TestTaskRun(t *testing.T) {
 	if !strings.Contains(buf.String(), buildOutput) {
 		t.Fatalf("Expected output %s from pod %s but got %s", buildOutput, podName, buf.String())
 	}
+
+	// Verify that the init containers Build ran had 'taskOutput' written
+	VerifyBuildOutput(t, c, namespace, taskOutput)
 }

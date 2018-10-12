@@ -95,10 +95,6 @@ func main() {
 		logger.Fatalf("Error building Build clientset: %v", err)
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, time.Second*30)
-	buildInformerFactory := buildinformers.NewSharedInformerFactory(buildClient, time.Second*30)
-
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
 
 	opt := reconciler.Options{
@@ -106,11 +102,17 @@ func main() {
 		BuildClientSet:    buildClient,
 		SharedClientSet:   sharedClient,
 		PipelineClientSet: pipelineClient,
+		ResyncPeriod:      time.Second * 30,
 		Logger:            logger,
 	}
 
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, opt.ResyncPeriod)
+	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, opt.ResyncPeriod)
+	buildInformerFactory := buildinformers.NewSharedInformerFactory(buildClient, opt.ResyncPeriod)
+
 	taskInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
 	taskRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
+	resourceInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineResources()
 	buildInformer := buildInformerFactory.Build().V1alpha1().Builds()
 
 	pipelineInformer := pipelineInformerFactory.Pipeline().V1alpha1().Pipelines()
@@ -122,6 +124,7 @@ func main() {
 			taskRunInformer,
 			taskInformer,
 			buildInformer,
+			resourceInformer,
 		),
 		pipelinerun.NewController(opt,
 			pipelineRunInformer,
@@ -147,6 +150,7 @@ func main() {
 		taskInformer.Informer().HasSynced,
 		taskRunInformer.Informer().HasSynced,
 		buildInformer.Informer().HasSynced,
+		resourceInformer.Informer().HasSynced,
 	} {
 		if ok := cache.WaitForCacheSync(stopCh, synced); !ok {
 			logger.Fatalf("failed to wait for cache at index %v to sync", i)

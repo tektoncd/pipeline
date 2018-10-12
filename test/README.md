@@ -126,6 +126,15 @@ _Note the environment variable `K8S_CLUSTER_OVERRIDE`, while used by [knative/se
 and not by this project, will override the cluster used by the integration tests since they use
 [the same libs to get these flags](https://github.com/knative/serving)._
 
+### One test case
+
+To run one e2e test case, e.g. TestTaskRun, use [the `-run` flag with `go test`](https://golang.org/cmd/go/#hdr-Testing_flags):
+
+```bash
+go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun$
+```
+
+
 ### Adding integration tests
 
 In the [`test`](/test/) dir you will find several libraries in the `test` package

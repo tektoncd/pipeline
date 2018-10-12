@@ -1,5 +1,5 @@
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: guestbook-resources-git
   namespace: default
@@ -10,11 +10,9 @@ spec:
       value: github.com/kubernetes/examples
     - name: revision
       value: HEAD      
-    - name: serviceAccount
-      value: githubServiceAccount
 ---      
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: guestbook-resources-redis-docker
   namespace: default
@@ -23,13 +21,11 @@ spec:
     params:
       - name: url
         value: github.com/GoogleCloudPlatform/redis-docker/
-      - name: serviceAccount
-        value: githubServiceAccount
       - name: revision
         value: HEAD
 ---        
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: guestbookstagingimage
   namespace: default
@@ -40,7 +36,7 @@ spec:
         value: gcr.io/demo-staging
 ---        
 apiVersion: pipeline.knative.dev/v1alpha1
-kind: Resource
+kind: PipelineResource
 metadata:
   name: redisstagingimage
   namespace: default

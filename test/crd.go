@@ -19,25 +19,94 @@ limitations under the License.
 package test
 
 import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"io"
+	"strings"
+	"testing"
+
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 const (
+	hwVolumeName         = "scratch"
 	hwTaskName           = "helloworld"
 	hwTaskRunName        = "helloworld-run"
+	hwValidationPodName  = "helloworld-validation-busybox"
 	hwPipelineName       = "helloworld-pipeline"
 	hwPipelineRunName    = "helloworld-pipelinerun"
 	hwPipelineParamsName = "helloworld-pipelineparams"
 
+	logPath = "/workspace"
+	logFile = "out.txt"
+
 	hwContainerName = "helloworld-busybox"
 	taskOutput      = "do you want to build a snowman"
+	buildOutput     = "Build successful"
 )
 
-func getHelloWorldTask(namespace string) *v1alpha1.Task {
+func getHelloWorldValidationPod(namespace string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      hwValidationPodName,
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				corev1.Container{
+					Name:  hwValidationPodName,
+					Image: "busybox",
+					Args: []string{
+						"cat", fmt.Sprintf("%s/%s", logPath, logFile),
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						corev1.VolumeMount{
+							Name:      "scratch",
+							MountPath: logPath,
+						},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{
+				corev1.Volume{
+					Name: "scratch",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "scratch",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func getHelloWorldVolumeClaim(namespace string) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      hwVolumeName,
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: *resource.NewQuantity(5*1024*1024*1024, resource.BinarySI),
+				},
+			},
+		},
+	}
+}
+
+func getHelloWorldTask(namespace string, args []string) *v1alpha1.Task {
 	return &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -49,8 +118,22 @@ func getHelloWorldTask(namespace string) *v1alpha1.Task {
 					corev1.Container{
 						Name:  hwContainerName,
 						Image: "busybox",
-						Args: []string{
-							"echo", taskOutput,
+						Args:  args,
+						VolumeMounts: []corev1.VolumeMount{
+							corev1.VolumeMount{
+								Name:      "scratch",
+								MountPath: logPath,
+							},
+						},
+					},
+				},
+				Volumes: []corev1.Volume{
+					corev1.Volume{
+						Name: "scratch",
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "scratch",
+							},
 						},
 					},
 				},
@@ -135,5 +218,40 @@ func getHelloWorldPipelineRun(namespace string) *v1alpha1.PipelineRun {
 				Type: v1alpha1.PipelineTriggerTypeManual,
 			},
 		},
+	}
+}
+
+func VerifyBuildOutput(t *testing.T, c *clients, namespace string, testStr string) {
+	// Create Validation Pod
+	pods := c.KubeClient.Kube.CoreV1().Pods(namespace)
+
+	if _, err := pods.Create(getHelloWorldValidationPod(namespace)); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", hwTaskRunName, err)
+	}
+
+	// Verify status of Pod (wait for it)
+	if err := WaitForPodState(c, hwValidationPodName, namespace, func(p *corev1.Pod) (bool, error) {
+		// the "Running" status is used as "Succeeded" caused issues as the pod succeeds and restarts quickly
+		// there might be a race condition here and possibly a better way of handling this, perhaps using a Job or different state validation
+		if p.Status.Phase == corev1.PodRunning {
+			return true, nil
+		}
+		return false, nil
+	}, "ValidationPodCompleted"); err != nil {
+		t.Errorf("Error waiting for Pod %s to finish: %s", hwValidationPodName, err)
+	}
+
+	// Get validation pod logs and verify that the build executed a container w/ desired output
+	req := pods.GetLogs(hwValidationPodName, &corev1.PodLogOptions{})
+	readCloser, err := req.Stream()
+	if err != nil {
+		t.Fatalf("Failed to open stream to read: %v", err)
+	}
+	defer readCloser.Close()
+	var buf bytes.Buffer
+	out := bufio.NewWriter(&buf)
+	_, err = io.Copy(out, readCloser)
+	if !strings.Contains(buf.String(), testStr) {
+		t.Fatalf("Expected output %s from pod %s but got %s", buildOutput, hwValidationPodName, buf.String())
 	}
 }
