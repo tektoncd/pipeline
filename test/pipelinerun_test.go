@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -55,8 +56,12 @@ func TestPipelineRun(t *testing.T) {
 	logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", hwPipelineRunName, namespace)
 	if err := WaitForPipelineRunState(c, hwPipelineRunName, func(tr *v1alpha1.PipelineRun) (bool, error) {
 		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil && c.Status == corev1.ConditionTrue {
-			return true, nil
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, nil
+			} else if c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("pipeline run %s failed!", hwPipelineRunName)
+			}
 		}
 		return false, nil
 	}, "PipelineRunSuccess"); err != nil {
@@ -78,5 +83,4 @@ func TestPipelineRun(t *testing.T) {
 			}
 		}
 	}
-	VerifyBuildOutput(t, c, namespace, taskOutput)
 }

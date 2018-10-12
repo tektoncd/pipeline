@@ -45,11 +45,6 @@ function teardown() {
 
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
 function dump_extra_cluster_state() {
-  for crd in pipelines pipelineruns tasks taskruns resources pipelineparams builds
-  do
-    echo ">>> $crd:"
-    kubectl get $crd -o yaml --all-namespaces
-  done
   echo ">>> Pipeline controller log:"
   kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-controller knative-build-pipeline)
   echo ">>> Pipeline webhook log:"
