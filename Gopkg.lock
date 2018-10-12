@@ -137,11 +137,12 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:1626441bf44173cc41161cbdc5cbf42309aa9488d282cfff5a00e8ea8b7eecb5"
+  digest = "1:7d4fb1e9f425e206c3f491edf55dea318080d4c7a2bd8d9bfb113f0bdd1ba90e"
   name = "github.com/knative/build"
   packages = [
     "pkg/apis/build",
     "pkg/apis/build/v1alpha1",
+    "pkg/builder",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/fake",
     "pkg/client/clientset/versioned/scheme",
@@ -154,7 +155,7 @@
     "pkg/client/listers/build/v1alpha1",
   ]
   pruneopts = "NUT"
-  revision = "7360ec685b35802d4703b31e6c0be2cc04b4503c"
+  revision = "92a1258647b272a3a4505616b102d6e8f86be082"
 
 [[projects]]
   branch = "master"
@@ -741,6 +742,7 @@
   input-imports = [
     "github.com/google/go-cmp/cmp",
     "github.com/knative/build/pkg/apis/build/v1alpha1",
+    "github.com/knative/build/pkg/builder",
     "github.com/knative/build/pkg/client/clientset/versioned",
     "github.com/knative/build/pkg/client/clientset/versioned/fake",
     "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1",
@@ -768,6 +770,7 @@
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/equality",
     "k8s.io/apimachinery/pkg/api/errors",
+    "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",

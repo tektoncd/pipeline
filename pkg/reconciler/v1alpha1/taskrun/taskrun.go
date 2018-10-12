@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/knative/build/pkg/builder"
+
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	resources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
@@ -242,6 +244,9 @@ func (c *Reconciler) makeBuild(tr *v1alpha1.TaskRun, logger *zap.SugaredLogger) 
 		return nil, err
 	}
 
+	// Apply parameters from the taskrun.
+	build = applyParameters(b, t, tr)
+
 	createdBuild, err := c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Create(build)
 	if err != nil {
 		logger.Errorf("Failed to create build for taskrun %s, %v", tr.Name, err)
@@ -258,6 +263,15 @@ func (c *Reconciler) makeBuild(tr *v1alpha1.TaskRun, logger *zap.SugaredLogger) 
 		logger.Errorf("Failed to create tracker for build %s for taskrun %s: %v", buildRef, tr.Name, err)
 		return nil, err
 	}
-
 	return createdBuild, nil
+}
+
+func applyParameters(b *buildv1alpha1.Build, t *v1alpha1.Task, tr *v1alpha1.TaskRun) *buildv1alpha1.Build {
+	// This assumes that the TaskRun inputs have been validated against what the Task requests.
+	replacements := map[string]string{}
+	for _, p := range tr.Spec.Inputs.Params {
+		replacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value
+	}
+
+	return builder.ApplyReplacements(b, replacements)
 }
