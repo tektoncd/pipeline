@@ -10,11 +10,8 @@ spec:
                 type: git
         params:
             - name: pathToHelmCharts
-              value: string
             - name: helmArgs
-              value: string
             - name: image
-              value: string
         clusters:
             - name: targetCluster
     buildSpec:
@@ -36,9 +33,7 @@ spec:
               type: git
         params:
             - name: kubectlArgs
-              value: string
             - name: pathToFiles
-              value: string
         clusters:
             - name: targetCluster
     buildSpec:

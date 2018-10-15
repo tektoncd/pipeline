@@ -10,7 +10,6 @@ spec:
             type: git
         params:
           - name: makeTarget
-            value: string
     outputs:
         results:
             - name: testResults
@@ -35,9 +34,7 @@ spec:
              type: git
         params:
             - name: testImage
-              value: string
             - name: testArgs
-              value: string
     outputs:
         results:
             - name: testResults
