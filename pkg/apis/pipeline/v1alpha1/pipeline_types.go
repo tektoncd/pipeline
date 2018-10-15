@@ -98,7 +98,6 @@ type SourceBinding struct {
 	Key string `json:"key"`
 	// The Resource this binding is referring to
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
-	// TODO: validate the passedConstraints values match previous Task names
 	// PassedConstraints is the list of Task names that the resource has to pass through.
 	// +optional
 	PassedConstraints []string `json:"passedConstraints,omitempty"`
