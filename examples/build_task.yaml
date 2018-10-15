@@ -10,7 +10,6 @@ spec:
               type: git
         params:
             - name: pathToDockerFile
-              value: string
     outputs:
         resources:
             - name: builtImage
