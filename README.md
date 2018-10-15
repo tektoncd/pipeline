@@ -61,6 +61,8 @@ from is not known to a task, so they can be provided by a Pipeline or by a user 
 `Tasks` are basically [Knative BuildTemplates](https://github.com/knative/build-templates)
 with additional input types and clearly defined outputs.
 
+See [docs/task-parameters.md](./docs/task-parameters.md) for how to use parameters with Tasks.
+
 ### Pipeline
 
 `Pipeline` describes a graph of [Tasks](#task) to execute. It defines the DAG

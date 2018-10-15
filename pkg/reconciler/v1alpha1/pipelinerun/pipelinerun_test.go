@@ -54,6 +54,10 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
 			Name:    "unit-test-1",
 			TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+			Params: []v1alpha1.Param{{
+				Name:  "foo",
+				Value: "somethingfun",
+			}},
 		}},
 		}},
 	}
@@ -62,7 +66,15 @@ func TestReconcile(t *testing.T) {
 			Name:      "unit-test-task",
 			Namespace: "foo",
 		},
-		Spec: v1alpha1.TaskSpec{},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Params: []v1alpha1.TaskParam{{
+					Name: "foo",
+				}, {
+					Name: "bar",
+				}},
+			},
+		},
 	}}
 	d := testData{
 		prs: prs,
@@ -109,6 +121,12 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			TaskRef: v1alpha1.TaskRef{
 				Name: "unit-test-task",
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "foo",
+					Value: "somethingfun",
+				}},
 			},
 		},
 	}
