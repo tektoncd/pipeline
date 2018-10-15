@@ -66,6 +66,27 @@ var templatedTask = &v1alpha1.Task{
 					Image: "myimage",
 					Args:  []string{"--my-arg=${inputs.params.myarg}"},
 				},
+				{
+					Name:  "myothercontainer",
+					Image: "myotherimage",
+					Args:  []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
+				},
+			},
+		},
+	},
+}
+
+var gitResource = &v1alpha1.PipelineResource{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "git-resource",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.PipelineResourceSpec{
+		Type: "git",
+		Params: []v1alpha1.Param{
+			{
+				Name:  "URL",
+				Value: "https://foo.git",
 			},
 		},
 	},
@@ -102,14 +123,24 @@ func TestReconcileBuildsCreated(t *testing.T) {
 							Value: "foo",
 						},
 					},
+					Resources: []v1alpha1.PipelineResourceVersion{
+						{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name:       "git-resource",
+								APIVersion: "a1",
+							},
+							Version: "myversion",
+						},
+					},
 				},
 			},
 		},
 	}
 
 	d := testData{
-		taskruns: taskruns,
-		tasks:    []*v1alpha1.Task{simpleTask, templatedTask},
+		taskruns:  taskruns,
+		tasks:     []*v1alpha1.Task{simpleTask, templatedTask},
+		resources: []*v1alpha1.PipelineResource{gitResource},
 	}
 	testcases := []struct {
 		name            string
@@ -137,6 +168,11 @@ func TestReconcileBuildsCreated(t *testing.T) {
 						Name:  "mycontainer",
 						Image: "myimage",
 						Args:  []string{"--my-arg=foo"},
+					},
+					{
+						Name:  "myothercontainer",
+						Image: "myotherimage",
+						Args:  []string{"--my-other-arg=https://foo.git"},
 					},
 				},
 			},
@@ -227,6 +263,11 @@ func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakeb
 	for _, t := range d.tasks {
 		taskInformer.Informer().GetIndexer().Add(t)
 	}
+
+	for _, r := range d.resources {
+		resourceInformer.Informer().GetIndexer().Add(r)
+	}
+
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
 	return NewController(
@@ -252,6 +293,7 @@ func getLogMessages(logs *observer.ObservedLogs) []string {
 }
 
 type testData struct {
-	taskruns []*v1alpha1.TaskRun
-	tasks    []*v1alpha1.Task
+	taskruns  []*v1alpha1.TaskRun
+	tasks     []*v1alpha1.Task
+	resources []*v1alpha1.PipelineResource
 }

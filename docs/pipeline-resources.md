@@ -78,3 +78,21 @@ spec:
           - name: builtImage
             type: image
 ``` 
+
+#### Templating
+
+Git Resources (like all Resources) support template expansion into BuildSpecs.
+Git Resources support the following keys for replacement:
+
+* name
+* url
+* type
+* revision
+
+These can be referenced in a TaskRun spec like:
+
+```shell
+${inputs.resources.NAME.KEY}
+```
+
+where NAME is the Resource Name and KEY is the key from the above list.
