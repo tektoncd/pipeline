@@ -233,7 +233,13 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, er
 	}
 
 	// Apply parameters from the taskrun.
-	build = applyParameters(b, t, tr)
+	build = applyParameters(build, t, tr)
+
+	// Apply resources from the taskrun.
+	build, err = applyResources(build, t, tr, c.resourceLister)
+	if err != nil {
+		return nil, err
+	}
 
 	return c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Create(build)
 }
@@ -256,4 +262,24 @@ func applyParameters(b *buildv1alpha1.Build, t *v1alpha1.Task, tr *v1alpha1.Task
 	}
 
 	return builder.ApplyReplacements(b, replacements)
+}
+
+func applyResources(b *buildv1alpha1.Build, t *v1alpha1.Task, tr *v1alpha1.TaskRun, lister listers.PipelineResourceLister) (*buildv1alpha1.Build, error) {
+	replacements := map[string]string{}
+
+	for _, ir := range tr.Spec.Inputs.Resources {
+		pr, err := lister.PipelineResources(t.Namespace).Get(ir.ResourceRef.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		resource, err := v1alpha1.ResourceFromType(pr)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range resource.Replacements() {
+			replacements[fmt.Sprintf("inputs.resources.%s.%s", ir.ResourceRef.Name, k)] = v
+		}
+	}
+	return builder.ApplyReplacements(b, replacements), nil
 }
