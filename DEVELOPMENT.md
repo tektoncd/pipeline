@@ -113,7 +113,7 @@ including `knative/build` (which is wrapped by [`Task`](README.md#task)):
 
 ```shell
 ko apply -f config/
-kubectl deploy -f ./third_party/config/build/release.yaml
+kubectl apply -f ./third_party/config/build/release.yaml
 ```
 
 ### Redeploy controller
