@@ -155,7 +155,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
 	// get build the same as the taskrun, this is the value we use for 1:1 mapping and retrieval
-	build, err := c.buildLister.Builds(tr.Namespace).Get(tr.Name)
+	build, err := c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		// Build is not present, create build
 		build, err = c.createBuild(tr)
@@ -167,7 +167,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get build %q; %v", tr.Name, tr.Name, err)
 		return err
 	}
-
 	if err := c.tracker.Track(tr.GetBuildRef(), tr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for build %q for taskrun %q: %v", tr.Name, tr.Name, err)
 		return err
