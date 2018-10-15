@@ -11,7 +11,7 @@ Some example use-cases of this include:
 
 The following example shows how Tasks can be parameterized, and these parameters can be passed to the `Task` from a `TaskRun`.
 
-Input parameters in the form of `${inputs.foo}` are replaced inside of the buildSpec.
+Input parameters in the form of `${inputs.params.foo}` are replaced inside of the buildSpec.
 
 The following `Task` declares an input parameter called 'flags', and uses it in the `buildSpec.steps.args` list.
 
@@ -29,7 +29,7 @@ spec:
         steps:
         - name: build
           image: my-builder
-          args: ['build', '--flags=${inputs.flags}']
+          args: ['build', '--flags=${inputs.params.flags}']
 ```
 
 The following `TaskRun` supplies a value for `flags`:

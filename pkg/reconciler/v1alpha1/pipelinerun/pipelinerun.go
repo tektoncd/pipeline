@@ -183,7 +183,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	prtr := resources.GetNextTask(pr.Name, state, c.Logger)
 	if prtr != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
-		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr)
+		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask)
 		if err != nil {
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
 		}
@@ -194,8 +194,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	return nil
 }
 
-func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun) (*v1alpha1.TaskRun, error) {
-	// Create empty tasks
+func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask) (*v1alpha1.TaskRun, error) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
@@ -207,6 +206,9 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 		Spec: v1alpha1.TaskRunSpec{
 			TaskRef: v1alpha1.TaskRef{
 				Name: t.Name,
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: pt.Params,
 			},
 		},
 	}
