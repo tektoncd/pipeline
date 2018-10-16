@@ -164,7 +164,6 @@ func TestReconcileBuildsCreated(t *testing.T) {
 			}
 			// check error
 			build, err := client.bclient.BuildV1alpha1().Builds(namespace).Get(name, metav1.GetOptions{})
-			//build := client.Actions()[0].(ktesting.CreateAction).GetObject().(*buildv1alpha1.Build)
 			if err != nil {
 				t.Errorf("Failed to fetch build: %v", err)
 			}

@@ -24,7 +24,6 @@ import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/build/pkg/builder"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
-	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
@@ -65,7 +64,6 @@ type Reconciler struct {
 	// listers index properties about resources
 	taskRunLister  listers.TaskRunLister
 	taskLister     listers.TaskLister
-	buildLister    buildlisters.BuildLister
 	resourceLister listers.PipelineResourceLister
 	tracker        tracker.Interface
 }
@@ -86,7 +84,6 @@ func NewController(
 		Base:           reconciler.NewBase(opt, taskRunAgentName),
 		taskRunLister:  taskRunInformer.Lister(),
 		taskLister:     taskInformer.Lister(),
-		buildLister:    buildInformer.Lister(),
 		resourceLister: resourceInformer.Lister(),
 	}
 	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
