@@ -16,6 +16,33 @@ limitations under the License.
 
 package v1alpha1
 
+import (
+	"fmt"
+	"strings"
+)
+
+// NewImageResource creates a new ImageResource from a PipelineResource.
+func NewImageResource(r *PipelineResource) (*ImageResource, error) {
+	if r.Spec.Type != PipelineResourceTypeImage {
+		return nil, fmt.Errorf("ImageResource: Cannot create an Image resource from a %s Pipeline Resource", r.Spec.Type)
+	}
+	ir := &ImageResource{
+		Name: r.Name,
+		Type: PipelineResourceTypeImage,
+	}
+
+	for _, param := range r.Spec.Params {
+		switch {
+		case strings.EqualFold(param.Name, "URL"):
+			ir.URL = param.Value
+		case strings.EqualFold(param.Name, "Digest"):
+			ir.Digest = param.Value
+		}
+	}
+
+	return ir, nil
+}
+
 // ImageResource defines an endpoint where artifacts can be stored, such as images.
 type ImageResource struct {
 	Name   string               `json:"name"`
@@ -41,3 +68,13 @@ func (s ImageResource) GetVersion() string {
 
 // GetParams returns the resoruce params
 func (s ImageResource) GetParams() []Param { return []Param{} }
+
+// Replacements is used for template replacement on an ImageResource inside of a Taskrun.
+func (s *ImageResource) Replacements() map[string]string {
+	return map[string]string{
+		"name":   s.Name,
+		"type":   string(s.Type),
+		"url":    s.URL,
+		"digest": s.Digest,
+	}
+}
