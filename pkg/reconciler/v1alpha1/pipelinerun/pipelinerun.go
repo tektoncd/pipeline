@@ -161,6 +161,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		return nil
 	}
+	serviceAccount := c.getServiceAccount(pr)
 	state, err := resources.GetPipelineState(
 		func(namespace, name string) (*v1alpha1.Task, error) {
 			return c.taskLister.Tasks(namespace).Get(name)
@@ -183,7 +184,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	prtr := resources.GetNextTask(pr.Name, state, c.Logger)
 	if prtr != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
-		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask)
+		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount)
 		if err != nil {
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
 		}
@@ -194,7 +195,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	return nil
 }
 
-func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
@@ -210,6 +211,7 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: pt.Params,
 			},
+			ServiceAccount: sa,
 		},
 	}
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)
@@ -225,4 +227,13 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
+}
+
+func (c *Reconciler) getServiceAccount(pr *v1alpha1.PipelineRun) string {
+	sName := pr.Spec.PipelineParamsRef.Name
+	if sName == "" {
+		sName = "default"
+	}
+	//c.KubeClientSet.CoreV1().ServiceAccounts(pr.Namespace).Get(sName, metav1.GetOptions{})
+	return sName
 }
