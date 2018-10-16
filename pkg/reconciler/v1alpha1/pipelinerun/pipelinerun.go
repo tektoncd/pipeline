@@ -60,11 +60,12 @@ type Reconciler struct {
 	*reconciler.Base
 
 	// listers index properties about resources
-	pipelineRunLister listers.PipelineRunLister
-	pipelineLister    listers.PipelineLister
-	taskRunLister     listers.TaskRunLister
-	taskLister        listers.TaskLister
-	tracker           tracker.Interface
+	pipelineRunLister    listers.PipelineRunLister
+	pipelineLister       listers.PipelineLister
+	taskRunLister        listers.TaskRunLister
+	taskLister           listers.TaskLister
+	pipelineParamsLister listers.PipelineParamsLister
+	tracker              tracker.Interface
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -77,14 +78,16 @@ func NewController(
 	pipelineInformer informers.PipelineInformer,
 	taskInformer informers.TaskInformer,
 	taskRunInformer informers.TaskRunInformer,
+	pipelineParamsesInformer informers.PipelineParamsInformer,
 ) *controller.Impl {
 
 	r := &Reconciler{
-		Base:              reconciler.NewBase(opt, pipelineRunAgentName),
-		pipelineRunLister: pipelineRunInformer.Lister(),
-		pipelineLister:    pipelineInformer.Lister(),
-		taskLister:        taskInformer.Lister(),
-		taskRunLister:     taskRunInformer.Lister(),
+		Base:                 reconciler.NewBase(opt, pipelineRunAgentName),
+		pipelineRunLister:    pipelineRunInformer.Lister(),
+		pipelineLister:       pipelineInformer.Lister(),
+		taskLister:           taskInformer.Lister(),
+		taskRunLister:        taskRunInformer.Lister(),
+		pipelineParamsLister: pipelineParamsesInformer.Lister(),
 	}
 
 	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
@@ -161,7 +164,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		return nil
 	}
-	serviceAccount := c.getServiceAccount(pr)
+	serviceAccount, err := c.getServiceAccount(pr)
+	if err != nil {
+		c.Logger.Errorf("Pipelinerun %q failed to get pipelineparamses %q; error %v",
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineParamsRef.Name),
+			err)
+		return nil
+	}
 	state, err := resources.GetPipelineState(
 		func(namespace, name string) (*v1alpha1.Task, error) {
 			return c.taskLister.Tasks(namespace).Get(name)
@@ -229,11 +239,15 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	return newPr, nil
 }
 
-func (c *Reconciler) getServiceAccount(pr *v1alpha1.PipelineRun) string {
+func (c *Reconciler) getServiceAccount(pr *v1alpha1.PipelineRun) (string, error) {
 	sName := pr.Spec.PipelineParamsRef.Name
 	if sName == "" {
-		sName = "default"
+		return "", nil
 	}
-	//c.KubeClientSet.CoreV1().ServiceAccounts(pr.Namespace).Get(sName, metav1.GetOptions{})
-	return sName
+
+	pp, err := c.pipelineParamsLister.PipelineParamses(pr.Namespace).Get(pr.Spec.PipelineParamsRef.Name)
+	if err != nil {
+		return "", err
+	}
+	return pp.Spec.ServiceAccount, nil
 }

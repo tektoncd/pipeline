@@ -44,6 +44,9 @@ func TestReconcile(t *testing.T) {
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: "test-pipeline",
 			},
+			PipelineParamsRef: v1alpha1.PipelineParamsRef{
+				Name: "unit-test-pp",
+			},
 		},
 	}}
 	ps := []*v1alpha1.Pipeline{{
@@ -76,10 +79,20 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}}
+	pp := []*v1alpha1.PipelineParams{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-pp",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineParamsSpec{
+			ServiceAccount: "test-sa",
+		},
+	}}
 	d := testData{
 		prs: prs,
 		ps:  ps,
 		ts:  ts,
+		pp:  pp,
 	}
 	c, logs, client := getController(d)
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
@@ -119,7 +132,7 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			ServiceAccount: "default",
+			ServiceAccount: "test-sa",
 			TaskRef: v1alpha1.TaskRef{
 				Name: "unit-test-task",
 			},
@@ -225,9 +238,12 @@ type testData struct {
 	ps  []*v1alpha1.Pipeline
 	trs []*v1alpha1.TaskRun
 	ts  []*v1alpha1.Task
+	pp  []*v1alpha1.PipelineParams
 }
 
-func seedTestData(d testData) (*fakepipelineclientset.Clientset, informersv1alpha1.PipelineRunInformer, informersv1alpha1.PipelineInformer, informersv1alpha1.TaskRunInformer, informersv1alpha1.TaskInformer) {
+func seedTestData(d testData) (*fakepipelineclientset.Clientset,
+	informersv1alpha1.PipelineRunInformer, informersv1alpha1.PipelineInformer,
+	informersv1alpha1.TaskRunInformer, informersv1alpha1.TaskInformer, informersv1alpha1.PipelineParamsInformer) {
 	objs := []runtime.Object{}
 	for _, pr := range d.prs {
 		objs = append(objs, pr)
@@ -248,6 +264,7 @@ func seedTestData(d testData) (*fakepipelineclientset.Clientset, informersv1alph
 	pipelineInformer := sharedInfomer.Pipeline().V1alpha1().Pipelines()
 	taskRunInformer := sharedInfomer.Pipeline().V1alpha1().TaskRuns()
 	taskInformer := sharedInfomer.Pipeline().V1alpha1().Tasks()
+	pipelineParamsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineParamses()
 
 	for _, pr := range d.prs {
 		pipelineRunsInformer.Informer().GetIndexer().Add(pr)
@@ -261,11 +278,14 @@ func seedTestData(d testData) (*fakepipelineclientset.Clientset, informersv1alph
 	for _, t := range d.ts {
 		taskInformer.Informer().GetIndexer().Add(t)
 	}
-	return pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer
+	for _, t := range d.pp {
+		pipelineParamsInformer.Informer().GetIndexer().Add(t)
+	}
+	return pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer, pipelineParamsInformer
 }
 
 func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
-	pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer := seedTestData(d)
+	pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer, pipelineParamsInformer := seedTestData(d)
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
 	return NewController(
@@ -278,5 +298,6 @@ func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakep
 		pipelineInformer,
 		taskInformer,
 		taskRunInformer,
+		pipelineParamsInformer,
 	), logs, pipelineClient
 }

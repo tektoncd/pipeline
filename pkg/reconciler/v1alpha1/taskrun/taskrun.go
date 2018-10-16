@@ -178,7 +178,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// sync build status with taskrun status
 	tr.Status.SetCondition(build.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
 
-	c.Logger.Infof("Successfully reconciled taskrun %s/%s", tr.Name, tr.Namespace)
+	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace,
+		tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
 
 	return nil
 }
@@ -205,7 +206,7 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, er
 
 	// TODO: Preferably use Validate on task.spec to catch validation error
 	if t.Spec.BuildSpec == nil {
-		return nil, fmt.Errorf("Task has nil BuildSpec")
+		return nil, fmt.Errorf("Task %s has nil BuildSpec", t.Name)
 	}
 
 	b := &buildv1alpha1.Build{
@@ -220,6 +221,9 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, er
 		},
 		Spec: *t.Spec.BuildSpec,
 	}
+	// Pass service account name from taskrun to build
+	// if task specifies service account name override with taskrun SA
+	b.Spec.ServiceAccountName = tr.Spec.ServiceAccount
 
 	build, err := resources.AddInputResource(b, t, tr, c.resourceLister, c.Logger)
 	if err != nil {
