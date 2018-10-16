@@ -39,22 +39,20 @@ metadata:
 spec:
     inputs:
         resources:
-           - name: wizzbang-git
-             type: git
+        - name: wizzbang-git
+          type: git
         params:
-           - name: PATH_TO_DOCKERFILE
-             value: string
+        - name: pathToDockerfile
+          value: string
     outputs:
         resources:
           - name: builtImage 
     buildSpec:
-        template:
-            name: kaniko
-            arguments:
-                - name: DOCKERFILE
-                  value: ${PATH_TO_DOCKERFILE}
-                - name: REGISTRY
-                  value: ${REGISTRY}
+        steps:
+        - name: build-and-push
+          image: gcr.io/my-repo/my-imageg
+          args:
+          - --repo=${inputs.resources.wizzbang-git.url}
 ``` 
 
  #### And finally set the version in the `TaskRun` definition
@@ -71,7 +69,7 @@ spec:
     inputs:
         resourcesVersion:
           - resourceRef:
-              name: wizzbang-git
+            name: wizzbang-git
             version: HEAD
     outputs:
         artifacts:
