@@ -42,6 +42,8 @@ type TaskRunSpec struct {
 	Results Results `json:"results"`
 	// +optional
 	Generation int64 `json:"generation,omitempty"`
+	// +optional
+	ServiceAccount string `json:"serviceAccount"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.

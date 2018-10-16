@@ -119,6 +119,7 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		Spec: v1alpha1.TaskRunSpec{
+			ServiceAccount: "default",
 			TaskRef: v1alpha1.TaskRef{
 				Name: "unit-test-task",
 			},
