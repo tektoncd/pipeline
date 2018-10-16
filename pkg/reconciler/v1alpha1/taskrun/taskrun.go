@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler"
+	resources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	"github.com/knative/build/pkg/builder"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
 	buildlisters "github.com/knative/build/pkg/client/listers/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -35,11 +37,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler"
-	resources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
 const (
@@ -233,10 +232,10 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, er
 	}
 
 	// Apply parameters from the taskrun.
-	build = applyParameters(build, t, tr)
+	build = resources.ApplyParameters(build, tr)
 
 	// Apply resources from the taskrun.
-	build, err = applyResources(build, t, tr, c.resourceLister)
+	build, err = resources.ApplyResources(build, tr, c.resourceLister.PipelineResources(t.Namespace))
 	if err != nil {
 		return nil, err
 	}
@@ -253,33 +252,4 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	}
 	return labels
 
-}
-func applyParameters(b *buildv1alpha1.Build, t *v1alpha1.Task, tr *v1alpha1.TaskRun) *buildv1alpha1.Build {
-	// This assumes that the TaskRun inputs have been validated against what the Task requests.
-	replacements := map[string]string{}
-	for _, p := range tr.Spec.Inputs.Params {
-		replacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value
-	}
-
-	return builder.ApplyReplacements(b, replacements)
-}
-
-func applyResources(b *buildv1alpha1.Build, t *v1alpha1.Task, tr *v1alpha1.TaskRun, lister listers.PipelineResourceLister) (*buildv1alpha1.Build, error) {
-	replacements := map[string]string{}
-
-	for _, ir := range tr.Spec.Inputs.Resources {
-		pr, err := lister.PipelineResources(t.Namespace).Get(ir.ResourceRef.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		resource, err := v1alpha1.ResourceFromType(pr)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range resource.Replacements() {
-			replacements[fmt.Sprintf("inputs.resources.%s.%s", ir.ResourceRef.Name, k)] = v
-		}
-	}
-	return builder.ApplyReplacements(b, replacements), nil
 }

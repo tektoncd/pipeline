@@ -116,11 +116,13 @@ type PipelineResourceList struct {
 	Items           []PipelineResource `json:"items"`
 }
 
-// ResourceFromType returns a
+// ResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
 func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 	switch r.Spec.Type {
 	case PipelineResourceTypeGit:
 		return NewGitResource(r)
+	case PipelineResourceTypeImage:
+		return NewImageResource(r)
 	}
-	return nil, fmt.Errorf("%s is an invalid PipelineResource", r.Spec.Type)
+	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }
