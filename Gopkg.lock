@@ -83,6 +83,23 @@
   version = "v0.2.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:0a518075e503abfe4165f33954bc0dbaf7a6ec47148384084827e4759f208537"
+  name = "github.com/google/go-containerregistry"
+  packages = [
+    "pkg/authn",
+    "pkg/name",
+    "pkg/v1",
+    "pkg/v1/partial",
+    "pkg/v1/remote",
+    "pkg/v1/remote/transport",
+    "pkg/v1/types",
+    "pkg/v1/v1util",
+  ]
+  pruneopts = "NUT"
+  revision = "24bbadfcffb5e05b1578cb2bd5438992ada3b546"
+
+[[projects]]
   digest = "1:f9425215dccf1c63f659ec781ca46bc81804341821d0cd8d2459c5b58f8bd067"
   name = "github.com/google/gofuzz"
   packages = ["."]
@@ -741,6 +758,9 @@
   analyzer-version = 1
   input-imports = [
     "github.com/google/go-cmp/cmp",
+    "github.com/google/go-containerregistry/pkg/authn",
+    "github.com/google/go-containerregistry/pkg/name",
+    "github.com/google/go-containerregistry/pkg/v1/remote",
     "github.com/knative/build/pkg/apis/build/v1alpha1",
     "github.com/knative/build/pkg/builder",
     "github.com/knative/build/pkg/client/clientset/versioned",
