@@ -91,6 +91,36 @@ pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 
 ## Integration tests
 
+### Setup
+
+As well as requiring the environment variable `KO_DOCKER_REPO` variable, you may also
+require authentication inside the Build to run the Kaniko e2e test. If so, setting
+`KANIKO_SECRET_CONFIG_FILE` to be the path to a GCP service account JSON key which has
+permissions to push to the registry specified in `KO_DOCKER_REPO` will enable Kaniko
+to use those credentials when pushing.
+
+To quickly create a service account usable with the e2e tests:
+
+```shell
+PROJECT_ID=your-gcp-project
+ACCOUNT_NAME=service-account-name
+gcloud config set project $PROJECT_ID
+
+# create the service account
+gcloud iam service-accounts create $ACCOUNT_NAME --display-name $ACCOUNT_NAME
+EMAIL=$(gcloud iam service-accounts list | grep $ACCOUNT_NAME | awk '{print $2}')
+
+# add the storage.admin policy to the account so it can push containers
+gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:$EMAIL --role roles/storage.admin
+
+# create the JSON key
+gcloud iam service-accounts keys create config.json --iam-account $EMAIL
+
+export KANIKO_SECRET_CONFIG_FILE="$PWD/config.json"
+```
+
+### Running
+
 Integration tests live in this directory. To run these tests, you must provide `go` with
 `-tags=e2e`. By default the tests run agains your current kubeconfig context,
  but you can change that and other settings with [the flags](#flags):
