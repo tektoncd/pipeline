@@ -114,6 +114,19 @@ func TestReconcileBuildsCreated(t *testing.T) {
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-with-sa-run-success",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				ServiceAccount: "test-sa",
+				TaskRef: v1alpha1.TaskRef{
+					Name:       "test-task",
+					APIVersion: "a1",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-taskrun-templating",
 				Namespace: "foo",
 			},
@@ -179,6 +192,19 @@ func TestReconcileBuildsCreated(t *testing.T) {
 						Name:  "myothercontainer",
 						Image: "myotherimage",
 						Args:  []string{"--my-other-arg=https://foo.git"},
+					},
+				},
+			},
+		},
+		{
+			name:    "serviceaccount",
+			taskRun: "foo/test-taskrun-with-sa-run-success",
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				ServiceAccountName: "test-sa",
+				Steps: []corev1.Container{
+					{
+						Name:  "simple-step",
+						Image: "foo",
 					},
 				},
 			},
