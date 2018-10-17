@@ -30,7 +30,7 @@ import (
 
 const (
 	interval = 1 * time.Second
-	timeout  = 2 * time.Minute
+	timeout  = 5 * time.Minute
 )
 
 // WaitForTaskRunState polls the status of the TaskRun called name from client every
