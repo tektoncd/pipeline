@@ -70,12 +70,12 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	logger.Infof("Creating Pipeline %s", helmDeployPipelineName)
-	if _, err := c.PipelineClient.Create(getelmDeployPipeline(namespace)); err != nil {
+	if _, err := c.PipelineClient.Create(getHelmDeployPipeline(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", helmDeployPipelineName, err)
 	}
 
 	logger.Infof("Creating PipelineRun %s", helmDeployPipelineRunName)
-	if _, err := c.PipelineRunClient.Create(getelmDeployPipelineRun(namespace)); err != nil {
+	if _, err := c.PipelineRunClient.Create(getHelmDeployPipelineRun(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", helmDeployPipelineRunName, err)
 	}
 
@@ -94,14 +94,17 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 	}
 
+	var serviceIp string
 	k8sService, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(helmDeployServiceName, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error getting service at %s %s", helmDeployServiceName, err)
 	}
-	var serviceIp string
-	ingress := k8sService.Status.LoadBalancer.Ingress
-	if len(ingress) > 0 {
-		serviceIp = ingress[0].IP
+	if k8sService != nil {
+		ingress := k8sService.Status.LoadBalancer.Ingress
+		if len(ingress) > 0 {
+			serviceIp = ingress[0].IP
+			t.Logf("Service IP is %s", serviceIp)
+		}
 	}
 
 	resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIp))
@@ -140,7 +143,8 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 		t.Fatalf("KO_DOCKER_REPO env variable is required")
 	}
 
-	imageName = fmt.Sprintf("%s/%s", dockerRepo, sourceImageName)
+	imageName = fmt.Sprintf("%s/%s", dockerRepo, AppendRandomString(sourceImageName))
+	t.Log("Image to be pusblished: %s", imageName)
 
 	return &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
@@ -196,32 +200,30 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 					Name:  "helm-init",
 					Image: "alpine/helm",
 					Args:  []string{"init"},
-				},
-					{
-						Name:  "helm-cleanup", //for local clusters, clean up from previous runs
-						Image: "alpine/helm",
-						Command: []string{"/bin/sh",
-							"-c",
-							"helm ls --short --all | xargs -n1 helm del --purge",
-						},
+				}, {
+					Name:  "helm-cleanup", //for local clusters, clean up from previous runs
+					Image: "alpine/helm",
+					Command: []string{"/bin/sh",
+						"-c",
+						"helm ls --short --all | xargs -n1 helm del --purge",
 					},
-					{
-						Name:  "helm-deploy",
-						Image: "alpine/helm",
-						Args: []string{"install",
-							"--debug",
-							"--name=${inputs.params.chartname}",
-							"${inputs.params.pathToHelmCharts}",
-							"--set",
-							"image.repository=${inputs.params.image}",
-						},
-					}},
+				}, {
+					Name:  "helm-deploy",
+					Image: "alpine/helm",
+					Args: []string{"install",
+						"--debug",
+						"--name=${inputs.params.chartname}",
+						"${inputs.params.pathToHelmCharts}",
+						"--set",
+						"image.repository=${inputs.params.image}",
+					},
+				}},
 			},
 		},
 	}
 }
 
-func getelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
+func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 	return &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -270,7 +272,7 @@ func getelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 	}
 }
 
-func getelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
+func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	return &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
