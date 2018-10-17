@@ -8,7 +8,7 @@
 1. [Create and checkout a repo fork](#checkout-your-fork)
 1. Set up your [shell environment](#environment-setup)
 1. Install [requirements](#requirements)
-1. [Set up a kubernetes cluster](https://github.com/knative/serving/blob/master/docs/creating-a-kubernetes-cluster.md)
+1. [Set up a kubernetes cluster](#kubernetes-cluster)
 1. [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
 1. [Set up a docker repository you can push to](https://github.com/knative/serving/blob/master/docs/setting-up-a-docker-registry.md)
 
@@ -44,12 +44,22 @@ You must install these tools:
 1. [`go`](https://golang.org/doc/install): The language `Pipeline CRD` is built in
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`dep`](https://github.com/golang/dep): For managing external Go
-   dependencies. 
-   
-   Please Install dep v0.5.0 or greater.
+   dependencies. - Please Install dep v0.5.0 or greater.
 1. [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko): For
    development.
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For interacting with your kube cluster
+
+## Kubernetes cluster
+
+To setup a cluster with GKE:
+
+1. [Install required tools and setup GCP project](https://github.com/knative/docs/blob/master/install/Knative-with-GKE.md#before-you-begin)
+   (You may find it useful to save the ID of the project in an environment variable (e.g. `PROJECT_ID`).
+1. [Create a GKE cluster for knative](https://github.com/knative/docs/blob/master/install/Knative-with-GKE.md#creating-a-kubernetes-cluster)
+
+Note that [the `--scopes` argument to `gcloud container cluster create`](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create#--scopes)
+controls what GCP resources the cluster's default service account has access to; for example to give the default
+service account full access to your GCR registry, you can add `storage-full` to your `--scopes` arg.
 
 ## Environment Setup
 
@@ -93,8 +103,8 @@ While iterating on the project, you may need to:
 
 1. [Install/Run everything](#install-pipeline)
 1. Verify it's working by [looking at the logs](#accessing-logs)
-1. Update your (external) dependencies with: `./hack/update-deps.sh`. 
-   
+1. Update your (external) dependencies with: `./hack/update-deps.sh`.
+
    __Running dep ensure manually, will pull a bunch of scripts deleted [here](./hack/update-deps.sh#L29)__
 1. Update your type definitions with: `./hack/update-codegen.sh`.
 1. [Add new CRD types](#adding-new-types)

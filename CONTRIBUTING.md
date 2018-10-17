@@ -9,7 +9,7 @@ To get started developing, see our [DEVELOPMENT.md](./DEVELOPMMENT.md).
 In this file you'll find info on:
 
 * [Principles](#principles)
-* [The pull request process](#pull-request-process)
+* [The pull request process](#pull-request-process) and [Prow commands](#prow-commands)
 * [Standards](#standards) around [commit messages](#commit-messages) and [code](#coding-standards)
 * [The roadmap and contributions wanted](#roadmap-and-contributions-wanted)
 * [Contacting other contributors](#contact)
@@ -42,27 +42,50 @@ This means that automation will be applied to your pull requests.
 
 _See also [Knative docs on reviewing](https://github.com/knative/docs/blob/master/community/REVIEWING.md)._
 
-## Prow configuration
+### Prow configuration
 
 Prow is configured in [the knative `config.yaml` in `knative/test-infra`](https://github.com/knative/test-infra/blob/master/ci/prow/config.yaml)
 via the sections for `knative/build-pipeline`.
 
-## Prow commands
+### Prow commands
 
-Prow has a [number of commands](https://prow.knative.dev/command-help) you can use to interact with it,
-in particular:
+Prow has a [number of commands](https://prow.knative.dev/command-help) you can use to interact with it.
+More on the Prow proces in general
+[is available in the k8s docs](https://github.com/kubernetes/community/blob/master/contributors/guide/owners.md#the-code-review-process).
 
-* Before a PR can be merged, an owner must approve it with both `/lgtm` AND `/approve`
-* If you don't a PR to be merged, e.g. so that the author can make changes, you can put it on hold with `/hold`
-* When tests (run by Prow) fail, it will add a comment to the PR with the commands to re-run any failing tests
-* You can add dog and cat pictures with `/woof` and `/meow`
+#### Getting sign off
+
+Before a PR can be merged, it must have both `/lgtm` AND `/approve`:
+
+* `/lgtm` can be added by anyone in [the knative org](https://github.com/orgs/knative/people)
+* `/approve` can be added only by [OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS)
+
+[OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS) automatically get `/approve`
+but still will need an `/lgtm` to merge.
+
+The merge will happen automatically once the PR has both `/lgtm` and `/approve`,
+and all tests pass. If you don't want this to happen you should [`/hold`](#preventing-the-merge)
+the PR.
 
 Any changes will cause the `/lgtm` label to be removed and it will need to be re-applied.
 
-### Review turnaround
+#### Preventing the merge
 
-Pull requests opened by [maintainers](./OWNERS) should be left open, when possible, for at least a day in order
-to provide other maintainers a chance to review.
+If you don't a PR to be merged, e.g. so that the author can make changes, you can put it on hold with `/hold`.
+Remove the hold with `/hold cancel`.
+
+#### Tests
+
+If you are a member of [the knative org](https://github.com/orgs/knative/people), tests (required to merge)
+will be automatically kicked off for your PR. If not,
+[someone with `/lgtm` or `/approve` permission](#getting-sign-off)
+will need to add `/ok-to-test` to your PR to allow the tests to run.
+
+When tests (run by Prow) fail, it will add a comment to the PR with the commands to re-run any failing tests
+
+#### Cats and dogs
+
+You can add dog and cat pictures with `/woof` and `/meow`.
 
 ## Standards
 
@@ -129,7 +152,8 @@ The columns on the board are:
 
 This work is being done by
 [the Build CRD working group](https://github.com/knative/docs/blob/master/community/WORKING-GROUPS.md#build).
-If you are interested please join our meetings and or slack!
+If you are interested please join our meetings and or in slack at
+[`#build-pipeline`](https://knative.slack.com/messages/build-pipeline)!
 
 All docs shared with this group are made visible to members of
 [knative-dev@](https://groups.google.com/forum/#!forum/knative-dev), please join if you are interested!
