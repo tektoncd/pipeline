@@ -294,7 +294,7 @@ func TestReconcileBuildFetchError(t *testing.T) {
 	clients.bclient.PrependReactor("*", "*", reactor)
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err == nil {
-		t.Fatal("expected error")
+		t.Fatal("expected error but got nil")
 	}
 }
 
@@ -340,7 +340,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	}
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
-		t.Fatal("Unexpected error", err)
+		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
 
 	newTr, err := clients.taskrunInformer.Lister().TaskRuns(taskRun.Namespace).Get(taskRun.Name)
@@ -360,7 +360,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 
 	_, err = clients.bclient.BuildV1alpha1().Builds(taskRun.Namespace).Update(build)
 	if err != nil {
-		t.Errorf("Unexpected error creating build: %v", err)
+		t.Errorf("Unexpected error while creating build: %v", err)
 	}
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
@@ -369,7 +369,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 
 	newTr, err = clients.taskrunInformer.Lister().TaskRuns(taskRun.Namespace).Get(taskRun.Name)
 	if err != nil {
-		t.Errorf("Unexpected error fetching taskrun: %v", err)
+		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("Taskrun Status diff -want, +got: %v", d)
