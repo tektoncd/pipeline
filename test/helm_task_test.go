@@ -94,26 +94,36 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 	}
 
+	logger.Info("Waiting for service to get external IP")
 	var serviceIp string
-	k8sService, err := c.KubeClient.Kube.CoreV1().Services(namespace).Get(helmDeployServiceName, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Error getting service at %s %s", helmDeployServiceName, err)
-	}
-	if k8sService != nil {
-		ingress := k8sService.Status.LoadBalancer.Ingress
-		if len(ingress) > 0 {
-			serviceIp = ingress[0].IP
-			t.Logf("Service IP is %s", serviceIp)
+	if err := WaitForServiceExternalIPState(c, namespace, helmDeployServiceName, func(svc *corev1.Service) (bool, error) {
+		ingress := svc.Status.LoadBalancer.Ingress
+		if ingress != nil {
+			if len(ingress) > 0 {
+				serviceIp = ingress[0].IP
+				return true, nil
+			}
 		}
+		return false, nil
+	}, "ServiceExternalIPisReady"); err != nil {
+		t.Errorf("Error waiting for Service %s to get an external IP: %s", helmDeployServiceName, err)
 	}
 
-	resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIp))
-	if err != nil {
-		t.Errorf("Error reaching service at http://%s:8080 %s", serviceIp, err)
+	if serviceIp != "" {
+		resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIp))
+		if err != nil {
+			t.Errorf("Error reaching service at http://%s:8080 %s", serviceIp, err)
+		}
+		if resp != nil && resp.StatusCode != http.StatusOK {
+			t.Errorf("Error from service at http://%s:8080 %s", serviceIp, err)
+		}
+
+	} else {
+		t.Errorf("Service IP is empty.")
 	}
-	if resp != nil && resp.StatusCode != http.StatusOK {
-		t.Errorf("Error from service at http://%s:8080 %s", serviceIp, err)
-	}
+
+	// cleanup task to remove helm from cluster, will not fail the test if it fails, just log
+	removeHelmFromCluster(c, t, namespace, logger)
 }
 
 func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
@@ -144,7 +154,7 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 	}
 
 	imageName = fmt.Sprintf("%s/%s", dockerRepo, AppendRandomString(sourceImageName))
-	t.Log("Image to be pusblished: %s", imageName)
+	t.Logf("Image to be pusblished: %s", imageName)
 
 	return &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
@@ -203,7 +213,10 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 				}, {
 					Name:  "helm-cleanup", //for local clusters, clean up from previous runs
 					Image: "alpine/helm",
-					Command: []string{"/bin/sh",
+					Command: []string{
+						"/bin/sh",
+					},
+					Args: []string{
 						"-c",
 						"helm ls --short --all | xargs -n1 helm del --purge",
 					},
@@ -255,6 +268,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: sourceResourceName,
 						},
+						PassedConstraints: []string{createImageTaskName},
 					}},
 					Params: []v1alpha1.Param{{
 						Name:  "pathToHelmCharts",
@@ -306,7 +320,92 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string) {
 		}},
 	}
 
+	t.Logf("Creating Cluster Role binding in kube-system for helm in namespace %s", namespace)
 	if _, err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Create(defaultClusterRoleBinding); err != nil {
 		t.Fatalf("Failed to create default Service account for Helm in namespace: %s - %s", namespace, err)
+	}
+
+	kubesystemClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: AppendRandomString("default-tiller"),
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+		},
+		Subjects: []rbacv1.Subject{{
+			Kind:      "ServiceAccount",
+			Name:      "default",
+			Namespace: "kube-system",
+		}},
+	}
+
+	t.Logf("Creating Cluster Role binding in kube-system for helm")
+	if _, err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Create(kubesystemClusterRoleBinding); err != nil {
+		t.Fatalf("Failed to create default Service account for Helm in kube-system - %s", err)
+	}
+}
+
+func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *logging.BaseLogger) {
+	helmResetTaskName := "helm-reset-task"
+	helmResetTask := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      helmResetTaskName,
+		},
+		Spec: v1alpha1.TaskSpec{
+			BuildSpec: &buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:  "helm-reset",
+					Image: "alpine/helm",
+					Args:  []string{"reset", "--force"},
+				},
+				},
+			},
+		},
+	}
+
+	helmResetTaskRunName := "helm-reset-taskrun"
+	helmResetTaskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      helmResetTaskRunName,
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name: helmResetTaskName,
+			},
+			Trigger: v1alpha1.TaskTrigger{
+				TriggerRef: v1alpha1.TaskTriggerRef{
+					Type: v1alpha1.TaskTriggerTypeManual,
+				},
+			},
+		},
+	}
+
+	logger.Infof("Creating Task %s", helmResetTaskName)
+	if _, err := c.TaskClient.Create(helmResetTask); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", helmResetTaskName, err)
+	}
+
+	logger.Infof("Creating TaskRun %s", helmResetTaskRunName)
+	if _, err := c.TaskRunClient.Create(helmResetTaskRun); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", helmResetTaskRunName, err)
+	}
+
+	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", helmResetTaskRunName, namespace)
+	if err := WaitForTaskRunState(c, helmResetTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, nil
+			} else if c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("pipeline run %s failed!", hwPipelineRunName)
+			}
+		}
+		return false, nil
+	}, "TaskRunSuccess"); err != nil {
+		logger.Infof("TaskRun %s failed to finish: %s", helmResetTaskRunName, err)
 	}
 }
