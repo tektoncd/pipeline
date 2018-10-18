@@ -57,6 +57,7 @@ type Data struct {
 type Clients struct {
 	Pipeline *fakepipelineclientset.Clientset
 	Build    *fakebuildclientset.Clientset
+	Kube     *fakekubeclientset.Clientset
 }
 
 // Informers holds references to informers which are useful for reconciler tests.
@@ -95,6 +96,7 @@ func seedTestData(d Data) (Clients, Informers) {
 	c := Clients{
 		Pipeline: fakepipelineclientset.NewSimpleClientset(objs...),
 		Build:    fakebuildclientset.NewSimpleClientset(buildObjs...),
+		Kube:     fakekubeclientset.NewSimpleClientset(),
 	}
 	sharedInformer := informers.NewSharedInformerFactory(c.Pipeline, 0)
 	buildInformerFactory := buildinformers.NewSharedInformerFactory(c.Build, 0)
@@ -141,7 +143,7 @@ func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Cli
 	return taskrun.NewController(
 		reconciler.Options{
 			Logger:            zap.New(observer).Sugar(),
-			KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
+			KubeClientSet:     c.Kube,
 			PipelineClientSet: c.Pipeline,
 			BuildClientSet:    c.Build,
 		},
@@ -154,13 +156,13 @@ func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Cli
 
 // GetPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
+func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients) {
 	c, i := seedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	return pipelinerun.NewController(
 		reconciler.Options{
 			Logger:            zap.New(observer).Sugar(),
-			KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
+			KubeClientSet:     c.Kube,
 			PipelineClientSet: c.Pipeline,
 		},
 		i.PipelineRun,
@@ -168,5 +170,5 @@ func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs,
 		i.Task,
 		i.TaskRun,
 		i.PipelineParams,
-	), logs, c.Pipeline
+	), logs, c
 }

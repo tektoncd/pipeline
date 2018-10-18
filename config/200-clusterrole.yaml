@@ -4,7 +4,7 @@ metadata:
   name: knative-build-pipeline-admin
 rules:
   - apiGroups: [""]
-    resources: ["pods", "namespaces", "secrets", "events", "serviceaccounts", "configmaps"]
+    resources: ["pods", "namespaces", "secrets", "events", "serviceaccounts", "configmaps", "persistentvolumeclaims"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["extensions"]
     resources: ["deployments"]

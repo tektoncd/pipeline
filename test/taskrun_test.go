@@ -37,13 +37,8 @@ func TestTaskRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
 	defer tearDown(logger, c.KubeClient, namespace)
 
-	logger.Infof("Creating volume %s to collect log output", hwVolumeName)
-	if _, err := c.KubeClient.Kube.CoreV1().PersistentVolumeClaims(namespace).Create(getHelloWorldVolumeClaim(namespace)); err != nil {
-		t.Fatalf("Failed to create Volume `%s`: %s", hwTaskName, err)
-	}
-
 	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(getHelloWorldTaskWithVolume(namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s > %s/%s", taskOutput, logPath, logFile)})); err != nil {
+	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)})); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
 	}
 	if _, err := c.TaskRunClient.Create(getHelloWorldTaskRun(namespace)); err != nil {
@@ -65,10 +60,11 @@ func TestTaskRun(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 
-	logger.Infof("Verifying TaskRun %s output in volume %s", hwTaskRunName, hwVolumeName)
+	// The volume created with the results will have the same name as the TaskRun
+	logger.Infof("Verifying TaskRun %s output in volume %s", hwTaskRunName, hwTaskRunName)
 	output, err := getBuildOutputFromVolume(logger, c, namespace, taskOutput)
 	if err != nil {
-		t.Fatalf("Unable to get build output from volume %s: %s", hwVolumeName, err)
+		t.Fatalf("Unable to get build output from volume %s: %s", hwTaskRunName, err)
 	}
 	if !strings.Contains(output, taskOutput) {
 		t.Fatalf("Expected output %s from pod %s but got %s", buildOutput, hwValidationPodName, output)

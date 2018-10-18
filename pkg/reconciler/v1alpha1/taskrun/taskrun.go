@@ -33,6 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
@@ -55,6 +56,8 @@ const (
 	// taskRunControllerName defines name for TaskRun Controller
 	taskRunControllerName = "TaskRun"
 	taskRunNameLabelKey   = "taskrun.knative.dev/taskName"
+
+	pvcSizeBytes = 5 * 1024 * 1024 * 1024 // 5 GBs
 )
 
 var (
@@ -101,13 +104,6 @@ func NewController(
 		AddFunc:    impl.Enqueue,
 		UpdateFunc: controller.PassNew(impl.Enqueue),
 	})
-
-	// TODO(aaron-prindle) what to do if a task is deleted?
-	// taskInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-	// 	AddFunc:    impl.Enqueue,
-	// 	UpdateFunc: controller.PassNew(impl.Enqueue),
-	// 	DeleteFunc: impl.Enqueue,
-	// })
 
 	c.tracker = tracker.New(impl.EnqueueKey, opt.GetTrackerLease())
 	buildInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -166,8 +162,20 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// get build the same as the taskrun, this is the value we use for 1:1 mapping and retrieval
 	build, err := c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
+		pvc, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			// Create a persistent volume claim to hold Build logs
+			pvc, err = c.createPVC(tr)
+			if err != nil {
+				return fmt.Errorf("Failed to create persistent volume claim %s for task %q: %v", tr.Name, err, tr.Name)
+			}
+		} else if err != nil {
+			c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get pvc %q; %v", tr.Name, tr.Name, err)
+			return err
+		}
+
 		// Build is not present, create build
-		build, err = c.createBuild(tr)
+		build, err = c.createBuild(tr, pvc.Name)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			tr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -224,8 +232,40 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 	return newtaskrun, nil
 }
 
-// createBuild creates a build from the task, using the task's buildspec.
-func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
+// createVolume will create a persistent volume mount for tr which
+// will be used to gather logs using the entrypoint wrapper
+func (c *Reconciler) createPVC(tr *v1alpha1.TaskRun) (*corev1.PersistentVolumeClaim, error) {
+	v, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(tr.Namespace).Create(
+		&corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: tr.Namespace,
+				// This pvc is specific to this TaskRun, so we'll use the same name
+				Name: tr.Name,
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(tr, groupVersionKind),
+				},
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: *resource.NewQuantity(pvcSizeBytes, resource.BinarySI),
+					},
+				},
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to claim Persistent Volume %q due to error: %s", tr.Name, err)
+	}
+	return v, nil
+}
+
+// createBuild creates a build from the task, using the task's buildspec
+// with pvcName as a volumeMount
+func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1alpha1.Build, error) {
 	// Get related task for taskrun
 	t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
 	if err != nil {
@@ -237,6 +277,28 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, er
 		return nil, fmt.Errorf("task %s has nil BuildSpec", t.Name)
 	}
 
+	bSpec := t.Spec.BuildSpec.DeepCopy()
+	bSpec.Volumes = append(bSpec.Volumes, corev1.Volume{
+		Name: resources.MountName,
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: pvcName,
+			},
+		},
+	})
+
+	// Override the entrypoint so that we can use our custom
+	// entrypoint which copies logs
+	err = resources.AddEntrypoint(bSpec.Steps)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to add entrypoint to steps of Build: %s", err)
+	}
+
+	// Add the step which will copy the entrypoint into the volume
+	// we are going to be using, so that all of the steps will have
+	// access to it.
+	bSpec.Steps = append([]corev1.Container{resources.GetCopyStep()}, bSpec.Steps...)
+
 	b := &buildv1alpha1.Build{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tr.Name,
@@ -247,7 +309,7 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, er
 			// Attach new label and pass taskrun labels to build
 			Labels: makeLabels(tr),
 		},
-		Spec: *t.Spec.BuildSpec,
+		Spec: *bSpec,
 	}
 	// Pass service account name from taskrun to build
 	// if task specifies service account name override with taskrun SA

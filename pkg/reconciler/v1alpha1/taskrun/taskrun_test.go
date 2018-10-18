@@ -24,14 +24,68 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/knative/build-pipeline/test"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ktesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 )
+
+var (
+	groupVersionKind = schema.GroupVersionKind{
+		Group:   v1alpha1.SchemeGroupVersion.Group,
+		Version: v1alpha1.SchemeGroupVersion.Version,
+		Kind:    "TaskRun",
+	}
+)
+
+const (
+	entrypointLocation = "/tools/entrypoint"
+	toolsMountName     = "tools"
+	pvcSizeBytes       = 5 * 1024 * 1024 * 1024 // 5 GBs
+)
+
+var toolsMount = corev1.VolumeMount{
+	Name:      toolsMountName,
+	MountPath: "/tools",
+}
+
+var entrypointCopyStep = corev1.Container{
+	Name:         "place-tools",
+	Image:        resources.EntrypointImage,
+	Command:      []string{"/bin/cp"},
+	Args:         []string{"/entrypoint", entrypointLocation},
+	VolumeMounts: []corev1.VolumeMount{toolsMount},
+}
+
+func getExpectedPVC(tr *v1alpha1.TaskRun) *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: tr.Namespace,
+			// This pvc is specific to this TaskRun, so we'll use the same name
+			Name: tr.Name,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(tr, groupVersionKind),
+			},
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				corev1.ReadWriteOnce,
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: *resource.NewQuantity(pvcSizeBytes, resource.BinarySI),
+				},
+			},
+		},
+	}
+}
 
 var simpleTask = &v1alpha1.Task{
 	ObjectMeta: metav1.ObjectMeta{
@@ -42,8 +96,27 @@ var simpleTask = &v1alpha1.Task{
 		BuildSpec: &buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{
 				{
-					Name:  "simple-step",
-					Image: "foo",
+					Name:    "simple-step",
+					Image:   "foo",
+					Command: []string{"/mycmd"},
+				},
+			},
+		},
+	},
+}
+
+var saTask = &v1alpha1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-with-sa",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.TaskSpec{
+		BuildSpec: &buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				{
+					Name:    "sa-step",
+					Image:   "foo",
+					Command: []string{"/mycmd"},
 				},
 			},
 		},
@@ -59,9 +132,10 @@ var templatedTask = &v1alpha1.Task{
 		BuildSpec: &buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{
 				{
-					Name:  "mycontainer",
-					Image: "myimage",
-					Args:  []string{"--my-arg=${inputs.params.myarg}"},
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-arg=${inputs.params.myarg}"},
 				},
 				{
 					Name:  "myothercontainer",
@@ -87,6 +161,17 @@ var gitResource = &v1alpha1.PipelineResource{
 			},
 		},
 	},
+}
+
+func getToolsVolume(claimName string) corev1.Volume {
+	return corev1.Volume{
+		Name: toolsMountName,
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: claimName,
+			},
+		},
+	}
 }
 
 func getRunName(tr *v1alpha1.TaskRun) string {
@@ -115,7 +200,7 @@ func TestReconcile(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				ServiceAccount: "test-sa",
 				TaskRef: v1alpha1.TaskRef{
-					Name:       "test-task",
+					Name:       "test-with-sa",
 					APIVersion: "a1",
 				},
 			},
@@ -153,7 +238,7 @@ func TestReconcile(t *testing.T) {
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1alpha1.Task{simpleTask, templatedTask},
+		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource},
 	}
 	testcases := []struct {
@@ -166,10 +251,23 @@ func TestReconcile(t *testing.T) {
 			taskRun: taskruns[0],
 			wantedBuildSpec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{
+					entrypointCopyStep,
 					{
-						Name:  "simple-step",
-						Image: "foo",
+						Name:    "simple-step",
+						Image:   "foo",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
 					},
+				},
+				Volumes: []corev1.Volume{
+					getToolsVolume("test-taskrun-run-success"),
 				},
 			},
 		},
@@ -179,10 +277,23 @@ func TestReconcile(t *testing.T) {
 			wantedBuildSpec: buildv1alpha1.BuildSpec{
 				ServiceAccountName: "test-sa",
 				Steps: []corev1.Container{
+					entrypointCopyStep,
 					{
-						Name:  "simple-step",
-						Image: "foo",
+						Name:    "sa-step",
+						Image:   "foo",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
 					},
+				},
+				Volumes: []corev1.Volume{
+					getToolsVolume("test-taskrun-with-sa-run-success"),
 				},
 			},
 		},
@@ -191,16 +302,36 @@ func TestReconcile(t *testing.T) {
 			taskRun: taskruns[2],
 			wantedBuildSpec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{
+					entrypointCopyStep,
 					{
-						Name:  "mycontainer",
-						Image: "myimage",
-						Args:  []string{"--my-arg=foo"},
+						Name:    "mycontainer",
+						Image:   "myimage",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
 					},
 					{
-						Name:  "myothercontainer",
-						Image: "myotherimage",
-						Args:  []string{"--my-other-arg=https://foo.git"},
+						Name:    "myothercontainer",
+						Image:   "myotherimage",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
 					},
+				},
+				Volumes: []corev1.Volume{
+					getToolsVolume("test-taskrun-templating"),
 				},
 			},
 		},
@@ -231,6 +362,41 @@ func TestReconcile(t *testing.T) {
 			}
 			if condition != nil && condition.Reason != taskrun.ReasonRunning {
 				t.Errorf("Expected reason %q but was %s", taskrun.ReasonRunning, condition.Reason)
+			}
+
+			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun.Name)
+			if err != nil {
+				t.Errorf("Invalid resource key: %v", err)
+			}
+			//Command, Args, Env, VolumeMounts
+			if len(clients.Kube.Actions()) == 0 {
+				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
+			}
+			// 3. check that volume was created
+			pvc, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Failed to fetch build: %v", err)
+			}
+
+			// get related TaskRun to populate expected PVC
+			tr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Failed to fetch build: %v", err)
+			}
+			expectedVolume := getExpectedPVC(tr)
+			if d := cmp.Diff(pvc.Name, expectedVolume.Name); d != "" {
+				t.Errorf("pvc doesn't match, diff: %s", d)
+			}
+			if d := cmp.Diff(pvc.OwnerReferences, expectedVolume.OwnerReferences); d != "" {
+				t.Errorf("pvc doesn't match, diff: %s", d)
+			}
+			if d := cmp.Diff(pvc.Spec.AccessModes, expectedVolume.Spec.AccessModes); d != "" {
+				t.Errorf("pvc doesn't match, diff: %s", d)
+			}
+			if pvc.Spec.Resources.Requests["storage"] != expectedVolume.Spec.Resources.Requests["storage"] {
+				t.Errorf("pvc doesn't match, got: %v, expected: %v",
+					pvc.Spec.Resources.Requests["storage"],
+					expectedVolume.Spec.Resources.Requests["storage"])
 			}
 		})
 	}
