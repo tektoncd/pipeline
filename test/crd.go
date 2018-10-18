@@ -155,9 +155,7 @@ func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
 			Name:      hwTaskRunName,
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: hwTaskName,
-			},
+			TaskRef: hwTaskName,
 			Trigger: v1alpha1.TaskTrigger{
 				TriggerRef: v1alpha1.TaskTriggerRef{
 					Type: v1alpha1.TaskTriggerTypeManual,
@@ -176,16 +174,12 @@ func getHelloWorldPipeline(namespace string) *v1alpha1.Pipeline {
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{
 				v1alpha1.PipelineTask{
-					Name: hwPipelineTaskName1,
-					TaskRef: v1alpha1.TaskRef{
-						Name: hwTaskName,
-					},
+					Name:    hwPipelineTaskName1,
+					TaskRef: hwTaskName,
 				},
 				v1alpha1.PipelineTask{
-					Name: hwPipelineTaskName2,
-					TaskRef: v1alpha1.TaskRef{
-						Name: hwTaskName,
-					},
+					Name:    hwPipelineTaskName2,
+					TaskRef: hwTaskName,
 				},
 			},
 		},

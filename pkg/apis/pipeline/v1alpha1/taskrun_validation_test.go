@@ -53,9 +53,7 @@ func TestTaskRun_Validate(t *testing.T) {
 			Name: "taskname",
 		},
 		Spec: TaskRunSpec{
-			TaskRef: TaskRef{
-				Name: "taskrefname",
-			},
+			TaskRef: "taskrefname",
 			Trigger: TaskTrigger{
 				TriggerRef: TaskTriggerRef{
 					Type: TaskTriggerTypePipelineRun,
@@ -83,21 +81,19 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		{
 			name: "invalid taskref name",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{},
+				TaskRef: "",
 				Trigger: TaskTrigger{
 					TriggerRef: TaskTriggerRef{
 						Type: TaskTriggerTypeManual,
 					},
 				},
 			},
-			wantErr: apis.ErrMissingField("spec.taskref.name"),
+			wantErr: apis.ErrMissingField("spec.taskref"),
 		},
 		{
 			name: "invalid taskref type",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{
-					Name: "taskrefname",
-				},
+				TaskRef: "taskrefname",
 				Trigger: TaskTrigger{
 					TriggerRef: TaskTriggerRef{
 						Type: "wrongtype",
@@ -109,9 +105,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		{
 			name: "invalid taskref",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{
-					Name: "taskrefname",
-				},
+				TaskRef: "taskrefname",
 				Trigger: TaskTrigger{
 					TriggerRef: TaskTriggerRef{
 						Type: TaskTriggerTypePipelineRun,
@@ -141,9 +135,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		{
 			name: "task trigger run type",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{
-					Name: "taskrefname",
-				},
+				TaskRef: "taskrefname",
 				Trigger: TaskTrigger{
 					TriggerRef: TaskTriggerRef{
 						Type: TaskTriggerTypePipelineRun,
@@ -155,9 +147,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		{
 			name: "task trigger run type with different capitalization",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{
-					Name: "taskrefname",
-				},
+				TaskRef: "taskrefname",
 				Trigger: TaskTrigger{
 					TriggerRef: TaskTriggerRef{
 						Type: "PiPeLiNeRuN",

@@ -204,9 +204,7 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			},
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: t.Name,
-			},
+			TaskRef: t.Name,
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: pt.Params,
 			},

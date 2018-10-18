@@ -83,7 +83,7 @@ func GetPipelineState(getTask GetTask, getTaskRun GetTaskRun, p *v1alpha1.Pipeli
 	state := []*PipelineRunTaskRun{}
 	for i := range p.Spec.Tasks {
 		pt := p.Spec.Tasks[i]
-		t, err := getTask(p.Namespace, pt.TaskRef.Name)
+		t, err := getTask(p.Namespace, pt.TaskRef)
 		if err != nil {
 			// If the Task can't be found, it means the PipelineRun is invalid. Return the same error
 			// type so it can be used by the caller.

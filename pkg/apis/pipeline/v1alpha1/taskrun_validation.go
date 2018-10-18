@@ -37,8 +37,8 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 	}
 
 	// Check for TaskRef
-	if ts.TaskRef.Name == "" {
-		return apis.ErrMissingField("spec.taskref.name")
+	if ts.TaskRef == "" {
+		return apis.ErrMissingField("spec.taskref")
 	}
 
 	// Check for Trigger

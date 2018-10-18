@@ -202,7 +202,7 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 // createBuild creates a build from the task, using the task's buildspec.
 func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
 	// Get related task for taskrun
-	t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
+	t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef)
 	if err != nil {
 		return nil, fmt.Errorf("Error when listing tasks %v", err)
 	}

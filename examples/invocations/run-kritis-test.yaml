@@ -5,8 +5,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: unit-test-kritis-feature-x
 spec:
-    taskRef:
-        name: make
+    taskRef: make
     trigger:
         triggerRef:
             type: PipelineRun

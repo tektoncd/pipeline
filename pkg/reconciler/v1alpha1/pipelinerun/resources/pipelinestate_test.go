@@ -36,10 +36,10 @@ const (
 
 var pts = []v1alpha1.PipelineTask{{
 	Name:    "mytask1",
-	TaskRef: v1alpha1.TaskRef{Name: "task"},
+	TaskRef: "task",
 }, {
 	Name:    "mytask2",
-	TaskRef: v1alpha1.TaskRef{Name: "task"},
+	TaskRef: "task",
 }}
 
 var p = &v1alpha1.Pipeline{

@@ -82,9 +82,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Namespace: "marshmallow",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "simpleTask",
-			},
+			TaskRef: "simpleTask",
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.PipelineResourceVersion{
 					v1alpha1.PipelineResourceVersion{
@@ -165,9 +163,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name: "simpleTask",
-				},
+				TaskRef: "simpleTask",
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.PipelineResourceVersion{
 						v1alpha1.PipelineResourceVersion{
@@ -217,9 +213,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name: "simpleTask",
-				},
+				TaskRef: "simpleTask",
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.PipelineResourceVersion{
 						v1alpha1.PipelineResourceVersion{

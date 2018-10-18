@@ -12,10 +12,8 @@ spec:
         type: manual
 status:
   taskRuns:
-    - taskRef:
-      name: unit-test-kritis-12321312984
-    - taskRef:
-      name: push-kritis-12321312984
+    - taskRef: unit-test-kritis-12321312984
+    - taskRef: push-kritis-12321312984
   conditions:
     - type: Succeeded
       status: "False"

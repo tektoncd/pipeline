@@ -6,8 +6,7 @@ metadata:
 spec:
     tasks:
       - name: unit-test-kritis          # 1.  Run unit Tests
-        taskRef:
-          name: make
+        taskRef: make
         inputSourceBindings:
           - name: kritis-app-github
             key: workspace # bind to the name in the task
@@ -17,8 +16,7 @@ spec:
           - name: makeTarget
             value: test
       - name: push-kritis               # 2.  Build And Push Tests
-        taskRef:
-          name: build-push
+        taskRef: build-push
         inputSourceBindings:
           - name: kritis-app-github
             key: workspace # bind to the name in the task
@@ -35,8 +33,7 @@ spec:
           - name: pathToDockerfile
             value: deploy/Dockerfile
       - name: deploy-test-env           # 3. Finally Deploy to Test environment
-        taskRef:
-          name: deploy-with-helm
+        taskRef: deploy-with-helm
         inputSourceBindings:
           - name: guestbookImage
             key: workspace
@@ -50,8 +47,7 @@ spec:
           - inputName: targetCluster
             key: testCluster
       - name: integration-test          # 4. Run Integration Tests in test cluster
-        taskRef:
-          name: integration-test-in-docker
+        taskRef: integration-test-in-docker
         inputSourceBindings:
           - name: kritis-test-github
             key: workspace

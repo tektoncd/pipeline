@@ -53,7 +53,7 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
 			Name:    "unit-test-1",
-			TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+			TaskRef: "unit-test-task",
 			Params: []v1alpha1.Param{{
 				Name:  "foo",
 				Value: "somethingfun",
@@ -119,9 +119,7 @@ func TestReconcile(t *testing.T) {
 			}},
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "unit-test-task",
-			},
+			TaskRef: "unit-test-task",
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: []v1alpha1.Param{{
 					Name:  "foo",
@@ -185,7 +183,7 @@ func TestReconcile_MissingTasks(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
 			Name:    "myspecialtask",
-			TaskRef: v1alpha1.TaskRef{Name: "sometask"},
+			TaskRef: "sometask",
 		}},
 		}},
 	}

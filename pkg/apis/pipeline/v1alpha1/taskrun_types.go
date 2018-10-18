@@ -33,7 +33,7 @@ var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
-	TaskRef TaskRef     `json:"taskRef"`
+	TaskRef string      `json:"string"`
 	Trigger TaskTrigger `json:"trigger"`
 	// +optional
 	Inputs TaskRunInputs `json:"inputs,omitempty"`

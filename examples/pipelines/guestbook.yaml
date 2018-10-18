@@ -6,8 +6,7 @@ metadata:
 spec:
     tasks:
         - name: build-guestbook                  # 1.a Build guestbook go sample code.
-          taskRef:
-              name: build-push
+          taskRef: build-push
           inputSourceBindings:
               - name: guestbookSource
                 key: workspace # bind to the name in the task
@@ -22,8 +21,7 @@ spec:
               - name: pathToDockerfile
                 value: guestbook-go/Dockerfile
         - name: build-redis                      # 1.b Build and push redis docker image.
-          taskRef:
-              name: build-push
+          taskRef: build-push
           inputSourceBindings:
               - name: redis-ocker
                 key: workspace        
@@ -38,8 +36,7 @@ spec:
               - name: pathToDockerfile
                 value: 4/debian9/4.0/Dockerfile
         - name: deploy-bundle-test               # 2. Deploy GuestBook and Redis to test cluster
-          taskRef:
-              name: deploy-with-kubectl
+          taskRef: deploy-with-kubectl
           inputSourceBindings:
             - name: guestbookSource
               key: workspace
@@ -61,8 +58,7 @@ spec:
               - inputName: clusterName
                 key: testCluster
         - name: int-test-osx                    # 3.a Run Integration tests for osx
-          taskRef:
-              name: integrationTestInDocker
+          taskRef: integrationTestInDocker
           inputSourceBindings:
               - name: guestbookSource
                 key: workspace
@@ -74,8 +70,7 @@ spec:
               - name: dockerBuildFile
                 value: guestbook-int/Dockerfile
         - name: int-test-linux                  # 3.b Run Integration tests for linux
-          taskRef:
-              name: integration-test-in-docker
+          taskRef: integration-test-in-docker
           inputSourceBindings:
               - name: guestbookSource
                 key: workspace
@@ -87,8 +82,7 @@ spec:
               - name: dockerBuildFile
                 value: guestbook-int/Dockerfile
         - name: deploy-bundle-staging           # 4. Deploy GuestBook and Redis to staging cluster
-          taskRef:
-              name: deploy-with-kubectl
+          taskRef: deploy-with-kubectl
           inputSourceBindings:
               - name: guestbookSource
                 key: workspace

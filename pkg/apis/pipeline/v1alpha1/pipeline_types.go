@@ -61,8 +61,8 @@ type Pipeline struct {
 // PipelineTask defines a task in a Pipeline, passing inputs from both
 // PipelineParams and from the output of previous tasks.
 type PipelineTask struct {
-	Name    string  `json:"name"`
-	TaskRef TaskRef `json:"taskRef"`
+	Name    string `json:"name"`
+	TaskRef string `json:"taskRef"`
 	// +optional
 	InputSourceBindings []SourceBinding `json:"inputSourceBindings,omitempty"`
 	// +optional
@@ -101,16 +101,6 @@ type SourceBinding struct {
 	// PassedConstraints is the list of Task names that the resource has to pass through.
 	// +optional
 	PassedConstraints []string `json:"passedConstraints,omitempty"`
-}
-
-// TaskRef can be used to refer to a specific instance of a task.
-// Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
-type TaskRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
-	// API version of the referent
-	// +optional
-	APIVersion string `json:"apiVersion,omitempty"`
 }
 
 // PipelineResourceRef can be used to refer to a specific instance of a Resource

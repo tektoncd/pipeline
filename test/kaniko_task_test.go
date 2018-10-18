@@ -18,12 +18,13 @@ package test
 import (
 	"fmt"
 	"io/ioutil"
-	"k8s.io/client-go/kubernetes"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -162,9 +163,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 			Name:      kanikoTaskRunName,
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: kanikoTaskName,
-			},
+			TaskRef: kanikoTaskName,
 			Trigger: v1alpha1.TaskTrigger{
 				TriggerRef: v1alpha1.TaskTriggerRef{
 					Type: v1alpha1.TaskTriggerTypeManual,

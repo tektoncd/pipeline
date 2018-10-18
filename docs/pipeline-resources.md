@@ -64,8 +64,7 @@ metadata:
   name: build-push-task-run
   namespace: default
 spec:
-    taskRef:
-        name: build-push-task
+    taskRef: build-push-task
     inputs:
         resourcesVersion:
           - resourceRef:

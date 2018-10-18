@@ -100,10 +100,7 @@ func TestReconcileBuildsCreated(t *testing.T) {
 				Namespace: "foo",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name:       "test-task",
-					APIVersion: "a1",
-				},
+				TaskRef: "test-task",
 			},
 		},
 		{
@@ -112,10 +109,8 @@ func TestReconcileBuildsCreated(t *testing.T) {
 				Namespace: "foo",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name:       "task-with-templating",
-					APIVersion: "a1",
-				},
+				TaskRef: "task-with-templating",
+
 				Inputs: v1alpha1.TaskRunInputs{
 					Params: []v1alpha1.Param{
 						{
@@ -204,10 +199,7 @@ func TestReconcileBuildCreationErrors(t *testing.T) {
 				Namespace: "foo",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name:       "notask",
-					APIVersion: "a1",
-				},
+				TaskRef: "notask",
 			},
 		},
 	}

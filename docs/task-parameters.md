@@ -40,8 +40,7 @@ kind: TaskRun
 metadata:
   name: run-with-parameters
 spec:
-    taskRef:
-        name: task-with-parameters
+    taskRef: task-with-parameters
     inputs:
         params:
         - name: 'flags'
