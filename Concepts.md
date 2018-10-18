@@ -1,7 +1,7 @@
 # Pipeline CRDs
 Pipeline CRDs is an open source implementation to configure and run CI/CD style pipelines for your kubernetes application.
 
-Pipeline CRDs creates [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) as building blocks to declare pipelines. 
+Pipeline CRDs creates [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) as building blocks to declare pipelines.
 
 A custom resource is an extension of Kubernetes API which can create a custom [Kubernetest Object](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#understanding-kubernetes-objects).
 Once a custom resource is installed, users can create and access its objects with kubectl, just as they do for built-in resources like pods, deployments etc.
@@ -20,7 +20,9 @@ A task will run inside a container on your cluster. A Task declares,
 1. Outputs the task will produce.
 1. Sequence of steps to execute.
 
-   Each step defines an container image. This image is of type [Builder Image](https://github.com/knative/docs/blob/master/build/builder-contract.md). A Builder Image is an image whose entrypoint is a tool that performs some action and exits with a zero status on success. These entrypoints are often command-line tools, for example, git, docker, mvn, and so on.
+   Each step defines an container image. This image is of type [Builder Image](https://github.com/knative/docs/blob/master/build/builder-contract.md).  A Builder Image is an image whose `command` performs some action and exits with a zero status on success.
+
+   NOTE: Currently to get the logs out of a Builder Image, entrypoint overrides are used.  This means that each step in `steps:` must have a container with a `command:` specified.
 
 Here is an example simple Task definition which echoes "hello world". The `hello-world` task does not define any inputs or outputs.
 
@@ -37,8 +39,9 @@ spec:
     steps:
       - name: echo
         image: busybox
-        args:
+        command:
           - echo
+        args:
           - "hello world!"
 ```
 Examples of `Task` definitions with inputs and outputs are [here](./examples)

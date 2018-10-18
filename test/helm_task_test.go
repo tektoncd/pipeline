@@ -29,6 +29,7 @@ import (
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1beta1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
@@ -192,8 +193,9 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 			},
 			BuildSpec: &buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
-					Name:  "kaniko",
-					Image: "gcr.io/kaniko-project/executor",
+					Name:    "kaniko",
+					Image:   "gcr.io/kaniko-project/executor",
+					Command: []string{"/kaniko/executor"},
 					Args: []string{"--dockerfile=/workspace/test/gohelloworld/Dockerfile",
 						fmt.Sprintf("--destination=%s", imageName),
 					},
@@ -227,12 +229,14 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 			},
 			BuildSpec: &buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
-					Name:  "helm-init",
-					Image: "alpine/helm",
-					Args:  []string{"init", "--wait"},
+					Name:    "helm-init",
+					Image:   "alpine/helm",
+					Command: []string{"helm"},
+					Args:    []string{"init", "--wait"},
 				}, {
-					Name:  "helm-deploy",
-					Image: "alpine/helm",
+					Name:    "helm-deploy",
+					Image:   "alpine/helm",
+					Command: []string{"helm"},
 					Args: []string{"install",
 						"--debug",
 						"--name=${inputs.params.chartname}",
@@ -323,7 +327,9 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string, logg
 
 	logger.Infof("Creating tiller service account")
 	if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts("kube-system").Create(tillerServiceAccount); err != nil {
-		t.Fatalf("Failed to create default Service account for Helm %s", err)
+		if !errors.IsAlreadyExists(err) {
+			t.Fatalf("Failed to create default Service account for Helm %s", err)
+		}
 	}
 
 	clusterRoleBindings[0] = &rbacv1.ClusterRoleBinding{
@@ -480,9 +486,10 @@ func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *l
 		Spec: v1alpha1.TaskSpec{
 			BuildSpec: &buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
-					Name:  "helm-reset",
-					Image: "alpine/helm",
-					Args:  []string{"reset", "--force"},
+					Name:    "helm-reset",
+					Image:   "alpine/helm",
+					Command: []string{"helm"},
+					Args:    []string{"reset", "--force"},
 				},
 				},
 			},

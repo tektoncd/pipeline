@@ -125,7 +125,8 @@ func TestPipelineRun_WithServiceAccount(t *testing.T) {
 						Name:  "config-docker",
 						Image: "gcr.io/cloud-builders/docker",
 						// Private docker image for Build CRD testing
-						Args: []string{"pull", "gcr.io/build-crd-testing/secret-sauce"},
+						Command: []string{"docker"},
+						Args:    []string{"pull", "gcr.io/build-crd-testing/secret-sauce"},
 						VolumeMounts: []corev1.VolumeMount{{
 							Name:      "docker-socket",
 							MountPath: "/var/run/docker.sock",

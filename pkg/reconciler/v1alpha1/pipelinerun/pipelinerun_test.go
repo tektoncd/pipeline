@@ -93,23 +93,23 @@ func TestReconcile(t *testing.T) {
 		Tasks:          ts,
 		PipelineParams: pp,
 	}
-	c, _, client := test.GetPipelineRunController(d)
+	c, _, clients := test.GetPipelineRunController(d)
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
 	if err != nil {
 		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
 	}
-	if len(client.Actions()) == 0 {
+	if len(clients.Pipeline.Actions()) == 0 {
 		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
 	}
 
 	// Check that the PipelineRun was reconciled correctly
-	reconciledRun, err := client.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
+	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 	}
 
 	// Check that the expected TaskRun was created
-	actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject()
 	trueB := true
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
