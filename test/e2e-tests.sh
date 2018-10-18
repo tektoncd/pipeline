@@ -45,11 +45,6 @@ function teardown() {
 
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
 function dump_extra_cluster_state() {
-  for crd in pipelines pipelineruns tasks taskruns resources pipelineparams
-  do
-    echo ">>> $crd:"
-    kubectl get $crd -o yaml --all-namespaces
-  done
   echo ">>> Pipeline controller log:"
   kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-controller knative-build-pipeline)
   echo ">>> Pipeline webhook log:"
@@ -75,10 +70,13 @@ set +o xtrace
 # Wait for pods to be running in the namespaces we are deploying to
 wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
 
-# Run the smoke tests for the examples dir to make sure they are valid
-./examples/smoke-test.sh || fail_test
-
 # Run the integration tests
 go_test_e2e -timeout=20m ./test || fail_test
+
+# Run the smoke tests for the examples dir to make sure they are valid
+# Run these _after_ the integration tests b/c they don't quite work all the way
+# and they cause a lot of noise in the logs, making it harder to debug integration
+# test failures.
+./examples/smoke-test.sh || fail_test
 
 success

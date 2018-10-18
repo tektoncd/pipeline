@@ -20,6 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const maxLength = 63
+
 func validateObjectMetadata(meta metav1.Object) *apis.FieldError {
 	name := meta.GetName()
 
@@ -30,7 +32,7 @@ func validateObjectMetadata(meta metav1.Object) *apis.FieldError {
 		}
 	}
 
-	if len(name) > 63 {
+	if len(name) > maxLength {
 		return &apis.FieldError{
 			Message: "Invalid resource name: length must be no more than 63 characters",
 			Paths:   []string{"name"},

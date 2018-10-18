@@ -65,7 +65,7 @@ func main() {
 	logger, atomicLevel := logging.NewLoggerFromConfig(loggingConfig, logging.ControllerLogKey)
 	defer logger.Sync()
 
-	logger.Info("Starting the Build Controller")
+	logger.Info("Starting the Pipeline Controller")
 
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
@@ -117,6 +117,7 @@ func main() {
 
 	pipelineInformer := pipelineInformerFactory.Pipeline().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineRuns()
+	pipelineParamsInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineParamses()
 	// Build all of our controllers, with the clients constructed above.
 	controllers := []*controller.Impl{
 		// Pipeline Controllers
@@ -131,6 +132,7 @@ func main() {
 			pipelineInformer,
 			taskInformer,
 			taskRunInformer,
+			pipelineParamsInformer,
 		),
 	}
 

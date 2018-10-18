@@ -27,7 +27,7 @@ The goal of the Pipeline CRD is to fit into and cooperate with
 
 _See [examples](./examples) for some examples of how this is intended to work._
 
-![Overview of the 5 CRDs](./crds.png)
+![Overview of the 5 CRDs](./docs/images/crds.png)
 
 The CRDs involved are:
 
@@ -53,13 +53,15 @@ High level details of this design:
 ### Task
 
 `Task` is a CRD that knows how to instantiate a [Knative Build](https://github.com/knative/build),
-either from a series of `steps` (i.e. [Builders](https://github.com/knative/docs/blob/master/build/builder-contract.md))
-or from a [`BuildTemplate`](https://github.com/knative/docs/blob/master/build/build-templates.md).
+either from a series of `steps` (i.e. [Builders](https://github.com/knative/docs/blob/master/build/builder-contract.md)).
 It takes Knative Build and adds inputs and outputs. Where these inputs and outputs are provided
 from is not known to a task, so they can be provided by a Pipeline or by a user invoking a Task directly.
 
 `Tasks` are basically [Knative BuildTemplates](https://github.com/knative/build-templates)
 with additional input types and clearly defined outputs.
+This means that `Tasks` must refer to `Builds`, not `BuildTemplates`.
+
+See [docs/task-parameters.md](./docs/task-parameters.md) for how to use parameters with Tasks.
 
 ### Pipeline
 

@@ -71,14 +71,19 @@ type Inputs struct {
 	// +optional
 	Resources []TaskResource `json:"resources,omitempty"`
 	// +optional
-	Params []Param `json:"params,omitempty"`
+	Params []TaskParam `json:"params,omitempty"`
 	// TODO(#68) a cluster and/or deployment should be a type of Resource
 	// +optional
 	Clusters []Cluster `json:"clusters,omitempty"`
 }
 
-// Param defines arbitrary parameters needed by a task beyond typed inputs
+// TaskParam defines arbitrary parameters needed by a task beyond typed inputs
 // such as resources.
+type TaskParam struct {
+	Name string `json:"name"`
+}
+
+// Param declares a value to use for the Param called Name.
 type Param struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`

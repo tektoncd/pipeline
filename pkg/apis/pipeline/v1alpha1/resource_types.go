@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/webhook"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,6 +48,7 @@ type PipelineResourceInterface interface {
 	GetType() PipelineResourceType
 	GetParams() []Param
 	GetVersion() string
+	Replacements() map[string]string
 }
 
 // PipelineResourceSpec defines  an individual resources used in the pipeline.
@@ -111,4 +114,15 @@ type PipelineResourceList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []PipelineResource `json:"items"`
+}
+
+// ResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
+func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
+	switch r.Spec.Type {
+	case PipelineResourceTypeGit:
+		return NewGitResource(r)
+	case PipelineResourceTypeImage:
+		return NewImageResource(r)
+	}
+	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

@@ -199,6 +199,16 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "build template invalid",
+			fields: fields{
+				BuildSpec: &buildv1alpha1.BuildSpec{
+					Template: &buildv1alpha1.TemplateInstantiationSpec{
+						Name: "foo",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

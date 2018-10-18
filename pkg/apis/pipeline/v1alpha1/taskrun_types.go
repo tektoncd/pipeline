@@ -17,9 +17,19 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/webhook"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// Check that TaskRun may be validated and defaulted.
+var _ apis.Validatable = (*TaskRun)(nil)
+var _ apis.Defaultable = (*TaskRun)(nil)
+
+// Assert that TaskRun implements the GenericCRD interface.
+var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
@@ -30,6 +40,10 @@ type TaskRunSpec struct {
 	// +optional
 	Outputs Outputs `json:"outputs,omitempty"`
 	Results Results `json:"results"`
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
+	// +optional
+	ServiceAccount string `json:"serviceAccount"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.
@@ -67,11 +81,29 @@ type TaskTriggerRef struct {
 	Name string `json:"name,omitempty"`
 }
 
+var taskRunCondSet = duckv1alpha1.NewBatchConditionSet()
+
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
 	Steps []StepRun `json:"steps"`
 	// Conditions describes the set of conditions of this build.
 	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
+}
+
+// GetCondition returns the Condition matching the given type.
+func (tr *TaskRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
+	return taskRunCondSet.Manage(tr).GetCondition(t)
+}
+func (ts *TaskRunStatus) InitializeConditions() {
+	taskRunCondSet.Manage(ts).InitializeConditions()
+}
+
+// SetCondition sets the condition, unsetting previous conditions with the same
+// type as necessary.
+func (ts *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+	if newCond != nil {
+		taskRunCondSet.Manage(ts).SetCondition(*newCond)
+	}
 }
 
 // StepRun reports the results of running a step in the Task. Each
@@ -107,4 +139,16 @@ type TaskRunList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TaskRun `json:"items"`
+}
+
+func (t *TaskRun) SetDefaults() {}
+
+// GetBuildRef for task
+func (tr *TaskRun) GetBuildRef() corev1.ObjectReference {
+	return corev1.ObjectReference{
+		APIVersion: "build.knative.dev/v1alpha1",
+		Kind:       "Build",
+		Namespace:  tr.Namespace,
+		Name:       tr.Name,
+	}
 }

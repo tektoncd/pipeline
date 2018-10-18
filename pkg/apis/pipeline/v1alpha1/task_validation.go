@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -43,6 +44,11 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 		return err
 	}
 
+	// We also require that a BuildSpec is NOT a template.
+	if ts.BuildSpec.Template != nil {
+		return apis.ErrDisallowedFields("taskspec.BuildSpec.Template")
+	}
+
 	// A task doesn't have to have inputs or outputs, but if it does they must be valid.
 	// A task can't duplicate input or output names.
 
@@ -57,13 +63,8 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 		}
 	}
 	if ts.Outputs != nil {
-		for _, source := range ts.Outputs.Resources {
-			if err := validateResourceType(source, fmt.Sprintf("taskspec.Outputs.Resources.%s.Type", source.Name)); err != nil {
-				return err
-			}
-			if err := checkForDuplicates(ts.Outputs.Resources, "taskspec.Outputs.Resources.Name"); err != nil {
-				return err
-			}
+		if err := ts.Outputs.Validate("taskspec.Outputs"); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -72,10 +73,10 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
-		if _, ok := encountered[r.Name]; ok {
+		if _, ok := encountered[strings.ToLower(r.Name)]; ok {
 			return apis.ErrMultipleOneOf(path)
 		}
-		encountered[r.Name] = struct{}{}
+		encountered[strings.ToLower(r.Name)] = struct{}{}
 	}
 	return nil
 }

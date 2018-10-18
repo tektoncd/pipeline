@@ -18,25 +18,87 @@ import (
 	"testing"
 	"time"
 
+	"fmt"
+
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
+	tinformers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	fakebuildclientset "github.com/knative/build/pkg/client/clientset/versioned/fake"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions"
-
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/cache"
 )
 
-func TestReconcile(t *testing.T) {
-	taskname := "test-task"
+var simpleTask = &v1alpha1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-task",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.TaskSpec{
+		BuildSpec: &buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				{
+					Name:  "simple-step",
+					Image: "foo",
+				},
+			},
+		},
+	},
+}
+
+var templatedTask = &v1alpha1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "task-with-templating",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.TaskSpec{
+		BuildSpec: &buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				{
+					Name:  "mycontainer",
+					Image: "myimage",
+					Args:  []string{"--my-arg=${inputs.params.myarg}"},
+				},
+				{
+					Name:  "myothercontainer",
+					Image: "myotherimage",
+					Args:  []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
+				},
+			},
+		},
+	},
+}
+
+var gitResource = &v1alpha1.PipelineResource{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "git-resource",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.PipelineResourceSpec{
+		Type: "git",
+		Params: []v1alpha1.Param{
+			{
+				Name:  "URL",
+				Value: "https://foo.git",
+			},
+		},
+	},
+}
+
+func TestReconcileBuildsCreated(t *testing.T) {
 	taskruns := []*v1alpha1.TaskRun{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -45,78 +107,302 @@ func TestReconcile(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskRunSpec{
 				TaskRef: v1alpha1.TaskRef{
-					Name:       taskname,
+					Name:       "test-task",
 					APIVersion: "a1",
 				},
-			}},
-	}
-
-	buildSpec := buildv1alpha1.BuildSpec{
-		Template: &buildv1alpha1.TemplateInstantiationSpec{
-			Name: "kaniko",
-			Arguments: []buildv1alpha1.ArgumentSpec{
-				buildv1alpha1.ArgumentSpec{
-					Name:  "DOCKERFILE",
-					Value: "${PATH_TO_DOCKERFILE}",
-				},
-				buildv1alpha1.ArgumentSpec{
-					Name:  "REGISTRY",
-					Value: "${REGISTRY}",
-				},
-			}},
-	}
-
-	tasks := []*v1alpha1.Task{
+			},
+		},
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      taskname,
+				Name:      "test-taskrun-with-sa-run-success",
 				Namespace: "foo",
 			},
-			Spec: v1alpha1.TaskSpec{
-				BuildSpec: &buildSpec,
-			}},
+			Spec: v1alpha1.TaskRunSpec{
+				ServiceAccount: "test-sa",
+				TaskRef: v1alpha1.TaskRef{
+					Name:       "test-task",
+					APIVersion: "a1",
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-templating",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: v1alpha1.TaskRef{
+					Name:       "task-with-templating",
+					APIVersion: "a1",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Params: []v1alpha1.Param{
+						{
+							Name:  "myarg",
+							Value: "foo",
+						},
+					},
+					Resources: []v1alpha1.PipelineResourceVersion{
+						{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name:       "git-resource",
+								APIVersion: "a1",
+							},
+							Version: "myversion",
+						},
+					},
+				},
+			},
+		},
 	}
+
 	d := testData{
-		taskruns: taskruns,
-		tasks:    tasks,
+		taskruns:  taskruns,
+		tasks:     []*v1alpha1.Task{simpleTask, templatedTask},
+		resources: []*v1alpha1.PipelineResource{gitResource},
 	}
 	testcases := []struct {
-		name         string
-		taskRun      string
-		shdErr       bool
-		shdMakebuild bool
-		log          string
+		name            string
+		taskRun         string
+		wantedBuildSpec buildv1alpha1.BuildSpec
 	}{
-		{"success", "foo/test-taskrun-run-success", false, true, ""},
+		{
+			name:    "success",
+			taskRun: "foo/test-taskrun-run-success",
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{
+					{
+						Name:  "simple-step",
+						Image: "foo",
+					},
+				},
+			},
+		},
+		{
+			name:    "params",
+			taskRun: "foo/test-taskrun-templating",
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{
+					{
+						Name:  "mycontainer",
+						Image: "myimage",
+						Args:  []string{"--my-arg=foo"},
+					},
+					{
+						Name:  "myothercontainer",
+						Image: "myotherimage",
+						Args:  []string{"--my-other-arg=https://foo.git"},
+					},
+				},
+			},
+		},
+		{
+			name:    "serviceaccount",
+			taskRun: "foo/test-taskrun-with-sa-run-success",
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				ServiceAccountName: "test-sa",
+				Steps: []corev1.Container{
+					{
+						Name:  "simple-step",
+						Image: "foo",
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs, client := getController(d)
-			err := c.Reconciler.Reconcile(context.Background(), tc.taskRun)
-			if tc.shdErr != (err != nil) {
-				t.Errorf("expected to see error %t. Got error %v", tc.shdErr, err)
+			c, _, client := getController(d)
+			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err != nil {
+				t.Errorf("expected no error. Got error %v", err)
 			}
-			if tc.log == "" && logs.Len() > 0 {
-				t.Errorf("expected to see no error log. However found errors in logs: %v", logs)
-			} else if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
-				m := getLogMessages(logs)
-				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
-			} else if tc.shdMakebuild {
-				if err == nil {
-					if len(client.Actions()) == 0 {
-						t.Errorf("Expected actions to be logged in the buildclient, got none")
-					}
-					build := client.Actions()[0].(ktesting.CreateAction).GetObject().(*buildv1alpha1.Build)
-					if d := cmp.Diff(build.Spec, buildSpec); d != "" {
-						t.Errorf("Expected created resource to be %v, but was %v", build.Spec, buildSpec)
-					}
-				}
+
+			if len(client.bclient.Actions()) == 0 {
+				t.Errorf("Expected actions to be logged in the buildclient, got none")
+			}
+			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun)
+			if err != nil {
+				t.Errorf("Invalid resource key: %v", err)
+			}
+			// check error
+			build, err := client.bclient.BuildV1alpha1().Builds(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Failed to fetch build: %v", err)
+			}
+			if d := cmp.Diff(build.Spec, tc.wantedBuildSpec); d != "" {
+				t.Errorf("buildspec doesn't match, diff: %s", d)
 			}
 		})
 	}
 }
 
-func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakebuildclientset.Clientset) {
+func TestReconcileBuildCreationErrors(t *testing.T) {
+	taskRuns := []*v1alpha1.TaskRun{
+		&v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "notaskrun",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: v1alpha1.TaskRef{
+					Name:       "notask",
+					APIVersion: "a1",
+				},
+			},
+		},
+	}
+
+	tasks := []*v1alpha1.Task{
+		simpleTask,
+	}
+
+	d := testData{
+		taskruns: taskRuns,
+		tasks:    tasks,
+	}
+
+	testcases := []struct {
+		name    string
+		taskRun string
+	}{
+		{
+			name:    "task run with no task",
+			taskRun: "foo/notaskrun",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, clients := getController(d)
+			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err == nil {
+				t.Error("Expected not found error for non exitent task but got nil")
+			}
+
+			// build client will fetch build
+			if len(clients.bclient.Actions()) != 1 {
+				t.Errorf("expected no actions to be created by the reconciler, got %v", clients.bclient.Actions())
+			}
+		})
+	}
+
+}
+
+func TestReconcileBuildFetchError(t *testing.T) {
+	taskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-run-success",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name:       "test-task",
+				APIVersion: "a1",
+			},
+		},
+	}
+	d := testData{
+		taskruns: []*v1alpha1.TaskRun{
+			taskRun,
+		},
+		tasks: []*v1alpha1.Task{simpleTask},
+	}
+
+	c, _, clients := getController(d)
+
+	reactor := func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		if action.GetVerb() == "get" && action.GetResource().Resource == "builds" {
+			// handled fetching builds
+			return true, nil, fmt.Errorf("induce failure fetching builds")
+		}
+		return false, nil, nil
+	}
+
+	clients.bclient.PrependReactor("*", "*", reactor)
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err == nil {
+		t.Fatal("expected error but got nil")
+	}
+}
+
+func TestReconcileBuildUpdateStatus(t *testing.T) {
+	taskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-run-success",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name:       "test-task",
+				APIVersion: "a1",
+			},
+		},
+	}
+	d := testData{
+		taskruns: []*v1alpha1.TaskRun{
+			taskRun,
+		},
+		tasks: []*v1alpha1.Task{simpleTask},
+	}
+	buildSt := &duckv1alpha1.Condition{
+		Type: duckv1alpha1.ConditionSucceeded,
+		// build is not completed
+		Status:  corev1.ConditionUnknown,
+		Message: "Running build",
+	}
+
+	c, _, clients := getController(d)
+	build := &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      taskRun.Name,
+			Namespace: taskRun.Namespace,
+		},
+		Spec: *simpleTask.Spec.BuildSpec,
+	}
+	build.Status.SetCondition(buildSt)
+
+	_, err := clients.bclient.BuildV1alpha1().Builds(taskRun.Namespace).Create(build)
+	if err != nil {
+		t.Errorf("error creating build : %v", err)
+	}
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when Reconcile() : %v", err)
+	}
+
+	newTr, err := clients.taskrunInformer.Lister().TaskRuns(taskRun.Namespace).Get(taskRun.Name)
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+	var ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
+	// update build status and trigger reconcile
+	buildSt.Status = corev1.ConditionTrue
+	buildSt.Message = "Build completed"
+
+	build.Status.SetCondition(buildSt)
+
+	_, err = clients.bclient.BuildV1alpha1().Builds(taskRun.Namespace).Update(build)
+	if err != nil {
+		t.Errorf("Unexpected error while creating build: %v", err)
+	}
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when Reconcile(): %v", err)
+	}
+
+	newTr, err = clients.taskrunInformer.Lister().TaskRuns(taskRun.Namespace).Get(taskRun.Name)
+	if err != nil {
+		t.Fatalf("Unexpected error fetching taskrun: %v", err)
+	}
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("Taskrun Status diff -want, +got: %v", d)
+	}
+}
+
+func getController(d testData) (*controller.Impl, *observer.ObservedLogs, testClients) {
 	pipelineClient := fakepipelineclientset.NewSimpleClientset()
 	buildClient := fakebuildclientset.NewSimpleClientset()
 
@@ -131,24 +417,35 @@ func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakeb
 
 	for _, tr := range d.taskruns {
 		taskRunInformer.Informer().GetIndexer().Add(tr)
+		pipelineClient.PipelineV1alpha1().TaskRuns(tr.Namespace).Create(tr)
 	}
 	for _, t := range d.tasks {
 		taskInformer.Informer().GetIndexer().Add(t)
+		pipelineClient.PipelineV1alpha1().Tasks(t.Namespace).Create(t)
 	}
+
+	for _, r := range d.resources {
+		resourceInformer.Informer().GetIndexer().Add(r)
+	}
+
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
 	return NewController(
-		reconciler.Options{
-			Logger:            zap.New(observer).Sugar(),
-			KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
-			PipelineClientSet: pipelineClient,
-			BuildClientSet:    buildClient,
-		},
-		taskRunInformer,
-		taskInformer,
-		buildInformer,
-		resourceInformer,
-	), logs, buildClient
+			reconciler.Options{
+				Logger:            zap.New(observer).Sugar(),
+				KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
+				PipelineClientSet: pipelineClient,
+				BuildClientSet:    buildClient,
+			},
+			taskRunInformer,
+			taskInformer,
+			buildInformer,
+			resourceInformer,
+		), logs, testClients{
+			pipelineClient:  pipelineClient,
+			bclient:         buildClient,
+			taskrunInformer: taskRunInformer,
+		}
 }
 
 func getLogMessages(logs *observer.ObservedLogs) []string {
@@ -160,6 +457,13 @@ func getLogMessages(logs *observer.ObservedLogs) []string {
 }
 
 type testData struct {
-	taskruns []*v1alpha1.TaskRun
-	tasks    []*v1alpha1.Task
+	taskruns  []*v1alpha1.TaskRun
+	tasks     []*v1alpha1.Task
+	resources []*v1alpha1.PipelineResource
+}
+
+type testClients struct {
+	bclient         *fakebuildclientset.Clientset
+	pipelineClient  *fakepipelineclientset.Clientset
+	taskrunInformer tinformers.TaskRunInformer
 }

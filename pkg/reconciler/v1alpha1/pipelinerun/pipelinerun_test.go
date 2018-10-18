@@ -23,10 +23,13 @@ import (
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
 	informersv1alpha1 "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -41,9 +44,11 @@ func TestReconcile(t *testing.T) {
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: "test-pipeline",
 			},
+			PipelineParamsRef: v1alpha1.PipelineParamsRef{
+				Name: "unit-test-pp",
+			},
 		},
 	}}
-
 	ps := []*v1alpha1.Pipeline{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline",
@@ -52,6 +57,10 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
 			Name:    "unit-test-1",
 			TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+			Params: []v1alpha1.Param{{
+				Name:  "foo",
+				Value: "somethingfun",
+			}},
 		}},
 		}},
 	}
@@ -60,12 +69,30 @@ func TestReconcile(t *testing.T) {
 			Name:      "unit-test-task",
 			Namespace: "foo",
 		},
-		Spec: v1alpha1.TaskSpec{},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Params: []v1alpha1.TaskParam{{
+					Name: "foo",
+				}, {
+					Name: "bar",
+				}},
+			},
+		},
+	}}
+	pp := []*v1alpha1.PipelineParams{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-pp",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineParamsSpec{
+			ServiceAccount: "test-sa",
+		},
 	}}
 	d := testData{
 		prs: prs,
 		ps:  ps,
 		ts:  ts,
+		pp:  pp,
 	}
 	c, logs, client := getController(d)
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
@@ -78,6 +105,18 @@ func TestReconcile(t *testing.T) {
 	if len(client.Actions()) == 0 {
 		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
 	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := client.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	condition := reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected PipelineRun status to be in progress, but was %s", condition)
+	}
+
+	// Check that the expected TaskRun was created
 	actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
 	trueB := true
 	expectedTaskRun := &v1alpha1.TaskRun{
@@ -92,14 +131,25 @@ func TestReconcile(t *testing.T) {
 				BlockOwnerDeletion: &trueB,
 			}},
 		},
-		Spec: v1alpha1.TaskRunSpec{},
+		Spec: v1alpha1.TaskRunSpec{
+			ServiceAccount: "test-sa",
+			TaskRef: v1alpha1.TaskRef{
+				Name: "unit-test-task",
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "foo",
+					Value: "somethingfun",
+				}},
+			},
+		},
 	}
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
 	}
 }
 
-func TestReconcileInvalid(t *testing.T) {
+func TestReconcile_InvalidPipeline(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "invalid-pipeline",
@@ -141,6 +191,40 @@ func TestReconcileInvalid(t *testing.T) {
 	}
 }
 
+func TestReconcile_MissingTasks(t *testing.T) {
+	ps := []*v1alpha1.Pipeline{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline-missing-tasks",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
+			Name:    "myspecialtask",
+			TaskRef: v1alpha1.TaskRef{Name: "sometask"},
+		}},
+		}},
+	}
+	prs := []*v1alpha1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipelinerun-missing-tasks",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipeline-missing-tasks",
+			},
+		}},
+	}
+	d := testData{
+		prs: prs,
+		ps:  ps,
+	}
+	c, _, _ := getController(d)
+	err := c.Reconciler.Reconcile(context.Background(), "foo/pipelinerun-missing-tasks")
+	if err != nil {
+		t.Errorf("When Pipeline's Tasks can't be found, expected no error to be returned (i.e. controller should stop trying to reconcile) but got: %s", err)
+	}
+}
+
 func getLogMessages(logs *observer.ObservedLogs) []string {
 	messages := []string{}
 	for _, l := range logs.All() {
@@ -154,15 +238,33 @@ type testData struct {
 	ps  []*v1alpha1.Pipeline
 	trs []*v1alpha1.TaskRun
 	ts  []*v1alpha1.Task
+	pp  []*v1alpha1.PipelineParams
 }
 
-func seedTestData(d testData) (*fakepipelineclientset.Clientset, informersv1alpha1.PipelineRunInformer, informersv1alpha1.PipelineInformer, informersv1alpha1.TaskRunInformer, informersv1alpha1.TaskInformer) {
-	pipelineClient := fakepipelineclientset.NewSimpleClientset()
+func seedTestData(d testData) (*fakepipelineclientset.Clientset,
+	informersv1alpha1.PipelineRunInformer, informersv1alpha1.PipelineInformer,
+	informersv1alpha1.TaskRunInformer, informersv1alpha1.TaskInformer, informersv1alpha1.PipelineParamsInformer) {
+	objs := []runtime.Object{}
+	for _, pr := range d.prs {
+		objs = append(objs, pr)
+	}
+	for _, p := range d.ps {
+		objs = append(objs, p)
+	}
+	for _, tr := range d.trs {
+		objs = append(objs, tr)
+	}
+	for _, t := range d.ts {
+		objs = append(objs, t)
+	}
+	pipelineClient := fakepipelineclientset.NewSimpleClientset(objs...)
+
 	sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
 	pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
 	pipelineInformer := sharedInfomer.Pipeline().V1alpha1().Pipelines()
 	taskRunInformer := sharedInfomer.Pipeline().V1alpha1().TaskRuns()
 	taskInformer := sharedInfomer.Pipeline().V1alpha1().Tasks()
+	pipelineParamsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineParamses()
 
 	for _, pr := range d.prs {
 		pipelineRunsInformer.Informer().GetIndexer().Add(pr)
@@ -170,18 +272,20 @@ func seedTestData(d testData) (*fakepipelineclientset.Clientset, informersv1alph
 	for _, p := range d.ps {
 		pipelineInformer.Informer().GetIndexer().Add(p)
 	}
-
 	for _, tr := range d.trs {
 		taskRunInformer.Informer().GetIndexer().Add(tr)
 	}
 	for _, t := range d.ts {
 		taskInformer.Informer().GetIndexer().Add(t)
 	}
-	return pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer
+	for _, t := range d.pp {
+		pipelineParamsInformer.Informer().GetIndexer().Add(t)
+	}
+	return pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer, pipelineParamsInformer
 }
 
 func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
-	pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer := seedTestData(d)
+	pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer, pipelineParamsInformer := seedTestData(d)
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
 	return NewController(
@@ -194,5 +298,6 @@ func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakep
 		pipelineInformer,
 		taskInformer,
 		taskRunInformer,
+		pipelineParamsInformer,
 	), logs, pipelineClient
 }

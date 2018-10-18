@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -33,5 +35,24 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 
+	// Names cannot be duplicated
+	taskNames := map[string]struct{}{}
+	for _, t := range ps.Tasks {
+		if _, ok := taskNames[t.Name]; ok {
+			return apis.ErrMultipleOneOf("spec.tasks.name")
+		}
+		taskNames[t.Name] = struct{}{}
+	}
+
+	// passedConstraints should match other tasks.
+	for _, t := range ps.Tasks {
+		for _, isb := range t.InputSourceBindings {
+			for _, pc := range isb.PassedConstraints {
+				if _, ok := taskNames[pc]; !ok {
+					return apis.ErrInvalidKeyName(pc, fmt.Sprintf("spec.tasks.inputSourceBindings.%s", pc))
+				}
+			}
+		}
+	}
 	return nil
 }

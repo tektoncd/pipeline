@@ -20,13 +20,16 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/knative/pkg/controller"
 
+	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,10 +60,12 @@ type Reconciler struct {
 	*reconciler.Base
 
 	// listers index properties about resources
-	pipelineRunLister listers.PipelineRunLister
-	pipelineLister    listers.PipelineLister
-	taskRunLister     listers.TaskRunLister
-	taskLister        listers.TaskLister
+	pipelineRunLister    listers.PipelineRunLister
+	pipelineLister       listers.PipelineLister
+	taskRunLister        listers.TaskRunLister
+	taskLister           listers.TaskLister
+	pipelineParamsLister listers.PipelineParamsLister
+	tracker              tracker.Interface
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -73,14 +78,16 @@ func NewController(
 	pipelineInformer informers.PipelineInformer,
 	taskInformer informers.TaskInformer,
 	taskRunInformer informers.TaskRunInformer,
+	pipelineParamsesInformer informers.PipelineParamsInformer,
 ) *controller.Impl {
 
 	r := &Reconciler{
-		Base:              reconciler.NewBase(opt, pipelineRunAgentName),
-		pipelineRunLister: pipelineRunInformer.Lister(),
-		pipelineLister:    pipelineInformer.Lister(),
-		taskLister:        taskInformer.Lister(),
-		taskRunLister:     taskRunInformer.Lister(),
+		Base:                 reconciler.NewBase(opt, pipelineRunAgentName),
+		pipelineRunLister:    pipelineRunInformer.Lister(),
+		pipelineLister:       pipelineInformer.Lister(),
+		taskLister:           taskInformer.Lister(),
+		taskRunLister:        taskRunInformer.Lister(),
+		pipelineParamsLister: pipelineParamsesInformer.Lister(),
 	}
 
 	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
@@ -90,6 +97,11 @@ func NewController(
 		AddFunc:    impl.Enqueue,
 		UpdateFunc: controller.PassNew(impl.Enqueue),
 		DeleteFunc: impl.Enqueue,
+	})
+
+	r.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
+	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: controller.PassNew(r.tracker.OnChanged),
 	})
 	return impl
 }
@@ -118,6 +130,17 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// Don't modify the informer's copy.
 	pr := original.DeepCopy()
 
+	taskRunRef := corev1.ObjectReference{
+		APIVersion: "build-pipeline.knative.dev/v1alpha1",
+		Kind:       "TaskRun",
+		Namespace:  pr.Namespace,
+		Name:       pr.Name,
+	}
+	if err := c.tracker.Track(taskRunRef, pr); err != nil {
+		c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
+		return err
+	}
+
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
 	err = c.reconcile(ctx, pr)
@@ -134,7 +157,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
-	// fetch the equivelant pipeline for this pipelinerun Run
 	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
 	if err != nil {
 		c.Logger.Errorf("%q failed to Get Pipeline: %q",
@@ -142,36 +164,48 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		return nil
 	}
-	pipelineTasks, err := p.GetTasks(func(namespace, name string) (*v1alpha1.Task, error) {
-		return c.taskLister.Tasks(namespace).Get(name)
-	})
+	serviceAccount, err := c.getServiceAccount(pr)
 	if err != nil {
-		return fmt.Errorf("error getting Tasks for Pipeline %s, Pipeline is invalid!: %s", p.Name, err)
+		c.Logger.Errorf("Pipelinerun %q failed to get pipelineparamses %q; error %v",
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
+			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineParamsRef.Name),
+			err)
+		return nil
 	}
-	pipelineTaskName, trName, err := resources.GetNextPipelineRunTaskRun(
+	state, err := resources.GetPipelineState(
+		func(namespace, name string) (*v1alpha1.Task, error) {
+			return c.taskLister.Tasks(namespace).Get(name)
+		},
 		func(namespace, name string) (*v1alpha1.TaskRun, error) {
 			return c.taskRunLister.TaskRuns(namespace).Get(name)
 		},
-		p, pr.Name)
+		p, pr.Name,
+	)
 	if err != nil {
-		return fmt.Errorf("error getting next TaskRun to create for PipelineRun %s: %s", pr.Name, err)
+		if errors.IsNotFound(err) {
+			c.Logger.Infof("PipelineRun %s's Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
+				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
+				fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err)
+			// The PipelineRun is Invalid so we want to stop trying to Reconcile it
+			return nil
+		}
+		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s, Pipeline may be invalid!: %s", p.Name, err)
 	}
-	if pipelineTaskName != "" {
-		_, err = c.createTaskRun(pipelineTasks[pipelineTaskName], trName, pr)
+	prtr := resources.GetNextTask(pr.Name, state, c.Logger)
+	if prtr != nil {
+		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
+		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount)
 		if err != nil {
-			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", trName, pipelineTaskName, pr.Name, err)
+			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
 		}
 	}
 
-	// TODO fetch the taskruns status for this pipeline run.
-
-	// TODO check status of tasks and update status of PipelineRuns
-
+	pr.Status.SetCondition(resources.GetPipelineConditionStatus(pr.Name, state, c.Logger))
+	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
 	return nil
 }
 
-func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun) (*v1alpha1.TaskRun, error) {
-	// Create empty tasks
+func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
@@ -180,6 +214,15 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 				*metav1.NewControllerRef(pr, groupVersionKind),
 			},
 		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name: t.Name,
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: pt.Params,
+			},
+			ServiceAccount: sa,
+		},
 	}
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)
 }
@@ -187,11 +230,24 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error getting PipelineRun %s when updating status: %s", pr.Name, err)
 	}
 	if !reflect.DeepEqual(newPr.Status, pr.Status) {
 		newPr.Status = pr.Status
 		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
+}
+
+func (c *Reconciler) getServiceAccount(pr *v1alpha1.PipelineRun) (string, error) {
+	sName := pr.Spec.PipelineParamsRef.Name
+	if sName == "" {
+		return "", nil
+	}
+
+	pp, err := c.pipelineParamsLister.PipelineParamses(pr.Namespace).Get(pr.Spec.PipelineParamsRef.Name)
+	if err != nil {
+		return "", err
+	}
+	return pp.Spec.ServiceAccount, nil
 }

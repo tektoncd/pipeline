@@ -16,17 +16,14 @@ limitations under the License.
 package test
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
@@ -40,55 +37,40 @@ func TestTaskRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
 	defer tearDown(logger, c.KubeClient, namespace)
 
-	// Create Volume
+	logger.Infof("Creating volume %s to collect log output", hwVolumeName)
 	if _, err := c.KubeClient.Kube.CoreV1().PersistentVolumeClaims(namespace).Create(getHelloWorldVolumeClaim(namespace)); err != nil {
 		t.Fatalf("Failed to create Volume `%s`: %s", hwTaskName, err)
 	}
 
-	// Create Task
-	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s > %s/%s", taskOutput, logPath, logFile)})); err != nil {
+	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
+	if _, err := c.TaskClient.Create(getHelloWorldTaskWithVolume(namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s > %s/%s", taskOutput, logPath, logFile)})); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
 	}
-
 	if _, err := c.TaskRunClient.Create(getHelloWorldTaskRun(namespace)); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", hwTaskRunName, err)
 	}
 
-	// Verify status of TaskRun (wait for it)
+	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", hwTaskRunName, namespace)
 	if err := WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
-		if len(tr.Status.Conditions) > 0 && tr.Status.Conditions[0].Status == corev1.ConditionTrue {
-			return true, nil
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, nil
+			} else if c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("pipeline run %s failed!", hwPipelineRunName)
+			}
 		}
 		return false, nil
-	}, "TaskRunCompleted"); err != nil {
+	}, "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 
-	// The Build created by the TaskRun will have the same name
-	b, err := c.BuildClient.Get(hwTaskRunName, metav1.GetOptions{})
+	logger.Infof("Verifying TaskRun %s output in volume %s", hwTaskRunName, hwVolumeName)
+	output, err := getBuildOutputFromVolume(logger, c, namespace, taskOutput)
 	if err != nil {
-		t.Errorf("Expected there to be a Build with the same name as TaskRun %s but got error: %s", hwTaskRunName, err)
+		t.Fatalf("Unable to get build output from volume %s: %s", hwVolumeName, err)
 	}
-	cluster := b.Status.Cluster
-	if cluster == nil || cluster.PodName == "" {
-		t.Fatalf("Expected build status to have a podname but it didn't!")
+	if !strings.Contains(output, taskOutput) {
+		t.Fatalf("Expected output %s from pod %s but got %s", buildOutput, hwValidationPodName, output)
 	}
-	podName := cluster.PodName
-	pods := c.KubeClient.Kube.CoreV1().Pods(namespace)
-
-	req := pods.GetLogs(podName, &corev1.PodLogOptions{})
-	readCloser, err := req.Stream()
-	if err != nil {
-		t.Fatalf("Failed to open stream to read: %v", err)
-	}
-	defer readCloser.Close()
-	var buf bytes.Buffer
-	out := bufio.NewWriter(&buf)
-	_, err = io.Copy(out, readCloser)
-	if !strings.Contains(buf.String(), buildOutput) {
-		t.Fatalf("Expected output %s from pod %s but got %s", buildOutput, podName, buf.String())
-	}
-
-	// Verify that the init containers Build ran had 'taskOutput' written
-	VerifyBuildOutput(t, c, namespace, taskOutput)
 }

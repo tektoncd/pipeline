@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -71,7 +71,22 @@ type PipelineRunStatus struct {
 	// If there is no version, that means use latest
 	// +optional
 	ResourceVersion []PipelineResourceVersion `json:"resourceVersion,omitempty"`
-	Conditions      []PipelineRunCondition    `json:"conditions"`
+	Conditions      duckv1alpha1.Conditions   `json:"conditions"`
+}
+
+var pipelineRunCondSet = duckv1alpha1.NewBatchConditionSet()
+
+// GetCondition returns the Condition matching the given type.
+func (pr *PipelineRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
+	return pipelineRunCondSet.Manage(pr).GetCondition(t)
+}
+
+// SetCondition sets the condition, unsetting previous conditions with the same
+// type as necessary.
+func (pr *PipelineRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+	if newCond != nil {
+		pipelineRunCondSet.Manage(pr).SetCondition(*newCond)
+	}
 }
 
 // +genclient
@@ -105,34 +120,4 @@ type PipelineRunList struct {
 // and produces logs.
 type PipelineTaskRun struct {
 	Name string `json:"name"`
-}
-
-// PipelineRunConditionType indicates the status of the execution of the PipelineRun.
-type PipelineRunConditionType string
-
-const (
-	// PipelineRunConditionTypeStarted indicates whether or not the PipelineRun
-	// has started actually executing.
-	PipelineRunConditionTypeStarted PipelineRunConditionType = "Started"
-
-	//PipelineRunConditionTypeCompleted indicates whether or not the PipelineRun
-	// has finished executing.
-	PipelineRunConditionTypeCompleted PipelineRunConditionType = "Completed"
-
-	// PipelineRunConditionTypeSucceeded indicates whether or not the PipelineRun
-	// was successful.
-	PipelineRunConditionTypeSucceeded PipelineRunConditionType = "Successful"
-)
-
-// PipelineRunCondition holds a Condition that the PipelineRun has entered into while being executed.
-type PipelineRunCondition struct {
-	Type PipelineRunConditionType `json:"type"`
-
-	Status corev1.ConditionStatus `json:"status"`
-
-	LastTransitionTime metav1.Time `json:"lastTransitionTime"`
-	// +optional
-	Reason string `json:"reason,omitempty"`
-	// +optional
-	Message string `json:"message,omitempty"`
 }
