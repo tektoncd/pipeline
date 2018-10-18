@@ -35,10 +35,6 @@ func (ps *PipelineParamsSpec) Validate() *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineParams{}) {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
-	// PipelineParams must specify a service account to run under
-	if ps.ServiceAccount == "" {
-		return apis.ErrMissingField("pipelineparamsspec.ServiceAccount")
-	}
 	for _, c := range ps.Clusters {
 		// If Clusters are specified, their URLs should be valid
 		if err := validateURL(c.Endpoint, fmt.Sprintf("pipelineparamsspec.Clusters.%s.Endpoint", c.Name)); err != nil {
@@ -81,6 +77,9 @@ func (ps *PipelineParamsSpec) Validate() *apis.FieldError {
 }
 
 func validateURL(u, path string) *apis.FieldError {
+	if u == "" {
+		return nil
+	}
 	_, err := url.ParseRequestURI(u)
 	if err != nil {
 		return apis.ErrInvalidValue(u, path)

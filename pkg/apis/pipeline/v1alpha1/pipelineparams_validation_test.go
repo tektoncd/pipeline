@@ -22,8 +22,6 @@ import (
 
 var validURL = "http://www.google.com"
 
-var validServiceAccount = "myserviceaccount"
-
 func validResultTarget(name string) ResultTarget {
 	return ResultTarget{
 		URL:  validURL,
@@ -32,209 +30,144 @@ func validResultTarget(name string) ResultTarget {
 	}
 }
 
-func TestPipelineParamsSpec_Validate(t *testing.T) {
-	type fields struct {
-		ServiceAccount string
-		Runs           ResultTarget
-		Logs           ResultTarget
-		Tests          *ResultTarget
-		Clusters       []Cluster
-	}
+func TestClusterValidation(t *testing.T) {
 	tests := []struct {
-		name   string
-		fields fields
+		name      string
+		Clusters  []Cluster
+		shouldErr bool
 	}{
 		{
-			name: "valid service account and results",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs:           validResultTarget("logs"),
-			},
-		},
-		{
-			name: "valid with tests",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs:           validResultTarget("logs"),
-				Tests: &ResultTarget{
-					URL:  validURL,
-					Name: "tests",
-					Type: "gcs",
+			name: "valid cluster",
+			Clusters: []Cluster{
+				Cluster{
+					Name: "cluster",
+					Type: "gke",
 				},
 			},
 		},
 		{
-			name: "valid with clusters",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs:           validResultTarget("logs"),
-				Clusters: []Cluster{
-					Cluster{
-						Endpoint: validURL,
-						Name:     "cluster",
-						Type:     "gke",
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ts := &PipelineParamsSpec{
-				ServiceAccount: tt.fields.ServiceAccount,
-				Results: Results{
-					Runs:  tt.fields.Runs,
-					Logs:  tt.fields.Logs,
-					Tests: tt.fields.Tests,
-				},
-			}
-			if err := ts.Validate(); err != nil {
-				t.Errorf("PiplineParamsSpec.Validate() = %v", err)
-			}
-		})
-	}
-}
-
-func TestPipelineParamsSpec_ValidateError(t *testing.T) {
-	type fields struct {
-		ServiceAccount string
-		Runs           ResultTarget
-		Logs           ResultTarget
-		Tests          *ResultTarget
-		Clusters       []Cluster
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		{
-			name: "nil",
-		},
-		{
-			name: "no service account",
-			fields: fields{
-				ServiceAccount: "",
-			},
-		},
-		{
-			name: "invalid results.runs.URL",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs: ResultTarget{
-					Name: "runs",
-					URL:  "",
-					Type: "gcs",
-				},
-			},
-		},
-		{
-			name: "invalid results.runs.type",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs: ResultTarget{
-					Name: "runs",
-					URL:  validURL,
-					Type: "invalid",
-				},
-			},
-		},
-		{
-			name: "invalid results.logs.URL",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs: ResultTarget{
-					Name: "logs",
-					URL:  "",
-					Type: "gcs",
-				},
-			},
-		},
-		{
-			name: "invalid results.logs.type",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs: ResultTarget{
-					Name: "logs",
-					URL:  validURL,
-					Type: "invalid",
-				},
-			},
-		},
-		{
-			name: "invalid results.tests.URL",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs:           validResultTarget("logs"),
-				Tests: &ResultTarget{
-					Name: "tests",
-					URL:  "",
-					Type: "gcs",
-				},
-			},
-		},
-		{
-			name: "invalid results.tests.type",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs:           validResultTarget("logs"),
-				Tests: &ResultTarget{
-					Name: "tests",
-					URL:  validURL,
-					Type: "invalid",
+			name: "valid cluster with endpoint",
+			Clusters: []Cluster{
+				Cluster{
+					Name:     "cluster",
+					Endpoint: validURL,
+					Type:     "gke",
 				},
 			},
 		},
 		{
 			name: "invalid cluster.type",
-			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs:           validResultTarget("logs"),
-				Clusters: []Cluster{
-					Cluster{
-						Name:     "cluster",
-						Endpoint: validURL,
-						Type:     "invalid",
-					},
+			Clusters: []Cluster{
+				Cluster{
+					Name:     "cluster",
+					Endpoint: validURL,
+					Type:     "invalid",
 				},
+			},
+			shouldErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ps := &PipelineParamsSpec{
+				Clusters: tt.Clusters,
+				Results: Results{
+					Runs: validResultTarget("runs"),
+					Logs: validResultTarget("logs"),
+				},
+			}
+			err := ps.Validate()
+			if err == nil && tt.shouldErr {
+				t.Errorf("PipelineParamsSpec.Validate() did not return error.")
+			}
+			if err != nil && !tt.shouldErr {
+				t.Errorf("PipelineParamsSpec.Validate() returned unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestResultsValidation(t *testing.T) {
+	type fields struct {
+		Runs      ResultTarget
+		Logs      ResultTarget
+		Tests     *ResultTarget
+		shouldErr bool
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+		{
+			name: "valid results",
+			fields: fields{
+				Runs: validResultTarget("runs"),
+				Logs: validResultTarget("logs"),
 			},
 		},
 		{
-			name: "invalid cluster.endpoint",
+			name: "invalid results.runs.URL",
 			fields: fields{
-				ServiceAccount: validServiceAccount,
-				Runs:           validResultTarget("runs"),
-				Logs:           validResultTarget("logs"),
-				Clusters: []Cluster{
-					Cluster{
-						Name:     "cluster",
-						Endpoint: "",
-						Type:     "gke",
-					},
+				Runs: ResultTarget{
+					Name: "runs",
+					URL:  "",
+					Type: "gcs",
 				},
+				shouldErr: true,
+			},
+		},
+		{
+			name: "invalid results.runs.type",
+			fields: fields{
+				Runs: ResultTarget{
+					Name: "runs",
+					URL:  validURL,
+					Type: "invalid",
+				},
+				shouldErr: true,
+			},
+		},
+		{
+			name: "invalid results.logs.type",
+			fields: fields{
+				Runs: validResultTarget("runs"),
+				Logs: ResultTarget{
+					Name: "logs",
+					URL:  validURL,
+					Type: "invalid",
+				},
+				shouldErr: true,
+			},
+		},
+		{
+			name: "invalid results.tests.type",
+			fields: fields{
+				Runs: validResultTarget("runs"),
+				Logs: validResultTarget("logs"),
+				Tests: &ResultTarget{
+					Name: "tests",
+					URL:  validURL,
+					Type: "invalid",
+				},
+				shouldErr: true,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ps := &PipelineParamsSpec{
-				ServiceAccount: tt.fields.ServiceAccount,
-				Clusters:       tt.fields.Clusters,
 				Results: Results{
 					Runs:  tt.fields.Runs,
 					Logs:  tt.fields.Logs,
 					Tests: tt.fields.Tests,
 				},
 			}
-			if err := ps.Validate(); err == nil {
+			err := ps.Validate()
+			if err == nil && tt.fields.shouldErr {
 				t.Errorf("PipelineParamsSpec.Validate() did not return error.")
+			}
+			if err != nil && !tt.fields.shouldErr {
+				t.Errorf("PipelineParamsSpec.Validate() returned unexpected error: %v", err)
 			}
 		})
 	}
