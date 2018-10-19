@@ -28,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
@@ -98,6 +99,23 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 	}
 
+	// The Build created by the TaskRun will have the same name
+	b, err := c.BuildClient.Get("helm-deploy-pipeline-run-helm-deploy", metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Expected there to be a Build with the same name as TaskRun %s but got error: %s", "helm-deploy-pipeline-run-helm-deploy", err)
+	}
+	cluster := b.Status.Cluster
+	if cluster == nil || cluster.PodName == "" {
+		t.Fatalf("Expected build status to have a podname but it didn't!")
+	}
+	logs, err := getInitContainerLogsFromPod(c.KubeClient.Kube, cluster.PodName, namespace)
+	if err != nil {
+		t.Errorf("Expected there to be logs from build helm-deploy-pipeline-run-helm-deploy %s", err)
+	}
+	logger.Info("=========== build logs ===============")
+	logger.Info(logs)
+	logger.Info("=========== build logs ===============")
+
 	logger.Info("Waiting for service to get external IP")
 	var serviceIp string
 	if err := WaitForServiceExternalIPState(c, namespace, helmDeployServiceName, func(svc *corev1.Service) (bool, error) {
@@ -129,6 +147,20 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	} else {
 		t.Errorf("Service IP is empty.")
 	}
+}
+
+func getInitContainerLogsFromPod(c kubernetes.Interface, pod, namespace string) (string, error) {
+	p, err := c.CoreV1().Pods(namespace).Get(pod, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	var containers []string
+	for _, initContainer := range p.Spec.InitContainers {
+		containers = append(containers, initContainer.Name)
+	}
+
+	return getContainerLogs(c, pod, namespace, containers...)
 }
 
 func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
