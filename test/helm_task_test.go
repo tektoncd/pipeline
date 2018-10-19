@@ -246,7 +246,7 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 				Steps: []corev1.Container{{
 					Name:  "helm-init",
 					Image: "alpine/helm",
-					Args:  []string{"init"},
+					Args:  []string{"init", "--wait"},
 				}, {
 					Name:  "helm-deploy",
 					Image: "alpine/helm",
