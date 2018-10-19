@@ -42,14 +42,18 @@ const (
 	helmDeployServiceName     = "gohelloworld-chart"
 )
 
-var imageName string
+var (
+	imageName            string
+	clusterRoleBindings  [3]*rbacv1.ClusterRoleBinding
+	tillerServiceAccount *corev1.ServiceAccount
+)
 
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
-	setupClusterBindingForHelm(c, t, namespace)
+	setupClusterBindingForHelm(c, t, namespace, logger)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
 	defer tearDown(logger, c.KubeClient, namespace)
@@ -109,6 +113,10 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		t.Errorf("Error waiting for Service %s to get an external IP: %s", helmDeployServiceName, err)
 	}
 
+	// cleanup task to remove helm from cluster, will not fail the test if it fails, just log
+	knativetest.CleanupOnInterrupt(func() { helmCleanup(c, t, namespace, logger) }, logger)
+	defer helmCleanup(c, t, namespace, logger)
+
 	if serviceIp != "" {
 		resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIp))
 		if err != nil {
@@ -121,9 +129,6 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	} else {
 		t.Errorf("Service IP is empty.")
 	}
-
-	// cleanup task to remove helm from cluster, will not fail the test if it fails, just log
-	removeHelmFromCluster(c, t, namespace, logger)
 }
 
 func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
@@ -211,16 +216,6 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 					Image: "alpine/helm",
 					Args:  []string{"init"},
 				}, {
-					Name:  "helm-cleanup", //for local clusters, clean up from previous runs
-					Image: "alpine/helm",
-					Command: []string{
-						"/bin/sh",
-					},
-					Args: []string{
-						"-c",
-						"helm ls --short --all | xargs -n1 helm del --purge",
-					},
-				}, {
 					Name:  "helm-deploy",
 					Image: "alpine/helm",
 					Args: []string{"install",
@@ -303,8 +298,36 @@ func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	}
 }
 
-func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string) {
-	defaultClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string, logger *logging.BaseLogger) {
+	tillerServiceAccount = &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tiller",
+			Namespace: "kube-system",
+		},
+	}
+
+	logger.Infof("Creating tiller service account")
+	if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts("kube-system").Create(tillerServiceAccount); err != nil {
+		t.Fatalf("Failed to create default Service account for Helm %s", err)
+	}
+
+	clusterRoleBindings[0] = &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: AppendRandomString("tiller"),
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     "cluster-admin",
+		},
+		Subjects: []rbacv1.Subject{{
+			Kind:      "ServiceAccount",
+			Name:      "tiller",
+			Namespace: "kube-system",
+		}},
+	}
+
+	clusterRoleBindings[1] = &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: AppendRandomString("default-tiller"),
 		},
@@ -320,12 +343,7 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string) {
 		}},
 	}
 
-	t.Logf("Creating Cluster Role binding in kube-system for helm in namespace %s", namespace)
-	if _, err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Create(defaultClusterRoleBinding); err != nil {
-		t.Fatalf("Failed to create default Service account for Helm in namespace: %s - %s", namespace, err)
-	}
-
-	kubesystemClusterRoleBinding := &rbacv1.ClusterRoleBinding{
+	clusterRoleBindings[2] = &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: AppendRandomString("default-tiller"),
 		},
@@ -341,9 +359,99 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string) {
 		}},
 	}
 
-	t.Logf("Creating Cluster Role binding in kube-system for helm")
-	if _, err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Create(kubesystemClusterRoleBinding); err != nil {
-		t.Fatalf("Failed to create default Service account for Helm in kube-system - %s", err)
+	for _, crb := range clusterRoleBindings {
+		logger.Infof("Creating Cluster Role binding %s for helm", crb.Name)
+		if _, err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Create(crb); err != nil {
+			t.Fatalf("Failed to create cluster role binding for Helm %s", err)
+		}
+	}
+}
+
+func helmCleanup(c *clients, t *testing.T, namespace string, logger *logging.BaseLogger) {
+	logger.Infof("Cleaning up helm from cluster...")
+
+	removeAllHelmReleases(c, t, namespace, logger)
+	removeHelmFromCluster(c, t, namespace, logger)
+
+	logger.Infof("Deleting tiller service account")
+	if err := c.KubeClient.Kube.CoreV1().ServiceAccounts("kube-system").Delete("tiller", &metav1.DeleteOptions{}); err != nil {
+		t.Fatalf("Failed to delete default Service account for Helm %s", err)
+	}
+
+	for _, crb := range clusterRoleBindings {
+		logger.Infof("Deleting Cluster Role binding %s for helm", crb.Name)
+		if err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Delete(crb.Name, &metav1.DeleteOptions{}); err != nil {
+			t.Fatalf("Failed to delete cluster role binding for Helm %s", err)
+		}
+	}
+}
+
+func removeAllHelmReleases(c *clients, t *testing.T, namespace string, logger *logging.BaseLogger) {
+	helmRemoveAllTaskName := "helm-remove-all-task"
+	helmRemoveAllTask := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      helmRemoveAllTaskName,
+		},
+		Spec: v1alpha1.TaskSpec{
+			BuildSpec: &buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:  "helm-remove-all",
+					Image: "alpine/helm",
+					Command: []string{
+						"/bin/sh",
+					},
+					Args: []string{
+						"-c",
+						"helm ls --short --all | xargs -n1 helm del --purge",
+					},
+				},
+				},
+			},
+		},
+	}
+
+	helmRemoveAllTaskRunName := "helm-remove-all-taskrun"
+	helmRemoveAllTaskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      helmRemoveAllTaskRunName,
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name: helmRemoveAllTaskName,
+			},
+			Trigger: v1alpha1.TaskTrigger{
+				TriggerRef: v1alpha1.TaskTriggerRef{
+					Type: v1alpha1.TaskTriggerTypeManual,
+				},
+			},
+		},
+	}
+
+	logger.Infof("Creating Task %s", helmRemoveAllTaskName)
+	if _, err := c.TaskClient.Create(helmRemoveAllTask); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", helmRemoveAllTaskName, err)
+	}
+
+	logger.Infof("Creating TaskRun %s", helmRemoveAllTaskRunName)
+	if _, err := c.TaskRunClient.Create(helmRemoveAllTaskRun); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", helmRemoveAllTaskRunName, err)
+	}
+
+	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", helmRemoveAllTaskRunName, namespace)
+	if err := WaitForTaskRunState(c, helmRemoveAllTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, nil
+			} else if c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("task run %s failed!", hwPipelineRunName)
+			}
+		}
+		return false, nil
+	}, "TaskRunSuccess"); err != nil {
+		logger.Infof("TaskRun %s failed to finish: %s", helmRemoveAllTaskRunName, err)
 	}
 }
 
@@ -401,7 +509,7 @@ func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *l
 			if c.Status == corev1.ConditionTrue {
 				return true, nil
 			} else if c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("pipeline run %s failed!", hwPipelineRunName)
+				return true, fmt.Errorf("task run run %s failed!", hwPipelineRunName)
 			}
 		}
 		return false, nil
