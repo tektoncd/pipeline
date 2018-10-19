@@ -29,7 +29,6 @@ import (
 
 	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -130,13 +129,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// Don't modify the informer's copy.
 	pr := original.DeepCopy()
 
-	taskRunRef := corev1.ObjectReference{
-		APIVersion: "build-pipeline.knative.dev/v1alpha1",
-		Kind:       "TaskRun",
-		Namespace:  pr.Namespace,
-		Name:       pr.Name,
-	}
-	if err := c.tracker.Track(taskRunRef, pr); err != nil {
+	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
 		return err
 	}

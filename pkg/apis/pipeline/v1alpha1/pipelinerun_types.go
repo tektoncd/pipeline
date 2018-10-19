@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -120,4 +121,14 @@ type PipelineRunList struct {
 // and produces logs.
 type PipelineTaskRun struct {
 	Name string `json:"name"`
+}
+
+// GetTaskRunRef for pipelinerun
+func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
+	return corev1.ObjectReference{
+		APIVersion: "build-pipeline.knative.dev/v1alpha1",
+		Kind:       "TaskRun",
+		Namespace:  pr.Namespace,
+		Name:       pr.Name,
+	}
 }
