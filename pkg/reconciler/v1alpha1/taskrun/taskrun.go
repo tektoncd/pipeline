@@ -157,8 +157,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		// Build is not present, create build
 		build, err = c.createBuild(tr)
 		if err != nil {
-			c.Logger.Errorf("Failed to create build for task %q :%v", tr.Name, err)
-			return err
+			c.Logger.Infof("TaskRun %s can't be Run; it references a Task %s that doesn't exist: %v",
+				fmt.Sprintf("%s/%s", tr.Namespace, tr.Name),
+				fmt.Sprintf("%s/%s", tr.Namespace, tr.Spec.TaskRef.Name), err)
+			// The PipelineRun is Invalid so we want to stop trying to Reconcile it
+			return nil
 		}
 	} else if err != nil {
 		c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get build %q; %v", tr.Name, tr.Name, err)
