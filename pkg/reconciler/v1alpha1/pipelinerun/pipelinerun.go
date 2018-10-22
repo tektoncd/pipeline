@@ -152,17 +152,19 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
 	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
 	if err != nil {
-		c.Logger.Errorf("%q failed to Get Pipeline: %q",
+		c.Logger.Infof("%q failed to Get Pipeline: %q",
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
+		// The PipelineRun is Invalid so we want to stop trying to Reconcile it
 		return nil
 	}
 	serviceAccount, err := c.getServiceAccount(pr)
 	if err != nil {
-		c.Logger.Errorf("Pipelinerun %q failed to get pipelineparamses %q; error %v",
+		c.Logger.Infof("Pipelinerun %q failed to get pipelineparamses %q; error %v",
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineParamsRef.Name),
 			err)
+		// The PipelineRun is Invalid so we want to stop trying to Reconcile it
 		return nil
 	}
 	state, err := resources.GetPipelineState(
@@ -182,7 +184,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			// The PipelineRun is Invalid so we want to stop trying to Reconcile it
 			return nil
 		}
-		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s, Pipeline may be invalid!: %s", p.Name, err)
+		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
 	prtr := resources.GetNextTask(pr.Name, state, c.Logger)
 	if prtr != nil {
