@@ -20,7 +20,9 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
@@ -28,8 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 const (
@@ -125,12 +126,19 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	defer helmCleanup(c, t, namespace, logger)
 
 	if serviceIp != "" {
-		resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIp))
-		if err != nil {
-			t.Errorf("Error reaching service at http://%s:8080 %s", serviceIp, err)
-		}
-		if resp != nil && resp.StatusCode != http.StatusOK {
-			t.Errorf("Error from service at http://%s:8080 %s", serviceIp, err)
+		logger.Info("Polling service with external IP")
+		waitErr := wait.PollImmediate(100*time.Millisecond, 30*time.Second, func() (bool, error) {
+			resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIp))
+			if err != nil {
+				return false, nil
+			}
+			if resp != nil && resp.StatusCode != http.StatusOK {
+				return true, fmt.Errorf("Expected 200 but received %d response code	from service at http://%s:8080", resp.StatusCode, serviceIp)
+			}
+			return true, nil
+		})
+		if waitErr != nil {
+			t.Errorf("Error from pinging service IP %s : %s", serviceIp, waitErr)
 		}
 
 	} else {
