@@ -27,8 +27,10 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/knative/pkg/controller"
 
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -155,7 +157,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		c.Logger.Infof("%q failed to Get Pipeline: %q",
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
-		// The PipelineRun is Invalid so we want to stop trying to Reconcile it
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		})
 		return nil
 	}
 	serviceAccount, err := c.getServiceAccount(pr)
@@ -164,7 +170,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
 			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineParamsRef.Name),
 			err)
-		// The PipelineRun is Invalid so we want to stop trying to Reconcile it
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		})
 		return nil
 	}
 	state, err := resources.GetPipelineState(
@@ -181,7 +191,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			c.Logger.Infof("PipelineRun %s's Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
 				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
 				fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err)
-			// The PipelineRun is Invalid so we want to stop trying to Reconcile it
+			// This Run has failed, so we need to mark it as failed and stop reconciling it
+			pr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:   duckv1alpha1.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			})
 			return nil
 		}
 		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s: %s", p.Name, err)

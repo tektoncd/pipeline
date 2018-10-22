@@ -15,6 +15,7 @@ package taskrun_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"fmt"
@@ -29,7 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ktesting "k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/cache"
 )
 
 var simpleTask = &v1alpha1.Task{
@@ -86,6 +86,10 @@ var gitResource = &v1alpha1.PipelineResource{
 			},
 		},
 	},
+}
+
+func getRunName(tr *v1alpha1.TaskRun) string {
+	return strings.Join([]string{tr.Namespace, tr.Name}, "/")
 }
 
 func TestReconcile(t *testing.T) {
@@ -153,12 +157,12 @@ func TestReconcile(t *testing.T) {
 	}
 	testcases := []struct {
 		name            string
-		taskRun         string
+		taskRun         *v1alpha1.TaskRun
 		wantedBuildSpec buildv1alpha1.BuildSpec
 	}{
 		{
 			name:    "success",
-			taskRun: "foo/test-taskrun-run-success",
+			taskRun: taskruns[0],
 			wantedBuildSpec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{
 					{
@@ -169,8 +173,21 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 		{
+			name:    "serviceaccount",
+			taskRun: taskruns[1],
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				ServiceAccountName: "test-sa",
+				Steps: []corev1.Container{
+					{
+						Name:  "simple-step",
+						Image: "foo",
+					},
+				},
+			},
+		},
+		{
 			name:    "params",
-			taskRun: "foo/test-taskrun-templating",
+			taskRun: taskruns[2],
 			wantedBuildSpec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{
 					{
@@ -186,41 +203,30 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:    "serviceaccount",
-			taskRun: "foo/test-taskrun-with-sa-run-success",
-			wantedBuildSpec: buildv1alpha1.BuildSpec{
-				ServiceAccountName: "test-sa",
-				Steps: []corev1.Container{
-					{
-						Name:  "simple-step",
-						Image: "foo",
-					},
-				},
-			},
-		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			c, _, clients := test.GetTaskRunController(d)
-			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err != nil {
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 
 			if len(clients.Build.Actions()) == 0 {
 				t.Errorf("Expected actions to be logged in the buildclient, got none")
 			}
-			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun)
-			if err != nil {
-				t.Errorf("Invalid resource key: %v", err)
-			}
 			// check error
-			build, err := clients.Build.BuildV1alpha1().Builds(namespace).Get(name, metav1.GetOptions{})
+			build, err := clients.Build.BuildV1alpha1().Builds(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Failed to fetch build: %v", err)
 			}
 			if d := cmp.Diff(build.Spec, tc.wantedBuildSpec); d != "" {
 				t.Errorf("buildspec doesn't match, diff: %s", d)
+			}
+
+			// This TaskRun is in progress now and the status should reflect that
+			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
 		})
 	}
@@ -252,12 +258,12 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 
 	testcases := []struct {
 		name    string
-		taskRun string
+		taskRun *v1alpha1.TaskRun
 		log     string
 	}{
 		{
 			name:    "task run with no task",
-			taskRun: "foo/notaskrun",
+			taskRun: taskRuns[0],
 			log:     "TaskRun foo/notaskrun can't be Run; it references a Task foo/notask that doesn't exist: error when listing tasks task.pipeline.knative.dev \"notask\" not found",
 		},
 	}
@@ -265,7 +271,7 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			c, logs, clients := test.GetTaskRunController(d)
-			err := c.Reconciler.Reconcile(context.Background(), tc.taskRun)
+			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
 			// When a TaskRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
 			// and forget about the Run.
@@ -278,6 +284,11 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 			if logs.FilterMessage(tc.log).Len() == 0 {
 				m := test.GetLogMessages(logs)
 				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
+			}
+			// Since the TaskRun is invalid, the status should say it has failed
+			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionFalse {
+				t.Errorf("Expected invalid TaskRun to have failed status, but had %v", condition)
 			}
 		})
 	}
@@ -389,6 +400,6 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
-		t.Fatalf("Taskrun Status diff -want, +got: %v", d)
+		t.Errorf("Taskrun Status diff -want, +got: %v", d)
 	}
 }

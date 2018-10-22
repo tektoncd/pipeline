@@ -15,6 +15,7 @@ package pipelinerun_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -25,6 +26,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktesting "k8s.io/client-go/testing"
 )
+
+func getRunName(pr *v1alpha1.PipelineRun) string {
+	return strings.Join([]string{pr.Namespace, pr.Name}, "/")
+}
 
 func TestReconcile(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{{
@@ -100,10 +105,6 @@ func TestReconcile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 	}
-	condition := reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-	if condition == nil || condition.Status != corev1.ConditionUnknown {
-		t.Errorf("Expected PipelineRun status to be in progress, but was %s", condition)
-	}
 
 	// Check that the expected TaskRun was created
 	actual := client.Actions()[0].(ktesting.CreateAction).GetObject()
@@ -135,6 +136,12 @@ func TestReconcile(t *testing.T) {
 	}
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+	}
+
+	// This PipelineRun is in progress now and the status should reflect that
+	condition := reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionUnknown {
+		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
 	}
 }
 
@@ -176,34 +183,66 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	}
 	tcs := []struct {
 		name        string
-		pipelineRun string
+		pipelineRun *v1alpha1.PipelineRun
 		log         string
 	}{
 		{
-			name:        "invalid-pipeline-run-shd-stop-reconciling",
-			pipelineRun: "foo/test-pipeline-run-doesnot-exist",
-			log:         "pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists",
-		}, {
 			name:        "invalid-pipeline-shd-be-stop-reconciling",
-			pipelineRun: "foo/invalid-pipeline",
+			pipelineRun: prs[0],
 			log:         "\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\"",
 		}, {
-			name:        "invalid-pipeline-run-name-shd-stop-reconciling",
-			pipelineRun: "test/pipeline-fail/t",
-			log:         "invalid resource key: test/pipeline-fail/t",
-		}, {
 			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
-			pipelineRun: "foo/pipelinerun-missing-tasks",
+			pipelineRun: prs[1],
 			log:         "PipelineRun foo/pipeline-missing-tasks's Pipeline foo/pipelinerun-missing-tasks can't be Run; it contains Tasks that don't exist: task.pipeline.knative.dev \"sometask\" not found",
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			c, logs, _ := test.GetPipelineRunController(d)
-			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
+			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
 			// When a PipelineRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
 			// and forget about the Run.
+			if err != nil {
+				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
+			}
+			if logs.FilterMessage(tc.log).Len() == 0 {
+				m := test.GetLogMessages(logs)
+				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
+			}
+			// Since the PipelineRun is invalid, the status should say it has failed
+			condition := tc.pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionFalse {
+				t.Errorf("Expected status to be failed on invalid PipelineRun but was: %v", condition)
+			}
+		})
+	}
+}
+func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
+	invalidNames := []string{
+		"foo/test-pipeline-run-doesnot-exist",
+		"test/invalidformat/t",
+	}
+	tcs := []struct {
+		name        string
+		pipelineRun string
+		log         string
+	}{
+		{
+			name:        "invalid-pipeline-run-shd-stop-reconciling",
+			pipelineRun: invalidNames[0],
+			log:         "pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists",
+		}, {
+			name:        "invalid-pipeline-run-name-shd-stop-reconciling",
+			pipelineRun: invalidNames[1],
+			log:         "invalid resource key: test/invalidformat/t",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			c, logs, _ := test.GetPipelineRunController(test.Data{})
+			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
+			// No reason to keep reconciling something that doesnt or can't exist
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
 			}

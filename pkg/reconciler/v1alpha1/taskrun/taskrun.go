@@ -30,6 +30,7 @@ import (
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -124,14 +125,23 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	original, err := c.taskRunLister.TaskRuns(namespace).Get(name)
 	if errors.IsNotFound(err) {
 		// The resource no longer exists, in which case we stop processing.
-		c.Logger.Errorf("task run %q in work queue no longer exists", key)
+		c.Logger.Infof("task run %q in work queue no longer exists", key)
 		return nil
 	} else if err != nil {
+		c.Logger.Errorf("Error retreiving TaskRun %q: %s", name, err)
 		return err
 	}
 
 	// Don't modify the informer's copy.
 	tr := original.DeepCopy()
+	// If this is the first attempt to reconcile, mark the Run as in progress
+	if tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded) == nil {
+		tr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		})
+	}
+
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
 	err = c.reconcile(ctx, tr)
@@ -160,7 +170,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			c.Logger.Infof("TaskRun %s can't be Run; it references a Task %s that doesn't exist: %v",
 				fmt.Sprintf("%s/%s", tr.Namespace, tr.Name),
 				fmt.Sprintf("%s/%s", tr.Namespace, tr.Spec.TaskRef.Name), err)
-			// The PipelineRun is Invalid so we want to stop trying to Reconcile it
+			// This Run has failed, so we need to mark it as failed and stop reconciling it
+			tr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:   duckv1alpha1.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			})
 			return nil
 		}
 	} else if err != nil {
