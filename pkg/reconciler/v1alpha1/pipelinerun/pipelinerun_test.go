@@ -205,9 +205,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
 			// and forget about the Run.
 			if err != nil {
-				t.Errorf("Did not expect to see error when reconciling but saw %s", err)
+				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
 			}
-			if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
+			if logs.FilterMessage(tc.log).Len() == 0 {
 				m := test.GetLogMessages(logs)
 				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
 			}

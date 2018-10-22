@@ -258,17 +258,20 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 		{
 			name:    "task run with no task",
 			taskRun: "foo/notaskrun",
-			log:     "Failed to create build for task \"notaskrun\" :error when listing tasks task.pipeline.knative.dev \"notask\" not found",
+			log:     "TaskRun foo/notaskrun can't be Run; it references a Task foo/notask that doesn't exist: error when listing tasks task.pipeline.knative.dev \"notask\" not found",
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			c, logs, clients := test.GetTaskRunController(d)
-			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err == nil {
-				t.Error("Expected not found error for non existent task but got nil")
+			err := c.Reconciler.Reconcile(context.Background(), tc.taskRun)
+			// When a TaskRun is invalid and can't run, we don't want to return an error because
+			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
+			// and forget about the Run.
+			if err != nil {
+				t.Errorf("Did not expect to see error when reconciling invalid TaskRun but saw %q", err)
 			}
-
 			if len(clients.Build.Actions()) != 1 {
 				t.Errorf("expected no actions to be created by the reconciler, got %v", clients.Build.Actions())
 			}
