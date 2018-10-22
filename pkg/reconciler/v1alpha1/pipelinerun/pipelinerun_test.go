@@ -80,7 +80,7 @@ func TestReconcile(t *testing.T) {
 			ServiceAccount: "test-sa",
 		},
 	}}
-	d := test.TestData{
+	d := test.Data{
 		PipelineRuns:   prs,
 		Pipelines:      ps,
 		Tasks:          ts,
@@ -153,7 +153,7 @@ func TestReconcile_InvalidPipeline(t *testing.T) {
 			},
 		}},
 	}
-	d := test.TestData{
+	d := test.Data{
 		PipelineRuns: prs,
 	}
 	tcs := []struct {
@@ -206,7 +206,7 @@ func TestReconcile_MissingTasks(t *testing.T) {
 			},
 		}},
 	}
-	d := test.TestData{
+	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 	}
