@@ -146,7 +146,7 @@ func TestReconcileBuildsCreated(t *testing.T) {
 		},
 	}
 
-	d := test.TestData{
+	d := test.Data{
 		TaskRuns:          taskruns,
 		Tasks:             []*v1alpha1.Task{simpleTask, templatedTask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource},
@@ -202,12 +202,12 @@ func TestReconcileBuildsCreated(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, _, buildClient := test.GetTaskRunController(d)
+			c, _, clients := test.GetTaskRunController(d)
 			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 
-			if len(buildClient.Actions()) == 0 {
+			if len(clients.Build.Actions()) == 0 {
 				t.Errorf("Expected actions to be logged in the buildclient, got none")
 			}
 			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun)
@@ -215,7 +215,7 @@ func TestReconcileBuildsCreated(t *testing.T) {
 				t.Errorf("Invalid resource key: %v", err)
 			}
 			// check error
-			build, err := buildClient.BuildV1alpha1().Builds(namespace).Get(name, metav1.GetOptions{})
+			build, err := clients.Build.BuildV1alpha1().Builds(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Failed to fetch build: %v", err)
 			}
@@ -246,7 +246,7 @@ func TestReconcileBuildCreationErrors(t *testing.T) {
 		simpleTask,
 	}
 
-	d := test.TestData{
+	d := test.Data{
 		TaskRuns: taskRuns,
 		Tasks:    tasks,
 	}
@@ -263,13 +263,13 @@ func TestReconcileBuildCreationErrors(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, _, buildClient := test.GetTaskRunController(d)
+			c, _, clients := test.GetTaskRunController(d)
 			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err == nil {
 				t.Error("Expected not found error for non exitent task but got nil")
 			}
 
-			if len(buildClient.Actions()) != 1 {
-				t.Errorf("expected no actions to be created by the reconciler, got %v", buildClient.Actions())
+			if len(clients.Build.Actions()) != 1 {
+				t.Errorf("expected no actions to be created by the reconciler, got %v", clients.Build.Actions())
 			}
 		})
 	}
@@ -289,14 +289,14 @@ func TestReconcileBuildFetchError(t *testing.T) {
 			},
 		},
 	}
-	d := test.TestData{
+	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{
 			taskRun,
 		},
 		Tasks: []*v1alpha1.Task{simpleTask},
 	}
 
-	c, _, _, buildClient := test.GetTaskRunController(d)
+	c, _, clients := test.GetTaskRunController(d)
 
 	reactor := func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		if action.GetVerb() == "get" && action.GetResource().Resource == "builds" {
@@ -306,10 +306,10 @@ func TestReconcileBuildFetchError(t *testing.T) {
 		return false, nil, nil
 	}
 
-	buildClient.PrependReactor("*", "*", reactor)
+	clients.Build.PrependReactor("*", "*", reactor)
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err == nil {
-		t.Fatal("expected error but got nil")
+		t.Fatal("expected error when reconciling a Task for which we couldn't get the corresponding Build but got nil")
 	}
 }
 
@@ -326,20 +326,6 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 			},
 		},
 	}
-	d := test.TestData{
-		TaskRuns: []*v1alpha1.TaskRun{
-			taskRun,
-		},
-		Tasks: []*v1alpha1.Task{simpleTask},
-	}
-	buildSt := &duckv1alpha1.Condition{
-		Type: duckv1alpha1.ConditionSucceeded,
-		// build is not completed
-		Status:  corev1.ConditionUnknown,
-		Message: "Running build",
-	}
-
-	c, _, pipelineClient, buildClient := test.GetTaskRunController(d)
 	build := &buildv1alpha1.Build{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      taskRun.Name,
@@ -347,19 +333,27 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		},
 		Spec: *simpleTask.Spec.BuildSpec,
 	}
-	build.Status.SetCondition(buildSt)
-
-	// TODO!
-	_, err := buildClient.BuildV1alpha1().Builds(taskRun.Namespace).Create(build)
-	if err != nil {
-		t.Errorf("error creating build : %v", err)
+	buildSt := &duckv1alpha1.Condition{
+		Type: duckv1alpha1.ConditionSucceeded,
+		// build is not completed
+		Status:  corev1.ConditionUnknown,
+		Message: "Running build",
 	}
+	build.Status.SetCondition(buildSt)
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{
+			taskRun,
+		},
+		Tasks:  []*v1alpha1.Task{simpleTask},
+		Builds: []*buildv1alpha1.Build{build},
+	}
+
+	c, _, clients := test.GetTaskRunController(d)
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
-
-	newTr, err := pipelineClient.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	//newTr, err := clients.taskrunInformer.Lister().TaskRuns(taskRun.Namespace).Get(taskRun.Name)
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
@@ -372,10 +366,9 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	// update build status and trigger reconcile
 	buildSt.Status = corev1.ConditionTrue
 	buildSt.Message = "Build completed"
-
 	build.Status.SetCondition(buildSt)
 
-	_, err = buildClient.BuildV1alpha1().Builds(taskRun.Namespace).Update(build)
+	_, err = clients.Build.BuildV1alpha1().Builds(taskRun.Namespace).Update(build)
 	if err != nil {
 		t.Errorf("Unexpected error while creating build: %v", err)
 	}
@@ -384,7 +377,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
 	}
 
-	newTr, err = pipelineClient.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	newTr, err = clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	//newTr, err = clients.taskrunInformer.Lister().TaskRuns(taskRun.Namespace).Get(taskRun.Name)
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)

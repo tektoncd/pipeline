@@ -21,8 +21,10 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
+	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	fakebuildclientset "github.com/knative/build/pkg/client/clientset/versioned/fake"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions"
+	buildinformersv1alpha1 "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
@@ -39,21 +41,36 @@ func GetLogMessages(logs *observer.ObservedLogs) []string {
 	return messages
 }
 
-// TestData represents the desired state of the system (i.e. existing resources) to seed controllers
+// Data represents the desired state of the system (i.e. existing resources) to seed controllers
 // with.
-type TestData struct {
+type Data struct {
 	PipelineRuns      []*v1alpha1.PipelineRun
 	Pipelines         []*v1alpha1.Pipeline
 	TaskRuns          []*v1alpha1.TaskRun
 	Tasks             []*v1alpha1.Task
 	PipelineParams    []*v1alpha1.PipelineParams
 	PipelineResources []*v1alpha1.PipelineResource
+	Builds            []*buildv1alpha1.Build
 }
 
-func seedTestData(d TestData) (*fakepipelineclientset.Clientset,
-	informersv1alpha1.PipelineRunInformer, informersv1alpha1.PipelineInformer,
-	informersv1alpha1.TaskRunInformer, informersv1alpha1.TaskInformer,
-	informersv1alpha1.PipelineParamsInformer, informersv1alpha1.PipelineResourceInformer) {
+// Clients holds references to clients which are useful for reconciler tests.
+type Clients struct {
+	Pipeline *fakepipelineclientset.Clientset
+	Build    *fakebuildclientset.Clientset
+}
+
+// Informers holds references to informers which are useful for reconciler tests.
+type Informers struct {
+	PipelineRun      informersv1alpha1.PipelineRunInformer
+	Pipeline         informersv1alpha1.PipelineInformer
+	TaskRun          informersv1alpha1.TaskRunInformer
+	Task             informersv1alpha1.TaskInformer
+	PipelineParams   informersv1alpha1.PipelineParamsInformer
+	PipelineResource informersv1alpha1.PipelineResourceInformer
+	Build            buildinformersv1alpha1.BuildInformer
+}
+
+func seedTestData(d Data) (Clients, Informers) {
 	objs := []runtime.Object{}
 	for _, pr := range d.PipelineRuns {
 		objs = append(objs, pr)
@@ -70,78 +87,88 @@ func seedTestData(d TestData) (*fakepipelineclientset.Clientset,
 	for _, r := range d.PipelineResources {
 		objs = append(objs, r)
 	}
-	pipelineClient := fakepipelineclientset.NewSimpleClientset(objs...)
 
-	sharedInformer := informers.NewSharedInformerFactory(pipelineClient, 0)
-	pipelineRunsInformer := sharedInformer.Pipeline().V1alpha1().PipelineRuns()
-	pipelineInformer := sharedInformer.Pipeline().V1alpha1().Pipelines()
-	taskRunInformer := sharedInformer.Pipeline().V1alpha1().TaskRuns()
-	taskInformer := sharedInformer.Pipeline().V1alpha1().Tasks()
-	pipelineParamsInformer := sharedInformer.Pipeline().V1alpha1().PipelineParamses()
-	resourceInformer := sharedInformer.Pipeline().V1alpha1().PipelineResources()
+	buildObjs := []runtime.Object{}
+	for _, b := range d.Builds {
+		buildObjs = append(buildObjs, b)
+	}
+	c := Clients{
+		Pipeline: fakepipelineclientset.NewSimpleClientset(objs...),
+		Build:    fakebuildclientset.NewSimpleClientset(buildObjs...),
+	}
+	sharedInformer := informers.NewSharedInformerFactory(c.Pipeline, 0)
+	buildInformerFactory := buildinformers.NewSharedInformerFactory(c.Build, 0)
+
+	i := Informers{
+		PipelineRun:      sharedInformer.Pipeline().V1alpha1().PipelineRuns(),
+		Pipeline:         sharedInformer.Pipeline().V1alpha1().Pipelines(),
+		TaskRun:          sharedInformer.Pipeline().V1alpha1().TaskRuns(),
+		Task:             sharedInformer.Pipeline().V1alpha1().Tasks(),
+		PipelineParams:   sharedInformer.Pipeline().V1alpha1().PipelineParamses(),
+		PipelineResource: sharedInformer.Pipeline().V1alpha1().PipelineResources(),
+		Build:            buildInformerFactory.Build().V1alpha1().Builds(),
+	}
 
 	for _, pr := range d.PipelineRuns {
-		pipelineRunsInformer.Informer().GetIndexer().Add(pr)
+		i.PipelineRun.Informer().GetIndexer().Add(pr)
 	}
 	for _, p := range d.Pipelines {
-		pipelineInformer.Informer().GetIndexer().Add(p)
+		i.Pipeline.Informer().GetIndexer().Add(p)
 	}
 	for _, tr := range d.TaskRuns {
-		taskRunInformer.Informer().GetIndexer().Add(tr)
+		i.TaskRun.Informer().GetIndexer().Add(tr)
 	}
 	for _, t := range d.Tasks {
-		taskInformer.Informer().GetIndexer().Add(t)
+		i.Task.Informer().GetIndexer().Add(t)
 	}
 	for _, t := range d.PipelineParams {
-		pipelineParamsInformer.Informer().GetIndexer().Add(t)
+		i.PipelineParams.Informer().GetIndexer().Add(t)
 	}
 	for _, r := range d.PipelineResources {
-		resourceInformer.Informer().GetIndexer().Add(r)
+		i.PipelineResource.Informer().GetIndexer().Add(r)
 	}
-	return pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer, pipelineParamsInformer, resourceInformer
+	for _, b := range d.Builds {
+		i.Build.Informer().GetIndexer().Add(b)
+	}
+	return c, i
 }
 
 // GetTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetTaskRunController(d TestData) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset, *fakebuildclientset.Clientset) {
-	pipelineClient, _, _, taskRunInformer, taskInformer, _, resourceInformer := seedTestData(d)
-
-	buildClient := fakebuildclientset.NewSimpleClientset()
-	buildInformerFactory := buildinformers.NewSharedInformerFactory(buildClient, 0)
-	buildInformer := buildInformerFactory.Build().V1alpha1().Builds()
-
+func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients) {
+	c, i := seedTestData(d)
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
 	return taskrun.NewController(
 		reconciler.Options{
 			Logger:            zap.New(observer).Sugar(),
 			KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
-			PipelineClientSet: pipelineClient,
-			BuildClientSet:    buildClient,
+			PipelineClientSet: c.Pipeline,
+			BuildClientSet:    c.Build,
 		},
-		taskRunInformer,
-		taskInformer,
-		buildInformer,
-		resourceInformer,
-	), logs, pipelineClient, buildClient
+		i.TaskRun,
+		i.Task,
+		i.Build,
+		i.PipelineResource,
+	), logs, c
 }
 
 // GetPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetPipelineRunController(d TestData) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
-	pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer, pipelineParamsInformer, _ := seedTestData(d)
+func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
+	c, i := seedTestData(d)
 	// Create a log observer to record all error logs.
 	observer, logs := observer.New(zap.ErrorLevel)
 	return pipelinerun.NewController(
 		reconciler.Options{
 			Logger:            zap.New(observer).Sugar(),
 			KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
-			PipelineClientSet: pipelineClient,
+			PipelineClientSet: c.Pipeline,
 		},
-		pipelineRunsInformer,
-		pipelineInformer,
-		taskInformer,
-		taskRunInformer,
-		pipelineParamsInformer,
-	), logs, pipelineClient
+		i.PipelineRun,
+		i.Pipeline,
+		i.Task,
+		i.TaskRun,
+		i.PipelineParams,
+	), logs, c.Pipeline
 }
