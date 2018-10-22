@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipelinerun
+package pipelinerun_test
 
 import (
 	"context"
@@ -19,18 +19,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
-	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
-	informersv1alpha1 "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/test"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	"github.com/knative/pkg/controller"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 )
 
@@ -88,13 +80,13 @@ func TestReconcile(t *testing.T) {
 			ServiceAccount: "test-sa",
 		},
 	}}
-	d := testData{
-		prs: prs,
-		ps:  ps,
-		ts:  ts,
-		pp:  pp,
+	d := test.TestData{
+		PipelineRuns:   prs,
+		Pipelines:      ps,
+		Tasks:          ts,
+		PipelineParams: pp,
 	}
-	c, logs, client := getController(d)
+	c, logs, client := test.GetPipelineRunController(d)
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
 	if err != nil {
 		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
@@ -161,8 +153,8 @@ func TestReconcile_InvalidPipeline(t *testing.T) {
 			},
 		}},
 	}
-	d := testData{
-		prs: prs,
+	d := test.TestData{
+		PipelineRuns: prs,
 	}
 	tcs := []struct {
 		name        string
@@ -178,13 +170,13 @@ func TestReconcile_InvalidPipeline(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs, _ := getController(d)
+			c, logs, _ := test.GetPipelineRunController(d)
 			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling but saw %s", err)
 			}
 			if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
-				m := getLogMessages(logs)
+				m := test.GetLogMessages(logs)
 				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
 			}
 		})
@@ -214,90 +206,13 @@ func TestReconcile_MissingTasks(t *testing.T) {
 			},
 		}},
 	}
-	d := testData{
-		prs: prs,
-		ps:  ps,
+	d := test.TestData{
+		PipelineRuns: prs,
+		Pipelines:    ps,
 	}
-	c, _, _ := getController(d)
+	c, _, _ := test.GetPipelineRunController(d)
 	err := c.Reconciler.Reconcile(context.Background(), "foo/pipelinerun-missing-tasks")
 	if err != nil {
 		t.Errorf("When Pipeline's Tasks can't be found, expected no error to be returned (i.e. controller should stop trying to reconcile) but got: %s", err)
 	}
-}
-
-func getLogMessages(logs *observer.ObservedLogs) []string {
-	messages := []string{}
-	for _, l := range logs.All() {
-		messages = append(messages, l.Message)
-	}
-	return messages
-}
-
-type testData struct {
-	prs []*v1alpha1.PipelineRun
-	ps  []*v1alpha1.Pipeline
-	trs []*v1alpha1.TaskRun
-	ts  []*v1alpha1.Task
-	pp  []*v1alpha1.PipelineParams
-}
-
-func seedTestData(d testData) (*fakepipelineclientset.Clientset,
-	informersv1alpha1.PipelineRunInformer, informersv1alpha1.PipelineInformer,
-	informersv1alpha1.TaskRunInformer, informersv1alpha1.TaskInformer, informersv1alpha1.PipelineParamsInformer) {
-	objs := []runtime.Object{}
-	for _, pr := range d.prs {
-		objs = append(objs, pr)
-	}
-	for _, p := range d.ps {
-		objs = append(objs, p)
-	}
-	for _, tr := range d.trs {
-		objs = append(objs, tr)
-	}
-	for _, t := range d.ts {
-		objs = append(objs, t)
-	}
-	pipelineClient := fakepipelineclientset.NewSimpleClientset(objs...)
-
-	sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
-	pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
-	pipelineInformer := sharedInfomer.Pipeline().V1alpha1().Pipelines()
-	taskRunInformer := sharedInfomer.Pipeline().V1alpha1().TaskRuns()
-	taskInformer := sharedInfomer.Pipeline().V1alpha1().Tasks()
-	pipelineParamsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineParamses()
-
-	for _, pr := range d.prs {
-		pipelineRunsInformer.Informer().GetIndexer().Add(pr)
-	}
-	for _, p := range d.ps {
-		pipelineInformer.Informer().GetIndexer().Add(p)
-	}
-	for _, tr := range d.trs {
-		taskRunInformer.Informer().GetIndexer().Add(tr)
-	}
-	for _, t := range d.ts {
-		taskInformer.Informer().GetIndexer().Add(t)
-	}
-	for _, t := range d.pp {
-		pipelineParamsInformer.Informer().GetIndexer().Add(t)
-	}
-	return pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer, pipelineParamsInformer
-}
-
-func getController(d testData) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
-	pipelineClient, pipelineRunsInformer, pipelineInformer, taskRunInformer, taskInformer, pipelineParamsInformer := seedTestData(d)
-	// Create a log observer to record all error logs.
-	observer, logs := observer.New(zap.ErrorLevel)
-	return NewController(
-		reconciler.Options{
-			Logger:            zap.New(observer).Sugar(),
-			KubeClientSet:     fakekubeclientset.NewSimpleClientset(),
-			PipelineClientSet: pipelineClient,
-		},
-		pipelineRunsInformer,
-		pipelineInformer,
-		taskInformer,
-		taskRunInformer,
-		pipelineParamsInformer,
-	), logs, pipelineClient
 }
