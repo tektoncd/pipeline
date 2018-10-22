@@ -158,7 +158,7 @@ func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Cli
 func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs, *fakepipelineclientset.Clientset) {
 	c, i := seedTestData(d)
 	// Create a log observer to record all error logs.
-	observer, logs := observer.New(zap.ErrorLevel)
+	observer, logs := observer.New(zap.InfoLevel)
 	return pipelinerun.NewController(
 		reconciler.Options{
 			Logger:            zap.New(observer).Sugar(),

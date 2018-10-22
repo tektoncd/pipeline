@@ -88,7 +88,7 @@ var gitResource = &v1alpha1.PipelineResource{
 	},
 }
 
-func TestReconcileBuildsCreated(t *testing.T) {
+func TestReconcile(t *testing.T) {
 	taskruns := []*v1alpha1.TaskRun{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -226,7 +226,7 @@ func TestReconcileBuildsCreated(t *testing.T) {
 	}
 }
 
-func TestReconcileBuildCreationErrors(t *testing.T) {
+func TestReconcile_InvalidTaskRuns(t *testing.T) {
 	taskRuns := []*v1alpha1.TaskRun{
 		&v1alpha1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -241,7 +241,6 @@ func TestReconcileBuildCreationErrors(t *testing.T) {
 			},
 		},
 	}
-
 	tasks := []*v1alpha1.Task{
 		simpleTask,
 	}
@@ -254,22 +253,28 @@ func TestReconcileBuildCreationErrors(t *testing.T) {
 	testcases := []struct {
 		name    string
 		taskRun string
+		log     string
 	}{
 		{
 			name:    "task run with no task",
 			taskRun: "foo/notaskrun",
+			log:     "Failed to create build for task \"notaskrun\" :error when listing tasks task.pipeline.knative.dev \"notask\" not found",
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, clients := test.GetTaskRunController(d)
+			c, logs, clients := test.GetTaskRunController(d)
 			if err := c.Reconciler.Reconcile(context.Background(), tc.taskRun); err == nil {
-				t.Error("Expected not found error for non exitent task but got nil")
+				t.Error("Expected not found error for non existent task but got nil")
 			}
 
 			if len(clients.Build.Actions()) != 1 {
 				t.Errorf("expected no actions to be created by the reconciler, got %v", clients.Build.Actions())
+			}
+			if logs.FilterMessage(tc.log).Len() == 0 {
+				m := test.GetLogMessages(logs)
+				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
 			}
 		})
 	}
@@ -354,7 +359,6 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
 	}
 	newTr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
-	//newTr, err := clients.taskrunInformer.Lister().TaskRuns(taskRun.Namespace).Get(taskRun.Name)
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -378,7 +382,6 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	}
 
 	newTr, err = clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
-	//newTr, err = clients.taskrunInformer.Lister().TaskRuns(taskRun.Namespace).Get(taskRun.Name)
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}

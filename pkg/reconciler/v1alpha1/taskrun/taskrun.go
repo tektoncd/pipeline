@@ -157,7 +157,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		// Build is not present, create build
 		build, err = c.createBuild(tr)
 		if err != nil {
-			c.Logger.Errorf("Failed to create build for task %q :%v", err, tr.Name)
+			c.Logger.Errorf("Failed to create build for task %q :%v", tr.Name, err)
 			return err
 		}
 	} else if err != nil {
@@ -201,12 +201,12 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, er
 	// Get related task for taskrun
 	t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
 	if err != nil {
-		return nil, fmt.Errorf("Error when listing tasks %v", err)
+		return nil, fmt.Errorf("error when listing tasks %v", err)
 	}
 
 	// TODO: Preferably use Validate on task.spec to catch validation error
 	if t.Spec.BuildSpec == nil {
-		return nil, fmt.Errorf("Task %s has nil BuildSpec", t.Name)
+		return nil, fmt.Errorf("task %s has nil BuildSpec", t.Name)
 	}
 
 	b := &buildv1alpha1.Build{

@@ -86,13 +86,10 @@ func TestReconcile(t *testing.T) {
 		Tasks:          ts,
 		PipelineParams: pp,
 	}
-	c, logs, client := test.GetPipelineRunController(d)
+	c, _, client := test.GetPipelineRunController(d)
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
 	if err != nil {
 		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
-	}
-	if logs.Len() > 0 {
-		t.Errorf("expected to see no error log. However found errors in logs: %v", logs)
 	}
 	if len(client.Actions()) == 0 {
 		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
@@ -141,49 +138,7 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func TestReconcile_InvalidPipeline(t *testing.T) {
-	prs := []*v1alpha1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "invalid-pipeline",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name: "pipeline-not-exist",
-			},
-		}},
-	}
-	d := test.Data{
-		PipelineRuns: prs,
-	}
-	tcs := []struct {
-		name        string
-		pipelineRun string
-		log         string
-	}{
-		{"invalid-pipeline-run-shd-succeed-with-logs", "foo/test-pipeline-run-doesnot-exist",
-			"pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists"},
-		{"invalid-pipeline-shd-succeed-with-logs", "foo/invalid-pipeline",
-			"\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\""},
-		{"invalid-pipeline-run-name-shd-succed-with-logs", "test/pipeline-fail/t",
-			"invalid resource key: test/pipeline-fail/t"},
-	}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			c, logs, _ := test.GetPipelineRunController(d)
-			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
-			if err != nil {
-				t.Errorf("Did not expect to see error when reconciling but saw %s", err)
-			}
-			if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
-				m := test.GetLogMessages(logs)
-				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
-			}
-		})
-	}
-}
-
-func TestReconcile_MissingTasks(t *testing.T) {
+func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	ps := []*v1alpha1.Pipeline{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pipeline-missing-tasks",
@@ -196,6 +151,15 @@ func TestReconcile_MissingTasks(t *testing.T) {
 		}},
 	}
 	prs := []*v1alpha1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "invalid-pipeline",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipeline-not-exist",
+			},
+		}}, {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pipelinerun-missing-tasks",
 			Namespace: "foo",
@@ -210,9 +174,43 @@ func TestReconcile_MissingTasks(t *testing.T) {
 		PipelineRuns: prs,
 		Pipelines:    ps,
 	}
-	c, _, _ := test.GetPipelineRunController(d)
-	err := c.Reconciler.Reconcile(context.Background(), "foo/pipelinerun-missing-tasks")
-	if err != nil {
-		t.Errorf("When Pipeline's Tasks can't be found, expected no error to be returned (i.e. controller should stop trying to reconcile) but got: %s", err)
+	tcs := []struct {
+		name        string
+		pipelineRun string
+		log         string
+	}{
+		{
+			name:        "invalid-pipeline-run-shd-stop-reconciling",
+			pipelineRun: "foo/test-pipeline-run-doesnot-exist",
+			log:         "pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists",
+		}, {
+			name:        "invalid-pipeline-shd-be-stop-reconciling",
+			pipelineRun: "foo/invalid-pipeline",
+			log:         "\"foo/invalid-pipeline\" failed to Get Pipeline: \"foo/pipeline-not-exist\"",
+		}, {
+			name:        "invalid-pipeline-run-name-shd-stop-reconciling",
+			pipelineRun: "test/pipeline-fail/t",
+			log:         "invalid resource key: test/pipeline-fail/t",
+		}, {
+			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
+			pipelineRun: "foo/pipelinerun-missing-tasks",
+			log:         "PipelineRun foo/pipeline-missing-tasks's Pipeline foo/pipelinerun-missing-tasks can't be Run; it contains Tasks that don't exist: task.pipeline.knative.dev \"sometask\" not found",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			c, logs, _ := test.GetPipelineRunController(d)
+			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
+			// When a PipelineRun is invalid and can't run, we don't want to return an error because
+			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
+			// and forget about the Run.
+			if err != nil {
+				t.Errorf("Did not expect to see error when reconciling but saw %s", err)
+			}
+			if tc.log != "" && logs.FilterMessage(tc.log).Len() == 0 {
+				m := test.GetLogMessages(logs)
+				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
+			}
+		})
 	}
 }
