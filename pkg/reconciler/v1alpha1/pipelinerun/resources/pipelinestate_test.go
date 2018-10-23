@@ -40,6 +40,10 @@ var pts = []v1alpha1.PipelineTask{{
 }, {
 	Name:    "mytask2",
 	TaskRef: v1alpha1.TaskRef{Name: "task"},
+}, {
+	Name:                "mytask3",
+	TaskRef:             v1alpha1.TaskRef{Name: "task"},
+	InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"mytask1"}}},
 }}
 
 var p = &v1alpha1.Pipeline{
@@ -117,8 +121,13 @@ var noneStartedState = []*PipelineRunTaskRun{{
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
+}, {
+	Task:         task,
+	PipelineTask: &pts[2],
+	TaskRunName:  "pipelinerun-mytask3",
+	TaskRun:      nil,
 }}
-var oneStartedState = []*PipelineRunTaskRun{{
+var task1StartedState = []*PipelineRunTaskRun{{
 	Task:         task,
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
@@ -128,8 +137,29 @@ var oneStartedState = []*PipelineRunTaskRun{{
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
+}, {
+	Task:         task,
+	PipelineTask: &pts[2],
+	TaskRunName:  "pipelinerun-mytask3",
+	TaskRun:      nil,
 }}
-var oneFinishedState = []*PipelineRunTaskRun{{
+var task1RunningTask2FinishedState = []*PipelineRunTaskRun{{
+	Task:         task,
+	PipelineTask: &pts[0],
+	TaskRunName:  "pipelinerun-mytask1",
+	TaskRun:      makeStarted(trs[0]),
+}, {
+	Task:         task,
+	PipelineTask: &pts[1],
+	TaskRunName:  "pipelinerun-mytask2",
+	TaskRun:      makeSucceeded(trs[0]),
+}, {
+	Task:         task,
+	PipelineTask: &pts[2],
+	TaskRunName:  "pipelinerun-mytask3",
+	TaskRun:      nil,
+}}
+var task1FinishedState = []*PipelineRunTaskRun{{
 	Task:         task,
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
@@ -138,6 +168,11 @@ var oneFinishedState = []*PipelineRunTaskRun{{
 	Task:         task,
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
+	TaskRun:      makeSucceeded(trs[0]),
+}, {
+	Task:         task,
+	PipelineTask: &pts[2],
+	TaskRunName:  "pipelinerun-mytask3",
 	TaskRun:      nil,
 }}
 var oneFailedState = []*PipelineRunTaskRun{{
@@ -150,18 +185,13 @@ var oneFailedState = []*PipelineRunTaskRun{{
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
-}}
-var firstFinishedState = []*PipelineRunTaskRun{{
-	Task:         task,
-	PipelineTask: &pts[0],
-	TaskRunName:  "pipelinerun-mytask1",
-	TaskRun:      makeSucceeded(trs[0]),
 }, {
 	Task:         task,
-	PipelineTask: &pts[1],
-	TaskRunName:  "pipelinerun-mytask2",
+	PipelineTask: &pts[2],
+	TaskRunName:  "pipelinerun-mytask3",
 	TaskRun:      nil,
 }}
+
 var allFinishedState = []*PipelineRunTaskRun{{
 	Task:         task,
 	PipelineTask: &pts[0],
@@ -172,41 +202,41 @@ var allFinishedState = []*PipelineRunTaskRun{{
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      makeSucceeded(trs[0]),
+}, {
+	Task:         task,
+	PipelineTask: &pts[2],
+	TaskRunName:  "pipelinerun-mytask3",
+	TaskRun:      makeSucceeded(trs[0]),
 }}
 
-func TestGetNextTask_NoneStarted(t *testing.T) {
+func TestGetNextTask_Scheduling(t *testing.T) {
 	tcs := []struct {
 		name         string
 		state        []*PipelineRunTaskRun
 		expectedTask *PipelineRunTaskRun
 	}{
 		{
-			name:         "no-tasks-started",
+			name:         "no-tasks-started-shd-run-mytask1",
 			state:        noneStartedState,
 			expectedTask: noneStartedState[0],
 		},
 		{
-			name:         "one-task-started",
-			state:        oneStartedState,
+			name:         "mytask1-started-shd-run-mytask2",
+			state:        task1StartedState,
+			expectedTask: task1StartedState[1],
+		},
+		{
+			name:         "mytask1-running-mytask2-finished-shd-run-no-task",
+			state:        task1RunningTask2FinishedState,
 			expectedTask: nil,
 		},
 		{
-			name:         "one-task-finished",
-			state:        oneFinishedState,
-			expectedTask: oneFinishedState[1],
+			name:         "mytask1-finished-shd-run-mytask3",
+			state:        task1FinishedState,
+			expectedTask: task1FinishedState[2],
 		},
 		{
-			name:         "one-task-failed",
-			state:        oneFailedState,
-			expectedTask: nil,
-		},
-		{
-			name:         "first-task-finished",
-			state:        firstFinishedState,
-			expectedTask: firstFinishedState[1],
-		},
-		{
-			name:         "all-finished",
+			name:         "all-finished-shd-run-no-task",
 			state:        allFinishedState,
 			expectedTask: nil,
 		},
@@ -214,7 +244,7 @@ func TestGetNextTask_NoneStarted(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			nextTask := GetNextTask("somepipelinerun", tc.state, zap.NewNop().Sugar())
-			if d := cmp.Diff(nextTask, tc.expectedTask); d != "" {
+			if d := cmp.Diff(tc.expectedTask, nextTask); d != "" {
 				t.Fatalf("Expected to indicate first task should be run, but different state returned: %s", d)
 			}
 		})
@@ -281,23 +311,18 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		},
 		{
 			name:           "one-task-started",
-			state:          oneStartedState,
+			state:          task1StartedState,
 			expectedStatus: corev1.ConditionUnknown,
 		},
 		{
 			name:           "one-task-finished",
-			state:          oneFinishedState,
+			state:          task1FinishedState,
 			expectedStatus: corev1.ConditionUnknown,
 		},
 		{
 			name:           "one-task-failed",
 			state:          oneFailedState,
 			expectedStatus: corev1.ConditionFalse,
-		},
-		{
-			name:           "first-task-finished",
-			state:          firstFinishedState,
-			expectedStatus: corev1.ConditionUnknown,
 		},
 		{
 			name:           "all-finished",

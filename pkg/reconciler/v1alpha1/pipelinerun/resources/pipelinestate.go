@@ -44,22 +44,7 @@ const (
 // or nil if no TaskRun should be created.
 func GetNextTask(prName string, state []*PipelineRunTaskRun, logger *zap.SugaredLogger) *PipelineRunTaskRun {
 	for _, prtr := range state {
-		if prtr.TaskRun != nil {
-			c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-			if c == nil {
-				logger.Infof("TaskRun %s doesn't have a condition so it is just starting and we shouldn't start more for PipelineRun %s", prtr.TaskRunName, prName)
-				return nil
-			}
-			switch c.Status {
-			case corev1.ConditionFalse:
-				logger.Infof("TaskRun %s has failed; we don't need to run PipelineRun %s", prtr.TaskRunName, prName)
-				return nil
-			case corev1.ConditionUnknown:
-				logger.Infof("TaskRun %s is still running so we shouldn't start more for PipelineRun %s", prtr.TaskRunName, prName)
-				return nil
-			}
-		} else if canTaskRun(prtr.PipelineTask, state) {
-			logger.Infof("TaskRun %s should be started for PipelineRun %s", prtr.TaskRunName, prName)
+		if prtr.TaskRun == nil && canTaskRun(prtr.PipelineTask, state) {
 			return prtr
 		}
 	}
@@ -74,7 +59,7 @@ func canTaskRun(pt *v1alpha1.PipelineTask, state []*PipelineRunTaskRun) bool {
 			for _, constrainingTaskName := range input.PassedConstraints {
 				for _, prtr := range state {
 					// the constraining task must have a successful task run to allow this task to run
-					if prtr.Task.Name == constrainingTaskName {
+					if prtr.PipelineTask.Name == constrainingTaskName {
 						if prtr.TaskRun == nil {
 							return false
 						}
@@ -175,8 +160,7 @@ func GetPipelineConditionStatus(prName string, state []*PipelineRunTaskRun, logg
 				Reason:  ReasonFailed,
 				Message: fmt.Sprintf("TaskRun %s for Task %s has failed", prtr.TaskRun.Name, prtr.Task.Name),
 			}
-		}
-		if c.Status != corev1.ConditionTrue {
+		} else if c.Status != corev1.ConditionTrue {
 			logger.Infof("TaskRun %s is still running so PipelineRun %s is still running", prtr.TaskRunName, prName)
 			allFinished = false
 		}

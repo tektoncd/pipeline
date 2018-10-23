@@ -213,6 +213,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		}
 		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
+
+	c.reconcilePipelineRunStatus(pr, state)
+	if c.isPipelineRunComplete(pr) {
+		return nil
+	}
+
 	prtr := resources.GetNextTask(pr.Name, state, c.Logger)
 	if prtr != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
@@ -221,9 +227,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
 		}
 	}
-
-	pr.Status.SetCondition(resources.GetPipelineConditionStatus(pr.Name, state, c.Logger))
-	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
 	return nil
 }
 
@@ -272,4 +275,21 @@ func (c *Reconciler) getServiceAccount(pr *v1alpha1.PipelineRun) (string, error)
 		return "", err
 	}
 	return pp.Spec.ServiceAccount, nil
+}
+
+func (c *Reconciler) reconcilePipelineRunStatus(pr *v1alpha1.PipelineRun, state []*resources.PipelineRunTaskRun) {
+	// reconcile pipeline run status first to see if we need to run any more tasks.
+	prStatus := resources.GetPipelineConditionStatus(pr.Name, state, c.Logger)
+	pr.Status.SetCondition(prStatus)
+	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
+}
+
+func (c *Reconciler) isPipelineRunComplete(pr *v1alpha1.PipelineRun) bool {
+	// Check if Pipeline Run is already marked as completed or failed
+	if s := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); s != nil && s.Status != corev1.ConditionUnknown {
+		// Pipeline run is either Successul or Failed.
+		c.Logger.Infof("PipelineRun is either successfully complete or marked as failed.", pr.Name)
+		return true
+	}
+	return false
 }
