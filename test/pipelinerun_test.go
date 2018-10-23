@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -83,6 +84,34 @@ func TestPipelineRun(t *testing.T) {
 				t.Errorf("Expected TaskRun %s to have succeeded but Status is %s", runName, c.Status)
 			}
 		}
+	}
+
+	logger.Infof("Making sure the expected events were created from taskrun and pipelinerun")
+	watchEvents, err := c.KubeClient.Kube.CoreV1().Events(namespace).Watch(metav1.ListOptions{})
+	if err != nil {
+		t.Errorf("failed to create watch on events: %v", err)
+	}
+	// close watch channel
+	defer watchEvents.Stop()
+	timer := time.NewTimer(5 * time.Second)
+	expectedNumberOfEvents := 3
+	// 1 from PipelineRun and 2 from Tasks defined in pipelinerun
+	gotEventCount := 0
+	for {
+		select {
+		case wevent := <-watchEvents.ResultChan():
+			event := wevent.Object.(*corev1.Event)
+			// successful taskrun and pipelinerun events.
+			if event.InvolvedObject.Kind == "TaskRun" || event.InvolvedObject.Kind == "PipelineRun" && event.Reason == "Succeeded" {
+				gotEventCount++
+			}
+		case <-timer.C:
+			t.Errorf("Expected %d number of successful events from pipelinerun and taskrun but got 0", expectedNumberOfEvents)
+			return
+		}
+	}
+	if gotEventCount != expectedNumberOfEvents {
+		t.Errorf("Expected %d number of successful events from pipelinerun and taskrun but got %d", expectedNumberOfEvents, gotEventCount)
 	}
 }
 
