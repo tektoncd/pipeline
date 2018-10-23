@@ -42,6 +42,18 @@ import (
 )
 
 const (
+	// ReasonCouldntGetPipeline indicates that the reason for the failure status is that
+	// the associated Pipeline couldn't be found
+	ReasonCouldntGetPipeline = "CouldntGetPipeline"
+
+	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
+	// associated Pipeline's Tasks couldn't all be retrieved
+	ReasonCouldntGetTask = "CouldntGetTask"
+
+	// ReasonCouldntGetPipelineParams indicates that the reason for the failure status is
+	// that PipelineRun's PipelineParams couldn't be found
+	ReasonCouldntGetPipelineParams = "CouldntGetPipelineParams"
+
 	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
 	pipelineRunAgentName = "pipeline-controller"
 	// pipelineRunControllerName defines name for PipelineRun Controller
@@ -130,6 +142,14 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	pr := original.DeepCopy()
+	// If this is the first attempt to reconcile, mark the Run as in progress
+	if pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded) == nil {
+		pr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+			Reason: resources.ReasonRunning,
+		})
+	}
 
 	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
@@ -154,26 +174,26 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
 	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
 	if err != nil {
-		c.Logger.Infof("%q failed to Get Pipeline: %q",
-			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
-			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name))
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
+			Reason: ReasonCouldntGetPipeline,
+			Message: fmt.Sprintf("Failed to Get Pipeline: %q",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name)),
 		})
 		return nil
 	}
 	serviceAccount, err := c.getServiceAccount(pr)
 	if err != nil {
-		c.Logger.Infof("Pipelinerun %q failed to get pipelineparamses %q; error %v",
-			fmt.Sprintf("%s/%s", pr.Namespace, pr.Name),
-			fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineParamsRef.Name),
-			err)
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
+			Reason: ReasonCouldntGetPipelineParams,
+			Message: fmt.Sprintf("Failed to get pipelineparamses %q; error %v",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineParamsRef.Name),
+				err),
 		})
 		return nil
 	}
@@ -188,13 +208,13 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			c.Logger.Infof("PipelineRun %s's Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
-				fmt.Sprintf("%s/%s", p.Namespace, p.Name),
-				fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err)
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			pr.Status.SetCondition(&duckv1alpha1.Condition{
 				Type:   duckv1alpha1.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
+				Reason: ReasonCouldntGetTask,
+				Message: fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
+					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
 			})
 			return nil
 		}

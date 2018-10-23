@@ -27,6 +27,19 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
+const (
+	// ReasonRunning indicates that the reason for the inprogress status is that the TaskRun
+	// is just starting to be reconciled
+	ReasonRunning = "Running"
+
+	// ReasonFailed indicates that the reason for the failure status is that one of the TaskRuns failed
+	ReasonFailed = "Failed"
+
+	// ReasonSucceeded indicates that the reason for the finished status is that all of the TaskRuns
+	// completed successfully
+	ReasonSucceeded = "Succeeded"
+)
+
 // GetNextTask returns the next Task for which a TaskRun should be created,
 // or nil if no TaskRun should be created.
 func GetNextTask(prName string, state []*PipelineRunTaskRun, logger *zap.SugaredLogger) *PipelineRunTaskRun {
@@ -159,7 +172,7 @@ func GetPipelineConditionStatus(prName string, state []*PipelineRunTaskRun, logg
 			return &duckv1alpha1.Condition{
 				Type:    duckv1alpha1.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
-				Reason:  "Failed",
+				Reason:  ReasonFailed,
 				Message: fmt.Sprintf("TaskRun %s for Task %s has failed", prtr.TaskRun.Name, prtr.Task.Name),
 			}
 		}
@@ -173,7 +186,7 @@ func GetPipelineConditionStatus(prName string, state []*PipelineRunTaskRun, logg
 		return &duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  "Running",
+			Reason:  ReasonRunning,
 			Message: "Not all Tasks in the Pipeline have finished executing",
 		}
 	}
@@ -181,7 +194,7 @@ func GetPipelineConditionStatus(prName string, state []*PipelineRunTaskRun, logg
 	return &duckv1alpha1.Condition{
 		Type:    duckv1alpha1.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
-		Reason:  "Finished",
+		Reason:  ReasonSucceeded,
 		Message: "All Tasks have completed executing",
 	}
 }
