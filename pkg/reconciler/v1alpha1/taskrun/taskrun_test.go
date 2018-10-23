@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
 	"github.com/knative/build-pipeline/test"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -228,6 +229,9 @@ func TestReconcile(t *testing.T) {
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
+			if condition != nil && condition.Reason != taskrun.ReasonRunning {
+				t.Errorf("Expected reason %q but was %s", taskrun.ReasonRunning, condition.Reason)
+			}
 		})
 	}
 }
@@ -259,18 +263,18 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 	testcases := []struct {
 		name    string
 		taskRun *v1alpha1.TaskRun
-		log     string
+		reason  string
 	}{
 		{
 			name:    "task run with no task",
 			taskRun: taskRuns[0],
-			log:     "TaskRun foo/notaskrun can't be Run; it references a Task foo/notask that doesn't exist: error when listing tasks task.pipeline.knative.dev \"notask\" not found",
+			reason:  taskrun.ReasonCouldntGetTask,
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs, clients := test.GetTaskRunController(d)
+			c, _, clients := test.GetTaskRunController(d)
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
 			// When a TaskRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
@@ -281,14 +285,13 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 			if len(clients.Build.Actions()) != 1 {
 				t.Errorf("expected no actions to be created by the reconciler, got %v", clients.Build.Actions())
 			}
-			if logs.FilterMessage(tc.log).Len() == 0 {
-				m := test.GetLogMessages(logs)
-				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
-			}
 			// Since the TaskRun is invalid, the status should say it has failed
 			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected invalid TaskRun to have failed status, but had %v", condition)
+			}
+			if condition != nil && condition.Reason != tc.reason {
+				t.Errorf("Expected failure to be because of reason %q but was %s", tc.reason, condition.Reason)
 			}
 		})
 	}

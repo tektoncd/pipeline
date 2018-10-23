@@ -42,6 +42,14 @@ import (
 )
 
 const (
+	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
+	// Task couldn't be found
+	ReasonCouldntGetTask = "CouldntGetTask"
+
+	// ReasonRunning indicates that the reason for the inprogress status is that the TaskRun
+	// is just starting to be reconciled
+	ReasonRunning = "Running"
+
 	// taskRunAgentName defines logging agent name for TaskRun Controller
 	taskRunAgentName = "taskrun-controller"
 	// taskRunControllerName defines name for TaskRun Controller
@@ -139,6 +147,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
+			Reason: ReasonRunning,
 		})
 	}
 
@@ -167,13 +176,13 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		// Build is not present, create build
 		build, err = c.createBuild(tr)
 		if err != nil {
-			c.Logger.Infof("TaskRun %s can't be Run; it references a Task %s that doesn't exist: %v",
-				fmt.Sprintf("%s/%s", tr.Namespace, tr.Name),
-				fmt.Sprintf("%s/%s", tr.Namespace, tr.Spec.TaskRef.Name), err)
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			tr.Status.SetCondition(&duckv1alpha1.Condition{
 				Type:   duckv1alpha1.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
+				Reason: ReasonCouldntGetTask,
+				Message: fmt.Sprintf("References a Task %s that doesn't exist: %v",
+					fmt.Sprintf("%s/%s", tr.Namespace, tr.Spec.TaskRef.Name), err),
 			})
 			return nil
 		}
