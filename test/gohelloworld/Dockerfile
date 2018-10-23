@@ -1,7 +1,7 @@
 FROM golang
 
 # Copy the local package files to the container's workspace.
-ADD . /go/src/github.com/knative/build-pipeline/test/gohelloworld
+COPY . /go/src/github.com/knative/build-pipeline/
 
 RUN go install github.com/knative/build-pipeline/test/gohelloworld
 
