@@ -82,6 +82,11 @@ func (pr *PipelineRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1a
 	return pipelineRunCondSet.Manage(pr).GetCondition(t)
 }
 
+// InitializeConditions will set all conditions in pipelineRunCondSet to unknown for the PipelineRun
+func (ps *PipelineRunStatus) InitializeConditions() {
+	pipelineRunCondSet.Manage(ps).InitializeConditions()
+}
+
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
 func (pr *PipelineRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {

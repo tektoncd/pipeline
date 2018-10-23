@@ -142,14 +142,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	pr := original.DeepCopy()
-	// If this is the first attempt to reconcile, mark the Run as in progress
-	if pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded) == nil {
-		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-			Reason: resources.ReasonRunning,
-		})
-	}
+	pr.Status.InitializeConditions()
 
 	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)

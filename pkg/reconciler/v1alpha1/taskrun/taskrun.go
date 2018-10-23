@@ -23,7 +23,7 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
-	resources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -142,14 +142,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	tr := original.DeepCopy()
-	// If this is the first attempt to reconcile, mark the Run as in progress
-	if tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded) == nil {
-		tr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-			Reason: ReasonRunning,
-		})
-	}
+	tr.Status.InitializeConditions()
 
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
@@ -201,8 +194,17 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// 	return nil
 	// }
 
-	// sync build status with taskrun status
-	tr.Status.SetCondition(build.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	// sync build status with taskrun status, if it exists
+	if build.Status.GetCondition(duckv1alpha1.ConditionSucceeded) != nil {
+		tr.Status.SetCondition(build.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	} else {
+		// If the Build status doesn't exist yet, it's because we just started running
+		tr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+			Reason: ReasonRunning,
+		})
+	}
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace,
 		tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
