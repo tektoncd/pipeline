@@ -286,7 +286,7 @@ func (c *Reconciler) reconcilePipelineRunStatus(pr *v1alpha1.PipelineRun, state 
 
 func (c *Reconciler) isPipelineRunComplete(pr *v1alpha1.PipelineRun) bool {
 	// Check if Pipeline Run is already marked as completed or failed
-	if s := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); s != nil && s.Status != corev1.ConditionUnknown {
+	if s := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); !s.IsUnknown() {
 		// Pipeline run is either Successul or Failed.
 		c.Logger.Infof("PipelineRun is either successfully complete or marked as failed.", pr.Name)
 		return true

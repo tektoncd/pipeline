@@ -292,3 +292,77 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcile_FailedPipeline(t *testing.T) {
+	prs := []*v1alpha1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-failed",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline-failed",
+			},
+		},
+	}}
+	ps := []*v1alpha1.Pipeline{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-failed",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{{
+				Name:    "unit-test-1",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+			}, {
+				Name:    "unit-test-2",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+			}},
+		}},
+	}
+	ts := []*v1alpha1.Task{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-task",
+			Namespace: "foo",
+		},
+	}}
+	trs := []*v1alpha1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-failed-unit-test-1",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{},
+		Status: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Status: corev1.ConditionFalse,
+				Type:   duckv1alpha1.ConditionSucceeded,
+			}},
+		},
+	}}
+	d := test.Data{
+		Pipelines:    ps,
+		PipelineRuns: prs,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+	c, _, client := test.GetPipelineRunController(d)
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-failed")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
+	}
+
+	for _, a := range client.Actions() {
+		if a.Matches("create", "taskruns") {
+			t.Errorf("Expected to see no TaskRun created but found %s created", a)
+		}
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := client.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-failed", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	if condition := reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded); !condition.IsFalse() {
+		t.Errorf("Expected PipelineRun status to completed and false, but was %s", condition)
+	}
+}

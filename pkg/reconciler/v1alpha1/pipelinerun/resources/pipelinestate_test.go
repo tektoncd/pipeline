@@ -276,6 +276,11 @@ func TestGetPipelineState(t *testing.T) {
 		PipelineTask: &pts[1],
 		TaskRunName:  "pipelinerun-mytask2",
 		TaskRun:      nil,
+	}, {
+		Task:         task,
+		PipelineTask: &pts[2],
+		TaskRunName:  "pipelinerun-mytask3",
+		TaskRun:      nil,
 	}}
 	if d := cmp.Diff(pipelineState, expectedState); d != "" {
 		t.Fatalf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
