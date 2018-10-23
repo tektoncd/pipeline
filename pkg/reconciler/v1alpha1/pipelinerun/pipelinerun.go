@@ -25,6 +25,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -218,11 +219,24 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
 		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount)
 		if err != nil {
+			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", prtr.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
 		}
 	}
 
+	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 	pr.Status.SetCondition(resources.GetPipelineConditionStatus(pr.Name, state, c.Logger))
+	after := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+
+	if before != after {
+		// Create events when the taskrun result is in.
+		if after.Status == corev1.ConditionTrue {
+			c.Recorder.Event(pr, corev1.EventTypeNormal, "Succeeded", after.Message)
+		} else if after.Status == corev1.ConditionFalse {
+			c.Recorder.Event(pr, corev1.EventTypeWarning, "Failed", after.Message)
+		}
+	}
+
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
 	return nil
 }

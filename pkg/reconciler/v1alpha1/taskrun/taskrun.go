@@ -186,6 +186,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 					fmt.Sprintf("%s/%s", tr.Namespace, tr.Spec.TaskRef.Name), err),
 			})
 			return nil
+			c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build %q: %v", tr.Name, err)
+			c.Logger.Errorf("Failed to create build for task %q :%v", err, tr.Name)
+			return err
 		}
 	} else if err != nil {
 		c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get build %q; %v", tr.Name, tr.Name, err)
@@ -202,20 +205,32 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// 	return nil
 	// }
 
-	// sync build status with taskrun status, if it exists
+	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	// sync build status with taskrun status
 	if build.Status.GetCondition(duckv1alpha1.ConditionSucceeded) != nil {
 		tr.Status.SetCondition(build.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
 	} else {
 		// If the Build status doesn't exist yet, it's because we just started running
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-			Reason: ReasonRunning,
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  ReasonRunning,
+			Message: ReasonRunning,
 		})
+	}
+	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+
+	if before != after {
+		// Create events when the Build result is in.
+		if after.Status == corev1.ConditionTrue {
+			c.Recorder.Event(tr, corev1.EventTypeNormal, "Succeeded", after.Message)
+		} else if after.Status == corev1.ConditionFalse {
+			c.Recorder.Event(tr, corev1.EventTypeWarning, "Failed", after.Message)
+		}
 	}
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace,
-		tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+		after)
 
 	return nil
 }
