@@ -157,7 +157,7 @@ func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 			Params: []v1alpha1.Param{
 				v1alpha1.Param{
 					Name:  "Url",
-					Value: "https://github.com/pivotal-nader-ziada/gohelloworld",
+					Value: "https://github.com/knative/build-pipeline",
 				},
 			},
 		},
@@ -194,7 +194,7 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 				Steps: []corev1.Container{{
 					Name:  "kaniko",
 					Image: "gcr.io/kaniko-project/executor",
-					Args: []string{"--dockerfile=/workspace/Dockerfile",
+					Args: []string{"--dockerfile=/workspace/test/gohelloworld/Dockerfile",
 						fmt.Sprintf("--destination=%s", imageName),
 					},
 				}},
@@ -282,7 +282,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 					}},
 					Params: []v1alpha1.Param{{
 						Name:  "pathToHelmCharts",
-						Value: "/workspace/gohelloworld-chart",
+						Value: "/workspace/test/gohelloworld/gohelloworld-chart",
 					}, {
 						Name:  "chartname",
 						Value: "gohelloworld",
