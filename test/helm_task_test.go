@@ -57,8 +57,8 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	c, namespace := setup(t, logger)
 	setupClusterBindingForHelm(c, t, namespace, logger)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
-	defer tearDown(logger, c.KubeClient, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+	defer tearDown(t, logger, c, namespace)
 
 	logger.Infof("Creating Git PipelineResource %s", sourceResourceName)
 	if _, err := c.PipelineResourceClient.Create(getGoHelloworldGitResource(namespace)); err != nil {

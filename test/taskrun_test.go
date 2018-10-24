@@ -34,8 +34,8 @@ func TestTaskRun(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
-	defer tearDown(logger, c.KubeClient, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+	defer tearDown(t, logger, c, namespace)
 
 	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)})); err != nil {

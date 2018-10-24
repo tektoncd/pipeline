@@ -32,8 +32,8 @@ func TestPipeline(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
-	defer tearDown(logger, c.KubeClient, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+	defer tearDown(t, logger, c, namespace)
 
 	p, err := c.PipelineClient.List(metav1.ListOptions{})
 	if err != nil {
