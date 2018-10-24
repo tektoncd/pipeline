@@ -86,13 +86,14 @@ func TestPipelineRun(t *testing.T) {
 		}
 	}
 
-	logger.Infof("Making sure the expected events were created from taskrun and pipelinerun")
+	logger.Infof("Making sure events were created from taskrun and pipelinerun")
 	watchEvents, err := c.KubeClient.Kube.CoreV1().Events(namespace).Watch(metav1.ListOptions{})
+	// close watchEvents channel
+	defer watchEvents.Stop()
 	if err != nil {
 		t.Errorf("failed to create watch on events: %v", err)
 	}
-	// close watch channel
-	defer watchEvents.Stop()
+	// create timer to not wait for events longer than 5 seconds
 	timer := time.NewTimer(5 * time.Second)
 	expectedNumberOfEvents := 3
 	// 1 from PipelineRun and 2 from Tasks defined in pipelinerun
@@ -106,12 +107,11 @@ func TestPipelineRun(t *testing.T) {
 				gotEventCount++
 			}
 		case <-timer.C:
-			t.Errorf("Expected %d number of successful events from pipelinerun and taskrun but got 0", expectedNumberOfEvents)
+			if gotEventCount != expectedNumberOfEvents {
+				t.Errorf("Expected %d number of successful events from pipelinerun and taskrun but got %d", expectedNumberOfEvents, gotEventCount)
+			}
 			return
 		}
-	}
-	if gotEventCount != expectedNumberOfEvents {
-		t.Errorf("Expected %d number of successful events from pipelinerun and taskrun but got %d", expectedNumberOfEvents, gotEventCount)
 	}
 }
 

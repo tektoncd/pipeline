@@ -185,10 +185,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 				Message: fmt.Sprintf("References a Task %s that doesn't exist: %v",
 					fmt.Sprintf("%s/%s", tr.Namespace, tr.Spec.TaskRef.Name), err),
 			})
-			return nil
 			c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build %q: %v", tr.Name, err)
 			c.Logger.Errorf("Failed to create build for task %q :%v", err, tr.Name)
-			return err
+			return nil
 		}
 	} else if err != nil {
 		c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get build %q; %v", tr.Name, tr.Name, err)
@@ -218,16 +217,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			Message: ReasonRunning,
 		})
 	}
-	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
-	if before != after {
-		// Create events when the Build result is in.
-		if after.Status == corev1.ConditionTrue {
-			c.Recorder.Event(tr, corev1.EventTypeNormal, "Succeeded", after.Message)
-		} else if after.Status == corev1.ConditionFalse {
-			c.Recorder.Event(tr, corev1.EventTypeWarning, "Failed", after.Message)
-		}
-	}
+	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	c.Base.EmitEvent(before, after, tr)
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace,
 		after)
