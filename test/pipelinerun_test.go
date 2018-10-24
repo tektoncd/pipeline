@@ -38,8 +38,8 @@ func TestPipelineRun(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
-	defer tearDown(logger, c.KubeClient, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+	defer tearDown(t, logger, c, namespace)
 
 	logger.Infof("Creating Pipeline Resources in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace, []string{"echo", taskOutput})); err != nil {
@@ -102,8 +102,8 @@ func TestPipelineRun_WithServiceAccount(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(logger, c.KubeClient, namespace) }, logger)
-	defer tearDown(logger, c.KubeClient, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+	defer tearDown(t, logger, c, namespace)
 
 	logger.Infof("Creating pipeline resources in namespace %s", namespace)
 

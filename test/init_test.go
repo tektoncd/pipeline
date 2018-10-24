@@ -19,7 +19,10 @@ package test
 
 import (
 	"flag"
+	"fmt"
+	"github.com/ghodss/yaml"
 	"os"
+	"strings"
 	"testing"
 
 	knativetest "github.com/knative/pkg/test"
@@ -44,12 +47,33 @@ func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
 	return c, namespace
 }
 
-func tearDown(logger *logging.BaseLogger, kubeClient *knativetest.KubeClient, namespace string) {
-	if kubeClient != nil {
-		logger.Infof("Deleting namespace %s", namespace)
-		if err := kubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
-			logger.Errorf("Failed to delete namespace %s: %s", namespace, err)
+func header(logger *logging.BaseLogger, text string) {
+	left := "### "
+	right := " ###"
+	txt := left + text + right
+	bar := strings.Repeat("#", len(txt))
+	logger.Info(bar)
+	logger.Info(txt)
+	logger.Info(bar)
+}
+
+func tearDown(t *testing.T, logger *logging.BaseLogger, cs *clients, namespace string) {
+	if cs.KubeClient == nil {
+		return
+	}
+	if t.Failed() {
+		header(logger, fmt.Sprintf("Dumping objects from %s", namespace))
+		bs, err := getCRDYaml(cs)
+		if err != nil {
+			logger.Error(err)
+		} else {
+			logger.Info(string(bs))
 		}
+	}
+
+	logger.Infof("Deleting namespace %s", namespace)
+	if err := cs.KubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
+		logger.Errorf("Failed to delete namespace %s: %s", namespace, err)
 	}
 }
 
@@ -83,3 +107,72 @@ func TestMain(m *testing.M) {
 	c := m.Run()
 	os.Exit(c)
 }
+
+func getCRDYaml(cs *clients) ([]byte, error) {
+	var output []byte
+	printOrAdd := func(kind, name string, i interface{}) {
+		bs, err := yaml.Marshal(i)
+		if err != nil {
+			return
+		}
+		output = append(output, []byte("\n---\n")...)
+		output = append(output, bs...)
+	}
+
+	ps, err := cs.PipelineClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range ps.Items {
+		printOrAdd("Pipeline", i.Name, i)
+	}
+
+	pps, err := cs.PipelineParamsClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range pps.Items {
+		printOrAdd("PipelineParamses", i.Name, i)
+	}
+
+	bds, err := cs.BuildClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range bds.Items {
+		printOrAdd("Build", i.Name, i)
+	}
+
+	prs, err := cs.PipelineResourceClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range prs.Items {
+		printOrAdd("PipelineResource", i.Name, i)
+	}
+
+	prrs, err := cs.PipelineRunClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range prrs.Items {
+		printOrAdd("PipelineRun", i.Name, i)
+	}
+
+	ts, err := cs.TaskClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range ts.Items {
+		printOrAdd("Task", i.Name, i)
+	}
+	trs, err := cs.TaskRunClient.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, i := range trs.Items {
+		printOrAdd("TaskRun", i.Name, i)
+	}
+	return output, nil
+}
+
