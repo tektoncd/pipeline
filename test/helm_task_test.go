@@ -195,7 +195,6 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 				Steps: []corev1.Container{{
 					Name:    "kaniko",
 					Image:   "gcr.io/kaniko-project/executor",
-					Command: []string{"/kaniko/executor"},
 					Args: []string{"--dockerfile=/workspace/test/gohelloworld/Dockerfile",
 						fmt.Sprintf("--destination=%s", imageName),
 					},
@@ -232,12 +231,10 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 				Steps: []corev1.Container{{
 					Name:    "helm-init",
 					Image:   "alpine/helm",
-					Command: []string{"helm"},
 					Args:    []string{"init", "--wait"},
 				}, {
 					Name:    "helm-deploy",
 					Image:   "alpine/helm",
-					Command: []string{"helm"},
 					Args: []string{"install",
 						"--debug",
 						"--name=${inputs.params.chartname}",
@@ -487,7 +484,6 @@ func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *l
 				Steps: []corev1.Container{{
 					Name:    "helm-reset",
 					Image:   "alpine/helm",
-					Command: []string{"helm"},
 					Args:    []string{"reset", "--force"},
 				},
 				},

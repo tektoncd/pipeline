@@ -18,13 +18,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
+
 	"fmt"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/knative/build-pipeline/test"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -49,6 +50,7 @@ const (
 	entrypointLocation = "/tools/entrypoint"
 	toolsMountName     = "tools"
 	pvcSizeBytes       = 5 * 1024 * 1024 * 1024 // 5 GBs
+	kanikoImage        = "gcr.io/kaniko-project/executor"
 )
 
 var toolsMount = corev1.VolumeMount{
@@ -58,7 +60,7 @@ var toolsMount = corev1.VolumeMount{
 
 var entrypointCopyStep = corev1.Container{
 	Name:         "place-tools",
-	Image:        resources.EntrypointImage,
+	Image:        entrypoint.Image,
 	Command:      []string{"/bin/cp"},
 	Args:         []string{"/entrypoint", entrypointLocation},
 	VolumeMounts: []corev1.VolumeMount{toolsMount},
@@ -152,9 +154,10 @@ var templatedTask = &v1alpha1.Task{
 						"--my-additional-arg=${outputs.resources.myimage.url}"},
 				},
 				{
-					Name:  "myothercontainer",
-					Image: "myotherimage",
-					Args:  []string{"--my-other-arg=${inputs.resources.workspace.url}"},
+					Name:    "myothercontainer",
+					Image:   "myotherimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
 				},
 			},
 		},
@@ -185,9 +188,10 @@ var defaultTemplatedTask = &v1alpha1.Task{
 					Args:    []string{"--my-arg=${inputs.params.myarg}"},
 				},
 				{
-					Name:  "myothercontainer",
-					Image: "myotherimage",
-					Args:  []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
+					Name:    "myothercontainer",
+					Image:   "myotherimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
 				},
 			},
 		},
@@ -458,7 +462,7 @@ func TestReconcile(t *testing.T) {
 						Env: []corev1.EnvVar{
 							{
 								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+								Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
 							},
 						},
 						VolumeMounts: []corev1.VolumeMount{toolsMount},
@@ -496,7 +500,7 @@ func TestReconcile(t *testing.T) {
 						Env: []corev1.EnvVar{
 							{
 								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+								Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
 							},
 						},
 						VolumeMounts: []corev1.VolumeMount{toolsMount},
@@ -534,7 +538,7 @@ func TestReconcile(t *testing.T) {
 						Env: []corev1.EnvVar{
 							{
 								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+								Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
 							},
 						},
 						VolumeMounts: []corev1.VolumeMount{toolsMount},
@@ -779,5 +783,48 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
 		t.Errorf("Taskrun Status diff -want, +got: %v", d)
+	}
+}
+
+func TestCreateRedirectedBuild(t *testing.T) {
+	tr := &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			ServiceAccount: "sa",
+		},
+	}
+	tr.Name = "tr"
+	tr.Namespace = "tr"
+
+	bs := &buildv1alpha1.BuildSpec{
+		Steps: []corev1.Container{
+			{
+				Command: []string{"abcd"},
+				Args:    []string{"efgh"},
+			},
+			{
+				Command: []string{"abcd"},
+				Args:    []string{"efgh"},
+			},
+		},
+		Volumes: []corev1.Volume{{Name: "v"}},
+	}
+	expectedSteps := len(bs.Steps) + 1
+	expectedVolumes := len(bs.Volumes) + 1
+
+	b, err := taskrun.CreateRedirectedBuild(bs, "pvc", tr)
+	if err != nil {
+		t.Errorf("expected CreateRedirectedBuild to pass: %v", err)
+	}
+	if b.Name != tr.Name {
+		t.Errorf("names do not match: %s should be %s", b.Name, tr.Name)
+	}
+	if len(b.Spec.Steps) != expectedSteps {
+		t.Errorf("step counts do not match: %d should be %d", len(b.Spec.Steps), expectedSteps)
+	}
+	if len(b.Spec.Volumes) != expectedVolumes {
+		t.Errorf("volumes do not match: %d should be %d", len(b.Spec.Volumes), expectedVolumes)
+	}
+	if b.Spec.ServiceAccountName != tr.Spec.ServiceAccount {
+		t.Errorf("services accounts do not match: %s should be %s", b.Spec.ServiceAccountName, tr.Spec.ServiceAccount)
 	}
 }

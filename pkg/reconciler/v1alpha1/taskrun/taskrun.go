@@ -25,6 +25,7 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
@@ -186,7 +187,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 				return fmt.Errorf("Failed to create persistent volume claim %s for task %q: %v", tr.Name, err, tr.Name)
 			}
 		} else if err != nil {
-			c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get pvc %q; %v", tr.Name, tr.Name, err)
+			c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get pvc %q: %v", tr.Name, tr.Name, err)
 			return err
 		}
 
@@ -300,47 +301,30 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1
 		return nil, fmt.Errorf("task %s has nil BuildSpec", t.Name)
 	}
 
+	// For each step with no entrypoint set, try to populate it with the info
+	// from the remote registry
+	cache := entrypoint.NewCache()
 	bSpec := t.Spec.BuildSpec.DeepCopy()
-	bSpec.Volumes = append(bSpec.Volumes, corev1.Volume{
-		Name: resources.MountName,
-		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: pvcName,
-			},
-		},
-	})
+	for i := range bSpec.Steps {
+		step := &bSpec.Steps[i]
+		if len(step.Command) == 0 {
+			ep, err := entrypoint.GetRemoteEntrypoint(cache, step.Image)
+			if err != nil {
+				return nil, fmt.Errorf("could not get entrypoint from registry for %s: %v", step.Image, err)
+			}
+			step.Command = ep
+		}
+	}
 
-	// Override the entrypoint so that we can use our custom
-	// entrypoint which copies logs
-	err = resources.AddEntrypoint(bSpec.Steps)
+	b, err := CreateRedirectedBuild(bSpec, pvcName, tr)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to add entrypoint to steps of Build: %s", err)
+		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
-
-	// Add the step which will copy the entrypoint into the volume
-	// we are going to be using, so that all of the steps will have
-	// access to it.
-	bSpec.Steps = append([]corev1.Container{resources.GetCopyStep()}, bSpec.Steps...)
-
-	b := &buildv1alpha1.Build{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      tr.Name,
-			Namespace: tr.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tr, groupVersionKind),
-			},
-			// Attach new label and pass taskrun labels to build
-			Labels: makeLabels(tr),
-		},
-		Spec: *bSpec,
-	}
-	// Pass service account name from taskrun to build
-	// if task specifies service account name override with taskrun SA
-	b.Spec.ServiceAccountName = tr.Spec.ServiceAccount
 
 	build, err := resources.AddInputResource(b, t, tr, c.resourceLister, c.Logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
+		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
+		return nil, err
 	}
 
 	var defaults []v1alpha1.TaskParam
@@ -360,17 +344,51 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1
 		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
 	}
 
-	build.Labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = tr.Name
-	// Only propagate the pipeline and pipelinerun keys if they are there. If
-	// the TaskRun was created via PipelineRun these should be there.
-	if val, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
-		build.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = val
-	}
-	if val, ok := tr.Labels[pipeline.PipelineRunLabelKey]; ok {
-		build.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = val
-	}
-
 	return c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Create(build)
+}
+
+// CreateRedirectedBuild takes a build, a persistent volume claim name, a taskrun and
+// an entrypoint cache creates a build where all entrypoints are switched to
+// be the entrypoint redirector binary. This function assumes that it receives
+// its own copy of the BuildSpec and modifies it freely
+func CreateRedirectedBuild(bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
+	bs.ServiceAccountName = tr.Spec.ServiceAccount
+	// RedirectSteps the entrypoint in each container so that we can use our custom
+	// entrypoint which copies logs to the volume
+	err := entrypoint.RedirectSteps(bs.Steps)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add entrypoint to steps of TaskRun %s: %v", tr.Name, err)
+	}
+	// Add the step which will copy the entrypoint into the volume
+	// we are going to be using, so that all of the steps will have
+	// access to it.
+	entrypoint.AddCopyStep(bs)
+	b := &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tr.Name,
+			Namespace: tr.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(tr, groupVersionKind),
+			},
+			// Attach new label and pass taskrun labels to build
+			Labels: makeLabels(tr),
+		},
+		Spec: *bs,
+	}
+	// Add the volume used for storing the binary and logs
+	b.Spec.Volumes = append(b.Spec.Volumes, corev1.Volume{
+		Name: entrypoint.MountName,
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: pvcName,
+			},
+		},
+	})
+	// Pass service account name from taskrun to build
+	// if task specifies service account name override with taskrun SA
+	b.Spec.ServiceAccountName = tr.Spec.ServiceAccount
+
+	return b, nil
 }
 
 // makeLabels constructs the labels we will apply to TaskRun resources.

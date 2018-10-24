@@ -55,21 +55,45 @@ To create a Task, you must:
 Each container image used as a step in a [`Task`](#task) must comply with a specific
 contract.
 
-* [The `entrypoint` of the image will be ignored](#step-entrypoint)
+When containers are run in a `Task`, the `entrypoint` of the container will be
+overwritten with a custom binary that redirects the logs to a separate location
+for aggregating the log output. As such, it is always recommended to explicitly
+specify a command.
 
-For example, in the following Task the images, `gcr.io/cloud-builders/gcloud`
-and `gcr.io/cloud-builders/docker` run as steps:
+When `command` is not explicitly set, the controller will attempt to lookup the
+entrypoint from the remote registry.
+
+Due to this metadata lookup, if you use a private image as a step inside a
+`Task`, the build-pipeline controller needs to be able to access that registry.
+The simplest way to accomplish this is to add a `.docker/config.json` at
+`$HOME/.docker/config.json`, which will then be used by the controller when
+performing the lookup
+
+For example, in the following Task with the images, `gcr.io/cloud-builders/gcloud`
+and `gcr.io/cloud-builders/docker`, the entrypoint would be resolved from the
+registry, resulting in the tasks running `gcloud` and `docker` respectively.
 
 ```yaml
 spec:
   buildSpec:
     steps:
     - image: gcr.io/cloud-builders/gcloud
-      command: ['gcloud']
-      ...
+      command: [gcloud]
     - image: gcr.io/cloud-builders/docker
-      command: ['docker']
-      ...
+      command: [docker]
+```
+
+However, if the steps specified a custom `command`, that is what would be used.
+
+```yaml
+spec:
+  buildSpec:
+    steps:
+    - image: gcr.io/cloud-builders/gcloud
+      command:
+      - bash
+      - -c
+      - echo "Hello!"
 ```
 
 You can also provide `args` to the image's `command`:
