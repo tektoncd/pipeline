@@ -70,7 +70,7 @@
   revision = "e89373fe6b4a7413d7acd6da1725b83ef713e6e4"
 
 [[projects]]
-  digest = "1:2e3c336fc7fde5c984d2841455a658a6d626450b1754a854b3b32e7a8f49a07a"
+  digest = "1:d2754cafcab0d22c13541618a8029a70a8959eb3525ff201fe971637e2274cd0"
   name = "github.com/google/go-cmp"
   packages = [
     "cmp",
@@ -758,7 +758,9 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/ghodss/yaml",
     "github.com/google/go-cmp/cmp",
+    "github.com/google/go-cmp/cmp/cmpopts",
     "github.com/google/go-containerregistry/pkg/authn",
     "github.com/google/go-containerregistry/pkg/name",
     "github.com/google/go-containerregistry/pkg/v1/remote",
@@ -769,7 +771,6 @@
     "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1",
     "github.com/knative/build/pkg/client/informers/externalversions",
     "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1",
-    "github.com/knative/build/pkg/client/listers/build/v1alpha1",
     "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/caching/pkg/client/clientset/versioned",
     "github.com/knative/pkg/apis",
@@ -789,6 +790,7 @@
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest/observer",
     "k8s.io/api/core/v1",
+    "k8s.io/api/rbac/v1beta1",
     "k8s.io/apimachinery/pkg/api/equality",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/resource",
