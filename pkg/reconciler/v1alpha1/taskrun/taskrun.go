@@ -219,7 +219,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-	c.Base.EmitEvent(before, after, tr)
+	reconciler.EmitEvent(c.Recorder, before, after, tr)
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace,
 		after)

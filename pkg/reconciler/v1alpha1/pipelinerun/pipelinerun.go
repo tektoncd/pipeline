@@ -227,7 +227,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	after := resources.GetPipelineConditionStatus(pr.Name, state, c.Logger)
 	pr.Status.SetCondition(after)
 
-	c.Base.EmitEvent(before, after, pr)
+	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
 	return nil

@@ -87,36 +87,17 @@ func TestPipelineRun(t *testing.T) {
 	}
 
 	logger.Infof("Making sure events were created from taskrun and pipelinerun")
-	watchEvents, err := c.KubeClient.Kube.CoreV1().Events(namespace).Watch(metav1.ListOptions{})
-	// close watchEvents channel
-	defer watchEvents.Stop()
-	if err != nil {
-		t.Errorf("failed to create watch on events: %v", err)
-	}
-	// create timer to not wait for events longer than 5 seconds
-	timer := time.NewTimer(5 * time.Second)
 	expectedNumberOfEvents := 3
 	// 1 from PipelineRun and 2 from Tasks defined in pipelinerun
-	gotEventCount := 0
-	for {
-		select {
-		case wevent := <-watchEvents.ResultChan():
-			event := wevent.Object.(*corev1.Event)
-			// successful taskrun and pipelinerun events.
-			if event.InvolvedObject.Kind == "TaskRun" || event.InvolvedObject.Kind == "PipelineRun" && event.Reason == "Succeeded" {
-				gotEventCount++
-			}
-		case <-timer.C:
-			if gotEventCount != expectedNumberOfEvents {
-				t.Errorf("Expected %d number of successful events from pipelinerun and taskrun but got %d", expectedNumberOfEvents, gotEventCount)
-			}
-			return
-		}
+
+	matchKinds := map[string]string{"PipelineRun": "", "TaskRun": ""}
+	events := collectMatchingEvents(t, c.KubeClient, namespace, matchKinds, "Succeeded")
+	if len(events) != expectedNumberOfEvents {
+		t.Errorf("Expected %d number of successful events from pipelinerun and taskrun but got %d", expectedNumberOfEvents, len(events))
 	}
 }
 
 // Test pipeline trun which refers to service account.
-// create service account
 func TestPipelineRun_WithServiceAccount(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
@@ -213,8 +194,37 @@ func TestPipelineRun_WithServiceAccount(t *testing.T) {
 		}
 	}
 }
+
 func newHostPathType(pathType string) *corev1.HostPathType {
 	hostPathType := new(corev1.HostPathType)
 	*hostPathType = corev1.HostPathType(pathType)
 	return hostPathType
+}
+
+// matchKinds is a map of Kind of Object expected
+// reason is the reason of event expected
+func collectMatchingEvents(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, kinds map[string]string, reason string) []*corev1.Event {
+	var events []*corev1.Event
+
+	watchEvents, err := kubeClient.Kube.CoreV1().Events(namespace).Watch(metav1.ListOptions{})
+	// close watchEvents channel
+	defer watchEvents.Stop()
+	if err != nil {
+		t.Errorf("failed to create watch on events: %v", err)
+	}
+
+	// create timer to not wait for events longer than 5 seconds
+	timer := time.NewTimer(5 * time.Second)
+
+	for {
+		select {
+		case wevent := <-watchEvents.ResultChan():
+			event := wevent.Object.(*corev1.Event)
+			if _, ok := kinds[event.InvolvedObject.Kind]; ok && event.Reason == reason {
+				events = append(events, event)
+			}
+		case <-timer.C:
+			return events
+		}
+	}
 }
