@@ -28,7 +28,6 @@ import (
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -225,17 +224,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-	pr.Status.SetCondition(resources.GetPipelineConditionStatus(pr.Name, state, c.Logger))
-	after := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	after := resources.GetPipelineConditionStatus(pr.Name, state, c.Logger)
+	pr.Status.SetCondition(after)
 
-	if before != after {
-		// Create events when the taskrun result is in.
-		if after.Status == corev1.ConditionTrue {
-			c.Recorder.Event(pr, corev1.EventTypeNormal, "Succeeded", after.Message)
-		} else if after.Status == corev1.ConditionFalse {
-			c.Recorder.Event(pr, corev1.EventTypeWarning, "Failed", after.Message)
-		}
-	}
+	c.Base.EmitEvent(before, after, pr)
 
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
 	return nil
