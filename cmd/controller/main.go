@@ -133,6 +133,7 @@ func main() {
 			taskInformer,
 			taskRunInformer,
 			pipelineParamsInformer,
+			resourceInformer,
 		),
 	}
 
