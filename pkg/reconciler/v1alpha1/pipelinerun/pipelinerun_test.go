@@ -56,6 +56,12 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
 			Name:    "unit-test-1",
 			TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+			InputSourceBindings: []v1alpha1.SourceBinding{{
+				Key: "test-input-resource",
+			}},
+			OutputSourceBindings: []v1alpha1.SourceBinding{{
+				Key: "test-output-resource",
+			}},
 			Params: []v1alpha1.Param{{
 				Name:  "foo",
 				Value: "somethingfun",
@@ -87,12 +93,39 @@ func TestReconcile(t *testing.T) {
 			ServiceAccount: "test-sa",
 		},
 	}}
+	rr := []*v1alpha1.PipelineResource{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-input-resource",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+			Params: []v1alpha1.Param{{
+				Name:  "foo",
+				Value: "bar",
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ouput-resource",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeImage,
+			Params: []v1alpha1.Param{{
+				Name:  "foo",
+				Value: "bar",
+			}},
+		},
+	}}
 	d := test.Data{
-		PipelineRuns:   prs,
-		Pipelines:      ps,
-		Tasks:          ts,
-		PipelineParams: pp,
+		PipelineRuns:      prs,
+		Pipelines:         ps,
+		Tasks:             ts,
+		PipelineParams:    pp,
+		PipelineResources: rr,
 	}
+
 	c, _, clients := test.GetPipelineRunController(d)
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
 	if err != nil {

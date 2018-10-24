@@ -170,5 +170,6 @@ func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs,
 		i.Task,
 		i.TaskRun,
 		i.PipelineParams,
+		i.PipelineResource,
 	), logs, c
 }

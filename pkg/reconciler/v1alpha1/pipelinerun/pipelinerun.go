@@ -72,6 +72,7 @@ type Reconciler struct {
 	taskRunLister        listers.TaskRunLister
 	taskLister           listers.TaskLister
 	pipelineParamsLister listers.PipelineParamsLister
+	resourceLister       listers.PipelineResourceLister
 	tracker              tracker.Interface
 }
 
@@ -86,6 +87,7 @@ func NewController(
 	taskInformer informers.TaskInformer,
 	taskRunInformer informers.TaskRunInformer,
 	pipelineParamsesInformer informers.PipelineParamsInformer,
+	resourceInformer informers.PipelineResourceInformer,
 ) *controller.Impl {
 
 	r := &Reconciler{
@@ -95,6 +97,7 @@ func NewController(
 		taskLister:           taskInformer.Lister(),
 		taskRunLister:        taskRunInformer.Lister(),
 		pipelineParamsLister: pipelineParamsesInformer.Lister(),
+		resourceLister:       resourceInformer.Lister(),
 	}
 
 	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
@@ -159,7 +162,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
-	p, serviceAccount, verr := c.validatePipelineRun(pr)
+	p, serviceAccount, verr := c.validate(pr)
 	if verr != nil {
 		c.Logger.Error("Failed to validate pipelinerun %s with error %v", pr.Name, verr)
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
