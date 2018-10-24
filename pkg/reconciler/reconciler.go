@@ -23,13 +23,11 @@ import (
 	pipelineScheme "github.com/knative/build-pipeline/pkg/client/clientset/versioned/scheme"
 	buildclientset "github.com/knative/build/pkg/client/clientset/versioned"
 	cachingclientset "github.com/knative/caching/pkg/client/clientset/versioned"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/logging/logkey"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -124,16 +122,4 @@ func init() {
 	// Add pipeline types to the default Kubernetes Scheme so Events can be
 	// logged for pipeline types.
 	pipelineScheme.AddToScheme(scheme.Scheme)
-}
-
-// EmitEvent emits success or failed event for obj if condition has changed
-func (b *Base) EmitEvent(beforeCondition *duckv1alpha1.Condition, afterCondition *duckv1alpha1.Condition, obj runtime.Object) {
-	if beforeCondition != afterCondition && afterCondition != nil {
-		// Create events when the obj result is in.
-		if afterCondition.Status == corev1.ConditionTrue {
-			b.Recorder.Event(obj, corev1.EventTypeNormal, "Succeeded", afterCondition.Message)
-		} else if afterCondition.Status == corev1.ConditionFalse {
-			b.Recorder.Event(obj, corev1.EventTypeWarning, "Failed", afterCondition.Message)
-		}
-	}
 }
