@@ -18,15 +18,20 @@ package v1alpha1
 
 import (
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// Assert that TaskRun implements the GenericCRD interface.
+var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
 	PipelineRef        PipelineRef        `json:"pipelineRef"`
 	PipelineParamsRef  PipelineParamsRef  `json:"pipelineParamsRef"`
 	PipelineTriggerRef PipelineTriggerRef `json:"triggerRef"`
+	Generation         int64              `json:"generation,omitempty"`
 }
 
 // PipelineRef can be used to refer to a specific instance of a Pipeline.
@@ -137,3 +142,6 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 		Name:       pr.Name,
 	}
 }
+
+// SetDefaults for pipelinerun
+func (pr *PipelineRun) SetDefaults() {}
