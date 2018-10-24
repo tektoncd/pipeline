@@ -3,26 +3,22 @@ Pipeline CRDs is an open source implementation to configure and run CI/CD style 
 
 Pipeline CRDs creates [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) as building blocks to declare pipelines.
 
-A custom resource is an extension of Kubernetes API which can create a custom [Kubernetest Object](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#understanding-kubernetes-objects).
+A custom resource is an extension of Kubernetes API which can create a custom [Kubernetes Object](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#understanding-kubernetes-objects).
 Once a custom resource is installed, users can create and access its objects with kubectl, just as they do for built-in resources like pods, deployments etc.
 These resources run on-cluster and are implemeted by [Kubernetes Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions).
 
 
-# Building Blocks of Pipeline CRDs
+## Building Blocks of Pipeline CRDs
 Below diagram lists the main custom resources created by Pipeline CRDs
 
 ![Building Blocks](./docs/images/building-blocks.png)
 
-## Task
+### Task
 A Task is a collection of sequential steps you would want to run as part of your continous integration flow.
 A task will run inside a container on your cluster. A Task declares,
 1. Inputs the task needs.
 1. Outputs the task will produce.
-1. Sequence of steps to execute.
-
-   Each step defines an container image. This image is of type [Builder Image](https://github.com/knative/docs/blob/master/build/builder-contract.md).  A Builder Image is an image whose `command` performs some action and exits with a zero status on success.
-
-   NOTE: Currently to get the logs out of a Builder Image, entrypoint overrides are used.  This means that each step in `steps:` must have a container with a `command:` specified.
+1. Sequence of steps to execute. Each step is [a container image](#image-contract).
 
 Here is an example simple Task definition which echoes "hello world". The `hello-world` task does not define any inputs or outputs.
 
@@ -46,7 +42,13 @@ spec:
 ```
 Examples of `Task` definitions with inputs and outputs are [here](./examples)
 
-## Pipeline
+### Step Entrypoint
+
+To get the logs out of a [step](#task), we provide our own executable that wraps
+the `command` and `args` values specified in the `step`. This means that every
+`Task` must use `command`, and cannot rely on the image's `entrypoint`.
+
+### Pipeline
 `Pipeline` describes a graph of [Tasks](#Task) to execute.
 
 Below, is a simple pipeline which runs `hello-world-task` twice one after the other.
@@ -75,17 +77,56 @@ _TODO: Consider specifying task dependency_
 
 Examples of pipelines with complex DAGs are [here](./examples/pipelines)
 
-## PipelineResources
+### PipelineResources
 `PipelinesResources` in a pipeline are the set of objects that are going to be used as inputs to a [`Task`](#Task) and can be output of [`Task`](#Task) .
 For e.g.:
 A task's input could be a github source which contains your application code.
 A task's output can be your application container image which can be then deployed in a cluster.
 Read more on PipelineResources and their types [here](./docs/pipeline-resources.md)
 
-
-## PipelineParams
+### PipelineParams
 _TODO add text here_
 
+### Image Contract
 
+Each container image used as a step in a [`Task`](#task) must comply with a specific
+contract.
 
+* [The `entrypoint` of the image will be ignored](#step-entrypoint)
 
+For example, in the following Task the images, `gcr.io/cloud-builders/gcloud`
+and `gcr.io/cloud-builders/docker` run as steps:
+
+```yaml
+spec:
+  buildSpec:
+    steps:
+    - image: gcr.io/cloud-builders/gcloud
+      command: ['gcloud']
+      ...
+    - image: gcr.io/cloud-builders/docker
+      command: ['docker']
+      ...
+```
+
+You can also provide `args` to the image's `command`:
+
+```yaml
+steps:
+- image: ubuntu
+  command: ['/bin/bash']
+  args: ['-c', 'echo hello $FOO']
+  env:
+  - name: 'FOO'
+    value: 'world'
+```
+
+### Images Conventions
+
+ * `/workspace`: If an input is provided, the default working directory will be
+   `/workspace` and this will be shared across `steps` (note that in
+   [#123](https://github.com/knative/build-pipeline/issues/123) we will add supprots for multiple input workspaces)
+ * `/builder/home`: This volume is exposed to steps via `$HOME`.
+ * Credentials attached to the Build's service account may be exposed as Git or
+   Docker credentials as outlined
+   [in the auth docs](https://github.com/knative/docs/blob/master/build/auth.md#authentication).
