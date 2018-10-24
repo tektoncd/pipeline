@@ -88,6 +88,7 @@ func main() {
 			v1alpha1.SchemeGroupVersion.WithKind("PipelineParams"):   &v1alpha1.PipelineParams{},
 			v1alpha1.SchemeGroupVersion.WithKind("Task"):             &v1alpha1.Task{},
 			v1alpha1.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha1.TaskRun{},
+			v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
 		},
 		Logger: logger,
 	}

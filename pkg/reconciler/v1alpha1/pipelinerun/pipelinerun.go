@@ -42,18 +42,12 @@ import (
 )
 
 const (
-	// ReasonCouldntGetPipeline indicates that the reason for the failure status is that
-	// the associated Pipeline couldn't be found
-	ReasonCouldntGetPipeline = "CouldntGetPipeline"
-
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
 	ReasonCouldntGetTask = "CouldntGetTask"
-
-	// ReasonCouldntGetPipelineParams indicates that the reason for the failure status is
-	// that PipelineRun's PipelineParams couldn't be found
-	ReasonCouldntGetPipelineParams = "CouldntGetPipelineParams"
-
+	// ReasonFailedValidation indicated that the reason for failure status is
+	// that pipelinerun failed runtime validation
+	ReasonFailedValidation = "PipelineValidationFailed"
 	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
 	pipelineRunAgentName = "pipeline-controller"
 	// pipelineRunControllerName defines name for PipelineRun Controller
@@ -165,31 +159,18 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
-	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
-	if err != nil {
-		// This Run has failed, so we need to mark it as failed and stop reconciling it
+	p, serviceAccount, verr := c.validatePipelineRun(pr)
+	if verr != nil {
+		c.Logger.Error("Failed to validate pipelinerun %s with error %v", pr.Name, verr)
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-			Reason: ReasonCouldntGetPipeline,
-			Message: fmt.Sprintf("Failed to Get Pipeline: %q",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name)),
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  ReasonFailedValidation,
+			Message: verr.Error(),
 		})
 		return nil
 	}
-	serviceAccount, err := c.getServiceAccount(pr)
-	if err != nil {
-		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-			Reason: ReasonCouldntGetPipelineParams,
-			Message: fmt.Sprintf("Failed to get pipelineparamses %q; error %v",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineParamsRef.Name),
-				err),
-		})
-		return nil
-	}
+
 	state, err := resources.GetPipelineState(
 		func(namespace, name string) (*v1alpha1.Task, error) {
 			return c.taskLister.Tasks(namespace).Get(name)
@@ -265,17 +246,4 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
-}
-
-func (c *Reconciler) getServiceAccount(pr *v1alpha1.PipelineRun) (string, error) {
-	sName := pr.Spec.PipelineParamsRef.Name
-	if sName == "" {
-		return "", nil
-	}
-
-	pp, err := c.pipelineParamsLister.PipelineParamses(pr.Namespace).Get(pr.Spec.PipelineParamsRef.Name)
-	if err != nil {
-		return "", err
-	}
-	return pp.Spec.ServiceAccount, nil
 }
