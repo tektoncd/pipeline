@@ -161,3 +161,4 @@ func getBuildOutputFromVolume(logger *logging.BaseLogger, c *clients, namespace,
 	_, err = io.Copy(out, readCloser)
 	return buf.String(), nil
 }
+

@@ -16,8 +16,9 @@ import (
 var validBuild = &buildv1alpha1.BuildSpec{
 	Steps: []corev1.Container{
 		{
-			Name:  "mystep",
-			Image: "myimage",
+			Name:    "mystep",
+			Image:   "myimage",
+			Command: []string{"mycmd"},
 		},
 	},
 }

@@ -122,7 +122,6 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	step := corev1.Container{
 		Name:    "kaniko",
 		Image:   "gcr.io/kaniko-project/executor",
-		Command: []string{"/kaniko/executor"},
 		Args: []string{"--dockerfile=/workspace/Dockerfile",
 			fmt.Sprintf("--destination=%s", repo),
 		},
