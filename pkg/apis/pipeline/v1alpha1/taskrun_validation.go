@@ -51,7 +51,7 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 		return err
 	}
 
-	// check for outputs
+	// check for output resources
 	if err := ts.Outputs.Validate("spec.Outputs"); err != nil {
 		return err
 	}
@@ -80,16 +80,8 @@ func (i TaskRunInputs) Validate(path string) *apis.FieldError {
 	return validateParameters(i.Params)
 }
 
-func (o Outputs) Validate(path string) *apis.FieldError {
-	for _, source := range o.Resources {
-		if err := validateResourceType(source, fmt.Sprintf("%s.Resources.%s.Type", path, source.Name)); err != nil {
-			return err
-		}
-		if err := checkForDuplicates(o.Resources, fmt.Sprintf("%s.Resources.%s.Name", path, source.Name)); err != nil {
-			return err
-		}
-	}
-	return nil
+func (o TaskRunOutputs) Validate(path string) *apis.FieldError {
+	return checkForPipelineResourceDuplicates(o.Resources, fmt.Sprintf("%s.Resources.Name", path))
 }
 
 func (r ResultTarget) Validate(path string) *apis.FieldError {
@@ -114,12 +106,11 @@ func (r ResultTarget) Validate(path string) *apis.FieldError {
 	return nil
 }
 
-func checkForPipelineResourceDuplicates(resources []PipelineResourceVersion, path string) *apis.FieldError {
+func checkForPipelineResourceDuplicates(resources []TaskRunResourceVersion, path string) *apis.FieldError {
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
-		// Check the unique combination of resource+version. Covers the use case of inputs with same resource name
-		// and different versions
-		key := fmt.Sprintf("%s%s", r.ResourceRef.Name, r.Version)
+		// We should provide only one binding for each resource required by the Task.
+		key := strings.ToLower(r.Key)
 		if _, ok := encountered[strings.ToLower(key)]; ok {
 			return apis.ErrMultipleOneOf(path)
 		}

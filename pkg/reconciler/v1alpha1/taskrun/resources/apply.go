@@ -35,16 +35,18 @@ func ApplyParameters(b *buildv1alpha1.Build, tr *v1alpha1.TaskRun) *buildv1alpha
 	return builder.ApplyReplacements(b, replacements)
 }
 
+// ResourceGetter is the interface used to refreive resources which are references via a TaskRunResourceVersion.
 type ResourceGetter interface {
 	Get(string) (*v1alpha1.PipelineResource, error)
 }
 
-// ApplyResources applies the params from a TaskRun.Input.Resources to a BuildSpec.
-func ApplyResources(b *buildv1alpha1.Build, tr *v1alpha1.TaskRun, getter ResourceGetter) (*buildv1alpha1.Build, error) {
+// ApplyResources applies the templating from values in resources which are referenced in b as subitems
+// of the replacementStr. It retrieves the referenced resources via the getter.
+func ApplyResources(b *buildv1alpha1.Build, resources []v1alpha1.TaskRunResourceVersion, getter ResourceGetter, replacementStr string) (*buildv1alpha1.Build, error) {
 	replacements := map[string]string{}
 
-	for _, ir := range tr.Spec.Inputs.Resources {
-		pr, err := getter.Get(ir.ResourceRef.Name)
+	for _, r := range resources {
+		pr, err := getter.Get(r.ResourceRef.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -54,7 +56,7 @@ func ApplyResources(b *buildv1alpha1.Build, tr *v1alpha1.TaskRun, getter Resourc
 			return nil, err
 		}
 		for k, v := range resource.Replacements() {
-			replacements[fmt.Sprintf("inputs.resources.%s.%s", ir.ResourceRef.Name, k)] = v
+			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, r.Key, k)] = v
 		}
 	}
 	return builder.ApplyReplacements(b, replacements), nil

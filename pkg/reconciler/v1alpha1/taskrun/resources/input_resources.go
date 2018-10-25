@@ -17,11 +17,22 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
+
 	v1alpha1 "github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
 )
+
+func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunResourceVersion) (*v1alpha1.TaskRunResourceVersion, error) {
+	for _, br := range boundResources {
+		if br.Key == resourceName {
+			return &br, nil
+		}
+	}
+	return nil, fmt.Errorf("couldnt find key %q in bound resources %s", resourceName, boundResources)
+}
 
 // AddInputResource will update the input build with the input resource from the task
 func AddInputResource(
@@ -38,25 +49,25 @@ func AddInputResource(
 
 	var gitResource *v1alpha1.GitResource
 	for _, input := range task.Spec.Inputs.Resources {
-		resource, err := pipelineResourceLister.PipelineResources(task.Namespace).Get(input.Name)
+		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
 		if err != nil {
-			logger.Errorf("Failed to reconcile TaskRun: %q failed to Get Pipeline Resource: %q", task.Name, input.Name)
-			return nil, err
+			return nil, fmt.Errorf("Failed to get bound resource: %s", err)
 		}
+
+		resource, err := pipelineResourceLister.PipelineResources(task.Namespace).Get(boundResource.ResourceRef.Name)
+		if err != nil {
+			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q", task.Name, boundResource)
+		}
+
 		if resource.Spec.Type == v1alpha1.PipelineResourceTypeGit {
 			gitResource, err = v1alpha1.NewGitResource(resource)
 			if err != nil {
-				logger.Errorf("Failed to reconcile TaskRun: %q Invalid Pipeline Resource: %q", task.Name, input.Name)
-				return nil, err
+				return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
 			}
-			for _, trInput := range taskRun.Spec.Inputs.Resources {
-				if trInput.ResourceRef.Name == input.Name {
-					if trInput.Version != "" {
-						gitResource.Revision = trInput.Version
-					}
-					break
-				}
+			if boundResource.Version != "" {
+				gitResource.Revision = boundResource.Version
 			}
+			// TODO(#123) support mulitple git inputs
 			break
 		}
 	}

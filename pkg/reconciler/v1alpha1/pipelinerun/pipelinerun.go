@@ -236,6 +236,20 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			ServiceAccount: sa,
 		},
 	}
+	for _, isb := range pt.InputSourceBindings {
+		tr.Spec.Inputs.Resources = append(tr.Spec.Inputs.Resources, v1alpha1.TaskRunResourceVersion{
+			ResourceRef: isb.ResourceRef,
+			Key:         isb.Key,
+			// TODO(#148) apply the correct version
+		})
+	}
+	for _, osb := range pt.OutputSourceBindings {
+		tr.Spec.Outputs.Resources = append(tr.Spec.Outputs.Resources, v1alpha1.TaskRunResourceVersion{
+			ResourceRef: osb.ResourceRef,
+			Key:         osb.Key,
+			// TODO(#148) apply the correct version
+		})
+	}
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)
 }
 

@@ -92,9 +92,7 @@ type ClusterBinding struct {
 // SourceBinding is used to bind a Source from a PipelineParams to a source required
 // as an input for a task.
 type SourceBinding struct {
-	// Name is the string the Task will use to identify this resource in its inputs.
-	Name string `json:"name"`
-	// Key is the string that the PipelineParams will use to identify this source.
+	// Key is the string the Task will use to identify this resource in its inputs.
 	Key string `json:"key"`
 	// The Resource this binding is referring to
 	ResourceRef PipelineResourceRef `json:"resourceRef"`

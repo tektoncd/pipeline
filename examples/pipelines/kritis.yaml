@@ -9,8 +9,7 @@ spec:
         taskRef:
           name: make
         inputSourceBindings:
-          - name: kritis-app-github
-            key: workspace # bind to the name in the task
+          - key: workspace # bind to the name in the task
             resourceRef:
               name: kritis-resources-git
         params:
@@ -20,14 +19,12 @@ spec:
         taskRef:
           name: build-push
         inputSourceBindings:
-          - name: kritis-app-github
-            key: workspace # bind to the name in the task
+          - key: workspace # bind to the name in the task
             resourceRef:
               name: kritis-resources-git
             passedConstraints: [unit-test-kritis]
         outputSourceBindings:
-          - name: kritisImage
-            key: builtImage # bind to the name in the task
+          - key: builtImage # bind to the name in the task
             resourceRef:
               name: kritis-resources-image
         params:
@@ -37,8 +34,7 @@ spec:
         taskRef:
           name: deploy-with-helm
         inputSourceBindings:
-          - name: guestbookImage
-            key: workspace
+          - key: workspace
             resourceRef:
               name: kritis-resources-image
             passedConstraints: [push-kritis]
@@ -52,8 +48,7 @@ spec:
         taskRef:
           name: integration-test-in-docker
         inputSourceBindings:
-          - name: kritis-test-github
-            key: workspace
+          - key: workspace
             resourceRef:
                 name: kritis-resources-test-git
             passedConstraints: [deploy-test-env]

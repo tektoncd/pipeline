@@ -41,7 +41,7 @@ func setUp() {
 
 	res := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "workspace",
+			Name:      "the-git",
 			Namespace: "marshmallow",
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
@@ -86,14 +86,13 @@ func TestAddResourceToBuild(t *testing.T) {
 				Name: "simpleTask",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.PipelineResourceVersion{
-					v1alpha1.PipelineResourceVersion{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "workspace",
-						},
-						Version: "master",
+				Resources: []v1alpha1.TaskRunResourceVersion{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "the-git",
 					},
-				},
+					Version: "master",
+					Key:     "workspace",
+				}},
 			},
 		},
 	}
@@ -169,14 +168,13 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.PipelineResourceVersion{
-						v1alpha1.PipelineResourceVersion{
-							ResourceRef: v1alpha1.PipelineResourceRef{
-								Name: "workspace",
-							},
-							Version: "branch",
+					Resources: []v1alpha1.TaskRunResourceVersion{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "the-git",
 						},
-					},
+						Version: "branch",
+						Key:     "workspace",
+					}},
 				},
 			},
 		},
@@ -221,13 +219,12 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.PipelineResourceVersion{
-						v1alpha1.PipelineResourceVersion{
-							ResourceRef: v1alpha1.PipelineResourceRef{
-								Name: "workspace",
-							},
+					Resources: []v1alpha1.TaskRunResourceVersion{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "the-git",
 						},
-					},
+						Key: "workspace",
+					}},
 				},
 			},
 		},

@@ -63,7 +63,12 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 		}
 	}
 	if ts.Outputs != nil {
-		if err := ts.Outputs.Validate("taskspec.Outputs"); err != nil {
+		for _, resource := range ts.Outputs.Resources {
+			if err := validateResourceType(resource, fmt.Sprintf("taskspec.Outputs.Resources.%s.Type", resource.Name)); err != nil {
+				return err
+			}
+		}
+		if err := checkForDuplicates(ts.Outputs.Resources, "taskspec.Outputs.Resources.Name"); err != nil {
 			return err
 		}
 	}

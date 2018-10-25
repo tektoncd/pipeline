@@ -186,7 +186,7 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{
 					v1alpha1.TaskResource{
-						Name: sourceResourceName,
+						Name: "workspace",
 						Type: v1alpha1.PipelineResourceTypeGit,
 					},
 				},
@@ -215,7 +215,7 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{
 					v1alpha1.TaskResource{
-						Name: sourceResourceName,
+						Name: "workspace",
 						Type: v1alpha1.PipelineResourceTypeGit,
 					},
 				},
@@ -264,8 +264,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 						Name: createImageTaskName,
 					},
 					InputSourceBindings: []v1alpha1.SourceBinding{{
-						Name: "some-name",
-						Key:  sourceResourceName,
+						Key: "workspace",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: sourceResourceName,
 						},
@@ -277,8 +276,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 						Name: helmDeployTaskName,
 					},
 					InputSourceBindings: []v1alpha1.SourceBinding{{
-						Name: "some-other-name",
-						Key:  sourceResourceName,
+						Key: "workspace",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: sourceResourceName,
 						},

@@ -9,13 +9,11 @@ spec:
           taskRef:
               name: build-push
           inputSourceBindings:
-              - name: guestbookSource
-                key: workspace # bind to the name in the task
+              - key: workspace # bind to the name in the task
                 resourceRef:
                   name: guestbook-resources-git
           outputSourceBindings:
-              - name: guestbookImage 
-                key: builtImage # bind to the name in the task
+              - key: builtImage # bind to the name in the task
                 resourceRef:
                   name: guestbookstagingimage
           params:
@@ -25,13 +23,11 @@ spec:
           taskRef:
               name: build-push
           inputSourceBindings:
-              - name: redis-ocker
-                key: workspace        
+              - key: workspace
                 resourceRef:
                   name: guestbook-resources-redis-docker                    
           outputSourceBindings:
-              - name: redisImage
-                key: builtImage
+              - key: builtImage
                 resourceRef:
                   name: redisstagingimage                
           params:
@@ -41,15 +37,13 @@ spec:
           taskRef:
               name: deploy-with-kubectl
           inputSourceBindings:
-            - name: guestbookSource
-              key: workspace
+            - key: workspace
               resourceRef:
                   name: guestbook-resources-git  
               passedConstraints: 
                 - build-guestbook
                 - build-redis
-            - name: workspace
-              key: redis-docker
+            - key: redis-docker
               resourceRef:
                   name: guestbook-resources-redis-docker  
               passedConstraints:
@@ -64,8 +58,7 @@ spec:
           taskRef:
               name: integrationTestInDocker
           inputSourceBindings:
-              - name: guestbookSource
-                key: workspace
+              - key: workspace
                 resourceRef:
                   name: guestbook-resources-git  
                 passedConstraints:
@@ -77,8 +70,7 @@ spec:
           taskRef:
               name: integration-test-in-docker
           inputSourceBindings:
-              - name: guestbookSource
-                key: workspace
+              - key: workspace
                 resourceRef:
                   name: guestbook-resources-git  
                 passedConstraints:
@@ -90,8 +82,7 @@ spec:
           taskRef:
               name: deploy-with-kubectl
           inputSourceBindings:
-              - name: guestbookSource
-                key: workspace
+              - key: workspace
                 resourceRef:
                   name: guestbook-resources-git  
                 passedConstraints:
