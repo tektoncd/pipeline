@@ -37,7 +37,12 @@ var simpleBuild = &buildv1alpha1.Build{
 			{
 				Name:  "baz",
 				Image: "bat",
-				Args:  []string{"${inputs.resources.git-resource.url}"},
+				Args:  []string{"${inputs.resources.workspace.url}"},
+			},
+			{
+				Name:  "qux",
+				Image: "quux",
+				Args:  []string{"${outputs.resources.imageToUse.url}"},
 			},
 		},
 	},
@@ -56,19 +61,19 @@ var paramTaskRun = &v1alpha1.TaskRun{
 	},
 }
 
-var resourceTaskRun = &v1alpha1.TaskRun{
-	Spec: v1alpha1.TaskRunSpec{
-		Inputs: v1alpha1.TaskRunInputs{
-			Resources: []v1alpha1.PipelineResourceVersion{
-				{
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "git-resource",
-					},
-				},
-			},
-		},
+var resourceVersionInputs = []v1alpha1.TaskRunResourceVersion{{
+	ResourceRef: v1alpha1.PipelineResourceRef{
+		Name: "git-resource",
 	},
-}
+	Key: "workspace",
+}}
+
+var resourceVersionOutputs = []v1alpha1.TaskRunResourceVersion{{
+	ResourceRef: v1alpha1.PipelineResourceRef{
+		Name: "image-resource",
+	},
+	Key: "imageToUse",
+}}
 
 var gitResource = &v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
@@ -80,6 +85,21 @@ var gitResource = &v1alpha1.PipelineResource{
 			{
 				Name:  "URL",
 				Value: "https://git-repo",
+			},
+		},
+	},
+}
+
+var imageResource = &v1alpha1.PipelineResource{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "image-resource",
+	},
+	Spec: v1alpha1.PipelineResourceSpec{
+		Type: v1alpha1.PipelineResourceTypeImage,
+		Params: []v1alpha1.Param{
+			{
+				Name:  "URL",
+				Value: "gcr.io/hans/sandwiches",
 			},
 		},
 	},
@@ -130,7 +150,7 @@ func (rg *rg) Get(name string) (*v1alpha1.PipelineResource, error) {
 	if pr, ok := rg.resources[name]; ok {
 		return pr, nil
 	}
-	return nil, fmt.Errorf("Resource %s does not exist.", name)
+	return nil, fmt.Errorf("resource %s does not exist", name)
 }
 
 func (rg *rg) With(name string, pr *v1alpha1.PipelineResource) *rg {
@@ -147,8 +167,9 @@ func mockGetter() *rg {
 func TestApplyResources(t *testing.T) {
 	type args struct {
 		b      *buildv1alpha1.Build
-		tr     *v1alpha1.TaskRun
+		r      []v1alpha1.TaskRunResourceVersion
 		getter ResourceGetter
+		rStr   string
 	}
 	tests := []struct {
 		name    string
@@ -160,35 +181,50 @@ func TestApplyResources(t *testing.T) {
 			name: "no replacements specified",
 			args: args{
 				b:      simpleBuild,
-				tr:     paramTaskRun,
+				r:      []v1alpha1.TaskRunResourceVersion{},
 				getter: mockGetter(),
+				rStr:   "inputs",
 			},
 			want: simpleBuild,
 		},
 		{
-			name: "resource specified",
+			name: "input resource specified",
 			args: args{
 				b:      simpleBuild,
-				tr:     resourceTaskRun,
+				r:      resourceVersionInputs,
 				getter: mockGetter().With("git-resource", gitResource),
+				rStr:   "inputs",
 			},
 			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
 				b.Spec.Steps[1].Args = []string{"https://git-repo"}
 			}),
 		},
 		{
+			name: "output resource specified",
+			args: args{
+				b:      simpleBuild,
+				r:      resourceVersionOutputs,
+				getter: mockGetter().With("image-resource", imageResource),
+				rStr:   "outputs",
+			},
+			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
+				b.Spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
+			}),
+		},
+		{
 			name: "resource does not exist",
 			args: args{
 				b:      simpleBuild,
-				tr:     resourceTaskRun,
+				r:      resourceVersionInputs,
 				getter: mockGetter(),
+				rStr:   "inputs",
 			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ApplyResources(tt.args.b, tt.args.tr, tt.args.getter)
+			got, err := ApplyResources(tt.args.b, tt.args.r, tt.args.getter, tt.args.rStr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ApplyResources() error = %v, wantErr %v", err, tt.wantErr)
 				return

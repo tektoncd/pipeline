@@ -183,17 +183,19 @@ func TestInput_Validate(t *testing.T) {
 			Name:  "name",
 			Value: "value",
 		}},
-		Resources: []PipelineResourceVersion{{
+		Resources: []TaskRunResourceVersion{{
 			Version: "testv1",
 			ResourceRef: PipelineResourceRef{
 				Name: "testresource",
 			},
+			Key: "workspace",
 		}},
 	}
 	if err := i.Validate("spec.inputs"); err != nil {
 		t.Errorf("TaskRunInputs.Validate() error = %v", err)
 	}
 }
+
 func TestInput_Invalidate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -201,18 +203,20 @@ func TestInput_Invalidate(t *testing.T) {
 		wantErr *apis.FieldError
 	}{
 		{
-			name: "invalid task inputs",
+			name: "duplicate task inputs",
 			inputs: TaskRunInputs{
-				Resources: []PipelineResourceVersion{{
+				Resources: []TaskRunResourceVersion{{
 					Version: "testv1",
 					ResourceRef: PipelineResourceRef{
-						Name: "testresource",
+						Name: "testresource1",
 					},
+					Key: "workspace",
 				}, {
 					Version: "testv1",
 					ResourceRef: PipelineResourceRef{
-						Name: "testresource",
+						Name: "testresource2",
 					},
+					Key: "workspace",
 				}},
 			},
 			wantErr: apis.ErrMultipleOneOf("spec.Inputs.Resources.Name"),
@@ -220,11 +224,12 @@ func TestInput_Invalidate(t *testing.T) {
 		{
 			name: "invalid task input params",
 			inputs: TaskRunInputs{
-				Resources: []PipelineResourceVersion{{
+				Resources: []TaskRunResourceVersion{{
 					Version: "testv1",
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource",
 					},
+					Key: "resource",
 				}},
 				Params: []Param{{
 					Name:  "name",
@@ -246,6 +251,7 @@ func TestInput_Invalidate(t *testing.T) {
 		})
 	}
 }
+
 func TestResult_Invalidate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -304,6 +310,7 @@ func TestResult_Invalidate(t *testing.T) {
 		})
 	}
 }
+
 func TestResultTarget_Validate(t *testing.T) {
 	rs := &Results{
 		Runs: ResultTarget{
@@ -326,52 +333,52 @@ func TestResultTarget_Validate(t *testing.T) {
 		t.Errorf("ResultTarget.Validate() error = %v", err)
 	}
 }
+
 func TestOutput_Validate(t *testing.T) {
-	o := Outputs{
-		Resources: []TaskResource{{
-			Type: "git",
-			Name: "resource1",
+	i := TaskRunOutputs{
+		Resources: []TaskRunResourceVersion{{
+			Version: "testv1",
+			ResourceRef: PipelineResourceRef{
+				Name: "testresource",
+			},
+			Key: "someimage",
 		}},
 	}
-	if err := o.Validate("spec.outputs"); err != nil {
-		t.Errorf("Outputs.Validate() error = %v", err)
+	if err := i.Validate("spec.outputs"); err != nil {
+		t.Errorf("TaskRunOutputs.Validate() error = %v", err)
 	}
 }
 func TestOutput_Invalidate(t *testing.T) {
 	tests := []struct {
 		name    string
-		outputs Outputs
+		outputs TaskRunOutputs
 		wantErr *apis.FieldError
 	}{
 		{
-			name: "invalid task output type",
-			outputs: Outputs{
-				Resources: []TaskResource{{
-					Name: "resourceName",
-					Type: "invalidtype",
-				}},
-			},
-			wantErr: apis.ErrInvalidValue("invalidtype", "spec.Outputs.Resources.resourceName.Type"),
-		},
-		{
-			name: "duplicate task output name",
-			outputs: Outputs{
-				Resources: []TaskResource{{
-					Type: "git",
-					Name: "resource1",
+			name: "duplicated task outputs",
+			outputs: TaskRunOutputs{
+				Resources: []TaskRunResourceVersion{{
+					Version: "testv1",
+					ResourceRef: PipelineResourceRef{
+						Name: "testresource1",
+					},
+					Key: "workspace",
 				}, {
-					Type: "git",
-					Name: "resource1",
+					Version: "testv1",
+					ResourceRef: PipelineResourceRef{
+						Name: "testresource2",
+					},
+					Key: "workspace",
 				}},
 			},
-			wantErr: apis.ErrMultipleOneOf("spec.Outputs.Resources.resource1.Name"),
+			wantErr: apis.ErrMultipleOneOf("spec.Outputs.Resources.Name"),
 		},
 	}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.outputs.Validate("spec.Outputs")
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
-				t.Errorf("Validate/%s (-want, +got) = %v", ts.name, d)
+				t.Errorf("TaskRunOutputs.Validate/%s (-want, +got) = %v", ts.name, d)
 			}
 		})
 	}

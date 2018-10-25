@@ -108,7 +108,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{
 					{
-						Name: kanikoResourceName,
+						Name: "workspace",
 						Type: v1alpha1.PipelineResourceTypeGit,
 					},
 				},
@@ -173,12 +173,13 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 				},
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.PipelineResourceVersion{
+				Resources: []v1alpha1.TaskRunResourceVersion{
 					{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: kanikoResourceName,
 						},
 						Version: "master",
+						Key:     "workspace",
 					},
 				},
 			},

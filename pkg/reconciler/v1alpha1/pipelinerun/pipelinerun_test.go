@@ -56,18 +56,24 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
 			Name:    "unit-test-1",
 			TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
-			InputSourceBindings: []v1alpha1.SourceBinding{{
-				Key: "test-input-resource",
-			}},
-			OutputSourceBindings: []v1alpha1.SourceBinding{{
-				Key: "test-output-resource",
-			}},
 			Params: []v1alpha1.Param{{
 				Name:  "foo",
 				Value: "somethingfun",
 			}, {
 				Name:  "bar",
 				Value: "somethingmorefun",
+			}},
+			InputSourceBindings: []v1alpha1.SourceBinding{{
+				Key: "workspace",
+				ResourceRef: v1alpha1.PipelineResourceRef{
+					Name: "some-repo",
+				},
+			}},
+			OutputSourceBindings: []v1alpha1.SourceBinding{{
+				Key: "image-to-use",
+				ResourceRef: v1alpha1.PipelineResourceRef{
+					Name: "some-image",
+				},
 			}},
 		}},
 		}},
@@ -79,10 +85,20 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: "git",
+				}},
 				Params: []v1alpha1.TaskParam{{
 					Name: "foo",
 				}, {
 					Name: "bar",
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "image-to-use",
+					Type: "image",
 				}},
 			},
 		},
@@ -96,28 +112,28 @@ func TestReconcile(t *testing.T) {
 			ServiceAccount: "test-sa",
 		},
 	}}
-	rr := []*v1alpha1.PipelineResource{{
+	rs := []*v1alpha1.PipelineResource{{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-input-resource",
+			Name:      "some-repo",
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeGit,
+			Type: "git",
 			Params: []v1alpha1.Param{{
-				Name:  "foo",
-				Value: "bar",
+				Name:  "url",
+				Value: "http://github.com/kristoff/reindeer",
 			}},
 		},
 	}, {
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ouput-resource",
+			Name:      "some-image",
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeImage,
+			Type: "image",
 			Params: []v1alpha1.Param{{
-				Name:  "foo",
-				Value: "bar",
+				Name:  "url",
+				Value: "gcr.io/sven",
 			}},
 		},
 	}}
@@ -126,7 +142,7 @@ func TestReconcile(t *testing.T) {
 		Pipelines:         ps,
 		Tasks:             ts,
 		PipelineParams:    pp,
-		PipelineResources: rr,
+		PipelineResources: rs,
 	}
 
 	c, _, clients := test.GetPipelineRunController(d)
@@ -171,6 +187,20 @@ func TestReconcile(t *testing.T) {
 				}, {
 					Name:  "bar",
 					Value: "somethingmorefun",
+				}},
+				Resources: []v1alpha1.TaskRunResourceVersion{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
+					Key: "workspace",
+				}},
+			},
+			Outputs: v1alpha1.TaskRunOutputs{
+				Resources: []v1alpha1.TaskRunResourceVersion{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-image",
+					},
+					Key: "image-to-use",
 				}},
 			},
 		},

@@ -106,6 +106,14 @@ type PipelineResourceVersion struct {
 	Version     string              `json:"version"`
 }
 
+// TaskRunResourceVersion defines the version of the PipelineResource that
+// will be used for the Task input or output called Key.
+type TaskRunResourceVersion struct {
+	ResourceRef PipelineResourceRef `json:"resourceRef"`
+	Version     string              `json:"version"`
+	Key         string              `json:"key"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PipelineResourceList contains a list of PipelineResources

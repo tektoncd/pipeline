@@ -129,18 +129,32 @@ var templatedTask = &v1alpha1.Task{
 		Namespace: "foo",
 	},
 	Spec: v1alpha1.TaskSpec{
+		Inputs: &v1alpha1.Inputs{
+			Resources: []v1alpha1.TaskResource{{
+				Name: "workspace",
+				Type: "git",
+			}},
+		},
+		Outputs: &v1alpha1.Outputs{
+			Resources: []v1alpha1.TaskResource{{
+				Name: "myimage",
+				Type: "image",
+			}},
+		},
 		BuildSpec: &buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{
 				{
 					Name:    "mycontainer",
 					Image:   "myimage",
 					Command: []string{"/mycmd"},
-					Args:    []string{"--my-arg=${inputs.params.myarg}"},
+					Args: []string{
+						"--my-arg=${inputs.params.myarg}",
+						"--my-additional-arg=${outputs.resources.myimage.url}"},
 				},
 				{
 					Name:  "myothercontainer",
 					Image: "myotherimage",
-					Args:  []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
+					Args:  []string{"--my-other-arg=${inputs.resources.workspace.url}"},
 				},
 			},
 		},
@@ -158,6 +172,22 @@ var gitResource = &v1alpha1.PipelineResource{
 			{
 				Name:  "URL",
 				Value: "https://foo.git",
+			},
+		},
+	},
+}
+
+var imageResource = &v1alpha1.PipelineResource{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "image-resource",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.PipelineResourceSpec{
+		Type: "image",
+		Params: []v1alpha1.Param{
+			{
+				Name:  "URL",
+				Value: "gcr.io/kristoff/sven",
 			},
 		},
 	},
@@ -222,15 +252,24 @@ func TestReconcile(t *testing.T) {
 							Value: "foo",
 						},
 					},
-					Resources: []v1alpha1.PipelineResourceVersion{
-						{
-							ResourceRef: v1alpha1.PipelineResourceRef{
-								Name:       "git-resource",
-								APIVersion: "a1",
-							},
-							Version: "myversion",
+					Resources: []v1alpha1.TaskRunResourceVersion{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name:       "git-resource",
+							APIVersion: "a1",
 						},
-					},
+						Version: "myversion",
+						Key:     "workspace",
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskRunResourceVersion{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name:       "image-resource",
+							APIVersion: "a1",
+						},
+						Version: "myversion",
+						Key:     "myimage",
+					}},
 				},
 			},
 		},
@@ -239,7 +278,7 @@ func TestReconcile(t *testing.T) {
 	d := test.Data{
 		TaskRuns:          taskruns,
 		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask},
-		PipelineResources: []*v1alpha1.PipelineResource{gitResource},
+		PipelineResources: []*v1alpha1.PipelineResource{gitResource, imageResource},
 	}
 	testcases := []struct {
 		name            string
@@ -301,6 +340,12 @@ func TestReconcile(t *testing.T) {
 			name:    "params",
 			taskRun: taskruns[2],
 			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Source: &buildv1alpha1.SourceSpec{
+					Git: &buildv1alpha1.GitSourceSpec{
+						Url:      "https://foo.git",
+						Revision: "myversion",
+					},
+				},
 				Steps: []corev1.Container{
 					entrypointCopyStep,
 					{
@@ -311,7 +356,7 @@ func TestReconcile(t *testing.T) {
 						Env: []corev1.EnvVar{
 							{
 								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+								Value: `{"args":["/mycmd","--my-arg=foo","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
 							},
 						},
 						VolumeMounts: []corev1.VolumeMount{toolsMount},
@@ -349,7 +394,7 @@ func TestReconcile(t *testing.T) {
 			// check error
 			build, err := clients.Build.BuildV1alpha1().Builds(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
-				t.Errorf("Failed to fetch build: %v", err)
+				t.Fatalf("Failed to fetch build: %v", err)
 			}
 			if d := cmp.Diff(build.Spec, tc.wantedBuildSpec); d != "" {
 				t.Errorf("buildspec doesn't match, diff: %s", d)
