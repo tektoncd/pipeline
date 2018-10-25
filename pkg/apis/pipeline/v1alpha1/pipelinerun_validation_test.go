@@ -23,7 +23,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPieplineRun_Invalidate(t *testing.T) {
+func TestPipelineRun_Invalidate(t *testing.T) {
 	tests := []struct {
 		name string
 		pr   PipelineRun
