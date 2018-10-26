@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
@@ -35,6 +36,7 @@ import (
 )
 
 func TestPipelineRun(t *testing.T) {
+
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 
@@ -42,157 +44,268 @@ func TestPipelineRun(t *testing.T) {
 	defer tearDown(t, logger, c, namespace)
 
 	logger.Infof("Creating Pipeline Resources in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(getHelloWorldTask(namespace, []string{"echo", taskOutput})); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
-	}
-	if _, err := c.PipelineClient.Create(getHelloWorldPipeline(namespace)); err != nil {
-		t.Fatalf("Failed to create Pipeline `%s`: %s", hwPipelineName, err)
-	}
-	if _, err := c.PipelineParamsClient.Create(getHelloWorldPipelineParams(namespace)); err != nil {
-		t.Fatalf("Failed to create PipelineParams `%s`: %s", hwPipelineParamsName, err)
-	}
-	if _, err := c.PipelineRunClient.Create(getHelloWorldPipelineRun(namespace)); err != nil {
-		t.Fatalf("Failed to create PipelineRun `%s`: %s", hwPipelineRunName, err)
+
+	type tests struct {
+		name                   string
+		testSetup              func(index int)
+		expectedTaskRuns       []string
+		expectedNumberOfEvents int
 	}
 
-	logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", hwPipelineRunName, namespace)
-	if err := WaitForPipelineRunState(c, hwPipelineRunName, func(tr *v1alpha1.PipelineRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionTrue {
-				return true, nil
-			} else if c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("pipeline run %s failed!", hwPipelineRunName)
+	tds := []tests{{
+		name: "pipelinerun with multiple tasks",
+		testSetup: func(index int) {
+			t.Helper()
+			task := getHelloWorldTask(namespace, []string{"echo", taskOutput})
+			task.Name = getName(hwTaskName, index)
+			if _, err := c.TaskClient.Create(task); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 			}
-		}
-		return false, nil
-	}, "PipelineRunSuccess"); err != nil {
-		t.Errorf("Error waiting for PipelineRun %s to finish: %s", hwTaskRunName, err)
-	}
-	logger.Infof("Making sure the expected TaskRuns were created")
-	expectedTaskRuns := []string{
-		strings.Join([]string{hwPipelineRunName, hwPipelineTaskName1}, "-"),
-		strings.Join([]string{hwPipelineRunName, hwPipelineTaskName2}, "-"),
-	}
-	for _, runName := range expectedTaskRuns {
-		r, err := c.TaskRunClient.Get(runName, metav1.GetOptions{})
-		if err != nil {
-			t.Errorf("Couldn't get expected TaskRun %s: %s", runName, err)
-		} else {
-			c := r.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-			if c.Status != corev1.ConditionTrue {
-				t.Errorf("Expected TaskRun %s to have succeeded but Status is %s", runName, c.Status)
+			if _, err := c.PipelineClient.Create(getHelloWorldPipeline(index, namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(hwPipelineName, index), err)
 			}
-		}
-	}
-
-	logger.Infof("Making sure events were created from taskrun and pipelinerun")
-	expectedNumberOfEvents := 3
-	// 1 from PipelineRun and 2 from Tasks defined in pipelinerun
-
-	matchKinds := map[string]string{"PipelineRun": "", "TaskRun": ""}
-	events := collectMatchingEvents(t, c.KubeClient, namespace, matchKinds, "Succeeded")
-	if len(events) != expectedNumberOfEvents {
-		t.Errorf("Expected %d number of successful events from pipelinerun and taskrun but got %d", expectedNumberOfEvents, len(events))
-	}
-}
-
-// Test pipeline trun which refers to service account.
-func TestPipelineRun_WithServiceAccount(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
-
-	logger.Infof("Creating pipeline resources in namespace %s", namespace)
-
-	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(createPipelineRunSecret(namespace)); err != nil {
-		t.Fatalf("Failed to create secret `%s`: %s", hwSecret, err)
-	}
-
-	if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(createPipelineRunServiceAccount(namespace)); err != nil {
-		t.Fatalf("Failed to create SA `%s`: %s", hwSA, err)
-	}
-
-	pp := getHelloWorldPipelineParams(namespace)
-	// Set SA pipeline params spec
-	pp.Spec.ServiceAccount = hwSA
-	if _, err := c.PipelineParamsClient.Create(pp); err != nil {
-		t.Fatalf("Failed to create PipelineParams `%s`: %s", hwPipelineParamsName, err)
-	}
-
-	if _, err := c.TaskClient.Create(&v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      hwTaskName,
+			if _, err := c.PipelineParamsClient.Create(getHelloWorldPipelineParams(index, namespace)); err != nil {
+				t.Fatalf("Failed to create PipelineParams `%s`: %s", getName(hwPipelineParamsName, index), err)
+			}
 		},
-		Spec: v1alpha1.TaskSpec{
-			// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{
-					corev1.Container{
-						Name:  "config-docker",
-						Image: "gcr.io/cloud-builders/docker",
-						// Private docker image for Build CRD testing
-						Command: []string{"docker"},
-						Args:    []string{"pull", "gcr.io/build-crd-testing/secret-sauce"},
-						VolumeMounts: []corev1.VolumeMount{{
-							Name:      "docker-socket",
-							MountPath: "/var/run/docker.sock",
+		expectedTaskRuns:       []string{hwPipelineTaskName1, hwPipelineTaskName2},
+		expectedNumberOfEvents: 3,
+		// 1 from PipelineRun and 2 from Tasks defined in pipelinerun
+	}, {
+		name: "pipelinerun with service account setup",
+		testSetup: func(index int) {
+			t.Helper()
+			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
+				t.Fatalf("Failed to create secret `%s`: %s", getName(hwSecret, index), err)
+			}
+
+			if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(getPipelineRunServiceAccount(index, namespace)); err != nil {
+				t.Fatalf("Failed to create SA `%s`: %s", getName(hwSA, index), err)
+			}
+
+			pp := getHelloWorldPipelineParams(index, namespace)
+			// Set SA pipeline params spec
+			pp.Spec.ServiceAccount = getName(hwSA, index)
+			if _, err := c.PipelineParamsClient.Create(pp); err != nil {
+				t.Fatalf("Failed to create PipelineParams `%s`: %s", pp.Name, err)
+			}
+
+			if _, err := c.TaskClient.Create(&v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: namespace,
+					Name:      getName(hwTaskName, index),
+				},
+				Spec: v1alpha1.TaskSpec{
+					// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
+					BuildSpec: &buildv1alpha1.BuildSpec{
+						Steps: []corev1.Container{
+							corev1.Container{
+								Name:  "config-docker",
+								Image: "gcr.io/cloud-builders/docker",
+								// Private docker image for Build CRD testing
+								Command: []string{"docker"},
+								Args:    []string{"pull", "gcr.io/build-crd-testing/secret-sauce"},
+								VolumeMounts: []corev1.VolumeMount{{
+									Name:      "docker-socket",
+									MountPath: "/var/run/docker.sock",
+								}},
+							},
+						},
+						Volumes: []corev1.Volume{{
+							Name: "docker-socket",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/var/run/docker.sock",
+									Type: newHostPathType(string(corev1.HostPathSocket)),
+								},
+							},
 						}},
 					},
 				},
-				Volumes: []corev1.Volume{{
-					Name: "docker-socket",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/docker.sock",
-							Type: newHostPathType(string(corev1.HostPathSocket)),
-						},
+			}); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", getName(hwTaskName, index), err)
+			}
+
+			if _, err := c.PipelineClient.Create(getHelloWorldPipelineWithSingularTask(index, namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(hwPipelineName, index), err)
+			}
+		},
+		expectedTaskRuns:       []string{hwPipelineTaskName1},
+		expectedNumberOfEvents: 2,
+		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
+	}}
+
+	for i, td := range tds {
+		t.Run(td.name, func(t *testing.T) {
+			logger.Infof("Setting up test resources for %q test in namespace %s", td.name, namespace)
+			td.testSetup(i)
+
+			prName := fmt.Sprintf("%s%d", hwPipelineRunName, i)
+			if _, err := c.PipelineRunClient.Create(getHelloWorldPipelineRun(i, namespace)); err != nil {
+				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+			}
+
+			logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+			if err := WaitForPipelineRunState(c, prName, func(tr *v1alpha1.PipelineRun) (bool, error) {
+				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+				if c != nil {
+					if c.IsTrue() {
+						return true, nil
+					} else if c.IsFalse() {
+						return true, fmt.Errorf("Pipeline run has %s failed with status %v", prName, c.Status)
+					}
+				}
+				return false, nil
+			}, "PipelineRunSuccess"); err != nil {
+				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+			}
+
+			logger.Infof("Making sure the expected TaskRuns %s were created", td.expectedTaskRuns)
+
+			expectedTaskRunNames := []string{}
+			for _, runName := range td.expectedTaskRuns {
+				taskRunName := strings.Join([]string{prName, runName}, "-")
+				expectedTaskRunNames = append(expectedTaskRunNames, taskRunName)
+				r, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
+				} else {
+					if !r.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsTrue() {
+						t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, r.Status)
+					}
+				}
+			}
+
+			matchKinds := map[string][]string{"PipelineRun": []string{prName}, "TaskRun": expectedTaskRunNames}
+
+			logger.Infof("Making sure %d events were created from taskrun and pipelinerun with kinds %v", td.expectedNumberOfEvents, matchKinds)
+
+			events := collectMatchingEvents(t, c.KubeClient, namespace, matchKinds, "Succeeded")
+			if len(events) != td.expectedNumberOfEvents {
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d", td.expectedNumberOfEvents, len(events))
+			}
+			logger.Infof("Successfully finished test %q", td.name)
+		})
+	}
+}
+
+func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alpha1.Pipeline {
+	return &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      getName(hwPipelineName, suffix),
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{
+				v1alpha1.PipelineTask{
+					Name: hwPipelineTaskName1,
+					TaskRef: v1alpha1.TaskRef{
+						Name: getName(hwTaskName, suffix),
 					},
-				}},
+				},
 			},
 		},
-	}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
 	}
+}
 
-	if _, err := c.PipelineClient.Create(getHelloWorldPipelineWithSingularTask(namespace)); err != nil {
-		t.Fatalf("Failed to create Pipeline `%s`: %s", hwPipelineName, err)
+func getHelloWorldPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
+	return &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      getName(hwPipelineName, suffix),
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{
+				v1alpha1.PipelineTask{
+					Name: hwPipelineTaskName1,
+					TaskRef: v1alpha1.TaskRef{
+						Name: getName(hwTaskName, suffix),
+					},
+				},
+				v1alpha1.PipelineTask{
+					Name: hwPipelineTaskName2,
+					TaskRef: v1alpha1.TaskRef{
+						Name: getName(hwTaskName, suffix),
+					},
+				},
+			},
+		},
 	}
+}
 
-	if _, err := c.PipelineRunClient.Create(getHelloWorldPipelineRun(namespace)); err != nil {
-		t.Fatalf("Failed to create PipelineRun `%s`: %s", hwPipelineRunName, err)
+func getHelloWorldPipelineParams(suffix int, namespace string) *v1alpha1.PipelineParams {
+	return &v1alpha1.PipelineParams{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      getName(hwPipelineParamsName, suffix),
+		},
+		Spec: v1alpha1.PipelineParamsSpec{},
 	}
+}
 
-	logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", hwPipelineRunName, namespace)
-	if err := WaitForPipelineRunState(c, hwPipelineRunName, func(tr *v1alpha1.PipelineRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionTrue {
-				return true, nil
-			} else if c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("pipeline run %s failed! status info %#v", hwPipelineRunName, c.Status)
-			}
-		}
-		return false, nil
-	}, "PipelineRunSuccess"); err != nil {
-		t.Errorf("Error waiting for PipelineRun %s to finish: %s", hwTaskRunName, err)
+func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceAccount {
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      getName(hwSA, suffix),
+		},
+		Secrets: []corev1.ObjectReference{{
+			Name: getName(hwSecret, suffix),
+		}},
 	}
+}
 
-	logger.Infof("Making sure the expected TaskRuns were created")
-	expectedTaskRun := strings.Join([]string{hwPipelineRunName, hwPipelineTaskName1}, "-")
+func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {
+	// Generated by:
+	//   cat /tmp/key.json | base64 -w 0
+	// This service account is JUST a storage reader on gcr.io/build-crd-testing
+	encoedDockercred := "ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAiYnVpbGQtY3JkLXRlc3RpbmciLAogICJwcml2YXRlX2tleV9pZCI6ICIwNTAyYTQxYTgxMmZiNjRjZTU2YTY4ZWM1ODMyYWIwYmExMWMxMWU2IiwKICAicHJpdmF0ZV9rZXkiOiAiLS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tXG5NSUlFdlFJQkFEQU5CZ2txaGtpRzl3MEJBUUVGQUFTQ0JLY3dnZ1NqQWdFQUFvSUJBUUM5WDRFWU9BUmJ4UU04XG5EMnhYY2FaVGsrZ1k4ZWp1OTh0THFDUXFUckdNVzlSZVQyeE9ZNUF5Z2FsUFArcDd5WEVja3dCRC9IaE0wZ2xJXG43TVRMZGVlS1dyK3JBMUx3SFp5V0ZXN0gwT25mN3duWUhFSExXVW1jM0JDT1JFRHRIUlo3WnJQQmYxSFRBQS8zXG5Nblc1bFpIU045b2p6U1NGdzZBVnU2ajZheGJCSUlKNzU0THJnS2VBWXVyd2ZJUTJSTFR1MjAxazJJcUxZYmhiXG4zbVNWRzVSK3RiS3oxQ3ZNNTNuSENiN0NmdVZlV3NyQThrazd4SHJyTFFLTW1JOXYyc2dSdWd5TUF6d3ovNnpOXG5oNS9pTXh4Z2VxNVc4eGtWeDNKMm5ZOEpKZEhhZi9UNkFHc09ORW80M3B4ZWlRVmpuUmYvS24xMFRDYzJFc0lZXG5TNDlVc1o3QkFnTUJBQUVDZ2dFQUF1cGxkdWtDUVF1RDVVL2dhbUh0N0dnVzNBTVYxOGVxbkhuQ2EyamxhaCtTXG5BZVVHbmhnSmpOdkUrcE1GbFN2NXVmMnAySzRlZC9veEQ2K0NwOVpYRFJqZ3ZmdEl5cWpsemJ3dkZjZ3p3TnVEXG55Z1VrdXA3SGVjRHNEOFR0ZUFvYlQvVnB3cTZ6S01yQndDdk5rdnk2YlZsb0VqNXgzYlhzYXhlOTVETy95cHU2XG53MFc5N3p4d3dESlk2S1FjSVdNamhyR3h2d1g3bmlVQ2VNNGxlV0JEeUd0dzF6ZUpuNGhFYzZOM2FqUWFjWEtjXG4rNFFseGNpYW1ZcVFXYlBudHhXUWhoUXpjSFdMaTJsOWNGYlpENyt1SkxGNGlONnk4bVZOVTNLM0sxYlJZclNEXG5SVXAzYVVWQlhtRmcrWi8ycHVWTCttVTNqM0xMV1l5Qk9rZXZ1T21kZ1FLQmdRRGUzR0lRa3lXSVMxNFRkTU9TXG5CaUtCQ0R5OGg5NmVoTDBIa0RieU9rU3RQS2RGOXB1RXhaeGh5N29qSENJTTVGVnJwUk4yNXA0c0V6d0ZhYyt2XG5KSUZnRXZxN21YZm1YaVhJTmllUG9FUWFDbm54RHhXZ21yMEhVS0VtUzlvTWRnTGNHVStrQ1ZHTnN6N0FPdW0wXG5LcVkzczIyUTlsUTY3Rk95cWl1OFdGUTdRUUtCZ1FEWmlGaFRFWmtQRWNxWmpud0pwVEI1NlpXUDlLVHNsWlA3XG53VTRiemk2eSttZXlmM01KKzRMMlN5SGMzY3BTTWJqdE5PWkN0NDdiOTA4RlVtTFhVR05oY3d1WmpFUXhGZXkwXG5tNDFjUzVlNFA0OWI5bjZ5TEJqQnJCb3FzMldCYWwyZWdkaE5KU3NDV29pWlA4L1pUOGVnWHZoN2I5MWp6b0syXG5xMlBVbUE0RGdRS0JnQVdMMklqdkVJME95eDJTMTFjbi9lM1dKYVRQZ05QVEc5MDNVcGErcW56aE9JeCtNYXFoXG5QRjRXc3VBeTBBb2dHSndnTkpiTjhIdktVc0VUdkE1d3l5TjM5WE43dzBjaGFyRkwzN29zVStXT0F6RGpuamNzXG5BcTVPN0dQR21YdWI2RUJRQlBKaEpQMXd5NHYvSzFmSGcvRjQ3cTRmNDBMQUpPa2FZUkpENUh6QkFvR0JBTlVoXG5uSUJQSnFxNElNdlE2Y0M5ZzhCKzF4WURlYTkvWWsxdytTbVBHdndyRVh5M0dLeDRLN2xLcGJQejdtNFgzM3N4XG5zRVUvK1kyVlFtd1JhMXhRbS81M3JLN1YybDVKZi9ENDAwalJtNlpmU0FPdmdEVHJ0Wm5VR0pNcno5RTd1Tnc3XG5sZ1VIM0pyaXZ5Ri9meE1JOHFzelFid1hQMCt4bnlxQXhFQWdkdUtCQW9HQUlNK1BTTllXQ1pYeERwU0hJMThkXG5qS2tvQWJ3Mk1veXdRSWxrZXVBbjFkWEZhZDF6c1hRR2RUcm1YeXY3TlBQKzhHWEJrbkJMaTNjdnhUaWxKSVN5XG51Y05yQ01pcU5BU24vZHE3Y1dERlVBQmdqWDE2SkgyRE5GWi9sL1VWRjNOREFKalhDczFYN3lJSnlYQjZveC96XG5hU2xxbElNVjM1REJEN3F4Unl1S3Nnaz1cbi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS1cbiIsCiAgImNsaWVudF9lbWFpbCI6ICJwdWxsLXNlY3JldC10ZXN0aW5nQGJ1aWxkLWNyZC10ZXN0aW5nLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwKICAiY2xpZW50X2lkIjogIjEwNzkzNTg2MjAzMzAyNTI1MTM1MiIsCiAgImF1dGhfdXJpIjogImh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbS9vL29hdXRoMi9hdXRoIiwKICAidG9rZW5fdXJpIjogImh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbS9vL29hdXRoMi90b2tlbiIsCiAgImF1dGhfcHJvdmlkZXJfeDUwOV9jZXJ0X3VybCI6ICJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9vYXV0aDIvdjEvY2VydHMiLAogICJjbGllbnRfeDUwOV9jZXJ0X3VybCI6ICJodHRwczovL3d3dy5nb29nbGVhcGlzLmNvbS9yb2JvdC92MS9tZXRhZGF0YS94NTA5L3B1bGwtc2VjcmV0LXRlc3RpbmclNDBidWlsZC1jcmQtdGVzdGluZy5pYW0uZ3NlcnZpY2VhY2NvdW50LmNvbSIKfQo="
 
-	tr, err := c.TaskRunClient.Get(expectedTaskRun, metav1.GetOptions{})
+	decoded, err := base64.StdEncoding.DecodeString(encoedDockercred)
 	if err != nil {
-		t.Errorf("Couldn't get expected TaskRun %s: %s", expectedTaskRun, err)
-	} else {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c.Status != corev1.ConditionTrue {
-			t.Errorf("Expected TaskRun %s to have succeeded but Status is %s", expectedTaskRun, c.Status)
-		}
+		return nil
 	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      getName(hwSecret, suffix),
+			Annotations: map[string]string{
+				"build.knative.dev/docker-0": "https://us.gcr.io",
+				"build.knative.dev/docker-1": "https://eu.gcr.io",
+				"build.knative.dev/docker-2": "https://asia.gcr.io",
+				"build.knative.dev/docker-3": "https://gcr.io",
+			},
+		},
+		Type: "kubernetes.io/basic-auth",
+		Data: map[string][]byte{
+			"username": []byte("_json_key"),
+			"password": decoded,
+		},
+	}
+}
+
+func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
+	return &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      getName(hwPipelineRunName, suffix),
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: getName(hwPipelineName, suffix),
+			},
+			PipelineParamsRef: v1alpha1.PipelineParamsRef{
+				Name: getName(hwPipelineParamsName, suffix),
+			},
+			PipelineTriggerRef: v1alpha1.PipelineTriggerRef{
+				Type: v1alpha1.PipelineTriggerTypeManual,
+			},
+		},
+	}
+}
+
+func getName(namespace string, suffix int) string {
+	return fmt.Sprintf("%s%d", namespace, suffix)
 }
 
 func newHostPathType(pathType string) *corev1.HostPathType {
@@ -201,9 +314,10 @@ func newHostPathType(pathType string) *corev1.HostPathType {
 	return hostPathType
 }
 
-// matchKinds is a map of Kind of Object expected
-// reason is the reason of event expected
-func collectMatchingEvents(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, kinds map[string]string, reason string) []*corev1.Event {
+// collectMatchingEvents collects list of events under 5 seconds that match
+// 1. matchKinds which is a map of Kind of Object with name of objects
+// 2. reason which is the expected reason of event
+func collectMatchingEvents(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, kinds map[string][]string, reason string) []*corev1.Event {
 	var events []*corev1.Event
 
 	watchEvents, err := kubeClient.Kube.CoreV1().Events(namespace).Watch(metav1.ListOptions{})
@@ -220,8 +334,12 @@ func collectMatchingEvents(t *testing.T, kubeClient *knativetest.KubeClient, nam
 		select {
 		case wevent := <-watchEvents.ResultChan():
 			event := wevent.Object.(*corev1.Event)
-			if _, ok := kinds[event.InvolvedObject.Kind]; ok && event.Reason == reason {
-				events = append(events, event)
+			if val, ok := kinds[event.InvolvedObject.Kind]; ok {
+				for _, expectedName := range val {
+					if event.InvolvedObject.Name == expectedName && event.Reason == reason {
+						events = append(events, event)
+					}
+				}
 			}
 		case <-timer.C:
 			return events
