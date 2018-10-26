@@ -162,7 +162,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
-	p, serviceAccount, verr := c.validate(pr)
+	p, serviceAccount, verr := validatePipelineRun(c, pr)
 	if verr != nil {
 		c.Logger.Error("Failed to validate pipelinerun %s with error %v", pr.Name, verr)
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
