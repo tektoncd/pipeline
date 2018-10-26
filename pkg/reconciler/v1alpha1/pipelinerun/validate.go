@@ -22,15 +22,15 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// validate all ref exist
-func (c *Reconciler) validate(pr *v1alpha1.PipelineRun) (*v1alpha1.Pipeline, string, error) {
+// validate all references in pipelinerun exist at runtime
+func validatePipelineRun(c *Reconciler, pr *v1alpha1.PipelineRun) (*v1alpha1.Pipeline, string, error) {
 	var sa string
 	// verify pipeline reference and all corresponding tasks exist
 	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
 	if err != nil {
 		return nil, sa, fmt.Errorf("Error listing pipeline ref %s: %v", pr.Spec.PipelineRef.Name, err)
 	}
-	if err := c.validatePipelineTask(p.Spec.Tasks, pr.Namespace); err != nil {
+	if err := validatePipelineTask(c, p.Spec.Tasks, pr.Namespace); err != nil {
 		return nil, sa, fmt.Errorf("Error validating tasks in pipeline %s: %v", p.Name, err)
 	}
 
@@ -44,7 +44,7 @@ func (c *Reconciler) validate(pr *v1alpha1.PipelineRun) (*v1alpha1.Pipeline, str
 	return p, sa, nil
 }
 
-//validateTasks that taskref in task matches the input and output bindings key
+//validatePipelineTaskAndTask validates pipelinetask inputs, params and output matches task
 func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, task *v1alpha1.Task, ns string) error {
 	// stores all the input keys to validate with task input name
 	inputMapping := map[string]string{}
@@ -104,7 +104,7 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 	return nil
 }
 
-func (c *Reconciler) validatePipelineTask(tasks []v1alpha1.PipelineTask, ns string) error {
+func validatePipelineTask(c *Reconciler, tasks []v1alpha1.PipelineTask, ns string) error {
 	for _, t := range tasks {
 		tr, terr := c.taskLister.Tasks(ns).Get(t.TaskRef.Name)
 		if terr != nil {
