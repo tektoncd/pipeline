@@ -74,7 +74,7 @@ func canTaskRun(pt *v1alpha1.PipelineTask, state []*PipelineRunTaskRun) bool {
 			for _, constrainingTaskName := range input.PassedConstraints {
 				for _, prtr := range state {
 					// the constraining task must have a successful task run to allow this task to run
-					if prtr.Task.Name == constrainingTaskName {
+					if prtr.PipelineTask.Name == constrainingTaskName {
 						if prtr.TaskRun == nil {
 							return false
 						}

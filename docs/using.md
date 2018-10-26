@@ -37,6 +37,7 @@ need.
 * The `passedConstraints` allows for `Tasks` to fan in and fan out, and ordering can be
   expressed explicitly using this key since a task needing a resource from a another
   task would have to run after.
+* The name used in the `passedConstraints` is the name of `PipelineTask`  
 
 ## Creating a Task
 

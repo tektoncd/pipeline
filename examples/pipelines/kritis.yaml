@@ -24,8 +24,7 @@ spec:
             key: workspace # bind to the name in the task
             resourceRef:
               name: kritis-resources-git
-            passedConstraints:
-              - unit-test-make
+            passedConstraints: [unit-test-kritis]
         outputSourceBindings:
           - name: kritisImage
             key: builtImage # bind to the name in the task
@@ -42,7 +41,7 @@ spec:
             key: workspace
             resourceRef:
               name: kritis-resources-image
-            passedConstraints: [build-push]
+            passedConstraints: [push-kritis]
         params:
           - name: pathToHelmCharts
             value: kritis-charts
@@ -57,7 +56,7 @@ spec:
             key: workspace
             resourceRef:
                 name: kritis-resources-test-git
-            passedConstraints: [deploy-with-helm]
+            passedConstraints: [deploy-test-env]
         params:
           - name: testArgs
             value: "-e REMOTE_INTEGRATION=true"

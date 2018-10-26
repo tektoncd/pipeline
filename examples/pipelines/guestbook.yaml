@@ -53,7 +53,7 @@ spec:
               resourceRef:
                   name: guestbook-resources-redis-docker  
               passedConstraints:
-               - build-push
+               - build-redis
           params:
               - name: pathToFiles
                 value: guestbook/all-in-one/guestbook-all-in-one.yaml
