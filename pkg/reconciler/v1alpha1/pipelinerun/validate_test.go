@@ -74,6 +74,38 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				}},
 			}},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-param-mismatch",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{{
+				Name:    "unit-test-1",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-task-multiple-params"},
+				Params: []v1alpha1.Param{{
+					Name:  "foobar",
+					Value: "somethingfun",
+				}},
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-bad-resourcetype",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{{
+				Name:    "unit-test-1",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-task-bad-resourcetype"},
+				InputSourceBindings: []v1alpha1.SourceBinding{{
+					Key: "testimageinput",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "git-test-resource",
+					},
+				}},
+			}},
+		},
 	}}
 
 	ts := []*v1alpha1.Task{{
@@ -110,6 +142,47 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-task-multiple-params",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Params: []v1alpha1.TaskParam{{
+					Name: "foo",
+				}, {
+					Name: "bar",
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-task-bad-resourcetype",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "testimageinput",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+			},
+		},
+	}}
+
+	rr := []*v1alpha1.PipelineResource{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "git-test-resource",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+			Params: []v1alpha1.Param{{
+				Name:  "foo",
+				Value: "bar",
+			}},
+		},
 	}}
 
 	tcs := []struct {
@@ -130,9 +203,17 @@ func Test_InvalidPipelineTask(t *testing.T) {
 			pipeline: ps[2],
 			reason:   "bad-input-mapping",
 		}, {
-			name:     "bad-ouputkey",
+			name:     "bad-outputkey",
 			pipeline: ps[3],
 			reason:   "bad-output-mapping",
+		}, {
+			name:     "param-mismatch",
+			pipeline: ps[4],
+			reason:   "input-param-mismatch",
+		}, {
+			name:     "resource-mismatch",
+			pipeline: ps[5],
+			reason:   "input-resource-mismatch",
 		}}
 
 	for _, tc := range tcs {
@@ -149,9 +230,10 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				},
 			}}
 			d := test.Data{
-				PipelineRuns: prs,
-				Pipelines:    ps,
-				Tasks:        ts,
+				PipelineRuns:      prs,
+				Pipelines:         ps,
+				Tasks:             ts,
+				PipelineResources: rr,
 			}
 
 			c, _, _ := test.GetPipelineRunController(d)

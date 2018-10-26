@@ -45,40 +45,59 @@ func (c *Reconciler) validate(pr *v1alpha1.PipelineRun) (*v1alpha1.Pipeline, str
 }
 
 //validateTasks that taskref in task matches the input and output bindings key
-func validateTaskAndTaskRef(c *Reconciler, task v1alpha1.PipelineTask, taskref *v1alpha1.Task, ns string) error {
-	// stores all the input keys to validate with taskreference input name
+func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, task *v1alpha1.Task, ns string) error {
+	// stores all the input keys to validate with task input name
 	inputMapping := map[string]string{}
-	// stores all the output keys to validate with taskreference output name
+	// stores all the output keys to validate with task output name
 	outMapping := map[string]string{}
+	// stores params to validate with task params
+	paramsMapping := map[string]string{}
 
-	for _, source := range task.InputSourceBindings {
+	for _, param := range ptask.Params {
+		paramsMapping[param.Name] = ""
+	}
+
+	for _, source := range ptask.InputSourceBindings {
 		inputMapping[source.Key] = ""
 		if source.ResourceRef.Name != "" {
-			if _, err := c.resourceLister.PipelineResources(ns).Get(source.ResourceRef.Name); err != nil {
-				return fmt.Errorf("Error listing input pipeline resource for task %s: %v ", task.Name, err)
+			rr, err := c.resourceLister.PipelineResources(ns).Get(source.ResourceRef.Name)
+			if err != nil {
+				return fmt.Errorf("Error listing input pipeline resource for task %s: %v ", ptask.Name, err)
 			}
+			inputMapping[source.Key] = string(rr.Spec.Type)
 		}
 	}
-	for _, source := range task.OutputSourceBindings {
+	for _, source := range ptask.OutputSourceBindings {
 		outMapping[source.Key] = ""
 		if source.ResourceRef.Name != "" {
 			if _, err := c.resourceLister.PipelineResources(ns).Get(source.ResourceRef.Name); err != nil {
-				return fmt.Errorf("Error listing output pipeline resource for task %s: %v ", task.Name, err)
+				return fmt.Errorf("Error listing output pipeline resource for task %s: %v ", ptask.Name, err)
 			}
 		}
 	}
 
-	if taskref.Spec.Inputs != nil {
-		for _, inputResource := range taskref.Spec.Inputs.Resources {
-			if _, ok := inputMapping[inputResource.Name]; !ok {
-				return fmt.Errorf("Mismatch of input key %s between task %s and task ref %s", inputResource.Name, task.Name, taskref.Name)
+	if task.Spec.Inputs != nil {
+		for _, inputResource := range task.Spec.Inputs.Resources {
+			inputResourceType, ok := inputMapping[inputResource.Name]
+			if !ok {
+				return fmt.Errorf("Mismatch of input key %q between pipeline task %q and task %q", inputResource.Name, ptask.Name, task.Name)
+			}
+			// Validate the type of resource match
+			if string(inputResource.Type) != inputResourceType {
+				return fmt.Errorf("Mismatch of input resource type %q between pipeline task %q and task %q", inputResourceType, ptask.Name, task.Name)
+			}
+		}
+		for _, inputResourceParam := range task.Spec.Inputs.Params {
+			if _, ok := paramsMapping[inputResourceParam.Name]; !ok {
+				return fmt.Errorf("Mismatch of input params %q between pipeline task %q and task %q", inputResourceParam.Name, ptask.Name, task.Name)
 			}
 		}
 	}
-	if taskref.Spec.Outputs != nil {
-		for _, outputResource := range taskref.Spec.Outputs.Resources {
+
+	if task.Spec.Outputs != nil {
+		for _, outputResource := range task.Spec.Outputs.Resources {
 			if _, ok := outMapping[outputResource.Name]; !ok {
-				return fmt.Errorf("Mismatch of output key %s between task %s and task ref %s", outputResource.Name, task.Name, taskref.Name)
+				return fmt.Errorf("Mismatch of output key %q between task %q and task ref %q", outputResource.Name, ptask.Name, task.Name)
 			}
 		}
 	}
@@ -91,7 +110,7 @@ func (c *Reconciler) validatePipelineTask(tasks []v1alpha1.PipelineTask, ns stri
 		if terr != nil {
 			return terr
 		}
-		if verr := validateTaskAndTaskRef(c, t, tr, ns); verr != nil {
+		if verr := validatePipelineTaskAndTask(c, t, tr, ns); verr != nil {
 			return verr
 		}
 	}
