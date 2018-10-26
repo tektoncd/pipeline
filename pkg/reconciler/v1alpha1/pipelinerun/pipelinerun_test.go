@@ -65,6 +65,9 @@ func TestReconcile(t *testing.T) {
 			Params: []v1alpha1.Param{{
 				Name:  "foo",
 				Value: "somethingfun",
+			}, {
+				Name:  "bar",
+				Value: "somethingmorefun",
 			}},
 		}},
 		}},
@@ -165,6 +168,9 @@ func TestReconcile(t *testing.T) {
 				Params: []v1alpha1.Param{{
 					Name:  "foo",
 					Value: "somethingfun",
+				}, {
+					Name:  "bar",
+					Value: "somethingmorefun",
 				}},
 			},
 		},
