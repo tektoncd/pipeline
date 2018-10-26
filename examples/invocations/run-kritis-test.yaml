@@ -19,14 +19,3 @@ spec:
         params:
             - name: 'makeTarget'
               value: 'test'
-status:
-    steps:
-    - name: make
-      logsURL: 'gcs://somebucket/results/tests/unit-test-kritis-feature-x/make'
-      exitCode: 0
-    conditions:
-    - type: Succeeded
-      status: "True"
-      lastTransitionTime: "2018-10-04T12:25:39Z"
-      reason: zeroExitCode
-      message: "All steps completed with an exit code of 0"
