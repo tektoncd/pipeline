@@ -28,7 +28,7 @@ Below diagram lists the main custom resources created by Pipeline CRDs:
 * [Runs](#runs)
 * [PipelineResources](#pipelineresources)
 
-![Building Blocks](./docs/images/building-blocks.png)
+![Building Blocks](./images/building-blocks.png)
 
 ### Task
 
@@ -95,7 +95,7 @@ spec:
         name: hello-world
 ```
 
-Examples of pipelines with complex DAGs are [here](./examples/pipelines)
+Examples of pipelines with complex DAGs are [here](../examples/pipelines)
 
 ### PipelineResources
 
@@ -105,7 +105,7 @@ For example:
 * A task's input could be a github source which contains your application code.
 * A task's output can be your application container image which can be then deployed in a cluster.
 
-Read more on PipelineResources and their types [here](./docs/pipeline-resources.md)
+Read more on PipelineResources and their types [here](./using.md)
 
 `Resources` in a pipelines are the set of objects that are going to be used 
 as inputs and outputs of a `TaskRun`. 
