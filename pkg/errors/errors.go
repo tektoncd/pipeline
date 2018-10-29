@@ -18,44 +18,35 @@ package errors
 
 import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/system"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-var (
-	pipelineQualifiedKind = schema.GroupKind{
-		Group: v1alpha1.SchemeGroupVersion.Group,
-		Kind:  system.PipelineKind,
-	}
-)
-
 // NewDuplicatePipelineTask creates a new invalid pipeline error for duplicate pipeline tasks.
-func NewDuplicatePipelineTask(pipeline string, value string) *apierrors.StatusError {
+func NewDuplicatePipelineTask(p *v1alpha1.Pipeline, value string) *apierrors.StatusError {
 	errs := field.ErrorList{{
 		Type:     field.ErrorTypeDuplicate,
 		Field:    "spec.tasks.name",
 		BadValue: value,
 	}}
-	return apierrors.NewInvalid(pipelineQualifiedKind, pipeline, errs)
+	return apierrors.NewInvalid(p.GroupVersionKind().GroupKind(), p.Name, errs)
 }
 
 // NewPipelineTaskNotFound creates a new invalid pipeline error.
-func NewPipelineTaskNotFound(pipeline string, value string) *apierrors.StatusError {
+func NewPipelineTaskNotFound(p *v1alpha1.Pipeline, value string) *apierrors.StatusError {
 	errs := field.ErrorList{{
-		Type:     field.ErrorTypeDuplicate,
-		Field:    "spec.tasks.inputSourceBindings.%s",
+		Type:     field.ErrorTypeNotFound,
+		Field:    "spec.tasks.name",
 		BadValue: value,
 	}}
-	return apierrors.NewInvalid(pipelineQualifiedKind, pipeline, errs)
+	return apierrors.NewInvalid(p.GroupVersionKind().GroupKind(), p.Name, errs)
 }
 
 // NewInvalidPipeline creates a new invalid pipeline error.
-func NewInvalidPipeline(pipeline string, d string) *apierrors.StatusError {
+func NewInvalidPipeline(p *v1alpha1.Pipeline, d string) *apierrors.StatusError {
 	errs := field.ErrorList{{
 		Type:   field.ErrorTypeInternal,
 		Detail: d,
 	}}
-	return apierrors.NewInvalid(pipelineQualifiedKind, pipeline, errs)
+	return apierrors.NewInvalid(p.GroupVersionKind().GroupKind(), p.Name, errs)
 }
