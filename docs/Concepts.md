@@ -171,7 +171,7 @@ requirements of the `Task`.
 Creating a `PipelineRun` executes the pipeline, creating [TaskRuns](#taskrun) for each 
 task in the pipeline.
 
-`PipelineRuns` tie together a [Pipeline](#pipeline) and a [PipelineParam](#pipelineparam.
+`PipelineRuns` tie together a [Pipeline](#pipeline) and a [PipelineParam](#pipelineparams).
 
 A `PipelineRun` could be created:
 
