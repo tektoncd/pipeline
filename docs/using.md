@@ -5,6 +5,7 @@
 * [How do I make Resources?](#creating-resources)
 * [How do I run a Pipeline?](#running-a-task)
 * [How do I run a Task on its own?](#running-a-task)
+* [How do I troubleshoot a PipelineRun?](#troubleshooting)
 
 ## Creating a Pipeline
 
@@ -127,12 +128,15 @@ See [the example TaskRun](../examples/invocations/run-kritis-test.yaml).
 
 ### Git Resource
 
-Git resource represents a [git](https://git-scm.com/) repository, that containes the source code to be built by the pipeline. Adding the git resource as an input to a task will clone this repository and allow the task to perform the required actions on the contents of the repo.  
+Git resource represents a [git](https://git-scm.com/) repository, that containes
+the source code to be built by the pipeline. Adding the git resource as an input
+to a task will clone this repository and allow the task to perform the required
+actions on the contents of the repo.
 
 Use the following example to understand the syntax and strucutre of a Git Resource
 
 1. Create a git resource using the `PipelineResource` CRD
-    
+
     ```
     apiVersion: pipeline.knative.dev/v1alpha1
     kind: PipelineResource
@@ -150,7 +154,7 @@ Use the following example to understand the syntax and strucutre of a Git Resour
 
    Params that can be added are the following:
 
-   1. URL: represents the location of the git repository 
+   1. URL: represents the location of the git repository
    1. Revision: Git [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions ) (branch, tag, commit SHA or ref) to clone. If no revision is specified, the resource will default to `latest` from `master`
 
 2. Use the defined git resource in a `Task` definition:
@@ -178,7 +182,7 @@ Use the following example to understand the syntax and strucutre of a Git Resour
           image: gcr.io/my-repo/my-imageg
           args:
           - --repo=${inputs.resources.wizzbang-git.url}
-    ``` 
+    ```
 
 3. And finally set the version in the `TaskRun` definition:
 
@@ -202,4 +206,29 @@ Use the following example to understand the syntax and strucutre of a Git Resour
           type: image
       # Optional, indicate a serviceAccount for authentication.
       serviceAccount: build-bot
-    ``` 
+    ```
+
+## Troubleshooting
+
+All objects created by the build-pipeline controller show the lineage of where
+that object came from through labels, all the way down to the individual build.
+
+There are a common set of labels that are set on objects. For `TaskRun` objects,
+it will receive two labels:
+
+* `pipeline.knative.dev/pipeline`, which will be set to the name of the owning pipeline
+* `pipeline.knative.dev/pipelineRun`, which will be set to the name of the PipelineRun
+
+When the underlying `Build` is created, it will receive each of the `pipeline`
+and `pipelineRun` labels, as well as `pipeline.knative.dev/taskRun` which will
+contain the `TaskRun` which caused the `Build` to be created.
+
+In the end, this allows you to easily find the `Builds` and `TaskRuns` that are
+associated with a given pipeline.
+
+For example, to find all `Builds` created by a `Pipeline` named "build-image",
+you could use the following command:
+
+```shell
+kubectl get builds --all-namespaces -l pipeline.knative.dev/pipeline=build-image
+```

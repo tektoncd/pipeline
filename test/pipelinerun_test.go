@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
@@ -169,9 +170,18 @@ func TestPipelineRun(t *testing.T) {
 				r, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
 				if err != nil {
 					t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
-				} else {
-					if !r.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsTrue() {
-						t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, r.Status)
+				}
+				if !r.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsTrue() {
+					t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, r.Status)
+				}
+				for name, key := range map[string]string{
+					hwPipelineRunName: pipeline.PipelineRunLabelKey,
+					hwPipelineName: pipeline.PipelineLabelKey,
+				} {
+					expectedName := getName(name, i)
+					lbl := pipeline.GroupName+key
+					if val := r.Labels[lbl]; val != expectedName {
+						t.Errorf("Expected label %s=%s but got %s", lbl, expectedName, val)
 					}
 				}
 			}

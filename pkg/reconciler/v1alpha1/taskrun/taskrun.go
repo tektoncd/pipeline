@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline"
+
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
@@ -55,7 +57,6 @@ const (
 	taskRunAgentName = "taskrun-controller"
 	// taskRunControllerName defines name for TaskRun Controller
 	taskRunControllerName = "TaskRun"
-	taskRunNameLabelKey   = "taskrun.knative.dev/taskName"
 
 	pvcSizeBytes = 5 * 1024 * 1024 * 1024 // 5 GBs
 )
@@ -340,13 +341,23 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1
 		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
 	}
 
+	build.Labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = tr.Name
+	// Only propagate the pipeline and pipelinerun keys if they are there. If
+	// the TaskRun was created via PipelineRun these should be there.
+	if val, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
+		build.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = val
+	}
+	if val, ok := tr.Labels[pipeline.PipelineRunLabelKey]; ok {
+		build.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = val
+	}
+
 	return c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Create(build)
 }
 
 // makeLabels constructs the labels we will apply to TaskRun resources.
 func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
-	labels[taskRunNameLabelKey] = s.Name
+	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
 	for k, v := range s.ObjectMeta.Labels {
 		labels[k] = v
 	}

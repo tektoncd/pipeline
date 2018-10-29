@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -224,6 +225,10 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			Namespace: t.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pr, groupVersionKind),
+			},
+			Labels: map[string]string{
+				pipeline.GroupName + pipeline.PipelineLabelKey:    pr.Spec.PipelineRef.Name,
+				pipeline.GroupName + pipeline.PipelineRunLabelKey: pr.Name,
 			},
 		},
 		Spec: v1alpha1.TaskRunSpec{
