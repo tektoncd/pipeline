@@ -174,6 +174,10 @@ func TestReconcile(t *testing.T) {
 				Controller:         &trueB,
 				BlockOwnerDeletion: &trueB,
 			}},
+			Labels: map[string]string{
+				"pipeline.knative.dev/pipeline": "test-pipeline",
+				"pipeline.knative.dev/pipelineRun": "test-pipeline-run-success",
+			},
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			ServiceAccount: "test-sa",
