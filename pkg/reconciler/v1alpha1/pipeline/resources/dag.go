@@ -49,13 +49,13 @@ func (g *DAG) addPipelineTask(t v1alpha1.PipelineTask) (*Node, error) {
 func (g *DAG) addPrevPipelineTask(prev *Node, next *Node) error {
 	// Check for self cycle
 	if prev.Task.Name == next.Task.Name {
-		return fmt.Errorf("cycle detected: task %q depends on itself", next.Task.Name)
+		return fmt.Errorf("cycle detected; task %q depends on itself", next.Task.Name)
 	}
 	// Check if we are adding cycles.
 	visited := map[string]bool{prev.Task.Name: true, next.Task.Name: true}
-	path := []string{prev.Task.Name, next.Task.Name}
+	path := []string{next.Task.Name, prev.Task.Name}
 	if err := visit(prev.Prev, path, visited); err != nil {
-		return fmt.Errorf("cycle detected. %s ", getVisitedPath(path))
+		return fmt.Errorf("cycle detected; %s ", err.Error())
 	}
 	next.Prev = append(next.Prev, prev)
 	return nil
@@ -81,7 +81,7 @@ func getVisitedPath(path []string) string {
 		opp := len(path) - 1 - i
 		path[i], path[opp] = path[opp], path[i]
 	}
-	return strings.Join(path, "->")
+	return strings.Join(path, " -> ")
 }
 
 //GetPreviousTasks return all the previous tasks for a PipelineTask in the DAG
@@ -100,7 +100,7 @@ func Build(p *v1alpha1.Pipeline) (*DAG, error) {
 	// Add all Tasks mentioned in the `PipelineSpec`
 	for _, pt := range p.Spec.Tasks {
 		if _, err := d.addPipelineTask(pt); err != nil {
-			return nil, errors.NewDuplicatePipelineTask(p.Name, pt.Name)
+			return nil, errors.NewDuplicatePipelineTask(p, pt.Name)
 		}
 	}
 	// Process all passedConstraints to add task dependency
@@ -110,11 +110,11 @@ func Build(p *v1alpha1.Pipeline) (*DAG, error) {
 				// We need to add dependency from constraint to node n
 				prev, ok := d.Nodes[constraint]
 				if !ok {
-					return nil, errors.NewPipelineTaskNotFound(p.Name, constraint)
+					return nil, errors.NewPipelineTaskNotFound(p, constraint)
 				}
 				next, _ := d.Nodes[pt.Name]
 				if err := d.addPrevPipelineTask(prev, next); err != nil {
-					return nil, errors.NewInvalidPipeline(p.Name, err.Error())
+					return nil, errors.NewInvalidPipeline(p, err.Error())
 				}
 			}
 		}

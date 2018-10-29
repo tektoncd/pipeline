@@ -59,6 +59,7 @@ func TestBuild(t *testing.T) {
 		spec        v1alpha1.PipelineSpec
 		expectedDAG *DAG
 		shdErr      bool
+		expectedErr string
 	}{
 		{"linear-pipeline",
 			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, b, c}},
@@ -69,7 +70,8 @@ func TestBuild(t *testing.T) {
 					"c": &Node{Task: c},
 				},
 			},
-			false},
+			false,
+			""},
 		{"complex-pipeline",
 			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnAB, zDependsOnX, b, c}},
 			&DAG{
@@ -82,23 +84,28 @@ func TestBuild(t *testing.T) {
 					"z": &Node{Task: zDependsOnX, Prev: []*Node{nodeX}},
 				},
 			},
-			false},
+			false,
+			""},
 		{"self-link",
 			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{selfLink}},
 			nil,
-			true},
+			true,
+			` "self-link" is invalid: : Internal error: cycle detected; task "a" depends on itself`},
 		{"cycle-2",
 			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xDependsOnA, zDependsOnX, aDependsOnZ}},
 			nil,
-			true},
+			true,
+			` "cycle-2" is invalid: : Internal error: cycle detected; a -> x -> z -> a `},
 		{"duplicate-tasks",
 			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, a}},
 			nil,
-			true},
+			true,
+			` "duplicate-tasks" is invalid: spec.tasks.name: Duplicate value: "a"`},
 		{"invalid-task-name",
 			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTask}},
 			nil,
-			true},
+			true,
+			` "invalid-task-name" is invalid: spec.tasks.name: Not found: "none"`},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -115,6 +122,11 @@ func TestBuild(t *testing.T) {
 			}
 			if d := cmp.Diff(tc.expectedDAG, g); d != "" {
 				t.Errorf("expected to see no diff in DAG but saw diff %s", cmp.Diff(tc.expectedDAG, g))
+			}
+			if tc.expectedErr != "" {
+				if tc.expectedErr != err.Error() {
+					t.Errorf("expected to see error message \n%s \ngot\n%s", tc.expectedErr, err.Error())
+				}
 			}
 		})
 	}
