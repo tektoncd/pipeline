@@ -200,5 +200,6 @@ Use the following example to understand the syntax and strucutre of a Git Resour
         resources:
         - name: builtImage
           type: image
-      # serviceAccount: build-bot
+      # Optional, indicate a serviceAccount for authentication.
+      serviceAccount: build-bot
     ``` 
