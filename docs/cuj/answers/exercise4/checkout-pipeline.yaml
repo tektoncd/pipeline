@@ -1,0 +1,36 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: microservices-pipeline
+  namespace: default
+spec:
+    tasks:
+      - name: test-checkout
+        taskRef:
+          name: go-test
+        inputSourceBindings:
+          - name: app-github
+            key: workspace
+            resourceRef:
+              name: hipster-source
+        params:
+          - name: target
+            value: ./src/checkoutservice./...
+      - name: build-checkoutservice
+        taskRef:
+          name: build-push
+        inputSourceBindings:
+          - name: app-github
+            key: workspace
+            resourceRef:
+              name: hipster-source
+            passed_constraints:
+              - test-checkout
+        outputSourceBindings:
+          - name: checkoutServiceImage
+            key: builtImage
+            resourceRef:
+              name: checkoutservice
+        params:
+          - name: pathToDockerfile
+            value: src/checkoutservice/Dockerfile

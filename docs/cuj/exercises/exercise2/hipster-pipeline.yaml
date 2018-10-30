@@ -1,0 +1,73 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: microservices-pipeline
+  namespace: default
+spec:
+    tasks:
+      - name: build-productcatalog
+        taskRef:
+          name: build-push
+        inputSourceBindings:
+          - name: app-github
+            key: workspace
+            resourceRef:
+              name: hipster-source
+        outputSourceBindings:
+          - name: productCatalogImage
+            key: builtImage
+            resourceRef:
+              name: productcatalog
+        params:
+          - name: pathToDockerfile
+            value: src/productcatalogservice/Dockerfile
+      - name: build-checkoutservice
+        taskRef:
+          name: build-push
+        inputSourceBindings:
+          - name: app-github
+            key: workspace
+            resourceRef:
+              name: hipster-source
+        outputSourceBindings:
+          - name: checkoutServiceImage
+            key: builtImage
+            resourceRef:
+              name: checkoutservice
+        params:
+          - name: pathToDockerfile
+            value: src/checkoutservice/Dockerfile
+      - name: build-frontend
+        taskRef:
+          name: build-push
+        inputSourceBindings:
+          - name: app-github
+            key: workspace
+            resourceRef:
+              name: hipster-source
+        outputSourceBindings:
+          - name: frontendImage
+            key: builtImage
+            resourceRef:
+              name: frontend
+        params:
+          - name: pathToDockerfile
+            value: src/frontend/Dockerfile
+      - name: deploy-all
+        taskRef:
+          name: deploy-with-kubectl
+        inputSourceBindings:
+          - name: app-github
+            key: workspace
+            resourceRef:
+              name: hipster-source
+            passedConstraints:
+              - build-checkoutservice
+              - build-productcatalog
+              - build-frontend
+          params:
+              - name: pathToFiles
+                value: kubernetes-manifests
+          clusterBindings:
+              - inputName: targetCluster
+                key: testCluster
