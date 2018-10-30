@@ -258,7 +258,7 @@ func TestReconcile(t *testing.T) {
 							APIVersion: "a1",
 						},
 						Version: "myversion",
-						Key:     "workspace",
+						Name:    "workspace",
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
@@ -268,7 +268,7 @@ func TestReconcile(t *testing.T) {
 							APIVersion: "a1",
 						},
 						Version: "myversion",
-						Key:     "myimage",
+						Name:    "myimage",
 					}},
 				},
 			},

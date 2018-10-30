@@ -188,7 +188,7 @@ func TestInput_Validate(t *testing.T) {
 			ResourceRef: PipelineResourceRef{
 				Name: "testresource",
 			},
-			Key: "workspace",
+			Name: "workspace",
 		}},
 	}
 	if err := i.Validate("spec.inputs"); err != nil {
@@ -210,13 +210,13 @@ func TestInput_Invalidate(t *testing.T) {
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource1",
 					},
-					Key: "workspace",
+					Name: "workspace",
 				}, {
 					Version: "testv1",
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource2",
 					},
-					Key: "workspace",
+					Name: "workspace",
 				}},
 			},
 			wantErr: apis.ErrMultipleOneOf("spec.Inputs.Resources.Name"),
@@ -229,7 +229,7 @@ func TestInput_Invalidate(t *testing.T) {
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource",
 					},
-					Key: "resource",
+					Name: "resource",
 				}},
 				Params: []Param{{
 					Name:  "name",
@@ -341,7 +341,7 @@ func TestOutput_Validate(t *testing.T) {
 			ResourceRef: PipelineResourceRef{
 				Name: "testresource",
 			},
-			Key: "someimage",
+			Name: "someimage",
 		}},
 	}
 	if err := i.Validate("spec.outputs"); err != nil {
@@ -362,13 +362,13 @@ func TestOutput_Invalidate(t *testing.T) {
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource1",
 					},
-					Key: "workspace",
+					Name: "workspace",
 				}, {
 					Version: "testv1",
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource2",
 					},
-					Key: "workspace",
+					Name: "workspace",
 				}},
 			},
 			wantErr: apis.ErrMultipleOneOf("spec.Outputs.Resources.Name"),

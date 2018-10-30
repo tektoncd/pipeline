@@ -27,11 +27,11 @@ import (
 
 func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunResourceVersion) (*v1alpha1.TaskRunResourceVersion, error) {
 	for _, br := range boundResources {
-		if br.Key == resourceName {
+		if br.Name == resourceName {
 			return &br, nil
 		}
 	}
-	return nil, fmt.Errorf("couldnt find key %q in bound resources %s", resourceName, boundResources)
+	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %s", resourceName, boundResources)
 }
 
 // AddInputResource will update the input build with the input resource from the task

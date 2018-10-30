@@ -239,14 +239,14 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 	for _, isb := range pt.InputSourceBindings {
 		tr.Spec.Inputs.Resources = append(tr.Spec.Inputs.Resources, v1alpha1.TaskRunResourceVersion{
 			ResourceRef: isb.ResourceRef,
-			Key:         isb.Key,
+			Name:        isb.Name,
 			// TODO(#148) apply the correct version
 		})
 	}
 	for _, osb := range pt.OutputSourceBindings {
 		tr.Spec.Outputs.Resources = append(tr.Spec.Outputs.Resources, v1alpha1.TaskRunResourceVersion{
 			ResourceRef: osb.ResourceRef,
-			Key:         osb.Key,
+			Name:        osb.Name,
 			// TODO(#148) apply the correct version
 		})
 	}

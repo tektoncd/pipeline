@@ -63,7 +63,7 @@ var mypipelinetasks = []v1alpha1.PipelineTask{{
 	Name:    "mypipelinetask1",
 	TaskRef: v1alpha1.TaskRef{Name: "mytask1"},
 	InputSourceBindings: []v1alpha1.SourceBinding{{
-		Key: "myresource1",
+		Name: "myresource1",
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "myresource1",
 		},
@@ -72,7 +72,7 @@ var mypipelinetasks = []v1alpha1.PipelineTask{{
 	Name:    "mypipelinetask2",
 	TaskRef: v1alpha1.TaskRef{Name: "mytask2"},
 	InputSourceBindings: []v1alpha1.SourceBinding{{
-		Key: "myresource1",
+		Name: "myresource1",
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "myresource1",
 		},

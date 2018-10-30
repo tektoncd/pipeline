@@ -9,11 +9,11 @@ spec:
           taskRef:
               name: build-push
           inputSourceBindings:
-              - key: workspace # bind to the name in the task
+              - name: workspace # bind to the name in the task
                 resourceRef:
                   name: guestbook-resources-git
           outputSourceBindings:
-              - key: builtImage # bind to the name in the task
+              - name: builtImage # bind to the name in the task
                 resourceRef:
                   name: guestbookstagingimage
           params:
@@ -23,13 +23,13 @@ spec:
           taskRef:
               name: build-push
           inputSourceBindings:
-              - key: workspace
+              - name: workspace
                 resourceRef:
-                  name: guestbook-resources-redis-docker                    
+                  name: guestbook-resources-redis-docker
           outputSourceBindings:
-              - key: builtImage
+              - name: builtImage
                 resourceRef:
-                  name: redisstagingimage                
+                  name: redisstagingimage
           params:
               - name: pathToDockerfile
                 value: 4/debian9/4.0/Dockerfile
@@ -37,15 +37,15 @@ spec:
           taskRef:
               name: deploy-with-kubectl
           inputSourceBindings:
-            - key: workspace
+            - name: workspace
               resourceRef:
-                  name: guestbook-resources-git  
-              passedConstraints: 
+                  name: guestbook-resources-git
+              passedConstraints:
                 - build-guestbook
                 - build-redis
-            - key: redis-docker
+            - name: redis-docker
               resourceRef:
-                  name: guestbook-resources-redis-docker  
+                  name: guestbook-resources-redis-docker
               passedConstraints:
                - build-redis
           params:
@@ -58,9 +58,9 @@ spec:
           taskRef:
               name: integrationTestInDocker
           inputSourceBindings:
-              - key: workspace
+              - name: workspace
                 resourceRef:
-                  name: guestbook-resources-git  
+                  name: guestbook-resources-git
                 passedConstraints:
                 - deploy-bundle-test
           params:
@@ -70,9 +70,9 @@ spec:
           taskRef:
               name: integration-test-in-docker
           inputSourceBindings:
-              - key: workspace
+              - name: workspace
                 resourceRef:
-                  name: guestbook-resources-git  
+                  name: guestbook-resources-git
                 passedConstraints:
                 - deploy-bundle-test
           params:
@@ -82,9 +82,9 @@ spec:
           taskRef:
               name: deploy-with-kubectl
           inputSourceBindings:
-              - key: workspace
+              - name: workspace
                 resourceRef:
-                  name: guestbook-resources-git  
+                  name: guestbook-resources-git
                 passedConstraints:
                 - int-test-osx
                 - int-test-linux

@@ -58,17 +58,17 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 	}
 
 	for _, source := range ptask.InputSourceBindings {
-		inputMapping[source.Key] = ""
+		inputMapping[source.Name] = ""
 		if source.ResourceRef.Name != "" {
 			rr, err := c.resourceLister.PipelineResources(ns).Get(source.ResourceRef.Name)
 			if err != nil {
 				return fmt.Errorf("Error listing input pipeline resource for task %s: %v ", ptask.Name, err)
 			}
-			inputMapping[source.Key] = string(rr.Spec.Type)
+			inputMapping[source.Name] = string(rr.Spec.Type)
 		}
 	}
 	for _, source := range ptask.OutputSourceBindings {
-		outMapping[source.Key] = ""
+		outMapping[source.Name] = ""
 		if source.ResourceRef.Name != "" {
 			if _, err := c.resourceLister.PipelineResources(ns).Get(source.ResourceRef.Name); err != nil {
 				return fmt.Errorf("Error listing output pipeline resource for task %s: %v ", ptask.Name, err)

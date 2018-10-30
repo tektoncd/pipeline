@@ -74,9 +74,6 @@ type PipelineTriggerRef struct {
 type PipelineRunStatus struct {
 	//+optional
 	TaskRuns []PipelineTaskRun `json:"taskRuns,omitempty"`
-	// If there is no version, that means use latest
-	// +optional
-	ResourceVersion []PipelineResourceVersion `json:"resourceVersion,omitempty"`
 	Conditions      duckv1alpha1.Conditions   `json:"conditions"`
 }
 
