@@ -264,7 +264,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 						Name: createImageTaskName,
 					},
 					InputSourceBindings: []v1alpha1.SourceBinding{{
-						Key: "workspace",
+						Name: "workspace",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: sourceResourceName,
 						},
@@ -276,7 +276,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 						Name: helmDeployTaskName,
 					},
 					InputSourceBindings: []v1alpha1.SourceBinding{{
-						Key: "workspace",
+						Name: "workspace",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: sourceResourceName,
 						},

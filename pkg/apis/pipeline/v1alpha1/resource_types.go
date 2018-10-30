@@ -100,18 +100,12 @@ type PipelineResource struct {
 	Status PipelineResourceStatus `json:"status,omitempty"`
 }
 
-// PipelineResourceVersion defines the desired state of version of the PipelineResource
-type PipelineResourceVersion struct {
-	ResourceRef PipelineResourceRef `json:"resourceRef"`
-	Version     string              `json:"version"`
-}
-
 // TaskRunResourceVersion defines the version of the PipelineResource that
-// will be used for the Task input or output called Key.
+// will be used for the Task input or output called Name.
 type TaskRunResourceVersion struct {
+	Name        string              `json:"name"`
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
 	Version     string              `json:"version"`
-	Key         string              `json:"key"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

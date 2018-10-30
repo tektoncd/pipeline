@@ -16,7 +16,7 @@ spec:
           - resourceRef:
               name: kritis-resources-git
             version: 4da79b91e8e37ea441cfe4972565e2184c1a127f
-            key: workspace
+            name: workspace
         params:
             - name: 'makeTarget'
               value: 'test'

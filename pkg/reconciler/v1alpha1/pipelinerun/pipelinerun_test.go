@@ -64,13 +64,13 @@ func TestReconcile(t *testing.T) {
 				Value: "somethingmorefun",
 			}},
 			InputSourceBindings: []v1alpha1.SourceBinding{{
-				Key: "workspace",
+				Name: "workspace",
 				ResourceRef: v1alpha1.PipelineResourceRef{
 					Name: "some-repo",
 				},
 			}},
 			OutputSourceBindings: []v1alpha1.SourceBinding{{
-				Key: "image-to-use",
+				Name: "image-to-use",
 				ResourceRef: v1alpha1.PipelineResourceRef{
 					Name: "some-image",
 				},
@@ -192,7 +192,7 @@ func TestReconcile(t *testing.T) {
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "some-repo",
 					},
-					Key: "workspace",
+					Name: "workspace",
 				}},
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
@@ -200,7 +200,7 @@ func TestReconcile(t *testing.T) {
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "some-image",
 					},
-					Key: "image-to-use",
+					Name: "image-to-use",
 				}},
 			},
 		},

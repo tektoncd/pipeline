@@ -65,14 +65,14 @@ var resourceVersionInputs = []v1alpha1.TaskRunResourceVersion{{
 	ResourceRef: v1alpha1.PipelineResourceRef{
 		Name: "git-resource",
 	},
-	Key: "workspace",
+	Name: "workspace",
 }}
 
 var resourceVersionOutputs = []v1alpha1.TaskRunResourceVersion{{
 	ResourceRef: v1alpha1.PipelineResourceRef{
 		Name: "image-resource",
 	},
-	Key: "imageToUse",
+	Name: "imageToUse",
 }}
 
 var gitResource = &v1alpha1.PipelineResource{

@@ -22,7 +22,7 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
 				InputSourceBindings: []v1alpha1.SourceBinding{{
-					Key: "test-resource-name",
+					Name: "test-resource-name",
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "non-exitent-resource1",
 					},
@@ -39,7 +39,7 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
 				OutputSourceBindings: []v1alpha1.SourceBinding{{
-					Key: "test-resource-name",
+					Name: "test-resource-name",
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "non-exitent-resource",
 					},
@@ -56,7 +56,7 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-task-wrong-input"},
 				InputSourceBindings: []v1alpha1.SourceBinding{{
-					Key: "non-existent",
+					Name: "non-existent",
 				}},
 			}},
 		},
@@ -70,7 +70,7 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-task-wrong-output"},
 				InputSourceBindings: []v1alpha1.SourceBinding{{
-					Key: "non-existent",
+					Name: "non-existent",
 				}},
 			}},
 		},
@@ -99,7 +99,7 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-task-bad-resourcetype"},
 				InputSourceBindings: []v1alpha1.SourceBinding{{
-					Key: "testimageinput",
+					Name: "testimageinput",
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "git-test-resource",
 					},

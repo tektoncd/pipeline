@@ -56,7 +56,7 @@ func ApplyResources(b *buildv1alpha1.Build, resources []v1alpha1.TaskRunResource
 			return nil, err
 		}
 		for k, v := range resource.Replacements() {
-			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, r.Key, k)] = v
+			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, r.Name, k)] = v
 		}
 	}
 	return builder.ApplyReplacements(b, replacements), nil

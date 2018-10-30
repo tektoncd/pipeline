@@ -110,11 +110,11 @@ func checkForPipelineResourceDuplicates(resources []TaskRunResourceVersion, path
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
 		// We should provide only one binding for each resource required by the Task.
-		key := strings.ToLower(r.Key)
-		if _, ok := encountered[strings.ToLower(key)]; ok {
+		name := strings.ToLower(r.Name)
+		if _, ok := encountered[strings.ToLower(name)]; ok {
 			return apis.ErrMultipleOneOf(path)
 		}
-		encountered[key] = struct{}{}
+		encountered[name] = struct{}{}
 	}
 	return nil
 }

@@ -179,7 +179,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 							Name: kanikoResourceName,
 						},
 						Version: "master",
-						Key:     "workspace",
+						Name:    "workspace",
 					},
 				},
 			},
