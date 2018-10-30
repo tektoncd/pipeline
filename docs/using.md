@@ -137,14 +137,14 @@ Use the following example to understand the syntax and strucutre of a Git Resour
     apiVersion: pipeline.knative.dev/v1alpha1
     kind: PipelineResource
     metadata:
-    name: wizzbang-git
-    namespace: default
+      name: wizzbang-git
+      namespace: default
     spec:
-    type: git
-    params:
-    - name: url
-        value: github.com/wizzbangcorp/wizzbang
-    - name: Revision
+      type: git
+      params:
+      - name: url
+        value: https://github.com/wizzbangcorp/wizzbang.git
+      - name: Revision
         value: master
     ```
 
@@ -159,25 +159,25 @@ Use the following example to understand the syntax and strucutre of a Git Resour
     apiVersion: pipeline.knative.dev/v1alpha1
     kind: Task
     metadata:
-    name: build-push-task
-    namespace: default
+      name: build-push-task
+      namespace: default
     spec:
-        inputs:
-            resources:
-            - name: wizzbang-git
-            type: git
-            params:
-            - name: pathToDockerfile
-            value: string
-        outputs:
-            resources:
-            - name: builtImage 
-        buildSpec:
-            steps:
-            - name: build-and-push
-            image: gcr.io/my-repo/my-imageg
-            args:
-            - --repo=${inputs.resources.wizzbang-git.url}
+      inputs:
+        resources:
+        - name: wizzbang-git
+          type: git
+        params:
+        - name: pathToDockerfile
+      outputs:
+        resources:
+        - name: builtImage
+          type: image
+      buildSpec:
+        steps:
+        - name: build-and-push
+          image: gcr.io/my-repo/my-imageg
+          args:
+          - --repo=${inputs.resources.wizzbang-git.url}
     ``` 
 
 3. And finally set the version in the `TaskRun` definition:
@@ -186,18 +186,19 @@ Use the following example to understand the syntax and strucutre of a Git Resour
     apiVersion: pipeline.knative.dev/v1alpha1
     kind: TaskRun
     metadata:
-    name: build-push-task-run
-    namespace: default
+      name: build-push-task-run
+      namespace: default
     spec:
-        taskRef:
-            name: build-push-task
-        inputs:
-            resourcesVersion:
-            - resourceRef:
-                name: wizzbang-git
-                version: HEAD
-        outputs:
-            artifacts:
-            - name: builtImage
-                type: image
+      taskRef:
+        name: build-push-task
+      inputs:
+        resourcesVersion:
+        - resourceRef:
+            name: wizzbang-git
+            apiVersion: HEAD
+      outputs:
+        resources:
+        - name: builtImage
+          type: image
+      # serviceAccount: build-bot
     ``` 
