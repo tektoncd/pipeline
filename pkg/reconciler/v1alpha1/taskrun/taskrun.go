@@ -49,6 +49,10 @@ const (
 	// Task couldn't be found
 	ReasonCouldntGetTask = "CouldntGetTask"
 
+	// ReasonFailedValidation indicated that the reason for failure status is
+	// that pipelinerun failed runtime validation
+	ReasonFailedValidation = "TaskRunValidationFailed"
+
 	// ReasonRunning indicates that the reason for the inprogress status is that the TaskRun
 	// is just starting to be reconciled
 	ReasonRunning = "Running"
@@ -160,6 +164,17 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
+	if err := validateTaskRun(c, tr); err != nil {
+		c.Logger.Error("Failed to validate taskrun %s with error %v", tr.Name, err)
+		tr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  ReasonFailedValidation,
+			Message: err.Error(),
+		})
+		return nil
+	}
+
 	// get build the same as the taskrun, this is the value we use for 1:1 mapping and retrieval
 	build, err := c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
