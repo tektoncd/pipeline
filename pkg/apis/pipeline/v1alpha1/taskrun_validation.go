@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
+// Validate taskrun
 func (tr *TaskRun) Validate() *apis.FieldError {
 	if err := validateObjectMetadata(tr.GetObjectMeta()).ViaField("metadata"); err != nil {
 		return err
@@ -31,6 +32,7 @@ func (tr *TaskRun) Validate() *apis.FieldError {
 	return tr.Spec.Validate()
 }
 
+// Validate taskrun spec
 func (ts *TaskRunSpec) Validate() *apis.FieldError {
 	if equality.Semantic.DeepEqual(ts, &TaskRunSpec{}) {
 		return apis.ErrMissingField("spec")
@@ -130,7 +132,6 @@ func (r TaskTriggerRef) Validate(path string) *apis.FieldError {
 
 		if taskType == allowedType {
 			if allowedType == strings.ToLower(string(TaskTriggerTypePipelineRun)) && r.Name == "" {
-				fmt.Println("HERE")
 				return apis.ErrMissingField(fmt.Sprintf("%s.name", path))
 			}
 			return nil

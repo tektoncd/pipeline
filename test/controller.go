@@ -73,20 +73,20 @@ type Informers struct {
 
 func seedTestData(d Data) (Clients, Informers) {
 	objs := []runtime.Object{}
-	for _, pr := range d.PipelineRuns {
-		objs = append(objs, pr)
+	for _, r := range d.PipelineResources {
+		objs = append(objs, r)
 	}
 	for _, p := range d.Pipelines {
 		objs = append(objs, p)
 	}
-	for _, tr := range d.TaskRuns {
-		objs = append(objs, tr)
+	for _, pr := range d.PipelineRuns {
+		objs = append(objs, pr)
 	}
 	for _, t := range d.Tasks {
 		objs = append(objs, t)
 	}
-	for _, r := range d.PipelineResources {
-		objs = append(objs, r)
+	for _, tr := range d.TaskRuns {
+		objs = append(objs, tr)
 	}
 
 	buildObjs := []runtime.Object{}

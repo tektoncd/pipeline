@@ -93,7 +93,6 @@ func (c *Condition) IsUnknown() bool {
 	return c.Status == corev1.ConditionUnknown
 }
 
-
 // Conditions is an Implementable "duck type".
 var _ duck.Implementable = (*Conditions)(nil)
 

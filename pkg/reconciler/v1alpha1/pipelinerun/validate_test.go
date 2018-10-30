@@ -24,7 +24,7 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				InputSourceBindings: []v1alpha1.SourceBinding{{
 					Name: "test-resource-name",
 					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "non-exitent-resource1",
+						Name: "non-existent-resource1",
 					},
 				}},
 			}},
@@ -41,7 +41,7 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				OutputSourceBindings: []v1alpha1.SourceBinding{{
 					Name: "test-resource-name",
 					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "non-exitent-resource",
+						Name: "non-existent-resource",
 					},
 				}},
 			}},

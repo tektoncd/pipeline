@@ -170,9 +170,9 @@ var defaultTemplatedTask = &v1alpha1.Task{
 		Inputs: &v1alpha1.Inputs{
 			Params: []v1alpha1.TaskParam{
 				{
-					Name: "myarg",
+					Name:        "myarg",
 					Description: "mydesc",
-					Default: "mydefault",
+					Default:     "mydefault",
 				},
 			},
 		},
@@ -292,18 +292,18 @@ func TestReconcile(t *testing.T) {
 								APIVersion: "a1",
 							},
 							Version: "myversion",
-							Name: "workspace",
+							Name:    "workspace",
 						},
 					},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskRunResourceVersion{{
 						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "image-resource",
+							Name:       "image-resource",
 							APIVersion: "a1",
 						},
 						Version: "myversion",
-						Name: "myimage",
+						Name:    "myimage",
 					}},
 				},
 			},
@@ -332,7 +332,7 @@ func TestReconcile(t *testing.T) {
 								APIVersion: "a1",
 							},
 							Version: "myversion",
-							Name: gitResource.Name,
+							Name:    gitResource.Name,
 						},
 					},
 				},
@@ -356,7 +356,7 @@ func TestReconcile(t *testing.T) {
 								APIVersion: "a1",
 							},
 							Version: "myversion",
-							Name: gitResource.Name,
+							Name:    gitResource.Name,
 						},
 					},
 				},
@@ -552,7 +552,6 @@ func TestReconcile(t *testing.T) {
 			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
-
 			if len(clients.Build.Actions()) == 0 {
 				t.Errorf("Expected actions to be logged in the buildclient, got none")
 			}
@@ -644,7 +643,7 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 		{
 			name:    "task run with no task",
 			taskRun: taskRuns[0],
-			reason:  taskrun.ReasonCouldntGetTask,
+			reason:  taskrun.ReasonFailedValidation,
 		},
 	}
 
@@ -658,8 +657,8 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid TaskRun but saw %q", err)
 			}
-			if len(clients.Build.Actions()) != 1 {
-				t.Errorf("expected no actions to be created by the reconciler, got %v", clients.Build.Actions())
+			if len(clients.Build.Actions()) != 0 {
+				t.Errorf("expected no actions created by the reconciler, got %v", clients.Build.Actions())
 			}
 			// Since the TaskRun is invalid, the status should say it has failed
 			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
