@@ -38,6 +38,9 @@ const (
 
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
 	PipelineResourceTypeImage PipelineResourceType = "image"
+
+	// PipelineResourceTypeCluster indicates that this source is a k8s cluster Image.
+	PipelineResourceTypeCluster PipelineResourceType = "cluster"
 )
 
 var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeGCS, PipelineResourceTypeImage}
