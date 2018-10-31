@@ -37,25 +37,16 @@ import (
 )
 
 func TestPipelineRun(t *testing.T) {
-
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
-
-	logger.Infof("Creating Pipeline Resources in namespace %s", namespace)
-
 	type tests struct {
 		name                   string
-		testSetup              func(index int)
+		testSetup              func(c *clients, namespace string, index int)
 		expectedTaskRuns       []string
 		expectedNumberOfEvents int
 	}
 
 	tds := []tests{{
 		name: "multiple tasks",
-		testSetup: func(index int) {
+		testSetup: func(c *clients, namespace string, index int) {
 			t.Helper()
 			task := getHelloWorldTask(namespace, []string{"echo", taskOutput})
 			task.Name = getName(hwTaskName, index)
@@ -74,7 +65,7 @@ func TestPipelineRun(t *testing.T) {
 		expectedNumberOfEvents: 3,
 	}, {
 		name: "service account propogation",
-		testSetup: func(index int) {
+		testSetup: func(c *clients, namespace string, index int) {
 			t.Helper()
 			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
 				t.Fatalf("Failed to create secret `%s`: %s", getName(hwSecret, index), err)
@@ -138,8 +129,19 @@ func TestPipelineRun(t *testing.T) {
 
 	for i, td := range tds {
 		t.Run(td.name, func(t *testing.T) {
+			td := td
+			t.Parallel()
+			// Note that getting a new logger has the side effect of setting the global metrics logger as well,
+			// this means that metrics emitted from these tests will have the wrong test name attached. We should
+			// revisit this if we ever start using those metrics (maybe use a different metrics gatherer).
+			logger := logging.GetContextLogger(t.Name())
+			c, namespace := setup(t, logger)
+
+			knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+			defer tearDown(t, logger, c, namespace)
+
 			logger.Infof("Setting up test resources for %q test in namespace %s", td.name, namespace)
-			td.testSetup(i)
+			td.testSetup(c, namespace, i)
 
 			prName := fmt.Sprintf("%s%d", hwPipelineRunName, i)
 			if _, err := c.PipelineRunClient.Create(getHelloWorldPipelineRun(i, namespace)); err != nil {
