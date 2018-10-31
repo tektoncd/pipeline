@@ -112,33 +112,20 @@ subjects:
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: images.caching.internal.knative.dev
-spec:
-  group: caching.internal.knative.dev
-  version: v1alpha1
-  names:
-    kind: Image
-    plural: images
-    singular: image
-    categories:
-    - all
-    - knative-internal
-    - caching
-    shortNames:
-    - img
-  scope: Namespaced
----
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
   name: builds.build.knative.dev
 spec:
   additionalPrinterColumns:
-  - JSONPath: .metadata.creationTimestamp
-    name: Age
+  - JSONPath: .status.conditions[?(@.type=="Succeeded")].status
+    name: Succeeded
+    type: string
+  - JSONPath: .status.conditions[?(@.type=="Succeeded")].reason
+    name: Reason
+    type: string
+  - JSONPath: .status.startTime
+    name: StartTime
     type: date
   - JSONPath: .status.completionTime
-    name: Completed
+    name: CompletionTime
     type: date
   group: build.knative.dev
   names:
@@ -243,7 +230,7 @@ metadata:
   name: creds-init
   namespace: knative-build
 spec:
-  image: gcr.io/knative-releases/github.com/knative/build/cmd/creds-init@sha256:a5eddd139e71e17fed7ba685844607f9fc715823e57a9aa81a815a376deb63eb
+  image: gcr.io/knative-releases/github.com/knative/build/cmd/creds-init@sha256:c1c11fafd337f62eea18a1f02b78e6ae6949779bed72d53d19b2870723a8f104
 ---
 apiVersion: caching.internal.knative.dev/v1alpha1
 kind: Image
@@ -251,7 +238,7 @@ metadata:
   name: git-init
   namespace: knative-build
 spec:
-  image: gcr.io/knative-releases/github.com/knative/build/cmd/git-init@sha256:0f1b45b2cbb842b51d5499c0235fab759b7550052f12e825d376f4d159ab3634
+  image: gcr.io/knative-releases/github.com/knative/build/cmd/git-init@sha256:6fa8043ed114920cd61e28db3c942647ba48415fe1208acde2fb2ac0746c9164
 ---
 apiVersion: caching.internal.knative.dev/v1alpha1
 kind: Image
@@ -267,7 +254,7 @@ metadata:
   name: nop
   namespace: knative-build
 spec:
-  image: gcr.io/knative-releases/github.com/knative/build/cmd/nop@sha256:c1a3869762368500dd8b763c8033108f44d7fd490d4ea2ee4564b2b840760324
+  image: gcr.io/knative-releases/github.com/knative/build/cmd/nop@sha256:f94e6413749759bc3f80d33e76c36509d6a63f7b206d2ca8fff167a0bb9c77f2
 ---
 apiVersion: v1
 data:
@@ -326,12 +313,17 @@ spec:
         - -stderrthreshold
         - INFO
         - -creds-image
-        - gcr.io/knative-releases/github.com/knative/build/cmd/creds-init@sha256:a5eddd139e71e17fed7ba685844607f9fc715823e57a9aa81a815a376deb63eb
+        - gcr.io/knative-releases/github.com/knative/build/cmd/creds-init@sha256:c1c11fafd337f62eea18a1f02b78e6ae6949779bed72d53d19b2870723a8f104
         - -git-image
-        - gcr.io/knative-releases/github.com/knative/build/cmd/git-init@sha256:0f1b45b2cbb842b51d5499c0235fab759b7550052f12e825d376f4d159ab3634
+        - gcr.io/knative-releases/github.com/knative/build/cmd/git-init@sha256:6fa8043ed114920cd61e28db3c942647ba48415fe1208acde2fb2ac0746c9164
         - -nop-image
-        - gcr.io/knative-releases/github.com/knative/build/cmd/nop@sha256:c1a3869762368500dd8b763c8033108f44d7fd490d4ea2ee4564b2b840760324
-        image: gcr.io/knative-releases/github.com/knative/build/cmd/controller@sha256:5d12da76b8ba36548a97b07866fdc9c13c1cb0e499dfdcca97af731b1ad2c488
+        - gcr.io/knative-releases/github.com/knative/build/cmd/nop@sha256:f94e6413749759bc3f80d33e76c36509d6a63f7b206d2ca8fff167a0bb9c77f2
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/knative-releases/github.com/knative/build/cmd/controller@sha256:2667d0ff68a406e0103c58145edef916edc1b41695b38964dc6ccb0b38c0aedf
         name: build-controller
         volumeMounts:
         - mountPath: /etc/config-logging
@@ -363,7 +355,12 @@ spec:
         - -logtostderr
         - -stderrthreshold
         - INFO
-        image: gcr.io/knative-releases/github.com/knative/build/cmd/webhook@sha256:1e63c38c6d653698973bd8c8320d4db2bdcb1b46130b33949f848c67034fe6f8
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/knative-releases/github.com/knative/build/cmd/webhook@sha256:58775663a5bc0d782c8505a28cc88616a5e08115959dc62fa07af5ad76c54a97
         name: build-webhook
         volumeMounts:
         - mountPath: /etc/config-logging

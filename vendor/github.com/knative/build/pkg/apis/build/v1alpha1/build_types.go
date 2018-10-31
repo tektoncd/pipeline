@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -283,15 +281,6 @@ func (bs *BuildStatus) GetConditions() duckv1alpha1.Conditions {
 func (bs *BuildStatus) SetConditions(conditions duckv1alpha1.Conditions) {
 	bs.Conditions = conditions
 }
-
-// GetGeneration returns the generation number of this object.
-func (b *Build) GetGeneration() int64 { return b.Spec.Generation }
-
-// SetGeneration sets the generation number of this object.
-func (b *Build) SetGeneration(generation int64) { b.Spec.Generation = generation }
-
-// GetSpecJSON returns the JSON serialization of this build's Spec.
-func (b *Build) GetSpecJSON() ([]byte, error) { return json.Marshal(b.Spec) }
 
 func (b *Build) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind("Build")
