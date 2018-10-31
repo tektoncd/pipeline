@@ -53,7 +53,7 @@ func TestPipelineRun(t *testing.T) {
 	}
 
 	tds := []tests{{
-		name: "pipelinerun with multiple tasks",
+		name: "multiple tasks",
 		testSetup: func(index int) {
 			t.Helper()
 			task := getHelloWorldTask(namespace, []string{"echo", taskOutput})
@@ -68,11 +68,11 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to create PipelineParams `%s`: %s", getName(hwPipelineParamsName, index), err)
 			}
 		},
-		expectedTaskRuns:       []string{hwPipelineTaskName1, hwPipelineTaskName2},
-		expectedNumberOfEvents: 3,
+		expectedTaskRuns: []string{hwPipelineTaskName1, hwPipelineTaskName2},
 		// 1 from PipelineRun and 2 from Tasks defined in pipelinerun
+		expectedNumberOfEvents: 3,
 	}, {
-		name: "pipelinerun with service account setup",
+		name: "service account propogation",
 		testSetup: func(index int) {
 			t.Helper()
 			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
@@ -130,9 +130,9 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(hwPipelineName, index), err)
 			}
 		},
-		expectedTaskRuns:       []string{hwPipelineTaskName1},
-		expectedNumberOfEvents: 2,
+		expectedTaskRuns: []string{hwPipelineTaskName1},
 		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
+		expectedNumberOfEvents: 2,
 	}}
 
 	for i, td := range tds {
