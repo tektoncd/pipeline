@@ -19,7 +19,8 @@ spec:
         steps:
             - name: runMake
               image: ubuntu
-              args: ['make', '${makeTarget}']
+              command: ['make']
+              args: ['${makeTarget}']
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -34,6 +35,7 @@ spec:
              type: git
         params:
             - name: testImage
+            - name: testCommand
             - name: testArgs
     outputs:
         results:
@@ -44,6 +46,7 @@ spec:
         steps:
             - name: runTests
               image: '${testImage}'
+              command: ['${testCommand}']
               args: ['${testArgs}']
               volumeMounts:
               - name: gac

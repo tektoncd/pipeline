@@ -18,6 +18,7 @@ spec:
         steps:
         - name: deploy
           image: kubernetes-helm
+          command: ['helm']
           args: ['install', '--kube-context=${targetCluster}', '--set image=${image}', '${helmArgs}', '${pathToHelmChart}']
 
 ---
@@ -40,4 +41,5 @@ spec:
         steps:
         - name: runKubectl
           image: k8s-kubectl
+          command: ['kubectl']
           args: ['--use-context', '${targetCluster}', '--namespace', '${targetCluster.namespace}', 'apply', '-c', '${pathToFiles}', '${kubectlArgs}']
