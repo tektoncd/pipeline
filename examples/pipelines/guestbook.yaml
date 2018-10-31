@@ -56,7 +56,7 @@ spec:
                 key: testCluster
         - name: int-test-osx                    # 3.a Run Integration tests for osx
           taskRef:
-              name: integrationTestInDocker
+              name: integration-test-in-docker
           inputSourceBindings:
               - name: workspace
                 resourceRef:
