@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"encoding/json"
-
 	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,15 +96,6 @@ type BuildTemplateList struct {
 
 	Items []BuildTemplate `json:"items"`
 }
-
-// GetGeneration returns the generation number of this object.
-func (bt *BuildTemplate) GetGeneration() int64 { return bt.Spec.Generation }
-
-// SetGeneration sets the generation number of this object.
-func (bt *BuildTemplate) SetGeneration(generation int64) { bt.Spec.Generation = generation }
-
-// GetSpecJSON returns the JSON serialization of this build template's Spec.
-func (bt *BuildTemplate) GetSpecJSON() ([]byte, error) { return json.Marshal(bt.Spec) }
 
 // TemplateSpec returnes the Spec used by the template
 func (bt *BuildTemplate) TemplateSpec() BuildTemplateSpec {
