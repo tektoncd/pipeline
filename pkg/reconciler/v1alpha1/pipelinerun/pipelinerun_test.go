@@ -91,8 +91,10 @@ func TestReconcile(t *testing.T) {
 				}},
 				Params: []v1alpha1.TaskParam{{
 					Name: "foo",
+					Description: "foo",
 				}, {
 					Name: "bar",
+					Description: "bar",
 				}},
 			},
 			Outputs: &v1alpha1.Outputs{

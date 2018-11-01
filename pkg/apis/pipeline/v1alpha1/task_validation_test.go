@@ -53,6 +53,13 @@ func TestTaskSpec_Validate(t *testing.T) {
 			fields: fields{
 				Inputs: &Inputs{
 					Resources: []TaskResource{validResource},
+					Params: []TaskParam{
+						{
+							Name:        "task",
+							Description: "param",
+							Default:     "default",
+						},
+					},
 				},
 				BuildSpec: validBuild,
 			},

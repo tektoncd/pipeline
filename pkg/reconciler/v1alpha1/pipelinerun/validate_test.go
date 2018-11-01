@@ -151,8 +151,10 @@ func Test_InvalidPipelineTask(t *testing.T) {
 			Inputs: &v1alpha1.Inputs{
 				Params: []v1alpha1.TaskParam{{
 					Name: "foo",
+					Description: "foo",
 				}, {
 					Name: "bar",
+					Description: "bar",
 				}},
 			},
 		},

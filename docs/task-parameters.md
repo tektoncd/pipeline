@@ -21,15 +21,15 @@ kind: Task
 metadata:
   name: task-with-parameters
 spec:
-    inputs:
-        params:
-        - name: flags
-          value: string
-    buildSpec:
-        steps:
-        - name: build
-          image: my-builder
-          args: ['build', '--flags=${inputs.params.flags}']
+  inputs:
+    params:
+    - name: flags
+      value: string
+  buildSpec:
+    steps:
+    - name: build
+      image: my-builder
+      args: ['build', '--flags=${inputs.params.flags}']
 ```
 
 The following `TaskRun` supplies a value for `flags`:
@@ -40,10 +40,10 @@ kind: TaskRun
 metadata:
   name: run-with-parameters
 spec:
-    taskRef:
-        name: task-with-parameters
-    inputs:
-        params:
-        - name: 'flags'
-          value: 'foo=bar,baz=bat'
+  taskRef:
+  name: task-with-parameters
+  inputs:
+    params:
+    - name: 'flags'
+      value: 'foo=bar,baz=bat'
 ```

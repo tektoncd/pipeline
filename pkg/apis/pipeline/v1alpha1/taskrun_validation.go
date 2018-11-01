@@ -24,11 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
-func (t *TaskRun) Validate() *apis.FieldError {
-	if err := validateObjectMetadata(t.GetObjectMeta()).ViaField("metadata"); err != nil {
+func (tr *TaskRun) Validate() *apis.FieldError {
+	if err := validateObjectMetadata(tr.GetObjectMeta()).ViaField("metadata"); err != nil {
 		return err
 	}
-	return t.Spec.Validate()
+	return tr.Spec.Validate()
 }
 
 func (ts *TaskRunSpec) Validate() *apis.FieldError {

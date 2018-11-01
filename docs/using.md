@@ -38,7 +38,7 @@ need.
 * The `passedConstraints` allows for `Tasks` to fan in and fan out, and ordering can be
   expressed explicitly using this key since a task needing a resource from a another
   task would have to run after.
-* The name used in the `passedConstraints` is the name of `PipelineTask`  
+* The name used in the `passedConstraints` is the name of `PipelineTask`
 
 ## Creating a Task
 
@@ -96,14 +96,20 @@ steps:
 
 ### Templating
 
-Tasks support templating using values from all `inputs` and `outputs`.
+Tasks support templating using values from all `inputs` and `outputs`. Both
+`Resources` and `Params` can be used inside the `BuildSpec` of a `Task`.
 
-For example `Resources` can be referenced in a `Task` spec like this,
-where `NAME` is the Resource Name and `KEY` is one of `name`, `url`, `type` or
-`revision`:
+`Resources` can be referenced in a `Task` spec like this, where `NAME` is the
+Resource Name and `KEY` is one of `name`, `url`, `type` or `revision`:
 
 ```shell
 ${inputs.resources.NAME.KEY}
+```
+
+To access a `Param`, replace `resources` with `params` as below:
+
+```shell
+${inputs.params.NAME}
 ```
 
 ## Running a Pipeline

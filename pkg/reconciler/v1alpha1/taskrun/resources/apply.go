@@ -25,9 +25,16 @@ import (
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a BuildSpec.
-func ApplyParameters(b *buildv1alpha1.Build, tr *v1alpha1.TaskRun) *buildv1alpha1.Build {
+func ApplyParameters(b *buildv1alpha1.Build, tr *v1alpha1.TaskRun, defaults ...v1alpha1.TaskParam) *buildv1alpha1.Build {
 	// This assumes that the TaskRun inputs have been validated against what the Task requests.
 	replacements := map[string]string{}
+	// Set all the default replacements
+	for _, p := range defaults {
+		if p.Default != "" {
+			replacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Default
+		}
+	}
+	// Set and overwrite params with the ones from the TaskRun
 	for _, p := range tr.Spec.Inputs.Params {
 		replacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value
 	}
@@ -35,7 +42,7 @@ func ApplyParameters(b *buildv1alpha1.Build, tr *v1alpha1.TaskRun) *buildv1alpha
 	return builder.ApplyReplacements(b, replacements)
 }
 
-// ResourceGetter is the interface used to refreive resources which are references via a TaskRunResourceVersion.
+// ResourceGetter is the interface used to retrieve resources which are references via a TaskRunResourceVersion.
 type ResourceGetter interface {
 	Get(string) (*v1alpha1.PipelineResource, error)
 }

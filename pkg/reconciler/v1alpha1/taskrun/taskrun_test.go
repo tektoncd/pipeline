@@ -125,7 +125,7 @@ var saTask = &v1alpha1.Task{
 
 var templatedTask = &v1alpha1.Task{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "task-with-templating",
+		Name:      "test-task-with-templating",
 		Namespace: "foo",
 	},
 	Spec: v1alpha1.TaskSpec{
@@ -155,6 +155,39 @@ var templatedTask = &v1alpha1.Task{
 					Name:  "myothercontainer",
 					Image: "myotherimage",
 					Args:  []string{"--my-other-arg=${inputs.resources.workspace.url}"},
+				},
+			},
+		},
+	},
+}
+
+var defaultTemplatedTask = &v1alpha1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-task-with-default-templating",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.TaskSpec{
+		Inputs: &v1alpha1.Inputs{
+			Params: []v1alpha1.TaskParam{
+				{
+					Name: "myarg",
+					Description: "mydesc",
+					Default: "mydefault",
+				},
+			},
+		},
+		BuildSpec: &buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				{
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-arg=${inputs.params.myarg}"},
+				},
+				{
+					Name:  "myothercontainer",
+					Image: "myotherimage",
+					Args:  []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
 				},
 			},
 		},
@@ -217,7 +250,7 @@ func TestReconcile(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskRunSpec{
 				TaskRef: v1alpha1.TaskRef{
-					Name:       "test-task",
+					Name:       simpleTask.Name,
 					APIVersion: "a1",
 				},
 			},
@@ -230,7 +263,7 @@ func TestReconcile(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				ServiceAccount: "test-sa",
 				TaskRef: v1alpha1.TaskRef{
-					Name:       "test-with-sa",
+					Name:       saTask.Name,
 					APIVersion: "a1",
 				},
 			},
@@ -242,7 +275,7 @@ func TestReconcile(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskRunSpec{
 				TaskRef: v1alpha1.TaskRef{
-					Name:       "task-with-templating",
+					Name:       templatedTask.Name,
 					APIVersion: "a1",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
@@ -252,24 +285,80 @@ func TestReconcile(t *testing.T) {
 							Value: "foo",
 						},
 					},
-					Resources: []v1alpha1.TaskRunResourceVersion{{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name:       "git-resource",
-							APIVersion: "a1",
+					Resources: []v1alpha1.TaskRunResourceVersion{
+						{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name:       gitResource.Name,
+								APIVersion: "a1",
+							},
+							Version: "myversion",
+							Name: "workspace",
 						},
-						Version: "myversion",
-						Name:    "workspace",
-					}},
+					},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskRunResourceVersion{{
 						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name:       "image-resource",
+							Name: "image-resource",
 							APIVersion: "a1",
 						},
 						Version: "myversion",
-						Name:    "myimage",
+						Name: "myimage",
 					}},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-overrides-default-templating",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: v1alpha1.TaskRef{
+					Name:       defaultTemplatedTask.Name,
+					APIVersion: "a1",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Params: []v1alpha1.Param{
+						{
+							Name:  "myarg",
+							Value: "foo",
+						},
+					},
+					Resources: []v1alpha1.TaskRunResourceVersion{
+						{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name:       gitResource.Name,
+								APIVersion: "a1",
+							},
+							Version: "myversion",
+							Name: gitResource.Name,
+						},
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-default-templating",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: v1alpha1.TaskRef{
+					Name:       defaultTemplatedTask.Name,
+					APIVersion: "a1",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskRunResourceVersion{
+						{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name:       gitResource.Name,
+								APIVersion: "a1",
+							},
+							Version: "myversion",
+							Name: gitResource.Name,
+						},
+					},
 				},
 			},
 		},
@@ -277,7 +366,7 @@ func TestReconcile(t *testing.T) {
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask},
+		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, defaultTemplatedTask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, imageResource},
 	}
 	testcases := []struct {
@@ -306,7 +395,7 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				Volumes: []corev1.Volume{
-					getToolsVolume("test-taskrun-run-success"),
+					getToolsVolume(taskruns[0].Name),
 				},
 			},
 		},
@@ -332,7 +421,7 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				Volumes: []corev1.Volume{
-					getToolsVolume("test-taskrun-with-sa-run-success"),
+					getToolsVolume(taskruns[1].Name),
 				},
 			},
 		},
@@ -376,7 +465,83 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 				Volumes: []corev1.Volume{
-					getToolsVolume("test-taskrun-templating"),
+					getToolsVolume(taskruns[2].Name),
+				},
+			},
+		},
+		{
+			name:    "input-overrides-default-params",
+			taskRun: taskruns[3],
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{
+					entrypointCopyStep,
+					{
+						Name:    "mycontainer",
+						Image:   "myimage",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
+					},
+					{
+						Name:    "myothercontainer",
+						Image:   "myotherimage",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
+					},
+				},
+				Volumes: []corev1.Volume{
+					getToolsVolume(taskruns[3].Name),
+				},
+			},
+		},
+		{
+			name:    "default-params",
+			taskRun: taskruns[4],
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{
+					entrypointCopyStep,
+					{
+						Name:    "mycontainer",
+						Image:   "myimage",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["/mycmd","--my-arg=mydefault"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
+					},
+					{
+						Name:    "myothercontainer",
+						Image:   "myotherimage",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
+					},
+				},
+				Volumes: []corev1.Volume{
+					getToolsVolume(taskruns[4].Name),
 				},
 			},
 		},

@@ -10,6 +10,7 @@ spec:
             type: git
         params:
           - name: makeTarget
+            description: The target to have make run
     outputs:
         results:
             - name: testResults
@@ -35,8 +36,11 @@ spec:
              type: git
         params:
             - name: testImage
+              description: The image to use while running the test
             - name: testCommand
+              description: The command to run on the image
             - name: testArgs
+              description: The arguments to pass to the image
     outputs:
         results:
             - name: testResults

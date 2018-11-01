@@ -10,8 +10,11 @@ spec:
                 type: git
         params:
             - name: pathToHelmCharts
+              description: Path to where the Helm charts live
             - name: helmArgs
+              description: Extra arguments to pass to Helm
             - name: image
+              description: The image to override the Helm chart with
         clusters:
             - name: targetCluster
     buildSpec:
@@ -34,7 +37,9 @@ spec:
               type: git
         params:
             - name: kubectlArgs
+              description: Extra arguments to pass to kubectl
             - name: pathToFiles
+              description: Path to the manifests to apply
         clusters:
             - name: targetCluster
     buildSpec:

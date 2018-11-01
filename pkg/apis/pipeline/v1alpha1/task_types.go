@@ -81,6 +81,10 @@ type Inputs struct {
 // such as resources.
 type TaskParam struct {
 	Name string `json:"name"`
+	// +optional
+	Description string `json:"description,omitempty"`
+	// +optional
+	Default string `json:"default,omitempty"`
 }
 
 // Param declares a value to use for the Param called Name.
