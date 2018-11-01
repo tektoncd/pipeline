@@ -4,22 +4,24 @@ metadata:
   name: build-push
   namespace: default
 spec:
-    inputs:
-        resources:
-            - name: workspace
-              type: git
-        params:
-            - name: pathToDockerFile
-    outputs:
-        resources:
-            - name: builtImage
-              type: image
-    buildSpec:
-          steps:
-          - name: build-and-push
-            image: gcr.io/kaniko-project/executor
-            command:
-            - /kaniko/executor
-            args:
-            - --dockerfile=${pathToDockerFile}
-            - --destination=$builtImage
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+    params:
+    - name: pathToDockerFile
+      description: The path to the dockerfile to build
+      default: /workspace/Dockerfile
+  outputs:
+    resources:
+    - name: builtImage
+      type: image
+  buildSpec:
+    steps:
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor
+      command:
+      - /kaniko/executor
+      args:
+      - --dockerfile=${pathToDockerFile}
+      - --destination=$builtImage

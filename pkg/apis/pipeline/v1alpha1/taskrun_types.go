@@ -102,15 +102,15 @@ type TaskRunStatus struct {
 func (tr *TaskRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
 	return taskRunCondSet.Manage(tr).GetCondition(t)
 }
-func (ts *TaskRunStatus) InitializeConditions() {
-	taskRunCondSet.Manage(ts).InitializeConditions()
+func (tr *TaskRunStatus) InitializeConditions() {
+	taskRunCondSet.Manage(tr).InitializeConditions()
 }
 
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
-func (ts *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+func (tr *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
 	if newCond != nil {
-		taskRunCondSet.Manage(ts).SetCondition(*newCond)
+		taskRunCondSet.Manage(tr).SetCondition(*newCond)
 	}
 }
 
@@ -149,7 +149,7 @@ type TaskRunList struct {
 	Items           []TaskRun `json:"items"`
 }
 
-func (t *TaskRun) SetDefaults() {}
+func (tr *TaskRun) SetDefaults() {}
 
 // GetBuildRef for task
 func (tr *TaskRun) GetBuildRef() corev1.ObjectReference {

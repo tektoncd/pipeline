@@ -115,6 +115,7 @@ func TestApplyParameters(t *testing.T) {
 	type args struct {
 		b  *buildv1alpha1.Build
 		tr *v1alpha1.TaskRun
+		dp []v1alpha1.TaskParam
 	}
 	tests := []struct {
 		name string
@@ -131,10 +132,27 @@ func TestApplyParameters(t *testing.T) {
 				b.Spec.Steps[0].Image = "bar"
 			}),
 		},
+		{
+			name: "with default parameter",
+			args: args{
+				b:  simpleBuild,
+				tr: &v1alpha1.TaskRun{},
+				dp: []v1alpha1.TaskParam{
+					{
+						Name: "myimage",
+						Default: "mydefault",
+					},
+				},
+
+			},
+			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
+				b.Spec.Steps[0].Image = "mydefault"
+			}),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ApplyParameters(tt.args.b, tt.args.tr)
+			got := ApplyParameters(tt.args.b, tt.args.tr, tt.args.dp...)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", d)
 			}

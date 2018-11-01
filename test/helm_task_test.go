@@ -220,7 +220,8 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 					},
 				},
 				Params: []v1alpha1.TaskParam{{
-					Name: "pathToHelmCharts",
+					Name:        "pathToHelmCharts",
+					Description: "Path to the helm charts",
 				}, {
 					Name: "image",
 				}, {

@@ -328,8 +328,12 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1
 		return nil, fmt.Errorf("failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 	}
 
+	var defaults []v1alpha1.TaskParam
+	if t.Spec.Inputs != nil {
+		defaults = append(defaults, t.Spec.Inputs.Params...)
+	}
 	// Apply parameter templating from the taskrun.
-	build = resources.ApplyParameters(build, tr)
+	build = resources.ApplyParameters(build, tr, defaults...)
 
 	// Apply bound resource templating from the taskrun.
 	build, err = resources.ApplyResources(build, tr.Spec.Inputs.Resources, c.resourceLister.PipelineResources(t.Namespace), "inputs")

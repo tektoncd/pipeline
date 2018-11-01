@@ -19,7 +19,7 @@ package resources
 import (
 	"fmt"
 
-	v1alpha1 "github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
@@ -70,6 +70,9 @@ func AddInputResource(
 			// TODO(#123) support mulitple git inputs
 			break
 		}
+	}
+	if gitResource == nil {
+		return build, nil
 	}
 
 	gitSourceSpec := &buildv1alpha1.GitSourceSpec{
