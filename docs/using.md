@@ -44,8 +44,8 @@ need.
 
 To create a Task, you must:
 
-* Define [parameters](./docs/task-parameters.md) (i.e. string inputs) for your `Task`
-* Define the inputs and outputs of the `Task` as [`Resources`](#resources)
+* Define [parameters](task-parameters.md) (i.e. string inputs) for your `Task`
+* Define the inputs and outputs of the `Task` as [`Resources`](./Concepts.md#pipelineresources)
 * Create a `Step` for each action you want to take in the `Task`
 
 `Steps` are images which comply with the [image contract](#image-contract).

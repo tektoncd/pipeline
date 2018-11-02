@@ -9,15 +9,15 @@ These resources run on-cluster and are implemeted by [Kubernetes Custom Resource
 
 High level details of this design:
 
-* [Pipelines](#pipelines) do not know what will trigger them, they can be
+* [Pipelines](#pipeline) do not know what will trigger them, they can be
    triggered by events or by manually creating [PipelineRuns](#pipelinerun)
-* [Tasks](#tasks) can exist and be invoked completely independently of
-  [pipelines](#pipelines); they are highly cohesive and loosely coupled
+* [Tasks](#task) can exist and be invoked completely independently of
+  [pipelines](#pipeline); they are highly cohesive and loosely coupled
 * Test results are a first class concept, being able to navigate test results
   easily is powerful (e.g. see failures easily, dig into logs, e.g. like
   [the Jenkins test analyzer plugin](https://wiki.jenkins.io/display/JENKINS/Test+Results+Analyzer+Plugin))
-* [Tasks](#tasks) can depend on artifacts, output and parameters created by other tasks.
-* [Resources](#resources) are the artifacts used as inputs and outputs of TaskRuns.
+* [Tasks](#task) can depend on artifacts, output and parameters created by other tasks.
+* [Resources](#pipelineresources) are the artifacts used as inputs and outputs of TaskRuns.
 
 ## Building Blocks of Pipeline CRDs
 Below diagram lists the main custom resources created by Pipeline CRDs:
@@ -38,7 +38,7 @@ A task will run inside a container on your cluster. A Task declares:
 
 1. Inputs the task needs.
 1. Outputs the task will produce.
-1. Sequence of steps to execute. Each step is [a container image](#image-contract).
+1. Sequence of steps to execute. Each step is [a container image](./using.md#image-contract).
 
 Here is an example simple Task definition which echoes "hello world". The `hello-world` task does not define any inputs or outputs.
 
@@ -61,7 +61,7 @@ spec:
           - "hello world!"
 ```
 
-Examples of `Task` definitions with inputs and outputs are [here](./examples)
+Examples of `Task` definitions with inputs and outputs are [here](../examples)
 
 ### Step Entrypoint
 
