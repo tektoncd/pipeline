@@ -17,13 +17,17 @@ limitations under the License.
 package resources
 
 import (
+	"flag"
 	"fmt"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 )
+
+var kubeconfigImage = flag.String("kubeconfig-image", "override-with-kubeconfig:latest", "The container image containing our kubeconfig binary.")
 
 func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunResourceVersion) (*v1alpha1.TaskRunResourceVersion, error) {
 	for _, br := range boundResources {
@@ -59,28 +63,45 @@ func AddInputResource(
 			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q", task.Name, boundResource)
 		}
 
-		if resource.Spec.Type == v1alpha1.PipelineResourceTypeGit {
-			gitResource, err = v1alpha1.NewGitResource(resource)
-			if err != nil {
-				return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
+		switch resource.Spec.Type {
+		case v1alpha1.PipelineResourceTypeGit:
+			{
+				gitResource, err = v1alpha1.NewGitResource(resource)
+				if err != nil {
+					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
+				}
+				if boundResource.Version != "" {
+					gitResource.Revision = boundResource.Version
+				}
+				gitSourceSpec := &buildv1alpha1.GitSourceSpec{
+					Url:      gitResource.URL,
+					Revision: gitResource.Revision,
+				}
+
+				build.Spec.Source = &buildv1alpha1.SourceSpec{Git: gitSourceSpec}
 			}
-			if boundResource.Version != "" {
-				gitResource.Revision = boundResource.Version
+		case v1alpha1.PipelineResourceTypeCluster:
+			{
+				clusterResource, err := v1alpha1.NewClusterResource(resource)
+				if err != nil {
+					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
+				}
+				clusterContainer := corev1.Container{
+					Name:  "kubeconfig",
+					Image: *kubeconfigImage,
+					Args: []string{
+						"-clusterConfig", clusterResource.String(),
+					},
+				}
+
+				buildSteps := append([]corev1.Container{clusterContainer}, build.Spec.Steps...)
+				build.Spec.Steps = buildSteps
 			}
-			// TODO(#123) support mulitple git inputs
-			break
 		}
 	}
 	if gitResource == nil {
 		return build, nil
 	}
-
-	gitSourceSpec := &buildv1alpha1.GitSourceSpec{
-		Url:      gitResource.URL,
-		Revision: gitResource.Revision,
-	}
-
-	build.Spec.Source = &buildv1alpha1.SourceSpec{Git: gitSourceSpec}
 
 	return build, nil
 }

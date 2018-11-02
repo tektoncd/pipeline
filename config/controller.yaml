@@ -30,6 +30,7 @@ spec:
         args: [
           "-logtostderr",
           "-stderrthreshold", "INFO",
+          "-kubeconfig-image", "github.com/knative/build-pipeline/cmd/kubeconfig",
         ]
         volumeMounts:
         - name: config-logging

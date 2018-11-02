@@ -90,43 +90,6 @@ func TestNewClusterResource(t *testing.T) {
 			Password: "pass",
 		},
 	}, {
-		desc: "token overrides username",
-		resource: &PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-cluster-resource",
-				Namespace: "foo",
-			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeCluster,
-				Params: []Param{{
-					Name:  "url",
-					Value: "http://10.10.10.10",
-				}, {
-					Name:  "cadata",
-					Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-				}, {
-					Name:  "username",
-					Value: "user",
-				}, {
-					Name:  "password",
-					Value: "pass",
-				}, {
-					Name:  "token",
-					Value: "my-token",
-				},
-				},
-			},
-		},
-		want: &ClusterResource{
-			Name:     "test-cluster-resource",
-			Type:     PipelineResourceTypeCluster,
-			URL:      "http://10.10.10.10",
-			CAData:   []byte("my-cluster-cert"),
-			Token:    "my-token",
-			Username: "",
-			Password: "",
-		},
-	}, {
 		desc: "no cert",
 		resource: &PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{

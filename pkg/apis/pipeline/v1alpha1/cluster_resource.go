@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	b64 "encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -31,8 +32,9 @@ type ClusterResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
 	// URL must be a host string
-	URL      string `json:"url"`
-	Revision string `json:"revision"`
+	URL         string `json:"url"`
+	Revision    string `json:"revision"`
+	ClusterName string `json:"clusterName"`
 	// Server requires Basic authentication
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -62,6 +64,8 @@ func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
 			clusterResource.URL = param.Value
 		case strings.EqualFold(param.Name, "Revision"):
 			clusterResource.Revision = param.Value
+		case strings.EqualFold(param.Name, "ClusterName"):
+			clusterResource.ClusterName = param.Value
 		case strings.EqualFold(param.Name, "Username"):
 			clusterResource.Username = param.Value
 		case strings.EqualFold(param.Name, "Password"):
@@ -79,11 +83,6 @@ func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
 		}
 	}
 
-	if clusterResource.Token != "" {
-		clusterResource.Username = ""
-		clusterResource.Password = ""
-	}
-
 	if len(clusterResource.CAData) == 0 {
 		clusterResource.Insecure = true
 	}
@@ -93,14 +92,22 @@ func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
 
 // ClusterConfig return a config object that can be used to get Clientset for that cluster.
 func (s ClusterResource) ClusterConfig() *rest.Config {
+	user := s.Username
+	pass := s.Password
+
+	if s.Token != "" {
+		user = ""
+		pass = ""
+	}
+
 	return &rest.Config{
 		Host: s.URL,
 		TLSClientConfig: rest.TLSClientConfig{
 			Insecure: s.Insecure,
 			CAData:   s.CAData,
 		},
-		Username:    s.Username,
-		Password:    s.Password,
+		Username:    user,
+		Password:    pass,
 		BearerToken: s.Token,
 	}
 }
@@ -141,4 +148,9 @@ func (s *ClusterResource) Replacements() map[string]string {
 		"insecure": strconv.FormatBool(s.Insecure),
 		"cadata":   string(s.CAData),
 	}
+}
+
+func (s ClusterResource) String() string {
+	json, _ := json.Marshal(s)
+	return string(json)
 }
