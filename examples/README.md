@@ -52,7 +52,7 @@ This task then calls `docker run` which will run the test code. This follows the
 
 ### Example Runs
 
-The [invocations](./invocations/) dir contains an example [TaskRun](../docs/Concepts.md#taskrun) and an example [PipelineRun](../docs/Concepts.md#pipelinerun).
+The [invocations](./invocations/) directory contains an example [TaskRun](../docs/Concepts.md#taskrun) and an example [PipelineRun](../docs/Concepts.md#pipelinerun).
 
 [run-kritis-test.yaml](./invocations/run-kritis-test.yaml) shows an example of how to manually run kritis unit test off your development branch.
 
