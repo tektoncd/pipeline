@@ -43,7 +43,7 @@ const (
 	PipelineResourceTypeCluster PipelineResourceType = "cluster"
 )
 
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeGCS, PipelineResourceTypeImage}
+var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeGCS, PipelineResourceTypeImage, PipelineResourceTypeCluster}
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {
@@ -128,6 +128,8 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 		return NewGitResource(r)
 	case PipelineResourceTypeImage:
 		return NewImageResource(r)
+	case PipelineResourceTypeCluster:
+		return NewClusterResource(r)
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }
