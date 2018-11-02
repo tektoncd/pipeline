@@ -21,7 +21,7 @@ spec:
             - name: runMake
               image: ubuntu
               command: ['make']
-              args: ['${makeTarget}']
+              args: ['${inputs.params.makeTarget}']
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -34,9 +34,9 @@ spec:
         resources:
            - name: workspace
              type: git
+           - name: testImage
+             type: image
         params:
-            - name: testImage
-              description: The image to use while running the test
             - name: testCommand
               description: The command to run on the image
             - name: testArgs
@@ -49,9 +49,9 @@ spec:
     buildSpec:
         steps:
             - name: runTests
-              image: '${testImage}'
-              command: ['${testCommand}']
-              args: ['${testArgs}']
+              image: docker
+              command: ['${inputs.resources.params.testCommand}']
+              args: ['${inputs.resources.params.testArgs}']
               volumeMounts:
               - name: gac
                 mountPath: gac.json
@@ -62,10 +62,10 @@ spec:
         volumes:
             - name: gac
               hostPath:
-                path: ${workspace}/config/gac.json
+                path: /workspace/config/gac.json
             - name: cloudconfig
               hostPath:
-                path: ${workspace}/config/gcloud
+                path: /workspace/config/gcloud
             - name: dockerSocket
               hostPath:
                 path: /var/run/docker.sock

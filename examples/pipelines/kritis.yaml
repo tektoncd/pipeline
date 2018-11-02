@@ -9,32 +9,37 @@ spec:
         taskRef:
           name: make
         inputSourceBindings:
-          - name: workspace # bind to the name in the task
+          - name: workspace
             resourceRef:
               name: kritis-resources-git
         params:
           - name: makeTarget
             value: test
+
       - name: push-kritis               # 2.  Build And Push Tests
         taskRef:
           name: build-push
         inputSourceBindings:
-          - name: workspace # bind to the name in the task
+          - name: workspace
             resourceRef:
               name: kritis-resources-git
             passedConstraints: [unit-test-kritis]
         outputSourceBindings:
-          - name: builtImage # bind to the name in the task
+          - name: builtImage
             resourceRef:
               name: kritis-resources-image
         params:
           - name: pathToDockerfile
             value: deploy/Dockerfile
+
       - name: deploy-test-env           # 3. Finally Deploy to Test environment
         taskRef:
           name: deploy-with-helm
         inputSourceBindings:
           - name: workspace
+            resourceRef:
+              name: kritis-resources-git
+          - name: builtImage
             resourceRef:
               name: kritis-resources-image
             passedConstraints: [push-kritis]
@@ -44,14 +49,17 @@ spec:
         clusterBindings:
           - inputName: targetCluster
             key: testCluster
+
       - name: integration-test          # 4. Run Integration Tests in test cluster
         taskRef:
           name: integration-test-in-docker
         inputSourceBindings:
           - name: workspace
             resourceRef:
-                name: kritis-resources-test-git
+                name: kritis-resources-git
             passedConstraints: [deploy-test-env]
         params:
           - name: testArgs
             value: "-e REMOTE_INTEGRATION=true"
+          - name: testCommand
+            value: "make integration-in-docker"
