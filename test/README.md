@@ -175,7 +175,7 @@ This library exists partially in this directory and partially in
 
 The libs in this dir can:
 
-* [`init.go`](./init.go) initializes anything needed globally be the tests
+* [`init_test.go`](./init_test.go) initializes anything needed globally be the tests
 * [Get access to client objects](#get-access-to-client-objects)
 * [Generate random names](#generate-random-names)
 * [Poll Pipeline resources](#poll-pipeline-resources)

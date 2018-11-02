@@ -36,7 +36,7 @@ We have 2 example [Pipelines](../README.md#pipeline) in [./pipelines](./pipeline
 
 ## Example Tasks
 
-* Example [Tasks](../../README.md#task) are in:
+* Example [Tasks](../docs/Concepts.md#task) are in:
   * [build_task.yaml](build_task.yaml)
   * [deploy_tasks.yaml](deploy_tasks.yaml)
   * [test_tasks.yaml](test_tasks.yaml)
@@ -52,7 +52,7 @@ This task then calls `docker run` which will run the test code. This follows the
 
 ### Example Runs
 
-The [runs](./runs/) dir contains an example [TaskRun](../README.md#taskrun) and an example [PipelineRun](../README.md#pipelinerun).
+The [invocations](./invocations/) dir contains an example [TaskRun](../docs/Concepts.md#taskrun) and an example [PipelineRun](../docs/Concepts.md#pipelinerun).
 
 [run-kritis-test.yaml](./invocations/run-kritis-test.yaml) shows an example of how to manually run kritis unit test off your development branch.
 
