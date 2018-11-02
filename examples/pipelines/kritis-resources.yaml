@@ -10,26 +10,13 @@ spec:
     value: https://github.com/grafeas/kritis
   - name: revision
     value: master
----    
-apiVersion: pipeline.knative.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: kritis-resources-test-git
-  namespace: default
-spec:    
-  type: git
-  params:
-  - name: revision
-    value: master
-  - name: url
-    value: https://github.com/grafeas/kritis-test  
----    
+---
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: kritis-resources-image
   namespace: default
-spec:  
+spec:
   type: image
   params:
   - name: url
