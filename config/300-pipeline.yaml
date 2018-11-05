@@ -16,8 +16,3 @@ spec:
     - build-pipeline
   scope: Namespaced
   version: v1alpha1
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: null
