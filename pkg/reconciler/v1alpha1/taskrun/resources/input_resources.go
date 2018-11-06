@@ -28,7 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var kubeconfigImage = flag.String("kubeconfig-image", "override-with-kubeconfig:latest", "The container image containing our kubeconfig binary.")
+var kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
 
 func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunResourceVersion) (*v1alpha1.TaskRunResourceVersion, error) {
 	for _, br := range boundResources {
@@ -78,7 +78,6 @@ func AddInputResource(
 					Url:      gitResource.URL,
 					Revision: gitResource.Revision,
 				}
-
 				build.Spec.Source = &buildv1alpha1.SourceSpec{Git: gitSourceSpec}
 			}
 		case v1alpha1.PipelineResourceTypeCluster:
@@ -88,7 +87,7 @@ func AddInputResource(
 					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
 				}
 
-				envVars := []corev1.EnvVar{}
+				var envVars []corev1.EnvVar
 				for _, sec := range clusterResource.Secrets {
 					ev := corev1.EnvVar{
 						Name: strings.ToUpper(sec.FieldName),
@@ -106,7 +105,7 @@ func AddInputResource(
 
 				clusterContainer := corev1.Container{
 					Name:  "kubeconfig",
-					Image: *kubeconfigImage,
+					Image: *kubeconfigWriterImage,
 					Args: []string{
 						"-clusterConfig", clusterResource.String(),
 					},

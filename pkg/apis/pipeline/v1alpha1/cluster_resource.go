@@ -22,12 +22,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"k8s.io/client-go/rest"
 )
 
-// ClusterResource is an endpoint from which to get data which is required
-// by a Build/Task for context (e.g. a repo from which to build an image).
+// ClusterResource represents a cluster configuration (kubeconfig)
+// that can be accessed by tasks in the pipeline
 type ClusterResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
@@ -97,28 +95,6 @@ func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
 	}
 
 	return &clusterResource, nil
-}
-
-// ClusterConfig return a config object that can be used to get Clientset for that cluster.
-func (s ClusterResource) ClusterConfig() *rest.Config {
-	user := s.Username
-	pass := s.Password
-
-	if s.Token != "" {
-		user = ""
-		pass = ""
-	}
-
-	return &rest.Config{
-		Host: s.URL,
-		TLSClientConfig: rest.TLSClientConfig{
-			Insecure: s.Insecure,
-			CAData:   s.CAData,
-		},
-		Username:    user,
-		Password:    pass,
-		BearerToken: s.Token,
-	}
 }
 
 // GetName returns the name of the resource

@@ -16,8 +16,6 @@ package v1alpha1
 import (
 	"testing"
 
-	"k8s.io/client-go/rest"
-
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -28,7 +26,7 @@ func TestNewClusterResource(t *testing.T) {
 		resource *PipelineResource
 		want     *ClusterResource
 	}{{
-		desc: "basic resource",
+		desc: "basic cluster resource",
 		resource: &PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-cluster-resource",
@@ -57,7 +55,7 @@ func TestNewClusterResource(t *testing.T) {
 			Token:  "my-token",
 		},
 	}, {
-		desc: "no token",
+		desc: "resource with password instead of token",
 		resource: &PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-cluster-resource",
@@ -90,7 +88,7 @@ func TestNewClusterResource(t *testing.T) {
 			Password: "pass",
 		},
 	}, {
-		desc: "no cert",
+		desc: "set insecure flag to true when there is no cert",
 		resource: &PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-cluster-resource",
@@ -128,13 +126,13 @@ func TestNewClusterResource(t *testing.T) {
 	}
 }
 
-func TestGetClusterConfig(t *testing.T) {
+func TestSecrets(t *testing.T) {
 	for _, c := range []struct {
 		desc     string
 		resource *PipelineResource
-		want     *rest.Config
+		want     *ClusterResource
 	}{{
-		desc: "basic resource",
+		desc: "basic resource with secrets",
 		resource: &PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-cluster-resource",
@@ -145,31 +143,38 @@ func TestGetClusterConfig(t *testing.T) {
 				Params: []Param{{
 					Name:  "url",
 					Value: "http://10.10.10.10",
+				}},
+				SecretParams: []SecretParam{{
+					FieldName:  "cadata",
+					SecretKey:  "cadatakey",
+					SecretName: "secret1",
 				}, {
-					Name:  "cadata",
-					Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-				}, {
-					Name:  "token",
-					Value: "my-token",
-				},
-				},
+					FieldName:  "token",
+					SecretKey:  "tokenkey",
+					SecretName: "secret1",
+				}},
 			},
 		},
-		want: &rest.Config{
-			Host: "http://10.10.10.10",
-			TLSClientConfig: rest.TLSClientConfig{
-				Insecure: false,
-				CAData:   []byte("my-cluster-cert"),
-			},
-			BearerToken: "my-token",
+		want: &ClusterResource{
+			Name: "test-cluster-resource",
+			Type: PipelineResourceTypeCluster,
+			URL:  "http://10.10.10.10",
+			Secrets: []SecretParam{{
+				FieldName:  "cadata",
+				SecretKey:  "cadatakey",
+				SecretName: "secret1",
+			}, {
+				FieldName:  "token",
+				SecretKey:  "tokenkey",
+				SecretName: "secret1",
+			}},
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			cr, err := NewClusterResource(c.resource)
+			got, err := NewClusterResource(c.resource)
 			if err != nil {
-				t.Errorf("Test: %q; TestGetClusterConfig() error = %v", c.desc, err)
+				t.Errorf("Test: %q; TestNewClusterResource() error = %v", c.desc, err)
 			}
-			got := cr.ClusterConfig()
 			if d := cmp.Diff(got, c.want); d != "" {
 				t.Errorf("Diff:\n%s", d)
 			}
