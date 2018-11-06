@@ -47,6 +47,8 @@ type ClusterResource struct {
 	// CAData holds PEM-encoded bytes (typically read from a root certificates bundle).
 	// CAData takes precedence over CAFile
 	CAData []byte `json:"cadata"`
+	//Secrets holds a struct to indicate a field name and correpsonding secret name to populate it
+	Secrets []SecretParam `json:"secrets"`
 }
 
 // NewClusterResource create a new k8s cluster resource to pass to a pipeline task
@@ -82,9 +84,16 @@ func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
 			}
 		}
 	}
+	clusterResource.Secrets = r.Spec.SecretParams
 
 	if len(clusterResource.CAData) == 0 {
 		clusterResource.Insecure = true
+		for _, secret := range clusterResource.Secrets {
+			if strings.EqualFold(secret.FieldName, "CAData") {
+				clusterResource.Insecure = false
+				break
+			}
+		}
 	}
 
 	return &clusterResource, nil
@@ -134,6 +143,9 @@ func (s *ClusterResource) GetURL() string {
 
 // GetParams returns the resoruce params
 func (s ClusterResource) GetParams() []Param { return []Param{} }
+
+// GetSecrets returns an array with field name and the corresponding secret to populate it
+func (s ClusterResource) GetSecrets() []SecretParam { return s.Secrets }
 
 // Replacements is used for template replacement on a ClusterResource inside of a Taskrun.
 func (s *ClusterResource) Replacements() map[string]string {
