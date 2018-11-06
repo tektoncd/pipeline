@@ -19,6 +19,7 @@ package resources
 import (
 	"flag"
 	"fmt"
+	"strings"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
@@ -86,12 +87,30 @@ func AddInputResource(
 				if err != nil {
 					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
 				}
+
+				envVars := []corev1.EnvVar{}
+				for _, sec := range clusterResource.Secrets {
+					ev := corev1.EnvVar{
+						Name: strings.ToUpper(sec.FieldName),
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: sec.SecretName,
+								},
+								Key: sec.SecretKey,
+							},
+						},
+					}
+					envVars = append(envVars, ev)
+				}
+
 				clusterContainer := corev1.Container{
 					Name:  "kubeconfig",
 					Image: *kubeconfigImage,
 					Args: []string{
 						"-clusterConfig", clusterResource.String(),
 					},
+					Env: envVars,
 				}
 
 				buildSteps := append([]corev1.Container{clusterContainer}, build.Spec.Steps...)

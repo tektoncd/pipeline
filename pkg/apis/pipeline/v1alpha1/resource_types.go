@@ -54,10 +54,20 @@ type PipelineResourceInterface interface {
 	Replacements() map[string]string
 }
 
+// SecretParam indicates which secret can be used to populate a field of the resource
+type SecretParam struct {
+	FieldName  string `json:"fieldName"`
+	SecretKey  string `json:"secretKey"`
+	SecretName string `json:"secretName"`
+}
+
 // PipelineResourceSpec defines  an individual resources used in the pipeline.
 type PipelineResourceSpec struct {
 	Type   PipelineResourceType `json:"type"`
 	Params []Param              `json:"params"`
+	// Secrets to fetch to populate some of resource fields
+	// +optional
+	SecretParams []SecretParam `json:"secrets,omitempty"`
 	// +optional
 	Generation int64 `json:"generation,omitempty"`
 }

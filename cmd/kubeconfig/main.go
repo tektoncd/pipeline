@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
 
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/clientcmd"
@@ -57,6 +59,18 @@ func createKubeconfigFile(resource *v1alpha1.ClusterResource, logger *zap.Sugare
 		Server:                   resource.URL,
 		InsecureSkipTLSVerify:    resource.Insecure,
 		CertificateAuthorityData: resource.CAData,
+	}
+	if caFromEnv := os.Getenv("CADATA"); caFromEnv != "" {
+		cluster.CertificateAuthorityData = []byte(caFromEnv)
+	}
+	if tokenFromEnv := os.Getenv("TOKEN"); tokenFromEnv != "" {
+		resource.Token = strings.TrimRight(tokenFromEnv, "\r\n")
+	}
+	if usernameFromEnv := os.Getenv("USERNAME"); usernameFromEnv != "" {
+		resource.Username = usernameFromEnv
+	}
+	if passwordFromEnv := os.Getenv("PASSWORD"); passwordFromEnv != "" {
+		resource.Password = passwordFromEnv
 	}
 	//only one authentication method is allowed for user
 	user := resource.Username
