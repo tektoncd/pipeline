@@ -32,12 +32,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
-const (
-	threadsPerController = 2
-)
-
 var (
-	clusterConfig = flag.String("clusterConfig", "", "Configuration of a cluster. Only required if out-of-cluster.")
+	clusterConfig = flag.String("clusterConfig", "", "json string with the configuration of a cluster based on values from a cluster resource. Only required for out-of-cluster clusters.")
 )
 
 func main() {
@@ -72,7 +68,7 @@ func createKubeconfigFile(resource *v1alpha1.ClusterResource, logger *zap.Sugare
 	if passwordFromEnv := os.Getenv("PASSWORD"); passwordFromEnv != "" {
 		resource.Password = passwordFromEnv
 	}
-	//only one authentication method is allowed for user
+	//only one authentication technique per user is allowed in a kubeconfig, so clear out the password if a token is provided
 	user := resource.Username
 	pass := resource.Password
 	if resource.Token != "" {
@@ -100,4 +96,5 @@ func createKubeconfigFile(resource *v1alpha1.ClusterResource, logger *zap.Sugare
 	if err := clientcmd.WriteToFile(*c, destinationFile); err != nil {
 		logger.Fatalf("Error writing kubeconfig to file: %v", err)
 	}
+	logger.Infof("kubeconfig file successfully written to %s", destinationFile)
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/logging"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -46,20 +47,78 @@ func setUp() {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
-			Params: []v1alpha1.Param{
-				v1alpha1.Param{
-					Name:  "Url",
-					Value: "https://github.com/grafeas/kritis",
-				},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "Url",
+				Value: "https://github.com/grafeas/kritis",
+			}},
 		},
 	}
 	pipelineResourceInformer.Informer().GetIndexer().Add(res)
+
+	clusterRes := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cluster2",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "cluster",
+			Params: []v1alpha1.Param{{
+				Name:  "Url",
+				Value: "http://10.10.10.10",
+			}},
+			SecretParams: []v1alpha1.SecretParam{{
+				FieldName:  "cadata",
+				SecretKey:  "cadatakey",
+				SecretName: "secret1",
+			}},
+		},
+	}
+	pipelineResourceInformer.Informer().GetIndexer().Add(clusterRes)
+
+	clusterResText := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cluster3",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "cluster",
+			Params: []v1alpha1.Param{{
+				Name:  "Url",
+				Value: "http://10.10.10.10",
+			}, {
+				Name: "CAdata",
+				// echo "my-ca-cert" | base64
+				Value: "bXktY2EtY2VydAo=",
+			}},
+		},
+	}
+	pipelineResourceInformer.Informer().GetIndexer().Add(clusterResText)
 }
 
+func build() *buildv1alpha1.Build {
+	boolTrue := true
+	return &buildv1alpha1.Build{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Build",
+			APIVersion: "build.knative.dev/v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "build-from-repo",
+			Namespace: "marshmallow",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				},
+			},
+		},
+		Spec: buildv1alpha1.BuildSpec{},
+	}
+}
 func TestAddResourceToBuild(t *testing.T) {
 	boolTrue := true
-
 	task := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-from-repo",
@@ -96,25 +155,6 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 		},
 	}
-	build := &buildv1alpha1.Build{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Build",
-			APIVersion: "build.knative.dev/v1alpha1"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "build-from-repo",
-			Namespace: "marshmallow",
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				},
-			},
-		},
-		Spec: buildv1alpha1.BuildSpec{},
-	}
 
 	for _, c := range []struct {
 		desc    string
@@ -127,7 +167,7 @@ func TestAddResourceToBuild(t *testing.T) {
 		desc:    "simple",
 		task:    task,
 		taskRun: taskRun,
-		build:   build,
+		build:   build(),
 		wantErr: false,
 		want: &buildv1alpha1.Build{
 			TypeMeta: metav1.TypeMeta{
@@ -178,7 +218,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build,
+		build:   build(),
 		wantErr: false,
 		want: &buildv1alpha1.Build{
 			TypeMeta: metav1.TypeMeta{
@@ -228,7 +268,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build,
+		build:   build(),
 		wantErr: false,
 		want: &buildv1alpha1.Build{
 			TypeMeta: metav1.TypeMeta{
@@ -275,13 +315,155 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 		},
 		taskRun: taskRun,
-		build:   build,
+		build:   build(),
 		wantErr: true,
 		want:    nil,
-	},
-	} {
-		setUp()
+	}, {
+		desc: "cluster resource with plain text",
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{
+						v1alpha1.TaskResource{
+							Name: "target-cluster",
+							Type: "cluster",
+						},
+					},
+				},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: v1alpha1.TaskRef{
+					Name: "build-from-repo",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskRunResourceVersion{{
+						Name: "target-cluster",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "cluster3",
+						},
+					}},
+				},
+			},
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "pipeline.knative.dev/v1alpha1",
+						Kind:               "TaskRun",
+						Name:               "build-from-repo-run",
+						Controller:         &boolTrue,
+						BlockOwnerDeletion: &boolTrue,
+					},
+				},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:  "kubeconfig",
+					Image: "override-with-kubeconfig-writer:latest",
+					Args: []string{
+						"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","clusterName":"","username":"","password":"","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
+					},
+				}},
+			},
+		},
+	}, {
+		desc: "cluster resource with secrets",
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{
+						v1alpha1.TaskResource{
+							Name: "target-cluster",
+							Type: "cluster",
+						},
+					},
+				},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: v1alpha1.TaskRef{
+					Name: "build-from-repo",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskRunResourceVersion{{
+						Name: "target-cluster",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "cluster2",
+						},
+					}},
+				},
+			},
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "pipeline.knative.dev/v1alpha1",
+						Kind:               "TaskRun",
+						Name:               "build-from-repo-run",
+						Controller:         &boolTrue,
+						BlockOwnerDeletion: &boolTrue,
+					},
+				},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:  "kubeconfig",
+					Image: "override-with-kubeconfig-writer:latest",
+					Args: []string{
+						"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","clusterName":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
+					},
+					Env: []corev1.EnvVar{{
+						ValueFrom: &corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "secret1",
+								},
+								Key: "cadatakey",
+							},
+						},
+						Name: "CADATA",
+					}},
+				}},
+			},
+		},
+	}} {
 		t.Run(c.desc, func(t *testing.T) {
+			setUp()
 			got, err := AddInputResource(c.build, c.task, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; NewControllerConfigFromConfigMap() error = %v, WantErr %v", c.desc, err, c.wantErr)
