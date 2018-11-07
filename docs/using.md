@@ -238,6 +238,113 @@ Use the following example to understand the syntax and strucutre of a Git Resour
       serviceAccount: build-bot
     ```
 
+### Cluster Resource
+
+Cluster Resource represents a Kubernetes cluster other than the current cluster the pipleine 
+CRD is running on. A common use case for this resource is to deploy your application/function 
+on different clusters. 
+
+The resource will use the provided parameters to create a [kubeconfig](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/) file 
+that can be used by other steps in the pipeline task to access the target cluster. The kubeconfig will be 
+placed in `/workspace/<your-cluster-name>/kubeconfig` on your task container
+
+The Cluster resource has the following parameters:
+ * URL (required): Host url of the master node         
+ * ClusterName (required): name given to cluster, will be used in the kubeconfig and also as part of the path to the kubeconfig file 
+ * Username (required): the user with access to the cluster 
+ * Password: to be used for clusters with basic auth
+ * Token: to be used for authenication, if present will be used ahead of the password
+ * Insecure: to indicate server should be accessed without verifying the TLS certificate. 
+ * CAData (required): holds PEM-encoded bytes (typically read from a root certificates bundle).
+
+Note: Since only one authentication technique is allowed per user, either a token or a password should be provided, if both are provided, the password will be ignored.
+
+The following example shows the syntax and structure of a Cluster Resource
+
+```
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: target-cluster
+spec:  
+  type: cluster
+  params:
+  - name: clusterName
+    value: test-cluster  
+  - name: url
+    value: https://10.10.10.10    # url to the cluster master node   
+  - name: cadata
+    value: LS0tLS1CRUdJTiBDRVJ.....
+  - name: token
+    value: ZXlKaGJHY2lPaU....
+```
+
+For added security, you can add the sensetive information in a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and populate the kubeconfig from them
+
+For example, create a secret like the following example
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: target-cluster-secrets
+data:
+  cadatakey: LS0tLS1CRUdJTiBDRVJUSUZ......tLQo=
+  tokenkey: ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbX....M2ZiCg==
+```
+
+and then apply secrets to the cluster resource 
+
+```
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: target-test-cluster
+spec:  
+  type: cluster
+  params:
+  - name: clusterName
+    value: test-cluster     
+  - name: url
+    value: https://10.10.10.10 
+  - name: username
+    value: admin  
+  secrets:  
+  - fieldName: token
+    secretKey: tokenKey
+    secretName:  target-cluster-secrets
+  - fieldName: cadata
+    secretKey: cadataKey
+    secretName:  target-cluster-secrets    
+```
+
+Example usage of the cluster resource in a task
+
+```
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: deploy-image
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+    - name: dockerimage
+      type: image
+    - name: testcluster
+      type: cluster    
+  buildSpec:
+    steps:
+    - name: deploy
+      image: image-wtih-kubectl
+      command: ['bash']
+      args:
+      - '-c'
+      - kubectl --kubeconfig /workspace/${inputs.resources.testCluster.clusterName}/kubeconfig --context ${inputs.resources.testCluster.clusterName} apply -f /workspace/service.yaml'
+```
+
 ## Troubleshooting
 
 All objects created by the build-pipeline controller show the lineage of where
