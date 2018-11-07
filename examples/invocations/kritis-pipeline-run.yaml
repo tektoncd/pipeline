@@ -4,9 +4,9 @@ metadata:
   name: kritis-pipeline-run-12321312984
   namespace: default
 spec:
-    pipelineRef:
-        name: kritis-pipeline
-    pipelineParamsRef:
-        name: pipelineparams-sample
-    triggerRef:
-        type: manual
+  pipelineRef:
+    name: kritis-pipeline
+  pipelineParamsRef:
+    name: pipelineparams-sample
+  triggerRef:
+    type: manual
