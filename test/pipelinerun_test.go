@@ -29,7 +29,6 @@ import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -134,7 +133,7 @@ func TestPipelineRun(t *testing.T) {
 			// Note that getting a new logger has the side effect of setting the global metrics logger as well,
 			// this means that metrics emitted from these tests will have the wrong test name attached. We should
 			// revisit this if we ever start using those metrics (maybe use a different metrics gatherer).
-			logger := logging.GetContextLogger(t.Name())
+			logger := getContextLogger(t.Name())
 			c, namespace := setup(t, logger)
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
@@ -178,10 +177,10 @@ func TestPipelineRun(t *testing.T) {
 				}
 				for name, key := range map[string]string{
 					hwPipelineRunName: pipeline.PipelineRunLabelKey,
-					hwPipelineName: pipeline.PipelineLabelKey,
+					hwPipelineName:    pipeline.PipelineLabelKey,
 				} {
 					expectedName := getName(name, i)
-					lbl := pipeline.GroupName+key
+					lbl := pipeline.GroupName + key
 					if val := r.Labels[lbl]; val != expectedName {
 						t.Errorf("Expected label %s=%s but got %s", lbl, expectedName, val)
 					}
