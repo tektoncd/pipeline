@@ -20,10 +20,12 @@ package test
 import (
 	"flag"
 	"fmt"
-	"github.com/ghodss/yaml"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+
+	"github.com/ghodss/yaml"
 
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
@@ -33,6 +35,20 @@ import (
 	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
+
+var metricMutex *sync.Mutex = &sync.Mutex{}
+
+// getContextLogger is a temporary workaround for the fact that `logging.GetContextLogger`
+// manipulates global state and so causes race conditions. Once this fix is contributed
+// upstream we can remove this wrapper.
+func getContextLogger(n string) *logging.BaseLogger {
+	// We need to use a mutext to access `GetContextLogger` b/c it set global state for
+	// collecting metrics :'(
+	metricMutex.Lock()
+	logger := logging.GetContextLogger(n)
+	metricMutex.Unlock()
+	return logger
+}
 
 func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
 	namespace := AppendRandomString("arendelle")
@@ -175,4 +191,3 @@ func getCRDYaml(cs *clients) ([]byte, error) {
 	}
 	return output, nil
 }
-
