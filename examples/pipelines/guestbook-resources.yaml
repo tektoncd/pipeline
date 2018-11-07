@@ -4,12 +4,12 @@ metadata:
   name: guestbook-resources-git
   namespace: default
 spec:
-    type: git
-    params:
-    - name: url
-      value: github.com/kubernetes/examples
-    - name: revision
-      value: HEAD      
+  type: git
+  params:
+  - name: url
+    value: github.com/kubernetes/examples
+  - name: revision
+    value: HEAD      
 ---      
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
@@ -17,12 +17,12 @@ metadata:
   name: guestbook-resources-redis-docker
   namespace: default
 spec:
-    type: git
-    params:
-      - name: url
-        value: github.com/GoogleCloudPlatform/redis-docker/
-      - name: revision
-        value: HEAD
+  type: git
+  params:
+  - name: url
+    value: github.com/GoogleCloudPlatform/redis-docker/
+  - name: revision
+    value: HEAD
 ---        
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
@@ -30,10 +30,10 @@ metadata:
   name: guestbookstagingimage
   namespace: default
 spec:        
-    type: image
-    params:
-      - name: url
-        value: gcr.io/demo-staging
+  type: image
+  params:
+  - name: url
+    value: gcr.io/demo-staging
 ---        
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
@@ -41,7 +41,26 @@ metadata:
   name: redisstagingimage
   namespace: default
 spec:        
-    type: image
-    params:
-      - name: url
-        value: gcr.io/redis-demo-staging       
+  type: image
+  params:
+  - name: url
+    value: gcr.io/redis-demo-staging
+---    
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: testcluster
+  namespace: default
+spec:  
+  type: cluster
+  params:
+  - name: clusterName
+    value: testCluster
+  - name: url
+    value: https://prod.gke.corp.com  
+  - name: cadata
+    value: LS0tLS1......
+  - name: token
+    value: eyJhbGciOiJ.....
+  - name: username
+    value: admin

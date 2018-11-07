@@ -21,3 +21,22 @@ spec:
   params:
   - name: url
     value: gcr.io/staging-image
+---    
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: kritistestcluster
+  namespace: default
+spec:  
+  type: cluster
+  params:
+  - name: clusterName
+    value: testCluster
+  - name: url
+    value: https://prod.gke.corp.com  
+  - name: cadata
+    value: LS0tLS1......
+  - name: token
+    value: eyJhbGciOiJ.....
+  - name: username
+    value: admin    

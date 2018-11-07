@@ -5,18 +5,18 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: unit-test-kritis-feature-x
 spec:
-    taskRef:
-        name: make
-    trigger:
-        triggerRef:
-            type: PipelineRun
-            name: kritis-pipeline-run-12321312984
-    inputs:
-        resourcesVersion:
-          - resourceRef:
-              name: kritis-resources-git
-            version: 4da79b91e8e37ea441cfe4972565e2184c1a127f
-            name: workspace
-        params:
-            - name: 'makeTarget'
-              value: 'test'
+  taskRef:
+    name: make
+  trigger:
+    triggerRef:
+      type: PipelineRun
+      name: kritis-pipeline-run-12321312984
+  inputs:
+    resourcesVersion:
+    - resourceRef:
+        name: kritis-resources-git
+      version: 4da79b91e8e37ea441cfe4972565e2184c1a127f
+      name: workspace
+    params:
+    - name: 'makeTarget'
+      value: 'test'
