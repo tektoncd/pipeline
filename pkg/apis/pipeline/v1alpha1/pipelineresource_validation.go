@@ -45,6 +45,17 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 			}
 		}
 
+		for _, secret := range r.Spec.SecretParams {
+			switch {
+			case strings.EqualFold(secret.FieldName, "clusterName"):
+				clusterNameFound = true
+			case strings.EqualFold(secret.FieldName, "Username"):
+				usernameFound = true
+			case strings.EqualFold(secret.FieldName, "CAData"):
+				cadataFound = true
+			}
+		}
+
 		if !clusterNameFound {
 			return apis.ErrMissingField("clusterName param")
 		}
