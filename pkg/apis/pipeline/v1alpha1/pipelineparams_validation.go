@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/knative/pkg/apis"
@@ -34,16 +33,6 @@ func (p *PipelineParams) Validate() *apis.FieldError {
 func (ps *PipelineParamsSpec) Validate() *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineParams{}) {
 		return apis.ErrMissingField(apis.CurrentField)
-	}
-	for _, c := range ps.Clusters {
-		// If Clusters are specified, their URLs should be valid
-		if err := validateURL(c.Endpoint, fmt.Sprintf("pipelineparamsspec.Clusters.%s.Endpoint", c.Name)); err != nil {
-			return err
-		}
-		// And the cluster type should be valid
-		if err := validateClusterType(c.Type, fmt.Sprintf("pipelineparamsspec.Clusters.%s.Type", c.Name)); err != nil {
-			return err
-		}
 	}
 
 	// PipelineParams must have valid Results
@@ -85,15 +74,6 @@ func validateURL(u, path string) *apis.FieldError {
 		return apis.ErrInvalidValue(u, path)
 	}
 	return nil
-}
-
-func validateClusterType(c ClusterType, path string) *apis.FieldError {
-	for _, a := range AllClusterTypes {
-		if a == c {
-			return nil
-		}
-	}
-	return apis.ErrInvalidValue(string(c), path)
 }
 
 func validateResultTargetType(r ResultTargetType, path string) *apis.FieldError {

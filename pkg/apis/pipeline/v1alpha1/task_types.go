@@ -72,9 +72,6 @@ type Inputs struct {
 	Resources []TaskResource `json:"resources,omitempty"`
 	// +optional
 	Params []TaskParam `json:"params,omitempty"`
-	// TODO(#68) a cluster and/or deployment should be a type of Resource
-	// +optional
-	Clusters []Cluster `json:"clusters,omitempty"`
 }
 
 // TaskParam defines arbitrary parameters needed by a task beyond typed inputs

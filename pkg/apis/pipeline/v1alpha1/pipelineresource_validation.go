@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"strings"
+
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -24,6 +26,34 @@ import (
 func (r *PipelineResource) Validate() *apis.FieldError {
 	if err := validateObjectMetadata(r.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
+	}
+
+	if r.Spec.Type == PipelineResourceTypeCluster {
+		var clusterNameFound, usernameFound, cadataFound bool
+		for _, param := range r.Spec.Params {
+			switch {
+			case strings.EqualFold(param.Name, "URL"):
+				if err := validateURL(param.Value, param.Value); err != nil {
+					return err
+				}
+			case strings.EqualFold(param.Name, "clusterName"):
+				clusterNameFound = true
+			case strings.EqualFold(param.Name, "Username"):
+				usernameFound = true
+			case strings.EqualFold(param.Name, "CAData"):
+				cadataFound = true
+			}
+		}
+
+		if !clusterNameFound {
+			return apis.ErrMissingField("clusterName param")
+		}
+		if !usernameFound {
+			return apis.ErrMissingField("username param")
+		}
+		if !cadataFound {
+			return apis.ErrMissingField("CAData param")
+		}
 	}
 	return nil
 }

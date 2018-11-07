@@ -67,9 +67,6 @@ type PipelineTask struct {
 	InputSourceBindings []SourceBinding `json:"inputSourceBindings,omitempty"`
 	// +optional
 	OutputSourceBindings []SourceBinding `json:"outputSourceBindings,omitempty"`
-	// TODO(#68) Cluster should become a type of Resource
-	// +optional
-	ClusterBindings []ClusterBinding `json:"clusterBindings,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
 }
@@ -78,15 +75,6 @@ type PipelineTask struct {
 type PipelineTaskParam struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
-}
-
-// ClusterBinding is used to bind a cluster from a PipelineParams to a cluster required
-// as an input for a task.
-type ClusterBinding struct {
-	// TODO(#68) We've switched to using `Name` instead of `Key` for fields like this.
-	Key string `json:"key"`
-	// InputName is the string the Task will use to identify this cluster in its inputs.
-	InputName string `json:"inputName"`
 }
 
 // SourceBinding is used to bind a Source from a PipelineParams to a source required

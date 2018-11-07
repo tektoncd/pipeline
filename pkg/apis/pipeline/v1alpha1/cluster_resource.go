@@ -126,15 +126,16 @@ func (s ClusterResource) GetSecrets() []SecretParam { return s.Secrets }
 // Replacements is used for template replacement on a ClusterResource inside of a Taskrun.
 func (s *ClusterResource) Replacements() map[string]string {
 	return map[string]string{
-		"name":     s.Name,
-		"type":     string(s.Type),
-		"url":      s.URL,
-		"revision": s.Revision,
-		"username": s.Username,
-		"password": s.Password,
-		"token":    s.Token,
-		"insecure": strconv.FormatBool(s.Insecure),
-		"cadata":   string(s.CAData),
+		"name":        s.Name,
+		"type":        string(s.Type),
+		"url":         s.URL,
+		"clusterName": s.ClusterName,
+		"revision":    s.Revision,
+		"username":    s.Username,
+		"password":    s.Password,
+		"token":       s.Token,
+		"insecure":    strconv.FormatBool(s.Insecure),
+		"cadata":      string(s.CAData),
 	}
 }
 
