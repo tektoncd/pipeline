@@ -30,63 +30,6 @@ func validResultTarget(name string) ResultTarget {
 	}
 }
 
-func TestClusterValidation(t *testing.T) {
-	tests := []struct {
-		name      string
-		Clusters  []Cluster
-		shouldErr bool
-	}{
-		{
-			name: "valid cluster",
-			Clusters: []Cluster{
-				Cluster{
-					Name: "cluster",
-					Type: "gke",
-				},
-			},
-		},
-		{
-			name: "valid cluster with endpoint",
-			Clusters: []Cluster{
-				Cluster{
-					Name:     "cluster",
-					Endpoint: validURL,
-					Type:     "gke",
-				},
-			},
-		},
-		{
-			name: "invalid cluster.type",
-			Clusters: []Cluster{
-				Cluster{
-					Name:     "cluster",
-					Endpoint: validURL,
-					Type:     "invalid",
-				},
-			},
-			shouldErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ps := &PipelineParamsSpec{
-				Clusters: tt.Clusters,
-				Results: Results{
-					Runs: validResultTarget("runs"),
-					Logs: validResultTarget("logs"),
-				},
-			}
-			err := ps.Validate()
-			if err == nil && tt.shouldErr {
-				t.Errorf("PipelineParamsSpec.Validate() did not return error.")
-			}
-			if err != nil && !tt.shouldErr {
-				t.Errorf("PipelineParamsSpec.Validate() returned unexpected error: %v", err)
-			}
-		})
-	}
-}
-
 func TestResultsValidation(t *testing.T) {
 	type fields struct {
 		Runs      ResultTarget

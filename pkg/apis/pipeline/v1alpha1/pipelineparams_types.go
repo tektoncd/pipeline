@@ -26,8 +26,6 @@ type PipelineParamsSpec struct {
 	ServiceAccount string  `json:"serviceAccount"`
 	Results        Results `json:"results"`
 	// +optional
-	Clusters []Cluster `json:"clusters,omitempty"`
-	// +optional
 	Generation int64 `json:"generation,omitempty"`
 }
 
@@ -57,25 +55,6 @@ type PipelineParams struct {
 
 // Assert that PipelineParams implements the GenericCRD interface.
 var _ webhook.GenericCRD = (*PipelineParams)(nil)
-
-// AllClusterTypes is a list of all ClusterTypes, used for validation
-var AllClusterTypes = []ClusterType{ClusterTypeGKE}
-
-// ClusterType represents the type of cluster,
-// so that the controller will know how to deploy to it.
-type ClusterType string
-
-const (
-	// ClusterTypeGKE indicates that the URL endpoint is a GKE cluster.
-	ClusterTypeGKE = "gke"
-)
-
-// Cluster contains information about the cluster on which task is being deployed
-type Cluster struct {
-	Name     string      `json:"name"`
-	Type     ClusterType `json:"type"`
-	Endpoint string      `json:"endpoint"`
-}
 
 // Results tells a pipeline where to persist the results of runnign the pipeline.
 type Results struct {
