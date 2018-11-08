@@ -19,44 +19,17 @@ package v1alpha1
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/knative/pkg/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestClusterValidation(t *testing.T) {
+func TestClusterResourceValidation_Invalid(t *testing.T) {
 	tests := []struct {
-		name      string
-		res       PipelineResource
-		shouldErr bool
+		name string
+		res  PipelineResource
+		want *apis.FieldError
 	}{
-		{
-			name: "valid cluster",
-			res: PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster-resource",
-					Namespace: "foo",
-				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeCluster,
-					Params: []Param{{
-						Name:  "url",
-						Value: "http://10.10.10.10",
-					}, {
-						Name:  "username",
-						Value: "admin",
-					}, {
-						Name:  "clusterName",
-						Value: "test-cluster",
-					}, {
-						Name:  "cadata",
-						Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-					}, {
-						Name:  "token",
-						Value: "my-token",
-					},
-					},
-				},
-			},
-		},
 		{
 			name: "cluster with invalid url",
 			res: PipelineResource{
@@ -73,9 +46,6 @@ func TestClusterValidation(t *testing.T) {
 						Name:  "username",
 						Value: "admin",
 					}, {
-						Name:  "clusterName",
-						Value: "test-cluster",
-					}, {
 						Name:  "cadata",
 						Value: "bXktY2x1c3Rlci1jZXJ0Cg",
 					}, {
@@ -85,7 +55,7 @@ func TestClusterValidation(t *testing.T) {
 					},
 				},
 			},
-			shouldErr: true,
+			want: apis.ErrInvalidValue("10.10.10", "URL"),
 		},
 		{
 			name: "cluster with missing username",
@@ -100,9 +70,6 @@ func TestClusterValidation(t *testing.T) {
 						Name:  "url",
 						Value: "http://10.10.10.10",
 					}, {
-						Name:  "clusterName",
-						Value: "test-cluster",
-					}, {
 						Name:  "cadata",
 						Value: "bXktY2x1c3Rlci1jZXJ0Cg",
 					}, {
@@ -112,34 +79,7 @@ func TestClusterValidation(t *testing.T) {
 					},
 				},
 			},
-			shouldErr: true,
-		},
-		{
-			name: "cluster with missing cluster name",
-			res: PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster-resource",
-					Namespace: "foo",
-				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeCluster,
-					Params: []Param{{
-						Name:  "url",
-						Value: "http://10.10.10.10",
-					}, {
-						Name:  "username",
-						Value: "admin",
-					}, {
-						Name:  "cadata",
-						Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-					}, {
-						Name:  "token",
-						Value: "my-token",
-					},
-					},
-				},
-			},
-			shouldErr: true,
+			want: apis.ErrMissingField("username param"),
 		},
 		{
 			name: "cluster with missing cadata",
@@ -154,9 +94,6 @@ func TestClusterValidation(t *testing.T) {
 						Name:  "url",
 						Value: "http://10.10.10.10",
 					}, {
-						Name:  "clusterName",
-						Value: "test-cluster",
-					}, {
 						Name:  "username",
 						Value: "admin",
 					}, {
@@ -166,18 +103,44 @@ func TestClusterValidation(t *testing.T) {
 					},
 				},
 			},
-			shouldErr: true,
+			want: apis.ErrMissingField("CAData param"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.res.Validate()
-			if err == nil && tt.shouldErr {
-				t.Errorf("PipleineResource.Validate() did not return error.")
-			}
-			if err != nil && !tt.shouldErr {
-				t.Errorf("PipleineResource.Validate() returned unexpected error: %v", err)
+			if d := cmp.Diff(err.Error(), tt.want.Error()); d != "" {
+				t.Errorf("PipleineResource.Validate/%s (-want, +got) = %v", tt.name, d)
 			}
 		})
+	}
+}
+
+func TestClusterResourceValidation_Valid(t *testing.T) {
+	res := &PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cluster-resource",
+			Namespace: "foo",
+		},
+		Spec: PipelineResourceSpec{
+			Type: PipelineResourceTypeCluster,
+			Params: []Param{{
+				Name:  "url",
+				Value: "http://10.10.10.10",
+			}, {
+				Name:  "username",
+				Value: "admin",
+			}, {
+				Name:  "cadata",
+				Value: "bXktY2x1c3Rlci1jZXJ0Cg",
+			}, {
+				Name:  "token",
+				Value: "my-token",
+			},
+			},
+		},
+	}
+	if err := res.Validate(); err != nil {
+		t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
 	}
 }

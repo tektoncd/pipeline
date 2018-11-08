@@ -113,25 +113,7 @@ func TestNewClusterResource(t *testing.T) {
 			Token:    "my-token",
 			Insecure: true,
 		},
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			got, err := NewClusterResource(c.resource)
-			if err != nil {
-				t.Errorf("Test: %q; TestNewClusterResource() error = %v", c.desc, err)
-			}
-			if d := cmp.Diff(got, c.want); d != "" {
-				t.Errorf("Diff:\n%s", d)
-			}
-		})
-	}
-}
-
-func TestSecrets(t *testing.T) {
-	for _, c := range []struct {
-		desc     string
-		resource *PipelineResource
-		want     *ClusterResource
-	}{{
+	}, {
 		desc: "basic resource with secrets",
 		resource: &PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{

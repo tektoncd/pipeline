@@ -29,7 +29,7 @@ spec:
         name: kritis-resources-image
     params:
     - name: pathToDockerfile
-      value: deploy/Dockerfil  
+      value: deploy/Dockerfile
   - name: deploy-test-env           # 3. Finally Deploy to Test environment
     taskRef:
       name: deploy-with-helm

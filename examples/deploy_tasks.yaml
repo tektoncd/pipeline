@@ -24,7 +24,8 @@ spec:
       command: ['helm']
       args:
         - 'install'
-        - '--kube-context=${inputs.resources.targetCluster.clusterName}'
+        - '--kubeconfig /workspace/${inputs.resource.targetCluster.Name}/kubeconfig'  
+        - '--kube-context=${inputs.resources.targetCluster.Name}'
         - '--set image=${inputs.resources.imageToDeploy.url}@${inputs.resources.imageToDeploy.digest}'
         - '${inputs.params.helmArgs}'
         - '${inputs.params.pathToHelmChart}'
@@ -69,8 +70,9 @@ spec:
       image: lachlanevenson/k8s-kubectl
       command: ['kubectl']
       args:
+      - '--kubeconfig /workspace/${inputs.resource.targetCluster.Name}/kubeconfig'  
       - '--use-context'
-      - '${inputs.resource.targetCluster.clusterName}'
+      - '${inputs.resource.targetCluster.Name}'
       - '--namespace'
       - '${inputs.resource.targetCluster.namespace}'
       - 'apply'

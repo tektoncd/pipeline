@@ -29,15 +29,13 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 	}
 
 	if r.Spec.Type == PipelineResourceTypeCluster {
-		var clusterNameFound, usernameFound, cadataFound bool
+		var usernameFound, cadataFound bool
 		for _, param := range r.Spec.Params {
 			switch {
 			case strings.EqualFold(param.Name, "URL"):
-				if err := validateURL(param.Value, param.Value); err != nil {
+				if err := validateURL(param.Value, "URL"); err != nil {
 					return err
 				}
-			case strings.EqualFold(param.Name, "clusterName"):
-				clusterNameFound = true
 			case strings.EqualFold(param.Name, "Username"):
 				usernameFound = true
 			case strings.EqualFold(param.Name, "CAData"):
@@ -47,8 +45,6 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 
 		for _, secret := range r.Spec.SecretParams {
 			switch {
-			case strings.EqualFold(secret.FieldName, "clusterName"):
-				clusterNameFound = true
 			case strings.EqualFold(secret.FieldName, "Username"):
 				usernameFound = true
 			case strings.EqualFold(secret.FieldName, "CAData"):
@@ -56,9 +52,6 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 			}
 		}
 
-		if !clusterNameFound {
-			return apis.ErrMissingField("clusterName param")
-		}
 		if !usernameFound {
 			return apis.ErrMissingField("username param")
 		}

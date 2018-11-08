@@ -54,13 +54,11 @@ metadata:
 spec:  
   type: cluster
   params:
-  - name: clusterName
-    value: testCluster
   - name: url
     value: https://prod.gke.corp.com  
   - name: cadata
-    value: LS0tLS1......
+    value: LS0tLS1......  # cert for your cluster
   - name: token
-    value: eyJhbGciOiJ.....
+    value: eyJhbGciOiJ.....  # token for the username specified 
   - name: username
     value: admin

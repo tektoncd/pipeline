@@ -249,8 +249,8 @@ that can be used by other steps in the pipeline task to access the target cluste
 placed in `/workspace/<your-cluster-name>/kubeconfig` on your task container
 
 The Cluster resource has the following parameters:
+ * Name: The name of the Resource is also given to cluster, will be used in the kubeconfig and also as part of the path to the kubeconfig file 
  * URL (required): Host url of the master node         
- * ClusterName (required): name given to cluster, will be used in the kubeconfig and also as part of the path to the kubeconfig file 
  * Username (required): the user with access to the cluster 
  * Password: to be used for clusters with basic auth
  * Token: to be used for authenication, if present will be used ahead of the password
@@ -265,12 +265,10 @@ The following example shows the syntax and structure of a Cluster Resource
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: target-cluster
+  name: test-cluster
 spec:  
   type: cluster
   params:
-  - name: clusterName
-    value: test-cluster  
   - name: url
     value: https://10.10.10.10    # url to the cluster master node   
   - name: cadata
@@ -279,7 +277,7 @@ spec:
     value: ZXlKaGJHY2lPaU....
 ```
 
-For added security, you can add the sensetive information in a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and populate the kubeconfig from them
+For added security, you can add the sensetive information in a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and populate the kubeconfig from them.
 
 For example, create a secret like the following example
 
@@ -299,12 +297,10 @@ and then apply secrets to the cluster resource
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: target-test-cluster
+  name: test-cluster
 spec:  
   type: cluster
   params:
-  - name: clusterName
-    value: test-cluster     
   - name: url
     value: https://10.10.10.10 
   - name: username
@@ -342,7 +338,7 @@ spec:
       command: ['bash']
       args:
       - '-c'
-      - kubectl --kubeconfig /workspace/${inputs.resources.testCluster.clusterName}/kubeconfig --context ${inputs.resources.testCluster.clusterName} apply -f /workspace/service.yaml'
+      - kubectl --kubeconfig /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
 ```
 
 ## Troubleshooting

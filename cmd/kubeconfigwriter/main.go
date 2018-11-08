@@ -81,18 +81,18 @@ func createKubeconfigFile(resource *v1alpha1.ClusterResource, logger *zap.Sugare
 		Password: pass,
 	}
 	context := &clientcmdapi.Context{
-		Cluster:  resource.ClusterName,
+		Cluster:  resource.Name,
 		AuthInfo: resource.Username,
 	}
 	c := clientcmdapi.NewConfig()
-	c.Clusters[resource.ClusterName] = cluster
+	c.Clusters[resource.Name] = cluster
 	c.AuthInfos[resource.Username] = auth
-	c.Contexts[resource.ClusterName] = context
-	c.CurrentContext = resource.ClusterName
+	c.Contexts[resource.Name] = context
+	c.CurrentContext = resource.Name
 	c.APIVersion = "v1"
 	c.Kind = "Config"
 
-	destinationFile := fmt.Sprintf("/workspace/%s/kubeconfig", resource.ClusterName)
+	destinationFile := fmt.Sprintf("/workspace/%s/kubeconfig", resource.Name)
 	if err := clientcmd.WriteToFile(*c, destinationFile); err != nil {
 		logger.Fatalf("Error writing kubeconfig to file: %v", err)
 	}

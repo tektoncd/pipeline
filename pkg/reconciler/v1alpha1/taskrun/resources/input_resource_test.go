@@ -379,7 +379,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name:  "kubeconfig",
 					Image: "override-with-kubeconfig-writer:latest",
 					Args: []string{
-						"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","clusterName":"","username":"","password":"","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
+						"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
 					},
 				}},
 			},
@@ -445,7 +445,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name:  "kubeconfig",
 					Image: "override-with-kubeconfig-writer:latest",
 					Args: []string{
-						"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","clusterName":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
+						"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
 					},
 					Env: []corev1.EnvVar{{
 						ValueFrom: &corev1.EnvVarSource{
