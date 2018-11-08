@@ -33,7 +33,7 @@ import (
 )
 
 var (
-	clusterConfig = flag.String("clusterConfig", "", "json string with the configuration of a cluster based on values from a cluster resource. Only required for out-of-cluster clusters.")
+	clusterConfig = flag.String("clusterConfig", "", "json string with the configuration of a cluster based on values from a cluster resource. Only required for external clusters.")
 )
 
 func main() {
