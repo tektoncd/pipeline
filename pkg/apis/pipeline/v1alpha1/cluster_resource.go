@@ -30,9 +30,8 @@ type ClusterResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
 	// URL must be a host string
-	URL         string `json:"url"`
-	Revision    string `json:"revision"`
-	ClusterName string `json:"clusterName"`
+	URL      string `json:"url"`
+	Revision string `json:"revision"`
 	// Server requires Basic authentication
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -64,8 +63,6 @@ func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
 			clusterResource.URL = param.Value
 		case strings.EqualFold(param.Name, "Revision"):
 			clusterResource.Revision = param.Value
-		case strings.EqualFold(param.Name, "ClusterName"):
-			clusterResource.ClusterName = param.Value
 		case strings.EqualFold(param.Name, "Username"):
 			clusterResource.Username = param.Value
 		case strings.EqualFold(param.Name, "Password"):
@@ -126,16 +123,15 @@ func (s ClusterResource) GetSecrets() []SecretParam { return s.Secrets }
 // Replacements is used for template replacement on a ClusterResource inside of a Taskrun.
 func (s *ClusterResource) Replacements() map[string]string {
 	return map[string]string{
-		"name":        s.Name,
-		"type":        string(s.Type),
-		"url":         s.URL,
-		"clusterName": s.ClusterName,
-		"revision":    s.Revision,
-		"username":    s.Username,
-		"password":    s.Password,
-		"token":       s.Token,
-		"insecure":    strconv.FormatBool(s.Insecure),
-		"cadata":      string(s.CAData),
+		"name":     s.Name,
+		"type":     string(s.Type),
+		"url":      s.URL,
+		"revision": s.Revision,
+		"username": s.Username,
+		"password": s.Password,
+		"token":    s.Token,
+		"insecure": strconv.FormatBool(s.Insecure),
+		"cadata":   string(s.CAData),
 	}
 }
 

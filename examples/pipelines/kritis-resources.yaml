@@ -30,8 +30,6 @@ metadata:
 spec:  
   type: cluster
   params:
-  - name: clusterName
-    value: testCluster
   - name: url
     value: https://prod.gke.corp.com  
   - name: cadata

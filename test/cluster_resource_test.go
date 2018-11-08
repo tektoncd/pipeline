@@ -94,9 +94,6 @@ func getClusterResource(namespace, name, sname string) *v1alpha1.PipelineResourc
 				Name:  "Url",
 				Value: "https://1.1.1.1",
 			}, {
-				Name:  "clusterName",
-				Value: "test-cluster",
-			}, {
 				Name:  "username",
 				Value: "test-user",
 			}, {
@@ -160,7 +157,7 @@ func getClusterResourceTask(namespace, name, resName, configName string) *v1alph
 					Name:    "check-file-existence",
 					Image:   "ubuntu",
 					Command: []string{"cat"},
-					Args:    []string{"/workspace/test-cluster/kubeconfig"},
+					Args:    []string{"/workspace/helloworld-cluster/kubeconfig"},
 				}, {
 					Name:    "check-config-data",
 					Image:   "ubuntu",
@@ -174,7 +171,7 @@ func getClusterResourceTask(namespace, name, resName, configName string) *v1alph
 					Name:    "check-contents",
 					Image:   "ubuntu",
 					Command: []string{"bash"},
-					Args:    []string{"-c", "cmp -b /workspace/test-cluster/kubeconfig /config/test.data"},
+					Args:    []string{"-c", "cmp -b /workspace/helloworld-cluster/kubeconfig /config/test.data"},
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      "config-vol",
 						MountPath: "/config",
@@ -226,13 +223,13 @@ clusters:
 - cluster:
     certificate-authority-data: WTJFdFkyVnlkQW89
     server: https://1.1.1.1
-  name: test-cluster
+  name: helloworld-cluster
 contexts:
 - context:
-    cluster: test-cluster
+    cluster: helloworld-cluster
     user: test-user
-  name: test-cluster
-current-context: test-cluster
+  name: helloworld-cluster
+current-context: helloworld-cluster
 kind: Config
 preferences: {}
 users:
