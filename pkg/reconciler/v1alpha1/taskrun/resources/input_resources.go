@@ -81,45 +81,43 @@ func AddInputResource(
 				build.Spec.Source = &buildv1alpha1.SourceSpec{Git: gitSourceSpec}
 			}
 		case v1alpha1.PipelineResourceTypeCluster:
-			{
-				clusterResource, err := v1alpha1.NewClusterResource(resource)
-				if err != nil {
-					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
-				}
-
-				var envVars []corev1.EnvVar
-				for _, sec := range clusterResource.Secrets {
-					ev := corev1.EnvVar{
-						Name: strings.ToUpper(sec.FieldName),
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: sec.SecretName,
-								},
-								Key: sec.SecretKey,
-							},
-						},
-					}
-					envVars = append(envVars, ev)
-				}
-
-				clusterContainer := corev1.Container{
-					Name:  "kubeconfig",
-					Image: *kubeconfigWriterImage,
-					Args: []string{
-						"-clusterConfig", clusterResource.String(),
-					},
-					Env: envVars,
-				}
-
-				buildSteps := append([]corev1.Container{clusterContainer}, build.Spec.Steps...)
-				build.Spec.Steps = buildSteps
+			clusterResource, err := v1alpha1.NewClusterResource(resource)
+			if err != nil {
+				return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
 			}
+			addClusterBuildStep(build, clusterResource)
 		}
-	}
-	if gitResource == nil {
-		return build, nil
 	}
 
 	return build, nil
+}
+
+func addClusterBuildStep(build *buildv1alpha1.Build, clusterResource *v1alpha1.ClusterResource) {
+	var envVars []corev1.EnvVar
+	for _, sec := range clusterResource.Secrets {
+		ev := corev1.EnvVar{
+			Name: strings.ToUpper(sec.FieldName),
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: sec.SecretName,
+					},
+					Key: sec.SecretKey,
+				},
+			},
+		}
+		envVars = append(envVars, ev)
+	}
+
+	clusterContainer := corev1.Container{
+		Name:  "kubeconfig",
+		Image: *kubeconfigWriterImage,
+		Args: []string{
+			"-clusterConfig", clusterResource.String(),
+		},
+		Env: envVars,
+	}
+
+	buildSteps := append([]corev1.Container{clusterContainer}, build.Spec.Steps...)
+	build.Spec.Steps = buildSteps
 }
