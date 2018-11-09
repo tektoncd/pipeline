@@ -41,7 +41,7 @@ metadata:
   name: run-with-parameters
 spec:
   taskRef:
-  name: task-with-parameters
+    name: task-with-parameters
   inputs:
     params:
     - name: 'flags'
