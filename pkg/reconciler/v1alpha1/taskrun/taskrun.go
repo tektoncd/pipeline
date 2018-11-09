@@ -21,15 +21,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline"
-
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
@@ -41,8 +36,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline"
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
 const (
@@ -74,6 +75,11 @@ var (
 	}
 )
 
+type configStore interface {
+	ToContext(ctx context.Context) context.Context
+	WatchConfigs(w configmap.Watcher)
+}
+
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	*reconciler.Base
@@ -83,6 +89,7 @@ type Reconciler struct {
 	taskLister     listers.TaskLister
 	resourceLister listers.PipelineResourceLister
 	tracker        tracker.Interface
+	configStore    configStore
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -103,7 +110,7 @@ func NewController(
 		taskLister:     taskInformer.Lister(),
 		resourceLister: resourceInformer.Lister(),
 	}
-	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
+	impl := controller.NewImpl(c, c.Logger, taskRunControllerName, reconciler.MustNewStatsReporter(taskRunControllerName, c.Logger))
 
 	c.Logger.Info("Setting up event handlers")
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -117,6 +124,9 @@ func NewController(
 		UpdateFunc: controller.PassNew(c.tracker.OnChanged),
 	})
 
+	c.Logger.Info("Setting up ConfigMap receivers")
+	c.configStore = config.NewStore(c.Logger.Named("config-store"))
+	c.configStore.WatchConfigs(opt.ConfigMapWatcher)
 	return impl
 }
 
@@ -130,6 +140,8 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Errorf("invalid resource key: %s", key)
 		return nil
 	}
+
+	ctx = c.configStore.ToContext(ctx)
 
 	// Get the Task Run resource with this namespace/name
 	original, err := c.taskRunLister.TaskRuns(namespace).Get(name)
@@ -192,7 +204,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		}
 
 		// Build is not present, create build
-		build, err = c.createBuild(tr, pvc.Name)
+		build, err = c.createBuild(ctx, tr, pvc.Name)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			tr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -289,7 +301,7 @@ func (c *Reconciler) createPVC(tr *v1alpha1.TaskRun) (*corev1.PersistentVolumeCl
 
 // createBuild creates a build from the task, using the task's buildspec
 // with pvcName as a volumeMount
-func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1alpha1.Build, error) {
+func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, pvcName string) (*buildv1alpha1.Build, error) {
 	// Get related task for taskrun
 	t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
 	if err != nil {
@@ -317,7 +329,7 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1
 		}
 	}
 
-	b, err := CreateRedirectedBuild(bSpec, pvcName, tr)
+	b, err := CreateRedirectedBuild(ctx, bSpec, pvcName, tr)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
@@ -352,7 +364,7 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the BuildSpec and modifies it freely
-func CreateRedirectedBuild(bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
+func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
 	bs.ServiceAccountName = tr.Spec.ServiceAccount
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
@@ -363,7 +375,7 @@ func CreateRedirectedBuild(bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1al
 	// Add the step which will copy the entrypoint into the volume
 	// we are going to be using, so that all of the steps will have
 	// access to it.
-	entrypoint.AddCopyStep(bs)
+	entrypoint.AddCopyStep(ctx, bs)
 	b := &buildv1alpha1.Build{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tr.Name,

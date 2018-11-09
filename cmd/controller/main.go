@@ -102,6 +102,7 @@ func main() {
 		BuildClientSet:    buildClient,
 		SharedClientSet:   sharedClient,
 		PipelineClientSet: pipelineClient,
+		ConfigMapWatcher:  configMapWatcher,
 		ResyncPeriod:      time.Second * 30,
 		Logger:            logger,
 	}

@@ -101,7 +101,7 @@ func NewController(
 		resourceLister:       resourceInformer.Lister(),
 	}
 
-	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
+	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName, reconciler.MustNewStatsReporter(pipelineRunControllerName, r.Logger))
 
 	r.Logger.Info("Setting up event handlers")
 	pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

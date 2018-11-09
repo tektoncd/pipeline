@@ -68,6 +68,12 @@ To get the logs out of a [step](#task), we provide our own executable that wraps
 the `command` and `args` values specified in the `step`. This means that every
 `Task` must use `command`, and cannot rely on the image's `entrypoint`.
 
+### Configure Entrypoint image
+
+To run a step needs to pull an `Entrypoint` image. Maybe the image is hard to pull
+in your environment, so we provide a way for you to configure that by edit the `image`'s
+value in a configmap named [`config-entrypoint`](./../config/config-entrypoint.yaml).
+
 ### Pipeline
 
 `Pipelines` describes a graph of [Tasks](#Task) to execute.
