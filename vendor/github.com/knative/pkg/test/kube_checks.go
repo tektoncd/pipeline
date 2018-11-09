@@ -32,15 +32,15 @@ import (
 )
 
 const (
-	interval = 1 * time.Second
-	timeout  = 5 * time.Minute
+	interval   = 1 * time.Second
+	podTimeout = 5 * time.Minute
 )
 
 // WaitForDeploymentState polls the status of the Deployment called name
 // from client every interval until inState returns `true` indicating it
 // is done, returns an error or timeout. desc will be used to name the metric
 // that is emitted to track how long it took for name to get into the state checked by inState.
-func WaitForDeploymentState(client *KubeClient, name string, inState func(d *apiv1beta1.Deployment) (bool, error), desc string, namespace string) error {
+func WaitForDeploymentState(client *KubeClient, name string, inState func(d *apiv1beta1.Deployment) (bool, error), desc string, namespace string, timeout time.Duration) error {
 	d := client.Kube.ExtensionsV1beta1().Deployments(namespace)
 	metricName := fmt.Sprintf("WaitForDeploymentState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
@@ -65,7 +65,7 @@ func WaitForPodListState(client *KubeClient, inState func(p *corev1.PodList) (bo
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+	return wait.PollImmediate(interval, podTimeout, func() (bool, error) {
 		p, err := p.List(metav1.ListOptions{})
 		if err != nil {
 			return true, err

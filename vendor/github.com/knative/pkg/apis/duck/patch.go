@@ -19,21 +19,37 @@ package duck
 import (
 	"encoding/json"
 
+	jsonmergepatch "github.com/evanphx/json-patch"
 	"github.com/mattbaird/jsonpatch"
 )
 
-func CreatePatch(before, after interface{}) (JSONPatch, error) {
-	// Marshal the before and after.
+func marshallBeforeAfter(before, after interface{}) ([]byte, []byte, error) {
 	rawBefore, err := json.Marshal(before)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	rawAfter, err := json.Marshal(after)
 	if err != nil {
-		return nil, err
+		return rawBefore, nil, err
 	}
 
+	return rawBefore, rawAfter, nil
+}
+
+func CreateMergePatch(before, after interface{}) ([]byte, error) {
+	rawBefore, rawAfter, err := marshallBeforeAfter(before, after)
+	if err != nil {
+		return nil, err
+	}
+	return jsonmergepatch.CreateMergePatch(rawBefore, rawAfter)
+}
+
+func CreatePatch(before, after interface{}) (JSONPatch, error) {
+	rawBefore, rawAfter, err := marshallBeforeAfter(before, after)
+	if err != nil {
+		return nil, err
+	}
 	return jsonpatch.CreatePatch(rawBefore, rawAfter)
 }
 

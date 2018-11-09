@@ -30,7 +30,7 @@ const CurrentField = ""
 // specific fields in a manner suitable for use in a recursive walk, so
 // that errors contain the appropriate field context.
 // FieldError methods are non-mutating.
-// +k8s:deepcopy-gen=false
+// +k8s:deepcopy-gen=true
 type FieldError struct {
 	Message string
 	Paths   []string
@@ -54,18 +54,21 @@ func (fe *FieldError) ViaField(prefix ...string) *FieldError {
 	if fe == nil {
 		return nil
 	}
-	newErr := &FieldError{}
-	for _, e := range fe.getNormalizedErrors() {
-		// Prepend the Prefix to existing errors.
-		newPaths := make([]string, 0, len(e.Paths))
-		for _, oldPath := range e.Paths {
-			newPaths = append(newPaths, flatten(append(prefix, oldPath)))
-		}
-		sort.Slice(newPaths, func(i, j int) bool { return newPaths[i] < newPaths[j] })
-		e.Paths = newPaths
+	// Copy over message and details, paths will be updated and errors come
+	// along using .Also().
+	newErr := &FieldError{
+		Message: fe.Message,
+		Details: fe.Details,
+	}
 
-		// Append the mutated error to the errors list.
-		newErr = newErr.Also(&e)
+	// Prepend the Prefix to existing errors.
+	newPaths := make([]string, 0, len(fe.Paths))
+	for _, oldPath := range fe.Paths {
+		newPaths = append(newPaths, flatten(append(prefix, oldPath)))
+	}
+	newErr.Paths = newPaths
+	for _, e := range fe.errors {
+		newErr = newErr.Also(e.ViaField(prefix...))
 	}
 	return newErr
 }
@@ -104,19 +107,30 @@ func (fe *FieldError) ViaFieldKey(field string, key string) *FieldError {
 
 // Also collects errors, returns a new collection of existing errors and new errors.
 func (fe *FieldError) Also(errs ...*FieldError) *FieldError {
-	newErr := &FieldError{}
+	var newErr *FieldError
 	// collect the current objects errors, if it has any
-	if fe != nil {
-		newErr.errors = fe.getNormalizedErrors()
+	if !fe.isEmpty() {
+		newErr = fe.DeepCopy()
+	} else {
+		newErr = &FieldError{}
 	}
 	// and then collect the passed in errors
 	for _, e := range errs {
-		newErr.errors = append(newErr.errors, e.getNormalizedErrors()...)
+		if !e.isEmpty() {
+			newErr.errors = append(newErr.errors, *e)
+		}
 	}
-	if len(newErr.errors) == 0 {
+	if newErr.isEmpty() {
 		return nil
 	}
 	return newErr
+}
+
+func (fe *FieldError) isEmpty() bool {
+	if fe == nil {
+		return true
+	}
+	return fe.Message == "" && fe.Details == "" && len(fe.errors) == 0 && len(fe.Paths) == 0
 }
 
 func (fe *FieldError) getNormalizedErrors() []FieldError {
@@ -139,12 +153,32 @@ func (fe *FieldError) getNormalizedErrors() []FieldError {
 	for _, e := range fe.errors {
 		errors = append(errors, e.getNormalizedErrors()...)
 	}
-	sort.Slice(errors, func(i, j int) bool { return errors[i].Message < errors[j].Message })
 	return errors
 }
 
+// Error implements error
+func (fe *FieldError) Error() string {
+	var errs []string
+	// Get the list of errors as a flat merged list.
+	normedErrors := merge(fe.getNormalizedErrors())
+	for _, e := range normedErrors {
+		if e.Details == "" {
+			errs = append(errs, fmt.Sprintf("%v: %v", e.Message, strings.Join(e.Paths, ", ")))
+		} else {
+			errs = append(errs, fmt.Sprintf("%v: %v\n%v", e.Message, strings.Join(e.Paths, ", "), e.Details))
+		}
+	}
+	return strings.Join(errs, "\n")
+}
+
+// Helpers ---
+
 func asIndex(index int) string {
 	return fmt.Sprintf("[%d]", index)
+}
+
+func isIndex(part string) bool {
+	return strings.HasPrefix(part, "[") && strings.HasSuffix(part, "]")
 }
 
 func asKey(key string) string {
@@ -173,22 +207,79 @@ func flatten(path []string) string {
 	return strings.Join(newPath, ".")
 }
 
-func isIndex(part string) bool {
-	return strings.HasPrefix(part, "[") && strings.HasSuffix(part, "]")
-}
-
-// Error implements error
-func (fe *FieldError) Error() string {
-	var errs []string
-	for _, e := range fe.getNormalizedErrors() {
-		if e.Details == "" {
-			errs = append(errs, fmt.Sprintf("%v: %v", e.Message, strings.Join(e.Paths, ", ")))
-		} else {
-			errs = append(errs, fmt.Sprintf("%v: %v\n%v", e.Message, strings.Join(e.Paths, ", "), e.Details))
+// mergePaths takes in two string slices and returns the combination of them
+// without any duplicate entries.
+func mergePaths(a, b []string) []string {
+	newPaths := make([]string, 0, len(a)+len(b))
+	newPaths = append(newPaths, a...)
+	for _, bi := range b {
+		if !containsString(newPaths, bi) {
+			newPaths = append(newPaths, bi)
 		}
 	}
-	return strings.Join(errs, "\n")
+	return newPaths
 }
+
+// containsString takes in a string slice and looks for the provided string
+// within the slice.
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+// merge takes in a flat list of FieldErrors and returns back a merged list of
+// FiledErrors. FieldErrors have their Paths combined (and de-duped) if their
+// Message and Details are the same. Merge will not inspect FieldError.errors.
+// Merge will also sort the .Path slice, and the errors slice before returning.
+func merge(errs []FieldError) []FieldError {
+	// make a map big enough for all the errors.
+	m := make(map[string]FieldError, len(errs))
+
+	// Convert errs to a map where the key is <message>-<details> and the value
+	// is the error. If an error already exists in the map with the same key,
+	// then the paths will be merged.
+	for _, e := range errs {
+		k := key(&e)
+		if v, ok := m[k]; ok {
+			// Found a match, merge the keys.
+			v.Paths = mergePaths(v.Paths, e.Paths)
+			m[k] = v
+		} else {
+			// Does not exist in the map, save the error.
+			m[k] = e
+		}
+	}
+
+	// Take the map made previously and flatten it back out again.
+	newErrs := make([]FieldError, 0, len(m))
+	for _, v := range m {
+		// While we have access to the merged paths, sort them too.
+		sort.Slice(v.Paths, func(i, j int) bool { return v.Paths[i] < v.Paths[j] })
+		newErrs = append(newErrs, v)
+	}
+
+	// Sort the flattened map.
+	sort.Slice(newErrs, func(i, j int) bool {
+		if newErrs[i].Message == newErrs[j].Message {
+			return newErrs[i].Details < newErrs[j].Details
+		}
+		return newErrs[i].Message < newErrs[j].Message
+	})
+
+	// return back the merged list of sorted errors.
+	return newErrs
+}
+
+// key returns the key using the fields .Message and .Details.
+func key(err *FieldError) string {
+	return fmt.Sprintf("%s-%s", err.Message, err.Details)
+}
+
+// Public helpers ---
 
 // ErrMissingField is a variadic helper method for constructing a FieldError for
 // a set of missing fields.
