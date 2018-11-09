@@ -22,7 +22,6 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a BuildSpec.
@@ -102,34 +101,5 @@ func ApplyReplacements(build *buildv1alpha1.Build, replacements map[string]strin
 			steps[i].VolumeMounts[iv].SubPath = applyReplacements(v.SubPath)
 		}
 	}
-
-	if buildTmpl := build.Spec.Template; buildTmpl != nil && len(buildTmpl.Env) > 0 {
-		// Apply variable expansion to the build's overridden
-		// environment variables
-		for i, e := range buildTmpl.Env {
-			buildTmpl.Env[i].Value = applyReplacements(e.Value)
-		}
-
-		for i := range steps {
-			steps[i].Env = applyEnvOverride(steps[i].Env, buildTmpl.Env)
-		}
-	}
 	return build
-}
-
-func applyEnvOverride(src, override []corev1.EnvVar) []corev1.EnvVar {
-	result := make([]corev1.EnvVar, 0, len(src)+len(override))
-	overrides := make(map[string]bool)
-
-	for _, env := range override {
-		overrides[env.Name] = true
-	}
-
-	for _, env := range src {
-		if _, present := overrides[env.Name]; !present {
-			result = append(result, env)
-		}
-	}
-
-	return append(result, override...)
 }
