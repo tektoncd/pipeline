@@ -38,6 +38,7 @@ import (
 	"github.com/knative/pkg/logging"
 	"github.com/knative/pkg/logging/logkey"
 
+	"github.com/markbates/inflect"
 	"github.com/mattbaird/jsonpatch"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
@@ -94,6 +95,11 @@ type ControllerOptions struct {
 	// potential races where registration completes and k8s apiserver
 	// invokes the webhook before the HTTP server is started.
 	RegistrationDelay time.Duration
+
+	// ClientAuthType declares the policy the webhook server will follow for
+	// TLS Client Authentication.
+	// The default value is tls.NoClientCert.
+	ClientAuth tls.ClientAuthType
 }
 
 // ResourceCallback defines a signature for resource specific (Route, Configuration, etc.)
@@ -134,15 +140,16 @@ func getAPIServerExtensionCACert(cl kubernetes.Interface) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	pem, ok := c.Data["requestheader-client-ca-file"]
+	const caFileName = "requestheader-client-ca-file"
+	pem, ok := c.Data[caFileName]
 	if !ok {
-		return nil, fmt.Errorf("cannot find ca.crt in %v: ConfigMap.Data is %#v", name, c.Data)
+		return nil, fmt.Errorf("cannot find %s in ConfigMap %s: ConfigMap.Data is %#v", caFileName, name, c.Data)
 	}
 	return []byte(pem), nil
 }
 
 // MakeTLSConfig makes a TLS configuration suitable for use with the server
-func makeTLSConfig(serverCert, serverKey, caCert []byte) (*tls.Config, error) {
+func makeTLSConfig(serverCert, serverKey, caCert []byte, clientAuthType tls.ClientAuthType) (*tls.Config, error) {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 	cert, err := tls.X509KeyPair(serverCert, serverKey)
@@ -152,11 +159,7 @@ func makeTLSConfig(serverCert, serverKey, caCert []byte) (*tls.Config, error) {
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		ClientCAs:    caCertPool,
-		ClientAuth:   tls.NoClientCert,
-		// Note on GKE there apparently is no client cert sent, so this
-		// does not work on GKE.
-		// TODO: make this into a configuration option.
-		//		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientAuth:   clientAuthType,
 	}, nil
 }
 
@@ -234,16 +237,20 @@ func SetDefaults(ctx context.Context) ResourceDefaulter {
 }
 
 func configureCerts(ctx context.Context, client kubernetes.Interface, options *ControllerOptions) (*tls.Config, []byte, error) {
-	apiServerCACert, err := getAPIServerExtensionCACert(client)
+	var apiServerCACert []byte
+	if options.ClientAuth >= tls.VerifyClientCertIfGiven {
+		var err error
+		apiServerCACert, err = getAPIServerExtensionCACert(client)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	serverKey, serverCert, caCert, err := getOrGenerateKeyCertsFromSecret(ctx, client, options)
 	if err != nil {
 		return nil, nil, err
 	}
-	serverKey, serverCert, caCert, err := getOrGenerateKeyCertsFromSecret(
-		ctx, client, options)
-	if err != nil {
-		return nil, nil, err
-	}
-	tlsConfig, err := makeTLSConfig(serverCert, serverKey, apiServerCACert)
+	tlsConfig, err := makeTLSConfig(serverCert, serverKey, apiServerCACert, options.ClientAuth)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -287,32 +294,25 @@ func (ac *AdmissionController) Run(stop <-chan struct{}) error {
 			logger.Error("Failed to register webhook", zap.Error(err))
 			return err
 		}
-		defer func() {
-			if err := ac.unregister(ctx, cl); err != nil {
-				logger.Error("Failed to unregister webhook", zap.Error(err))
-			}
-		}()
 		logger.Info("Successfully registered webhook")
 	case <-stop:
 		return nil
 	}
 
+	serverBootstrapErrCh := make(chan struct{})
 	go func() {
 		if err := server.ListenAndServeTLS("", ""); err != nil {
 			logger.Error("ListenAndServeTLS for admission webhook returned error", zap.Error(err))
+			close(serverBootstrapErrCh)
 		}
 	}()
-	<-stop
-	server.Close() // nolint: errcheck
-	return nil
-}
 
-// Unregister unregisters the external admission webhook
-func (ac *AdmissionController) unregister(
-	ctx context.Context, client clientadmissionregistrationv1beta1.MutatingWebhookConfigurationInterface) error {
-	logger := logging.FromContext(ctx)
-	logger.Info("Exiting..")
-	return nil
+	select {
+	case <-stop:
+		return server.Close()
+	case <-serverBootstrapErrCh:
+		return errors.New("webhook server bootstrap failed")
+	}
 }
 
 // Register registers the external admission webhook for pilot
@@ -324,8 +324,7 @@ func (ac *AdmissionController) register(
 
 	var rules []admissionregistrationv1beta1.RuleWithOperations
 	for gvk := range ac.Handlers {
-		// Lousy pluralizer
-		plural := strings.ToLower(gvk.Kind) + "s"
+		plural := strings.ToLower(inflect.Pluralize(gvk.Kind))
 
 		rules = append(rules, admissionregistrationv1beta1.RuleWithOperations{
 			Operations: []admissionregistrationv1beta1.OperationType{
@@ -502,7 +501,6 @@ func (ac *AdmissionController) mutate(ctx context.Context, kind metav1.GroupVers
 
 	if len(newBytes) != 0 {
 		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
-		newDecoder.DisallowUnknownFields()
 		if err := newDecoder.Decode(&newObj); err != nil {
 			return nil, fmt.Errorf("cannot decode incoming new object: %v", err)
 		}
@@ -513,7 +511,6 @@ func (ac *AdmissionController) mutate(ctx context.Context, kind metav1.GroupVers
 
 	if len(oldBytes) != 0 {
 		oldDecoder := json.NewDecoder(bytes.NewBuffer(oldBytes))
-		oldDecoder.DisallowUnknownFields()
 		if err := oldDecoder.Decode(&oldObj); err != nil {
 			return nil, fmt.Errorf("cannot decode incoming old object: %v", err)
 		}

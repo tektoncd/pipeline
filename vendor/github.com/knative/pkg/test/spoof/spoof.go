@@ -34,6 +34,9 @@ import (
 const (
 	requestInterval = 1 * time.Second
 	requestTimeout  = 5 * time.Minute
+	// TODO(tcnghia): These probably shouldn't be hard-coded here?
+	ingressName      = "knative-ingressgateway"
+	ingressNamespace = "istio-system"
 )
 
 // Response is a stripped down subset of http.Response. The is primarily useful
@@ -92,25 +95,12 @@ func New(kubeClientset *kubernetes.Clientset, logger *logging.BaseLogger, domain
 		// If the domain that the Route controller is configured to assign to Route.Status.Domain
 		// (the domainSuffix) is not resolvable, we need to retrieve the IP of the endpoint and
 		// spoof the Host in our requests.
-
-		// TODO(tcnghia): These probably shouldn't be hard-coded here?
-		ingressName := "knative-ingressgateway"
-		ingressNamespace := "istio-system"
-
-		ingress, err := kubeClientset.CoreV1().Services(ingressNamespace).Get(ingressName, metav1.GetOptions{})
+		e, err := GetServiceEndpoint(kubeClientset)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(ingress.Status.LoadBalancer.Ingress) != 1 {
-			return nil, fmt.Errorf("Expected exactly one ingress load balancer, instead had %d: %s", len(ingress.Status.LoadBalancer.Ingress), ingress.Status.LoadBalancer.Ingress)
-		}
-
-		if ingress.Status.LoadBalancer.Ingress[0].IP == "" {
-			return nil, fmt.Errorf("Expected ingress loadbalancer IP for %s to be set, instead was empty", ingressName)
-		}
-
-		sc.endpoint = ingress.Status.LoadBalancer.Ingress[0].IP
+		sc.endpoint = *e
 		sc.domain = domain
 	} else {
 		// If the domain is resolvable, we can use it directly when we make requests.
@@ -118,6 +108,29 @@ func New(kubeClientset *kubernetes.Clientset, logger *logging.BaseLogger, domain
 	}
 
 	return &sc, nil
+}
+
+// GetServiceEndpoint gets the endpoint IP or hostname to use for the service
+func GetServiceEndpoint(kubeClientset *kubernetes.Clientset) (*string, error) {
+	var endpoint string
+	ingress, err := kubeClientset.CoreV1().Services(ingressNamespace).Get(ingressName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	ingresses := ingress.Status.LoadBalancer.Ingress
+	if len(ingresses) != 1 {
+		return nil, fmt.Errorf("Expected exactly one ingress load balancer, instead had %d: %s", len(ingresses), ingresses)
+	}
+	ingressToUse := ingresses[0]
+	if ingressToUse.IP == "" {
+		if ingressToUse.Hostname == "" {
+			return nil, fmt.Errorf("Expected ingress loadbalancer IP or hostname for %s to be set, instead was empty", ingressName)
+		}
+		endpoint = ingressToUse.Hostname
+	} else {
+		endpoint = ingressToUse.IP
+	}
+	return &endpoint, nil
 }
 
 // Do dispatches to the underlying http.Client.Do, spoofing domains as needed

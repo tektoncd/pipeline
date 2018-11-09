@@ -77,17 +77,18 @@ func newLogger(logLevel string) *BaseLogger {
 	  "outputPaths": ["stdout"],
 	  "errorOutputPaths": ["stderr"],
 	  "encoderConfig": {
+	    "timeKey": "ts",
 	    "messageKey": "message",
-			"levelKey": "level",
-			"nameKey": "logger",
-			"callerKey": "caller",
-			"messageKey": "msg",
-      "stacktraceKey": "stacktrace",
-      "lineEnding": "",
-      "levelEncoder": "",
-      "timeEncoder": "",
-      "durationEncoder": "",
-      "callerEncoder": ""
+	    "levelKey": "level",
+	    "nameKey": "logger",
+	    "callerKey": "caller",
+	    "messageKey": "msg",
+	    "stacktraceKey": "stacktrace",
+	    "lineEnding": "",
+	    "levelEncoder": "",
+	    "timeEncoder": "iso8601",
+	    "durationEncoder": "",
+	    "callerEncoder": ""
 	  }
 	}`
 	configJSON := fmt.Sprintf(configJSONTemplate, logLevel)

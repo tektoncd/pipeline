@@ -33,14 +33,14 @@ type Channelable struct {
 }
 
 // ChannelSubscriberSpec defines a single subscriber to a Channel.
-// CallableDomain is the endpoint for the call
-// SinkableDomain is the endpoint for the result
-// One of them must be present
+// CallableURI is the endpoint for the call
+// SinkableURI is the endpoint for the result
+// At least one of them must be present.
 type ChannelSubscriberSpec struct {
 	// +optional
-	CallableDomain string `json:"callableDomain,omitempty"`
+	CallableURI string `json:"callableURI,omitempty"`
 	// +optional
-	SinkableDomain string `json:"sinkableDomain,omitempty"`
+	SinkableURI string `json:"sinkableURI,omitempty"`
 }
 
 
