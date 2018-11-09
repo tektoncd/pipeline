@@ -17,6 +17,7 @@ limitations under the License.
 package entrypoint
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -25,8 +26,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
-
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
 )
 
 const (
@@ -36,7 +38,6 @@ const (
 	MountPoint        = "/tools"
 	BinaryLocation    = MountPoint + "/entrypoint"
 	JSONConfigEnvVar  = "ENTRYPOINT_OPTIONS"
-	Image             = "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f"
 	InitContainerName = "place-tools"
 	ProcessLogFile    = "/tools/process-log.txt"
 	MarkerFile        = "/tools/marker-file.txt"
@@ -83,10 +84,12 @@ func (c *Cache) set(sha string, ep []string) {
 // copy the entrypoint binary from the entrypoint image into the
 // volume mounted at MountPoint, so that it can be mounted by
 // subsequent steps and used to capture logs.
-func AddCopyStep(b *v1alpha1.BuildSpec) {
+func AddCopyStep(ctx context.Context, b *v1alpha1.BuildSpec) {
+	cfg := config.FromContext(ctx).Entrypoint
+
 	cp := corev1.Container{
 		Name:         InitContainerName,
-		Image:        Image,
+		Image:        cfg.Image,
 		Command:      []string{"/bin/cp"},
 		Args:         []string{"/entrypoint", BinaryLocation},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
