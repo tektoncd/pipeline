@@ -14,6 +14,17 @@ limitations under the License.
 package test
 
 import (
+	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	fakebuildclientset "github.com/knative/build/pkg/client/clientset/versioned/fake"
+	buildinformers "github.com/knative/build/pkg/client/informers/externalversions"
+	buildinformersv1alpha1 "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
+	"github.com/knative/pkg/configmap"
+	"github.com/knative/pkg/controller"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
+	"k8s.io/apimachinery/pkg/runtime"
+	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
@@ -21,15 +32,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	fakebuildclientset "github.com/knative/build/pkg/client/clientset/versioned/fake"
-	buildinformers "github.com/knative/build/pkg/client/informers/externalversions"
-	buildinformersv1alpha1 "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
-	"github.com/knative/pkg/controller"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
-	"k8s.io/apimachinery/pkg/runtime"
-	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	"github.com/knative/build-pipeline/pkg/system"
 )
 
 // GetLogMessages returns a list of all string logs in logs.
@@ -140,12 +143,14 @@ func seedTestData(d Data) (Clients, Informers) {
 func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients) {
 	c, i := seedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
+	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
 	return taskrun.NewController(
 		reconciler.Options{
 			Logger:            zap.New(observer).Sugar(),
 			KubeClientSet:     c.Kube,
 			PipelineClientSet: c.Pipeline,
 			BuildClientSet:    c.Build,
+			ConfigMapWatcher:  configMapWatcher,
 		},
 		i.TaskRun,
 		i.Task,
