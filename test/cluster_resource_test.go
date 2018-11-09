@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
@@ -142,42 +141,40 @@ func getClusterResourceTask(namespace, name, resName, configName string) *v1alph
 				},
 				Params: []v1alpha1.TaskParam{},
 			},
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "config-vol",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: configName,
-							},
+			Volumes: []corev1.Volume{{
+				Name: "config-vol",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: configName,
 						},
 					},
+				},
+			}},
+			Steps: []corev1.Container{{
+				Name:    "check-file-existence",
+				Image:   "ubuntu",
+				Command: []string{"cat"},
+				Args:    []string{"/workspace/helloworld-cluster/kubeconfig"},
+			}, {
+				Name:    "check-config-data",
+				Image:   "ubuntu",
+				Command: []string{"cat"},
+				Args:    []string{"/config/test.data"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "config-vol",
+					MountPath: "/config",
 				}},
-				Steps: []corev1.Container{{
-					Name:    "check-file-existence",
-					Image:   "ubuntu",
-					Command: []string{"cat"},
-					Args:    []string{"/workspace/helloworld-cluster/kubeconfig"},
-				}, {
-					Name:    "check-config-data",
-					Image:   "ubuntu",
-					Command: []string{"cat"},
-					Args:    []string{"/config/test.data"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "config-vol",
-						MountPath: "/config",
-					}},
-				}, {
-					Name:    "check-contents",
-					Image:   "ubuntu",
-					Command: []string{"bash"},
-					Args:    []string{"-c", "cmp -b /workspace/helloworld-cluster/kubeconfig /config/test.data"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "config-vol",
-						MountPath: "/config",
-					}},
+			}, {
+				Name:    "check-contents",
+				Image:   "ubuntu",
+				Command: []string{"bash"},
+				Args:    []string{"-c", "cmp -b /workspace/helloworld-cluster/kubeconfig /config/test.data"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "config-vol",
+					MountPath: "/config",
 				}},
-			},
+			}},
 		},
 	}
 }

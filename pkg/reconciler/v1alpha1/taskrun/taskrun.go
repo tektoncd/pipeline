@@ -297,14 +297,15 @@ func (c *Reconciler) createBuild(tr *v1alpha1.TaskRun, pvcName string) (*buildv1
 	}
 
 	// TODO: Preferably use Validate on task.spec to catch validation error
-	if t.Spec.BuildSpec == nil {
+	bs := t.Spec.GetBuildSpec()
+	if bs == nil {
 		return nil, fmt.Errorf("task %s has nil BuildSpec", t.Name)
 	}
 
 	// For each step with no entrypoint set, try to populate it with the info
 	// from the remote registry
 	cache := entrypoint.NewCache()
-	bSpec := t.Spec.BuildSpec.DeepCopy()
+	bSpec := bs.DeepCopy()
 	for i := range bSpec.Steps {
 		step := &bSpec.Steps[i]
 		if len(step.Command) == 0 {

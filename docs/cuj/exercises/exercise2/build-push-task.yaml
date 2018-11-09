@@ -15,11 +15,11 @@ spec:
         resources:
             - name: builtImage
               type: image
-    buildSpec:
-          steps:
-          - name: build-and-push
-            image: gcr.io/kaniko-project/executor
-            command: /kaniko/executor
-            args:
-            - --dockerfile=${inputs.params.pathToDockerFile}
-            - --destination=${outputs.resources.builtImage}
+    steps:
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor
+      command: 
+      - /kaniko/executor
+      args:
+      - --dockerfile=${inputs.params.pathToDockerFile}
+      - --destination=${outputs.resources.builtImage}

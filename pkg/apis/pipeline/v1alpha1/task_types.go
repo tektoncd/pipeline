@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/webhook"
@@ -29,10 +30,40 @@ type TaskSpec struct {
 	// +optional
 	Inputs *Inputs `json:"inputs,omitempty"`
 	// +optional
-	Outputs   *Outputs                 `json:"outputs,omitempty"`
-	BuildSpec *buildv1alpha1.BuildSpec `json:"buildSpec"`
+	Outputs *Outputs `json:"outputs,omitempty"`
 	// +optional
 	Generation int64 `json:"generation,omitempty"`
+
+	// Following fields are from build spec for a Build resource.
+	// Source specifies the input to the build.
+	Source *buildv1alpha1.SourceSpec `json:"source,omitempty"`
+
+	// Steps are the steps of the build; each step is run sequentially with the
+	// source mounted into /workspace.
+	Steps []corev1.Container `json:"steps,omitempty"`
+
+	// Volumes is a collection of volumes that are available to mount into the
+	// steps of the build.
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// The name of the service account as which to run this build.
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Time after which the build times out. Defaults to 10 minutes.
+	// Specified build timeout should be less than 24h.
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// If specified, the pod's scheduling constraints
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // TaskStatus defines the observed state of Task
@@ -116,4 +147,16 @@ type TaskList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Task `json:"items"`
+}
+
+func (ts *TaskSpec) GetBuildSpec() *buildv1alpha1.BuildSpec {
+	return &buildv1alpha1.BuildSpec{
+		Source:             ts.Source,
+		Steps:              ts.Steps,
+		Volumes:            ts.Volumes,
+		ServiceAccountName: ts.ServiceAccountName,
+		NodeSelector:       ts.NodeSelector,
+		Timeout:            ts.Timeout,
+		Affinity:           ts.Affinity,
+	}
 }

@@ -11,12 +11,11 @@ spec:
         params:
             - name: package
               value: string
-    buildSpec:
-          steps:
-          - name: run-test
-            image: gcr.io/google_appengine/golang
-            command:
-              - go
-            args:
-              - test
-              - ${inputs.params.package}
+    steps:
+    - name: run-test
+      image: gcr.io/google_appengine/golang
+      command:
+      - go
+      args:
+      - test
+      - ${inputs.params.package}

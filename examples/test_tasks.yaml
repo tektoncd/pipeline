@@ -16,12 +16,11 @@ spec:
     - name: testResults
       format: junit
       path: logs/tests.xml
-  buildSpec:
-    steps:
-    - name: runMake
-      image: ubuntu
-      command: ['make']
-      args: ['${inputs.params.makeTarget}']
+  steps:
+  - name: runMake
+    image: ubuntu
+    command: ['make']
+    args: ['${inputs.params.makeTarget}']
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -46,26 +45,25 @@ spec:
     - name: testResults
       format: junit
       path: integration/logs/tests.xml
-  buildSpec:
-    steps:
-    - name: runTests
-      image: docker
-      command: ['${inputs.resources.params.testCommand}']
-      args: ['${inputs.resources.params.testArgs}']
-      volumeMounts:
-      - name: gac
-        mountPath: gac.json
-      - name: cloudconfig
-        mountPath: /root/.config/gcloud
-      - name: dockerSocket
-        mountPath: /var/run/docker.sock
-    volumes:
+  steps:
+  - name: runTests
+    image: docker
+    command: ['${inputs.resources.params.testCommand}']
+    args: ['${inputs.resources.params.testArgs}']
+    volumeMounts:
     - name: gac
-      hostPath:
-        path: /workspace/config/gac.json
+      mountPath: gac.json
     - name: cloudconfig
-      hostPath:
-        path: /workspace/config/gcloud
+      mountPath: /root/.config/gcloud
     - name: dockerSocket
-      hostPath:
-        path: /var/run/docker.sock
+      mountPath: /var/run/docker.sock
+  volumes:
+  - name: gac
+    hostPath:
+      path: /workspace/config/gac.json
+  - name: cloudconfig
+    hostPath:
+      path: /workspace/config/gcloud
+  - name: dockerSocket
+    hostPath:
+      path: /var/run/docker.sock

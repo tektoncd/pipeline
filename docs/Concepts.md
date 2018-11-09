@@ -51,14 +51,13 @@ metadata:
   name: hello-world
   namespace: default
 spec:
-  buildSpec:
-    steps:
-      - name: echo
-        image: busybox
-        command:
-          - echo
-        args:
-          - "hello world!"
+  steps:
+    - name: echo
+      image: busybox
+      command:
+        - echo
+      args:
+        - "hello world!"
 ```
 
 Examples of `Task` definitions with inputs and outputs are [here](../examples)

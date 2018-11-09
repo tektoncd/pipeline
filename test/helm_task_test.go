@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
@@ -191,15 +190,13 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 					},
 				},
 			},
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:    "kaniko",
-					Image:   "gcr.io/kaniko-project/executor",
-					Args: []string{"--dockerfile=/workspace/test/gohelloworld/Dockerfile",
-						fmt.Sprintf("--destination=%s", imageName),
-					},
-				}},
-			},
+			Steps: []corev1.Container{{
+				Name:  "kaniko",
+				Image: "gcr.io/kaniko-project/executor",
+				Args: []string{"--dockerfile=/workspace/test/gohelloworld/Dockerfile",
+					fmt.Sprintf("--destination=%s", imageName),
+				},
+			}},
 		},
 	}
 }
@@ -227,23 +224,21 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 					Name: "chartname",
 				}},
 			},
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:    "helm-init",
-					Image:   "alpine/helm",
-					Args:    []string{"init", "--wait"},
-				}, {
-					Name:    "helm-deploy",
-					Image:   "alpine/helm",
-					Args: []string{"install",
-						"--debug",
-						"--name=${inputs.params.chartname}",
-						"${inputs.params.pathToHelmCharts}",
-						"--set",
-						"image.repository=${inputs.params.image}",
-					},
-				}},
-			},
+			Steps: []corev1.Container{{
+				Name:  "helm-init",
+				Image: "alpine/helm",
+				Args:  []string{"init", "--wait"},
+			}, {
+				Name:  "helm-deploy",
+				Image: "alpine/helm",
+				Args: []string{"install",
+					"--debug",
+					"--name=${inputs.params.chartname}",
+					"${inputs.params.pathToHelmCharts}",
+					"--set",
+					"image.repository=${inputs.params.image}",
+				},
+			}},
 		},
 	}
 }
@@ -411,19 +406,17 @@ func removeAllHelmReleases(c *clients, t *testing.T, namespace string, logger *l
 			Name:      helmRemoveAllTaskName,
 		},
 		Spec: v1alpha1.TaskSpec{
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:  "helm-remove-all",
-					Image: "alpine/helm",
-					Command: []string{
-						"/bin/sh",
-					},
-					Args: []string{
-						"-c",
-						"helm ls --short --all | xargs -n1 helm del --purge",
-					},
+			Steps: []corev1.Container{{
+				Name:  "helm-remove-all",
+				Image: "alpine/helm",
+				Command: []string{
+					"/bin/sh",
 				},
+				Args: []string{
+					"-c",
+					"helm ls --short --all | xargs -n1 helm del --purge",
 				},
+			},
 			},
 		},
 	}
@@ -480,13 +473,11 @@ func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *l
 			Name:      helmResetTaskName,
 		},
 		Spec: v1alpha1.TaskSpec{
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:    "helm-reset",
-					Image:   "alpine/helm",
-					Args:    []string{"reset", "--force"},
-				},
-				},
+			Steps: []corev1.Container{{
+				Name:  "helm-reset",
+				Image: "alpine/helm",
+				Args:  []string{"reset", "--force"},
+			},
 			},
 		},
 	}

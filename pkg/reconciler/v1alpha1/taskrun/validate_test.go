@@ -7,19 +7,16 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/test"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var validBuild = &buildv1alpha1.BuildSpec{
-	Steps: []corev1.Container{
-		{
-			Name:    "mystep",
-			Image:   "myimage",
-			Command: []string{"mycmd"},
-		},
+var validBuildSteps = []corev1.Container{
+	{
+		Name:    "mystep",
+		Image:   "myimage",
+		Command: []string{"mycmd"},
 	},
 }
 
@@ -52,7 +49,7 @@ func Test_ValidTaskRunTask(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskSpec{
-			BuildSpec: validBuild,
+			Steps: validBuildSteps,
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
 					Name: "resource-to-build",

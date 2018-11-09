@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -96,13 +95,11 @@ func getHelloWorldTask(namespace string, args []string) *v1alpha1.Task {
 			Name:      hwTaskName,
 		},
 		Spec: v1alpha1.TaskSpec{
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{
-					corev1.Container{
-						Name:    hwContainerName,
-						Image:   "busybox",
-						Command: args,
-					},
+			Steps: []corev1.Container{
+				corev1.Container{
+					Name:    hwContainerName,
+					Image:   "busybox",
+					Command: args,
 				},
 			},
 		},
@@ -161,4 +158,3 @@ func getBuildOutputFromVolume(logger *logging.BaseLogger, c *clients, namespace,
 	_, err = io.Copy(out, readCloser)
 	return buf.String(), nil
 }
-

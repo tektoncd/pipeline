@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	corev1 "k8s.io/api/core/v1"
@@ -88,30 +87,28 @@ func TestPipelineRun(t *testing.T) {
 				},
 				Spec: v1alpha1.TaskSpec{
 					// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
-					BuildSpec: &buildv1alpha1.BuildSpec{
-						Steps: []corev1.Container{
-							corev1.Container{
-								Name:  "config-docker",
-								Image: "gcr.io/cloud-builders/docker",
-								// Private docker image for Build CRD testing
-								Command: []string{"docker"},
-								Args:    []string{"pull", "gcr.io/build-crd-testing/secret-sauce"},
-								VolumeMounts: []corev1.VolumeMount{{
-									Name:      "docker-socket",
-									MountPath: "/var/run/docker.sock",
-								}},
+					Steps: []corev1.Container{
+						corev1.Container{
+							Name:  "config-docker",
+							Image: "gcr.io/cloud-builders/docker",
+							// Private docker image for Build CRD testing
+							Command: []string{"docker"},
+							Args:    []string{"pull", "gcr.io/build-crd-testing/secret-sauce"},
+							VolumeMounts: []corev1.VolumeMount{{
+								Name:      "docker-socket",
+								MountPath: "/var/run/docker.sock",
+							}},
+						},
+					},
+					Volumes: []corev1.Volume{{
+						Name: "docker-socket",
+						VolumeSource: corev1.VolumeSource{
+							HostPath: &corev1.HostPathVolumeSource{
+								Path: "/var/run/docker.sock",
+								Type: newHostPathType(string(corev1.HostPathSocket)),
 							},
 						},
-						Volumes: []corev1.Volume{{
-							Name: "docker-socket",
-							VolumeSource: corev1.VolumeSource{
-								HostPath: &corev1.HostPathVolumeSource{
-									Path: "/var/run/docker.sock",
-									Type: newHostPathType(string(corev1.HostPathSocket)),
-								},
-							},
-						}},
-					},
+					}},
 				},
 			}); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", getName(hwTaskName, index), err)

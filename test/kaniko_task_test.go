@@ -29,7 +29,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
@@ -113,15 +112,13 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 					},
 				},
 			},
-			BuildSpec: &buildv1alpha1.BuildSpec{
-				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
-			},
+			Timeout: &metav1.Duration{Duration: 2 * time.Minute},
 		},
 	}
 
 	step := corev1.Container{
-		Name:    "kaniko",
-		Image:   "gcr.io/kaniko-project/executor",
+		Name:  "kaniko",
+		Image: "gcr.io/kaniko-project/executor",
 		Args: []string{"--dockerfile=/workspace/Dockerfile",
 			fmt.Sprintf("--destination=%s", repo),
 		},
@@ -139,7 +136,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 				Value: "/secrets/config.json",
 			},
 		}
-		task.Spec.BuildSpec.Volumes = []corev1.Volume{
+		task.Spec.Volumes = []corev1.Volume{
 			{
 				Name: "kaniko-secret",
 				VolumeSource: corev1.VolumeSource{
@@ -151,7 +148,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 		}
 	}
 
-	task.Spec.BuildSpec.Steps = []corev1.Container{step}
+	task.Spec.Steps = []corev1.Container{step}
 
 	return task
 }
