@@ -15,18 +15,12 @@ package taskrun_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
-
-	"fmt"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
-	"github.com/knative/build-pipeline/test"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +30,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
+	"github.com/knative/build-pipeline/test"
 )
 
 var (
@@ -60,7 +59,7 @@ var toolsMount = corev1.VolumeMount{
 
 var entrypointCopyStep = corev1.Container{
 	Name:         "place-tools",
-	Image:        entrypoint.Image,
+	Image:        config.DefaultEntrypointImage,
 	Command:      []string{"/bin/cp"},
 	Args:         []string{"/entrypoint", entrypointLocation},
 	VolumeMounts: []corev1.VolumeMount{toolsMount},
@@ -787,6 +786,13 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 }
 
 func TestCreateRedirectedBuild(t *testing.T) {
+	cfg := &config.Config{
+		Entrypoint: &config.Entrypoint{
+			Image: config.DefaultEntrypointImage,
+		},
+	}
+	ctx := config.ToContext(context.Background(), cfg)
+
 	tr := &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
 			ServiceAccount: "sa",
@@ -811,7 +817,7 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	expectedSteps := len(bs.Steps) + 1
 	expectedVolumes := len(bs.Volumes) + 1
 
-	b, err := taskrun.CreateRedirectedBuild(bs, "pvc", tr)
+	b, err := taskrun.CreateRedirectedBuild(ctx, bs, "pvc", tr)
 	if err != nil {
 		t.Errorf("expected CreateRedirectedBuild to pass: %v", err)
 	}

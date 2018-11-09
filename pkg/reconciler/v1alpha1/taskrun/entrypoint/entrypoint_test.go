@@ -1,13 +1,18 @@
 package entrypoint_test
 
 import (
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
+	"context"
+	"testing"
+
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
 	"k8s.io/api/core/v1"
-	"testing"
+
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
+
 const (
-	kanikoImage = "gcr.io/kaniko-project/executor"
+	kanikoImage      = "gcr.io/kaniko-project/executor"
 	kanikoEntrypoint = "/kaniko/executor"
 )
 
@@ -18,12 +23,12 @@ func TestAddEntrypoint(t *testing.T) {
 		},
 		{
 			Image: kanikoImage,
-			Args: []string{"abcd"},
+			Args:  []string{"abcd"},
 		},
 		{
-			Image: kanikoImage,
+			Image:   kanikoImage,
 			Command: []string{"abcd"},
-			Args: []string{"efgh"},
+			Args:    []string{"efgh"},
 		},
 	}
 	// The first test case showcases the downloading of the entrypoint for the
@@ -34,7 +39,6 @@ func TestAddEntrypoint(t *testing.T) {
 		`{"args":null,"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
 		`{"args":["abcd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
 		`{"args":["abcd","efgh"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-
 	}
 	err := entrypoint.RedirectSteps(inputs)
 	if err != nil {
@@ -82,6 +86,13 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 }
 
 func TestAddCopyStep(t *testing.T) {
+	cfg := &config.Config{
+		Entrypoint: &config.Entrypoint{
+			Image: config.DefaultEntrypointImage,
+		},
+	}
+	ctx := config.ToContext(context.Background(), cfg)
+
 	bs := &v1alpha1.BuildSpec{
 		Steps: []v1.Container{
 			{
@@ -92,8 +103,9 @@ func TestAddCopyStep(t *testing.T) {
 			},
 		},
 	}
+
 	expectedSteps := len(bs.Steps) + 1
-	entrypoint.AddCopyStep(bs)
+	entrypoint.AddCopyStep(ctx, bs)
 	if len(bs.Steps) != 3 {
 		t.Errorf("BuildSpec has the wrong step count: %d should be %d", len(bs.Steps), expectedSteps)
 	}
