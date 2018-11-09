@@ -20,8 +20,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 )
 
 var validResource = TaskResource{
@@ -29,20 +27,18 @@ var validResource = TaskResource{
 	Type: "git",
 }
 
-var validBuild = &buildv1alpha1.BuildSpec{
-	Steps: []corev1.Container{
-		{
-			Name:  "mystep",
-			Image: "myimage",
-		},
+var validBuildSteps = []corev1.Container{
+	{
+		Name:  "mystep",
+		Image: "myimage",
 	},
 }
 
 func TestTaskSpec_Validate(t *testing.T) {
 	type fields struct {
-		Inputs    *Inputs
-		Outputs   *Outputs
-		BuildSpec *buildv1alpha1.BuildSpec
+		Inputs     *Inputs
+		Outputs    *Outputs
+		BuildSteps []corev1.Container
 	}
 	tests := []struct {
 		name   string
@@ -61,7 +57,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 						},
 					},
 				},
-				BuildSpec: validBuild,
+				BuildSteps: validBuildSteps,
 			},
 		},
 		{
@@ -70,7 +66,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 				Outputs: &Outputs{
 					Resources: []TaskResource{validResource},
 				},
-				BuildSpec: validBuild,
+				BuildSteps: validBuildSteps,
 			},
 		},
 		{
@@ -82,16 +78,16 @@ func TestTaskSpec_Validate(t *testing.T) {
 				Outputs: &Outputs{
 					Resources: []TaskResource{validResource},
 				},
-				BuildSpec: validBuild,
+				BuildSteps: validBuildSteps,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &TaskSpec{
-				Inputs:    tt.fields.Inputs,
-				Outputs:   tt.fields.Outputs,
-				BuildSpec: tt.fields.BuildSpec,
+				Inputs:  tt.fields.Inputs,
+				Outputs: tt.fields.Outputs,
+				Steps:   validBuildSteps,
 			}
 			if err := ts.Validate(); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -102,9 +98,9 @@ func TestTaskSpec_Validate(t *testing.T) {
 
 func TestTaskSpec_ValidateError(t *testing.T) {
 	type fields struct {
-		Inputs    *Inputs
-		Outputs   *Outputs
-		BuildSpec *buildv1alpha1.BuildSpec
+		Inputs     *Inputs
+		Outputs    *Outputs
+		BuildSteps []corev1.Container
 	}
 	tests := []struct {
 		name   string
@@ -138,7 +134,7 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 						validResource,
 					},
 				},
-				BuildSpec: validBuild,
+				BuildSteps: validBuildSteps,
 			},
 		},
 		{
@@ -158,7 +154,7 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 						validResource,
 					},
 				},
-				BuildSpec: validBuild,
+				BuildSteps: validBuildSteps,
 			},
 		},
 		{
@@ -175,7 +171,7 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 						validResource,
 					},
 				},
-				BuildSpec: validBuild,
+				BuildSteps: validBuildSteps,
 			},
 		},
 		{
@@ -192,7 +188,7 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 						validResource,
 					},
 				},
-				BuildSpec: validBuild,
+				BuildSteps: validBuildSteps,
 			},
 		},
 		{
@@ -201,28 +197,16 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Inputs: &Inputs{
 					Resources: []TaskResource{validResource},
 				},
-				BuildSpec: &buildv1alpha1.BuildSpec{
-					Steps: []corev1.Container{},
-				},
-			},
-		},
-		{
-			name: "build template invalid",
-			fields: fields{
-				BuildSpec: &buildv1alpha1.BuildSpec{
-					Template: &buildv1alpha1.TemplateInstantiationSpec{
-						Name: "foo",
-					},
-				},
+				BuildSteps: []corev1.Container{},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &TaskSpec{
-				Inputs:    tt.fields.Inputs,
-				Outputs:   tt.fields.Outputs,
-				BuildSpec: tt.fields.BuildSpec,
+				Inputs:  tt.fields.Inputs,
+				Outputs: tt.fields.Outputs,
+				Steps:   tt.fields.BuildSteps,
 			}
 			if err := ts.Validate(); err == nil {
 				t.Errorf("TaskSpec.Validate() did not return error.")

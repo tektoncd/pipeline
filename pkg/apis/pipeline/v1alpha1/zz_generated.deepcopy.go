@@ -23,6 +23,8 @@ package v1alpha1
 import (
 	build_v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duck_v1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	v1 "k8s.io/api/core/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -1095,12 +1097,51 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
-	if in.BuildSpec != nil {
-		in, out := &in.BuildSpec, &out.BuildSpec
+	if in.Source != nil {
+		in, out := &in.Source, &out.Source
 		if *in == nil {
 			*out = nil
 		} else {
-			*out = new(build_v1alpha1.BuildSpec)
+			*out = new(build_v1alpha1.SourceSpec)
+			(*in).DeepCopyInto(*out)
+		}
+	}
+	if in.Steps != nil {
+		in, out := &in.Steps, &out.Steps
+		*out = make([]v1.Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Volumes != nil {
+		in, out := &in.Volumes, &out.Volumes
+		*out = make([]v1.Volume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(meta_v1.Duration)
+			**out = **in
+		}
+	}
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(v1.Affinity)
 			(*in).DeepCopyInto(*out)
 		}
 	}

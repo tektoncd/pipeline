@@ -37,16 +37,8 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 	}
 
 	// A Task must have a valid BuildSpec.
-	if ts.BuildSpec == nil {
-		return apis.ErrMissingField("taskspec.BuildSpec")
-	}
-	if err := ts.BuildSpec.Validate(); err != nil {
+	if err := ts.GetBuildSpec().Validate(); err != nil {
 		return err
-	}
-
-	// We also require that a BuildSpec is NOT a template.
-	if ts.BuildSpec.Template != nil {
-		return apis.ErrDisallowedFields("taskspec.BuildSpec.Template")
 	}
 
 	// A task doesn't have to have inputs or outputs, but if it does they must be valid.

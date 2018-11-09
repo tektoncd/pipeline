@@ -11,9 +11,9 @@ Some example use-cases of this include:
 
 The following example shows how Tasks can be parameterized, and these parameters can be passed to the `Task` from a `TaskRun`.
 
-Input parameters in the form of `${inputs.params.foo}` are replaced inside of the buildSpec.
+Input parameters in the form of `${inputs.params.foo}` are replaced inside of the build Steps.
 
-The following `Task` declares an input parameter called 'flags', and uses it in the `buildSpec.steps.args` list.
+The following `Task` declares an input parameter called 'flags', and uses it in the `steps.args` list.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -25,11 +25,10 @@ spec:
     params:
     - name: flags
       value: string
-  buildSpec:
-    steps:
-    - name: build
-      image: my-builder
-      args: ['build', '--flags=${inputs.params.flags}']
+  steps:
+  - name: build
+    image: my-builder
+    args: ['build', '--flags=${inputs.params.flags}']
 ```
 
 The following `TaskRun` supplies a value for `flags`:

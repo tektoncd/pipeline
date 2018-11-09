@@ -17,18 +17,17 @@ spec:
       description: Path to where the Helm charts live
     - name: helmArgs
       description: Extra arguments to pass to Helm
-  buildSpec:
-    steps:
-    - name: deploy
-      image: kubernetes-helm
-      command: ['helm']
-      args:
-        - 'install'
-        - '--kubeconfig /workspace/${inputs.resource.targetCluster.Name}/kubeconfig'  
-        - '--kube-context=${inputs.resources.targetCluster.Name}'
-        - '--set image=${inputs.resources.imageToDeploy.url}@${inputs.resources.imageToDeploy.digest}'
-        - '${inputs.params.helmArgs}'
-        - '${inputs.params.pathToHelmChart}'
+  steps:
+  - name: deploy
+    image: kubernetes-helm
+    command: ['helm']
+    args:
+      - 'install'
+      - '--kubeconfig /workspace/${inputs.resource.targetCluster.Name}/kubeconfig'  
+      - '--kube-context=${inputs.resources.targetCluster.Name}'
+      - '--set image=${inputs.resources.imageToDeploy.url}@${inputs.resources.imageToDeploy.digest}'
+      - '${inputs.params.helmArgs}'
+      - '${inputs.params.pathToHelmChart}'
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -52,30 +51,29 @@ spec:
       description: Extra arguments to pass to kubectl
     - name: pathToFiles
       description: Path to the manifests to apply
-  buildSpec:
-    steps:
-    - name: replaceRedisImage
-      image: busybox
-      command: ['sed']
-      args:
-      - "-ri"
-      - "'s/image: k8s.gcr.io\\/redis:e2e/image: ${inputs.resources.redisImage.url}@{inputs.resources.redisImage.digest}/' ${inputs.params.pathToFiles}"
-    - name: replaceGuestbookImage
-      image: busybox
-      command: ['sed']
-      args:
-      - "-ri"
-      - "'s/image: gcr.io\\/google-samples\\/gb-frontend:v4/image: ${inputs.resources.guestbookImage.url}@{inputs.resources.guestbookImage.digest}/' ${inputs.params.pathToFiles}"
-    - name: runKubectl
-      image: lachlanevenson/k8s-kubectl
-      command: ['kubectl']
-      args:
-      - '--kubeconfig /workspace/${inputs.resource.targetCluster.Name}/kubeconfig'  
-      - '--use-context'
-      - '${inputs.resource.targetCluster.Name}'
-      - '--namespace'
-      - '${inputs.resource.targetCluster.namespace}'
-      - 'apply'
-      - '-f'
-      - '${inputs.params.pathToFiles}'
-      - '${inputs.params.kubectlArgs}'
+  steps:
+  - name: replaceRedisImage
+    image: busybox
+    command: ['sed']
+    args:
+    - "-ri"
+    - "'s/image: k8s.gcr.io\\/redis:e2e/image: ${inputs.resources.redisImage.url}@{inputs.resources.redisImage.digest}/' ${inputs.params.pathToFiles}"
+  - name: replaceGuestbookImage
+    image: busybox
+    command: ['sed']
+    args:
+    - "-ri"
+    - "'s/image: gcr.io\\/google-samples\\/gb-frontend:v4/image: ${inputs.resources.guestbookImage.url}@{inputs.resources.guestbookImage.digest}/' ${inputs.params.pathToFiles}"
+  - name: runKubectl
+    image: lachlanevenson/k8s-kubectl
+    command: ['kubectl']
+    args:
+    - '--kubeconfig /workspace/${inputs.resource.targetCluster.Name}/kubeconfig'  
+    - '--use-context'
+    - '${inputs.resource.targetCluster.Name}'
+    - '--namespace'
+    - '${inputs.resource.targetCluster.namespace}'
+    - 'apply'
+    - '-f'
+    - '${inputs.params.pathToFiles}'
+    - '${inputs.params.kubectlArgs}'

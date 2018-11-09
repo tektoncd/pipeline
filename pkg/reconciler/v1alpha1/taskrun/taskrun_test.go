@@ -95,13 +95,11 @@ var simpleTask = &v1alpha1.Task{
 		Namespace: "foo",
 	},
 	Spec: v1alpha1.TaskSpec{
-		BuildSpec: &buildv1alpha1.BuildSpec{
-			Steps: []corev1.Container{
-				{
-					Name:    "simple-step",
-					Image:   "foo",
-					Command: []string{"/mycmd"},
-				},
+		Steps: []corev1.Container{
+			{
+				Name:    "simple-step",
+				Image:   "foo",
+				Command: []string{"/mycmd"},
 			},
 		},
 	},
@@ -113,13 +111,11 @@ var saTask = &v1alpha1.Task{
 		Namespace: "foo",
 	},
 	Spec: v1alpha1.TaskSpec{
-		BuildSpec: &buildv1alpha1.BuildSpec{
-			Steps: []corev1.Container{
-				{
-					Name:    "sa-step",
-					Image:   "foo",
-					Command: []string{"/mycmd"},
-				},
+		Steps: []corev1.Container{
+			{
+				Name:    "sa-step",
+				Image:   "foo",
+				Command: []string{"/mycmd"},
 			},
 		},
 	},
@@ -143,22 +139,20 @@ var templatedTask = &v1alpha1.Task{
 				Type: "image",
 			}},
 		},
-		BuildSpec: &buildv1alpha1.BuildSpec{
-			Steps: []corev1.Container{
-				{
-					Name:    "mycontainer",
-					Image:   "myimage",
-					Command: []string{"/mycmd"},
-					Args: []string{
-						"--my-arg=${inputs.params.myarg}",
-						"--my-additional-arg=${outputs.resources.myimage.url}"},
-				},
-				{
-					Name:    "myothercontainer",
-					Image:   "myotherimage",
-					Command: []string{"/mycmd"},
-					Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
-				},
+		Steps: []corev1.Container{
+			{
+				Name:    "mycontainer",
+				Image:   "myimage",
+				Command: []string{"/mycmd"},
+				Args: []string{
+					"--my-arg=${inputs.params.myarg}",
+					"--my-additional-arg=${outputs.resources.myimage.url}"},
+			},
+			{
+				Name:    "myothercontainer",
+				Image:   "myotherimage",
+				Command: []string{"/mycmd"},
+				Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
 			},
 		},
 	},
@@ -179,20 +173,18 @@ var defaultTemplatedTask = &v1alpha1.Task{
 				},
 			},
 		},
-		BuildSpec: &buildv1alpha1.BuildSpec{
-			Steps: []corev1.Container{
-				{
-					Name:    "mycontainer",
-					Image:   "myimage",
-					Command: []string{"/mycmd"},
-					Args:    []string{"--my-arg=${inputs.params.myarg}"},
-				},
-				{
-					Name:    "myothercontainer",
-					Image:   "myotherimage",
-					Command: []string{"/mycmd"},
-					Args:    []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
-				},
+		Steps: []corev1.Container{
+			{
+				Name:    "mycontainer",
+				Image:   "myimage",
+				Command: []string{"/mycmd"},
+				Args:    []string{"--my-arg=${inputs.params.myarg}"},
+			},
+			{
+				Name:    "myothercontainer",
+				Image:   "myotherimage",
+				Command: []string{"/mycmd"},
+				Args:    []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
 			},
 		},
 	},
@@ -732,7 +724,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 			Name:      taskRun.Name,
 			Namespace: taskRun.Namespace,
 		},
-		Spec: *simpleTask.Spec.BuildSpec,
+		Spec: *simpleTask.Spec.GetBuildSpec(),
 	}
 	buildSt := &duckv1alpha1.Condition{
 		Type: duckv1alpha1.ConditionSucceeded,

@@ -75,25 +75,23 @@ registry, resulting in the tasks running `gcloud` and `docker` respectively.
 
 ```yaml
 spec:
-  buildSpec:
-    steps:
-    - image: gcr.io/cloud-builders/gcloud
-      command: [gcloud]
-    - image: gcr.io/cloud-builders/docker
-      command: [docker]
+  steps:
+  - image: gcr.io/cloud-builders/gcloud
+    command: [gcloud]
+  - image: gcr.io/cloud-builders/docker
+    command: [docker]
 ```
 
 However, if the steps specified a custom `command`, that is what would be used.
 
 ```yaml
 spec:
-  buildSpec:
-    steps:
-    - image: gcr.io/cloud-builders/gcloud
-      command:
-      - bash
-      - -c
-      - echo "Hello!"
+  steps:
+  - image: gcr.io/cloud-builders/gcloud
+    command:
+    - bash
+    - -c
+    - echo "Hello!"
 ```
 
 You can also provide `args` to the image's `command`:
@@ -121,7 +119,7 @@ steps:
 ### Templating
 
 Tasks support templating using values from all `inputs` and `outputs`. Both
-`Resources` and `Params` can be used inside the `BuildSpec` of a `Task`.
+`Resources` and `Params` can be used inside the `Spec` of a `Task`.
 
 `Resources` can be referenced in a `Task` spec like this, where `NAME` is the
 Resource Name and `KEY` is one of `name`, `url`, `type` or `revision`:
@@ -206,12 +204,11 @@ Use the following example to understand the syntax and strucutre of a Git Resour
         resources:
         - name: builtImage
           type: image
-      buildSpec:
-        steps:
-        - name: build-and-push
-          image: gcr.io/my-repo/my-imageg
-          args:
-          - --repo=${inputs.resources.wizzbang-git.url}
+      steps:
+      - name: build-and-push
+        image: gcr.io/my-repo/my-imageg
+        args:
+        - --repo=${inputs.resources.wizzbang-git.url}
     ```
 
 3. And finally set the version in the `TaskRun` definition:
@@ -331,14 +328,13 @@ spec:
       type: image
     - name: testcluster
       type: cluster    
-  buildSpec:
-    steps:
-    - name: deploy
-      image: image-wtih-kubectl
-      command: ['bash']
-      args:
-      - '-c'
-      - kubectl --kubeconfig /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
+  steps:
+  - name: deploy
+    image: image-wtih-kubectl
+    command: ['bash']
+    args:
+    - '-c'
+    - kubectl --kubeconfig /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
 ```
 
 ## Troubleshooting
