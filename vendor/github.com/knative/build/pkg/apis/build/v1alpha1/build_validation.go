@@ -41,6 +41,9 @@ func (bs *BuildSpec) Validate() *apis.FieldError {
 		apis.ErrMissingField("build.spec.template.name")
 	}
 
+	if err := bs.validateSources(); err != nil {
+		return err
+	}
 	// If a build specifies a template, all the template's parameters without
 	// defaults must be satisfied by the build's parameters.
 	if bs.Template != nil {
@@ -79,6 +82,7 @@ func (b *TemplateInstantiationSpec) Validate() *apis.FieldError {
 	return nil
 }
 
+// Validate build timeout
 func (bt *BuildSpec) validateTimeout() *apis.FieldError {
 	if bt.Timeout == nil {
 		return nil
@@ -89,6 +93,54 @@ func (bt *BuildSpec) validateTimeout() *apis.FieldError {
 		return apis.ErrInvalidValue(fmt.Sprintf("%s should be < 24h", bt.Timeout), "b.spec.timeout")
 	} else if bt.Timeout.Duration < 0 {
 		return apis.ErrInvalidValue(fmt.Sprintf("%s should be > 0", bt.Timeout), "b.spec.timeout")
+	}
+	return nil
+}
+
+// Validate source
+func (bs BuildSpec) validateSources() *apis.FieldError {
+	var subPathExists bool
+	var emptyTargetPath bool
+	names := map[string]string{}
+	pathtree := pathTree{
+		nodeMap: map[string]map[string]string{},
+	}
+
+	// both source and sources cannot be defined in build
+	if len(bs.Sources) > 0 && bs.Source != nil {
+		return apis.ErrMultipleOneOf("b.spec.source", "b.spec.sources")
+	}
+
+	for _, source := range bs.Sources {
+		// check all source have unique names
+		if _, ok := names[source.Name]; ok {
+			return apis.ErrMultipleOneOf("b.spec.sources.names")
+		}
+		// multiple sources cannot have subpath defined
+		if source.SubPath != "" {
+			if subPathExists {
+				return apis.ErrInvalidValue("b.spec.sources.subpath", source.SubPath)
+			}
+			subPathExists = true
+		}
+		names[source.Name] = ""
+
+		if source.TargetPath == "" {
+			if source.Custom != nil {
+				continue
+			}
+			if emptyTargetPath {
+				return apis.ErrInvalidValue("empty target path", "b.spec.sources.targetPath")
+			}
+			emptyTargetPath = true
+		} else {
+			if source.Custom != nil {
+				return apis.ErrInvalidValue(source.TargetPath, "b.spec.sources.targetPath")
+			}
+			if err := insertNode(source.TargetPath, pathtree); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

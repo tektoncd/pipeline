@@ -160,7 +160,6 @@
   packages = [
     "pkg/apis/build",
     "pkg/apis/build/v1alpha1",
-    "pkg/builder",
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/fake",
     "pkg/client/clientset/versioned/scheme",
@@ -170,11 +169,9 @@
     "pkg/client/informers/externalversions/build",
     "pkg/client/informers/externalversions/build/v1alpha1",
     "pkg/client/informers/externalversions/internalinterfaces",
-    "pkg/client/listers/build/v1alpha1",
+    "pkg/client/listers/build/v1alpha1"
   ]
-  pruneopts = "NUT"
-  revision = "94859753e2c6724df2be86f6a254f810895fa3eb"
-  version = "v0.2.0"
+  revision = "db94a44721837a973c20a95b3dec9af360783656"
 
 [[projects]]
   branch = "master"

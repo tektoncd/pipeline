@@ -116,6 +116,13 @@ func (in *BuildSpec) DeepCopyInto(out *BuildSpec) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
+	if in.Sources != nil {
+		in, out := &in.Sources, &out.Sources
+		*out = make([]SourceSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Steps != nil {
 		in, out := &in.Steps, &out.Steps
 		*out = make([]v1.Container, len(*in))
@@ -198,8 +205,24 @@ func (in *BuildStatus) DeepCopyInto(out *BuildStatus) {
 			**out = **in
 		}
 	}
-	in.StartTime.DeepCopyInto(&out.StartTime)
-	in.CompletionTime.DeepCopyInto(&out.CompletionTime)
+	if in.StartTime != nil {
+		in, out := &in.StartTime, &out.StartTime
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(meta_v1.Time)
+			(*in).DeepCopyInto(*out)
+		}
+	}
+	if in.CompletionTime != nil {
+		in, out := &in.CompletionTime, &out.CompletionTime
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(meta_v1.Time)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	if in.StepStates != nil {
 		in, out := &in.StepStates, &out.StepStates
 		*out = make([]v1.ContainerState, len(*in))

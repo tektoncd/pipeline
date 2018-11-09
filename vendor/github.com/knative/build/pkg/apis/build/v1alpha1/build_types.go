@@ -58,22 +58,31 @@ type BuildSpec struct {
 	Generation int64 `json:"generation,omitempty"`
 
 	// Source specifies the input to the build.
+	// +optional
 	Source *SourceSpec `json:"source,omitempty"`
+
+	// Sources specifies the inputs to the build.
+	// +optional
+	Sources []SourceSpec `json:"sources,omitempty"`
 
 	// Steps are the steps of the build; each step is run sequentially with the
 	// source mounted into /workspace.
+	// +optional
 	Steps []corev1.Container `json:"steps,omitempty"`
 
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
+	// +optional
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// The name of the service account as which to run this build.
+	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Template, if specified, references a BuildTemplate resource to use to
 	// populate fields in the build, and optional Arguments to pass to the
 	// template. The default Kind of template is BuildTemplate
+	// +optional
 	Template *TemplateInstantiationSpec `json:"template,omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
@@ -107,20 +116,22 @@ const (
 // a Build.
 type TemplateInstantiationSpec struct {
 	// Name references the BuildTemplate resource to use.
-	//
 	// The template is assumed to exist in the Build's namespace.
 	Name string `json:"name"`
 
 	// The Kind of the template to be used, possible values are BuildTemplate
 	// or ClusterBuildTemplate. If nothing is specified, the default if is BuildTemplate
+	// +optional
 	Kind TemplateKind `json:"kind,omitempty"`
 
 	// Arguments, if specified, lists values that should be applied to the
 	// parameters specified by the template.
+	// +optional
 	Arguments []ArgumentSpec `json:"arguments,omitempty"`
 
 	// Env, if specified will provide variables to all build template steps.
 	// This will override any of the template's steps environment variables.
+	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
@@ -137,20 +148,38 @@ type ArgumentSpec struct {
 // SourceSpec defines the input to the Build
 type SourceSpec struct {
 	// Git represents source in a Git repository.
+	// +optional
 	Git *GitSourceSpec `json:"git,omitempty"`
 
 	// GCS represents source in Google Cloud Storage.
+	// +optional
 	GCS *GCSSourceSpec `json:"gcs,omitempty"`
 
 	// Custom indicates that source should be retrieved using a custom
 	// process defined in a container invocation.
+	// +optional
 	Custom *corev1.Container `json:"custom,omitempty"`
 
 	// SubPath specifies a path within the fetched source which should be
 	// built. This option makes parent directories *inaccessible* to the
 	// build steps. (The specific source type may, in fact, not even fetch
 	// files not in the SubPath.)
+	// +optional
 	SubPath string `json:"subPath,omitempty"`
+
+	// Name is the name of source. This field is used to uniquely identify the
+	// source init containers
+	// Restrictions on the allowed charatcers
+	// Must be a basename (no /)
+	// Must be a valid DNS name (only alphanumeric characters, no _)
+	// https://tools.ietf.org/html/rfc1123#section-2
+	// +optional
+	Name string `json:"name,omitempty"`
+
+	// TargetPath is the path in workspace directory where the source will be copied.
+	// TargetPath is optional and if its not set source will be copied under workspace.
+	// TargetPath should not be set for custom source.
+	TargetPath string `json:"targetPath,omitempty"`
 }
 
 // GitSourceSpec describes a Git repo source input to the Build.
@@ -198,25 +227,34 @@ const (
 
 // BuildStatus is the status for a Build resource
 type BuildStatus struct {
+	// +optional
 	Builder BuildProvider `json:"builder,omitempty"`
 
 	// Cluster provides additional information if the builder is Cluster.
+	// +optional
 	Cluster *ClusterSpec `json:"cluster,omitempty"`
+
 	// Google provides additional information if the builder is Google.
+	// +optional
 	Google *GoogleSpec `json:"google,omitempty"`
 
 	// StartTime is the time the build is actually started.
-	StartTime metav1.Time `json:"startTime,omitEmpty"`
+	// +optional
+	StartTime *metav1.Time `json:"startTime,omitEmpty"`
+
 	// CompletionTime is the time the build completed.
-	CompletionTime metav1.Time `json:"completionTime,omitEmpty"`
+	// +optional
+	CompletionTime *metav1.Time `json:"completionTime,omitEmpty"`
 
 	// StepStates describes the state of each build step container.
+	// +optional
 	StepStates []corev1.ContainerState `json:"stepStates,omitEmpty"`
 
 	// StepsCompleted lists the name of build steps completed.
 	StepsCompleted []string `json:"stepsCompleted"`
 
 	// Conditions describes the set of conditions of this build.
+	// +optional
 	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
 }
 
