@@ -1097,13 +1097,11 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
-	if in.Source != nil {
-		in, out := &in.Source, &out.Source
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(build_v1alpha1.SourceSpec)
-			(*in).DeepCopyInto(*out)
+	if in.Sources != nil {
+		in, out := &in.Sources, &out.Sources
+		*out = make([]build_v1alpha1.SourceSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Steps != nil {

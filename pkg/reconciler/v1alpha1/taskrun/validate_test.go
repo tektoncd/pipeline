@@ -12,13 +12,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var validBuildSteps = []corev1.Container{
-	{
-		Name:    "mystep",
-		Image:   "myimage",
-		Command: []string{"mycmd"},
-	},
-}
+var validBuildSteps = []corev1.Container{{
+	Name:    "mystep",
+	Image:   "myimage",
+	Command: []string{"mycmd"},
+}}
 
 func Test_ValidTaskRunTask(t *testing.T) {
 	trs := []*v1alpha1.TaskRun{{
@@ -77,12 +75,11 @@ func Test_ValidTaskRunTask(t *testing.T) {
 		name    string
 		taskrun *v1alpha1.TaskRun
 		reason  string
-	}{
-		{
-			name:    "taskrun-valid-input",
-			taskrun: trs[0],
-			reason:  "taskrun-with-valid-inputs",
-		}}
+	}{{
+		name:    "taskrun-valid-input",
+		taskrun: trs[0],
+		reason:  "taskrun-with-valid-inputs",
+	}}
 
 	for i, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

@@ -95,13 +95,11 @@ var simpleTask = &v1alpha1.Task{
 		Namespace: "foo",
 	},
 	Spec: v1alpha1.TaskSpec{
-		Steps: []corev1.Container{
-			{
-				Name:    "simple-step",
-				Image:   "foo",
-				Command: []string{"/mycmd"},
-			},
-		},
+		Steps: []corev1.Container{{
+			Name:    "simple-step",
+			Image:   "foo",
+			Command: []string{"/mycmd"},
+		}},
 	},
 }
 
@@ -111,13 +109,11 @@ var saTask = &v1alpha1.Task{
 		Namespace: "foo",
 	},
 	Spec: v1alpha1.TaskSpec{
-		Steps: []corev1.Container{
-			{
-				Name:    "sa-step",
-				Image:   "foo",
-				Command: []string{"/mycmd"},
-			},
-		},
+		Steps: []corev1.Container{{
+			Name:    "sa-step",
+			Image:   "foo",
+			Command: []string{"/mycmd"},
+		}},
 	},
 }
 
@@ -139,22 +135,19 @@ var templatedTask = &v1alpha1.Task{
 				Type: "image",
 			}},
 		},
-		Steps: []corev1.Container{
-			{
-				Name:    "mycontainer",
-				Image:   "myimage",
-				Command: []string{"/mycmd"},
-				Args: []string{
-					"--my-arg=${inputs.params.myarg}",
-					"--my-additional-arg=${outputs.resources.myimage.url}"},
-			},
-			{
-				Name:    "myothercontainer",
-				Image:   "myotherimage",
-				Command: []string{"/mycmd"},
-				Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
-			},
-		},
+		Steps: []corev1.Container{{
+			Name:    "mycontainer",
+			Image:   "myimage",
+			Command: []string{"/mycmd"},
+			Args: []string{
+				"--my-arg=${inputs.params.myarg}",
+				"--my-additional-arg=${outputs.resources.myimage.url}"},
+		}, {
+			Name:    "myothercontainer",
+			Image:   "myotherimage",
+			Command: []string{"/mycmd"},
+			Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
+		}},
 	},
 }
 
@@ -165,28 +158,23 @@ var defaultTemplatedTask = &v1alpha1.Task{
 	},
 	Spec: v1alpha1.TaskSpec{
 		Inputs: &v1alpha1.Inputs{
-			Params: []v1alpha1.TaskParam{
-				{
-					Name:        "myarg",
-					Description: "mydesc",
-					Default:     "mydefault",
-				},
-			},
+			Params: []v1alpha1.TaskParam{{
+				Name:        "myarg",
+				Description: "mydesc",
+				Default:     "mydefault",
+			}},
 		},
-		Steps: []corev1.Container{
-			{
-				Name:    "mycontainer",
-				Image:   "myimage",
-				Command: []string{"/mycmd"},
-				Args:    []string{"--my-arg=${inputs.params.myarg}"},
-			},
-			{
-				Name:    "myothercontainer",
-				Image:   "myotherimage",
-				Command: []string{"/mycmd"},
-				Args:    []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
-			},
-		},
+		Steps: []corev1.Container{{
+			Name:    "mycontainer",
+			Image:   "myimage",
+			Command: []string{"/mycmd"},
+			Args:    []string{"--my-arg=${inputs.params.myarg}"},
+		}, {
+			Name:    "myothercontainer",
+			Image:   "myotherimage",
+			Command: []string{"/mycmd"},
+			Args:    []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
+		}},
 	},
 }
 
@@ -197,12 +185,10 @@ var gitResource = &v1alpha1.PipelineResource{
 	},
 	Spec: v1alpha1.PipelineResourceSpec{
 		Type: "git",
-		Params: []v1alpha1.Param{
-			{
-				Name:  "URL",
-				Value: "https://foo.git",
-			},
-		},
+		Params: []v1alpha1.Param{{
+			Name:  "URL",
+			Value: "https://foo.git",
+		}},
 	},
 }
 
@@ -213,12 +199,10 @@ var imageResource = &v1alpha1.PipelineResource{
 	},
 	Spec: v1alpha1.PipelineResourceSpec{
 		Type: "image",
-		Params: []v1alpha1.Param{
-			{
-				Name:  "URL",
-				Value: "gcr.io/kristoff/sven",
-			},
-		},
+		Params: []v1alpha1.Param{{
+			Name:  "URL",
+			Value: "gcr.io/kristoff/sven",
+		}},
 	},
 }
 
@@ -238,127 +222,121 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 }
 
 func TestReconcile(t *testing.T) {
-	taskruns := []*v1alpha1.TaskRun{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-success",
-				Namespace: "foo",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name:       simpleTask.Name,
-					APIVersion: "a1",
-				},
+	taskruns := []*v1alpha1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-run-success",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name:       simpleTask.Name,
+				APIVersion: "a1",
 			},
 		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-with-sa-run-success",
-				Namespace: "foo",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				ServiceAccount: "test-sa",
-				TaskRef: v1alpha1.TaskRef{
-					Name:       saTask.Name,
-					APIVersion: "a1",
-				},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-with-sa-run-success",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			ServiceAccount: "test-sa",
+			TaskRef: v1alpha1.TaskRef{
+				Name:       saTask.Name,
+				APIVersion: "a1",
 			},
 		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-templating",
-				Namespace: "foo",
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-templating",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name:       templatedTask.Name,
+				APIVersion: "a1",
 			},
-			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name:       templatedTask.Name,
-					APIVersion: "a1",
-				},
-				Inputs: v1alpha1.TaskRunInputs{
-					Params: []v1alpha1.Param{
-						{
-							Name:  "myarg",
-							Value: "foo",
-						},
-					},
-					Resources: []v1alpha1.TaskRunResourceVersion{
-						{
-							ResourceRef: v1alpha1.PipelineResourceRef{
-								Name:       gitResource.Name,
-								APIVersion: "a1",
-							},
-							Version: "myversion",
-							Name:    "workspace",
-						},
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{
+					{
+						Name:  "myarg",
+						Value: "foo",
 					},
 				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskRunResourceVersion{{
+				Resources: []v1alpha1.TaskRunResourceVersion{
+					{
 						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name:       "image-resource",
+							Name:       gitResource.Name,
 							APIVersion: "a1",
 						},
 						Version: "myversion",
-						Name:    "myimage",
-					}},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-overrides-default-templating",
-				Namespace: "foo",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name:       defaultTemplatedTask.Name,
-					APIVersion: "a1",
-				},
-				Inputs: v1alpha1.TaskRunInputs{
-					Params: []v1alpha1.Param{
-						{
-							Name:  "myarg",
-							Value: "foo",
-						},
-					},
-					Resources: []v1alpha1.TaskRunResourceVersion{
-						{
-							ResourceRef: v1alpha1.PipelineResourceRef{
-								Name:       gitResource.Name,
-								APIVersion: "a1",
-							},
-							Version: "myversion",
-							Name:    gitResource.Name,
-						},
+						Name:    "workspace",
 					},
 				},
 			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-default-templating",
-				Namespace: "foo",
+			Outputs: v1alpha1.TaskRunOutputs{
+				Resources: []v1alpha1.TaskRunResourceVersion{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name:       "image-resource",
+						APIVersion: "a1",
+					},
+					Version: "myversion",
+					Name:    "myimage",
+				}},
 			},
-			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name:       defaultTemplatedTask.Name,
-					APIVersion: "a1",
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-overrides-default-templating",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name:       defaultTemplatedTask.Name,
+				APIVersion: "a1",
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{
+					{
+						Name:  "myarg",
+						Value: "foo",
+					},
 				},
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResourceVersion{
-						{
-							ResourceRef: v1alpha1.PipelineResourceRef{
-								Name:       gitResource.Name,
-								APIVersion: "a1",
-							},
-							Version: "myversion",
-							Name:    gitResource.Name,
+				Resources: []v1alpha1.TaskRunResourceVersion{
+					{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name:       gitResource.Name,
+							APIVersion: "a1",
 						},
+						Version: "myversion",
+						Name:    gitResource.Name,
 					},
 				},
 			},
 		},
-	}
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-default-templating",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name:       defaultTemplatedTask.Name,
+				APIVersion: "a1",
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskRunResourceVersion{
+					{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name:       gitResource.Name,
+							APIVersion: "a1",
+						},
+						Version: "myversion",
+						Name:    gitResource.Name,
+					},
+				},
+			},
+		},
+	}}
 
 	d := test.Data{
 		TaskRuns:          taskruns,

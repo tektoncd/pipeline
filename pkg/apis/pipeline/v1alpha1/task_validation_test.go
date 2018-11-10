@@ -27,61 +27,51 @@ var validResource = TaskResource{
 	Type: "git",
 }
 
-var validBuildSteps = []corev1.Container{
-	{
-		Name:  "mystep",
-		Image: "myimage",
-	},
-}
+var validBuildSteps = []corev1.Container{{
+	Name:  "mystep",
+	Image: "myimage",
+}}
 
 func TestTaskSpec_Validate(t *testing.T) {
 	type fields struct {
-		Inputs     *Inputs
-		Outputs    *Outputs
-		BuildSteps []corev1.Container
+		Inputs  *Inputs
+		Outputs *Outputs
 	}
 	tests := []struct {
 		name   string
 		fields fields
-	}{
-		{
-			name: "valid inputs",
-			fields: fields{
-				Inputs: &Inputs{
-					Resources: []TaskResource{validResource},
-					Params: []TaskParam{
-						{
-							Name:        "task",
-							Description: "param",
-							Default:     "default",
-						},
+	}{{
+		name: "valid inputs",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{validResource},
+				Params: []TaskParam{
+					{
+						Name:        "task",
+						Description: "param",
+						Default:     "default",
 					},
 				},
-				BuildSteps: validBuildSteps,
 			},
 		},
-		{
-			name: "valid outputs",
-			fields: fields{
-				Outputs: &Outputs{
-					Resources: []TaskResource{validResource},
-				},
-				BuildSteps: validBuildSteps,
+	}, {
+		name: "valid outputs",
+		fields: fields{
+			Outputs: &Outputs{
+				Resources: []TaskResource{validResource},
 			},
 		},
-		{
-			name: "both valid",
-			fields: fields{
-				Inputs: &Inputs{
-					Resources: []TaskResource{validResource},
-				},
-				Outputs: &Outputs{
-					Resources: []TaskResource{validResource},
-				},
-				BuildSteps: validBuildSteps,
+	}, {
+		name: "both valid",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{validResource},
+			},
+			Outputs: &Outputs{
+				Resources: []TaskResource{validResource},
 			},
 		},
-	}
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &TaskSpec{
@@ -105,102 +95,94 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-	}{
-		{
-			name: "nil",
-		},
-		{
-			name: "no build",
-			fields: fields{
-				Inputs: &Inputs{
-					Resources: []TaskResource{validResource},
-				},
+	}{{
+		name: "nil",
+	}, {
+		name: "no build",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{validResource},
 			},
 		},
-		{
-			name: "one invalid input",
-			fields: fields{
-				Inputs: &Inputs{
-					Resources: []TaskResource{
-						{
-							Name: "source",
-							Type: "what",
-						},
-						validResource,
+	}, {
+		name: "one invalid input",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{
+					{
+						Name: "source",
+						Type: "what",
 					},
+					validResource,
 				},
-				Outputs: &Outputs{
-					Resources: []TaskResource{
-						validResource,
-					},
-				},
-				BuildSteps: validBuildSteps,
 			},
-		},
-		{
-			name: "one invalid output",
-			fields: fields{
-				Inputs: &Inputs{
-					Resources: []TaskResource{
-						validResource,
-					},
+			Outputs: &Outputs{
+				Resources: []TaskResource{
+					validResource,
 				},
-				Outputs: &Outputs{
-					Resources: []TaskResource{
-						{
-							Name: "who",
-							Type: "what",
-						},
-						validResource,
-					},
-				},
-				BuildSteps: validBuildSteps,
 			},
+			BuildSteps: validBuildSteps,
 		},
-		{
-			name: "duplicated inputs",
-			fields: fields{
-				Inputs: &Inputs{
-					Resources: []TaskResource{
-						validResource,
-						validResource,
-					},
+	}, {
+		name: "one invalid output",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{
+					validResource,
 				},
-				Outputs: &Outputs{
-					Resources: []TaskResource{
-						validResource,
-					},
-				},
-				BuildSteps: validBuildSteps,
 			},
-		},
-		{
-			name: "duplicated outputs",
-			fields: fields{
-				Inputs: &Inputs{
-					Resources: []TaskResource{
-						validResource,
+			Outputs: &Outputs{
+				Resources: []TaskResource{
+					{
+						Name: "who",
+						Type: "what",
 					},
+					validResource,
 				},
-				Outputs: &Outputs{
-					Resources: []TaskResource{
-						validResource,
-						validResource,
-					},
-				},
-				BuildSteps: validBuildSteps,
 			},
+			BuildSteps: validBuildSteps,
 		},
-		{
-			name: "invalid build",
-			fields: fields{
-				Inputs: &Inputs{
-					Resources: []TaskResource{validResource},
+	}, {
+		name: "duplicated inputs",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{
+					validResource,
+					validResource,
 				},
-				BuildSteps: []corev1.Container{},
 			},
+			Outputs: &Outputs{
+				Resources: []TaskResource{
+					validResource,
+				},
+			},
+			BuildSteps: validBuildSteps,
 		},
-	}
+	}, {
+		name: "duplicated outputs",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{
+					validResource,
+				},
+			},
+			Outputs: &Outputs{
+				Resources: []TaskResource{
+					validResource,
+					validResource,
+				},
+			},
+			BuildSteps: validBuildSteps,
+		},
+	}, {
+		name: "invalid build",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{},
+		},
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &TaskSpec{

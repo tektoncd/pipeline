@@ -95,13 +95,11 @@ func getHelloWorldTask(namespace string, args []string) *v1alpha1.Task {
 			Name:      hwTaskName,
 		},
 		Spec: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{
-				corev1.Container{
-					Name:    hwContainerName,
-					Image:   "busybox",
-					Command: args,
-				},
-			},
+			Steps: []corev1.Container{{
+				Name:    hwContainerName,
+				Image:   "busybox",
+				Command: args,
+			}},
 		},
 	}
 }

@@ -477,8 +477,7 @@ func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *l
 				Name:  "helm-reset",
 				Image: "alpine/helm",
 				Args:  []string{"reset", "--force"},
-			},
-			},
+			}},
 		},
 	}
 
