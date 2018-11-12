@@ -26,8 +26,6 @@ import (
 	"github.com/knative/build-pipeline/pkg/system"
 )
 
-var noSidecarImage = ""
-
 func TestEntrypointConfiguration(t *testing.T) {
 	testImage := "gcr.io/k8s-prow/entrypoint@sha256:123"
 	configTests := []struct {
