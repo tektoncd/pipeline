@@ -44,6 +44,12 @@ type TaskRunSpec struct {
 	Generation int64 `json:"generation,omitempty"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
+	// +optional
+	PersistentVolumeClaim string
+	// +optional
+	PreBuiltSteps []corev1.Container
+	// +optional
+	PostBuiltSteps []corev1.Container
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.

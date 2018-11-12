@@ -78,7 +78,7 @@ func AddInputResource(
 					Url:      gitResource.URL,
 					Revision: gitResource.Revision,
 				}
-				build.Spec.Source = &buildv1alpha1.SourceSpec{Git: gitSourceSpec}
+				build.Spec.Sources = append(build.Spec.Sources, buildv1alpha1.SourceSpec{Git: gitSourceSpec})
 			}
 		case v1alpha1.PipelineResourceTypeCluster:
 			clusterResource, err := v1alpha1.NewClusterResource(resource)

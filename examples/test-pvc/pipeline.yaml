@@ -1,0 +1,26 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: kritis-pipeline
+  namespace: default
+spec:
+  tasks:
+  - name: create-file-kritis          # 1. create file
+    taskRef:
+      name: create-file
+    inputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+    outputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git  # altered git resource
+  - name: check-kritis               # 2.  check file exists
+    taskRef:
+      name: check-file
+    inputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+      passedConstraints: [create-file-kritis]

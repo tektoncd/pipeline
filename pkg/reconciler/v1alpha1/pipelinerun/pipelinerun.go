@@ -34,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
@@ -56,6 +57,10 @@ const (
 )
 
 var (
+	pvcMount = corev1.VolumeMount{
+		Name:      "test", // how to choose this path
+		MountPath: "/pvc", // nothing should be mounted here
+	}
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   v1alpha1.SchemeGroupVersion.Group,
 		Version: v1alpha1.SchemeGroupVersion.Version,
@@ -199,9 +204,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
 	prtr := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
+
+	pvc, err := c.getOrCreatePVC(pr)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			c.Logger.Infof("PipelineRun failed to create volume %s", pr.Name)
+			return fmt.Errorf("Failed to create persistent volume claim %s for task %q: %v", pr.Name, err, pr.Name)
+		}
+	}
+
 	if prtr != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
-		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount)
+		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount, pvc)
 		if err != nil {
 			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", prtr.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
@@ -228,7 +242,13 @@ func UpdateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.P
 	}
 }
 
-func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(t *v1alpha1.Task,
+	trName string,
+	pr *v1alpha1.PipelineRun,
+	pt *v1alpha1.PipelineTask,
+	sa string,
+	pvc string,
+) (*v1alpha1.TaskRun, error) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
@@ -248,7 +268,8 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: pt.Params,
 			},
-			ServiceAccount: sa,
+			ServiceAccount:        sa,
+			PersistentVolumeClaim: pvc,
 		},
 	}
 	for _, isb := range pt.InputSourceBindings {
@@ -257,6 +278,16 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			Name:        isb.Name,
 			// TODO(#148) apply the correct version
 		})
+
+		for _, constr := range isb.ProvidedBy {
+			tr.Spec.PreBuiltSteps = append(tr.Spec.PreBuiltSteps, corev1.Container{
+				Name:         fmt.Sprintf("source-copy-%s", constr),
+				Image:        "ubuntu",
+				Command:      []string{"/bin/cp"},
+				Args:         []string{"-r", fmt.Sprintf("/pvc/%s", constr), "/workspace/"},
+				VolumeMounts: []corev1.VolumeMount{pvcMount},
+			})
+		}
 	}
 	for _, osb := range pt.OutputSourceBindings {
 		tr.Spec.Outputs.Resources = append(tr.Spec.Outputs.Resources, v1alpha1.TaskRunResourceVersion{
@@ -264,6 +295,21 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			Name:        osb.Name,
 			// TODO(#148) apply the correct version
 		})
+		tr.Spec.PostBuiltSteps = append(tr.Spec.PostBuiltSteps, []corev1.Container{{
+			Name:    fmt.Sprintf("source-copy-make-%s", osb.Name),
+			Image:   "ubuntu",
+			Command: []string{"/bin/mkdir"},
+			// TODO: (use targetpath in future)
+			Args:         []string{"-p", fmt.Sprintf("/pvc/%s", tr.Name)},
+			VolumeMounts: []corev1.VolumeMount{pvcMount},
+		}, corev1.Container{
+			Name:    fmt.Sprintf("source-copy-%s", osb.Name),
+			Image:   "ubuntu",
+			Command: []string{"/bin/cp"},
+			// TODO: (use targetpath in future)
+			Args:         []string{"-r", "/workspace/", fmt.Sprintf("/pvc/%s", tr.Name)},
+			VolumeMounts: []corev1.VolumeMount{pvcMount},
+		}}...)
 	}
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)
 }
@@ -278,4 +324,41 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
+}
+
+func (c *Reconciler) getOrCreatePVC(pr *v1alpha1.PipelineRun) (string, error) {
+	// GetPersistentVolumeClaim for pipelinerun
+	var pvcSizeBytes int64
+	pvcSizeBytes = 5 * 1024 * 1024 * 1024 // 5 GBs
+	var pvcName = fmt.Sprintf("%s-pvc", pr.Name)
+
+	if _, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(pvcName, metav1.GetOptions{}); err != nil {
+		// pvc not found
+		if errors.IsNotFound(err) {
+			if _, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(&corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: pr.Namespace,
+					Name:      pvcName,
+					OwnerReferences: []metav1.OwnerReference{
+						*metav1.NewControllerRef(pr, groupVersionKind),
+					},
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					// Multiple tasks should be allowed to read and write
+					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+					Resources: corev1.ResourceRequirements{
+						Requests: map[corev1.ResourceName]resource.Quantity{
+							corev1.ResourceStorage: *resource.NewQuantity(pvcSizeBytes, resource.BinarySI),
+						},
+					},
+				},
+			}); err != nil {
+				return "", fmt.Errorf("failed to claim Persistent Volume %q due to error: %s", pr.Name, err)
+			}
+			return pvcName, nil
+		}
+		return "", fmt.Errorf("failed to get claim Persistent Volume %q due to error: %s", pr.Name, err)
+	}
+	// fetched existing pvc so no error
+	return pvcName, nil
 }

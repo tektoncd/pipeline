@@ -1,0 +1,46 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-file
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: write
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo some stuff > /workspace/stuff']
+
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: check-file
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: read
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'cat /test/stuff']
+
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: kritis-resources-git
+  namespace: default
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/grafeas/kritis
+  - name: revision
+    value: master

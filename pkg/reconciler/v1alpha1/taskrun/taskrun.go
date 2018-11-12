@@ -339,7 +339,12 @@ func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, pvcN
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
-
+	// add step to copy input resources into pvc
+	// err = resources.AddStep(t, tr, c.resourceLister, build)
+	// if err != nil {
+	// 	c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
+	// 	return nil, err
+	// }
 	var defaults []v1alpha1.TaskParam
 	if t.Spec.Inputs != nil {
 		defaults = append(defaults, t.Spec.Inputs.Params...)
@@ -368,6 +373,7 @@ func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvc
 	bs.ServiceAccountName = tr.Spec.ServiceAccount
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
+	resources.OutputStep(tr, bs)
 	err := entrypoint.RedirectSteps(bs.Steps)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add entrypoint to steps of TaskRun %s: %v", tr.Name, err)
@@ -388,12 +394,21 @@ func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvc
 		},
 		Spec: *bs,
 	}
+
 	// Add the volume used for storing the binary and logs
 	b.Spec.Volumes = append(b.Spec.Volumes, corev1.Volume{
 		Name: entrypoint.MountName,
 		VolumeSource: corev1.VolumeSource{
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 				ClaimName: pvcName,
+			},
+		},
+	})
+	b.Spec.Volumes = append(b.Spec.Volumes, corev1.Volume{
+		Name: "test",
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: tr.Spec.PersistentVolumeClaim,
 			},
 		},
 	})
