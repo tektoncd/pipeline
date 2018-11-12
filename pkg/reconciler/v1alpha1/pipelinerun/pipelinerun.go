@@ -22,6 +22,8 @@ import (
 	"reflect"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
@@ -35,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
@@ -53,14 +54,6 @@ const (
 	pipelineRunAgentName = "pipeline-controller"
 	// pipelineRunControllerName defines name for PipelineRun Controller
 	pipelineRunControllerName = "PipelineRun"
-)
-
-var (
-	groupVersionKind = schema.GroupVersionKind{
-		Group:   v1alpha1.SchemeGroupVersion.Group,
-		Version: v1alpha1.SchemeGroupVersion.Version,
-		Kind:    pipelineRunControllerName,
-	}
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -199,9 +192,15 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
 	prtr := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
+
+	if err := getOrCreatePVC(pr, c.KubeClientSet); err != nil {
+		c.Logger.Infof("PipelineRun failed to create/get volume %s", pr.Name)
+		return fmt.Errorf("Failed to create/get persistent volume claim %s for task %q: %v", pr.Name, err, pr.Name)
+	}
+
 	if prtr != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
-		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount)
+		prtr.TaskRun, err = c.createTaskRun(c.Logger, prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount)
 		if err != nil {
 			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", prtr.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
@@ -228,14 +227,12 @@ func UpdateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.P
 	}
 }
 
-func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      trName,
-			Namespace: t.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(pr, groupVersionKind),
-			},
+			Name:            trName,
+			Namespace:       t.Namespace,
+			OwnerReferences: pr.GetOwnerReference(),
 			Labels: map[string]string{
 				pipeline.GroupName + pipeline.PipelineLabelKey:    pr.Spec.PipelineRef.Name,
 				pipeline.GroupName + pipeline.PipelineRunLabelKey: pr.Name,
@@ -251,24 +248,8 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 			ServiceAccount: sa,
 		},
 	}
-	var resources v1alpha1.PipelineTaskResource
-	for _, ptr := range pr.Spec.PipelineTaskResources {
-		if ptr.Name == pt.Name {
-			resources = ptr
-		}
-	}
-	for _, isb := range resources.Inputs {
-		tr.Spec.Inputs.Resources = append(tr.Spec.Inputs.Resources, v1alpha1.TaskRunResource{
-			ResourceRef: isb.ResourceRef,
-			Name:        isb.Name,
-		})
-	}
-	for _, osb := range resources.Outputs {
-		tr.Spec.Outputs.Resources = append(tr.Spec.Outputs.Resources, v1alpha1.TaskRunResource{
-			ResourceRef: osb.ResourceRef,
-			Name:        osb.Name,
-		})
-	}
+	resources.WrapSteps(&tr.Spec, pr.Spec.PipelineTaskResources, pt)
+
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)
 }
 
@@ -282,4 +263,18 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
+}
+
+func getOrCreatePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
+	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(pr.GetPVCName(), metav1.GetOptions{}); err != nil {
+		if errors.IsNotFound(err) {
+			pvc := pr.GetPVC()
+			if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvc); err != nil {
+				return fmt.Errorf("failed to claim Persistent Volume %q due to error: %s", pr.Name, err)
+			}
+			return nil
+		}
+		return fmt.Errorf("failed to get claim Persistent Volume %q due to error: %s", pr.Name, err)
+	}
+	return nil
 }

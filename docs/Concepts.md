@@ -33,18 +33,48 @@ Below diagram lists the main custom resources created by Pipeline CRDs:
 ### Task
 
 A Task is a collection of sequential steps you would want to run as part of your continous integration flow.
-
 A task will run inside a container on your cluster. A Task declares:
 
-1. Inputs the task needs.
-1. Outputs the task will produce.
-1. Sequence of steps to execute. Each step is [a container image](./using.md#image-contract).
+### Inputs:
+
+Declare the inputs the task needs. Every task input resource should provide name and type (like git, image). It can also provide optionally `targetPath` to initialize resource in specific directory. If `targetPath` is set then resource will be initialized under `/workspace/targetPath`. If `targetPath` is not specified then resource will be initialized under `/workspace`. Following example demonstrates how git input repository could be initialized in GOPATH to run tests.
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: task-with-input
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+      targetPath: /go/src/github.com/knative/build-pipeline
+  steps:
+  - name: unit-tests
+    image: golang
+    command: ['go']
+    args:
+    - 'test'
+    - './...'
+    workingDir: "/workspace/go/src/github.com/knative/build-pipeline"
+    env:
+    - name: GOPATH
+      value: /workspace/go
+```
+
+### Outputs:
+Declare the outputs task will produce.
+
+### Steps:
+Sequence of steps to execute. Each step is [a container image](./using.md#image-contract).
 
 Here is an example simple Task definition which echoes "hello world". The `hello-world` task does not define any inputs or outputs.
 
 It only has one step named `echo`. The step uses the builder image `busybox` whose entrypoint set to `\bin\sh`.
 
-```shell
+```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
@@ -168,6 +198,66 @@ To invoke a [`Pipeline`](#pipeline) or a [`Task`](#task), you must create a corr
 Creating a `TaskRun` will invoke a [Task](#task), running all of the steps until 
 completion or failure. Creating a `TaskRun` will require satisfying all of the input
 requirements of the `Task`.
+
+`TaskRun` definition includes `inputs`, `outputs` for `Task` referred in spec.
+
+Input resource includes name and reference to pipeline resource and optionally `paths`. `paths` will be used by `TaskRun` as the resource's new source paths i.e., copy the resource from specified list of paths. `TaskRun` expects the folder and contents to be already present in specified paths. `paths` feature could be used to provide extra files or altered version of existing resource before execution of steps.
+
+Output resource includes name and reference to pipeline resource and optionally `paths`. `paths` will be used by `TaskRun` as the resource's new destination paths i.e., copy the resource entirely to specified paths. `TaskRun` will be responsible for creating required directories and copying contents over. `paths` feature could be used to inspect the results of taskrun after execution of steps.
+
+`paths` feature for input and output resource is heavily used to pass same version of resources across tasks in context of pipelinerun.
+
+In the following example, task and taskrun are defined with input resource, output resource and step which builds war artifact. After execution of taskrun(`volume-taskrun`), `custom` volume will have entire resource `java-git-resource`(including the war artifact) copied to the destination path `/custom/workspace/`.
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: volume-task
+  namespace: default
+spec:
+  generation: 1
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: build-war
+    image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
+    command: jar
+    args: ['-cvf', 'projectname.war', '*']
+    volumeMounts:
+    - name: custom-volume
+      mountPath: /custom
+```
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: volume-taskrun
+  namespace: default
+spec:
+  taskRef:
+    name: volume-task
+  inputs:
+    resources:
+    - name: workspace
+      resourceRef:
+        name: java-git-resource
+  outputs:
+    resources:
+    - name: workspace
+      paths:
+      - /custom/workspace/
+      resourceRef:
+        name: java-git-resource
+  volumes:
+  - name: custom-volume
+    emptyDir: {}
+```
+
+
 
 `TaskRuns` can be created directly by a user or by a [PipelineRun](#pipelinerun).
 

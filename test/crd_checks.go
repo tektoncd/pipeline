@@ -73,12 +73,12 @@ func WaitForPodState(c *clients, name string, namespace string, inState func(r *
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForPipelineRunState(c *clients, name string, inState func(r *v1alpha1.PipelineRun) (bool, error), desc string) error {
+func WaitForPipelineRunState(c *clients, name string, polltimeout time.Duration, inState func(r *v1alpha1.PipelineRun) (bool, error), desc string) error {
 	metricName := fmt.Sprintf("WaitForPipelineRunState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
 
-	return wait.PollImmediate(interval, timeout, func() (bool, error) {
+	return wait.PollImmediate(interval, polltimeout, func() (bool, error) {
 		r, err := c.PipelineRunClient.Get(name, metav1.GetOptions{})
 		if err != nil {
 			return true, err

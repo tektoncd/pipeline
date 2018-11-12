@@ -59,6 +59,19 @@ func TestReconcile(t *testing.T) {
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "some-image",
 					},
+				}, {
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
+				}},
+			}, {
+				Name: "unit-test-2",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
 				}},
 			}},
 		},
@@ -82,9 +95,16 @@ func TestReconcile(t *testing.T) {
 					Name:  "templatedparam",
 					Value: "${inputs.workspace.revision}",
 				}},
+			}, {
+				Name:    "unit-test-2",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-test-followup-task"},
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "workspace",
+					ProvidedBy: []string{"unit-test-1"},
+				}},
 			}},
-		}},
-	}
+		},
+	}}
 	ts := []*v1alpha1.Task{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "unit-test-task",
@@ -108,6 +128,22 @@ func TestReconcile(t *testing.T) {
 				Resources: []v1alpha1.TaskResource{{
 					Name: "image-to-use",
 					Type: "image",
+				}, {
+					Name: "workspace",
+					Type: "git",
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-followup-task",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: "git",
 				}},
 			},
 		},
@@ -217,16 +253,25 @@ func TestReconcile(t *testing.T) {
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
 				Resources: []v1alpha1.TaskRunResource{{
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-image",
-					},
-					Name: "image-to-use",
+					Name:        "image-to-use",
+					ResourceRef: v1alpha1.PipelineResourceRef{Name: "some-image"},
+					Paths:       []string{"/pvc/unit-test-1/image-to-use"},
+				}, {
+					Name:        "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{Name: "some-repo"},
+					Paths:       []string{"/pvc/unit-test-1/workspace"},
 				}},
 			},
 		},
 	}
+
+	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+	}
+	// test taskrun is able to recreate correct pipeline-pvc-name
+	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {
+		t.Errorf("expected to see TaskRun PVC name set to %q created but got %s", "test-pipeline-run-success-pvc", expectedTaskRun.GetPipelineRunPVCName())
 	}
 
 	// This PipelineRun is in progress now and the status should reflect that

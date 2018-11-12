@@ -93,6 +93,9 @@ var _ webhook.GenericCRD = (*PipelineResource)(nil)
 type TaskResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
+	// +optional
+	// TargetPath is the path in workspace directory where the task resource will be copied.
+	TargetPath string `json:"targetPath"`
 }
 
 // +genclient
@@ -118,6 +121,8 @@ type PipelineResource struct {
 type TaskRunResource struct {
 	Name        string              `json:"name"`
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
+	// +optional
+	Paths []string `json:"paths"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

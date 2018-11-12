@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/webhook"
@@ -43,7 +45,7 @@ type TaskRunSpec struct {
 	// +optional
 	Generation int64 `json:"generation,omitempty"`
 	// +optional
-	ServiceAccount string `json:"serviceAccount"`
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.
@@ -173,4 +175,14 @@ func (tr *TaskRun) GetBuildRef() corev1.ObjectReference {
 		Namespace:  tr.Namespace,
 		Name:       tr.Name,
 	}
+}
+
+// GetPipelineRunPVCName for taskrun gets pipelinerun
+func (tr *TaskRun) GetPipelineRunPVCName() string {
+	for _, ref := range tr.GetOwnerReferences() {
+		if ref.Kind == pipelineRunControllerName {
+			return fmt.Sprintf("%s-pvc", ref.Name)
+		}
+	}
+	return ""
 }

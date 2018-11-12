@@ -37,4 +37,4 @@ spec:
   - name: token
     value: eyJhbGciOiJ.....
   - name: username
-    value: admin    
+    value: admin

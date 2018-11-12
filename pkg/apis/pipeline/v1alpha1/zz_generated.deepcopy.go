@@ -978,7 +978,9 @@ func (in *TaskRunInputs) DeepCopyInto(out *TaskRunInputs) {
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
 		*out = make([]TaskRunResource, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
@@ -1037,7 +1039,9 @@ func (in *TaskRunOutputs) DeepCopyInto(out *TaskRunOutputs) {
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
 		*out = make([]TaskRunResource, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
@@ -1061,6 +1065,11 @@ func (in *TaskRunOutputs) DeepCopy() *TaskRunOutputs {
 func (in *TaskRunResource) DeepCopyInto(out *TaskRunResource) {
 	*out = *in
 	out.ResourceRef = in.ResourceRef
+	if in.Paths != nil {
+		in, out := &in.Paths, &out.Paths
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

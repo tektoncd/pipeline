@@ -19,10 +19,10 @@ package resources
 import (
 	"testing"
 
-	"go.uber.org/zap"
-
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -247,7 +247,7 @@ func TestGetPipelineState(t *testing.T) {
 		TaskRunName:  "pipelinerun-mytask2",
 		TaskRun:      nil,
 	}}
-	if d := cmp.Diff(pipelineState, expectedState); d != "" {
+	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
 		t.Fatalf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
 	}
 }
