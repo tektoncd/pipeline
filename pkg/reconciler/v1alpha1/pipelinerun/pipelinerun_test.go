@@ -53,29 +53,38 @@ func TestReconcile(t *testing.T) {
 			Name:      "test-pipeline",
 			Namespace: "foo",
 		},
-		Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
-			Name:    "unit-test-1",
-			TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
-			Params: []v1alpha1.Param{{
-				Name:  "foo",
-				Value: "somethingfun",
-			}, {
-				Name:  "bar",
-				Value: "somethingmorefun",
-			}},
-			InputSourceBindings: []v1alpha1.SourceBinding{{
-				Name: "workspace",
-				ResourceRef: v1alpha1.PipelineResourceRef{
-					Name: "some-repo",
-				},
-			}},
-			OutputSourceBindings: []v1alpha1.SourceBinding{{
-				Name: "image-to-use",
-				ResourceRef: v1alpha1.PipelineResourceRef{
-					Name: "some-image",
-				},
-			}},
-		}},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{
+				{
+					Name:    "unit-test-1",
+					TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+					Params: []v1alpha1.Param{
+						{
+							Name:  "foo",
+							Value: "somethingfun",
+						},
+						{
+							Name:  "bar",
+							Value: "somethingmorefun",
+						},
+						{
+							Name:  "templatedparam",
+							Value: "${inputs.workspace.revision}",
+						},
+					},
+					InputSourceBindings: []v1alpha1.SourceBinding{{
+						Name: "workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "some-repo",
+						},
+					}},
+					OutputSourceBindings: []v1alpha1.SourceBinding{{
+						Name: "image-to-use",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "some-image",
+						},
+					}},
+				}},
 		}},
 	}
 	ts := []*v1alpha1.Task{{
@@ -90,10 +99,10 @@ func TestReconcile(t *testing.T) {
 					Type: "git",
 				}},
 				Params: []v1alpha1.TaskParam{{
-					Name: "foo",
+					Name:        "foo",
 					Description: "foo",
 				}, {
-					Name: "bar",
+					Name:        "bar",
 					Description: "bar",
 				}},
 			},
@@ -177,7 +186,7 @@ func TestReconcile(t *testing.T) {
 				BlockOwnerDeletion: &trueB,
 			}},
 			Labels: map[string]string{
-				"pipeline.knative.dev/pipeline": "test-pipeline",
+				"pipeline.knative.dev/pipeline":    "test-pipeline",
 				"pipeline.knative.dev/pipelineRun": "test-pipeline-run-success",
 			},
 		},
@@ -187,13 +196,20 @@ func TestReconcile(t *testing.T) {
 				Name: "unit-test-task",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{{
-					Name:  "foo",
-					Value: "somethingfun",
-				}, {
-					Name:  "bar",
-					Value: "somethingmorefun",
-				}},
+				Params: []v1alpha1.Param{
+					{
+						Name:  "foo",
+						Value: "somethingfun",
+					},
+					{
+						Name:  "bar",
+						Value: "somethingmorefun",
+					},
+					{
+						Name:  "templatedparam",
+						Value: "${inputs.workspace.revision}",
+					},
+				},
 				Resources: []v1alpha1.TaskRunResourceVersion{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "some-repo",
