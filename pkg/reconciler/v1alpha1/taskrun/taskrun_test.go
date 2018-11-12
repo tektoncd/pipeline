@@ -35,6 +35,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/knative/build-pipeline/test"
 )
 
@@ -101,6 +102,35 @@ var simpleTask = &v1alpha1.Task{
 			Image:   "foo",
 			Command: []string{"/mycmd"},
 		}},
+	},
+}
+
+var outputTask = &v1alpha1.Task{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-output-task",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.TaskSpec{
+		Steps: []corev1.Container{{
+			Name:    "simple-step",
+			Image:   "foo",
+			Command: []string{"/mycmd"},
+		}},
+		Inputs: &v1alpha1.Inputs{
+			Resources: []v1alpha1.TaskResource{{
+				Name: gitResource.Name,
+				Type: v1alpha1.PipelineResourceTypeGit,
+			}, {
+				Name: anotherGitResource.Name,
+				Type: v1alpha1.PipelineResourceTypeGit,
+			}},
+		},
+		Outputs: &v1alpha1.Outputs{
+			Resources: []v1alpha1.TaskResource{{
+				Name: gitResource.Name,
+				Type: v1alpha1.PipelineResourceTypeGit,
+			}},
+		},
 	},
 }
 
@@ -193,6 +223,19 @@ var gitResource = &v1alpha1.PipelineResource{
 	},
 }
 
+var anotherGitResource = &v1alpha1.PipelineResource{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "another-git-resource",
+		Namespace: "foo",
+	},
+	Spec: v1alpha1.PipelineResourceSpec{
+		Type: "git",
+		Params: []v1alpha1.Param{{
+			Name:  "URL",
+			Value: "https://foobar.git",
+		}},
+	},
+}
 var imageResource = &v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "image-resource",
@@ -300,15 +343,13 @@ func TestReconcile(t *testing.T) {
 						Value: "foo",
 					},
 				},
-				Resources: []v1alpha1.TaskRunResource{
-					{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name:       gitResource.Name,
-							APIVersion: "a1",
-						},
-						Name: gitResource.Name,
+				Resources: []v1alpha1.TaskRunResource{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name:       gitResource.Name,
+						APIVersion: "a1",
 					},
-				},
+					Name: gitResource.Name,
+				}},
 			},
 		},
 	}, {
@@ -322,201 +363,278 @@ func TestReconcile(t *testing.T) {
 				APIVersion: "a1",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{
-					{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name:       gitResource.Name,
-							APIVersion: "a1",
-						},
+				Resources: []v1alpha1.TaskRunResource{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name:       gitResource.Name,
+						APIVersion: "a1",
+					},
+					Name: gitResource.Name,
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-input-output",
+			Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{
+				Kind: "PipelineRun",
+				Name: "test",
+			}},
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name: outputTask.Name,
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskRunResource{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: gitResource.Name,
 					},
-				},
+					Name:  gitResource.Name,
+					Paths: []string{"source-folder"},
+				}, {
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: anotherGitResource.Name,
+					},
+					Name:  anotherGitResource.Name,
+					Paths: []string{"source-folder"},
+				}},
+			},
+			Outputs: v1alpha1.TaskRunOutputs{
+				Resources: []v1alpha1.TaskRunResource{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: gitResource.Name,
+					},
+					Name:  gitResource.Name,
+					Paths: []string{"output-folder"},
+				}},
 			},
 		},
 	}}
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, defaultTemplatedTask},
-		PipelineResources: []*v1alpha1.PipelineResource{gitResource, imageResource},
+		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, defaultTemplatedTask, outputTask},
+		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
 	testcases := []struct {
 		name            string
 		taskRun         *v1alpha1.TaskRun
 		wantedBuildSpec buildv1alpha1.BuildSpec
-	}{
-		{
-			name:    "success",
-			taskRun: taskruns[0],
-			wantedBuildSpec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{
-					entrypointCopyStep,
-					{
-						Name:    "simple-step",
-						Image:   "foo",
-						Command: []string{entrypointLocation},
-						Args:    []string{},
-						Env: []corev1.EnvVar{
-							{
-								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-							},
+	}{{
+		name:    "success",
+		taskRun: taskruns[0],
+		wantedBuildSpec: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				entrypointCopyStep,
+				{
+					Name:    "simple-step",
+					Image:   "foo",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
 						},
-						VolumeMounts: []corev1.VolumeMount{toolsMount},
 					},
-				},
-				Volumes: []corev1.Volume{
-					getToolsVolume(taskruns[0].Name),
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
 				},
 			},
-		},
-		{
-			name:    "serviceaccount",
-			taskRun: taskruns[1],
-			wantedBuildSpec: buildv1alpha1.BuildSpec{
-				ServiceAccountName: "test-sa",
-				Steps: []corev1.Container{
-					entrypointCopyStep,
-					{
-						Name:    "sa-step",
-						Image:   "foo",
-						Command: []string{entrypointLocation},
-						Args:    []string{},
-						Env: []corev1.EnvVar{
-							{
-								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-							},
-						},
-						VolumeMounts: []corev1.VolumeMount{toolsMount},
-					},
-				},
-				Volumes: []corev1.Volume{
-					getToolsVolume(taskruns[1].Name),
-				},
+			Volumes: []corev1.Volume{
+				getToolsVolume(taskruns[0].Name),
 			},
 		},
-		{
-			name:    "params",
-			taskRun: taskruns[2],
-			wantedBuildSpec: buildv1alpha1.BuildSpec{
-				Source: &buildv1alpha1.SourceSpec{
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://foo.git",
-						Revision: "master",
-					},
-				},
-				Steps: []corev1.Container{
-					entrypointCopyStep,
-					{
-						Name:    "mycontainer",
-						Image:   "myimage",
-						Command: []string{entrypointLocation},
-						Args:    []string{},
-						Env: []corev1.EnvVar{
-							{
-								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd","--my-arg=foo","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-							},
+	}, {
+		name:    "serviceaccount",
+		taskRun: taskruns[1],
+		wantedBuildSpec: buildv1alpha1.BuildSpec{
+			ServiceAccountName: "test-sa",
+			Steps: []corev1.Container{
+				entrypointCopyStep,
+				{
+					Name:    "sa-step",
+					Image:   "foo",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
 						},
-						VolumeMounts: []corev1.VolumeMount{toolsMount},
 					},
-					{
-						Name:    "myothercontainer",
-						Image:   "myotherimage",
-						Command: []string{entrypointLocation},
-						Args:    []string{},
-						Env: []corev1.EnvVar{
-							{
-								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-							},
-						},
-						VolumeMounts: []corev1.VolumeMount{toolsMount},
-					},
-				},
-				Volumes: []corev1.Volume{
-					getToolsVolume(taskruns[2].Name),
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
 				},
 			},
-		},
-		{
-			name:    "input-overrides-default-params",
-			taskRun: taskruns[3],
-			wantedBuildSpec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{
-					entrypointCopyStep,
-					{
-						Name:    "mycontainer",
-						Image:   "myimage",
-						Command: []string{entrypointLocation},
-						Args:    []string{},
-						Env: []corev1.EnvVar{
-							{
-								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-							},
-						},
-						VolumeMounts: []corev1.VolumeMount{toolsMount},
-					},
-					{
-						Name:    "myothercontainer",
-						Image:   "myotherimage",
-						Command: []string{entrypointLocation},
-						Args:    []string{},
-						Env: []corev1.EnvVar{
-							{
-								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-							},
-						},
-						VolumeMounts: []corev1.VolumeMount{toolsMount},
-					},
-				},
-				Volumes: []corev1.Volume{
-					getToolsVolume(taskruns[3].Name),
-				},
+			Volumes: []corev1.Volume{
+				getToolsVolume(taskruns[1].Name),
 			},
 		},
-		{
-			name:    "default-params",
-			taskRun: taskruns[4],
-			wantedBuildSpec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{
-					entrypointCopyStep,
-					{
-						Name:    "mycontainer",
-						Image:   "myimage",
-						Command: []string{entrypointLocation},
-						Args:    []string{},
-						Env: []corev1.EnvVar{
-							{
-								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd","--my-arg=mydefault"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-							},
-						},
-						VolumeMounts: []corev1.VolumeMount{toolsMount},
-					},
-					{
-						Name:    "myothercontainer",
-						Image:   "myotherimage",
-						Command: []string{entrypointLocation},
-						Args:    []string{},
-						Env: []corev1.EnvVar{
-							{
-								Name:  "ENTRYPOINT_OPTIONS",
-								Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-							},
-						},
-						VolumeMounts: []corev1.VolumeMount{toolsMount},
-					},
+	}, {
+		name:    "params",
+		taskRun: taskruns[2],
+		wantedBuildSpec: buildv1alpha1.BuildSpec{
+			Sources: []buildv1alpha1.SourceSpec{{
+				Git: &buildv1alpha1.GitSourceSpec{
+					Url:      "https://foo.git",
+					Revision: "master",
 				},
-				Volumes: []corev1.Volume{
-					getToolsVolume(taskruns[4].Name),
-				},
+				Name: "git-resource",
+			}},
+			Steps: []corev1.Container{
+				entrypointCopyStep,
+				{
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd","--my-arg=foo","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				}, {
+					Name:    "myothercontainer",
+					Image:   "myotherimage",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				}},
+			Volumes: []corev1.Volume{
+				getToolsVolume(taskruns[2].Name),
 			},
 		},
-	}
+	}, {
+		name:    "input-overrides-default-params",
+		taskRun: taskruns[3],
+		wantedBuildSpec: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				entrypointCopyStep,
+				{
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				}, {
+					Name:    "myothercontainer",
+					Image:   "myotherimage",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				},
+			},
+			Volumes: []corev1.Volume{getToolsVolume(taskruns[3].Name)},
+		},
+	}, {
+		name:    "default-params",
+		taskRun: taskruns[4],
+		wantedBuildSpec: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				entrypointCopyStep,
+				{
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd","--my-arg=mydefault"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				}, {
+					Name:    "myothercontainer",
+					Image:   "myotherimage",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				},
+			},
+			Volumes: []corev1.Volume{getToolsVolume(taskruns[4].Name)},
+		},
+	}, {
+		name:    "wrap-steps",
+		taskRun: taskruns[5],
+		wantedBuildSpec: buildv1alpha1.BuildSpec{
+			Sources: []buildv1alpha1.SourceSpec{{
+				Git:  &buildv1alpha1.GitSourceSpec{Url: "https://foo.git", Revision: "master"},
+				Name: "git-resource",
+			}, {
+				Git:  &buildv1alpha1.GitSourceSpec{Url: "https://foobar.git", Revision: "master"},
+				Name: "another-git-resource",
+			}},
+			Steps: []corev1.Container{
+				{
+					Name:    "source-copy-another-git-resource-0",
+					Image:   "busybox",
+					Command: []string{"cp"}, Args: []string{"-r", "source-folder/.", "/workspace"},
+					VolumeMounts: []corev1.VolumeMount{{Name: "test-pvc", MountPath: "/pvc"}},
+				},
+				{
+					Name:    "source-copy-git-resource-0",
+					Image:   "busybox",
+					Command: []string{"cp"}, Args: []string{"-r", "source-folder/.", "/workspace"},
+					VolumeMounts: []corev1.VolumeMount{{Name: "test-pvc", MountPath: "/pvc"}},
+				},
+				entrypointCopyStep, {
+					Name:    "simple-step",
+					Image:   "foo",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				}, {
+					Name:         "source-mkdir-git-resource",
+					Image:        "busybox",
+					Command:      []string{"mkdir"},
+					Args:         []string{"-p", "output-folder"},
+					VolumeMounts: []corev1.VolumeMount{{Name: "test-pvc", MountPath: "/pvc"}},
+				}, {
+					Name:         "source-copy-git-resource",
+					Image:        "busybox",
+					Command:      []string{"cp"},
+					Args:         []string{"-r", "/workspace/.", "output-folder"},
+					VolumeMounts: []corev1.VolumeMount{{Name: "test-pvc", MountPath: "/pvc"}},
+				}},
+			Volumes: []corev1.Volume{
+				getToolsVolume(taskruns[5].Name),
+				resources.GetPVCVolume(taskruns[5].GetPipelineRunPVCName()),
+			},
+		},
+	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			c, _, clients := test.GetTaskRunController(d)

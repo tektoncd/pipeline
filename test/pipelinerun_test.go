@@ -34,33 +34,42 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
+var (
+	pipelineRunTimeout = 10 * time.Minute
+)
+
 func TestPipelineRun(t *testing.T) {
 	type tests struct {
 		name                   string
 		testSetup              func(c *clients, namespace string, index int)
 		expectedTaskRuns       []string
 		expectedNumberOfEvents int
+		pipelineRunFunc        func(int, string) *v1alpha1.PipelineRun
 	}
 
 	tds := []tests{{
-		name: "multiple tasks",
+		name: "fan-in and fan-out",
 		testSetup: func(c *clients, namespace string, index int) {
 			t.Helper()
-			task := getHelloWorldTask(namespace, []string{"echo", taskOutput})
-			task.Name = getName(hwTaskName, index)
-			if _, err := c.TaskClient.Create(task); err != nil {
-				t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
+			for _, task := range getFanInFanOutTasks(namespace) {
+				if _, err := c.TaskClient.Create(task); err != nil {
+					t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
+				}
 			}
-			if _, err := c.PipelineClient.Create(getHelloWorldPipeline(index, namespace)); err != nil {
-				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(hwPipelineName, index), err)
+			if _, err := c.PipelineResourceClient.Create(getFanInFanOutGitResource(namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
 			}
 			if _, err := c.PipelineParamsClient.Create(getHelloWorldPipelineParams(index, namespace)); err != nil {
 				t.Fatalf("Failed to create PipelineParams `%s`: %s", getName(hwPipelineParamsName, index), err)
 			}
+			if _, err := c.PipelineClient.Create(getFanInFanOutPipeline(index, namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(hwPipelineName, index), err)
+			}
 		},
-		expectedTaskRuns: []string{hwPipelineTaskName1, hwPipelineTaskName2},
-		// 1 from PipelineRun and 2 from Tasks defined in pipelinerun
-		expectedNumberOfEvents: 3,
+		pipelineRunFunc:  getFanInFanOutPipelineRun,
+		expectedTaskRuns: []string{"create-file-kritis", "create-fan-out-1", "create-fan-out-2", "check-fan-in"},
+		// 1 from PipelineRun and 4 from Tasks defined in pipelinerun
+		expectedNumberOfEvents: 5,
 	}, {
 		name: "service account propagation",
 		testSetup: func(c *clients, namespace string, index int) {
@@ -119,6 +128,7 @@ func TestPipelineRun(t *testing.T) {
 		expectedTaskRuns: []string{hwPipelineTaskName1},
 		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 2,
+		pipelineRunFunc:        getHelloWorldPipelineRun,
 	}}
 
 	for i, td := range tds {
@@ -138,12 +148,12 @@ func TestPipelineRun(t *testing.T) {
 			td.testSetup(c, namespace, i)
 
 			prName := fmt.Sprintf("%s%d", hwPipelineRunName, i)
-			if _, err := c.PipelineRunClient.Create(getHelloWorldPipelineRun(i, namespace)); err != nil {
+			if _, err := c.PipelineRunClient.Create(td.pipelineRunFunc(i, namespace)); err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
 
 			logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-			if err := WaitForPipelineRunState(c, prName, func(tr *v1alpha1.PipelineRun) (bool, error) {
+			if err := WaitForPipelineRunState(c, prName, pipelineRunTimeout, func(tr *v1alpha1.PipelineRun) (bool, error) {
 				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 				if c != nil {
 					if c.IsTrue() {
@@ -186,11 +196,13 @@ func TestPipelineRun(t *testing.T) {
 
 			logger.Infof("Making sure %d events were created from taskrun and pipelinerun with kinds %v", td.expectedNumberOfEvents, matchKinds)
 
-			events := collectMatchingEvents(t, c.KubeClient, namespace, matchKinds, "Succeeded")
-			if len(events) != td.expectedNumberOfEvents {
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d", td.expectedNumberOfEvents, len(events))
+			events, err := collectMatchingEvents(c.KubeClient, namespace, matchKinds, "Succeeded")
+			if err != nil {
+				t.Fatalf("Failed to collect matching events: %q", err)
 			}
-
+			if len(events) != td.expectedNumberOfEvents {
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), events)
+			}
 			logger.Infof("Successfully finished test %q", td.name)
 		})
 	}
@@ -213,7 +225,115 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alph
 	}
 }
 
-func getHelloWorldPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
+func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
+	return []*v1alpha1.Task{
+		&v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      "create-file",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name:       "workspace",
+						Type:       v1alpha1.PipelineResourceTypeGit,
+						TargetPath: "brandnewspace",
+					}},
+				},
+				Steps: []corev1.Container{{
+					Name:    "write-data-task-0-step-0",
+					Image:   "ubuntu",
+					Command: []string{"/bin/bash"},
+					Args:    []string{"-c", "echo stuff > /workspace/brandnewspace/stuff"},
+				}, {
+					Name:    "write-data-task-0-step-1",
+					Image:   "ubuntu",
+					Command: []string{"/bin/bash"},
+					Args:    []string{"-c", "echo other > /workspace/brandnewspace/other"},
+				}},
+			},
+		}, &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      "check-create-files-exists",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "workspace",
+						Type: v1alpha1.PipelineResourceTypeGit,
+					}},
+				},
+				Steps: []corev1.Container{{
+					Name:    "read-from-task-0",
+					Image:   "ubuntu",
+					Command: []string{"bash"},
+					Args:    []string{"-c", "[[ stuff == $(cat /workspace/stuff) ]]"},
+				}, {
+					Name:    "write-data-task-1",
+					Image:   "ubuntu",
+					Command: []string{"/bin/bash"},
+					Args:    []string{"-c", "echo something > /workspace/something"},
+				}},
+			},
+		}, &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      "check-create-files-exists-2",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "workspace",
+						Type: v1alpha1.PipelineResourceTypeGit,
+					}},
+				},
+				Steps: []corev1.Container{{
+					Name:    "read-from-task-0",
+					Image:   "ubuntu",
+					Command: []string{"bash"},
+					Args:    []string{"-c", "[[ other == $(cat /workspace/other) ]]"},
+				}, {
+					Name:    "write-data-task-1",
+					Image:   "ubuntu",
+					Command: []string{"/bin/bash"},
+					Args:    []string{"-c", "echo else > /workspace/else"},
+				}},
+			},
+		}, &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: namespace,
+				Name:      "read-files",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name:       "workspace",
+						Type:       v1alpha1.PipelineResourceTypeGit,
+						TargetPath: "readingspace",
+					}},
+				},
+				Steps: []corev1.Container{{
+					Name:    "read-from-task-0",
+					Image:   "ubuntu",
+					Command: []string{"bash"},
+					Args:    []string{"-c", "[[ stuff == $(cat /workspace/readingspace/stuff) ]]"},
+				}, {
+					Name:    "read-from-task-1",
+					Image:   "ubuntu",
+					Command: []string{"bash"},
+					Args:    []string{"-c", "[[ something == $(cat /workspace/readingspace/something) ]]"},
+				}, {
+					Name:    "read-from-task-2",
+					Image:   "ubuntu",
+					Command: []string{"bash"},
+					Args:    []string{"-c", "[[ else == $(cat /workspace/readingspace/else) ]]"},
+				}},
+			},
+		}}
+}
+
+func getFanInFanOutPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
 	return &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -221,15 +341,56 @@ func getHelloWorldPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
 		},
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{{
-				Name: hwPipelineTaskName1,
+				Name: "create-file-kritis",
 				TaskRef: v1alpha1.TaskRef{
-					Name: getName(hwTaskName, suffix),
+					Name: "create-file",
 				},
 			}, {
-				Name: hwPipelineTaskName2,
+				Name: "create-fan-out-1",
 				TaskRef: v1alpha1.TaskRef{
-					Name: getName(hwTaskName, suffix),
+					Name: "check-create-files-exists",
 				},
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "workspace",
+					ProvidedBy: []string{"create-file-kritis"},
+				}},
+			}, {
+				Name: "create-fan-out-2",
+				TaskRef: v1alpha1.TaskRef{
+					Name: "check-create-files-exists-2",
+				},
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "workspace",
+					ProvidedBy: []string{"create-file-kritis"},
+				}},
+			}, {
+				Name: "check-fan-in",
+				TaskRef: v1alpha1.TaskRef{
+					Name: "read-files",
+				},
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "workspace",
+					ProvidedBy: []string{"create-fan-out-2", "create-fan-out-1"},
+				}},
+			}},
+		},
+	}
+}
+
+func getFanInFanOutGitResource(namespace string) *v1alpha1.PipelineResource {
+	return &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kritis-resource-git",
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+			Params: []v1alpha1.Param{{
+				Name:  "Url",
+				Value: "https://github.com/grafeas/kritis",
+			}, {
+				Name:  "Revision",
+				Value: "master",
 			}},
 		},
 	}
@@ -254,6 +415,74 @@ func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceA
 		Secrets: []corev1.ObjectReference{{
 			Name: getName(hwSecret, suffix),
 		}},
+	}
+}
+func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
+	return &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      getName(hwPipelineRunName, suffix),
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: getName(hwPipelineName, suffix),
+			},
+			PipelineTriggerRef: v1alpha1.PipelineTriggerRef{
+				Type: v1alpha1.PipelineTriggerTypeManual,
+			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{
+				{
+					Name: "create-file-kritis",
+					Inputs: []v1alpha1.TaskResourceBinding{{
+						Name: "workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "kritis-resource-git",
+						},
+					}},
+					Outputs: []v1alpha1.TaskResourceBinding{{
+						Name: "workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "kritis-resource-git",
+						},
+					}},
+				}, {
+					Name: "create-fan-out-1",
+					Inputs: []v1alpha1.TaskResourceBinding{{
+						Name: "workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "kritis-resource-git",
+						},
+					}},
+					Outputs: []v1alpha1.TaskResourceBinding{{
+						Name: "workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "kritis-resource-git",
+						},
+					}},
+				}, {
+					Name: "create-fan-out-2",
+					Inputs: []v1alpha1.TaskResourceBinding{{
+						Name: "workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "kritis-resource-git",
+						},
+					}},
+					Outputs: []v1alpha1.TaskResourceBinding{{
+						Name: "workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "kritis-resource-git",
+						},
+					}},
+				}, {
+					Name: "check-fan-in",
+					Inputs: []v1alpha1.TaskResourceBinding{{
+						Name: "workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "kritis-resource-git",
+						},
+					}},
+				}},
+		},
 	}
 }
 
@@ -319,14 +548,14 @@ func newHostPathType(pathType string) *corev1.HostPathType {
 // collectMatchingEvents collects list of events under 5 seconds that match
 // 1. matchKinds which is a map of Kind of Object with name of objects
 // 2. reason which is the expected reason of event
-func collectMatchingEvents(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, kinds map[string][]string, reason string) []*corev1.Event {
+func collectMatchingEvents(kubeClient *knativetest.KubeClient, namespace string, kinds map[string][]string, reason string) ([]*corev1.Event, error) {
 	var events []*corev1.Event
 
 	watchEvents, err := kubeClient.Kube.CoreV1().Events(namespace).Watch(metav1.ListOptions{})
 	// close watchEvents channel
 	defer watchEvents.Stop()
 	if err != nil {
-		t.Errorf("failed to create watch on events: %v", err)
+		return events, err
 	}
 
 	// create timer to not wait for events longer than 5 seconds
@@ -344,7 +573,7 @@ func collectMatchingEvents(t *testing.T, kubeClient *knativetest.KubeClient, nam
 				}
 			}
 		case <-timer.C:
-			return events
+			return events, nil
 		}
 	}
 }

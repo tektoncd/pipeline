@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
@@ -209,7 +210,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		pvc, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			// Create a persistent volume claim to hold Build logs
-			pvc, err = c.createPVC(tr)
+			pvc, err = createPVC(c.KubeClientSet, tr)
 			if err != nil {
 				return fmt.Errorf("Failed to create persistent volume claim %s for task %q: %v", tr.Name, err, tr.Name)
 			}
@@ -301,10 +302,10 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 	return newtaskrun, nil
 }
 
-// createVolume will create a persistent volume mount for tr which
+// createPVC will create a persistent volume mount for tr which
 // will be used to gather logs using the entrypoint wrapper
-func (c *Reconciler) createPVC(tr *v1alpha1.TaskRun) (*corev1.PersistentVolumeClaim, error) {
-	v, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(tr.Namespace).Create(
+func createPVC(kc kubernetes.Interface, tr *v1alpha1.TaskRun) (*corev1.PersistentVolumeClaim, error) {
+	v, err := kc.CoreV1().PersistentVolumeClaims(tr.Namespace).Create(
 		&corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: tr.Namespace,
@@ -373,6 +374,13 @@ func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, pvcN
 		return nil, err
 	}
 
+	pipelineRunpvcName := tr.GetPipelineRunPVCName()
+	beforeStepsNeedPVC := resources.AddAfterSteps(tr.Spec, build, pipelineRunpvcName)
+	afterStepsNeedPVC := resources.AddBeforeSteps(tr.Spec, build, pipelineRunpvcName)
+	// attach PVC volume to build if output or inputs resource steps require
+	if beforeStepsNeedPVC || afterStepsNeedPVC {
+		build.Spec.Volumes = append(build.Spec.Volumes, resources.GetPVCVolume(pipelineRunpvcName))
+	}
 	var defaults []v1alpha1.TaskParam
 	if t.Spec.Inputs != nil {
 		defaults = append(defaults, t.Spec.Inputs.Params...)
@@ -421,6 +429,7 @@ func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvc
 		},
 		Spec: *bs,
 	}
+
 	// Add the volume used for storing the binary and logs
 	b.Spec.Volumes = append(b.Spec.Volumes, corev1.Volume{
 		Name: entrypoint.MountName,
@@ -430,6 +439,7 @@ func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvc
 			},
 		},
 	})
+
 	// Pass service account name from taskrun to build
 	// if task specifies service account name override with taskrun SA
 	b.Spec.ServiceAccountName = tr.Spec.ServiceAccount

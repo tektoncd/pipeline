@@ -85,7 +85,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	// Verify status of PipelineRun (wait for it)
-	if err := WaitForPipelineRunState(c, helmDeployPipelineRunName, func(pr *v1alpha1.PipelineRun) (bool, error) {
+	if err := WaitForPipelineRunState(c, helmDeployPipelineRunName, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
 		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
@@ -255,8 +255,8 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 					Name: helmDeployTaskName,
 				},
 				ResourceDependencies: []v1alpha1.ResourceDependency{{
-					Name:       "workspace",
-					ProvidedBy: []string{createImageTaskName},
+					Name: "workspace",
+					//	ProvidedBy: []string{createImageTaskName}, //TODO: https://github.com/knative/build-pipeline/issues/148
 				}},
 				Params: []v1alpha1.Param{{
 					Name:  "pathToHelmCharts",

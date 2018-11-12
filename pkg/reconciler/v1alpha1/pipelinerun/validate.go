@@ -67,6 +67,7 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 			inputMapping[r.Name] = rr.Spec.Type
 		}
 	}
+
 	for _, r := range outputs {
 		outputMapping[r.Name] = ""
 		// TODO(#213): if this is the empty string should it be an error? or maybe let the lookup fail?
@@ -78,16 +79,15 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 			outputMapping[r.Name] = rr.Spec.Type
 		}
 	}
-
 	if task.Spec.Inputs != nil {
 		for _, inputResource := range task.Spec.Inputs.Resources {
 			inputResourceType, ok := inputMapping[inputResource.Name]
 			if !ok {
-				return fmt.Errorf("resource %q not provided for pipeline task %q (task %q)", inputResource.Name, ptask.Name, task.Name)
+				return fmt.Errorf("input resource %q not provided for pipeline task %q (task %q)", inputResource.Name, ptask.Name, task.Name)
 			}
 			// Validate the type of resource match
 			if inputResource.Type != inputResourceType {
-				return fmt.Errorf("resource %q for pipeline task %q (task %q) should be type %q but was %q", inputResource.Name, ptask.Name, task.Name, inputResourceType, inputResource.Type)
+				return fmt.Errorf("input resource %q for pipeline task %q (task %q) should be type %q but was %q", inputResource.Name, ptask.Name, task.Name, inputResourceType, inputResource.Type)
 			}
 		}
 		for _, inputResourceParam := range task.Spec.Inputs.Params {
@@ -102,10 +102,10 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 		for _, outputResource := range task.Spec.Outputs.Resources {
 			outputResourceType, ok := outputMapping[outputResource.Name]
 			if !ok {
-				return fmt.Errorf("resource %q not provided for pipeline task %q (task %q)", outputResource.Name, ptask.Name, task.Name)
+				return fmt.Errorf("output resource %q not provided for pipeline task %q (task %q)", outputResource.Name, ptask.Name, task.Name)
 			}
 			if outputResource.Type != outputResourceType {
-				return fmt.Errorf("resource %q for pipeline task %q (task %q) should be type %q but was %q", outputResource.Name, ptask.Name, task.Name, outputResourceType, outputResource.Type)
+				return fmt.Errorf("output resource %q for pipeline task %q (task %q) should be type %q but was %q", outputResource.Name, ptask.Name, task.Name, outputResourceType, outputResource.Type)
 			}
 		}
 	}

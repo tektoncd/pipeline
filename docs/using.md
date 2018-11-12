@@ -106,6 +106,8 @@ steps:
     value: 'world'
 ```
 
+Pipeline Tasks are allowed to pass resources from previous tasks via `providedBy` field. This feature is implemented using Persistent Volume Claim under the hood but however has an implication that tasks cannot have any volume mounted under path `/pvc`.
+
 ### Conventions
 
 * `/workspace/<resource-name>`: [`PipelineResources` are made available in this mounted dir](#creating-resources)
