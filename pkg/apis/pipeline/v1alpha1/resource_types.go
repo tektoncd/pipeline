@@ -91,8 +91,9 @@ var _ webhook.GenericCRD = (*PipelineResource)(nil)
 // path to the volume mounted containing this Resource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
 type TaskResource struct {
-	Name string               `json:"name"`
-	Type PipelineResourceType `json:"type"`
+	Name       string               `json:"name"`
+	Type       PipelineResourceType `json:"type"`
+	TargetPath string               `json:"targetPath"`
 }
 
 // +genclient
@@ -119,6 +120,8 @@ type TaskRunResourceVersion struct {
 	Name        string              `json:"name"`
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
 	Version     string              `json:"version"`
+	// +optional
+	SourcePaths []string `json:"sourcePaths"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -142,4 +145,11 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 		return NewClusterResource(r)
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
+}
+
+func (tr TaskResource) GetTargetPath() string {
+	if tr.TargetPath == "" {
+		return "/"
+	}
+	return tr.TargetPath
 }

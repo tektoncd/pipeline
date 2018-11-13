@@ -71,14 +71,16 @@ func AddInputResource(
 				if err != nil {
 					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
 				}
-				if boundResource.Version != "" {
-					gitResource.Revision = boundResource.Version
-				}
+
 				gitSourceSpec := &buildv1alpha1.GitSourceSpec{
 					Url:      gitResource.URL,
 					Revision: gitResource.Revision,
 				}
-				build.Spec.Sources = append(build.Spec.Sources, buildv1alpha1.SourceSpec{Git: gitSourceSpec})
+				build.Spec.Sources = append(build.Spec.Sources, buildv1alpha1.SourceSpec{
+					Git:        gitSourceSpec,
+					TargetPath: input.TargetPath, //  set target for sources
+					Name:       gitResource.Name, // add name for source.
+				})
 			}
 		case v1alpha1.PipelineResourceTypeCluster:
 			clusterResource, err := v1alpha1.NewClusterResource(resource)
@@ -88,7 +90,6 @@ func AddInputResource(
 			addClusterBuildStep(build, clusterResource)
 		}
 	}
-
 	return build, nil
 }
 

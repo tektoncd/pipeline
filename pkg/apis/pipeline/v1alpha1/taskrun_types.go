@@ -43,13 +43,19 @@ type TaskRunSpec struct {
 	// +optional
 	Generation int64 `json:"generation,omitempty"`
 	// +optional
-	ServiceAccount string `json:"serviceAccount"`
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// +optional
-	PersistentVolumeClaim string
+	PersistentVolumeClaimName string `json:"pvcName,omitempty"`
 	// +optional
-	PreBuiltSteps []corev1.Container
+	PreBuiltSteps []TaskBuildStep `json:"preBuildSteps,omitempty"`
 	// +optional
-	PostBuiltSteps []corev1.Container
+	PostBuiltSteps []TaskBuildStep `json:"postBuiltSteps,omitempty"`
+}
+
+// TaskBuildStep holds information about the build steps along with source names
+type TaskBuildStep struct {
+	Name  string   `json:"name"`
+	Paths []string `json:"paths"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.

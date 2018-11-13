@@ -17,9 +17,12 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -146,3 +149,27 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 
 // SetDefaults for pipelinerun
 func (pr *PipelineRun) SetDefaults() {}
+
+func (pr *PipelineRun) GetPVC() *corev1.PersistentVolumeClaim {
+	var pvcSizeBytes int64
+	pvcSizeBytes = 5 * 1024 * 1024 * 1024 // 5 GBs
+	return &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: pr.Namespace,
+			Name:      pr.GetPVCName(),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			// Multiple tasks should be allowed to read and write // ReadWriteMany
+			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceStorage: *resource.NewQuantity(pvcSizeBytes, resource.BinarySI),
+				},
+			},
+		},
+	}
+}
+
+func (pr *PipelineRun) GetPVCName() string {
+	return fmt.Sprintf("%s-pvc", pr.Name)
+}

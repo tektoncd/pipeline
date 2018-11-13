@@ -8,28 +8,38 @@ spec:
     resources:
     - name: workspace
       type: git
+      targetPath: /damnworkspace
   steps:
-  - name: write
+  - name: read-docs-old
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'ls -la /workspace/damnworkspace/docs/install.md']
+  - name: write-new-stuff
     image: ubuntu
     command: ['bash']
-    args: ['-c', 'echo some stuff > /workspace/stuff']
+    args: ['-c', 'echo some stuff > /workspace/damnworkspace/stuff']
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
-  name: check-file
+  name: check-stuff-file-exists
   namespace: default
 spec:
   inputs:
     resources:
     - name: workspace
       type: git
+      targetPath: /newworkspace
   steps:
+  - name: lsread
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'ls -la /workspace/newworkspace/']
   - name: read
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'cat /test/stuff']
+    args: ['-c', 'cat /workspace/newworkspace/stuff']
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1

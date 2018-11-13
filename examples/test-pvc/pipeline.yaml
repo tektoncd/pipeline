@@ -18,7 +18,7 @@ spec:
         name: kritis-resources-git  # altered git resource
   - name: check-kritis               # 2.  check file exists
     taskRef:
-      name: check-file
+      name: check-stuff-file-exists
     inputSourceBindings:
     - name: workspace
       resourceRef:
