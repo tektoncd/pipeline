@@ -11,7 +11,8 @@ In this file you'll find info on:
 * [Principles](#principles)
 * [The pull request process](#pull-request-process) and [Prow commands](#prow-commands)
 * [Standards](#standards) around [commit messages](#commit-messages) and [code](#coding-standards)
-* [The roadmap and contributions wanted](#roadmap-and-contributions-wanted)
+* [Finding something to work on](#finding-something-to-work-on)
+* [The roadmap](#roadmap)
 * [Contacting other contributors](#contact)
 
 _See also [the contribution guidelines for Knative](https://github.com/knative/docs/blob/master/community/CONTRIBUTING.md)._
@@ -116,37 +117,38 @@ The code in this repo should follow best practices, specifically:
 
 * [Go code review comments](https://github.com/golang/go/wiki/CodeReviewComments)
 
-## Roadmap and contributions wanted
+## Finding something to work on
 
-As of Sept 2018, our roadmap for the next few months is to:
-
-1. Soldify the API, including:
-
-   * [Designing conditional execution](https://github.com/knative/build-pipeline/issues/27)
-   * [Designing sources](https://github.com/knative/build-pipeline/issues/13)
-   * [Ensuring the the same inputs/outputs are used throughout the pipeline](https://github.com/knative/build-pipeline/issues/11)
-   * [Design references between objects](https://github.com/knative/build-pipeline/issues/38)
-   * [Design templating](https://github.com/knative/build-pipeline/issues/36)
-   * [Design results](https://github.com/knative/build-pipeline/issues/37)
-
-2. Complete a user study (see issues labeled with [user-study](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3Auser-study))
-
-3. [Create an initial POC command line tool for interacting with Pipelines](https://github.com/knative/build-pipeline/issues/35)
-
-### Contributions wanted
+Thanks so much for considering contributing to our project!! We hope very much you can find something
+interesting to work on:
 
 * To find issues that we particularly would like contributors to tackle, look for
   [issues with the "help wanted" label](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 * Issues that are good for new folks will additionally be marked with
   ["good first issue"](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
-### Project board
+### Assigning yourself an issue
 
-Our project board is available at: https://github.com/knative/build-pipeline/projects/1
-The columns on the board are:
+To assign an issue to a user (or yourself), use GitHub or the Prow command by writing a comment
+in the issue such as:
 
-* Ice box: Work we would like to do, but don't plan to tackle in the next couple weeks
-* Blocked: Issues that are blocked by other tasks
+```none
+/assign @your_github_username
+```
+
+Unfortunately, GitHub will only allow issues to be assigned to users who are part of
+[the knative org](https://github.com/orgs/knative/people).
+
+But don't let that stop you! **Leave a comment in the issue indicating you would like to work
+on it** and we will consider it assigned to you.
+
+## Roadmap
+
+As of Nov 2018, our goal for the end of the year is to get the project into a usable state by
+releasing a 0.0.1 version, also known as our Alpha version. At this point the API should be relatively
+stable and we would feel confident inviting users to start trying out the project.
+
+This work is visible in [the Alpha 0.0.1 milestone](https://github.com/knative/build-pipeline/milestone/2).
 
 ## Contact
 
