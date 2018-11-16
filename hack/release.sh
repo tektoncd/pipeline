@@ -17,16 +17,16 @@
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/release.sh
 
 # Set default GCS/GCR
-: ${BUILD_RELEASE_GCS:="knative-releases/build-pipeline"}
-: ${BUILD_RELEASE_GCR:="gcr.io/knative-releases"}
-readonly BUILD_RELEASE_GCS
-readonly BUILD_RELEASE_GCR
+: ${BUILD_PIPELINE_RELEASE_GCS:="knative-releases/build-pipeline"}
+: ${BUILD_PIPELINE_RELEASE_GCR:="gcr.io/knative-releases"}
+readonly BUILD_PIPELINE_RELEASE_GCS
+readonly BUILD_PIPELINE_RELEASE_GCR
 
 # Local generated yaml file
 readonly OUTPUT_YAML=release.yaml
 
 # Set the repository
-export KO_DOCKER_REPO=${BUILD_RELEASE_GCR}
+export KO_DOCKER_REPO=${BUILD_PIPELINE_RELEASE_GCR}
 
 # Script entry point
 
@@ -46,7 +46,7 @@ export DOCKER_REPO_OVERRIDE=DOCKER_NOT_SET
 
 echo "- Destination GCR: ${KO_DOCKER_REPO}"
 if (( PUBLISH_RELEASE )); then
-  echo "- Destination GCS: ${BUILD_RELEASE_GCS}"
+  echo "- Destination GCS: ${BUILD_PIPELINE_RELEASE_GCS}"
 fi
 
 echo "Building build-pipeline"
@@ -59,15 +59,9 @@ if (( ! PUBLISH_RELEASE )); then
  exit 0
 fi
 
-# Push the base image for creds-init and git images.
-echo "Pushing base images to ${BUILD_BASE_GCR}"
-docker push ${BUILD_BASE_GCR}
-
 echo "Publishing ${OUTPUT_YAML}"
-publish_yaml ${OUTPUT_YAML} ${BUILD_RELEASE_GCS} ${TAG}
+publish_yaml ${OUTPUT_YAML} ${BUILD_PIPELINE_RELEASE_GCS} ${TAG}
 
 branch_release "Knative Build Pipeline" "${OUTPUT_YAML}"
 
 echo "New release published successfully"
-
-# TODO(mattmoor): Create other aliases?
