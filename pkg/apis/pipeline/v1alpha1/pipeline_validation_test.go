@@ -32,29 +32,22 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 		{
 			name: "duplicate tasks",
 			fields: fields{
-				Tasks: []PipelineTask{
-					{
-						Name: "foo",
-					},
-					{
-						Name: "foo",
-					},
-				},
+				Tasks: []PipelineTask{{
+					Name: "foo",
+				}, {
+					Name: "foo",
+				}},
 			},
 		},
 		{
 			name: "invalid constraint tasks",
 			fields: fields{
-				Tasks: []PipelineTask{
-					{
-						Name: "foo",
-						InputSourceBindings: []SourceBinding{
-							{
-								ProvidedBy: []string{"bar"},
-							},
-						},
-					},
-				},
+				Tasks: []PipelineTask{{
+					Name: "foo",
+					ResourceDependencies: []ResourceDependency{{
+						ProvidedBy: []string{"bar"},
+					}},
+				}},
 			},
 		},
 	}
@@ -83,32 +76,24 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 		{
 			name: "no duplicate tasks",
 			fields: fields{
-				Tasks: []PipelineTask{
-					{
-						Name: "foo",
-					},
-					{
-						Name: "baz",
-					},
-				},
+				Tasks: []PipelineTask{{
+					Name: "foo",
+				}, {
+					Name: "baz",
+				}},
 			},
 		},
 		{
 			name: "valid constraint tasks",
 			fields: fields{
-				Tasks: []PipelineTask{
-					{
-						Name: "foo",
-						InputSourceBindings: []SourceBinding{
-							{
-								ProvidedBy: []string{"bar"},
-							},
-						},
-					},
-					{
-						Name: "bar",
-					},
-				},
+				Tasks: []PipelineTask{{
+					Name: "foo",
+					ResourceDependencies: []ResourceDependency{{
+						ProvidedBy: []string{"bar"},
+					}},
+				}, {
+					Name: "bar",
+				}},
 			},
 		},
 	}

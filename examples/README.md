@@ -15,24 +15,28 @@ kubectl apply -f examples/invocations
 
 We have 2 example [Pipelines](../README.md#pipeline) in [./pipelines](./pipelines)
 
-1. [The Kritis Pipline](./pipelines/kritis.yaml): This example builds a Pipeline for the
-   [kritis project](https://github.com/grafeas/kritis), and demonstrates how to configure
-    a pipeline which:
+### Kritis Pipeline
 
-    1. Runs unit tests
-    2. Build an image
-    3. Deploys it to a test environment
-    4. Runs integration tests
+[The Kritis Pipline](./pipelines/kritis.yaml): This example builds a Pipeline for the
+[kritis project](https://github.com/grafeas/kritis), and demonstrates how to configure
+a pipeline which:
 
-   ![Pipeline Configuration](./pipelines/kritis-pipeline.png)
+1. Runs unit tests
+2. Build an image
+3. Deploys it to a test environment
+4. Runs integration tests
 
-2. [Guestbook](./pipelines/guestbook.yaml): This Pipeline is based on example application in
-   [the Kubernetes example Repo](https://github.com/kubernetes/examples/tree/master/guestbook)
-   This pipeline demonstartes how to integrate frontend
-   [guestbook app code](https://github.com/kubernetes/examples/tree/master/guestbook-go) with
-   backend [redis-docker image](https://github.com/GoogleCloudPlatform/redis-docker/tree/master/4) provided by GCP.
+![Pipeline Configuration](./pipelines/kritis-pipeline.png)
 
-   ![Pipeline Configuration](./pipelines/guestbook-pipeline.png)
+### Guestbook Pipeline
+
+[Guestbook](./pipelines/guestbook.yaml): This Pipeline is based on example application in
+[the Kubernetes example Repo](https://github.com/kubernetes/examples/tree/master/guestbook)
+This pipeline demonstartes how to integrate frontend
+[guestbook app code](https://github.com/kubernetes/examples/tree/master/guestbook-go) with
+backend [redis-docker image](https://github.com/GoogleCloudPlatform/redis-docker/tree/master/4) provided by GCP.
+
+![Pipeline Configuration](./pipelines/guestbook-pipeline.png)
 
 ## Example Tasks
 
@@ -52,14 +56,11 @@ This task then calls `docker run` which will run the test code. This follows the
 
 ### Example Runs
 
-The [invocations](./invocations/) directory contains an example [TaskRun](../docs/Concepts.md#taskrun) and an example [PipelineRun](../docs/Concepts.md#pipelinerun).
+The [invocations](./invocations/) directory contains an example [TaskRun](../docs/Concepts.md#taskrun) and two example [PipelineRuns](../docs/Concepts.md#pipelinerun).
 
 [run-kritis-test.yaml](./invocations/run-kritis-test.yaml) shows an example of how to manually run kritis unit test off your development branch.
 
-[kritis-pipeline-run.yaml](./invocations/kritis-pipeline-run.yaml) shows an example of
-what it would look like to invoke the [kritis example pipeline](#example-pipelines)
-manually. In the `conditions` field for type `Successful` you can see that the status
-is `False`, which indicates that the Pipeline was not run successfully. The field
-`message` contains a human readable error indicating that one of the `TaskRuns` failed.
-This `condition` (and everything else in the `status` section) would be populated by the
-controller as it realized the PipelineRun (i.e. ran the Pipeline).
+The example `PipelineRuns are`:
+
+* [kritis-pipeline-run.yaml](./invocations/kritis-pipeline-run.yaml) invokes [the kritis example pipeline](#kritis-pipeline)
+* [guestbook-pipeline-run.yaml](./invocations/guestbook-pipeline-run.yaml) invokes [the guestbook example pipeline](#guestbook-pipeline)

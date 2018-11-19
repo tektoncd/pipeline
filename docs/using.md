@@ -3,7 +3,7 @@
 * [How do I create a new Pipeline?](#creating-a-pipeline)
 * [How do I make a Task?](#creating-a-task)
 * [How do I make Resources?](#creating-resources)
-* [How do I run a Pipeline?](#running-a-task)
+* [How do I run a Pipeline?](#running-a-pipeline)
 * [How do I run a Task on its own?](#running-a-task)
 * [How do I troubleshoot a PipelineRun?](#troubleshooting)
 
@@ -136,10 +136,46 @@ ${inputs.params.NAME}
 
 ## Running a Pipeline
 
-1. To run your `Pipeline`, create a new `PipelineRun` which links your `Pipeline` to the
-   `PipelineParams` it will run with.
-2. Creation of a `PipelineRun` will trigger the creation of [`TaskRuns`](#running-a-task)
-   for each `Task` in your pipeline.
+In order to run a Pipeline, you will need to provide:
+
+1. A Pipeline to run (see [creating a Pipeline](#creating-a-pipeline))
+2. `PipelineParams` which specify the service account to use and where to put logs (see [the example `PipelineParams`](examples/pipelineparams.yaml))
+3. The `PipelineResources` to use with this Pipeline.
+
+On its own, a `Pipeline` declares what `Tasks` to run, and what order to run them in
+(implied by [`providedBy`](#providedby)). When running a `Pipeline`, you will
+need to specify the `PipelineResources` to use with it. One `Pipeline` may need to be run
+with different `PipelineResources` in cases such as:
+
+* When triggering the run of a `Pipeline` against a pull request, the triggering system must
+  specify the commitish of a git `PipelineResource` to use
+* When invoking a `Pipeline` manually against one's own setup, one will need to ensure that
+  one's own github fork (via the git `PipelineResource`), image registry (via the image
+  `PipelineResource`) and kubernetes cluster (via the cluster `PipelineResource`).
+
+Specify the `PipelineResources` in the PipelineRun using the `resources` section, for example:
+
+```yaml
+resources:
+- name: push-kritis
+  inputs:
+    - key: workspace
+      resourceRef:
+        name: kritis-resources-git
+  outputs:
+    - key: builtImage
+      resourceRef:
+        name: kritis-resources-image
+```
+
+This example section says:
+
+* For the `Task` in the `Pipeline` called `push-kritis`
+* For the input called `workspace`, use the existing resource called `kritis-resources-git`
+* For the output called `builtImage`, use the existing resource called `kritis-resources-image`
+
+Creation of a `PipelineRun` will trigger the creation of [`TaskRuns`](#running-a-task)
+for each `Task` in your pipeline.
 
 See [the example PipelineRun](../examples/invocations/kritis-pipeline-run.yaml).
 

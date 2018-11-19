@@ -66,7 +66,9 @@ type TaskSpec struct {
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
-// TaskStatus defines the observed state of Task
+// TaskStatus does not contain anything because Tasks on their own
+// do not have a status, they just hold data which is later used by a
+// TaskRun.
 type TaskStatus struct {
 	// Important: Run "./hack/update-codegen.sh" to regenerate code after modifying this file
 }

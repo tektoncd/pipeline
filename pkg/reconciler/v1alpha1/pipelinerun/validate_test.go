@@ -21,12 +21,6 @@ func Test_InvalidPipelineTask(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
-				InputSourceBindings: []v1alpha1.SourceBinding{{
-					Name: "test-resource-name",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "non-existent-resource1",
-					},
-				}},
 			}},
 		},
 	}, {
@@ -38,12 +32,6 @@ func Test_InvalidPipelineTask(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
-				OutputSourceBindings: []v1alpha1.SourceBinding{{
-					Name: "test-resource-name",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "non-existent-resource",
-					},
-				}},
 			}},
 		},
 	}, {
@@ -55,9 +43,6 @@ func Test_InvalidPipelineTask(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-task-wrong-input"},
-				InputSourceBindings: []v1alpha1.SourceBinding{{
-					Name: "non-existent",
-				}},
 			}},
 		},
 	}, {
@@ -69,9 +54,6 @@ func Test_InvalidPipelineTask(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-task-wrong-output"},
-				InputSourceBindings: []v1alpha1.SourceBinding{{
-					Name: "non-existent",
-				}},
 			}},
 		},
 	}, {
@@ -98,7 +80,108 @@ func Test_InvalidPipelineTask(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "unit-test-1",
 				TaskRef: v1alpha1.TaskRef{Name: "unit-task-bad-resourcetype"},
-				InputSourceBindings: []v1alpha1.SourceBinding{{
+			}},
+		},
+	}}
+	prs := []*v1alpha1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-1",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline-bad-inputbindings",
+			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "unit-test-1",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					// TODO(#213): these are currently covering both the case where the name of the
+					// resource is bad and the referred resource doesn't exist (the task has no inputs)
+					Name: "test-resource-name",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "non-existent-resource1",
+					},
+				}},
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-2",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline-bad-outputbindings",
+			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "unit-test-1",
+				Outputs: []v1alpha1.TaskResourceBinding{{
+					// TODO(#213): these are currently covering both the case where the name of the
+					// resource is bad and the referred resource doesn't exist (the task has no outputs)
+					Name: "test-resource-name",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "non-existent-resource1",
+					},
+				}},
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-3",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline-bad-inputkey",
+			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "unit-test-1",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					Name: "non-existent",
+				}},
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-4",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline-bad-outputkey",
+			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "unit-test-1",
+				Outputs: []v1alpha1.TaskResourceBinding{{
+					Name: "non-existent",
+				}},
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-5",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline-param-mismatch",
+			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "unit-test-1",
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-6",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline-bad-resourcetype",
+			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "unit-test-1",
+				Inputs: []v1alpha1.TaskResourceBinding{{
 					Name: "testimageinput",
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "git-test-resource",
@@ -150,10 +233,10 @@ func Test_InvalidPipelineTask(t *testing.T) {
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
 				Params: []v1alpha1.TaskParam{{
-					Name: "foo",
+					Name:        "foo",
 					Description: "foo",
 				}, {
-					Name: "bar",
+					Name:        "bar",
 					Description: "bar",
 				}},
 			},
@@ -188,49 +271,45 @@ func Test_InvalidPipelineTask(t *testing.T) {
 	}}
 
 	tcs := []struct {
-		name     string
-		pipeline *v1alpha1.Pipeline
-		reason   string
+		name        string
+		pipeline    *v1alpha1.Pipeline
+		pipelineRun *v1alpha1.PipelineRun
+		reason      string
 	}{
 		{
-			name:     "bad-input-source-bindings",
-			pipeline: ps[0],
-			reason:   "input-source-binding-to-invalid-resource",
+			name:        "bad-input-source-bindings",
+			pipeline:    ps[0],
+			pipelineRun: prs[0],
+			reason:      "input-source-binding-to-invalid-resource",
 		}, {
-			name:     "bad-output-source-bindings",
-			pipeline: ps[1],
-			reason:   "output-source-binding-to-invalid-resource",
+			name:        "bad-output-source-bindings",
+			pipeline:    ps[1],
+			pipelineRun: prs[1],
+			reason:      "output-source-binding-to-invalid-resource",
 		}, {
-			name:     "bad-inputkey",
-			pipeline: ps[2],
-			reason:   "bad-input-mapping",
+			name:        "bad-inputkey",
+			pipeline:    ps[2],
+			pipelineRun: prs[2],
+			reason:      "bad-input-mapping",
 		}, {
-			name:     "bad-outputkey",
-			pipeline: ps[3],
-			reason:   "bad-output-mapping",
+			name:        "bad-outputkey",
+			pipeline:    ps[3],
+			pipelineRun: prs[3],
+			reason:      "bad-output-mapping",
 		}, {
-			name:     "param-mismatch",
-			pipeline: ps[4],
-			reason:   "input-param-mismatch",
+			name:        "param-mismatch",
+			pipeline:    ps[4],
+			pipelineRun: prs[4],
+			reason:      "input-param-mismatch",
 		}, {
-			name:     "resource-mismatch",
-			pipeline: ps[5],
-			reason:   "input-resource-mismatch",
+			name:        "resource-mismatch",
+			pipeline:    ps[5],
+			pipelineRun: prs[5],
+			reason:      "input-resource-mismatch",
 		}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			prs := []*v1alpha1.PipelineRun{{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-pipeline-run",
-					Namespace: "foo",
-				},
-				Spec: v1alpha1.PipelineRunSpec{
-					PipelineRef: v1alpha1.PipelineRef{
-						Name: tc.pipeline.Name,
-					},
-				},
-			}}
 			d := test.Data{
 				PipelineRuns:      prs,
 				Pipelines:         ps,
@@ -239,12 +318,12 @@ func Test_InvalidPipelineTask(t *testing.T) {
 			}
 
 			c, _, _ := test.GetPipelineRunController(d)
-			err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run")
+			err := c.Reconciler.Reconcile(context.Background(), "foo/"+tc.pipelineRun.Name)
 
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
 			}
-			condition := prs[0].Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			condition := tc.pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected status to be failed on invalid PipelineRun %s but was: %v", tc.pipeline.Name, condition)
 			}

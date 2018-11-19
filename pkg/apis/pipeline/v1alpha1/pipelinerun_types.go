@@ -28,10 +28,42 @@ var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
-	PipelineRef        PipelineRef        `json:"pipelineRef"`
-	PipelineParamsRef  PipelineParamsRef  `json:"pipelineParamsRef"`
-	PipelineTriggerRef PipelineTriggerRef `json:"triggerRef"`
-	Generation         int64              `json:"generation,omitempty"`
+	PipelineRef           PipelineRef            `json:"pipelineRef"`
+	PipelineParamsRef     PipelineParamsRef      `json:"pipelineParamsRef"`
+	PipelineTriggerRef    PipelineTriggerRef     `json:"triggerRef"`
+	PipelineTaskResources []PipelineTaskResource `json:"resources"`
+	Generation            int64                  `json:"generation,omitempty"`
+}
+
+// PipelineTaskResource maps Task inputs and outputs to existing PipelineResources by their names.
+type PipelineTaskResource struct {
+	// Name is the name of the `PipelineTask` for which these PipelineResources are being provided.
+	Name string `json:"name"`
+
+	// Inputs is a list containing mapping from the input Resources which the Task has declared it needs
+	// and the corresponding Resource instance in the system which should be used.
+	Inputs []TaskResourceBinding `json:"inputs"`
+
+	// Outputs is a list containing mapping from the output Resources which the Task has declared it needs
+	// and the corresponding Resource instance in the system which should be used.
+	Outputs []TaskResourceBinding `json:"outputs"`
+}
+
+// TaskResourceBinding is used to bind a PipelineResource to a PipelineResource required for a Task as an input or an output.
+type TaskResourceBinding struct {
+	// Name is the name of the Task's input that this Resource should be used for.
+	Name string `json:"name"`
+	// The Resource that should be provided to the Task for the Resource it requires.
+	ResourceRef PipelineResourceRef `json:"resourceRef"`
+}
+
+// PipelineResourceRef can be used to refer to a specific instance of a Resource
+type PipelineResourceRef struct {
+	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	Name string `json:"name"`
+	// API version of the referent
+	// +optional
+	APIVersion string `json:"apiVersion,omitempty"`
 }
 
 // PipelineRef can be used to refer to a specific instance of a Pipeline.

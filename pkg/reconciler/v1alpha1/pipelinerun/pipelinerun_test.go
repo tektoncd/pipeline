@@ -46,6 +46,21 @@ func TestReconcile(t *testing.T) {
 			PipelineParamsRef: v1alpha1.PipelineParamsRef{
 				Name: "unit-test-pp",
 			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "unit-test-1",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
+				}},
+				Outputs: []v1alpha1.TaskResourceBinding{{
+					Name: "image-to-use",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-image",
+					},
+				}},
+			}},
 		},
 	}}
 	ps := []*v1alpha1.Pipeline{{
@@ -54,37 +69,20 @@ func TestReconcile(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{
-				{
-					Name:    "unit-test-1",
-					TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
-					Params: []v1alpha1.Param{
-						{
-							Name:  "foo",
-							Value: "somethingfun",
-						},
-						{
-							Name:  "bar",
-							Value: "somethingmorefun",
-						},
-						{
-							Name:  "templatedparam",
-							Value: "${inputs.workspace.revision}",
-						},
-					},
-					InputSourceBindings: []v1alpha1.SourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "some-repo",
-						},
-					}},
-					OutputSourceBindings: []v1alpha1.SourceBinding{{
-						Name: "image-to-use",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "some-image",
-						},
-					}},
+			Tasks: []v1alpha1.PipelineTask{{
+				Name:    "unit-test-1",
+				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+				Params: []v1alpha1.Param{{
+					Name:  "foo",
+					Value: "somethingfun",
+				}, {
+					Name:  "bar",
+					Value: "somethingmorefun",
+				}, {
+					Name:  "templatedparam",
+					Value: "${inputs.workspace.revision}",
 				}},
+			}},
 		}},
 	}
 	ts := []*v1alpha1.Task{{
@@ -406,12 +404,6 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	pipelineTask := v1alpha1.PipelineTask{
 		Name:    "unit-test-1",
 		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
-		InputSourceBindings: []v1alpha1.SourceBinding{{
-			Name: "workspace",
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: "some-repo",
-			},
-		}},
 	}
 	task := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
@@ -436,14 +428,6 @@ func TestUpdateTaskRunsState(t *testing.T) {
 			ServiceAccount: "test-sa",
 			TaskRef: v1alpha1.TaskRef{
 				Name: "unit-test-task",
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResourceVersion{{
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-					Name: "workspace",
-				}},
 			},
 		},
 		Status: v1alpha1.TaskRunStatus{
