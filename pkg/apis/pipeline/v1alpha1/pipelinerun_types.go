@@ -72,9 +72,9 @@ type PipelineTriggerRef struct {
 
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
+	Conditions duckv1alpha1.Conditions `json:"conditions"`
 	//+optional
-	TaskRuns []PipelineTaskRun `json:"taskRuns,omitempty"`
-	Conditions      duckv1alpha1.Conditions   `json:"conditions"`
+	TaskRuns map[string]TaskRunStatus `json:"taskRuns,omitempty"`
 }
 
 var pipelineRunCondSet = duckv1alpha1.NewBatchConditionSet()
@@ -85,8 +85,11 @@ func (pr *PipelineRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1a
 }
 
 // InitializeConditions will set all conditions in pipelineRunCondSet to unknown for the PipelineRun
-func (ps *PipelineRunStatus) InitializeConditions() {
-	pipelineRunCondSet.Manage(ps).InitializeConditions()
+func (pr *PipelineRunStatus) InitializeConditions() {
+	if pr.TaskRuns == nil {
+		pr.TaskRuns = make(map[string]TaskRunStatus)
+	}
+	pipelineRunCondSet.Manage(pr).InitializeConditions()
 }
 
 // SetCondition sets the condition, unsetting previous conditions with the same

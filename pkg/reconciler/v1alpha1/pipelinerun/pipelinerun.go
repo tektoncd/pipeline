@@ -175,7 +175,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
-	state, err := resources.GetPipelineState(
+	pipelineState, err := resources.GetPipelineState(
 		func(namespace, name string) (*v1alpha1.Task, error) {
 			return c.taskLister.Tasks(namespace).Get(name)
 		},
@@ -198,7 +198,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		}
 		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
-	prtr := resources.GetNextTask(pr.Name, state, c.Logger)
+	prtr := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
 	if prtr != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
 		prtr.TaskRun, err = c.createTaskRun(prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount)
@@ -209,10 +209,16 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-	after := resources.GetPipelineConditionStatus(pr.Name, state, c.Logger)
+	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger)
 	pr.Status.SetCondition(after)
 
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
+
+	for _, pipelineItem := range pipelineState {
+		if pipelineItem.TaskRun != nil {
+			pr.Status.TaskRuns[pipelineItem.TaskRun.Name] = pipelineItem.TaskRun.Status
+		}
+	}
 
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
 	return nil
@@ -263,7 +269,7 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	if err != nil {
 		return nil, fmt.Errorf("Error getting PipelineRun %s when updating status: %s", pr.Name, err)
 	}
-	if !reflect.DeepEqual(newPr.Status, pr.Status) {
+	if !reflect.DeepEqual(pr.Status, newPr.Status) {
 		newPr.Status = pr.Status
 		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
