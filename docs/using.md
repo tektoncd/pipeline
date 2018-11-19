@@ -16,29 +16,29 @@
    to run against, where to store results, etc.
 3. Create a `Pipeline` which expresses the Tasks you would like to run and what
    [Resources](#creating-resources) the Tasks need.
-   Use [`passedConstraints`](#passedconstraints) to express the order the `Tasks` should run in.
+   Use [`providedBy`](#providedBy) to express the order the `Tasks` should run in.
 
 See [the example guestbook Pipeline](../examples/pipelines/guestbook.yaml) and
 [the example kritis Pipeline](../examples/pipelines/kritis.yaml).
 
-### PassedConstraints
+### ProvidedBy
 
 When you need to execute `Tasks` in a particular order, it will likely be because they
 are operating over the same `Resources` (e.g. your unit test task must run first against
 your git repo, then you build an image from that repo, then you run integration tests
 against that image).
 
-We express this ordering by adding `passedConstraints` on `Resources` that our `Tasks`
+We express this ordering by adding `providedBy` on `Resources` that our `Tasks`
 need.
 
-* The (optional) `passedConstraints` key on an `input source` defines a set of previous
+* The (optional) `providedBy` key on an `input source` defines a set of previous
   task names.
-* When the `passedConstraints` key is specified on an input source, only the version of
-  the resource that passed through the defined list of tasks is used.
-* The `passedConstraints` allows for `Tasks` to fan in and fan out, and ordering can be
+* When the `providedBy` key is specified on an input source, only the version of
+  the resource that is provided by the defined list of tasks is used.
+* The `providedBy` allows for `Tasks` to fan in and fan out, and ordering can be
   expressed explicitly using this key since a task needing a resource from a another
   task would have to run after.
-* The name used in the `passedConstraints` is the name of `PipelineTask`
+* The name used in the `providedBy` is the name of `PipelineTask`
 
 ## Creating a Task
 

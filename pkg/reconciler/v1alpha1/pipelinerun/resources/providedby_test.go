@@ -76,7 +76,7 @@ var mypipelinetasks = []v1alpha1.PipelineTask{{
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "myresource1",
 		},
-		PassedConstraints: []string{"mypipelinetask1"},
+		ProvidedBy: []string{"mypipelinetask1"},
 	}},
 }}
 

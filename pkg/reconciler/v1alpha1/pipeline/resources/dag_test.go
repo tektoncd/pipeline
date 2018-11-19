@@ -30,27 +30,27 @@ func TestBuild(t *testing.T) {
 	c := v1alpha1.PipelineTask{Name: "c"}
 	xDependsOnA := v1alpha1.PipelineTask{
 		Name:                "x",
-		InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"a"}}},
+		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"a"}}},
 	}
 	yDependsOnAB := v1alpha1.PipelineTask{
 		Name:                "y",
-		InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"b", "a"}}},
+		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"b", "a"}}},
 	}
 	zDependsOnX := v1alpha1.PipelineTask{
 		Name:                "z",
-		InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"x"}}},
+		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"x"}}},
 	}
 	aDependsOnZ := v1alpha1.PipelineTask{
 		Name:                "a",
-		InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"z"}}},
+		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"z"}}},
 	}
 	selfLink := v1alpha1.PipelineTask{
 		Name:                "a",
-		InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"a"}}},
+		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"a"}}},
 	}
 	invalidTask := v1alpha1.PipelineTask{
 		Name:                "a",
-		InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"none"}}},
+		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"none"}}},
 	}
 	nodeX := &Node{Task: xDependsOnA, Prev: []*Node{&Node{Task: a}}}
 
@@ -136,11 +136,11 @@ func TestGetPrevTasks(t *testing.T) {
 	a := v1alpha1.PipelineTask{Name: "a"}
 	x := v1alpha1.PipelineTask{
 		Name:                "x",
-		InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"a"}}},
+		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"a"}}},
 	}
 	y := v1alpha1.PipelineTask{
 		Name:                "y",
-		InputSourceBindings: []v1alpha1.SourceBinding{{PassedConstraints: []string{"x", "a"}}},
+		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"x", "a"}}},
 	}
 	p := v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{

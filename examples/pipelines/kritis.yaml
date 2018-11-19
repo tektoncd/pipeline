@@ -22,7 +22,7 @@ spec:
     - name: workspace
       resourceRef:
         name: kritis-resources-git
-      passedConstraints: [unit-test-kritis]
+      providedBy: [unit-test-kritis]
     outputSourceBindings:
     - name: builtImage
       resourceRef:
@@ -40,7 +40,7 @@ spec:
     - name: builtImage
       resourceRef:
         name: kritis-resources-image
-      passedConstraints: [push-kritis]
+      providedBy: [push-kritis]
     - name: testCluster
       resourceRef:
         name: kritistestcluster  
@@ -54,7 +54,7 @@ spec:
     - name: workspace
       resourceRef:
           name: kritis-resources-git
-      passedConstraints: [deploy-test-env]
+      providedBy: [deploy-test-env]
     params:
     - name: testArgs
       value: "-e REMOTE_INTEGRATION=true"
