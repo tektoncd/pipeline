@@ -105,8 +105,8 @@ func Build(p *v1alpha1.Pipeline) (*DAG, error) {
 	}
 	// Process all providedBy constraints to add task dependency
 	for _, pt := range p.Spec.Tasks {
-		for _, input := range pt.InputSourceBindings {
-			for _, constraint := range input.ProvidedBy {
+		for _, rd := range pt.ResourceDependencies {
+			for _, constraint := range rd.ProvidedBy {
 				// We need to add dependency from constraint to node n
 				prev, ok := d.Nodes[constraint]
 				if !ok {

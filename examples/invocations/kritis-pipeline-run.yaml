@@ -10,3 +10,34 @@ spec:
     name: pipelineparams-sample
   triggerRef:
     type: manual
+  resources:
+  - name: unit-test-kritis
+    inputs:
+    - key: workspace
+      resourceRef:
+        name: kritis-resources-git
+  - name: push-kritis
+    inputs:
+      - key: workspace
+        resourceRef:
+          name: kritis-resources-git
+    outputs:
+      - key: builtImage
+        resourceRef:
+          name: kritis-resources-image
+  - name: deploy-test-env
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+    - name: builtImage
+      resourceRef:
+        name: kritis-resources-image
+    - name: testCluster
+      resourceRef:
+        name: kritistestcluster
+  - name: integration-test
+    inputs:
+    - name: workspace
+      resourceRef:
+          name: kritis-resources-git

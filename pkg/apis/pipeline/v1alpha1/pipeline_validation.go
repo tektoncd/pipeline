@@ -23,6 +23,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
+// Validate checks that the Pipeline structure is valid but does not validate
+// that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate() *apis.FieldError {
 	if err := validateObjectMetadata(p.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
@@ -30,6 +32,8 @@ func (p *Pipeline) Validate() *apis.FieldError {
 	return nil
 }
 
+// Validate checks that taskNames in the Pipeline are valid and that the graph
+// of Tasks expressed in the Pipeline makes sense.
 func (ps *PipelineSpec) Validate() *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineSpec{}) {
 		return apis.ErrMissingField(apis.CurrentField)
@@ -46,10 +50,10 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 
 	// providedBy should match other tasks.
 	for _, t := range ps.Tasks {
-		for _, isb := range t.InputSourceBindings {
-			for _, pc := range isb.ProvidedBy {
-				if _, ok := taskNames[pc]; !ok {
-					return apis.ErrInvalidKeyName(pc, fmt.Sprintf("spec.tasks.inputSourceBindings.%s", pc))
+		for _, rd := range t.ResourceDependencies {
+			for _, pb := range rd.ProvidedBy {
+				if _, ok := taskNames[pb]; !ok {
+					return apis.ErrInvalidKeyName(pb, fmt.Sprintf("spec.tasks.resources.%s", pb))
 				}
 			}
 		}

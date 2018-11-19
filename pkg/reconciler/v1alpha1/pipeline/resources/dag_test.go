@@ -29,28 +29,28 @@ func TestBuild(t *testing.T) {
 	b := v1alpha1.PipelineTask{Name: "b"}
 	c := v1alpha1.PipelineTask{Name: "c"}
 	xDependsOnA := v1alpha1.PipelineTask{
-		Name:                "x",
-		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"a"}}},
+		Name:                 "x",
+		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"a"}}},
 	}
 	yDependsOnAB := v1alpha1.PipelineTask{
-		Name:                "y",
-		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"b", "a"}}},
+		Name:                 "y",
+		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"b", "a"}}},
 	}
 	zDependsOnX := v1alpha1.PipelineTask{
-		Name:                "z",
-		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"x"}}},
+		Name:                 "z",
+		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"x"}}},
 	}
 	aDependsOnZ := v1alpha1.PipelineTask{
-		Name:                "a",
-		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"z"}}},
+		Name:                 "a",
+		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"z"}}},
 	}
 	selfLink := v1alpha1.PipelineTask{
-		Name:                "a",
-		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"a"}}},
+		Name:                 "a",
+		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"a"}}},
 	}
 	invalidTask := v1alpha1.PipelineTask{
-		Name:                "a",
-		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"none"}}},
+		Name:                 "a",
+		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"none"}}},
 	}
 	nodeX := &Node{Task: xDependsOnA, Prev: []*Node{&Node{Task: a}}}
 
@@ -135,12 +135,12 @@ func TestBuild(t *testing.T) {
 func TestGetPrevTasks(t *testing.T) {
 	a := v1alpha1.PipelineTask{Name: "a"}
 	x := v1alpha1.PipelineTask{
-		Name:                "x",
-		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"a"}}},
+		Name:                 "x",
+		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"a"}}},
 	}
 	y := v1alpha1.PipelineTask{
-		Name:                "y",
-		InputSourceBindings: []v1alpha1.SourceBinding{{ProvidedBy: []string{"x", "a"}}},
+		Name:                 "y",
+		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"x", "a"}}},
 	}
 	p := v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{

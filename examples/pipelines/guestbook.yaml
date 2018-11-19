@@ -5,103 +5,61 @@ metadata:
   namespace: default
 spec:
   tasks:
-  - name: build-guestbook                  # 1.a Build guestbook go sample code.
+  - name: build-guestbook
     taskRef:
       name: build-push
-    inputSourceBindings:
-    - name: workspace
-      resourceRef:
-        name: guestbook-resources-git
-    outputSourceBindings:
-    - name: builtImage
-      resourceRef:
-        name: guestbookstagingimage
     params:
     - name: pathToDockerfile
       value: guestbook-go/Dockerfile
-  - name: build-redis                      # 1.b Build and push redis docker image.
+  - name: build-redis
     taskRef:
       name: build-push
-    inputSourceBindings:
-    - name: workspace
-      resourceRef:
-        name: guestbook-resources-redis-docker
-    outputSourceBindings:
-    - name: builtImage
-      resourceRef:
-        name: redisstagingimage
     params:
     - name: pathToDockerfile
       value: 4/debian9/4.0/Dockerfile
-  - name: deploy-bundle-test               # 2. Deploy GuestBook and Redis to test cluster
+  - name: deploy-bundle-test
     taskRef:
       name: deploy-with-kubectl
-    inputSourceBindings:
+    resources:
     - name: imageToDeploy1
-      resourceRef:
-        name: redisstagingimage
       providedBy:
       - build-redis
     - name: imageToDeploy2
-      resourceRef:
-        name: guestbookstagingimage
       providedBy:
-      - build-guestbook  
-    - name: workspace
-      resourceRef:
-        name: guestbook-resources-redis-docker
-    - name: testCluster
-      resourceRef:
-        name: testcluster
+      - build-guestbook
     params:
     - name: pathToFiles
       value: guestbook/all-in-one/guestbook-all-in-one.yaml
-  - name: int-test-osx                    # 3.a Run Integration tests for osx
-    taskRef:
-      name: integration-test-in-docker
-    inputSourceBindings:
+  - name: int-test-osx
+    resources:
     - name: workspace
-      resourceRef:
-        name: guestbook-resources-git
       providedBy:
       - deploy-bundle-test
     params:
     - name: dockerBuildFile
       value: guestbook-int/Dockerfile
-  - name: int-test-linux                  # 3.b Run Integration tests for linux
+  - name: int-test-linux
     taskRef:
       name: integration-test-in-docker
-    inputSourceBindings:
+    resources:
     - name: workspace
-      resourceRef:
-        name: guestbook-resources-git
       providedBy:
       - deploy-bundle-test
     params:
     - name: dockerBuildFile
       value: guestbook-int/Dockerfile
-  - name: deploy-bundle-test               # 4. Deploy GuestBook and Redis to staging cluster
+  - name: deploy-bundle-test
     taskRef:
       name: deploy-with-kubectl
-    inputSourceBindings:
+    resources:
     - name: redisImage
-      resourceRef:
-        name: redisstagingimage
       providedBy:
       - int-test-osx
       - int-test-linux
     - name: guestbookImage
-      resourceRef:
-        name: guestbookstagingimage
       providedBy:
       - int-test-osx
       - int-test-linux
-    - name: workspace
-      resourceRef:
-        name: guestbook-resources-redis-docker
-    - name: testCluster
-      resourceRef:
-        name: testcluster        
     params:
     - name: pathToFiles
       value: guestbook/all-in-one/guestbook-all-in-one.yaml

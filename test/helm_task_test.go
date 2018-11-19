@@ -256,23 +256,14 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 					TaskRef: v1alpha1.TaskRef{
 						Name: createImageTaskName,
 					},
-					InputSourceBindings: []v1alpha1.SourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: sourceResourceName,
-						},
-					}},
 				},
 				v1alpha1.PipelineTask{
 					Name: "helm-deploy",
 					TaskRef: v1alpha1.TaskRef{
 						Name: helmDeployTaskName,
 					},
-					InputSourceBindings: []v1alpha1.SourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: sourceResourceName,
-						},
+					ResourceDependencies: []v1alpha1.ResourceDependency{{
+						Name:       "workspace",
 						ProvidedBy: []string{createImageTaskName},
 					}},
 					Params: []v1alpha1.Param{{
@@ -304,6 +295,23 @@ func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 			PipelineTriggerRef: v1alpha1.PipelineTriggerRef{
 				Type: v1alpha1.PipelineTriggerTypeManual,
 			},
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "helm-deploy",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: sourceResourceName,
+					},
+				}},
+			}, {
+				Name: "push-image",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: sourceResourceName,
+					},
+				}},
+			}},
 		},
 	}
 }

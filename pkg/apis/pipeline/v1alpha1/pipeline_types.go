@@ -27,10 +27,10 @@ type PipelineSpec struct {
 	Generation int64          `json:"generation,omitempty"`
 }
 
-// PipelineStatus defines the observed state of Pipeline
+// PipelineStatus does not contain anything because Pipelines on their own
+// do not have a status, they just hold data which is later used by a
+// PipelineRun.
 type PipelineStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // Check that Pipeline may be validated and defaulted.
@@ -64,9 +64,7 @@ type PipelineTask struct {
 	Name    string  `json:"name"`
 	TaskRef TaskRef `json:"taskRef"`
 	// +optional
-	InputSourceBindings []SourceBinding `json:"inputSourceBindings,omitempty"`
-	// +optional
-	OutputSourceBindings []SourceBinding `json:"outputSourceBindings,omitempty"`
+	ResourceDependencies []ResourceDependency `json:"resources,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
 }
@@ -77,13 +75,12 @@ type PipelineTaskParam struct {
 	Value string `json:"value"`
 }
 
-// SourceBinding is used to bind a Source from a PipelineParams to a source required
-// as an input for a task.
-type SourceBinding struct {
+// ResourceDependency is used when a PipelineResource required by a Task is requird to be provided by
+// a previous Task, i.e. that Task needs to operate on the PipelineResource before this Task can be
+// executed. It is from this dependency that the Pipeline's DAG is constructed.
+type ResourceDependency struct {
 	// Name is the name of the Task's input that this Resource should be used for.
 	Name string `json:"name"`
-	// The Resource this binding is referring to
-	ResourceRef PipelineResourceRef `json:"resourceRef"`
 	// ProvidedBy is the list of Task names that the resource has to come from.
 	// +optional
 	ProvidedBy []string `json:"providedBy,omitempty"`
@@ -92,15 +89,6 @@ type SourceBinding struct {
 // TaskRef can be used to refer to a specific instance of a task.
 // Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
 type TaskRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
-	// API version of the referent
-	// +optional
-	APIVersion string `json:"apiVersion,omitempty"`
-}
-
-// PipelineResourceRef can be used to refer to a specific instance of a Resource
-type PipelineResourceRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name"`
 	// API version of the referent

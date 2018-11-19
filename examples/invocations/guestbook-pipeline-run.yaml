@@ -1,0 +1,69 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: guestbook-pipeline-run-12321312984
+  namespace: default
+spec:
+  pipelineRef:
+    name: guestbook-example
+  pipelineParamsRef:
+    name: pipelineparams-sample
+  triggerRef:
+    type: manual
+  resources:
+  - name: build-guestbook
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: guestbook-resources-git
+    outputs:
+    - name: builtImage
+      resourceRef:
+        name: guestbookstagingimage
+  - name: build-redis
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: guestbook-resources-redis-docker
+    outputs:
+    - name: builtImage
+      resourceRef:
+        name: redisstagingimage
+  - name: deploy-bundle-test
+    inputs:
+    - name: imageToDeploy1
+      resourceRef:
+        name: redisstagingimage
+    - name: imageToDeploy2
+      resourceRef:
+        name: guestbookstagingimage
+    - name: workspace
+      resourceRef:
+        name: guestbook-resources-redis-docker
+    - name: testCluster
+      resourceRef:
+        name: testcluster
+  - name: int-test-osx
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: guestbook-resources-git
+  - name: int-test-linux
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: guestbook-resources-git
+  - name: deploy-bundle-test
+    inputs:
+    - name: redisImage
+      resourceRef:
+        name: redisstagingimage
+    - name: guestbookImage
+      resourceRef:
+        name: guestbookstagingimage
+    - name: workspace
+      resourceRef:
+        name: guestbook-resources-redis-docker
+    - name: testCluster
+      resourceRef:
+        name: testcluster
