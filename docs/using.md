@@ -108,13 +108,13 @@ steps:
 
 ### Images Conventions
 
- * `/workspace`: If an input is provided, the default working directory will be
-   `/workspace` and this will be shared across `steps` (note that in
-   [#123](https://github.com/knative/build-pipeline/issues/123) we will add supprots for multiple input workspaces)
- * `/builder/home`: This volume is exposed to steps via `$HOME`.
- * Credentials attached to the Build's service account may be exposed as Git or
-   Docker credentials as outlined
-   [in the auth docs](https://github.com/knative/docs/blob/master/build/auth.md#authentication).
+* `/workspace`: If an input is provided, the default working directory will be
+  `/workspace` and this will be shared across `steps` (note that in
+  [#123](https://github.com/knative/build-pipeline/issues/123) we will add supprots for multiple input workspaces)
+* `/builder/home`: This volume is exposed to steps via `$HOME`.
+* Credentials attached to the Build's service account may be exposed as Git or
+  Docker credentials as outlined
+  [in the auth docs](https://github.com/knative/docs/blob/master/build/auth.md#authentication).
 
 ### Templating
 
@@ -165,7 +165,7 @@ Use the following example to understand the syntax and strucutre of a Git Resour
 
 1. Create a git resource using the `PipelineResource` CRD
 
-    ```
+    ```yaml
     apiVersion: pipeline.knative.dev/v1alpha1
     kind: PipelineResource
     metadata:
@@ -187,7 +187,7 @@ Use the following example to understand the syntax and strucutre of a Git Resour
 
 2. Use the defined git resource in a `Task` definition:
 
-    ```
+    ```yaml
     apiVersion: pipeline.knative.dev/v1alpha1
     kind: Task
     metadata:
@@ -213,7 +213,7 @@ Use the following example to understand the syntax and strucutre of a Git Resour
 
 3. And finally set the version in the `TaskRun` definition:
 
-    ```
+    ```yaml
     apiVersion: pipeline.knative.dev/v1alpha1
     kind: TaskRun
     metadata:
@@ -237,37 +237,38 @@ Use the following example to understand the syntax and strucutre of a Git Resour
 
 ### Cluster Resource
 
-Cluster Resource represents a Kubernetes cluster other than the current cluster the pipleine 
-CRD is running on. A common use case for this resource is to deploy your application/function 
-on different clusters. 
+Cluster Resource represents a Kubernetes cluster other than the current cluster the pipleine
+CRD is running on. A common use case for this resource is to deploy your application/function
+on different clusters.
 
-The resource will use the provided parameters to create a [kubeconfig](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/) file 
-that can be used by other steps in the pipeline task to access the target cluster. The kubeconfig will be 
+The resource will use the provided parameters to create a [kubeconfig](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/) file
+that can be used by other steps in the pipeline task to access the target cluster. The kubeconfig will be
 placed in `/workspace/<your-cluster-name>/kubeconfig` on your task container
 
 The Cluster resource has the following parameters:
- * Name: The name of the Resource is also given to cluster, will be used in the kubeconfig and also as part of the path to the kubeconfig file 
- * URL (required): Host url of the master node         
- * Username (required): the user with access to the cluster 
- * Password: to be used for clusters with basic auth
- * Token: to be used for authenication, if present will be used ahead of the password
- * Insecure: to indicate server should be accessed without verifying the TLS certificate. 
- * CAData (required): holds PEM-encoded bytes (typically read from a root certificates bundle).
+
+* Name: The name of the Resource is also given to cluster, will be used in the kubeconfig and also as part of the path to the kubeconfig file
+* URL (required): Host url of the master node
+* Username (required): the user with access to the cluster
+* Password: to be used for clusters with basic auth
+* Token: to be used for authenication, if present will be used ahead of the password
+* Insecure: to indicate server should be accessed without verifying the TLS certificate.
+* CAData (required): holds PEM-encoded bytes (typically read from a root certificates bundle).
 
 Note: Since only one authentication technique is allowed per user, either a token or a password should be provided, if both are provided, the password will be ignored.
 
 The following example shows the syntax and structure of a Cluster Resource
 
-```
+```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: test-cluster
-spec:  
+spec:
   type: cluster
   params:
   - name: url
-    value: https://10.10.10.10    # url to the cluster master node   
+    value: https://10.10.10.10    # url to the cluster master node
   - name: cadata
     value: LS0tLS1CRUdJTiBDRVJ.....
   - name: token
@@ -278,7 +279,7 @@ For added security, you can add the sensetive information in a Kubernetes [Secre
 
 For example, create a secret like the following example
 
-```
+```yaml
 apiVersion: v1
 kind: Secret
 metadata:
@@ -288,32 +289,32 @@ data:
   tokenkey: ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbX....M2ZiCg==
 ```
 
-and then apply secrets to the cluster resource 
+and then apply secrets to the cluster resource
 
-```
+```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: test-cluster
-spec:  
+spec:
   type: cluster
   params:
   - name: url
-    value: https://10.10.10.10 
+    value: https://10.10.10.10
   - name: username
-    value: admin  
-  secrets:  
+    value: admin
+  secrets:
   - fieldName: token
     secretKey: tokenKey
     secretName:  target-cluster-secrets
   - fieldName: cadata
     secretKey: cadataKey
-    secretName:  target-cluster-secrets    
+    secretName:  target-cluster-secrets
 ```
 
 Example usage of the cluster resource in a task
 
-```
+```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
@@ -327,7 +328,7 @@ spec:
     - name: dockerimage
       type: image
     - name: testcluster
-      type: cluster    
+      type: cluster
   steps:
   - name: deploy
     image: image-wtih-kubectl
