@@ -50,7 +50,7 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 						Name: "foo",
 						InputSourceBindings: []SourceBinding{
 							{
-								PassedConstraints: []string{"bar"},
+								ProvidedBy: []string{"bar"},
 							},
 						},
 					},
@@ -101,7 +101,7 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 						Name: "foo",
 						InputSourceBindings: []SourceBinding{
 							{
-								PassedConstraints: []string{"bar"},
+								ProvidedBy: []string{"bar"},
 							},
 						},
 					},

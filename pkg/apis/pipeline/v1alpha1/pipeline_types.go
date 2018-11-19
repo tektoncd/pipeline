@@ -84,9 +84,9 @@ type SourceBinding struct {
 	Name string `json:"name"`
 	// The Resource this binding is referring to
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
-	// PassedConstraints is the list of Task names that the resource has to pass through.
+	// ProvidedBy is the list of Task names that the resource has to come from.
 	// +optional
-	PassedConstraints []string `json:"passedConstraints,omitempty"`
+	ProvidedBy []string `json:"providedBy,omitempty"`
 }
 
 // TaskRef can be used to refer to a specific instance of a task.

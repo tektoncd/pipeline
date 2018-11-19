@@ -754,8 +754,8 @@ func (in *SecretParam) DeepCopy() *SecretParam {
 func (in *SourceBinding) DeepCopyInto(out *SourceBinding) {
 	*out = *in
 	out.ResourceRef = in.ResourceRef
-	if in.PassedConstraints != nil {
-		in, out := &in.PassedConstraints, &out.PassedConstraints
+	if in.ProvidedBy != nil {
+		in, out := &in.ProvidedBy, &out.ProvidedBy
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}

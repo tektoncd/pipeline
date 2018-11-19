@@ -70,8 +70,8 @@ func GetNextTask(prName string, state []*PipelineRunTaskRun, logger *zap.Sugared
 func canTaskRun(pt *v1alpha1.PipelineTask, state []*PipelineRunTaskRun) bool {
 	// Check if Task can run now. Go through all the input constraints
 	for _, input := range pt.InputSourceBindings {
-		if len(input.PassedConstraints) > 0 {
-			for _, constrainingTaskName := range input.PassedConstraints {
+		if len(input.ProvidedBy) > 0 {
+			for _, constrainingTaskName := range input.ProvidedBy {
 				for _, prtr := range state {
 					// the constraining task must have a successful task run to allow this task to run
 					if prtr.PipelineTask.Name == constrainingTaskName {

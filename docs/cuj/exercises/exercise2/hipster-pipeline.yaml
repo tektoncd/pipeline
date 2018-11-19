@@ -54,7 +54,7 @@ spec:
           - name: workspace
             resourceRef:
               name: hipster-source
-            passedConstraints:
+            providedBy:
               - build-checkoutservice
               - build-productcatalog
               - build-frontend

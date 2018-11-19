@@ -40,12 +40,12 @@ spec:
     - name: imageToDeploy1
       resourceRef:
         name: redisstagingimage
-      passedConstraints:
+      providedBy:
       - build-redis
     - name: imageToDeploy2
       resourceRef:
         name: guestbookstagingimage
-      passedConstraints:
+      providedBy:
       - build-guestbook  
     - name: workspace
       resourceRef:
@@ -63,7 +63,7 @@ spec:
     - name: workspace
       resourceRef:
         name: guestbook-resources-git
-      passedConstraints:
+      providedBy:
       - deploy-bundle-test
     params:
     - name: dockerBuildFile
@@ -75,7 +75,7 @@ spec:
     - name: workspace
       resourceRef:
         name: guestbook-resources-git
-      passedConstraints:
+      providedBy:
       - deploy-bundle-test
     params:
     - name: dockerBuildFile
@@ -87,13 +87,13 @@ spec:
     - name: redisImage
       resourceRef:
         name: redisstagingimage
-      passedConstraints:
+      providedBy:
       - int-test-osx
       - int-test-linux
     - name: guestbookImage
       resourceRef:
         name: guestbookstagingimage
-      passedConstraints:
+      providedBy:
       - int-test-osx
       - int-test-linux
     - name: workspace

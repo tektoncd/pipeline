@@ -44,10 +44,10 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 		taskNames[t.Name] = struct{}{}
 	}
 
-	// passedConstraints should match other tasks.
+	// providedBy should match other tasks.
 	for _, t := range ps.Tasks {
 		for _, isb := range t.InputSourceBindings {
-			for _, pc := range isb.PassedConstraints {
+			for _, pc := range isb.ProvidedBy {
 				if _, ok := taskNames[pc]; !ok {
 					return apis.ErrInvalidKeyName(pc, fmt.Sprintf("spec.tasks.inputSourceBindings.%s", pc))
 				}

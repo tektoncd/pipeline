@@ -273,7 +273,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: sourceResourceName,
 						},
-						PassedConstraints: []string{createImageTaskName},
+						ProvidedBy: []string{createImageTaskName},
 					}},
 					Params: []v1alpha1.Param{{
 						Name:  "pathToHelmCharts",
