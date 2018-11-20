@@ -93,9 +93,24 @@ var taskRunCondSet = duckv1alpha1.NewBatchConditionSet()
 
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
-	Steps []StepRun `json:"steps"`
 	// Conditions describes the set of conditions of this build.
+	// +optional
 	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
+
+	// PodName is the name of the pod responsible for executing this task's steps.
+	PodName string `json:"podName"`
+
+	// StartTime is the time the build is actually started.
+	// +optional
+	StartTime *metav1.Time `json:"startTime,omitempty"`
+
+	// CompletionTime is the time the build completed.
+	// +optional
+	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
+	// Steps describes the state of each build step container.
+	// +optional
+	Steps []StepState `json:"steps,omitempty"`
 }
 
 // GetCondition returns the Condition matching the given type.
@@ -114,13 +129,12 @@ func (tr *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
 	}
 }
 
-// StepRun reports the results of running a step in the Task. Each
+// StepState reports the results of running a step in the Task. Each
 // task has the potential to succeed or fail (based on the exit code)
 // and produces logs.
-type StepRun struct {
-	Name     string `json:"name"`
-	LogsURL  string `json:"logsURL"`
-	ExitCode int    `json:"exitCode"`
+type StepState struct {
+	corev1.ContainerState
+	LogsURL string `json:"logsURL"`
 }
 
 // +genclient

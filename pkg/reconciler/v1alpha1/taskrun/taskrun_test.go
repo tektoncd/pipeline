@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -732,16 +733,24 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
-	// update build status and trigger reconcile
-	buildSt.Status = corev1.ConditionTrue
-	buildSt.Message = "Build completed"
-	build.Status.SetCondition(buildSt)
+	// update build status and trigger reconcile : build is running
+	startTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 0, 0, 0, time.UTC))
+	build.Status.StartTime = &startTime
+	build.Status.Cluster = &buildv1alpha1.ClusterSpec{
+		Namespace: "default",
+		PodName:   "im-am-the-pod",
+	}
+	waiting := corev1.ContainerState{
+		Waiting: &corev1.ContainerStateWaiting{
+			Message: "foo",
+			Reason:  "bar",
+		},
+	}
+	build.Status.StepStates = []corev1.ContainerState{waiting}
 
-	_, err = clients.Build.BuildV1alpha1().Builds(taskRun.Namespace).Update(build)
-	if err != nil {
+	if _, err = clients.Build.BuildV1alpha1().Builds(taskRun.Namespace).Update(build); err != nil {
 		t.Errorf("Unexpected error while creating build: %v", err)
 	}
-
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
 	}
@@ -749,6 +758,57 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	newTr, err = clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
+	}
+	if d := cmp.Diff(newTr.Status.PodName, build.Status.Cluster.PodName); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+	if d := cmp.Diff(newTr.Status.StartTime, build.Status.StartTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+	if d := cmp.Diff(newTr.Status.Steps, []v1alpha1.StepState{
+		{ContainerState: *waiting.DeepCopy()},
+	}); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
+	// update build status and trigger reconcile : build is completed
+	buildSt.Status = corev1.ConditionTrue
+	buildSt.Message = "Build completed"
+	build.Status.SetCondition(buildSt)
+	completionTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 8, 0, 0, time.UTC))
+	build.Status.CompletionTime = &completionTime
+	completed := corev1.ContainerState{
+		Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "success"},
+	}
+	build.Status.StepStates = []corev1.ContainerState{completed}
+
+	if _, err = clients.Build.BuildV1alpha1().Builds(taskRun.Namespace).Update(build); err != nil {
+		t.Errorf("Unexpected error while creating build: %v", err)
+	}
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when Reconcile(): %v", err)
+	}
+
+	newTr, err = clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Unexpected error fetching taskrun: %v", err)
+	}
+	if d := cmp.Diff(newTr.Status.PodName, build.Status.Cluster.PodName); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+	if d := cmp.Diff(newTr.Status.StartTime, build.Status.StartTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+	if d := cmp.Diff(newTr.Status.CompletionTime, build.Status.CompletionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+	if d := cmp.Diff(newTr.Status.Steps, []v1alpha1.StepState{
+		{ContainerState: *completed.DeepCopy()},
+	}); d != "" {
+		t.Fatalf("-want, +got: %v", d)
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
 		t.Errorf("Taskrun Status diff -want, +got: %v", d)
