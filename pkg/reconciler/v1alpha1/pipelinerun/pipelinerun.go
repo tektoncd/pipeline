@@ -214,14 +214,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
-	for _, pipelineItem := range pipelineState {
-		if pipelineItem.TaskRun != nil {
-			pr.Status.TaskRuns[pipelineItem.TaskRun.Name] = pipelineItem.TaskRun.Status
-		}
-	}
+	UpdateTaskRunsStatus(pr, pipelineState)
 
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
 	return nil
+}
+
+func UpdateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.PipelineRunTaskRun) {
+	for _, prtr := range pipelineState {
+		if prtr.TaskRun != nil {
+			pr.Status.TaskRuns[prtr.TaskRun.Name] = prtr.TaskRun.Status
+		}
+	}
 }
 
 func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {

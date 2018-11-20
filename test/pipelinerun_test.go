@@ -193,21 +193,6 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d", td.expectedNumberOfEvents, len(events))
 			}
 
-			logger.Info("Making sure the expected TaskRuns Status are included in PipelineRun Status")
-			run, err := c.PipelineRunClient.Get(prName, metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("Can't get PipelineRun %s becuase of: %s", prName, err)
-			}
-			for _, taskRunsName := range expectedTaskRunNames {
-				if len(run.Status.TaskRuns) == 0 {
-					t.Fatalf("Expected taskrun status for %s in PipelineRun %s", taskRunsName, prName)
-				}
-				status := run.Status.TaskRuns[taskRunsName]
-				if !status.GetCondition(duckv1alpha1.ConditionSucceeded).IsTrue() {
-					t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunsName, status)
-				}
-			}
-
 			logger.Infof("Successfully finished test %q", td.name)
 		})
 	}

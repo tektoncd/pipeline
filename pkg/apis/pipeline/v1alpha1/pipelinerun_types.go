@@ -73,6 +73,7 @@ type PipelineTriggerRef struct {
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
 	Conditions duckv1alpha1.Conditions `json:"conditions"`
+	// map of TaskRun Status with the taskRun name as the key
 	//+optional
 	TaskRuns map[string]TaskRunStatus `json:"taskRuns,omitempty"`
 }
