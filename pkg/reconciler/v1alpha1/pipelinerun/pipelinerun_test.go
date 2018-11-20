@@ -390,3 +390,99 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateTaskRunsState(t *testing.T) {
+	pr := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline",
+			},
+		},
+	}
+	pipelineTask := v1alpha1.PipelineTask{
+		Name:    "unit-test-1",
+		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+		InputSourceBindings: []v1alpha1.SourceBinding{{
+			Name: "workspace",
+			ResourceRef: v1alpha1.PipelineResourceRef{
+				Name: "some-repo",
+			},
+		}},
+	}
+	task := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-task",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: "git",
+				}},
+			},
+		},
+	}
+	taskrun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-success-unit-test-1",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			ServiceAccount: "test-sa",
+			TaskRef: v1alpha1.TaskRef{
+				Name: "unit-test-task",
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskRunResourceVersion{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
+					Name: "workspace",
+				}},
+			},
+		},
+		Status: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type: duckv1alpha1.ConditionSucceeded,
+			}},
+			Steps: []v1alpha1.StepRun{{
+				Name:     "taskrun-step1-status",
+				LogsURL:  "http://example.logs",
+				ExitCode: 0,
+			}},
+		},
+	}
+
+	expectedTaskRunsStatus := make(map[string]v1alpha1.TaskRunStatus)
+	expectedTaskRunsStatus["test-pipeline-run-success-unit-test-1"] = v1alpha1.TaskRunStatus{
+		Steps: []v1alpha1.StepRun{{
+			Name:     "taskrun-step1-status",
+			LogsURL:  "http://example.logs",
+			ExitCode: 0,
+		}},
+		Conditions: []duckv1alpha1.Condition{{
+			Type: duckv1alpha1.ConditionSucceeded,
+		}},
+	}
+	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
+		TaskRuns: expectedTaskRunsStatus,
+	}
+
+	state := []*resources.PipelineRunTaskRun{{
+		Task:         task,
+		PipelineTask: &pipelineTask,
+		TaskRunName:  "test-pipeline-run-success-unit-test-1",
+		TaskRun:      taskrun,
+	}}
+	pr.Status.InitializeConditions()
+	pipelinerun.UpdateTaskRunsStatus(pr, state)
+	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns); d != "" {
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+	}
+
+}
