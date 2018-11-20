@@ -198,9 +198,6 @@ func TestPipelineRun(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Can't get PipelineRun %s becuase of: %s", prName, err)
 			}
-			if len(run.Status.TaskRuns) != len(td.expectedTaskRuns) {
-				t.Fatalf("PipelineRun Status does not include TaskRuns: want: %d got %d", len(td.expectedTaskRuns), len(run.Status.TaskRuns))
-			}
 			for _, taskRunsName := range expectedTaskRunNames {
 				if len(run.Status.TaskRuns) == 0 {
 					t.Fatalf("Expected taskrun status for %s in PipelineRun %s", taskRunsName, prName)

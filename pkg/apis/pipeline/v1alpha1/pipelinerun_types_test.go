@@ -62,3 +62,24 @@ func TestPipelineRun_TaskRunref(t *testing.T) {
 		t.Fatalf("Taskrun reference mismatch; want %v got %v; diff %s", expectTaskRunRef, p.GetTaskRunRef(), d)
 	}
 }
+
+func TestInitializeConditions(t *testing.T) {
+	p := &PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-name",
+			Namespace: "test-ns",
+		},
+	}
+	p.Status.InitializeConditions()
+
+	if p.Status.TaskRuns == nil {
+		t.Fatalf("PipelineRun status not initalized correctly")
+	}
+
+	p.Status.TaskRuns["fooTask"] = TaskRunStatus{}
+
+	p.Status.InitializeConditions()
+	if len(p.Status.TaskRuns) != 1 {
+		t.Fatalf("PipelineRun status getting reset")
+	}
+}
