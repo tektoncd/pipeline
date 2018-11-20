@@ -166,8 +166,8 @@ func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 
 func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)
-	// the KO_DOCKER_REPO will be set with according to the porject where the cluster is created
-	// it is used here to dunamically get the docker registery to push the image to
+	// the KO_DOCKER_REPO will be set with according to the project where the cluster is created
+	// it is used here to dynamically get the docker registry to push the image to
 	dockerRepo := os.Getenv("KO_DOCKER_REPO")
 	if dockerRepo == "" {
 		t.Fatalf("KO_DOCKER_REPO env variable is required")

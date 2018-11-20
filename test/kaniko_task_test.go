@@ -250,7 +250,7 @@ func TestKanikoTaskRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected to get logs from pod %s: %v", cluster.PodName, err)
 	}
-	// check the logs contain our success critera
+	// check the logs contain our success criteria
 	if !strings.Contains(logs, kanikoBuildOutput) {
 		t.Fatalf("Expected output %s from pod %s but got %s", kanikoBuildOutput, cluster.PodName, logs)
 	}

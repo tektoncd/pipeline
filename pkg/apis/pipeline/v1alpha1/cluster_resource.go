@@ -44,7 +44,7 @@ type ClusterResource struct {
 	// CAData holds PEM-encoded bytes (typically read from a root certificates bundle).
 	// CAData takes precedence over CAFile
 	CAData []byte `json:"cadata"`
-	//Secrets holds a struct to indicate a field name and correpsonding secret name to populate it
+	//Secrets holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
 }
 
