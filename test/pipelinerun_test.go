@@ -62,7 +62,7 @@ func TestPipelineRun(t *testing.T) {
 		// 1 from PipelineRun and 2 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 3,
 	}, {
-		name: "service account propogation",
+		name: "service account propagation",
 		testSetup: func(c *clients, namespace string, index int) {
 			t.Helper()
 			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
