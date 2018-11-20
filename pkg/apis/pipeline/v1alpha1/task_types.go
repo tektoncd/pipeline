@@ -68,8 +68,7 @@ type TaskSpec struct {
 
 // TaskStatus defines the observed state of Task
 type TaskStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Important: Run "./hack/update-codegen.sh" to regenerate code after modifying this file
 }
 
 // Check that Task may be validated and defaulted.

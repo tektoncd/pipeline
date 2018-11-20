@@ -246,6 +246,20 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			Message: ReasonRunning,
 		})
 	}
+	tr.Status.StartTime = build.Status.StartTime
+	if build.Status.Cluster != nil {
+		tr.Status.PodName = build.Status.Cluster.PodName
+	}
+	tr.Status.CompletionTime = build.Status.CompletionTime
+
+	tr.Status.Steps = []v1alpha1.StepState{}
+	for i := 0; i < len(build.Status.StepStates); i++ {
+		state := build.Status.StepStates[i]
+		tr.Status.Steps = append(tr.Status.Steps, v1alpha1.StepState{
+			ContainerState: *state.DeepCopy(),
+			// FIXME(vdemeester) logsURL
+		})
+	}
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
