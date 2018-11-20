@@ -239,6 +239,13 @@ func TestReconcile(t *testing.T) {
 	if condition != nil && condition.Reason != resources.ReasonRunning {
 		t.Errorf("Expected reason %q but was %s", resources.ReasonRunning, condition.Reason)
 	}
+
+	if len(reconciledRun.Status.TaskRuns) != 1 {
+		t.Errorf("Expected PipelineRun status to include only one TaskRun status item")
+	}
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1"]; exists == false {
+		t.Errorf("Expected PipelineRun status to include TaskRun status")
+	}
 }
 
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
