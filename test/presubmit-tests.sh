@@ -21,8 +21,6 @@
 # Use the flags --build-tests, --unit-tests and --integration-tests
 # to run a specific set of tests.
 
-set -o xtrace
-
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/presubmit-tests.sh
 
 function build_tests() {
@@ -46,11 +44,6 @@ function unit_tests() {
   report_go_test ./...
 }
 
-function integration_tests() {
-  header "Running integration tests"
-  local options=""
-  (( EMIT_METRICS )) && options="--emit-metrics"
-  ./test/e2e-tests.sh ${options}
-}
+# We use the default integration test runner.
 
 main $@
