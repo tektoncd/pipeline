@@ -179,7 +179,7 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:d474f049bc43469bf3547bc1b4fc26c5de4cea988472bca14f1f07fac6ec96aa"
+  digest = "1:bf2552cca55ff80423b1cf088ca986ceb38df978821d427efe4962b4ef764f3a"
   name = "github.com/knative/build"
   packages = [
     "pkg/apis/build",
@@ -193,8 +193,9 @@
     "pkg/client/informers/externalversions/build",
     "pkg/client/informers/externalversions/build/v1alpha1",
     "pkg/client/informers/externalversions/internalinterfaces",
-    "pkg/client/listers/build/v1alpha1"
+    "pkg/client/listers/build/v1alpha1",
   ]
+  pruneopts = "NUT"
   revision = "db94a44721837a973c20a95b3dec9af360783656"
 
 [[projects]]
@@ -245,11 +246,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:99e6dc3cfa676d2978fac7770b99629390d6fb6573f061cef5beca04e7ddae14"
+  digest = "1:ac37f7b2eb13f8d55d26c34d7461f54c2418660132233d815135fc1a2ea7cebd"
   name = "github.com/knative/test-infra"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "66fd0d4b3216dd74b7fcb1425700756950ccf08c"
+  packages = ["scripts"]
+  pruneopts = "UT"
+  revision = "6a266d8824043c54dfbcaca688b826458b77cb04"
 
 [[projects]]
   digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
@@ -797,7 +798,6 @@
     "github.com/google/go-containerregistry/pkg/name",
     "github.com/google/go-containerregistry/pkg/v1/remote",
     "github.com/knative/build/pkg/apis/build/v1alpha1",
-    "github.com/knative/build/pkg/builder",
     "github.com/knative/build/pkg/client/clientset/versioned",
     "github.com/knative/build/pkg/client/clientset/versioned/fake",
     "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1",
@@ -818,7 +818,7 @@
     "github.com/knative/pkg/test/logging",
     "github.com/knative/pkg/tracker",
     "github.com/knative/pkg/webhook",
-    "github.com/knative/test-infra",
+    "github.com/knative/test-infra/scripts",
     "go.opencensus.io/trace",
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest/observer",

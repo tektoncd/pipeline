@@ -14,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This is a helper script for Knative E2E test scripts.
+# See README.md for instructions on how to use it.
+
 source $(dirname ${BASH_SOURCE})/library.sh
 
 # Build a resource name based on $E2E_BASE_NAME, a suffix and $BUILD_NUMBER.
@@ -42,16 +45,19 @@ readonly E2E_CLUSTER_NODES=3
 readonly E2E_CLUSTER_MACHINE=n1-standard-4
 readonly TEST_RESULT_FILE=/tmp/${E2E_BASE_NAME}-e2e-result
 
+# Flag whether test is using a boskos GCP project
+IS_BOSKOS=0
+
 # Tear down the test resources.
 function teardown_test_resources() {
   header "Tearing down test environment"
   # Free resources in GCP project.
-  if (( ! USING_EXISTING_CLUSTER )) && [[ "$(type -t teardown)" == "function" ]]; then
+  if (( ! USING_EXISTING_CLUSTER )) && function_exists teardown; then
     teardown
   fi
 
-  # Delete Knative Serving images when using prow.
-  if (( IS_PROW )); then
+  # Delete Knative Serving images when using boskos.
+  if (( IS_BOSKOS )); then
     echo "Images in ${DOCKER_REPO_OVERRIDE}:"
     gcloud container images list --repository=${DOCKER_REPO_OVERRIDE}
     delete_gcr_images ${DOCKER_REPO_OVERRIDE}
@@ -69,30 +75,36 @@ function fail_test() {
   exit 1
 }
 
-# Run the given E2E tests (must be tagged as such).
+# Run the given E2E tests. Assume tests are tagged e2e, unless `-tags=XXX` is passed.
 # Parameters: $1..$n - any go test flags, then directories containing the tests to run.
 function go_test_e2e() {
-  local options=""
-  (( EMIT_METRICS )) && options="-emitmetrics"
-  report_go_test -v -tags=e2e -count=1 $@ ${options}
+  local test_options=""
+  local go_options=""
+  (( EMIT_METRICS )) && test_options="-emitmetrics"
+  [[ ! " $@" == *" -tags="* ]] && go_options="-tags=e2e"
+  report_go_test -v -count=1 ${go_options} $@ ${test_options}
 }
 
 # Download the k8s binaries required by kubetest.
+# Parameters: $1 - GCP project that will host the test cluster.
 function download_k8s() {
-  local version=${SERVING_GKE_VERSION}
+  local version=${E2E_CLUSTER_VERSION}
+  # Fetch valid versions
+  local versions="$(gcloud container get-server-config \
+      --project=$1 \
+      --format='value(validMasterVersions)' \
+      --region=${E2E_CLUSTER_REGION})"
+  local gke_versions=(`echo -n ${versions//;/ /}`)
+  echo "Valid GKE versions are [${versions//;/, }]"
   if [[ "${version}" == "latest" ]]; then
-    # Fetch latest valid version
-    local versions="$(gcloud container get-server-config \
-        --project=${GCP_PROJECT} \
-        --format='value(validMasterVersions)' \
-        --region=${E2E_CLUSTER_REGION})"
-    local gke_versions=(`echo -n ${versions//;/ /}`)
     # Get first (latest) version, excluding the "-gke.#" suffix
     version="${gke_versions[0]%-*}"
-    echo "Latest GKE is ${version}, from [${versions//;/, }]"
+    echo "Using latest version, ${version}"
   elif [[ "${version}" == "default" ]]; then
     echo "ERROR: `default` GKE version is not supported yet"
     return 1
+  else
+    echo "Using command-line supplied version ${version}"
   fi
   # Download k8s to staging dir
   version=v${version}
@@ -110,6 +122,7 @@ function download_k8s() {
     mv kubernetes/client/kubernetes-client-*.tar.gz .
     rm -fr kubernetes
     # Create an empty kubernetes test tarball; we don't use it but kubetest will fetch it
+    # As of August 21 2018 this means avoiding a useless 1.2GB download
     tar -czf kubernetes-test.tar.gz -T /dev/null
   fi
   popd
@@ -120,7 +133,7 @@ function download_k8s() {
 # This is intended to be called when a test fails to provide debugging information.
 function dump_cluster_state() {
   echo "***************************************"
-  echo "***           TEST FAILED           ***"
+  echo "***         E2E TEST FAILED         ***"
   echo "***    Start of information dump    ***"
   echo "***************************************"
   echo ">>> All resources:"
@@ -129,9 +142,9 @@ function dump_cluster_state() {
   kubectl get services --all-namespaces
   echo ">>> Events:"
   kubectl get events --all-namespaces
-  [[ "$(type -t dump_extra_cluster_state)" == "function" ]] && dump_extra_cluster_state
+  function_exists dump_extra_cluster_state && dump_extra_cluster_state
   echo "***************************************"
-  echo "***           TEST FAILED           ***"
+  echo "***         E2E TEST FAILED         ***"
   echo "***     End of information dump     ***"
   echo "***************************************"
 }
@@ -154,10 +167,10 @@ function create_test_cluster() {
     --gcp-network="${E2E_NETWORK_NAME}"
     --gke-environment=prod
   )
-  if (( ! IS_PROW )); then
-    CLUSTER_CREATION_ARGS+=(--gcp-project=${PROJECT_ID:?"PROJECT_ID must be set to the GCP project where the tests are run."})
-  else
+  if (( IS_BOSKOS )); then
     CLUSTER_CREATION_ARGS+=(--gcp-service-account=/etc/service-account/service-account.json)
+  else
+    CLUSTER_CREATION_ARGS+=(--gcp-project=${GCP_PROJECT})
   fi
   # SSH keys are not used, but kubetest checks for their existence.
   # Touch them so if they don't exist, empty files are create to satisfy the check.
@@ -169,45 +182,52 @@ function create_test_cluster() {
   # be a writeable docker repo.
   export K8S_USER_OVERRIDE=
   export K8S_CLUSTER_OVERRIDE=
-  # Get the current GCP project
-  export GCP_PROJECT=${PROJECT_ID}
-  [[ -z ${GCP_PROJECT} ]] && export GCP_PROJECT=$(gcloud config get-value project)
   # Assume test failed (see more details at the end of this script).
   echo -n "1"> ${TEST_RESULT_FILE}
   local test_cmd_args="--run-tests"
   (( EMIT_METRICS )) && test_cmd_args+=" --emit-metrics"
+  [[ -n "${GCP_PROJECT}" ]] && test_cmd_args+=" --gcp-project ${GCP_PROJECT}"
+  # Get the current GCP project for downloading kubernetes
+  local gcloud_project="${GCP_PROJECT}"
+  [[ -z "${gcloud_project}" ]] && gcloud_project="$(gcloud config get-value project)"
+  echo "gcloud project is ${gcloud_project}"
+  (( IS_BOSKOS )) && echo "Using boskos for the test cluster"
+  [[ -n "${GCP_PROJECT}" ]] && echo "GCP project for test cluster is ${GCP_PROJECT}"
   echo "Test script is ${E2E_SCRIPT}"
-  download_k8s || return 1
+  download_k8s ${gcloud_project} || return 1
   # Don't fail test for kubetest, as it might incorrectly report test failure
   # if teardown fails (for details, see success() below)
   set +o errexit
-  kubetest "${CLUSTER_CREATION_ARGS[@]}" \
+  run_go_tool k8s.io/test-infra/kubetest \
+    kubetest "${CLUSTER_CREATION_ARGS[@]}" \
     --up \
     --down \
     --extract local \
-    --gcp-node-image ${SERVING_GKE_IMAGE} \
+    --gcp-node-image "${SERVING_GKE_IMAGE}" \
     --test-cmd "${E2E_SCRIPT}" \
     --test-cmd-args "${test_cmd_args}"
   echo "Test subprocess exited with code $?"
   # Ignore any errors below, this is a best-effort cleanup and shouldn't affect the test result.
   set +o errexit
+  # Ensure we're using the GCP project used by kubetest
+  gcloud_project="$(gcloud config get-value project)"
   # Delete target pools and health checks that might have leaked.
   # See https://github.com/knative/serving/issues/959 for details.
   # TODO(adrcunha): Remove once the leak issue is resolved.
   local http_health_checks="$(gcloud compute target-pools list \
-    --project=${GCP_PROJECT} --format='value(healthChecks)' --filter="instances~-${E2E_CLUSTER_NAME}-" | \
+    --project=${gcloud_project} --format='value(healthChecks)' --filter="instances~-${E2E_CLUSTER_NAME}-" | \
     grep httpHealthChecks | tr '\n' ' ')"
   local target_pools="$(gcloud compute target-pools list \
-    --project=${GCP_PROJECT} --format='value(name)' --filter="instances~-${E2E_CLUSTER_NAME}-" | \
+    --project=${gcloud_project} --format='value(name)' --filter="instances~-${E2E_CLUSTER_NAME}-" | \
     tr '\n' ' ')"
   if [[ -n "${target_pools}" ]]; then
     echo "Found leaked target pools, deleting"
-    gcloud compute forwarding-rules delete -q --project=${GCP_PROJECT} --region=${E2E_CLUSTER_REGION} ${target_pools}
-    gcloud compute target-pools delete -q --project=${GCP_PROJECT} --region=${E2E_CLUSTER_REGION} ${target_pools}
+    gcloud compute forwarding-rules delete -q --project=${gcloud_project} --region=${E2E_CLUSTER_REGION} ${target_pools}
+    gcloud compute target-pools delete -q --project=${gcloud_project} --region=${E2E_CLUSTER_REGION} ${target_pools}
   fi
   if [[ -n "${http_health_checks}" ]]; then
     echo "Found leaked health checks, deleting"
-    gcloud compute http-health-checks delete -q --project=${GCP_PROJECT} ${http_health_checks}
+    gcloud compute http-health-checks delete -q --project=${gcloud_project} ${http_health_checks}
   fi
   local result="$(cat ${TEST_RESULT_FILE})"
   echo "Test result code is $result"
@@ -243,9 +263,11 @@ function setup_test_cluster() {
   echo "- User is ${K8S_USER_OVERRIDE}"
   echo "- Docker is ${DOCKER_REPO_OVERRIDE}"
 
+  export KO_DOCKER_REPO="${DOCKER_REPO_OVERRIDE}"
+
   trap teardown_test_resources EXIT
 
-  if (( USING_EXISTING_CLUSTER )) && [[ "$(type -t teardown)" == "function" ]]; then
+  if (( USING_EXISTING_CLUSTER )) && function_exists teardown; then
     echo "Deleting any previous SUT instance"
     teardown
   fi
@@ -267,7 +289,7 @@ function success() {
   # TODO(adrcunha): Get rid of this workaround.
   echo -n "0"> ${TEST_RESULT_FILE}
   echo "**************************************"
-  echo "***        ALL TESTS PASSED        ***"
+  echo "***        E2E TESTS PASSED        ***"
   echo "**************************************"
   exit 0
 }
@@ -275,7 +297,14 @@ function success() {
 RUN_TESTS=0
 EMIT_METRICS=0
 USING_EXISTING_CLUSTER=1
+GCP_PROJECT=""
 E2E_SCRIPT=""
+E2E_CLUSTER_VERSION=""
+
+function abort() {
+  echo "error: $@"
+  exit 1
+}
 
 # Parse flags and initialize the test cluster.
 function initialize() {
@@ -285,21 +314,60 @@ function initialize() {
   E2E_SCRIPT="$(cd ${E2E_SCRIPT%/*} && echo $PWD/${E2E_SCRIPT##*/})"
   readonly E2E_SCRIPT
 
+  E2E_CLUSTER_VERSION="${SERVING_GKE_VERSION}"
+
   cd ${REPO_ROOT_DIR}
-  for parameter in $@; do
+  while [[ $# -ne 0 ]]; do
+    local parameter=$1
+    # Try parsing flag as a custom one.
+    if function_exists parse_flags; then
+      parse_flags $@
+      local skip=$?
+      if [[ ${skip} -ne 0 ]]; then
+        # Skip parsed flag (and possibly argument) and continue
+        shift ${skip}
+        continue
+      fi
+    fi
+    # Try parsing flag as a standard one.
     case $parameter in
       --run-tests) RUN_TESTS=1 ;;
       --emit-metrics) EMIT_METRICS=1 ;;
+      --gcp-project)
+        shift
+        [[ $# -ge 1 ]] || abort "missing project name after --gcp-project"
+        GCP_PROJECT=$1
+        ;;
+      --cluster-version)
+        shift
+        [[ $# -ge 1 ]] || abort "missing version after --cluster-version"
+        [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || abort "kubernetes version must be 'X.Y.Z'"
+        E2E_CLUSTER_VERSION=$1
+        ;;
       *)
-        echo "error: unknown option ${parameter}"
-        echo "usage: $0 [--run-tests][--emit-metrics]"
-        exit 1
+        echo "usage: $0 [--run-tests][--emit-metrics][--cluster-version X.Y.Z][--gcp-project name]"
+        abort "unknown option ${parameter}"
         ;;
     esac
     shift
   done
+
+  # Use PROJECT_ID if set, unless --gcp-project was used.
+  if [[ -n "${PROJECT_ID:-}" && -z "${GCP_PROJECT}" ]]; then
+    echo "\$PROJECT_ID is set to '${PROJECT_ID}', using it to run the tests"
+    GCP_PROJECT="${PROJECT_ID}"
+  fi
+  if (( ! IS_PROW )) && [[ -z "${GCP_PROJECT}" ]]; then
+    abort "set \$PROJECT_ID or use --gcp-project to select the GCP project where the tests are run"
+  fi
+
+  (( IS_PROW )) && [[ -z "${GCP_PROJECT}" ]] && IS_BOSKOS=1
+
   readonly RUN_TESTS
   readonly EMIT_METRICS
+  readonly E2E_CLUSTER_VERSION
+  readonly GCP_PROJECT
+  readonly IS_BOSKOS
 
   if (( ! RUN_TESTS )); then
     create_test_cluster
