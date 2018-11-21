@@ -30,13 +30,9 @@ import (
 var (
 	pvcDir       = "/pvc"
 	workspaceDir = "/workspace"
-	pvcMount     = corev1.VolumeMount{
-		Name:      "test", // how to choose this path
-		MountPath: pvcDir, // nothing should be mounted here
-	}
 )
 
-// OutputStep adds steps to run after sources and before steps to override the source with passedconstraint source
+// WrapPostBuildSteps adds steps to run after sources and before steps to override the source with passedconstraint source
 // also adds step to collect in the end to collect
 func WrapPostBuildSteps(
 	taskRun *v1alpha1.TaskRun,
@@ -47,11 +43,9 @@ func WrapPostBuildSteps(
 	for _, postStep := range taskRun.Spec.PostBuiltSteps {
 		postBuildSteps[postStep.Name] = postStep.Paths
 	}
-	logger.Info("==> post build map <==", postBuildSteps)
 
 	for _, source := range b.Spec.Sources {
 		if paths, ok := postBuildSteps[source.Name]; ok {
-			logger.Info("==> build source <==", source)
 			var newSteps []corev1.Container
 			for _, path := range paths {
 				var sPath string
@@ -65,13 +59,13 @@ func WrapPostBuildSteps(
 					Image:        "ubuntu",
 					Command:      []string{"/bin/mkdir"},
 					Args:         []string{"-p", path},
-					VolumeMounts: []corev1.VolumeMount{pvcMount},
+					VolumeMounts: []corev1.VolumeMount{getPvcMount(taskRun.Spec.PVCName)},
 				}, {
 					Name:         fmt.Sprintf("source-copy-%s", source.Name),
 					Image:        "ubuntu",
 					Command:      []string{"/bin/cp"},
 					Args:         []string{"-r", fmt.Sprintf("%s/.", sPath), path},
-					VolumeMounts: []corev1.VolumeMount{pvcMount},
+					VolumeMounts: []corev1.VolumeMount{getPvcMount(taskRun.Spec.PVCName)},
 				}}...)
 			}
 			b.Spec.Steps = append(b.Spec.Steps, newSteps...)
@@ -79,7 +73,7 @@ func WrapPostBuildSteps(
 	}
 }
 
-// OutputStep adds steps to run after sources and before steps to override the source with passedconstraint source
+// WrapPreBuildSteps adds steps to run after sources and before steps to override the source with passedconstraint source
 // also adds step to collect in the end to collect
 func WrapPreBuildSteps(
 	taskRun *v1alpha1.TaskRun,
@@ -91,11 +85,8 @@ func WrapPreBuildSteps(
 		preBuildSteps[preStep.Name] = preStep.Paths
 	}
 
-	logger.Info("==> pre build map <==", preBuildSteps)
-
 	for _, source := range b.Spec.Sources {
 		if paths, ok := preBuildSteps[source.Name]; ok {
-			logger.Info("==> build source <==", source)
 			var newSteps []corev1.Container
 			for _, path := range paths {
 				var dPath string
@@ -109,10 +100,17 @@ func WrapPreBuildSteps(
 					Image:        "ubuntu",
 					Command:      []string{"/bin/cp"},
 					Args:         []string{"-r", fmt.Sprintf("%s/.", path), dPath},
-					VolumeMounts: []corev1.VolumeMount{pvcMount},
+					VolumeMounts: []corev1.VolumeMount{getPvcMount(taskRun.Spec.PVCName)},
 				})
 			}
 			b.Spec.Steps = append(newSteps, b.Spec.Steps...)
 		}
+	}
+}
+
+func getPvcMount(name string) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      name,   // taskrun pvc name
+		MountPath: pvcDir, // nothing should be mounted here
 	}
 }

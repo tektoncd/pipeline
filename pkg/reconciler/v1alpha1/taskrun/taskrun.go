@@ -400,11 +400,12 @@ func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvc
 			},
 		},
 	})
+	// Attach pipelinerun pvc
 	b.Spec.Volumes = append(b.Spec.Volumes, corev1.Volume{
-		Name: "test", // this name matches pvcMount Name variable
+		Name: tr.Spec.PVCName,
 		VolumeSource: corev1.VolumeSource{
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: tr.Spec.PersistentVolumeClaimName,
+				ClaimName: tr.Spec.PVCName,
 			},
 		},
 	})

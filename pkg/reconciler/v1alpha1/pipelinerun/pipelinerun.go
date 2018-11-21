@@ -22,6 +22,8 @@ import (
 	"reflect"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
@@ -56,10 +58,6 @@ const (
 )
 
 var (
-	pvcMount = corev1.VolumeMount{
-		Name:      "test", // how to choose this path
-		MountPath: "/pvc", // nothing should be mounted here
-	}
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   v1alpha1.SchemeGroupVersion.Group,
 		Version: v1alpha1.SchemeGroupVersion.Version,
@@ -204,7 +202,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 	prtr := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
 
-	if err := c.getOrCreatePVC(pr); err != nil {
+	if err := getOrCreatePVC(pr, c.KubeClientSet); err != nil {
 		c.Logger.Infof("PipelineRun failed to create/get volume %s", pr.Name)
 		return fmt.Errorf("Failed to create/get persistent volume claim %s for task %q: %v", pr.Name, err, pr.Name)
 	}
@@ -238,12 +236,7 @@ func UpdateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.P
 	}
 }
 
-func (c *Reconciler) createTaskRun(t *v1alpha1.Task,
-	trName string,
-	pr *v1alpha1.PipelineRun,
-	pt *v1alpha1.PipelineTask,
-	sa string,
-) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
@@ -263,14 +256,16 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task,
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: pt.Params,
 			},
-			ServiceAccount:            sa,
-			PersistentVolumeClaimName: pr.GetPVCName(),
+			ServiceAccount: sa,
+			PVCName:        pr.GetPVCName(),
 		},
 	}
 
+	// Add presteps to setup updated inputs
 	taskrunInputResources, taskrunPreSteps := resources.GetInputSteps(pt.InputSourceBindings, pt.Name)
 	tr.Spec.Inputs.Resources = taskrunInputResources
 	tr.Spec.PreBuiltSteps = taskrunPreSteps
+	// Add poststeps to setup outputs
 	taskrunResources, taskrunSteps := resources.GetOutputSteps(pt.OutputSourceBindings, pt.Name)
 	tr.Spec.Outputs.Resources = taskrunResources
 	tr.Spec.PostBuiltSteps = taskrunSteps
@@ -290,14 +285,14 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	return newPr, nil
 }
 
-func (c *Reconciler) getOrCreatePVC(pr *v1alpha1.PipelineRun) error {
-	if _, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(pr.GetPVCName(), metav1.GetOptions{}); err != nil {
+func getOrCreatePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
+	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(pr.GetPVCName(), metav1.GetOptions{}); err != nil {
 		if errors.IsNotFound(err) {
 			pvc := pr.GetPVC()
 			pvc.ObjectMeta.OwnerReferences = []metav1.OwnerReference{
 				*metav1.NewControllerRef(pr, groupVersionKind),
 			}
-			if _, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvc); err != nil {
+			if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvc); err != nil {
 				return fmt.Errorf("failed to claim Persistent Volume %q due to error: %s", pr.Name, err)
 			}
 			return nil

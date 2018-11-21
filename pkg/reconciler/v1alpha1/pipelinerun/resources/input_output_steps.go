@@ -19,17 +19,14 @@ import (
 	"path/filepath"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var (
-	pvcDir   = "/pvc"
-	pvcMount = corev1.VolumeMount{
-		Name:      "test", // how to choose this path
-		MountPath: pvcDir, // nothing should be mounted here
-	}
+	pvcDir = "/pvc"
 )
 
+// GetOutputSteps function reads output bindings and constructs post build step
+// with information to create build step.
 func GetOutputSteps(outputs []v1alpha1.SourceBinding, taskName string) ([]v1alpha1.TaskRunResourceVersion, []v1alpha1.TaskBuildStep) {
 	var taskOutputResources []v1alpha1.TaskRunResourceVersion
 	var postSteps []v1alpha1.TaskBuildStep
@@ -45,10 +42,11 @@ func GetOutputSteps(outputs []v1alpha1.SourceBinding, taskName string) ([]v1alph
 				Paths: []string{filepath.Join(pvcDir, taskName, osb.Name)},
 			})
 	}
-
 	return taskOutputResources, postSteps
 }
 
+// GetInputSteps function reads input bindings and constructs pre build step
+// with information to create build step to setup altered inputs.
 func GetInputSteps(inputs []v1alpha1.SourceBinding, taskName string) ([]v1alpha1.TaskRunResourceVersion, []v1alpha1.TaskBuildStep) {
 	var taskInputResources []v1alpha1.TaskRunResourceVersion
 	var preSteps []v1alpha1.TaskBuildStep

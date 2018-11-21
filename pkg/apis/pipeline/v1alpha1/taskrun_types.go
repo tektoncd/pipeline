@@ -45,14 +45,14 @@ type TaskRunSpec struct {
 	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// +optional
-	PersistentVolumeClaimName string `json:"pvcName,omitempty"`
+	PVCName string `json:"pvcName,omitempty"`
 	// +optional
 	PreBuiltSteps []TaskBuildStep `json:"preBuildSteps,omitempty"`
 	// +optional
 	PostBuiltSteps []TaskBuildStep `json:"postBuiltSteps,omitempty"`
 }
 
-// TaskBuildStep holds information about the build steps along with source names
+// TaskBuildStep contains information to construct build pre and post steps
 type TaskBuildStep struct {
 	Name  string   `json:"name"`
 	Paths []string `json:"paths"`
