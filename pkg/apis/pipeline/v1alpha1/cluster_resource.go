@@ -104,11 +104,6 @@ func (s ClusterResource) GetType() PipelineResourceType {
 	return PipelineResourceTypeCluster
 }
 
-// GetVersion returns the revision of the resource
-func (s ClusterResource) GetVersion() string {
-	return s.Revision
-}
-
 // GetURL returns the url to be used with this resource
 func (s *ClusterResource) GetURL() string {
 	return s.URL

@@ -61,11 +61,6 @@ func (s ImageResource) GetType() PipelineResourceType {
 	return PipelineResourceTypeImage
 }
 
-// GetVersion returns the version of the resource
-func (s ImageResource) GetVersion() string {
-	return s.Digest
-}
-
 // GetParams returns the resoruce params
 func (s ImageResource) GetParams() []Param { return []Param{} }
 

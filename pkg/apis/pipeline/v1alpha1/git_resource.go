@@ -67,13 +67,6 @@ func (s GitResource) GetType() PipelineResourceType {
 	return PipelineResourceTypeGit
 }
 
-// GetVersion returns the revision of the resource, See
-// https://git-scm.com/docs/gitrevisions#_specifying_revisions for
-// more details what the revison in github is
-func (s GitResource) GetVersion() string {
-	return s.Revision
-}
-
 // GetURL returns the url to be used with this resource
 func (s *GitResource) GetURL() string {
 	return s.URL

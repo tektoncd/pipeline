@@ -49,7 +49,7 @@ type TaskRunSpec struct {
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
 	// +optional
-	Resources []TaskRunResourceVersion `json:"resourcesVersion,omitempty"`
+	Resources []TaskRunResource `json:"resources,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
 }
@@ -57,7 +57,7 @@ type TaskRunInputs struct {
 // TaskRunOutputs holds the output values that this task was invoked with.
 type TaskRunOutputs struct {
 	// +optional
-	Resources []TaskRunResourceVersion `json:"resourcesVersion,omitempty"`
+	Resources []TaskRunResource `json:"resources,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
 }

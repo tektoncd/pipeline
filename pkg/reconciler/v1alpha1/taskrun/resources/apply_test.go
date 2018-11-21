@@ -61,14 +61,14 @@ var paramTaskRun = &v1alpha1.TaskRun{
 	},
 }
 
-var resourceVersionInputs = []v1alpha1.TaskRunResourceVersion{{
+var inputs = []v1alpha1.TaskRunResource{{
 	ResourceRef: v1alpha1.PipelineResourceRef{
 		Name: "git-resource",
 	},
 	Name: "workspace",
 }}
 
-var resourceVersionOutputs = []v1alpha1.TaskRunResourceVersion{{
+var outputs = []v1alpha1.TaskRunResource{{
 	ResourceRef: v1alpha1.PipelineResourceRef{
 		Name: "image-resource",
 	},
@@ -139,11 +139,10 @@ func TestApplyParameters(t *testing.T) {
 				tr: &v1alpha1.TaskRun{},
 				dp: []v1alpha1.TaskParam{
 					{
-						Name: "myimage",
+						Name:    "myimage",
 						Default: "mydefault",
 					},
 				},
-
 			},
 			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
 				b.Spec.Steps[0].Image = "mydefault"
@@ -185,7 +184,7 @@ func mockGetter() *rg {
 func TestApplyResources(t *testing.T) {
 	type args struct {
 		b      *buildv1alpha1.Build
-		r      []v1alpha1.TaskRunResourceVersion
+		r      []v1alpha1.TaskRunResource
 		getter ResourceGetter
 		rStr   string
 	}
@@ -199,7 +198,7 @@ func TestApplyResources(t *testing.T) {
 			name: "no replacements specified",
 			args: args{
 				b:      simpleBuild,
-				r:      []v1alpha1.TaskRunResourceVersion{},
+				r:      []v1alpha1.TaskRunResource{},
 				getter: mockGetter(),
 				rStr:   "inputs",
 			},
@@ -209,7 +208,7 @@ func TestApplyResources(t *testing.T) {
 			name: "input resource specified",
 			args: args{
 				b:      simpleBuild,
-				r:      resourceVersionInputs,
+				r:      inputs,
 				getter: mockGetter().With("git-resource", gitResource),
 				rStr:   "inputs",
 			},
@@ -221,7 +220,7 @@ func TestApplyResources(t *testing.T) {
 			name: "output resource specified",
 			args: args{
 				b:      simpleBuild,
-				r:      resourceVersionOutputs,
+				r:      outputs,
 				getter: mockGetter().With("image-resource", imageResource),
 				rStr:   "outputs",
 			},
@@ -233,7 +232,7 @@ func TestApplyResources(t *testing.T) {
 			name: "resource does not exist",
 			args: args{
 				b:      simpleBuild,
-				r:      resourceVersionInputs,
+				r:      inputs,
 				getter: mockGetter(),
 				rStr:   "inputs",
 			},

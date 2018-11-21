@@ -195,14 +195,12 @@ func getClusterResourceTaskRun(namespace, name, taskName, resName string) *v1alp
 				},
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResourceVersion{
-					{
-						Name: "target-cluster",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: resName,
-						},
+				Resources: []v1alpha1.TaskRunResource{{
+					Name: "target-cluster",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: resName,
 					},
-				},
+				}},
 			},
 		},
 	}

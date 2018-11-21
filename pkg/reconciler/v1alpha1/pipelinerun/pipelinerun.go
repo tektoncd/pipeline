@@ -258,13 +258,13 @@ func (c *Reconciler) createTaskRun(t *v1alpha1.Task, trName string, pr *v1alpha1
 		}
 	}
 	for _, isb := range resources.Inputs {
-		tr.Spec.Inputs.Resources = append(tr.Spec.Inputs.Resources, v1alpha1.TaskRunResourceVersion{
+		tr.Spec.Inputs.Resources = append(tr.Spec.Inputs.Resources, v1alpha1.TaskRunResource{
 			ResourceRef: isb.ResourceRef,
 			Name:        isb.Name,
 		})
 	}
 	for _, osb := range resources.Outputs {
-		tr.Spec.Outputs.Resources = append(tr.Spec.Outputs.Resources, v1alpha1.TaskRunResourceVersion{
+		tr.Spec.Outputs.Resources = append(tr.Spec.Outputs.Resources, v1alpha1.TaskRunResource{
 			ResourceRef: osb.ResourceRef,
 			Name:        osb.Name,
 		})

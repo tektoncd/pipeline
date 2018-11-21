@@ -169,13 +169,12 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 				},
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResourceVersion{
+				Resources: []v1alpha1.TaskRunResource{
 					{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: kanikoResourceName,
 						},
-						Version: "master",
-						Name:    "workspace",
+						Name: "workspace",
 					},
 				},
 			},

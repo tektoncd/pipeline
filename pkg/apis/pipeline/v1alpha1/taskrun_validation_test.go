@@ -183,8 +183,7 @@ func TestInput_Validate(t *testing.T) {
 			Name:  "name",
 			Value: "value",
 		}},
-		Resources: []TaskRunResourceVersion{{
-			Version: "testv1",
+		Resources: []TaskRunResource{{
 			ResourceRef: PipelineResourceRef{
 				Name: "testresource",
 			},
@@ -205,14 +204,12 @@ func TestInput_Invalidate(t *testing.T) {
 		{
 			name: "duplicate task inputs",
 			inputs: TaskRunInputs{
-				Resources: []TaskRunResourceVersion{{
-					Version: "testv1",
+				Resources: []TaskRunResource{{
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource1",
 					},
 					Name: "workspace",
 				}, {
-					Version: "testv1",
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource2",
 					},
@@ -224,8 +221,7 @@ func TestInput_Invalidate(t *testing.T) {
 		{
 			name: "invalid task input params",
 			inputs: TaskRunInputs{
-				Resources: []TaskRunResourceVersion{{
-					Version: "testv1",
+				Resources: []TaskRunResource{{
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource",
 					},
@@ -336,8 +332,7 @@ func TestResultTarget_Validate(t *testing.T) {
 
 func TestOutput_Validate(t *testing.T) {
 	i := TaskRunOutputs{
-		Resources: []TaskRunResourceVersion{{
-			Version: "testv1",
+		Resources: []TaskRunResource{{
 			ResourceRef: PipelineResourceRef{
 				Name: "testresource",
 			},
@@ -357,14 +352,12 @@ func TestOutput_Invalidate(t *testing.T) {
 		{
 			name: "duplicated task outputs",
 			outputs: TaskRunOutputs{
-				Resources: []TaskRunResourceVersion{{
-					Version: "testv1",
+				Resources: []TaskRunResource{{
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource1",
 					},
 					Name: "workspace",
 				}, {
-					Version: "testv1",
 					ResourceRef: PipelineResourceRef{
 						Name: "testresource2",
 					},
