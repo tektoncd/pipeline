@@ -272,7 +272,7 @@ func TestReconcile(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       simpleTask.Name,
 				APIVersion: "a1",
 			},
@@ -284,7 +284,7 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			ServiceAccount: "test-sa",
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       saTask.Name,
 				APIVersion: "a1",
 			},
@@ -295,7 +295,7 @@ func TestReconcile(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       templatedTask.Name,
 				APIVersion: "a1",
 			},
@@ -332,7 +332,7 @@ func TestReconcile(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       defaultTemplatedTask.Name,
 				APIVersion: "a1",
 			},
@@ -358,7 +358,7 @@ func TestReconcile(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       defaultTemplatedTask.Name,
 				APIVersion: "a1",
 			},
@@ -707,7 +707,7 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       "notask",
 				APIVersion: "a1",
 			},
@@ -767,7 +767,7 @@ func TestReconcileBuildFetchError(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       "test-task",
 				APIVersion: "a1",
 			},
@@ -804,7 +804,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       "test-task",
 				APIVersion: "a1",
 			},
