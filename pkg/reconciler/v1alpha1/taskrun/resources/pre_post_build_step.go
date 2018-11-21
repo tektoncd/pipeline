@@ -114,3 +114,13 @@ func getPvcMount(name string) corev1.VolumeMount {
 		MountPath: pvcDir, // nothing should be mounted here
 	}
 }
+
+// Attach pipelinerun pvc
+func GetPVCVolume(name string) corev1.Volume {
+	return corev1.Volume{
+		Name: name,
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: name},
+		},
+	}
+}

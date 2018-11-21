@@ -187,12 +187,13 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 			Spec: buildv1alpha1.BuildSpec{
-				Source: &buildv1alpha1.SourceSpec{
+				Sources: []buildv1alpha1.SourceSpec{{
 					Git: &buildv1alpha1.GitSourceSpec{
 						Url:      "https://github.com/grafeas/kritis",
 						Revision: "master",
 					},
-				},
+					Name: "the-git",
+				}},
 			},
 		},
 	}, {
@@ -238,12 +239,13 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 			Spec: buildv1alpha1.BuildSpec{
-				Source: &buildv1alpha1.SourceSpec{
+				Sources: []buildv1alpha1.SourceSpec{{
 					Git: &buildv1alpha1.GitSourceSpec{
 						Url:      "https://github.com/grafeas/kritis",
 						Revision: "branch",
 					},
-				},
+					Name: "the-git",
+				}},
 			},
 		},
 	}, {
@@ -288,12 +290,13 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 			Spec: buildv1alpha1.BuildSpec{
-				Source: &buildv1alpha1.SourceSpec{
+				Sources: []buildv1alpha1.SourceSpec{{
 					Git: &buildv1alpha1.GitSourceSpec{
 						Url:      "https://github.com/grafeas/kritis",
 						Revision: "master",
 					},
-				},
+					Name: "the-git",
+				}},
 			},
 		},
 	}, {

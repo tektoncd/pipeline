@@ -195,6 +195,7 @@ func TestReconcile(t *testing.T) {
 			TaskRef: v1alpha1.TaskRef{
 				Name: "unit-test-task",
 			},
+			PVCName: "test-pipeline-run-success-pvc",
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: []v1alpha1.Param{
 					{
@@ -217,6 +218,10 @@ func TestReconcile(t *testing.T) {
 					Name: "workspace",
 				}},
 			},
+			PostBuiltSteps: []v1alpha1.TaskBuildStep{{
+				Name:  "some-image",
+				Paths: []string{"/pvc/unit-test-1/image-to-use"},
+			}},
 			Outputs: v1alpha1.TaskRunOutputs{
 				Resources: []v1alpha1.TaskRunResourceVersion{{
 					ResourceRef: v1alpha1.PipelineResourceRef{

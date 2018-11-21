@@ -402,12 +402,13 @@ func TestReconcile(t *testing.T) {
 			name:    "params",
 			taskRun: taskruns[2],
 			wantedBuildSpec: buildv1alpha1.BuildSpec{
-				Source: &buildv1alpha1.SourceSpec{
+				Sources: []buildv1alpha1.SourceSpec{{
 					Git: &buildv1alpha1.GitSourceSpec{
 						Url:      "https://foo.git",
 						Revision: "myversion",
 					},
-				},
+					Name: "git-resource",
+				}},
 				Steps: []corev1.Container{
 					entrypointCopyStep,
 					{

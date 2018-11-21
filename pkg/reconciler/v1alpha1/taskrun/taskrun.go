@@ -341,7 +341,11 @@ func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, pvcN
 	}
 	resources.WrapPostBuildSteps(tr, build, c.Logger)
 	resources.WrapPreBuildSteps(tr, build, c.Logger)
-
+	// if there is no output or inputs with passed constraints defined then attach pvc volume
+	// to build
+	if len(tr.Spec.PostBuiltSteps) > 0 || len(tr.Spec.PreBuiltSteps) > 0 {
+		build.Spec.Volumes = append(build.Spec.Volumes, resources.GetPVCVolume(tr.Spec.PVCName))
+	}
 	var defaults []v1alpha1.TaskParam
 	if t.Spec.Inputs != nil {
 		defaults = append(defaults, t.Spec.Inputs.Params...)
@@ -400,15 +404,7 @@ func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvc
 			},
 		},
 	})
-	// Attach pipelinerun pvc
-	b.Spec.Volumes = append(b.Spec.Volumes, corev1.Volume{
-		Name: tr.Spec.PVCName,
-		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: tr.Spec.PVCName,
-			},
-		},
-	})
+
 	// Pass service account name from taskrun to build
 	// if task specifies service account name override with taskrun SA
 	b.Spec.ServiceAccountName = tr.Spec.ServiceAccount
