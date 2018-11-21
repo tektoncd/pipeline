@@ -192,84 +192,32 @@ See [the example TaskRun](../examples/invocations/run-kritis-test.yaml).
 
 ### Git Resource
 
-Git resource represents a [git](https://git-scm.com/) repository, that containes
+Git resource represents a [git](https://git-scm.com/) repository, that contains
 the source code to be built by the pipeline. Adding the git resource as an input
 to a task will clone this repository and allow the task to perform the required
 actions on the contents of the repo.
 
-Use the following example to understand the syntax and strucutre of a Git Resource
+To create a git resource using the `PipelineResource` CRD:
 
-1. Create a git resource using the `PipelineResource` CRD
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: wizzbang-git
+  namespace: default
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/wizzbangcorp/wizzbang.git
+  - name: Revision
+    value: master
+```
 
-    ```yaml
-    apiVersion: pipeline.knative.dev/v1alpha1
-    kind: PipelineResource
-    metadata:
-      name: wizzbang-git
-      namespace: default
-    spec:
-      type: git
-      params:
-      - name: url
-        value: https://github.com/wizzbangcorp/wizzbang.git
-      - name: Revision
-        value: master
-    ```
+Params that can be added are the following:
 
-   Params that can be added are the following:
-
-   1. URL: represents the location of the git repository
-   1. Revision: Git [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions ) (branch, tag, commit SHA or ref) to clone. If no revision is specified, the resource will default to `latest` from `master`
-
-2. Use the defined git resource in a `Task` definition:
-
-    ```yaml
-    apiVersion: pipeline.knative.dev/v1alpha1
-    kind: Task
-    metadata:
-      name: build-push-task
-      namespace: default
-    spec:
-      inputs:
-        resources:
-        - name: wizzbang-git
-          type: git
-        params:
-        - name: pathToDockerfile
-      outputs:
-        resources:
-        - name: builtImage
-          type: image
-      steps:
-      - name: build-and-push
-        image: gcr.io/my-repo/my-imageg
-        args:
-        - --repo=${inputs.resources.wizzbang-git.url}
-    ```
-
-3. And finally set the version in the `TaskRun` definition:
-
-    ```yaml
-    apiVersion: pipeline.knative.dev/v1alpha1
-    kind: TaskRun
-    metadata:
-      name: build-push-task-run
-      namespace: default
-    spec:
-      taskRef:
-        name: build-push-task
-      inputs:
-        resourcesVersion:
-        - resourceRef:
-            name: wizzbang-git
-            apiVersion: HEAD
-      outputs:
-        resources:
-        - name: builtImage
-          type: image
-      # Optional, indicate a serviceAccount for authentication.
-      serviceAccount: build-bot
-    ```
+1. URL: represents the location of the git repository
+1. Revision: Git [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions ) (branch, tag, commit SHA or ref) to clone. If no revision is specified, the resource will default to `latest` from `master`
 
 ### Cluster Resource
 

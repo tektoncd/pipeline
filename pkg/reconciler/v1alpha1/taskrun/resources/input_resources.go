@@ -30,7 +30,7 @@ import (
 
 var kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
 
-func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunResourceVersion) (*v1alpha1.TaskRunResourceVersion, error) {
+func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunResource) (*v1alpha1.TaskRunResource, error) {
 	for _, br := range boundResources {
 		if br.Name == resourceName {
 			return &br, nil
@@ -70,9 +70,6 @@ func AddInputResource(
 				gitResource, err = v1alpha1.NewGitResource(resource)
 				if err != nil {
 					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
-				}
-				if boundResource.Version != "" {
-					gitResource.Revision = boundResource.Version
 				}
 				gitSourceSpec := &buildv1alpha1.GitSourceSpec{
 					Url:      gitResource.URL,

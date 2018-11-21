@@ -208,7 +208,7 @@ func TestReconcile(t *testing.T) {
 						Value: "${inputs.workspace.revision}",
 					},
 				},
-				Resources: []v1alpha1.TaskRunResourceVersion{{
+				Resources: []v1alpha1.TaskRunResource{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "some-repo",
 					},
@@ -216,7 +216,7 @@ func TestReconcile(t *testing.T) {
 				}},
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResourceVersion{{
+				Resources: []v1alpha1.TaskRunResource{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "some-image",
 					},

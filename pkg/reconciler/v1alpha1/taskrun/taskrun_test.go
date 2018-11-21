@@ -264,25 +264,23 @@ func TestReconcile(t *testing.T) {
 						Value: "foo",
 					},
 				},
-				Resources: []v1alpha1.TaskRunResourceVersion{
+				Resources: []v1alpha1.TaskRunResource{
 					{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name:       gitResource.Name,
 							APIVersion: "a1",
 						},
-						Version: "myversion",
-						Name:    "workspace",
+						Name: "workspace",
 					},
 				},
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResourceVersion{{
+				Resources: []v1alpha1.TaskRunResource{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name:       "image-resource",
 						APIVersion: "a1",
 					},
-					Version: "myversion",
-					Name:    "myimage",
+					Name: "myimage",
 				}},
 			},
 		},
@@ -303,14 +301,13 @@ func TestReconcile(t *testing.T) {
 						Value: "foo",
 					},
 				},
-				Resources: []v1alpha1.TaskRunResourceVersion{
+				Resources: []v1alpha1.TaskRunResource{
 					{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name:       gitResource.Name,
 							APIVersion: "a1",
 						},
-						Version: "myversion",
-						Name:    gitResource.Name,
+						Name: gitResource.Name,
 					},
 				},
 			},
@@ -326,14 +323,13 @@ func TestReconcile(t *testing.T) {
 				APIVersion: "a1",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResourceVersion{
+				Resources: []v1alpha1.TaskRunResource{
 					{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name:       gitResource.Name,
 							APIVersion: "a1",
 						},
-						Version: "myversion",
-						Name:    gitResource.Name,
+						Name: gitResource.Name,
 					},
 				},
 			},
@@ -408,7 +404,7 @@ func TestReconcile(t *testing.T) {
 				Source: &buildv1alpha1.SourceSpec{
 					Git: &buildv1alpha1.GitSourceSpec{
 						Url:      "https://foo.git",
-						Revision: "myversion",
+						Revision: "master",
 					},
 				},
 				Steps: []corev1.Container{

@@ -43,6 +43,7 @@ const (
 	PipelineResourceTypeCluster PipelineResourceType = "cluster"
 )
 
+// AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
 var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeGCS, PipelineResourceTypeImage, PipelineResourceTypeCluster}
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
@@ -50,7 +51,6 @@ type PipelineResourceInterface interface {
 	GetName() string
 	GetType() PipelineResourceType
 	GetParams() []Param
-	GetVersion() string
 	Replacements() map[string]string
 }
 
@@ -113,12 +113,11 @@ type PipelineResource struct {
 	Status PipelineResourceStatus `json:"status,omitempty"`
 }
 
-// TaskRunResourceVersion defines the version of the PipelineResource that
+// TaskRunResource points to the PipelineResource that
 // will be used for the Task input or output called Name.
-type TaskRunResourceVersion struct {
+type TaskRunResource struct {
 	Name        string              `json:"name"`
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
-	Version     string              `json:"version"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

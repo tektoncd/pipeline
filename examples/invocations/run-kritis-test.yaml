@@ -12,11 +12,10 @@ spec:
       type: PipelineRun
       name: kritis-pipeline-run-12321312984
   inputs:
-    resourcesVersion:
-    - resourceRef:
+    resources:
+    - name: workspace
+      resourceRef:
         name: kritis-resources-git
-      version: 4da79b91e8e37ea441cfe4972565e2184c1a127f
-      name: workspace
     params:
     - name: 'makeTarget'
       value: 'test'

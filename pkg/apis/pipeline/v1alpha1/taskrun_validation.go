@@ -108,7 +108,7 @@ func (r ResultTarget) Validate(path string) *apis.FieldError {
 	return nil
 }
 
-func checkForPipelineResourceDuplicates(resources []TaskRunResourceVersion, path string) *apis.FieldError {
+func checkForPipelineResourceDuplicates(resources []TaskRunResource, path string) *apis.FieldError {
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
 		// We should provide only one binding for each resource required by the Task.

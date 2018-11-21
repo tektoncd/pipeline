@@ -40,7 +40,7 @@ func setUp() {
 	pipelineResourceInformer := sharedInfomer.Pipeline().V1alpha1().PipelineResources()
 	pipelineResourceLister = pipelineResourceInformer.Lister()
 
-	res := &v1alpha1.PipelineResource{
+	rs := []*v1alpha1.PipelineResource{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "the-git",
 			Namespace: "marshmallow",
@@ -52,10 +52,22 @@ func setUp() {
 				Value: "https://github.com/grafeas/kritis",
 			}},
 		},
-	}
-	pipelineResourceInformer.Informer().GetIndexer().Add(res)
-
-	clusterRes := &v1alpha1.PipelineResource{
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "the-git-with-branch",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "git",
+			Params: []v1alpha1.Param{{
+				Name:  "Url",
+				Value: "https://github.com/grafeas/kritis",
+			}, {
+				Name:  "Revision",
+				Value: "branch",
+			}},
+		},
+	}, {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "cluster2",
 			Namespace: "marshmallow",
@@ -72,10 +84,7 @@ func setUp() {
 				SecretName: "secret1",
 			}},
 		},
-	}
-	pipelineResourceInformer.Informer().GetIndexer().Add(clusterRes)
-
-	clusterResText := &v1alpha1.PipelineResource{
+	}, {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "cluster3",
 			Namespace: "marshmallow",
@@ -91,8 +100,10 @@ func setUp() {
 				Value: "bXktY2EtY2VydAo=",
 			}},
 		},
+	}}
+	for _, r := range rs {
+		pipelineResourceInformer.Informer().GetIndexer().Add(r)
 	}
-	pipelineResourceInformer.Informer().GetIndexer().Add(clusterResText)
 }
 
 func build() *buildv1alpha1.Build {
@@ -145,12 +156,11 @@ func TestAddResourceToBuild(t *testing.T) {
 				Name: "simpleTask",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResourceVersion{{
+				Resources: []v1alpha1.TaskRunResource{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "the-git",
 					},
-					Version: "master",
-					Name:    "workspace",
+					Name: "workspace",
 				}},
 			},
 		},
@@ -164,7 +174,7 @@ func TestAddResourceToBuild(t *testing.T) {
 		wantErr bool
 		want    *buildv1alpha1.Build
 	}{{
-		desc:    "simple",
+		desc:    "simple with default revision",
 		task:    task,
 		taskRun: taskRun,
 		build:   build(),
@@ -208,60 +218,9 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResourceVersion{{
+					Resources: []v1alpha1.TaskRunResource{{
 						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "the-git",
-						},
-						Version: "branch",
-						Name:    "workspace",
-					}},
-				},
-			},
-		},
-		build:   build(),
-		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Source: &buildv1alpha1.SourceSpec{
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://github.com/grafeas/kritis",
-						Revision: "branch",
-					},
-				},
-			},
-		},
-	}, {
-		desc: "set revision to default value",
-		task: task,
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo-run",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name: "simpleTask",
-				},
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResourceVersion{{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "the-git",
+							Name: "the-git-with-branch",
 						},
 						Name: "workspace",
 					}},
@@ -291,7 +250,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Source: &buildv1alpha1.SourceSpec{
 					Git: &buildv1alpha1.GitSourceSpec{
 						Url:      "https://github.com/grafeas/kritis",
-						Revision: "master",
+						Revision: "branch",
 					},
 				},
 			},
@@ -346,7 +305,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "build-from-repo",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResourceVersion{{
+					Resources: []v1alpha1.TaskRunResource{{
 						Name: "target-cluster",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "cluster3",
@@ -412,7 +371,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "build-from-repo",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResourceVersion{{
+					Resources: []v1alpha1.TaskRunResource{{
 						Name: "target-cluster",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "cluster2",
