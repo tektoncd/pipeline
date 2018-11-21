@@ -58,7 +58,7 @@ func GetInputSteps(inputs []v1alpha1.SourceBinding, taskName string) ([]v1alpha1
 		})
 
 		var stepSourceNames []string
-		for _, constr := range isb.PassedConstraints {
+		for _, constr := range isb.ProvidedBy {
 			stepSourceNames = append(stepSourceNames, filepath.Join(pvcDir, constr, isb.Name))
 		}
 		if len(stepSourceNames) > 0 {

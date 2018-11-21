@@ -23,4 +23,4 @@ spec:
     - name: workspace
       resourceRef:
         name: kritis-resources-git
-      passedConstraints: [create-file-kritis]
+      providedBy: [create-file-kritis]
