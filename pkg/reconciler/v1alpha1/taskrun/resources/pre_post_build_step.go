@@ -88,7 +88,7 @@ func WrapPreBuildSteps(
 	for _, source := range b.Spec.Sources {
 		if paths, ok := preBuildSteps[source.Name]; ok {
 			var newSteps []corev1.Container
-			for _, path := range paths {
+			for i, path := range paths {
 				var dPath string
 				if source.TargetPath == "" {
 					dPath = workspaceDir
@@ -96,7 +96,7 @@ func WrapPreBuildSteps(
 					dPath = filepath.Join(workspaceDir, source.TargetPath)
 				}
 				newSteps = append(newSteps, corev1.Container{
-					Name:         fmt.Sprintf("source-copy-%s", source.Name),
+					Name:         fmt.Sprintf("source-copy-%s-%d", source.Name, i),
 					Image:        "ubuntu",
 					Command:      []string{"/bin/cp"},
 					Args:         []string{"-r", fmt.Sprintf("%s/.", path), dPath},

@@ -8,22 +8,37 @@ spec:
     resources:
     - name: workspace
       type: git
-      targetPath: /damnworkspace
   steps:
   - name: read-docs-old
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'ls -la /workspace/damnworkspace/docs/install.md'] # tests that targetpath works
+    args: ['-c', 'ls -la /workspace/docs/install.md']
   - name: write-new-stuff
     image: ubuntu
     command: ['bash']
-    args: ['-c', 'echo some stuff > /workspace/damnworkspace/stuff']
+    args: ['-c', 'echo some stuff > /workspace/stuff']
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-file-stuff2
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: write-new-stuff
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo some other stuff > /workspace/other-stuff']
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
-  name: check-stuff-file-exists
+  name: check-files-exists
   namespace: default
 spec:
   inputs:
@@ -32,10 +47,14 @@ spec:
       type: git
       targetPath: /newworkspace
   steps:
-  - name: read
+  - name: read-stuff
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'cat /workspace/newworkspace/stuff'] # tests that new targetpath and previous task output is dumped
+    args: ['-c', 'cat /workspace/newworkspace/stuff'] # tests that new targetpath and previous task 1 output is dumped
+  - name: read-other-stuff
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'cat /workspace/newworkspace/other-stuff'] # tests that new targetpath and previous task 2 output is dumped
 
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
