@@ -48,9 +48,9 @@ To create a Task, you must:
 * Define the inputs and outputs of the `Task` as [`Resources`](./Concepts.md#pipelineresources)
 * Create a `Step` for each action you want to take in the `Task`
 
-`Steps` are images which comply with the [image contract](#image-contract).
+`Steps` are images which comply with the [container contract](#container-contract).
 
-### Image Contract
+### Container Contract
 
 Each container image used as a step in a [`Task`](#task) must comply with a specific
 contract.
@@ -106,11 +106,9 @@ steps:
     value: 'world'
 ```
 
-### Images Conventions
+### Conventions
 
-* `/workspace`: If an input is provided, the default working directory will be
-  `/workspace` and this will be shared across `steps` (note that in
-  [#123](https://github.com/knative/build-pipeline/issues/123) we will add supprots for multiple input workspaces)
+* `/workspace/<resource-name>`: [`PipelineResources` are made available in this mounted dir](#creating-resources)
 * `/builder/home`: This volume is exposed to steps via `$HOME`.
 * Credentials attached to the Build's service account may be exposed as Git or
   Docker credentials as outlined
@@ -190,6 +188,15 @@ See [the example TaskRun](../examples/invocations/run-kritis-test.yaml).
 
 ## Creating Resources
 
+We current support these `PipelineResources`:
+
+* [Git resource](#git-resource)
+* [Image resource](#image-resource)
+* [Cluster resource](#cluster-resource)
+
+When used as inputs, these resources will be made available in a mounted directory called `/workspace`
+at the path /workspace/<resource-name>`.
+
 ### Git Resource
 
 Git resource represents a [git](https://git-scm.com/) repository, that contains
@@ -210,14 +217,80 @@ spec:
   params:
   - name: url
     value: https://github.com/wizzbangcorp/wizzbang.git
-  - name: Revision
+  - name: revision
     value: master
 ```
 
 Params that can be added are the following:
 
-1. URL: represents the location of the git repository
-1. Revision: Git [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions ) (branch, tag, commit SHA or ref) to clone. If no revision is specified, the resource will default to `latest` from `master`
+1. `url`: represents the location of the git repository, you can use this to change the repo, e.g. [to use a fork](#using-a-fork)
+1. `revision`: Git [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions) (branch, tag, commit SHA or ref) to clone.
+   You can use this to control what commit [or branch](#using-a-branch) is used. _If no revision is specified, the resource will default to `latest` from `master`._
+
+#### Using a fork
+
+The `Url` parameter can be used to point at any git repository, for example to use a GitHub fork at master:
+
+```yaml
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/bobcatfish/wizzbang.git
+```
+
+#### Using a branch
+
+The `revision` can be any [git commit-ish (revision)](https://git-scm.com/docs/gitrevisions#_specifying_revisions).
+You can use this to create a git `PipelineResource` that points at a branch, for example:
+
+```yaml
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/wizzbangcorp/wizzbang.git
+  - name: revision
+    value: some_awesome_feature
+```
+
+To point at a pull request, you can use [the pull requests's branch](https://help.github.com/articles/checking-out-pull-requests-locally/):
+
+```yaml
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/wizzbangcorp/wizzbang.git
+  - name: revision
+    value: refs/pull/52525/head
+```
+
+### Image Resource
+
+An Image resource represents an image that lives in a remote repository. It is usually used as [a `Task` `output`](concepts.md#task) for
+`Tasks` that build images. This allows the same `Tasks` to be used to generically push to any registry.
+
+Params that can be added are the following:
+
+1. `url`: The complete path to the image, including the registry and the image tag
+2. `digest`: The [image digest](https://success.docker.com/article/images-tagging-vs-digests) which uniquely identifies a
+   particular build of an image with a particular tag.
+
+For example:
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: kritis-resources-image
+  namespace: default
+spec:
+  type: image
+  params:
+  - name: url
+    value: gcr.io/staging-images/kritis
+```
 
 ### Cluster Resource
 
