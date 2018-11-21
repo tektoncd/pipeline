@@ -427,7 +427,7 @@ func removeAllHelmReleases(c *clients, t *testing.T, namespace string, logger *l
 			Name:      helmRemoveAllTaskRunName,
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name: helmRemoveAllTaskName,
 			},
 			Trigger: v1alpha1.TaskTrigger{
@@ -487,7 +487,7 @@ func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *l
 			Name:      helmResetTaskRunName,
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name: helmResetTaskName,
 			},
 			Trigger: v1alpha1.TaskTrigger{

@@ -239,7 +239,7 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, t *v1alpha1.Task, 
 			},
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name: t.Name,
 			},
 			Inputs: v1alpha1.TaskRunInputs{

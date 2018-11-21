@@ -148,7 +148,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Namespace: "marshmallow",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name: "simpleTask",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
@@ -209,7 +209,58 @@ func TestAddResourceToBuild(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "simpleTask",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+
+					Resources: []v1alpha1.TaskRunResource{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "the-git",
+						},
+						Name: "workspace",
+					}},
+				},
+			},
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "pipeline.knative.dev/v1alpha1",
+						Kind:               "TaskRun",
+						Name:               "build-from-repo-run",
+						Controller:         &boolTrue,
+						BlockOwnerDeletion: &boolTrue,
+					},
+				},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Source: &buildv1alpha1.SourceSpec{
+					Git: &buildv1alpha1.GitSourceSpec{
+						Url:      "https://github.com/grafeas/kritis",
+						Revision: "branch",
+					},
+				},
+			},
+		},
+	}, {
+		desc: "set revision to default value",
+		task: task,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
@@ -342,7 +393,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
+				TaskRef: &v1alpha1.TaskRef{
 					Name: "build-from-repo",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
@@ -404,7 +455,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
+				TaskRef: &v1alpha1.TaskRef{
 					Name: "build-from-repo",
 				},
 				Inputs: v1alpha1.TaskRunInputs{

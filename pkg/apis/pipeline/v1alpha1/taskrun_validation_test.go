@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -68,7 +69,7 @@ func TestTaskRun_Validate(t *testing.T) {
 			Name: "taskname",
 		},
 		Spec: TaskRunSpec{
-			TaskRef: TaskRef{
+			TaskRef: &TaskRef{
 				Name: "taskrefname",
 			},
 			Trigger: TaskTrigger{
@@ -98,19 +99,19 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		{
 			name: "invalid taskref name",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{},
+				TaskRef: &TaskRef{},
 				Trigger: TaskTrigger{
 					TriggerRef: TaskTriggerRef{
 						Type: TaskTriggerTypeManual,
 					},
 				},
 			},
-			wantErr: apis.ErrMissingField("spec.taskref.name"),
+			wantErr: apis.ErrMissingField("spec.taskref.name, spec.taskspec"),
 		},
 		{
 			name: "invalid taskref type",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{
+				TaskRef: &TaskRef{
 					Name: "taskrefname",
 				},
 				Trigger: TaskTrigger{
@@ -124,7 +125,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		{
 			name: "invalid taskref",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{
+				TaskRef: &TaskRef{
 					Name: "taskrefname",
 				},
 				Trigger: TaskTrigger{
@@ -135,7 +136,28 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 			wantErr: apis.ErrMissingField("spec.trigger.triggerref.name"),
-		}}
+		},
+		{
+			name: "invalid taskref and taskspec together",
+			spec: TaskRunSpec{
+				TaskRef: &TaskRef{
+					Name: "taskrefname",
+				},
+				TaskSpec: &TaskSpec{
+					Steps: []corev1.Container{{
+						Name:  "mystep",
+						Image: "myimage",
+					}},
+				},
+				Trigger: TaskTrigger{
+					TriggerRef: TaskTriggerRef{
+						Type: "manual",
+					},
+				},
+			},
+			wantErr: apis.ErrDisallowedFields("spec.taskSpec"),
+		},
+	}
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -155,7 +177,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		{
 			name: "task trigger run type",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{
+				TaskRef: &TaskRef{
 					Name: "taskrefname",
 				},
 				Trigger: TaskTrigger{
@@ -169,8 +191,25 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		{
 			name: "task trigger run type with different capitalization",
 			spec: TaskRunSpec{
-				TaskRef: TaskRef{
+				TaskRef: &TaskRef{
 					Name: "taskrefname",
+				},
+				Trigger: TaskTrigger{
+					TriggerRef: TaskTriggerRef{
+						Type: "PiPeLiNeRuN",
+						Name: "testtrigger",
+					},
+				},
+			},
+		},
+		{
+			name: "taskspec without a taskRef",
+			spec: TaskRunSpec{
+				TaskSpec: &TaskSpec{
+					Steps: []corev1.Container{{
+						Name:  "mystep",
+						Image: "myimage",
+					}},
 				},
 				Trigger: TaskTrigger{
 					TriggerRef: TaskTriggerRef{

@@ -160,7 +160,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 			Name:      kanikoTaskRunName,
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name: kanikoTaskName,
 			},
 			Trigger: v1alpha1.TaskTrigger{

@@ -107,7 +107,7 @@ func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
 			Name:      hwTaskRunName,
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name: hwTaskName,
 			},
 			Trigger: v1alpha1.TaskTrigger{
