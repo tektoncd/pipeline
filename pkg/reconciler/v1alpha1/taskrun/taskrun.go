@@ -234,32 +234,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// }
 
 	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-	// sync build status with taskrun status
-	if build.Status.GetCondition(duckv1alpha1.ConditionSucceeded) != nil {
-		tr.Status.SetCondition(build.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
-	} else {
-		// If the Build status doesn't exist yet, it's because we just started running
-		tr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonRunning,
-			Message: ReasonRunning,
-		})
-	}
-	tr.Status.StartTime = build.Status.StartTime
-	if build.Status.Cluster != nil {
-		tr.Status.PodName = build.Status.Cluster.PodName
-	}
-	tr.Status.CompletionTime = build.Status.CompletionTime
 
-	tr.Status.Steps = []v1alpha1.StepState{}
-	for i := 0; i < len(build.Status.StepStates); i++ {
-		state := build.Status.StepStates[i]
-		tr.Status.Steps = append(tr.Status.Steps, v1alpha1.StepState{
-			ContainerState: *state.DeepCopy(),
-			// FIXME(vdemeester) logsURL
-		})
-	}
+	// sync build status with taskrun status
+	UpdateStatusFromBuildStatus(tr, build.Status)
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
@@ -268,6 +245,33 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		after)
 
 	return nil
+}
+
+func UpdateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1alpha1.BuildStatus) {
+	if buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded) != nil {
+		taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
+	} else {
+		// If the buildStatus doesn't exist yet, it's because we just started running
+		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  ReasonRunning,
+			Message: ReasonRunning,
+		})
+	}
+	taskRun.Status.StartTime = buildStatus.StartTime
+	if buildStatus.Cluster != nil {
+		taskRun.Status.PodName = buildStatus.Cluster.PodName
+	}
+	taskRun.Status.CompletionTime = buildStatus.CompletionTime
+
+	taskRun.Status.Steps = []v1alpha1.StepState{}
+	for i := 0; i < len(buildStatus.StepStates); i++ {
+		state := buildStatus.StepStates[i]
+		taskRun.Status.Steps = append(taskRun.Status.Steps, v1alpha1.StepState{
+			ContainerState: *state.DeepCopy(),
+		})
+	}
 }
 
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {

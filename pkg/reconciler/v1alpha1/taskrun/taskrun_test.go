@@ -53,6 +53,8 @@ const (
 	kanikoImage        = "gcr.io/kaniko-project/executor"
 )
 
+var ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
+
 var toolsMount = corev1.VolumeMount{
 	Name:      toolsMountName,
 	MountPath: "/tools",
@@ -728,48 +730,6 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
-	var ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
-
-	// update build status and trigger reconcile : build is running
-	startTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 0, 0, 0, time.UTC))
-	build.Status.StartTime = &startTime
-	build.Status.Cluster = &buildv1alpha1.ClusterSpec{
-		Namespace: "default",
-		PodName:   "im-am-the-pod",
-	}
-	waiting := corev1.ContainerState{
-		Waiting: &corev1.ContainerStateWaiting{
-			Message: "foo",
-			Reason:  "bar",
-		},
-	}
-	build.Status.StepStates = []corev1.ContainerState{waiting}
-
-	if _, err = clients.Build.BuildV1alpha1().Builds(taskRun.Namespace).Update(build); err != nil {
-		t.Errorf("Unexpected error while creating build: %v", err)
-	}
-	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
-		t.Fatalf("Unexpected error when Reconcile(): %v", err)
-	}
-
-	newTr, err = clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Unexpected error fetching taskrun: %v", err)
-	}
-	if d := cmp.Diff(newTr.Status.PodName, build.Status.Cluster.PodName); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
-	if d := cmp.Diff(newTr.Status.StartTime, build.Status.StartTime); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
-	if d := cmp.Diff(newTr.Status.Steps, []v1alpha1.StepState{
-		{ContainerState: *waiting.DeepCopy()},
-	}); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
@@ -778,12 +738,6 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	buildSt.Status = corev1.ConditionTrue
 	buildSt.Message = "Build completed"
 	build.Status.SetCondition(buildSt)
-	completionTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 8, 0, 0, time.UTC))
-	build.Status.CompletionTime = &completionTime
-	completed := corev1.ContainerState{
-		Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "success"},
-	}
-	build.Status.StepStates = []corev1.ContainerState{completed}
 
 	if _, err = clients.Build.BuildV1alpha1().Builds(taskRun.Namespace).Update(build); err != nil {
 		t.Errorf("Unexpected error while creating build: %v", err)
@@ -796,22 +750,153 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
-	if d := cmp.Diff(newTr.Status.PodName, build.Status.Cluster.PodName); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
-	if d := cmp.Diff(newTr.Status.StartTime, build.Status.StartTime); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
-	if d := cmp.Diff(newTr.Status.CompletionTime, build.Status.CompletionTime); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
-	if d := cmp.Diff(newTr.Status.Steps, []v1alpha1.StepState{
-		{ContainerState: *completed.DeepCopy()},
-	}); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
 		t.Errorf("Taskrun Status diff -want, +got: %v", d)
+	}
+}
+
+func TestUpdateStatusFromBuildStatus(t *testing.T) {
+	completed := corev1.ContainerState{
+		Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "success"},
+	}
+	waiting := corev1.ContainerState{
+		Waiting: &corev1.ContainerStateWaiting{
+			Message: "foo",
+			Reason:  "bar",
+		},
+	}
+	failed := corev1.ContainerState{
+		Terminated: &corev1.ContainerStateTerminated{ExitCode: 127, Reason: "oh-my-lord"},
+	}
+	startTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 0, 0, 0, time.UTC))
+	completionTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 8, 0, 0, time.UTC))
+	testCases := []struct {
+		name           string
+		buildStatus    buildv1alpha1.BuildStatus
+		expectedStatus v1alpha1.TaskRunStatus
+	}{
+		{
+			name:        "empty build status",
+			buildStatus: buildv1alpha1.BuildStatus{},
+			expectedStatus: v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  taskrun.ReasonRunning,
+					Message: taskrun.ReasonRunning,
+				}},
+				Steps: []v1alpha1.StepState{},
+			},
+		},
+		{
+			name: "running build status",
+			buildStatus: buildv1alpha1.BuildStatus{
+				StartTime: &startTime,
+				StepStates: []corev1.ContainerState{
+					waiting,
+				},
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Reason:  "Running build",
+					Message: "Running build",
+				}},
+				Cluster: &buildv1alpha1.ClusterSpec{
+					Namespace: "default",
+					PodName:   "im-am-the-pod",
+				},
+			},
+			expectedStatus: v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Reason:  "Running build",
+					Message: "Running build",
+				}},
+				Steps: []v1alpha1.StepState{
+					{ContainerState: *waiting.DeepCopy()},
+				},
+				PodName:   "im-am-the-pod",
+				StartTime: &startTime,
+			},
+		},
+		{
+			name: "completed build status (success)",
+			buildStatus: buildv1alpha1.BuildStatus{
+				StartTime:      &startTime,
+				CompletionTime: &completionTime,
+				StepStates: []corev1.ContainerState{
+					completed,
+				},
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  "Build succeeded",
+					Message: "Build succeeded",
+				}},
+				Cluster: &buildv1alpha1.ClusterSpec{
+					Namespace: "default",
+					PodName:   "im-am-the-pod",
+				},
+			},
+			expectedStatus: v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  "Build succeeded",
+					Message: "Build succeeded",
+				}},
+				Steps: []v1alpha1.StepState{
+					{ContainerState: *completed.DeepCopy()},
+				},
+				PodName:        "im-am-the-pod",
+				StartTime:      &startTime,
+				CompletionTime: &completionTime,
+			},
+		},
+		{
+			name: "completed build status (failure)",
+			buildStatus: buildv1alpha1.BuildStatus{
+				StartTime:      &startTime,
+				CompletionTime: &completionTime,
+				StepStates: []corev1.ContainerState{
+					completed,
+					failed,
+				},
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  "Build failed",
+					Message: "Build failed",
+				}},
+				Cluster: &buildv1alpha1.ClusterSpec{
+					Namespace: "default",
+					PodName:   "im-am-the-pod",
+				},
+			},
+			expectedStatus: v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  "Build failed",
+					Message: "Build failed",
+				}},
+				Steps: []v1alpha1.StepState{
+					{ContainerState: *completed.DeepCopy()},
+					{ContainerState: *failed.DeepCopy()},
+				},
+				PodName:        "im-am-the-pod",
+				StartTime:      &startTime,
+				CompletionTime: &completionTime,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			taskRun := &v1alpha1.TaskRun{}
+			taskrun.UpdateStatusFromBuildStatus(taskRun, tc.buildStatus)
+			if d := cmp.Diff(taskRun.Status, tc.expectedStatus, ignoreLastTransitionTime); d != "" {
+				t.Errorf("-want, +got: %v", d)
+			}
+		})
 	}
 }
 
