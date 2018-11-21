@@ -23,6 +23,7 @@ readonly SERVING_GKE_VERSION=latest
 readonly SERVING_GKE_IMAGE=cos
 
 # Public images and yaml files.
+readonly KNATIVE_ISTIO_CRD_YAML=https://storage.googleapis.com/knative-releases/serving/latest/istio-crds.yaml
 readonly KNATIVE_ISTIO_YAML=https://storage.googleapis.com/knative-releases/serving/latest/istio.yaml
 readonly KNATIVE_SERVING_RELEASE=https://storage.googleapis.com/knative-releases/serving/latest/release.yaml
 readonly KNATIVE_BUILD_RELEASE=https://storage.googleapis.com/knative-releases/build/latest/release.yaml
@@ -46,7 +47,7 @@ readonly REPO_ROOT_DIR="$(git rev-parse --show-toplevel)"
 #             $2 - banner message.
 function make_banner() {
     local msg="$1$1$1$1 $2 $1$1$1$1"
-    local border="${msg//[-0-9A-Za-z _.,]/$1}"
+    local border="${msg//[-0-9A-Za-z _.,\/]/$1}"
     echo -e "${border}\n${msg}\n${border}"
 }
 
@@ -64,6 +65,11 @@ function subheader() {
 # Simple warning banner for logging purposes.
 function warning() {
   make_banner "!" "$1"
+}
+
+# Checks whether the given function exists.
+function function_exists() {
+  [[ "$(type -t $1)" == "function" ]]
 }
 
 # Remove ALL images in the given GCR repository.
@@ -94,7 +100,10 @@ function wait_until_object_does_not_exist() {
   fi
   echo -n "Waiting until ${DESCRIPTION} does not exist"
   for i in {1..150}; do  # timeout after 5 minutes
-    kubectl ${KUBECTL_ARGS} > /dev/null 2>&1 || return 0
+    if kubectl ${KUBECTL_ARGS} > /dev/null 2>&1; then
+      echo "\n${DESCRIPTION} does not exist"
+      return 0
+    fi
     echo -n "."
     sleep 2
   done
@@ -172,13 +181,22 @@ function wait_until_routable() {
   return 1
 }
 
-# Returns the name of the pod of the given app.
+# Returns the name of the first pod of the given app.
 # Parameters: $1 - app name.
 #             $2 - namespace (optional).
 function get_app_pod() {
   local namespace=""
   [[ -n $2 ]] && namespace="-n $2"
   kubectl get pods ${namespace} --selector=app=$1 --output=jsonpath="{.items[0].metadata.name}"
+}
+
+# Returns the name of all pods of the given app.
+# Parameters: $1 - app name.
+#             $2 - namespace (optional).
+function get_app_pods() {
+  local namespace=""
+  [[ -n $2 ]] && namespace="-n $2"
+  kubectl get pods ${namespace} --selector=app=$1 --output=jsonpath="{.items[*].metadata.name}"
 }
 
 # Sets the given user as cluster admin.
@@ -220,8 +238,8 @@ function acquire_cluster_admin_role() {
 function report_go_test() {
   # Run tests in verbose mode to capture details.
   # go doesn't like repeating -v, so remove if passed.
-  local args=("${@/-v}")
-  local go_test="go test -race -v ${args[@]}"
+  local args=" $@ "
+  local go_test="go test -race -v ${args/ -v / }"
   # Just run regular go tests if not on Prow.
   if (( ! IS_PROW )); then
     ${go_test}
@@ -231,17 +249,13 @@ function report_go_test() {
   local report=$(mktemp)
   local failed=0
   local test_count=0
+  local tests_failed=0
   ${go_test} > ${report} || failed=$?
   echo "Finished run, return code is ${failed}"
   # Tests didn't run.
   [[ ! -s ${report} ]] && return 1
-  # Create WORKSPACE file, required to use bazel, if necessary
-  local has_workspace=0
-  if [[ -e WORKSPACE ]]; then
-    has_workspace=1
-  else
-    touch WORKSPACE
-  fi
+  # Create WORKSPACE file, required to use bazel, if necessary.
+  touch WORKSPACE
   local targets=""
   local last_run=""
   local test_files=""
@@ -288,6 +302,7 @@ function report_go_test() {
         local src="${name}.sh"
         echo "exit 0" > ${src}
         if [[ "${field1}" == "FAIL:" ]]; then
+          tests_failed=$(( tests_failed + 1 ))
           [[ -z "${error}" ]] && read error
           echo "cat <<ERROR-EOF" > ${src}
           echo "${error}" >> ${src}
@@ -314,19 +329,20 @@ function report_go_test() {
       fi
     fi
   done < ${report}
-  echo "Done parsing ${test_count} tests"
+  echo "Done parsing ${test_count} tests, ${tests_failed} tests failed"
   # If any test failed, show the detailed report.
   # Otherwise, we already shown the summary.
   # Exception: when emitting metrics, dump the full report.
   if (( failed )) || [[ "$@" == *" -emitmetrics"* ]]; then
-    echo "At least one test failed, full log:"
+    if (( failed )); then
+      echo "There were ${tests_failed} test failures, full log:"
+    else
+      echo "Dumping full log as metrics were requested:"
+    fi
     cat ${report}
   fi
   # Always generate the junit summary.
   bazel test ${targets} > /dev/null 2>&1 || true
-  # Cleanup bazel stuff we created.
-  rm -fr knative
-  (( ! has_workspace )) && rm -fr WORKSPACE bazel-*
   return ${failed}
 }
 
@@ -334,6 +350,7 @@ function report_go_test() {
 function start_latest_knative_serving() {
   header "Starting Knative Serving"
   subheader "Installing Istio"
+  kubectl apply -f ${KNATIVE_ISTIO_CRD_YAML} || return 1
   kubectl apply -f ${KNATIVE_ISTIO_YAML} || return 1
   wait_until_pods_running istio-system || return 1
   kubectl label namespace default istio-injection=enabled || return 1
@@ -354,14 +371,19 @@ function start_latest_knative_build() {
   wait_until_pods_running knative-build || return 1
 }
 
-# Run dep-collector, installing it first if necessary.
-# Parameters: $1..$n - parameters passed to dep-collector.
-function run_dep_collector() {
-  local local_dep_collector="$(which dep-collector)"
-  if [[ -z ${local_dep_collector} ]]; then
-    go get -u github.com/mattmoor/dep-collector
+# Run a go tool, installing it first if necessary.
+# Parameters: $1 - tool package/dir for go get/install.
+#             $2 - tool to run.
+#             $3..$n - parameters passed to the tool.
+function run_go_tool() {
+  local tool=$2
+  if [[ -z "$(which ${tool})" ]]; then
+    local action=get
+    [[ $1 =~ ^[\./].* ]] && action=install
+    go ${action} $1
   fi
-  dep-collector $@
+  shift 2
+  ${tool} "$@"
 }
 
 # Run dep-collector to update licenses.
@@ -371,7 +393,7 @@ function update_licenses() {
   cd ${REPO_ROOT_DIR} || return 1
   local dst=$1
   shift
-  run_dep_collector $@ > ./${dst}
+  run_go_tool ./vendor/github.com/knative/test-infra/tools/dep-collector dep-collector $@ > ./${dst}
 }
 
 # Run dep-collector to check for forbidden liceses.
@@ -380,7 +402,7 @@ function check_licenses() {
   # Fetch the google/licenseclassifier for its license db
   go get -u github.com/google/licenseclassifier
   # Check that we don't have any forbidden licenses in our images.
-  run_dep_collector -check $@
+  run_go_tool ./vendor/github.com/knative/test-infra/tools/dep-collector dep-collector -check $@
 }
 
 # Run the given linter on the given files, checking it exists first.

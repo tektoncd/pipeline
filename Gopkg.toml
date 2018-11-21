@@ -9,7 +9,7 @@ required = [
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
   "github.com/knative/caching/pkg/apis/caching",
-  "github.com/knative/test-infra",
+  "github.com/knative/test-infra/scripts",
 ]
 
 # Use HEAD (2018-04-21) to pick up:
@@ -85,5 +85,4 @@ required = [
 
 [[prune.project]]
   name = "github.com/knative/test-infra"
-  unused-packages = false
   non-go = false

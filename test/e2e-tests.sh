@@ -19,18 +19,7 @@
 
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/e2e-tests.sh
 
-set -o xtrace
-set -o errexit
-set -o pipefail
-
-# The scripts were initially setup to use the knative/serving style `DOCKER_REPO_OVERRIDE`
-# before knative/serving was updated to use `ko` + `KO_DOCKER_REPO`. If the scripts were
-# called with `KO_DOCKER_REPO` already set (i.e. using a user's own local cluster, we should
-# respect that).
-# Note that this will only be used when this script is called with the --run-tests flag.
-if [[ -n ${KO_DOCKER_REPO} ]]; then
-    export DOCKER_REPO_OVERRIDE=${KO_DOCKER_REPO}
-fi
+# Helper functions.
 
 function teardown() {
     header "Tearing down Pipeline CRD"
@@ -51,21 +40,21 @@ function dump_extra_cluster_state() {
   kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-webhook knative-build-pipeline)
 }
 
-set +o xtrace
-header "Setting up environment"
+# Script entry point.
+
 initialize $@
-set -o xtrace
 
-export KO_DOCKER_REPO=${DOCKER_REPO_OVERRIDE}
+header "Setting up environment"
 
-header "Deploying Build CRD"
-kubectl apply -f ./third_party/config/build/release.yaml
+# Handle failures ourselves, so we can dump useful info.
+set +o errexit
+set +o pipefail
 
-header "Deploying Pipeline CRD"
-ko apply -f config/
+echo ">> Deploying Build CRD"
+kubectl apply -f ./third_party/config/build/release.yaml || fail_test "Build installation failed"
 
-# The functions we are calling out to get pretty noisy when tracing is on
-set +o xtrace
+echo ">> Deploying Pipeline CRD"
+ko apply -f config/ || fail_test "Build pipeline installation failed"
 
 # Wait for pods to be running in the namespaces we are deploying to
 wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"

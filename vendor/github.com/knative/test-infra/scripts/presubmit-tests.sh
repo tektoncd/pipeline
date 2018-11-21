@@ -14,26 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This is a helper script to run the presubmit tests. To use it:
-# 1. Source this script.
-# 2. Define the functions build_tests(), unit_tests() and
-#    integration_tests(). They should run all tests (i.e., not fail
-#    fast), and return 0 if all passed, 1 if a failure occurred.
-#    The environment variables RUN_BUILD_TESTS, RUN_UNIT_TESTS and
-#    RUN_INTEGRATION_TESTS are set to 0 (false) or 1 (true) accordingly.
-#    If --emit-metrics is passed, EMIT_METRICS will be set to 1.
-# 3. Call the main() function passing $@ (without quotes).
-#
-# Running the script without parameters, or with the --all-tests
-# flag, causes all tests to be executed, in the right order.
-# Use the flags --build-tests, --unit-tests and --integration-tests
-# to run a specific set of tests. The flag --emit-metrics is used
-# to emit metrics when running the tests.
+# This is a helper script for Knative presubmit test scripts.
+# See README.md for instructions on how to use it.
 
 source $(dirname ${BASH_SOURCE})/library.sh
 
 # Extensions or file patterns that don't require presubmit tests.
-readonly NO_PRESUBMIT_FILES=(\.md \.png ^OWNERS)
+readonly NO_PRESUBMIT_FILES=(\.md \.png ^OWNERS ^OWNERS_ALIASES)
 
 # Options set by command-line flags.
 RUN_BUILD_TESTS=0
@@ -61,6 +48,11 @@ function exit_if_presubmit_not_required() {
   fi
 }
 
+function abort() {
+  echo "error: $@"
+  exit 1
+}
+
 # Process flags and run tests accordingly.
 function main() {
   exit_if_presubmit_not_required
@@ -78,58 +70,90 @@ function main() {
     go version
   fi
 
-  local all_parameters=$@
-  [[ -z $1 ]] && all_parameters="--all-tests"
+  [[ -z $1 ]] && set -- "--all-tests"
 
-  for parameter in ${all_parameters}; do
+  local TEST_TO_RUN=""
+
+  while [[ $# -ne 0 ]]; do
+    local parameter=$1
     case ${parameter} in
+      --build-tests) RUN_BUILD_TESTS=1 ;;
+      --unit-tests) RUN_UNIT_TESTS=1 ;;
+      --integration-tests) RUN_INTEGRATION_TESTS=1 ;;
+      --emit-metrics) EMIT_METRICS=1 ;;
       --all-tests)
         RUN_BUILD_TESTS=1
         RUN_UNIT_TESTS=1
         RUN_INTEGRATION_TESTS=1
+        ;;
+      --run-test)
         shift
+        [[ $# -ge 1 ]] || abort "missing executable after --run-test"
+        TEST_TO_RUN=$1
         ;;
-      --build-tests)
-        RUN_BUILD_TESTS=1
-        shift
-        ;;
-      --unit-tests)
-        RUN_UNIT_TESTS=1
-        shift
-        ;;
-      --integration-tests)
-        RUN_INTEGRATION_TESTS=1
-        shift
-        ;;
-      --emit-metrics)
-        EMIT_METRICS=1
-        shift
-        ;;
-      *)
-        echo "error: unknown option ${parameter}"
-        exit 1
-        ;;
+      *) abort "error: unknown option ${parameter}" ;;
     esac
+    shift
   done
 
   readonly RUN_BUILD_TESTS
   readonly RUN_UNIT_TESTS
   readonly RUN_INTEGRATION_TESTS
   readonly EMIT_METRICS
+  readonly TEST_TO_RUN
 
   cd ${REPO_ROOT_DIR}
 
   # Tests to be performed, in the right order if --all-tests is passed.
 
-  local result=0
+  local failed=0
+
+  if [[ -n "${TEST_TO_RUN}" ]]; then
+    if (( RUN_BUILD_TESTS || RUN_UNIT_TESTS || RUN_INTEGRATION_TESTS )); then
+      abort "--run-test must be used alone"
+    fi
+    ${TEST_TO_RUN} || failed=1
+  fi
+
   if (( RUN_BUILD_TESTS )); then
-    build_tests || result=1
+    build_tests || failed=1
   fi
   if (( RUN_UNIT_TESTS )); then
-    unit_tests || result=1
+    unit_tests || failed=1
   fi
   if (( RUN_INTEGRATION_TESTS )); then
-    integration_tests || result=1
+    local e2e_failed=0
+    # Run pre-integration tests, if any
+    if function_exists pre_integration_tests; then
+      if ! pre_integration_tests; then
+        failed=1
+        e2e_failed=1
+      fi
+    fi
+    # Don't run integration tests if pre-integration tests failed
+    if (( ! e2e_failed )); then
+      if function_exists integration_tests; then
+        if ! integration_tests; then
+          failed=1
+          e2e_failed=1
+        fi
+      else
+       local options=""
+       (( EMIT_METRICS )) && options="--emit-metrics"
+       for e2e_test in ./test/e2e-*tests.sh; do
+         echo "Running integration test ${e2e_test}"
+         if ! ${e2e_test} ${options}; then
+           failed=1
+           e2e_failed=1
+         fi
+       done
+      fi
+    fi
+    # Don't run post-integration
+    if (( ! e2e_failed )) && function_exists post_integration_tests; then
+      post_integration_tests || failed=1
+    fi
   fi
-  exit ${result}
+
+  exit ${failed}
 }
