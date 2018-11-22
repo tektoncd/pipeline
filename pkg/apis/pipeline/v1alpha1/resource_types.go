@@ -72,10 +72,10 @@ type PipelineResourceSpec struct {
 	Generation int64 `json:"generation,omitempty"`
 }
 
-// PipelineResourceStatus should implment status for PipelineResource
+// PipelineResourceStatus does not contain anything because Resources on their own
+// do not have a status, they just hold data which is later used by PipelineRuns
+// and TaskRuns.
 type PipelineResourceStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // Check that PipelineResource may be validated and defaulted.
