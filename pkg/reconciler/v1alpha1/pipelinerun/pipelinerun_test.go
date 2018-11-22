@@ -450,20 +450,20 @@ func TestUpdateTaskRunsState(t *testing.T) {
 			Conditions: []duckv1alpha1.Condition{{
 				Type: duckv1alpha1.ConditionSucceeded,
 			}},
-			Steps: []v1alpha1.StepRun{{
-				Name:     "taskrun-step1-status",
-				LogsURL:  "http://example.logs",
-				ExitCode: 0,
+			Steps: []v1alpha1.StepState{{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+				},
 			}},
 		},
 	}
 
 	expectedTaskRunsStatus := make(map[string]v1alpha1.TaskRunStatus)
 	expectedTaskRunsStatus["test-pipeline-run-success-unit-test-1"] = v1alpha1.TaskRunStatus{
-		Steps: []v1alpha1.StepRun{{
-			Name:     "taskrun-step1-status",
-			LogsURL:  "http://example.logs",
-			ExitCode: 0,
+		Steps: []v1alpha1.StepState{{
+			ContainerState: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+			},
 		}},
 		Conditions: []duckv1alpha1.Condition{{
 			Type: duckv1alpha1.ConditionSucceeded,
