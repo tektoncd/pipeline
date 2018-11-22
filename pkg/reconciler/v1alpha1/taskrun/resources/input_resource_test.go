@@ -213,10 +213,9 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-
 					Resources: []v1alpha1.TaskRunResource{{
 						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "the-git",
+							Name: "the-git-with-branch",
 						},
 						Name: "workspace",
 					}},
@@ -509,7 +508,7 @@ func TestAddResourceToBuild(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
-			got, err := AddInputResource(c.build, c.task, c.taskRun, pipelineResourceLister, logger)
+			got, err := AddInputResource(c.build, c.task.Name, c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; NewControllerConfigFromConfigMap() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}

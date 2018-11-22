@@ -471,7 +471,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			ServiceAccount: "test-sa",
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name: "unit-test-task",
 			},
 		},

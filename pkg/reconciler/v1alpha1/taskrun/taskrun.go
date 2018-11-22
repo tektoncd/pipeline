@@ -223,12 +223,17 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		build, err = c.createBuild(ctx, tr, pvc.Name)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
+			var msg string
+			if tr.Spec.TaskRef != nil {
+				msg = fmt.Sprintf("References a Task %s that doesn't exist: ", fmt.Sprintf("%s/%s", tr.Namespace, tr.Spec.TaskRef.Name))
+			} else {
+				msg = fmt.Sprintf("References a TaskSpec with missing information: ")
+			}
 			tr.Status.SetCondition(&duckv1alpha1.Condition{
-				Type:   duckv1alpha1.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-				Reason: ReasonCouldntGetTask,
-				Message: fmt.Sprintf("References a Task %s that doesn't exist: %v",
-					fmt.Sprintf("%s/%s", tr.Namespace, tr.Spec.TaskRef.Name), err),
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  ReasonCouldntGetTask,
+				Message: fmt.Sprintf("%s %v", msg, err),
 			})
 			c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build %q: %v", tr.Name, err)
 			c.Logger.Errorf("Failed to create build for task %q :%v", err, tr.Name)
@@ -333,19 +338,38 @@ func createPVC(kc kubernetes.Interface, tr *v1alpha1.TaskRun) (*corev1.Persisten
 	return v, nil
 }
 
+func (c *Reconciler) getTaskSpec(tr *v1alpha1.TaskRun) (v1alpha1.TaskSpec, string, error) {
+	taskSpec := v1alpha1.TaskSpec{}
+	taskName := ""
+	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Name != "" {
+		// Get related task for taskrun
+		t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
+		if err != nil {
+			return taskSpec, taskName, fmt.Errorf("error when listing tasks %v", err)
+		}
+		taskSpec = t.Spec
+		taskName = t.Name
+	} else if tr.Spec.TaskSpec != nil {
+		taskSpec = *tr.Spec.TaskSpec
+		taskName = tr.Name
+	} else {
+		return taskSpec, taskName, fmt.Errorf("TaskRun %s not providing TaskRef or TaskSpec", tr.Name)
+	}
+	return taskSpec, taskName, nil
+}
+
 // createBuild creates a build from the task, using the task's buildspec
 // with pvcName as a volumeMount
 func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, pvcName string) (*buildv1alpha1.Build, error) {
-	// Get related task for taskrun
-	t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
+	ts, taskName, err := c.getTaskSpec(tr)
 	if err != nil {
-		return nil, fmt.Errorf("error when listing tasks %v", err)
+		return nil, fmt.Errorf("taskRun %s has nil BuildSpec", tr.Name)
 	}
 
 	// TODO: Preferably use Validate on task.spec to catch validation error
-	bs := t.Spec.GetBuildSpec()
+	bs := ts.GetBuildSpec()
 	if bs == nil {
-		return nil, fmt.Errorf("task %s has nil BuildSpec", t.Name)
+		return nil, fmt.Errorf("task %s has nil BuildSpec", taskName)
 	}
 
 	// For each step with no entrypoint set, try to populate it with the info
@@ -368,7 +392,7 @@ func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, pvcN
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
 
-	build, err := resources.AddInputResource(b, t, tr, c.resourceLister, c.Logger)
+	build, err := resources.AddInputResource(b, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
@@ -382,18 +406,18 @@ func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, pvcN
 		build.Spec.Volumes = append(build.Spec.Volumes, resources.GetPVCVolume(pipelineRunpvcName))
 	}
 	var defaults []v1alpha1.TaskParam
-	if t.Spec.Inputs != nil {
-		defaults = append(defaults, t.Spec.Inputs.Params...)
+	if ts.Inputs != nil {
+		defaults = append(defaults, ts.Inputs.Params...)
 	}
 	// Apply parameter templating from the taskrun.
 	build = resources.ApplyParameters(build, tr, defaults...)
 
 	// Apply bound resource templating from the taskrun.
-	build, err = resources.ApplyResources(build, tr.Spec.Inputs.Resources, c.resourceLister.PipelineResources(t.Namespace), "inputs")
+	build, err = resources.ApplyResources(build, tr.Spec.Inputs.Resources, c.resourceLister.PipelineResources(tr.Namespace), "inputs")
 	if err != nil {
 		return nil, fmt.Errorf("couldnt apply input resource templating: %s", err)
 	}
-	build, err = resources.ApplyResources(build, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(t.Namespace), "outputs")
+	build, err = resources.ApplyResources(build, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace), "outputs")
 	if err != nil {
 		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
 	}
