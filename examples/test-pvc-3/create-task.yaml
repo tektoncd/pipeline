@@ -1,0 +1,100 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-file
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: write-stuff
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo some stuff > /workspace/stuff']
+  - name: write-other-stuff
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo some other stuff > /workspace/other-stuff']
+ 
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: check-files-exists
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: read-stuff
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'cat /workspace/stuff'] # tests previous task 1 output is dumped
+  - name: write-something
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'echo something to a file > /workspace/something']
+    
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: check-files-exists-2
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: read-stuff
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'cat /workspace/other-stuff'] # tests previous task 1 output is dumped
+  - name: write-something-else
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'echo something else to a file > /workspace/something-else']
+
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: read-files
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - name: read-stuff
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'cat /workspace/stuff'] # tests previous task 1 output is dumped
+  - name: read-something
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'cat /workspace/something'] # tests previous task 1 output is dumped
+  - name: read-something-else
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ['-c', 'cat /workspace/something-else'] # tests previous task 1 output is dumped
+
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: kritis-resources-git
+  namespace: default
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/grafeas/kritis
+  - name: revision
+    value: master

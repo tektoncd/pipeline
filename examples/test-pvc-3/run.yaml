@@ -1,0 +1,10 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: kritis-pipeline-pvc-3
+  namespace: default
+spec:
+  pipelineRef:
+    name: kritis-pipeline-3
+  triggerRef:
+    type: manual

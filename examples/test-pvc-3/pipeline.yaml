@@ -1,0 +1,54 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: kritis-pipeline-3
+  namespace: default
+spec:
+  tasks:
+  - name: create-file-kritis-1  # 1. create file
+    taskRef:
+      name: create-file
+    inputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+    outputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+  - name: create-another-fan-out-1          # 1. create file
+    taskRef:
+      name: check-files-exists
+    inputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+      providedBy:
+      - create-file-kritis-1
+    outputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+  - name: check-kritis-fan-out-2
+    taskRef:
+      name: check-files-exists-2
+    inputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+      providedBy:
+      - create-file-kritis-1
+    outputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+  - name: check-fan-in # check file exists
+    taskRef:
+      name: read-files
+    inputSourceBindings:
+    - name: workspace
+      resourceRef:
+        name: kritis-resources-git
+      providedBy:
+      - check-kritis-fan-out-2
+      - create-another-fan-out-1
