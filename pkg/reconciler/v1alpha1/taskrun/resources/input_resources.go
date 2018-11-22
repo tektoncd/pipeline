@@ -42,26 +42,27 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunReso
 // AddInputResource will update the input build with the input resource from the task
 func AddInputResource(
 	build *buildv1alpha1.Build,
-	task *v1alpha1.Task,
+	taskName string,
+	taskSpec v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
 	pipelineResourceLister listers.PipelineResourceLister,
 	logger *zap.SugaredLogger,
 ) (*buildv1alpha1.Build, error) {
 
-	if task.Spec.Inputs == nil {
+	if taskSpec.Inputs == nil {
 		return build, nil
 	}
 
 	var gitResource *v1alpha1.GitResource
-	for _, input := range task.Spec.Inputs.Resources {
+	for _, input := range taskSpec.Inputs.Resources {
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get bound resource: %s", err)
 		}
 
-		resource, err := pipelineResourceLister.PipelineResources(task.Namespace).Get(boundResource.ResourceRef.Name)
+		resource, err := pipelineResourceLister.PipelineResources(taskRun.Namespace).Get(boundResource.ResourceRef.Name)
 		if err != nil {
-			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q", task.Name, boundResource)
+			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q", taskName, boundResource)
 		}
 
 		switch resource.Spec.Type {
@@ -69,7 +70,7 @@ func AddInputResource(
 			{
 				gitResource, err = v1alpha1.NewGitResource(resource)
 				if err != nil {
-					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
+					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", taskName, boundResource.ResourceRef.Name)
 				}
 				gitSourceSpec := &buildv1alpha1.GitSourceSpec{
 					Url:      gitResource.URL,
@@ -84,7 +85,7 @@ func AddInputResource(
 		case v1alpha1.PipelineResourceTypeCluster:
 			clusterResource, err := v1alpha1.NewClusterResource(resource)
 			if err != nil {
-				return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", task.Name, boundResource.ResourceRef.Name)
+				return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q", taskName, boundResource.ResourceRef.Name)
 			}
 			addClusterBuildStep(build, clusterResource)
 		}

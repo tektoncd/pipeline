@@ -32,35 +32,37 @@ func ValidateTaskRunAndTask(params []v1alpha1.Param, rtr *resources.ResolvedTask
 		paramsMapping[param.Name] = ""
 	}
 
-	if rtr.Task.Spec.Inputs != nil {
-		for _, inputResource := range rtr.Task.Spec.Inputs.Resources {
-			r, ok := rtr.Inputs[inputResource.Name]
-			if !ok {
-				return fmt.Errorf("input resource %q not provided for task %q", inputResource.Name, rtr.Task.Name)
+	if rtr.Task != nil {
+		if rtr.Task.Spec.Inputs != nil {
+			for _, inputResource := range rtr.Task.Spec.Inputs.Resources {
+				r, ok := rtr.Inputs[inputResource.Name]
+				if !ok {
+					return fmt.Errorf("input resource %q not provided for task %q", inputResource.Name, rtr.Task.Name)
+				}
+				// Validate the type of resource match
+				if inputResource.Type != r.Spec.Type {
+					return fmt.Errorf("input resource %q for task %q should be type %q but was %q", inputResource.Name, rtr.Task.Name, r.Spec.Type, inputResource.Type)
+				}
 			}
-			// Validate the type of resource match
-			if inputResource.Type != r.Spec.Type {
-				return fmt.Errorf("input resource %q for task %q should be type %q but was %q", inputResource.Name, rtr.Task.Name, r.Spec.Type, inputResource.Type)
-			}
-		}
-		for _, inputResourceParam := range rtr.Task.Spec.Inputs.Params {
-			if _, ok := paramsMapping[inputResourceParam.Name]; !ok {
-				if inputResourceParam.Default == "" {
-					return fmt.Errorf("input param %q not provided for task %q", inputResourceParam.Name, rtr.Task.Name)
+			for _, inputResourceParam := range rtr.Task.Spec.Inputs.Params {
+				if _, ok := paramsMapping[inputResourceParam.Name]; !ok {
+					if inputResourceParam.Default == "" {
+						return fmt.Errorf("input param %q not provided for task %q", inputResourceParam.Name, rtr.Task.Name)
+					}
 				}
 			}
 		}
-	}
 
-	if rtr.Task.Spec.Outputs != nil {
-		for _, outputResource := range rtr.Task.Spec.Outputs.Resources {
-			r, ok := rtr.Outputs[outputResource.Name]
-			if !ok {
-				return fmt.Errorf("output resource %q not provided for task %q", outputResource.Name, rtr.Task.Name)
-			}
-			// Validate the type of resource match
-			if outputResource.Type != r.Spec.Type {
-				return fmt.Errorf("output resource %q for task %q should be type %q but was %q", outputResource.Name, rtr.Task.Name, r.Spec.Type, outputResource.Type)
+		if rtr.Task.Spec.Outputs != nil {
+			for _, outputResource := range rtr.Task.Spec.Outputs.Resources {
+				r, ok := rtr.Outputs[outputResource.Name]
+				if !ok {
+					return fmt.Errorf("output resource %q not provided for task %q", outputResource.Name, rtr.Task.Name)
+				}
+				// Validate the type of resource match
+				if outputResource.Type != r.Spec.Type {
+					return fmt.Errorf("output resource %q for task %q should be type %q but was %q", outputResource.Name, rtr.Task.Name, r.Spec.Type, outputResource.Type)
+				}
 			}
 		}
 	}

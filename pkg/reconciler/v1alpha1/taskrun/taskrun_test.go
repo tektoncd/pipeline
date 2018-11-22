@@ -410,6 +410,33 @@ func TestReconcile(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-with-taskSpec",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskSpec: &v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Params: []v1alpha1.TaskParam{{
+						Name:        "myarg",
+						Description: "mydesc",
+						Default:     "mydefault",
+					}},
+				},
+				Steps: []corev1.Container{{
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-arg=${inputs.params.myarg}"},
+				}, {
+					Name:    "myothercontainer",
+					Image:   "myotherimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-other-arg=${inputs.resources.git-resource.url}"},
+				}},
+			},
+		},
 	}}
 
 	d := test.Data{
@@ -1058,5 +1085,209 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	}
 	if b.Spec.ServiceAccountName != tr.Spec.ServiceAccount {
 		t.Errorf("services accounts do not match: %s should be %s", b.Spec.ServiceAccountName, tr.Spec.ServiceAccount)
+	}
+}
+
+func TestTaskRunWithTaskSpec(t *testing.T) {
+	taskruns := []*v1alpha1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-with-taskspec",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{
+					{
+						Name:  "myarg",
+						Value: "foo",
+					},
+				},
+				Resources: []v1alpha1.TaskRunResource{
+					{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name:       gitResource.Name,
+							APIVersion: "a1",
+						},
+						Name: "workspace",
+					},
+				},
+			},
+			TaskSpec: &v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Type: "git",
+						Name: "workspace",
+					}},
+					Params: []v1alpha1.TaskParam{{
+						Name:        "myarg",
+						Description: "mydesc",
+						Default:     "mydefault",
+					}},
+				},
+				Steps: []corev1.Container{{
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-arg=${inputs.params.myarg}"},
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-with-sources",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskSpec: &v1alpha1.TaskSpec{
+				Sources: []buildv1alpha1.SourceSpec{{
+					Git: &buildv1alpha1.GitSourceSpec{
+						Url:      "https://foo.git",
+						Revision: "master",
+					},
+				}},
+				Steps: []corev1.Container{{
+					Name:    "mycontainer",
+					Image:   "myimage",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-arg=foo"},
+				}},
+			},
+		},
+	}}
+	d := test.Data{
+		TaskRuns:          taskruns,
+		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, defaultTemplatedTask},
+		PipelineResources: []*v1alpha1.PipelineResource{gitResource, imageResource},
+	}
+	testcases := []struct {
+		name            string
+		taskRun         *v1alpha1.TaskRun
+		wantedBuildSpec buildv1alpha1.BuildSpec
+	}{
+		{
+			name:    "success0",
+			taskRun: taskruns[0],
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Source: &buildv1alpha1.SourceSpec{
+					Git: &buildv1alpha1.GitSourceSpec{
+						Url:      "https://foo.git",
+						Revision: "master",
+					},
+				},
+				Steps: []corev1.Container{
+					entrypointCopyStep,
+					{
+						Name:    "mycontainer",
+						Image:   "myimage",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
+					},
+				},
+				Volumes: []corev1.Volume{
+					getToolsVolume(taskruns[0].Name),
+				},
+			},
+		},
+		{
+			name:    "success1",
+			taskRun: taskruns[1],
+			wantedBuildSpec: buildv1alpha1.BuildSpec{
+				Sources: []buildv1alpha1.SourceSpec{{
+					Git: &buildv1alpha1.GitSourceSpec{
+						Url:      "https://foo.git",
+						Revision: "master",
+					},
+				}},
+				Steps: []corev1.Container{
+					entrypointCopyStep,
+					{
+						Name:    "mycontainer",
+						Image:   "myimage",
+						Command: []string{entrypointLocation},
+						Args:    []string{},
+						Env: []corev1.EnvVar{
+							{
+								Name:  "ENTRYPOINT_OPTIONS",
+								Value: `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{toolsMount},
+					},
+				},
+				Volumes: []corev1.Volume{
+					getToolsVolume(taskruns[1].Name),
+				},
+			},
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _, clients := test.GetTaskRunController(d)
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+				t.Errorf("expected no error. Got error %v", err)
+			}
+			if len(clients.Build.Actions()) == 0 {
+				t.Errorf("Expected actions to be logged in the buildclient, got none")
+			}
+			// check error
+			build, err := clients.Build.BuildV1alpha1().Builds(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to fetch build: %v", err)
+			}
+			if d := cmp.Diff(build.Spec, tc.wantedBuildSpec); d != "" {
+				t.Errorf("buildspec doesn't match, diff: %s", d)
+			}
+
+			// This TaskRun is in progress now and the status should reflect that
+			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
+			}
+			if condition != nil && condition.Reason != taskrun.ReasonRunning {
+				t.Errorf("Expected reason %q but was %s", taskrun.ReasonRunning, condition.Reason)
+			}
+
+			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun.Name)
+			if err != nil {
+				t.Errorf("Invalid resource key: %v", err)
+			}
+			//Command, Args, Env, VolumeMounts
+			if len(clients.Kube.Actions()) == 0 {
+				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
+			}
+			// 3. check that volume was created
+			pvc, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Failed to fetch build: %v", err)
+			}
+
+			// get related TaskRun to populate expected PVC
+			tr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Failed to fetch build: %v", err)
+			}
+			expectedVolume := getExpectedPVC(tr)
+			if d := cmp.Diff(pvc.Name, expectedVolume.Name); d != "" {
+				t.Errorf("pvc doesn't match, diff: %s", d)
+			}
+			if d := cmp.Diff(pvc.OwnerReferences, expectedVolume.OwnerReferences); d != "" {
+				t.Errorf("pvc doesn't match, diff: %s", d)
+			}
+			if d := cmp.Diff(pvc.Spec.AccessModes, expectedVolume.Spec.AccessModes); d != "" {
+				t.Errorf("pvc doesn't match, diff: %s", d)
+			}
+			if pvc.Spec.Resources.Requests["storage"] != expectedVolume.Spec.Resources.Requests["storage"] {
+				t.Errorf("pvc doesn't match, got: %v, expected: %v",
+					pvc.Spec.Resources.Requests["storage"],
+					expectedVolume.Spec.Resources.Requests["storage"])
+			}
+		})
 	}
 }
