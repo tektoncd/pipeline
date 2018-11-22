@@ -29,10 +29,9 @@ type PipelineParamsSpec struct {
 	Generation int64 `json:"generation,omitempty"`
 }
 
-// PipelineParamsStatus defines the observed state of PipelineParams
+// PipelineParamStatus does not contain anything because Params on their own
+// do not have a status, they just hold data which is later used by PipelineRun.
 type PipelineParamsStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // +genclient
