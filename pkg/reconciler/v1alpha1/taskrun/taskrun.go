@@ -51,8 +51,12 @@ const (
 	// Task couldn't be found
 	ReasonCouldntGetTask = "CouldntGetTask"
 
+	// ReasonFailedResolution indicated that the reason for failure status is
+	// that references within the TaskRun could not be resolved
+	ReasonFailedResolution = "TaskRunResolutionFailed"
+
 	// ReasonFailedValidation indicated that the reason for failure status is
-	// that pipelinerun failed runtime validation
+	// that taskrun failed runtime validation
 	ReasonFailedValidation = "TaskRunValidationFailed"
 
 	// ReasonRunning indicates that the reason for the inprogress status is that the TaskRun
@@ -177,7 +181,18 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
-	if err := validateTaskRun(c, tr); err != nil {
+	rtr, err := resources.ResolveTaskRun(&tr.Spec, c.taskLister.Tasks(tr.Namespace).Get, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	if err != nil {
+		c.Logger.Error("Failed to resolve references for taskrun %s with error %v", tr.Name, err)
+		tr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  ReasonFailedResolution,
+			Message: err.Error(),
+		})
+		return nil
+	}
+	if err := ValidateTaskRunAndTask(tr.Spec.Inputs.Params, rtr); err != nil {
 		c.Logger.Error("Failed to validate taskrun %s with error %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,

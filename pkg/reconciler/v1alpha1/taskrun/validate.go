@@ -20,98 +20,47 @@ import (
 	"fmt"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
-// validate all references in taskrun exist at runtime
-func validateTaskRun(c *Reconciler, tr *v1alpha1.TaskRun) error {
-	// verify task reference exists, all params are provided
-	// and all inputs/outputs are bound
-	t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
-	if err != nil {
-		return fmt.Errorf("Error listing task ref %s: %v",
-			tr.Spec.TaskRef.Name, err)
-	}
-	return validateTaskRunAndTask(c, *tr, t, tr.Namespace)
-}
-
-//validateTaskRunTask validates task inputs, params and output matches taskrun
-func validateTaskRunAndTask(c *Reconciler, tr v1alpha1.TaskRun, task *v1alpha1.Task, ns string) error {
-	// stores all the input keys to validate with task input name
-	inputMapping := map[string]string{}
-	// stores all the output keys to validate with task output name
-	outMapping := map[string]string{}
+// ValidateTaskRunAndTask validates task inputs, params and output matches taskrun
+func ValidateTaskRunAndTask(params []v1alpha1.Param, rtr *resources.ResolvedTaskRun) error {
 	// stores params to validate with task params
 	paramsMapping := map[string]string{}
 
-	for _, param := range tr.Spec.Inputs.Params {
+	for _, param := range params {
 		paramsMapping[param.Name] = ""
 	}
 
-	for _, source := range tr.Spec.Inputs.Resources {
-		inputMapping[source.Name] = ""
-		if source.ResourceRef.Name != "" {
-			rr, err := c.resourceLister.PipelineResources(ns).Get(
-				source.ResourceRef.Name)
-			if err != nil {
-				return fmt.Errorf("Error listing input task resource "+
-					"for task %s: %v ", tr.Name, err)
-			}
-			inputMapping[source.Name] = string(rr.Spec.Type)
-		}
-	}
-	for _, source := range tr.Spec.Outputs.Resources {
-		outMapping[source.Name] = ""
-		if source.ResourceRef.Name != "" {
-			rr, err := c.resourceLister.PipelineResources(ns).Get(
-				source.ResourceRef.Name)
-			if err != nil {
-				return fmt.Errorf("Error listing output task resource "+
-					"for task %s: %v ", tr.Name, err)
-			}
-			outMapping[source.Name] = string(rr.Spec.Type)
-
-		}
-	}
-
-	if task.Spec.Inputs != nil {
-		for _, inputResource := range task.Spec.Inputs.Resources {
-			inputResourceType, ok := inputMapping[inputResource.Name]
+	if rtr.Task.Spec.Inputs != nil {
+		for _, inputResource := range rtr.Task.Spec.Inputs.Resources {
+			r, ok := rtr.Inputs[inputResource.Name]
 			if !ok {
-				return fmt.Errorf("Mismatch of input key %q between "+
-					"task %q and task %q", inputResource.Name,
-					tr.Name, task.Name)
+				return fmt.Errorf("input resource %q not provided for task %q", inputResource.Name, rtr.Task.Name)
 			}
 			// Validate the type of resource match
-			if string(inputResource.Type) != inputResourceType {
-				return fmt.Errorf("Mismatch of input resource type %q "+
-					"between task %q and task %q", inputResourceType,
-					tr.Name, task.Name)
+			if inputResource.Type != r.Spec.Type {
+				return fmt.Errorf("input resource %q for task %q should be type %q but was %q", inputResource.Name, rtr.Task.Name, r.Spec.Type, inputResource.Type)
 			}
 		}
-		for _, inputResourceParam := range task.Spec.Inputs.Params {
+		for _, inputResourceParam := range rtr.Task.Spec.Inputs.Params {
 			if _, ok := paramsMapping[inputResourceParam.Name]; !ok {
 				if inputResourceParam.Default == "" {
-					return fmt.Errorf("Mismatch of input params %q between "+
-						"task %q and task %q", inputResourceParam.Name, tr.Name,
-						task.Name)
+					return fmt.Errorf("input param %q not provided for task %q", inputResourceParam.Name, rtr.Task.Name)
 				}
 			}
 		}
 	}
 
-	if task.Spec.Outputs != nil {
-		for _, outputResource := range task.Spec.Outputs.Resources {
-			outputResourceType, ok := outMapping[outputResource.Name]
+	if rtr.Task.Spec.Outputs != nil {
+		for _, outputResource := range rtr.Task.Spec.Outputs.Resources {
+			r, ok := rtr.Outputs[outputResource.Name]
 			if !ok {
-				return fmt.Errorf("Mismatch of output key %q between "+
-					"task %q and task %q", outputResource.Name,
-					tr.Name, task.Name)
+				return fmt.Errorf("output resource %q not provided for task %q", outputResource.Name, rtr.Task.Name)
 			}
 			// Validate the type of resource match
-			if string(outputResource.Type) != outputResourceType {
-				return fmt.Errorf("Mismatch of output resource type %q "+
-					"between task %q and task %q", outputResourceType,
-					tr.Name, task.Name)
+			if outputResource.Type != r.Spec.Type {
+				return fmt.Errorf("output resource %q for task %q should be type %q but was %q", outputResource.Name, rtr.Task.Name, r.Spec.Type, outputResource.Type)
 			}
 		}
 	}

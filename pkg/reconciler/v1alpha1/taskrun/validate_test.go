@@ -1,13 +1,11 @@
 package taskrun_test
 
 import (
-	"context"
-	"fmt"
 	"testing"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/test"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -18,277 +16,101 @@ var validBuildSteps = []corev1.Container{{
 	Command: []string{"mycmd"},
 }}
 
-func Test_ValidTaskRunTask(t *testing.T) {
-	trs := []*v1alpha1.TaskRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "taskrun-valid-input",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "task-valid-input",
+func TestValidateTaskRunAndTask(t *testing.T) {
+	rtr := &resources.ResolvedTaskRun{
+		Task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task-valid-input",
+				Namespace: "foo",
 			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
+			Spec: v1alpha1.TaskSpec{
+				Steps: validBuildSteps,
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
 						Name: "resource-to-build",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "example-resource",
-						},
-					},
+						Type: v1alpha1.PipelineResourceTypeGit,
+					}},
 				},
-			},
-		},
-	}}
-
-	ts := []*v1alpha1.Task{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "task-valid-input",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Steps: validBuildSteps,
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "resource-to-build",
-					Type: v1alpha1.PipelineResourceTypeGit,
-				}},
-			},
-		},
-	}}
-
-	rr := []*v1alpha1.PipelineResource{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-resource",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeGit,
-			Params: []v1alpha1.Param{{
-				Name:  "foo",
-				Value: "bar",
 			}},
-		},
+		Inputs: map[string]*v1alpha1.PipelineResource{
+			"resource-to-build": &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "example-resource",
+					Namespace: "foo",
+				},
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeGit,
+					Params: []v1alpha1.Param{{
+						Name:  "foo",
+						Value: "bar",
+					}},
+				},
+			}},
+	}
+	if err := taskrun.ValidateTaskRunAndTask([]v1alpha1.Param{}, rtr); err != nil {
+		t.Fatalf("Did not expect to see error when validating valid resolved TaskRun but saw %v", err)
+	}
+}
+
+func Test_ValidParams(t *testing.T) {
+	rtr := &resources.ResolvedTaskRun{
+		Task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "unit-task-multiple-params",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Steps: validBuildSteps,
+				Inputs: &v1alpha1.Inputs{
+					Params: []v1alpha1.TaskParam{{
+						Name: "foo",
+					}, {
+						Name: "bar",
+					}},
+				},
+			}},
+	}
+	p := []v1alpha1.Param{{
+		Name:  "foo",
+		Value: "somethinggood",
+	}, {
+		Name:  "bar",
+		Value: "somethinggood",
 	}}
+	if err := taskrun.ValidateTaskRunAndTask(p, rtr); err != nil {
+		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
+	}
+}
 
-	tcs := []struct {
-		name    string
-		taskrun *v1alpha1.TaskRun
-		reason  string
-	}{{
-		name:    "taskrun-valid-input",
-		taskrun: trs[0],
-		reason:  "taskrun-with-valid-inputs",
+func Test_InvalidParams(t *testing.T) {
+	rtr := &resources.ResolvedTaskRun{
+		Task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "unit-task-multiple-params",
+				Namespace: "foo",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Steps: validBuildSteps,
+				Inputs: &v1alpha1.Inputs{
+					Params: []v1alpha1.TaskParam{{
+						Name: "foo",
+					}, {
+						Name: "bar",
+					}},
+				},
+			}},
+	}
+	p := []v1alpha1.Param{{
+		Name:  "foobar",
+		Value: "somethingfun",
 	}}
-
-	for i, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			d := test.Data{
-				TaskRuns:          []*v1alpha1.TaskRun{trs[i]},
-				Tasks:             ts,
-				PipelineResources: rr,
-			}
-
-			c, _, _ := test.GetTaskRunController(d)
-			err := c.Reconciler.Reconcile(context.Background(),
-				fmt.Sprintf("%s/%s", tc.taskrun.Namespace, tc.taskrun.Name))
-
-			if err != nil {
-				t.Errorf("Did not expect to see error when reconciling invalid task but saw %q", err)
-			}
-			condition := trs[i].Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-			if condition == nil || condition.Status == corev1.ConditionFalse {
-				t.Errorf("Valid task %s failed with condition %s, expected no failure", tc.taskrun.Name, condition)
-			}
-		})
+	if err := taskrun.ValidateTaskRunAndTask(p, rtr); err == nil {
+		t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
 	}
 }
 
 func Test_InvalidTaskRunTask(t *testing.T) {
-	trs := []*v1alpha1.TaskRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun-bad-task-input-resourceref",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "unit-test-task",
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
-						Name: "test-resource-name",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "non-existent-resource1",
-						},
-					},
-				},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun-bad-task-output-resourceref",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "unit-test-task",
-			},
-			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
-						Name: "test-resource-name",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "non-existent-resource1",
-						},
-					},
-				},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun-bad-inputkey",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "unit-test-wrong-input",
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
-						Name: "test-resource-name",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "non-existent",
-						},
-					},
-				},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun-bad-outputkey",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "unit-test-task",
-			},
-			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
-						Name: "test-resource-name",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "non-existent",
-						},
-					},
-				},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun-param-mismatch",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "unit-task-multiple-params",
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{
-					v1alpha1.Param{
-						Name:  "foobar",
-						Value: "somethingfun",
-					},
-				},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun-bad-resourcetype",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
-				Name: "unit-task-bad-resourcetype",
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
-						Name: "testimageinput",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "git-test-resource",
-						},
-					},
-				},
-			},
-		},
-	}}
-
-	ts := []*v1alpha1.Task{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-test-task",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-task-wrong-input",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "testinput",
-				}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-task-wrong-output",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Outputs: &v1alpha1.Outputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "testoutput",
-				}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-task-multiple-params",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Params: []v1alpha1.TaskParam{{
-					Name: "foo",
-				}, {
-					Name: "bar",
-				}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-task-bad-resourcetype",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "testimageinput",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
-			},
-		},
-	}}
-
-	rr := []*v1alpha1.PipelineResource{{
+	r := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "git-test-resource",
 			Namespace: "foo",
@@ -300,57 +122,86 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 				Value: "bar",
 			}},
 		},
-	}}
-
+	}
 	tcs := []struct {
-		name    string
-		taskrun *v1alpha1.TaskRun
-		reason  string
-	}{
-		{
-			name:    "bad-input-source-bindings",
-			taskrun: trs[0],
-			reason:  "input-source-binding-to-invalid-resource",
-		}, {
-			name:    "bad-output-source-bindings",
-			taskrun: trs[1],
-			reason:  "output-source-binding-to-invalid-resource",
-		}, {
-			name:    "bad-inputkey",
-			taskrun: trs[2],
-			reason:  "bad-input-mapping",
-		}, {
-			name:    "bad-outputkey",
-			taskrun: trs[3],
-			reason:  "bad-output-mapping",
-		}, {
-			name:    "param-mismatch",
-			taskrun: trs[4],
-			reason:  "input-param-mismatch",
-		}, {
-			name:    "resource-mismatch",
-			taskrun: trs[5],
-			reason:  "input-resource-mismatch",
-		}}
+		name string
+		rtr  *resources.ResolvedTaskRun
+	}{{
+		name: "bad-inputkey",
+		rtr: &resources.ResolvedTaskRun{
+			Task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "unit-task-wrong-input",
+					Namespace: "foo",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "testinput",
+						}},
+					},
+				},
+			},
+			Inputs: map[string]*v1alpha1.PipelineResource{"wrong-resource-name": r},
+		}}, {
+		name: "bad-outputkey",
+		rtr: &resources.ResolvedTaskRun{
+			Task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "unit-task-wrong-output",
+					Namespace: "foo",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "testoutput",
+						}},
+					},
+				},
+			},
+			Outputs: map[string]*v1alpha1.PipelineResource{"wrong-resource-name": r},
+		}}, {
+		name: "input-resource-mismatch",
+		rtr: &resources.ResolvedTaskRun{
+			Task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "unit-task-bad-input-resourcetype",
+					Namespace: "foo",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "testimageinput",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+			},
+			Inputs: map[string]*v1alpha1.PipelineResource{"testimageinput": r},
+		}}, {
+		name: "output-resource-mismatch",
+		rtr: &resources.ResolvedTaskRun{
+			Task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "unit-task-bad-output-resourcetype",
+					Namespace: "foo",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "testimageoutput",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+			},
+			Outputs: map[string]*v1alpha1.PipelineResource{"testimageoutput": r},
+		}}}
 
-	for i, tc := range tcs {
+	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			d := test.Data{
-				TaskRuns:          []*v1alpha1.TaskRun{trs[i]},
-				Tasks:             ts,
-				PipelineResources: rr,
-			}
-
-			c, _, _ := test.GetTaskRunController(d)
-			err := c.Reconciler.Reconcile(context.Background(),
-				fmt.Sprintf("%s/%s", tc.taskrun.Namespace, tc.taskrun.Name))
-
-			if err != nil {
-				t.Errorf("Did not expect to see error when reconciling invalid task but saw %q", err)
-			}
-			condition := trs[i].Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-			if condition == nil || condition.Status != corev1.ConditionFalse {
-				t.Errorf("Expected status to be failed on invalid task %s but was: %v", tc.taskrun.Name, condition)
+			if err := taskrun.ValidateTaskRunAndTask([]v1alpha1.Param{}, tc.rtr); err == nil {
+				t.Errorf("Expected to see error when validating invalid resolved TaskRun but saw none")
 			}
 		})
 	}

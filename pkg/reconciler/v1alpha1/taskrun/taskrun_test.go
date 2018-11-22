@@ -615,7 +615,7 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 		{
 			name:    "task run with no task",
 			taskRun: taskRuns[0],
-			reason:  taskrun.ReasonFailedValidation,
+			reason:  taskrun.ReasonFailedResolution,
 		},
 	}
 
