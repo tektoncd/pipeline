@@ -91,6 +91,7 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 			}
 		}
 		for _, inputResourceParam := range task.Spec.Inputs.Params {
+			// TODO(#213): should check if the param has default values here
 			if _, ok := paramsMapping[inputResourceParam.Name]; !ok {
 				return fmt.Errorf("input param %q not provided for pipeline task %q (task %q)", inputResourceParam.Name, ptask.Name, task.Name)
 			}
