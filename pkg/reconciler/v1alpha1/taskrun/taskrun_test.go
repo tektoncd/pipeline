@@ -585,7 +585,7 @@ func TestReconcile(t *testing.T) {
 
 func TestReconcile_InvalidTaskRuns(t *testing.T) {
 	taskRuns := []*v1alpha1.TaskRun{
-		&v1alpha1.TaskRun{
+		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "notaskrun",
 				Namespace: "foo",

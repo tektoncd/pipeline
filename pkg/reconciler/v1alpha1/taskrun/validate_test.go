@@ -30,7 +30,7 @@ func Test_ValidTaskRunTask(t *testing.T) {
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
+					{
 						Name: "resource-to-build",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "example-resource",
@@ -116,7 +116,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
+					{
 						Name: "test-resource-name",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "non-existent-resource1",
@@ -136,7 +136,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
 				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
+					{
 						Name: "test-resource-name",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "non-existent-resource1",
@@ -156,7 +156,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
+					{
 						Name: "test-resource-name",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "non-existent",
@@ -176,7 +176,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
 				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
+					{
 						Name: "test-resource-name",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "non-existent",
@@ -196,7 +196,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: []v1alpha1.Param{
-					v1alpha1.Param{
+					{
 						Name:  "foobar",
 						Value: "somethingfun",
 					},
@@ -214,7 +214,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskRunResource{
-					v1alpha1.TaskRunResource{
+					{
 						Name: "testimageinput",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "git-test-resource",

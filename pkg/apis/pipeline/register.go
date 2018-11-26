@@ -23,4 +23,3 @@ const (
 	PipelineLabelKey    = "/pipeline"
 	PipelineRunLabelKey = "/pipelineRun"
 )
-

@@ -88,7 +88,7 @@ func TestPipelineRun(t *testing.T) {
 				Spec: v1alpha1.TaskSpec{
 					// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
 					Steps: []corev1.Container{
-						corev1.Container{
+						{
 							Name:  "config-docker",
 							Image: "gcr.io/cloud-builders/docker",
 							// Private docker image for Build CRD testing
@@ -184,7 +184,7 @@ func TestPipelineRun(t *testing.T) {
 				}
 			}
 
-			matchKinds := map[string][]string{"PipelineRun": []string{prName}, "TaskRun": expectedTaskRunNames}
+			matchKinds := map[string][]string{"PipelineRun": {prName}, "TaskRun": expectedTaskRunNames}
 
 			logger.Infof("Making sure %d events were created from taskrun and pipelinerun with kinds %v", td.expectedNumberOfEvents, matchKinds)
 
@@ -206,7 +206,7 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alph
 		},
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{
-				v1alpha1.PipelineTask{
+				{
 					Name: hwPipelineTaskName1,
 					TaskRef: v1alpha1.TaskRef{
 						Name: getName(hwTaskName, suffix),
@@ -225,13 +225,13 @@ func getHelloWorldPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
 		},
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{
-				v1alpha1.PipelineTask{
+				{
 					Name: hwPipelineTaskName1,
 					TaskRef: v1alpha1.TaskRef{
 						Name: getName(hwTaskName, suffix),
 					},
 				},
-				v1alpha1.PipelineTask{
+				{
 					Name: hwPipelineTaskName2,
 					TaskRef: v1alpha1.TaskRef{
 						Name: getName(hwTaskName, suffix),

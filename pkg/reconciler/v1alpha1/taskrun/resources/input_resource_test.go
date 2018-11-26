@@ -138,7 +138,7 @@ func TestAddResourceToBuild(t *testing.T) {
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{
-					v1alpha1.TaskResource{
+					{
 						Name: "workspace",
 						Type: "git",
 					},
@@ -265,7 +265,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{
-						v1alpha1.TaskResource{
+						{
 							Name: "workspace-invalid",
 							Type: "git",
 						},
@@ -287,7 +287,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{
-						v1alpha1.TaskResource{
+						{
 							Name: "target-cluster",
 							Type: "cluster",
 						},
@@ -353,7 +353,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{
-						v1alpha1.TaskResource{
+						{
 							Name: "target-cluster",
 							Type: "cluster",
 						},

@@ -155,7 +155,7 @@ func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: v1alpha1.PipelineResourceTypeGit,
 			Params: []v1alpha1.Param{
-				v1alpha1.Param{
+				{
 					Name:  "Url",
 					Value: "https://github.com/knative/build-pipeline",
 				},
@@ -184,7 +184,7 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{
-					v1alpha1.TaskResource{
+					{
 						Name: "workspace",
 						Type: v1alpha1.PipelineResourceTypeGit,
 					},
@@ -210,7 +210,7 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{
-					v1alpha1.TaskResource{
+					{
 						Name: "workspace",
 						Type: v1alpha1.PipelineResourceTypeGit,
 					},
@@ -251,13 +251,13 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 		},
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{
-				v1alpha1.PipelineTask{
+				{
 					Name: "push-image",
 					TaskRef: v1alpha1.TaskRef{
 						Name: createImageTaskName,
 					},
 				},
-				v1alpha1.PipelineTask{
+				{
 					Name: "helm-deploy",
 					TaskRef: v1alpha1.TaskRef{
 						Name: helmDeployTaskName,
