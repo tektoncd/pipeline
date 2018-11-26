@@ -32,12 +32,10 @@ var mytask1 = &v1alpha1.Task{
 	},
 	Spec: v1alpha1.TaskSpec{
 		Inputs: &v1alpha1.Inputs{
-			Resources: []v1alpha1.TaskResource{
-				v1alpha1.TaskResource{
-					Name: "myresource1",
-					Type: v1alpha1.PipelineResourceTypeGit,
-				},
-			},
+			Resources: []v1alpha1.TaskResource{{
+				Name: "myresource1",
+				Type: v1alpha1.PipelineResourceTypeGit,
+			}},
 		},
 	},
 }
@@ -49,12 +47,10 @@ var mytask2 = &v1alpha1.Task{
 	},
 	Spec: v1alpha1.TaskSpec{
 		Inputs: &v1alpha1.Inputs{
-			Resources: []v1alpha1.TaskResource{
-				v1alpha1.TaskResource{
-					Name: "myresource1",
-					Type: v1alpha1.PipelineResourceTypeGit,
-				},
-			},
+			Resources: []v1alpha1.TaskResource{{
+				Name: "myresource1",
+				Type: v1alpha1.PipelineResourceTypeGit,
+			}},
 		},
 	},
 }

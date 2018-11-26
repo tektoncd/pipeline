@@ -584,20 +584,18 @@ func TestReconcile(t *testing.T) {
 }
 
 func TestReconcile_InvalidTaskRuns(t *testing.T) {
-	taskRuns := []*v1alpha1.TaskRun{
-		&v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "notaskrun",
-				Namespace: "foo",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
-					Name:       "notask",
-					APIVersion: "a1",
-				},
+	taskRuns := []*v1alpha1.TaskRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "notaskrun",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: v1alpha1.TaskRef{
+				Name:       "notask",
+				APIVersion: "a1",
 			},
 		},
-	}
+	}}
 	tasks := []*v1alpha1.Task{
 		simpleTask,
 	}

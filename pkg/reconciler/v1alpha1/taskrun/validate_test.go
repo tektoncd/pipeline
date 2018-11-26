@@ -33,7 +33,7 @@ func TestValidateTaskRunAndTask(t *testing.T) {
 				},
 			}},
 		Inputs: map[string]*v1alpha1.PipelineResource{
-			"resource-to-build": &v1alpha1.PipelineResource{
+			"resource-to-build": {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "example-resource",
 					Namespace: "foo",

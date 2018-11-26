@@ -154,12 +154,10 @@ func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: v1alpha1.PipelineResourceTypeGit,
-			Params: []v1alpha1.Param{
-				v1alpha1.Param{
-					Name:  "Url",
-					Value: "https://github.com/knative/build-pipeline",
-				},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "Url",
+				Value: "https://github.com/knative/build-pipeline",
+			}},
 		},
 	}
 }
@@ -183,12 +181,10 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{
-					v1alpha1.TaskResource{
-						Name: "workspace",
-						Type: v1alpha1.PipelineResourceTypeGit,
-					},
-				},
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: v1alpha1.PipelineResourceTypeGit,
+				}},
 			},
 			Steps: []corev1.Container{{
 				Name:  "kaniko",
@@ -209,12 +205,10 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{
-					v1alpha1.TaskResource{
-						Name: "workspace",
-						Type: v1alpha1.PipelineResourceTypeGit,
-					},
-				},
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: v1alpha1.PipelineResourceTypeGit,
+				}},
 				Params: []v1alpha1.TaskParam{{
 					Name:        "pathToHelmCharts",
 					Description: "Path to the helm charts",
@@ -250,34 +244,31 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 			Name:      helmDeployPipelineName,
 		},
 		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{
-				v1alpha1.PipelineTask{
-					Name: "push-image",
-					TaskRef: v1alpha1.TaskRef{
-						Name: createImageTaskName,
-					},
+			Tasks: []v1alpha1.PipelineTask{{
+				Name: "push-image",
+				TaskRef: v1alpha1.TaskRef{
+					Name: createImageTaskName,
 				},
-				v1alpha1.PipelineTask{
-					Name: "helm-deploy",
-					TaskRef: v1alpha1.TaskRef{
-						Name: helmDeployTaskName,
-					},
-					ResourceDependencies: []v1alpha1.ResourceDependency{{
-						Name:       "workspace",
-						ProvidedBy: []string{createImageTaskName},
-					}},
-					Params: []v1alpha1.Param{{
-						Name:  "pathToHelmCharts",
-						Value: "/workspace/test/gohelloworld/gohelloworld-chart",
-					}, {
-						Name:  "chartname",
-						Value: "gohelloworld",
-					}, {
-						Name:  "image",
-						Value: imageName,
-					}},
+			}, {
+				Name: "helm-deploy",
+				TaskRef: v1alpha1.TaskRef{
+					Name: helmDeployTaskName,
 				},
-			},
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "workspace",
+					ProvidedBy: []string{createImageTaskName},
+				}},
+				Params: []v1alpha1.Param{{
+					Name:  "pathToHelmCharts",
+					Value: "/workspace/test/gohelloworld/gohelloworld-chart",
+				}, {
+					Name:  "chartname",
+					Value: "gohelloworld",
+				}, {
+					Name:  "image",
+					Value: imageName,
+				}},
+			}},
 		},
 	}
 }

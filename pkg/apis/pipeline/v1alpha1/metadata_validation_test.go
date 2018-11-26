@@ -23,8 +23,8 @@ import (
 func TestMetadataInvalidLongName(t *testing.T) {
 
 	invalidMetas := []*metav1.ObjectMeta{
-		&metav1.ObjectMeta{Name: strings.Repeat("s", maxLength+1)},
-		&metav1.ObjectMeta{Name: "bad.name"},
+		{Name: strings.Repeat("s", maxLength+1)},
+		{Name: "bad.name"},
 	}
 	for _, invalidMeta := range invalidMetas {
 		if err := validateObjectMetadata(invalidMeta); err == nil {

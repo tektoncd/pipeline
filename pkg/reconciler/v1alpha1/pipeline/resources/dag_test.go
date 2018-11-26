@@ -52,7 +52,7 @@ func TestBuild(t *testing.T) {
 		Name:                 "a",
 		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"none"}}},
 	}
-	nodeX := &Node{Task: xDependsOnA, Prev: []*Node{&Node{Task: a}}}
+	nodeX := &Node{Task: xDependsOnA, Prev: []*Node{{Task: a}}}
 
 	tcs := []struct {
 		name        string
@@ -65,9 +65,9 @@ func TestBuild(t *testing.T) {
 			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, b, c}},
 			&DAG{
 				Nodes: map[string]*Node{
-					"a": &Node{Task: a},
-					"b": &Node{Task: b},
-					"c": &Node{Task: c},
+					"a": {Task: a},
+					"b": {Task: b},
+					"c": {Task: c},
 				},
 			},
 			false,
@@ -76,12 +76,12 @@ func TestBuild(t *testing.T) {
 			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnAB, zDependsOnX, b, c}},
 			&DAG{
 				Nodes: map[string]*Node{
-					"a": &Node{Task: a},
-					"b": &Node{Task: b},
-					"c": &Node{Task: c},
-					"x": &Node{Task: xDependsOnA, Prev: []*Node{&Node{Task: a}}},
-					"y": &Node{Task: yDependsOnAB, Prev: []*Node{&Node{Task: b}, &Node{Task: a}}},
-					"z": &Node{Task: zDependsOnX, Prev: []*Node{nodeX}},
+					"a": {Task: a},
+					"b": {Task: b},
+					"c": {Task: c},
+					"x": {Task: xDependsOnA, Prev: []*Node{{Task: a}}},
+					"y": {Task: yDependsOnAB, Prev: []*Node{{Task: b}, {Task: a}}},
+					"z": {Task: zDependsOnX, Prev: []*Node{nodeX}},
 				},
 			},
 			false,
