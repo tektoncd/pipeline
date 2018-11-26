@@ -58,32 +58,28 @@ func getHelloWorldValidationPod(namespace, volumeClaimName string) *corev1.Pod {
 			Name:      hwValidationPodName,
 		},
 		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				corev1.Container{
-					Name:  hwValidationPodName,
-					Image: "busybox",
-					Command: []string{
-						"cat",
-					},
-					Args: []string{fmt.Sprintf("%s/%s", logPath, logFile)},
-					VolumeMounts: []corev1.VolumeMount{
-						corev1.VolumeMount{
-							Name:      "scratch",
-							MountPath: logPath,
-						},
+			Containers: []corev1.Container{{
+				Name:  hwValidationPodName,
+				Image: "busybox",
+				Command: []string{
+					"cat",
+				},
+				Args: []string{fmt.Sprintf("%s/%s", logPath, logFile)},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "scratch",
+						MountPath: logPath,
 					},
 				},
-			},
-			Volumes: []corev1.Volume{
-				corev1.Volume{
-					Name: "scratch",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: volumeClaimName,
-						},
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "scratch",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: volumeClaimName,
 					},
 				},
-			},
+			}},
 		},
 	}
 }

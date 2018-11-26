@@ -115,15 +115,13 @@ func build() *buildv1alpha1.Build {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-from-repo",
 			Namespace: "marshmallow",
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				},
-			},
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion:         "pipeline.knative.dev/v1alpha1",
+				Kind:               "TaskRun",
+				Name:               "build-from-repo-run",
+				Controller:         &boolTrue,
+				BlockOwnerDeletion: &boolTrue,
+			}},
 		},
 		Spec: buildv1alpha1.BuildSpec{},
 	}
@@ -137,12 +135,10 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{
-					v1alpha1.TaskResource{
-						Name: "workspace",
-						Type: "git",
-					},
-				},
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: "git",
+				}},
 			},
 		},
 	}
@@ -186,15 +182,13 @@ func TestAddResourceToBuild(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "build-from-repo",
 				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				},
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Source: &buildv1alpha1.SourceSpec{
@@ -236,15 +230,13 @@ func TestAddResourceToBuild(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "build-from-repo",
 				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				},
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Source: &buildv1alpha1.SourceSpec{
@@ -264,12 +256,10 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{
-						v1alpha1.TaskResource{
-							Name: "workspace-invalid",
-							Type: "git",
-						},
-					},
+					Resources: []v1alpha1.TaskResource{{
+						Name: "workspace-invalid",
+						Type: "git",
+					}},
 				},
 			},
 		},
@@ -286,12 +276,10 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{
-						v1alpha1.TaskResource{
-							Name: "target-cluster",
-							Type: "cluster",
-						},
-					},
+					Resources: []v1alpha1.TaskResource{{
+						Name: "target-cluster",
+						Type: "cluster",
+					}},
 				},
 			},
 		},
@@ -323,15 +311,13 @@ func TestAddResourceToBuild(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "build-from-repo",
 				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				},
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
@@ -352,12 +338,10 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{
-						v1alpha1.TaskResource{
-							Name: "target-cluster",
-							Type: "cluster",
-						},
-					},
+					Resources: []v1alpha1.TaskResource{{
+						Name: "target-cluster",
+						Type: "cluster",
+					}},
 				},
 			},
 		},
@@ -389,15 +373,13 @@ func TestAddResourceToBuild(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "build-from-repo",
 				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				},
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{

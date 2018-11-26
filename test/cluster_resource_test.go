@@ -133,12 +133,10 @@ func getClusterResourceTask(namespace, name, resName, configName string) *v1alph
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{
-					v1alpha1.TaskResource{
-						Name: "target-cluster",
-						Type: v1alpha1.PipelineResourceTypeCluster,
-					},
-				},
+				Resources: []v1alpha1.TaskResource{{
+					Name: "target-cluster",
+					Type: v1alpha1.PipelineResourceTypeCluster,
+				}},
 				Params: []v1alpha1.TaskParam{},
 			},
 			Volumes: []corev1.Volume{{
