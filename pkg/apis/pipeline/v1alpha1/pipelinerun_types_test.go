@@ -73,7 +73,7 @@ func TestInitializeConditions(t *testing.T) {
 	p.Status.InitializeConditions()
 
 	if p.Status.TaskRuns == nil {
-		t.Fatalf("PipelineRun status not initalized correctly")
+		t.Fatalf("PipelineRun status not initialized correctly")
 	}
 
 	p.Status.TaskRuns["fooTask"] = TaskRunStatus{}
