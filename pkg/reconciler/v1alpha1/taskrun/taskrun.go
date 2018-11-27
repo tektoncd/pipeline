@@ -182,7 +182,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
-	rtr, err := resources.ResolveTaskRun(&tr.Spec, c.taskLister.Tasks(tr.Namespace).Get, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	rtr, err := resources.ResolveTaskRun(tr, c.taskLister.Tasks(tr.Namespace).Get, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Error("Failed to resolve references for taskrun %s with error %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -193,6 +193,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		})
 		return nil
 	}
+
 	if err := ValidateTaskRunAndTask(tr.Spec.Inputs.Params, rtr); err != nil {
 		c.Logger.Error("Failed to validate taskrun %s with error %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -218,9 +219,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get pvc %q: %v", tr.Name, tr.Name, err)
 			return err
 		}
-
 		// Build is not present, create build
-		build, err = c.createBuild(ctx, tr, pvc.Name)
+		build, err = c.createBuild(ctx, tr, rtr.TaskSpec, rtr.TaskName, pvc.Name)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			var msg string
@@ -338,34 +338,9 @@ func createPVC(kc kubernetes.Interface, tr *v1alpha1.TaskRun) (*corev1.Persisten
 	return v, nil
 }
 
-func (c *Reconciler) getTaskSpec(tr *v1alpha1.TaskRun) (v1alpha1.TaskSpec, string, error) {
-	taskSpec := v1alpha1.TaskSpec{}
-	taskName := ""
-	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Name != "" {
-		// Get related task for taskrun
-		t, err := c.taskLister.Tasks(tr.Namespace).Get(tr.Spec.TaskRef.Name)
-		if err != nil {
-			return taskSpec, taskName, fmt.Errorf("error when listing tasks %v", err)
-		}
-		taskSpec = t.Spec
-		taskName = t.Name
-	} else if tr.Spec.TaskSpec != nil {
-		taskSpec = *tr.Spec.TaskSpec
-		taskName = tr.Name
-	} else {
-		return taskSpec, taskName, fmt.Errorf("TaskRun %s not providing TaskRef or TaskSpec", tr.Name)
-	}
-	return taskSpec, taskName, nil
-}
-
 // createBuild creates a build from the task, using the task's buildspec
 // with pvcName as a volumeMount
-func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, pvcName string) (*buildv1alpha1.Build, error) {
-	ts, taskName, err := c.getTaskSpec(tr)
-	if err != nil {
-		return nil, fmt.Errorf("taskRun %s has nil BuildSpec", tr.Name)
-	}
-
+func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName, pvcName string) (*buildv1alpha1.Build, error) {
 	// TODO: Preferably use Validate on task.spec to catch validation error
 	bs := ts.GetBuildSpec()
 	if bs == nil {

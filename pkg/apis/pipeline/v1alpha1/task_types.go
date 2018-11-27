@@ -34,10 +34,6 @@ type TaskSpec struct {
 	// +optional
 	Generation int64 `json:"generation,omitempty"`
 
-	// Following fields are from build spec for a Build resource.
-	// Sources specifies the inputs to the build.
-	Sources []buildv1alpha1.SourceSpec `json:"sources,omitempty"`
-
 	// Steps are the steps of the build; each step is run sequentially with the
 	// source mounted into /workspace.
 	Steps []corev1.Container `json:"steps,omitempty"`
@@ -151,7 +147,6 @@ type TaskList struct {
 
 func (ts *TaskSpec) GetBuildSpec() *buildv1alpha1.BuildSpec {
 	return &buildv1alpha1.BuildSpec{
-		Sources:            ts.Sources,
 		Steps:              ts.Steps,
 		Volumes:            ts.Volumes,
 		ServiceAccountName: ts.ServiceAccountName,

@@ -21,7 +21,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	build_v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duck_v1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	core_v1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1188,13 +1187,6 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 		} else {
 			*out = new(Outputs)
 			(*in).DeepCopyInto(*out)
-		}
-	}
-	if in.Sources != nil {
-		in, out := &in.Sources, &out.Sources
-		*out = make([]build_v1alpha1.SourceSpec, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Steps != nil {

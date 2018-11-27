@@ -40,13 +40,12 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 
 	// can't have both taskRef and taskSpec at the same time
 	if (ts.TaskRef != nil && ts.TaskRef.Name != "") && ts.TaskSpec != nil {
-		return apis.ErrDisallowedFields("spec.taskSpec")
+		return apis.ErrDisallowedFields("spec.taskref", "spec.taskspec")
 	}
 
 	// Check that one of TaskRef and TaskSpec is present
 	if (ts.TaskRef == nil || (ts.TaskRef != nil && ts.TaskRef.Name == "")) && ts.TaskSpec == nil {
-		fields := []string{"spec.taskref.name", "spec.taskspec"}
-		return apis.ErrMissingField(fields...)
+		return apis.ErrMissingField("spec.taskref.name", "spec.taskspec")
 	}
 
 	// Check for Trigger

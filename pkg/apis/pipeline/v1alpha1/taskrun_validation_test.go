@@ -155,7 +155,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 					},
 				},
 			},
-			wantErr: apis.ErrDisallowedFields("spec.taskSpec"),
+			wantErr: apis.ErrDisallowedFields("spec.taskspec", "spec.taskref"),
 		},
 	}
 
