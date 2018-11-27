@@ -2,22 +2,30 @@ package entrypoint_test
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"path"
+	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
 
 const (
-	kanikoImage      = "gcr.io/kaniko-project/executor"
-	kanikoEntrypoint = "/kaniko/executor"
+	kanikoImage = "gcr.io/kaniko-project/executor"
 )
 
 func TestAddEntrypoint(t *testing.T) {
-	inputs := []v1.Container{
+	inputs := []corev1.Container{
 		{
 			Image: kanikoImage,
 		},
@@ -72,16 +80,101 @@ func TestAddEntrypoint(t *testing.T) {
 	}
 }
 
+type image struct {
+	config *v1.ConfigFile
+}
+
+// RawConfigFile implements partial.UncompressedImageCore
+func (i *image) RawConfigFile() ([]byte, error) {
+	return partial.RawConfigFile(i)
+}
+
+// ConfigFile implements v1.Image
+func (i *image) ConfigFile() (*v1.ConfigFile, error) {
+	return i.config, nil
+}
+
+// MediaType implements partial.UncompressedImageCore
+func (i *image) MediaType() (types.MediaType, error) {
+	return types.DockerManifestSchema2, nil
+}
+
+// LayerByDiffID implements partial.UncompressedImageCore
+func (i *image) LayerByDiffID(diffID v1.Hash) (partial.UncompressedLayer, error) {
+	return nil, fmt.Errorf("unknown diff_id: %v", diffID)
+}
+
+func mustRawManifest(t *testing.T, img v1.Image) []byte {
+	m, err := img.RawManifest()
+	if err != nil {
+		t.Fatalf("RawManifest() = %v", err)
+	}
+	return m
+}
+
+func mustRawConfigFile(t *testing.T, img v1.Image) []byte {
+	c, err := img.RawConfigFile()
+	if err != nil {
+		t.Fatalf("RawConfigFile() = %v", err)
+	}
+	return c
+}
+
+func getImage(t *testing.T, cfg *v1.ConfigFile) v1.Image {
+	rnd, err := partial.UncompressedToImage(&image{
+		config: cfg,
+	})
+	if err != nil {
+		t.Fatalf("getImage() = %v", err)
+	}
+	return rnd
+}
+
+func mustConfigName(t *testing.T, img v1.Image) v1.Hash {
+	h, err := img.ConfigName()
+	if err != nil {
+		t.Fatalf("ConfigName() = %v", err)
+	}
+	return h
+}
+
 func TestGetRemoteEntrypoint(t *testing.T) {
-	ep, err := entrypoint.GetRemoteEntrypoint(entrypoint.NewCache(), kanikoImage)
+	expectedEntrypoint := []string{"/bin/expected", "entrypoint"}
+	img := getImage(t, &v1.ConfigFile{
+		ContainerConfig: v1.Config{
+			Entrypoint: expectedEntrypoint,
+		},
+	})
+	expectedRepo := "kaniko"
+	configPath := fmt.Sprintf("/v2/%s/blobs/%s", expectedRepo, mustConfigName(t, img))
+	manifestPath := fmt.Sprintf("/v2/%s/manifests/latest", expectedRepo)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/":
+			w.WriteHeader(http.StatusOK)
+		case configPath:
+			if r.Method != http.MethodGet {
+				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
+			}
+			w.Write(mustRawConfigFile(t, img))
+		case manifestPath:
+			if r.Method != http.MethodGet {
+				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
+			}
+			w.Write(mustRawManifest(t, img))
+		default:
+			t.Fatalf("Unexpected path: %v", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	image := path.Join(strings.TrimPrefix(server.URL, "http://"), "kaniko:latest")
+	ep, err := entrypoint.GetRemoteEntrypoint(entrypoint.NewCache(), image)
 	if err != nil {
 		t.Errorf("couldn't get entrypoint remote: %v", err)
 	}
-	if len(ep) != 1 {
-		t.Errorf("remote entrypoint should only have one item")
-	}
-	if ep[0] != kanikoEntrypoint {
-		t.Errorf("entrypoints do not match: %s should be %s", ep[0], kanikoEntrypoint)
+	if !reflect.DeepEqual(ep, expectedEntrypoint) {
+		t.Errorf("entrypoints do not match: %s should be %s", ep[0], expectedEntrypoint)
 	}
 }
 
@@ -94,7 +187,7 @@ func TestAddCopyStep(t *testing.T) {
 	ctx := config.ToContext(context.Background(), cfg)
 
 	bs := &v1alpha1.BuildSpec{
-		Steps: []v1.Container{
+		Steps: []corev1.Container{
 			{
 				Name: "test",
 			},
