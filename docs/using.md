@@ -185,6 +185,46 @@ See [the example PipelineRun](../examples/invocations/kritis-pipeline-run.yaml).
    that the `Task` needs to run.
 2. The `TaskRun` will also serve as a record of the history of the invocations of the
    `Task`.
+3. Another way of running a Task is embedding the TaskSpec in the taskRun yaml as shown in the following example
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: go-example-git
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/pivotal-nader-ziada/gohelloworld
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: build-push-task-run-2
+spec:
+  trigger:
+    triggerRef:
+      type: manual
+  inputs:
+    resources:
+    - name: workspace
+      resourceRef:
+        name: go-example-git
+  taskSpec: 
+    inputs:
+      resources:
+      - name: workspace
+        type: git    
+    steps:
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor
+      command:
+      - /kaniko/executor
+      args:
+      - --destination=gcr.io/my-project/gohelloworld
+```
+If the TaskSpec is provided, TaskRef is not allowed.  
 
 See [the example TaskRun](../examples/invocations/run-kritis-test.yaml).
 

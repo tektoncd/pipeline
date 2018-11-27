@@ -43,7 +43,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunReso
 func AddInputResource(
 	build *buildv1alpha1.Build,
 	taskName string,
-	taskSpec v1alpha1.TaskSpec,
+	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
 	pipelineResourceLister listers.PipelineResourceLister,
 	logger *zap.SugaredLogger,

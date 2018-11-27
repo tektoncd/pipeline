@@ -308,7 +308,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: v1alpha1.TaskRef{
+				TaskRef: &v1alpha1.TaskRef{
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
@@ -508,7 +508,7 @@ func TestAddResourceToBuild(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
-			got, err := AddInputResource(c.build, c.task.Name, c.task.Spec, c.taskRun, pipelineResourceLister, logger)
+			got, err := AddInputResource(c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; NewControllerConfigFromConfigMap() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
