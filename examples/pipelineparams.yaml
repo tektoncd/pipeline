@@ -4,7 +4,13 @@ metadata:
   name: pipelineparams-sample
   namespace: default
 spec:
-  serviceAccount: 'demoServiceAccount'
+  clusters:
+      - name: 'testCluster'
+        type: 'gke'
+        endpoint: 'https://prod.gke.corp.com'
+      - name: 'stagingCluster'
+        type: 'gke'
+        endpoint: 'https://staging.gke.corp.com'
   results:
     runs:
       name: 'runsBucket'

@@ -1,0 +1,47 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: demo-pipeline-run-1
+  namespace: default
+spec:
+  pipelineRef:
+    name: demo-pipeline
+  pipelineParamsRef:
+    name: pipelineparams-sample
+  triggerRef:
+    type: manual
+  resources:
+  - name: build-skaffold-web
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: skaffold-git
+    outputs:
+    - name: builtImage
+      resourceRef:
+        name: skaffold-image-leeroy-web
+  - name: build-skaffold-app
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: skaffold-git
+    outputs:
+    - name: builtImage
+      resourceRef:
+        name: skaffold-image-leeroy-app
+  - name: deploy-app
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: skaffold-git
+    - name: image
+      resourceRef:
+        name: skaffold-image-leeroy-app
+  - name: deploy-web
+    inputs:
+    - name: workspace
+      resourceRef:
+        name: skaffold-git
+    - name: image
+      resourceRef:
+        name: skaffold-image-leeroy-web

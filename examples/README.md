@@ -8,16 +8,41 @@ To deploy them to your cluster (after
 ```bash
 kubectl apply -f examples/
 kubectl apply -f examples/pipelines
+kubectl apply -f examples/demo
+
+# To invoke them:
+kubectl apply -f examples/demo/run
+
+# TODO(#108): these examples are not known to work
 kubectl apply -f examples/invocations
 ```
 
 ## Example Pipelines
 
-We have 2 example [Pipelines](../README.md#pipeline) in [./pipelines](./pipelines)
+We have 3 example [Pipelines](../README.md#pipeline) in [./pipelines](./pipelines)
+
+### Demo Pipeline
+
+[`demo`](./demo): This simple Pipeline Builds
+[two microservice images](https://github.com/GoogleContainerTools/skaffold/tree/master/examples/microservices)
+from [the Skaffold repo](https://github.com/GoogleContainerTools/skaffold) and deploys them
+to the repo currently running the Pipeline CRD.
+
+It does this using the `Deployment` in the existing yaml files, so at the moment there
+is no guarantee that the image that are built and pushed are the ones that are deployed
+(that would require using the digest of the built image, see
+https://github.com/knative/build-pipeline/issues/216).
+
+To run this yourself, you will need to change the values of
+`gcr.io/christiewilson-catfactory` to a registry you can push to from inside your cluster.
+
+Since this demo modifies the cluster (deploys to it) you must use a service account with
+permission to admin the cluster (or make your default user an admin of the `default`
+namespace with [default-cluster-admin.yaml](demo/default-cluster-admin.yaml)).
 
 ### Kritis Pipeline
 
-[The Kritis Pipline](./pipelines/kritis.yaml): This example builds a Pipeline for the
+[The Kritis Pipeline](./pipelines/kritis.yaml): This example builds a Pipeline for the
 [kritis project](https://github.com/grafeas/kritis), and demonstrates how to configure
 a pipeline which:
 
