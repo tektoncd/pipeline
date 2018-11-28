@@ -17,7 +17,7 @@ spec:
       format: junit
       path: logs/tests.xml
   steps:
-  - name: runMake
+  - name: run-make
     image: ubuntu
     command: ['make']
     args: ['${inputs.params.makeTarget}']
@@ -46,7 +46,7 @@ spec:
       format: junit
       path: integration/logs/tests.xml
   steps:
-  - name: runTests
+  - name: run-tests
     image: docker
     command: ['${inputs.resources.params.testCommand}']
     args: ['${inputs.resources.params.testArgs}']
