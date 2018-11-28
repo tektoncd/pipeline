@@ -50,7 +50,6 @@ const (
 	entrypointLocation = "/tools/entrypoint"
 	toolsMountName     = "tools"
 	pvcSizeBytes       = 5 * 1024 * 1024 * 1024 // 5 GBs
-	kanikoImage        = "gcr.io/kaniko-project/executor"
 )
 
 var ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)

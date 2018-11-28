@@ -20,21 +20,17 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
 
-const (
-	kanikoImage = "gcr.io/kaniko-project/executor"
-)
-
 func TestAddEntrypoint(t *testing.T) {
 	inputs := []corev1.Container{
 		{
-			Image: kanikoImage,
+			Image: "image",
 		},
 		{
-			Image: kanikoImage,
+			Image: "image:tag",
 			Args:  []string{"abcd"},
 		},
 		{
-			Image:   kanikoImage,
+			Image:   "my.registry.svc/image:tag",
 			Command: []string{"abcd"},
 			Args:    []string{"efgh"},
 		},
@@ -145,7 +141,7 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 			Entrypoint: expectedEntrypoint,
 		},
 	})
-	expectedRepo := "kaniko"
+	expectedRepo := "image"
 	configPath := fmt.Sprintf("/v2/%s/blobs/%s", expectedRepo, mustConfigName(t, img))
 	manifestPath := fmt.Sprintf("/v2/%s/manifests/latest", expectedRepo)
 
@@ -168,7 +164,7 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	image := path.Join(strings.TrimPrefix(server.URL, "http://"), "kaniko:latest")
+	image := path.Join(strings.TrimPrefix(server.URL, "http://"), "image:latest")
 	ep, err := entrypoint.GetRemoteEntrypoint(entrypoint.NewCache(), image)
 	if err != nil {
 		t.Errorf("couldn't get entrypoint remote: %v", err)
