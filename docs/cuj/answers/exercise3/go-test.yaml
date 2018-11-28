@@ -10,7 +10,6 @@ spec:
               type: git
         params:
             - name: package
-              value: string
     steps:
     - name: run-test
       image: gcr.io/google_appengine/golang

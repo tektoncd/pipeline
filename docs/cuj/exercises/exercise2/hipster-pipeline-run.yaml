@@ -1,0 +1,45 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: microservices-pipeline-run
+  namespace: default
+spec:
+  pipelineRef:
+    name: kritis-pipeline
+  resources:
+    - name: build-productcatalog
+      inputs:
+        - name: workspace
+          resourceRef:
+            name: hipster-source
+      outputs:
+        - name: builtImage
+          resourceRef:
+            name: productcatalog
+    - name: build-checkoutservice
+      inputs:
+        - name: workspace
+          resourceRef:
+            name: hipster-source
+      outputs:
+        - name: builtImage
+          resourceRef:
+            name: checkoutservice
+    - name: build-frontend
+      inputs:
+        - name: workspace
+          resourceRef:
+            name: hipster-source
+      outputs:
+        - name: builtImage
+          resourceRef:
+            name: frontend
+    - name: deploy-all
+      inputs:
+        - name: workspace
+          resourceRef:
+            name: hipster-source
+          providedBy:
+            - build-checkoutservice
+            - build-productcatalog
+            - build-frontend
