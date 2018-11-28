@@ -52,19 +52,19 @@ spec:
     - name: pathToFiles
       description: Path to the manifests to apply
   steps:
-  - name: replaceRedisImage
+  - name: replace-redis-image
     image: busybox
     command: ['sed']
     args:
     - "-ri"
     - "'s/image: k8s.gcr.io\\/redis:e2e/image: ${inputs.resources.redisImage.url}@{inputs.resources.redisImage.digest}/' ${inputs.params.pathToFiles}"
-  - name: replaceGuestbookImage
+  - name: replace-guestbook-image
     image: busybox
     command: ['sed']
     args:
     - "-ri"
     - "'s/image: gcr.io\\/google-samples\\/gb-frontend:v4/image: ${inputs.resources.guestbookImage.url}@{inputs.resources.guestbookImage.digest}/' ${inputs.params.pathToFiles}"
-  - name: runKubectl
+  - name: run-kubectl
     image: lachlanevenson/k8s-kubectl
     command: ['kubectl']
     args:

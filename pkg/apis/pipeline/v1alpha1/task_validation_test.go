@@ -32,6 +32,11 @@ var validBuildSteps = []corev1.Container{{
 	Image: "myimage",
 }}
 
+var invalidBuildSteps = []corev1.Container{{
+	Name:  "replaceImage",
+	Image: "myimage",
+}}
+
 func TestTaskSpec_Validate(t *testing.T) {
 	type fields struct {
 		Inputs  *Inputs
@@ -181,6 +186,14 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Resources: []TaskResource{validResource},
 			},
 			BuildSteps: []corev1.Container{},
+		},
+	}, {
+		name: "invalid build step name",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{validResource},
+			},
+			BuildSteps: invalidBuildSteps,
 		},
 	}}
 	for _, tt := range tests {

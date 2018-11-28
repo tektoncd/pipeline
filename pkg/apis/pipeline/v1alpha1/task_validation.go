@@ -22,6 +22,7 @@ import (
 
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 func (t *Task) Validate() *apis.FieldError {
@@ -62,6 +63,17 @@ func (ts *TaskSpec) Validate() *apis.FieldError {
 		}
 		if err := checkForDuplicates(ts.Outputs.Resources, "taskspec.Outputs.Resources.Name"); err != nil {
 			return err
+		}
+	}
+
+	// Validate task step names
+	for _, step := range ts.Steps {
+		if errs := validation.IsDNS1123Label(step.Name); len(errs) > 0 {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("invalid value %q", step.Name),
+				Paths:   []string{"taskspec.steps.name"},
+				Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+			}
 		}
 	}
 	return nil
