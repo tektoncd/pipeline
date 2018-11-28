@@ -10,7 +10,6 @@ spec:
               type: git
         params:
             - name: pathToDockerFile
-              value: string
     outputs:
         resources:
             - name: builtImage
@@ -18,7 +17,7 @@ spec:
     steps:
     - name: build-and-push
       image: gcr.io/kaniko-project/executor
-      command: 
+      command:
       - /kaniko/executor
       args:
       - --dockerfile=${inputs.params.pathToDockerFile}
