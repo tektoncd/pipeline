@@ -1,0 +1,34 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: skaffold-git
+  namespace: default
+spec:
+  type: git
+  params:
+  - name: revision
+    value: master
+  - name: url
+    value: https://github.com/GoogleContainerTools/skaffold
+---        
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: skaffold-image-leeroy-web
+  namespace: default
+spec:        
+  type: image
+  params:
+  - name: url
+    value: gcr.io/christiewilson-catfactory/leeroy-web
+---        
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: skaffold-image-leeroy-app
+  namespace: default
+spec:        
+  type: image
+  params:
+  - name: url
+    value: gcr.io/christiewilson-catfactory/leeroy-app

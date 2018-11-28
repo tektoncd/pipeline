@@ -1,0 +1,51 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: demo-pipeline
+  namespace: default
+spec:
+  tasks:
+  - name: build-skaffold-web
+    taskRef:
+      name: build-push
+    params:
+    - name: pathToDockerFile
+      value: Dockerfile
+    - name: pathToContext
+      value: /workspace/examples/microservices/leeroy-web
+  - name: build-skaffold-app
+    taskRef:
+      name: build-push
+    params:
+    - name: pathToDockerFile
+      value: Dockerfile
+    - name: pathToContext
+      value: /workspace/examples/microservices/leeroy-app
+  - name: deploy-app
+    taskRef:
+      name: demo-deploy-kubectl
+    resources:
+    - name: image
+      providedBy:
+      - build-skaffold-app
+    params:
+    - name: path
+      value: /workspace/examples/microservices/leeroy-app/kubernetes/deployment.yaml
+    - name: yqArg
+      value: "-d1"
+    - name: yamlPathToImage
+      value: "spec.template.spec.containers[0].image"
+  - name: deploy-web
+    taskRef:
+      name: demo-deploy-kubectl
+    inputSourceBindings:
+    - name: image
+      providedBy:
+      - build-skaffold-web
+    params:
+    - name: path
+      value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml
+    - name: yqArg
+      value: "-d1"
+    - name: yamlPathToImage
+      value: "spec.template.spec.containers[0].image"
