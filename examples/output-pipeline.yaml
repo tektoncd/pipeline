@@ -1,16 +1,16 @@
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: kritis-pipeline-pvc
+  name: output-pipeline
   namespace: default
 spec:
   tasks:
-  - name: create-file-kritis          # 1. create file
+  - name: first-create-file          # 1. create file
     taskRef:
       name: create-file
-  - name: check-kritis               # 2.  check file exists
+  - name: then-check                 # 2.  check file exists
     taskRef:
       name: check-stuff-file-exists
     resources:
       - name: workspace
-        providedBy: [create-file-kritis]
+        providedBy: [first-create-file]

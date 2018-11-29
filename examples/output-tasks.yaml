@@ -8,7 +8,7 @@ spec:
     resources:
     - name: workspace
       type: git
-      targetPath: /damnworkspace
+      targetPath: damnworkspace
   outputs:
     resources:
     - name: workspace
@@ -17,7 +17,7 @@ spec:
   - name: read-docs-old
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'ls -la /workspace/damnworkspace/docs/install.md'] # tests that targetpath works
+    args: ['-c', 'ls -la /workspace/damnworkspace/docs/index.adoc'] # tests that targetpath works
   - name: write-new-stuff
     image: ubuntu
     command: ['bash']
@@ -34,7 +34,7 @@ spec:
     resources:
     - name: workspace
       type: git
-      targetPath: /newworkspace
+      targetPath: newworkspace
   steps:
   - name: read
     image: ubuntu
