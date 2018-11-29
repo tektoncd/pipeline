@@ -25,11 +25,9 @@ set -o errexit
 set -o pipefail
 
 kubectl apply -f examples/
-kubectl apply -f examples/pipelines
-kubectl apply -f examples/invocations
+kubectl apply -f examples/run
 
 sleep 5
 
-kubectl delete -f examples/invocations
-kubectl delete -f examples/pipelines
+kubectl delete -f examples/run
 kubectl delete -f examples/

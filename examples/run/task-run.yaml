@@ -1,0 +1,25 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: build-push-run
+spec:
+  taskRef:
+    name: build-push
+  trigger:
+    triggerRef:
+      type: manual
+  inputs:
+    resources:
+    - name: workspace
+      resourceRef:
+        name: skaffold-git
+    params:
+    - name: pathToDockerFile
+      value: Dockerfile
+    - name: pathToContext
+      value: /workspace/examples/microservices/leeroy-web
+  outputs:
+    resources:
+    - name: builtImage
+      resourceRef:
+        name: skaffold-image-leeroy-web

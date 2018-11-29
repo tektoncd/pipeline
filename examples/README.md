@@ -6,24 +6,24 @@ To deploy them to your cluster (after
 [installing the CRDs and running the controller](../DEVELOPMENT.md#getting-started)):
 
 ```bash
+# To setup all the Tasks/Pipelines etc.
 kubectl apply -f examples/
-kubectl apply -f examples/pipelines
-kubectl apply -f examples/demo
 
-# To invoke them:
-kubectl apply -f examples/demo/run
+# To invoke the build-push Task only
+kubectl apply -f examples/run/task-run.yaml
 
-# TODO(#108): these examples are not known to work
-kubectl apply -f examples/invocations
+# To invoke the simple Pipeline
+kubectl apply -f examples/run/pipeline-run.yaml
+
+# To invoke the Pipeline that links outputs
+kubectl apply -f examples/run/output-pipeline-run.yaml
 ```
 
 ## Example Pipelines
 
-We have 3 example [Pipelines](../README.md#pipeline) in [./pipelines](./pipelines)
+### Simple Pipelines
 
-### Demo Pipeline
-
-[`demo`](./demo): This simple Pipeline Builds
+[The simple Pipeline](pipeline.yaml) Builds
 [two microservice images](https://github.com/GoogleContainerTools/skaffold/tree/master/examples/microservices)
 from [the Skaffold repo](https://github.com/GoogleContainerTools/skaffold) and deploys them
 to the repo currently running the Pipeline CRD.
@@ -38,54 +38,46 @@ To run this yourself, you will need to change the values of
 
 Since this demo modifies the cluster (deploys to it) you must use a service account with
 permission to admin the cluster (or make your default user an admin of the `default`
-namespace with [default-cluster-admin.yaml](demo/default-cluster-admin.yaml)).
+namespace with [default-cluster-admin.yaml](default-cluster-admin.yaml)).
 
-### Kritis Pipeline
+#### Simple Tasks
 
-[The Kritis Pipeline](./pipelines/kritis.yaml): This example builds a Pipeline for the
-[kritis project](https://github.com/grafeas/kritis), and demonstrates how to configure
-a pipeline which:
+The [Tasks](../docs/Concepts.md#task) used by the simple examples are:
 
-1. Runs unit tests
-2. Build an image
-3. Deploys it to a test environment
-4. Runs integration tests
+* [build-task.yaml](build-task.yaml): Builds an image via [kaniko](https://github.com/GoogleContainerTools/kaniko) and pushes it to registry.
+* [deploy-task.yaml](deploy-task.yaml): This task deploys with `kubectl apply -f <filename>`
 
-![Pipeline Configuration](./pipelines/kritis-pipeline.png)
+#### Simple Runs
 
-### Guestbook Pipeline
+The [runs](./runs/) directory contains an example [TaskRun](../docs/Concepts.md#taskrun) and an exmaple [PipelineRun](../docs/Concepts.md#pipelinerun):
 
-[Guestbook](./pipelines/guestbook.yaml): This Pipeline is based on example application in
-[the Kubernetes example Repo](https://github.com/kubernetes/examples/tree/master/guestbook)
-This pipeline demonstartes how to integrate frontend
-[guestbook app code](https://github.com/kubernetes/examples/tree/master/guestbook-go) with
-backend [redis-docker image](https://github.com/GoogleCloudPlatform/redis-docker/tree/master/4) provided by GCP.
+* [task-run.yaml](./runs/task-run.yaml) shows an example of how to manually run the `build-push` task
+* [pipeline-run.yaml](./runs/pipeline-run.yaml) invokes [the example pipeline](#example-pipeline)
 
-![Pipeline Configuration](./pipelines/guestbook-pipeline.png)
+### Pipeline with outputs
 
-## Example Tasks
+[The Pipeline with outputs](output-pipeline.yaml) contains a Pipeline that demonstrates how the outputs
+of a `Task` can be provided as inputs to the next `Task`. It does this by:
 
-* Example [Tasks](../docs/Concepts.md#task) are in:
-  * [build_task.yaml](build_task.yaml)
-  * [deploy_tasks.yaml](deploy_tasks.yaml)
-  * [test_tasks.yaml](test_tasks.yaml)
+1. Running a `Task` that writes to a `PipelineResource`
+2. Running a `Task` that reads the written value from the `PipelineResource`
 
-Here are the Task Types that are defined.
+The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is provided as an
+[`Input`](../docs/Concepts.md#inputs) to the next `Task` thanks to the
+[`providedBy`](../docs/using.md#providedby) clause.
 
-1. `build-push`: This task as the name suggests build an image via [kaniko](https://github.com/GoogleContainerTools/kaniko) and pushes it to registry.
-2. `make`:  Runs make target.
-3. `integration-test-in-docker`: This is a new task that is used in the sample pipelines to test an app in using `docker build` command to build an image with has the integration test code.
-This task then calls `docker run` which will run the test code. This follows the steps we have for [kritis integration test](https://github.com/grafeas/kritis/blob/4f83f99ca58751c28c0ec40016ed0bba5867d70f/Makefile#L152)
-4. `deploy-with-helm`: This task deploys a kubernetes app with helm.
-5. `deploy-with-kubectl`: This task deploys with kubectl apply -f <filename>
+#### Output Tasks
 
-### Example Runs
+The two [Tasks](../docs/Concepts.md#task) used by the output Pipeline are in [output-tasks.yaml](output-tasks.yaml):
 
-The [invocations](./invocations/) directory contains an example [TaskRun](../docs/Concepts.md#taskrun) and two example [PipelineRuns](../docs/Concepts.md#pipelinerun).
+* `create-file`: Writes "some stuff" to a predefined path in the `workspace` `git` `PipelineResource`
+* `check-stuff-file-exists`: Reads a file from a predefined path in the `workspace` `git` `PipelineResource`
 
-[run-kritis-test.yaml](./invocations/run-kritis-test.yaml) shows an example of how to manually run kritis unit test off your development branch.
+These work together when combined in a `Pipeline` because the git resource used as an
+[`Output`](../docs/Concepts.md#outputs) of the `create-file` `Task` can be an
+[`Input`](../docs/Concepts.md#inputs) of the `check-stuff-file-exists` `Task`.
 
-The example `PipelineRuns are`:
+#### Output Runs
 
-* [kritis-pipeline-run.yaml](./invocations/kritis-pipeline-run.yaml) invokes [the kritis example pipeline](#kritis-pipeline)
-* [guestbook-pipeline-run.yaml](./invocations/guestbook-pipeline-run.yaml) invokes [the guestbook example pipeline](#guestbook-pipeline)
+The [runs](./runs/) directory contains an exmaple [PipelineRun](../docs/Concepts.md#pipelinerun) that invokes this `Pipeline`
+in [`run/output-pipeline-run.yaml`](./run/output-pipeline-run.yaml).

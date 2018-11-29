@@ -1,25 +1,25 @@
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineRun
 metadata:
-  name: kritis-pipeline-pvc
+  name: output-pipeline-run
   namespace: default
 spec:
   pipelineRef:
-    name: kritis-pipeline-pvc
+    name: output-pipeline
   triggerRef:
     type: manual
   resources:
-  - name: create-file-kritis
+  - name: first-create-file
     inputs:
     - name: workspace
       resourceRef:
-        name: kritis-resources-git
+        name: skaffold-git
     outputs:
     - name: workspace
       resourceRef:
-        name: kritis-resources-git
-  - name: check-kritis
+        name: skaffold-git
+  - name: then-check
     inputs:
     - name: workspace
       resourceRef:
-        name: kritis-resources-git
+        name: skaffold-git

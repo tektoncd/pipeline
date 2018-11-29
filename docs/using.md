@@ -18,8 +18,7 @@
    [Resources](#creating-resources) the Tasks need.
    Use [`providedBy`](#providedBy) to express the order the `Tasks` should run in.
 
-See [the example guestbook Pipeline](../examples/pipelines/guestbook.yaml) and
-[the example kritis Pipeline](../examples/pipelines/kritis.yaml).
+See [the example Pipeline](../examples/pipeline.yaml).
 
 ### ProvidedBy
 
@@ -177,7 +176,7 @@ This example section says:
 Creation of a `PipelineRun` will trigger the creation of [`TaskRuns`](#running-a-task)
 for each `Task` in your pipeline.
 
-See [the example PipelineRun](../examples/invocations/kritis-pipeline-run.yaml).
+See [the example PipelineRun](../examples/runs/pipeline-run.yaml).
 
 ## Running a Task
 
@@ -226,7 +225,7 @@ spec:
 ```
 If the TaskSpec is provided, TaskRef is not allowed.  
 
-See [the example TaskRun](../examples/invocations/run-kritis-test.yaml).
+See [the example TaskRun](../examples/runs/task-run.yaml).
 
 ## Creating Resources
 
@@ -356,7 +355,7 @@ The Cluster resource has the following parameters:
 
 Note: Since only one authentication technique is allowed per user, either a token or a password should be provided, if both are provided, the password will be ignored.
 
-The following example shows the syntax and structure of a Cluster Resource
+The following example shows the syntax and structure of a Cluster Resource:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -376,7 +375,7 @@ spec:
 
 For added security, you can add the sensetive information in a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and populate the kubeconfig from them.
 
-For example, create a secret like the following example
+For example, create a secret like the following example:
 
 ```yaml
 apiVersion: v1
@@ -411,7 +410,7 @@ spec:
     secretName:  target-cluster-secrets
 ```
 
-Example usage of the cluster resource in a task
+Example usage of the cluster resource in a task:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1

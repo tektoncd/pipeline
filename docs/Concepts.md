@@ -37,7 +37,7 @@ Below diagram lists the main custom resources created by Pipeline CRDs:
 A Task is a collection of sequential steps you would want to run as part of your continous integration flow.
 A task will run inside a container on your cluster. A Task declares:
 
-### Inputs:
+### Inputs
 
 Declare the inputs the task needs. Every task input resource should provide name and type (like git, image). It can also provide optionally `targetPath` to initialize resource in specific directory. If `targetPath` is set then resource will be initialized under `/workspace/targetPath`. If `targetPath` is not specified then resource will be initialized under `/workspace`. Following example demonstrates how git input repository could be initialized in GOPATH to run tests.
 
@@ -52,7 +52,7 @@ spec:
     resources:
     - name: workspace
       type: git
-      targetPath: /go/src/github.com/knative/build-pipeline
+      targetPath: go/src/github.com/knative/build-pipeline
   steps:
   - name: unit-tests
     image: golang
@@ -66,10 +66,12 @@ spec:
       value: /workspace/go
 ```
 
-### Outputs:
+### Outputs
+
 Declare the outputs task will produce.
 
-### Steps:
+### Steps
+
 Sequence of steps to execute. Each step is [a container image](./using.md#image-contract).
 
 Here is an example simple Task definition which echoes "hello world". The `hello-world` task does not define any inputs or outputs.
@@ -132,7 +134,7 @@ spec:
       name: hello-world
 ```
 
-Examples of pipelines with complex DAGs are [here](../examples/pipelines)
+Examples of pipelines with more complex DAGs are [here](../examples/)
 
 ### PipelineResources
 
@@ -145,7 +147,7 @@ For example:
 
 Read more on PipelineResources and their types [here](./using.md)
 
-`PipelineResources` in a pipelines are the set of objects that are going to be used
+`PipelineResources` in a pipeline are the set of objects that are going to be used
 as inputs and outputs of a `TaskRun`.
 
 ### PipelineParams
@@ -251,8 +253,6 @@ spec:
   - name: custom-volume
     emptyDir: {}
 ```
-
-
 
 `TaskRuns` can be created directly by a user or by a [PipelineRun](#pipelinerun).
 
