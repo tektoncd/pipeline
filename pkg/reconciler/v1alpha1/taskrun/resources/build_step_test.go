@@ -34,7 +34,7 @@ func TestPostBuildSteps(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       "",
 				APIVersion: "a1",
 			},
@@ -129,7 +129,7 @@ func TestPreBuildSteps(t *testing.T) {
 			Namespace: "foo",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: v1alpha1.TaskRef{
+			TaskRef: &v1alpha1.TaskRef{
 				Name:       "",
 				APIVersion: "a1",
 			},
