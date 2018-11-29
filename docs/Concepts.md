@@ -1,4 +1,5 @@
 # Pipeline CRDs
+
 Pipeline CRDs is an open source implementation to configure and run CI/CD style pipelines for your kubernetes application.
 
 Pipeline CRDs creates [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) as building blocks to declare pipelines.
@@ -12,7 +13,7 @@ High level details of this design:
 * [Pipelines](#pipeline) do not know what will trigger them, they can be
    triggered by events or by manually creating [PipelineRuns](#pipelinerun)
 * [Tasks](#task) can exist and be invoked completely independently of
-  [pipelines](#pipeline); they are highly cohesive and loosely coupled
+  [Pipelines](#pipeline); they are highly cohesive and loosely coupled
 * Test results are a first class concept, being able to navigate test results
   easily is powerful (e.g. see failures easily, dig into logs, e.g. like
   [the Jenkins test analyzer plugin](https://wiki.jenkins.io/display/JENKINS/Test+Results+Analyzer+Plugin))
@@ -20,6 +21,7 @@ High level details of this design:
 * [Resources](#pipelineresources) are the artifacts used as inputs and outputs of TaskRuns.
 
 ## Building Blocks of Pipeline CRDs
+
 Below diagram lists the main custom resources created by Pipeline CRDs:
 
 * [Task](#task)
@@ -52,12 +54,12 @@ metadata:
   namespace: default
 spec:
   steps:
-    - name: echo
-      image: busybox
-      command:
-        - echo
-      args:
-        - "hello world!"
+  - name: echo
+    image: busybox
+    command:
+    - echo
+    args:
+    - "hello world!"
 ```
 
 Examples of `Task` definitions with inputs and outputs are [here](../examples)
@@ -84,7 +86,7 @@ In this `echo-hello-twice` pipeline, there are two named tasks; `hello-world-fir
 
 Both the tasks, refer to [`Task`](#Task) `hello-world` mentioned in `taskRef` config.
 
-```shell
+```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Pipeline
 metadata:
@@ -92,12 +94,12 @@ metadata:
   namespace: default
 spec:
   tasks:
-    - name: hello-world-first
-      taskRef:
-        name: hello-world
-    - name: hello-world-again
-      taskRef:
-        name: hello-world
+  - name: hello-world-first
+    taskRef:
+      name: hello-world
+  - name: hello-world-again
+    taskRef:
+      name: hello-world
 ```
 
 Examples of pipelines with complex DAGs are [here](../examples/pipelines)
@@ -107,13 +109,14 @@ Examples of pipelines with complex DAGs are [here](../examples/pipelines)
 `PipelinesResources` in a pipeline are the set of objects that are going to be used as inputs to a [`Task`](#Task) and can be output of [`Task`](#Task) .
 
 For example:
+
 * A task's input could be a github source which contains your application code.
 * A task's output can be your application container image which can be then deployed in a cluster.
 
 Read more on PipelineResources and their types [here](./using.md)
 
-`Resources` in a pipelines are the set of objects that are going to be used 
-as inputs and outputs of a `TaskRun`. 
+`PipelineResources` in a pipelines are the set of objects that are going to be used
+as inputs and outputs of a `TaskRun`.
 
 ### PipelineParams
 
@@ -124,7 +127,6 @@ for scenarios such as running against PRs and against a user’s personal setup.
 
 * Which **serviceAccount** to use (provided to all tasks)
 * Where **results** are stored (e.g. in GCS)
-* What **clusters** you want to deploy to
 
 For example:
 
@@ -135,24 +137,17 @@ metadata:
   name: pipelineparams-sample
   namespace: default
 spec:
-    serviceAccount: 'demoServiceAccount'
-    clusters:
-        - name: 'testCluster'
-          type: 'gke'
-          endpoint: 'https://prod.gke.corp.com'
-        - name: 'stagingCluster'
-          type: 'gke'
-          endpoint: 'https://staging.gke.corp.com'
-    results:
-        runs:
-          type: 'gcs'
-          url: 'gcs://somebucket/results/runs'
-        logs:
-          type: 'gcs'
-          url: 'gcs://somebucket/results/logs'
-        tests:
-          type: 'gcs'
-          url: 'gcs://somebucket/results/tests'
+  serviceAccount: 'demoServiceAccount'
+  results:
+    runs:
+      type: 'gcs'
+      url: 'gcs://somebucket/results/runs'
+    logs:
+      type: 'gcs'
+      url: 'gcs://somebucket/results/logs'
+    tests:
+      type: 'gcs'
+      url: 'gcs://somebucket/results/tests'
 ```
 
 ### Runs
@@ -165,7 +160,7 @@ To invoke a [`Pipeline`](#pipeline) or a [`Task`](#task), you must create a corr
 
 #### TaskRun
 
-Creating a `TaskRun` will invoke a [Task](#task), running all of the steps until 
+Creating a `TaskRun` will invoke a [Task](#task), running all of the steps until
 completion or failure. Creating a `TaskRun` will require satisfying all of the input
 requirements of the `Task`.
 
@@ -173,10 +168,14 @@ requirements of the `Task`.
 
 #### PipelineRun
 
-Creating a `PipelineRun` executes the pipeline, creating [TaskRuns](#taskrun) for each 
+Creating a `PipelineRun` executes the pipeline, creating [TaskRuns](#taskrun) for each
 task in the pipeline.
 
-`PipelineRuns` tie together a [Pipeline](#pipeline) and a [PipelineParam](#pipelineparams).
+`PipelineRuns` tie together:
+
+* A [Pipeline](#pipeline)
+* A [PipelineParam](#pipelineparams)
+* The [PipelineResources](#pipelineresources) to use for each [Task](#task)
 
 A `PipelineRun` could be created:
 
