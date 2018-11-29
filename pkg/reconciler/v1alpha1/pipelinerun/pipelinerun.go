@@ -61,13 +61,12 @@ type Reconciler struct {
 	*reconciler.Base
 
 	// listers index properties about resources
-	pipelineRunLister    listers.PipelineRunLister
-	pipelineLister       listers.PipelineLister
-	taskRunLister        listers.TaskRunLister
-	taskLister           listers.TaskLister
-	pipelineParamsLister listers.PipelineParamsLister
-	resourceLister       listers.PipelineResourceLister
-	tracker              tracker.Interface
+	pipelineRunLister listers.PipelineRunLister
+	pipelineLister    listers.PipelineLister
+	taskRunLister     listers.TaskRunLister
+	taskLister        listers.TaskLister
+	resourceLister    listers.PipelineResourceLister
+	tracker           tracker.Interface
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -80,18 +79,16 @@ func NewController(
 	pipelineInformer informers.PipelineInformer,
 	taskInformer informers.TaskInformer,
 	taskRunInformer informers.TaskRunInformer,
-	pipelineParamsesInformer informers.PipelineParamsInformer,
 	resourceInformer informers.PipelineResourceInformer,
 ) *controller.Impl {
 
 	r := &Reconciler{
-		Base:                 reconciler.NewBase(opt, pipelineRunAgentName),
-		pipelineRunLister:    pipelineRunInformer.Lister(),
-		pipelineLister:       pipelineInformer.Lister(),
-		taskLister:           taskInformer.Lister(),
-		taskRunLister:        taskRunInformer.Lister(),
-		pipelineParamsLister: pipelineParamsesInformer.Lister(),
-		resourceLister:       resourceInformer.Lister(),
+		Base:              reconciler.NewBase(opt, pipelineRunAgentName),
+		pipelineRunLister: pipelineRunInformer.Lister(),
+		pipelineLister:    pipelineInformer.Lister(),
+		taskLister:        taskInformer.Lister(),
+		taskRunLister:     taskRunInformer.Lister(),
+		resourceLister:    resourceInformer.Lister(),
 	}
 
 	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName, reconciler.MustNewStatsReporter(pipelineRunControllerName, r.Logger))

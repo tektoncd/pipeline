@@ -33,7 +33,6 @@ type clients struct {
 	TaskClient             v1alpha1.TaskInterface
 	TaskRunClient          v1alpha1.TaskRunInterface
 	PipelineRunClient      v1alpha1.PipelineRunInterface
-	PipelineParamsClient   v1alpha1.PipelineParamsInterface
 	PipelineResourceClient v1alpha1.PipelineResourceInterface
 
 	BuildClient buildv1alpha1.BuildInterface
@@ -64,7 +63,6 @@ func newClients(configPath, clusterName, namespace string) (*clients, error) {
 	c.TaskClient = cs.PipelineV1alpha1().Tasks(namespace)
 	c.TaskRunClient = cs.PipelineV1alpha1().TaskRuns(namespace)
 	c.PipelineRunClient = cs.PipelineV1alpha1().PipelineRuns(namespace)
-	c.PipelineParamsClient = cs.PipelineV1alpha1().PipelineParamses(namespace)
 	c.PipelineResourceClient = cs.PipelineV1alpha1().PipelineResources(namespace)
 
 	bcs, err := buildversioned.NewForConfig(cfg)

@@ -54,8 +54,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&PipelineList{},
 		&PipelineRun{},
 		&PipelineRunList{},
-		&PipelineParams{},
-		&PipelineParamsList{},
 		&PipelineResource{},
 		&PipelineResourceList{},
 	)

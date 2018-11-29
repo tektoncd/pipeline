@@ -17,8 +17,6 @@ package v1alpha1
 
 type PipelineExpansion interface{}
 
-type PipelineParamsExpansion interface{}
-
 type PipelineResourceExpansion interface{}
 
 type PipelineRunExpansion interface{}

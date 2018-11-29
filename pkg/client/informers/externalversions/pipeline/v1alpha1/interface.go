@@ -23,8 +23,6 @@ import (
 type Interface interface {
 	// Pipelines returns a PipelineInformer.
 	Pipelines() PipelineInformer
-	// PipelineParamses returns a PipelineParamsInformer.
-	PipelineParamses() PipelineParamsInformer
 	// PipelineResources returns a PipelineResourceInformer.
 	PipelineResources() PipelineResourceInformer
 	// PipelineRuns returns a PipelineRunInformer.
@@ -49,11 +47,6 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // Pipelines returns a PipelineInformer.
 func (v *version) Pipelines() PipelineInformer {
 	return &pipelineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// PipelineParamses returns a PipelineParamsInformer.
-func (v *version) PipelineParamses() PipelineParamsInformer {
-	return &pipelineParamsInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // PipelineResources returns a PipelineResourceInformer.

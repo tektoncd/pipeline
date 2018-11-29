@@ -32,16 +32,15 @@ import (
 )
 
 const (
-	hwTaskName           = "helloworld"
-	hwTaskRunName        = "helloworld-run"
-	hwValidationPodName  = "helloworld-validation-busybox"
-	hwPipelineName       = "helloworld-pipeline"
-	hwPipelineRunName    = "helloworld-pipelinerun"
-	hwPipelineParamsName = "helloworld-pipelineparams"
-	hwPipelineTaskName1  = "helloworld-task-1"
-	hwPipelineTaskName2  = "helloworld-task-2"
-	hwSecret             = "helloworld-secret"
-	hwSA                 = "helloworld-sa"
+	hwTaskName          = "helloworld"
+	hwTaskRunName       = "helloworld-run"
+	hwValidationPodName = "helloworld-validation-busybox"
+	hwPipelineName      = "helloworld-pipeline"
+	hwPipelineRunName   = "helloworld-pipelinerun"
+	hwPipelineTaskName1 = "helloworld-task-1"
+	hwPipelineTaskName2 = "helloworld-task-2"
+	hwSecret            = "helloworld-secret"
+	hwSA                = "helloworld-sa"
 
 	logPath = "/logs"
 	logFile = "process-log.txt"

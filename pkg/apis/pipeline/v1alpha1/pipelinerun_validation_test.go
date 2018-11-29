@@ -23,6 +23,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var validURL = "http://www.google.com"
+
+func validResultTarget(name string) ResultTarget {
+	return ResultTarget{
+		URL:  validURL,
+		Name: name,
+		Type: "gcs",
+	}
+}
 func TestPipelineRun_Invalidate(t *testing.T) {
 	tests := []struct {
 		name string
@@ -78,6 +87,30 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 				},
 			},
 			want: apis.ErrInvalidValue("badtype", "pipelinerun.spec.triggerRef.type"),
+		}, {
+			name: "invalid results",
+			pr: PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: PipelineRunSpec{
+					PipelineRef: PipelineRef{
+						Name: "prname",
+					},
+					PipelineTriggerRef: PipelineTriggerRef{
+						Type: PipelineTriggerTypeManual,
+					},
+					Results: &Results{
+						Runs: ResultTarget{
+							Name: "runs",
+							URL:  "badurl",
+							Type: "gcs",
+						},
+						Logs: validResultTarget("logs"),
+					},
+				},
+			},
+			want: apis.ErrInvalidValue("badurl", "pipelinerun.spec.Results.Runs.URL"),
 		},
 	}
 
@@ -90,6 +123,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 		})
 	}
 }
+
 func TestPipelineRun_Validate(t *testing.T) {
 	tr := PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -101,6 +135,10 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 			PipelineTriggerRef: PipelineTriggerRef{
 				Type: "manual",
+			},
+			Results: &Results{
+				Runs: validResultTarget("runs"),
+				Logs: validResultTarget("logs"),
 			},
 		},
 	}

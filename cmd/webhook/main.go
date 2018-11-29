@@ -85,7 +85,6 @@ func main() {
 		Handlers: map[schema.GroupVersionKind]webhook.GenericCRD{
 			v1alpha1.SchemeGroupVersion.WithKind("Pipeline"):         &v1alpha1.Pipeline{},
 			v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &v1alpha1.PipelineResource{},
-			v1alpha1.SchemeGroupVersion.WithKind("PipelineParams"):   &v1alpha1.PipelineParams{},
 			v1alpha1.SchemeGroupVersion.WithKind("Task"):             &v1alpha1.Task{},
 			v1alpha1.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha1.TaskRun{},
 			v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},

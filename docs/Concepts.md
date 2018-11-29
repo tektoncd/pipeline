@@ -26,7 +26,6 @@ Below diagram lists the main custom resources created by Pipeline CRDs:
 
 * [Task](#task)
 * [Pipeline](#pipeline)
-* [PipelineParams](#pipelineparams)
 * [Runs](#runs)
 * [PipelineResources](#pipelineresources)
 
@@ -150,38 +149,6 @@ Read more on PipelineResources and their types [here](./using.md)
 `PipelineResources` in a pipeline are the set of objects that are going to be used
 as inputs and outputs of a `TaskRun`.
 
-### PipelineParams
-
-`PipelineParams` contains parameters for a [Pipeline](#pipeline). One `Pipeline`
-can be invoked with many different instances of `PipelineParams`, which can allow
-for scenarios such as running against PRs and against a user’s personal setup.
-`PipelineParams` can control:
-
-* Which **serviceAccount** to use (provided to all tasks)
-* Where **results** are stored (e.g. in GCS)
-
-For example:
-
-```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
-kind: PipelineParams
-metadata:
-  name: pipelineparams-sample
-  namespace: default
-spec:
-  serviceAccount: 'demoServiceAccount'
-  results:
-    runs:
-      type: 'gcs'
-      url: 'gcs://somebucket/results/runs'
-    logs:
-      type: 'gcs'
-      url: 'gcs://somebucket/results/logs'
-    tests:
-      type: 'gcs'
-      url: 'gcs://somebucket/results/tests'
-```
-
 ### Runs
 
 To invoke a [`Pipeline`](#pipeline) or a [`Task`](#task), you must create a corresponding
@@ -264,11 +231,13 @@ task in the pipeline.
 `PipelineRuns` tie together:
 
 * A [Pipeline](#pipeline)
-* A [PipelineParam](#pipelineparams)
 * The [PipelineResources](#pipelineresources) to use for each [Task](#task)
+* Which **serviceAccount** to use (provided to all tasks)
+* Where **results** are stored (e.g. in GCS)
 
 A `PipelineRun` could be created:
 
 * By a user manually
 * In response to an event (e.g. in response to a Github event, possibly processed via
   [Knative eventing](https://github.com/knative/eventing))
+

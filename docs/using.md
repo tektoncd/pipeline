@@ -12,8 +12,6 @@
 1. Create or copy [Task definitions](#creating-a-task) for the tasks you’d like to run.
    Some can be generic and reused (e.g. building with Kaniko) and others will be
    specific to your project (e.g. running your particular set of unit tests).
-2. Create a `PipelineParams` definition which includes parameters such as what repos
-   to run against, where to store results, etc.
 3. Create a `Pipeline` which expresses the Tasks you would like to run and what
    [Resources](#creating-resources) the Tasks need.
    Use [`providedBy`](#providedBy) to express the order the `Tasks` should run in.
@@ -138,8 +136,7 @@ ${inputs.params.NAME}
 In order to run a Pipeline, you will need to provide:
 
 1. A Pipeline to run (see [creating a Pipeline](#creating-a-pipeline))
-2. `PipelineParams` which specify the service account to use and where to put logs (see [the example `PipelineParams`](examples/pipelineparams.yaml))
-3. The `PipelineResources` to use with this Pipeline.
+2. The `PipelineResources` to use with this Pipeline.
 
 On its own, a `Pipeline` declares what `Tasks` to run, and what order to run them in
 (implied by [`providedBy`](#providedby)). When running a `Pipeline`, you will
