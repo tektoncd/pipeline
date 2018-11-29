@@ -227,7 +227,7 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alph
 
 func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 	return []*v1alpha1.Task{
-		&v1alpha1.Task{
+		{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,
 				Name:      "create-file",
@@ -252,7 +252,7 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 					Args:    []string{"-c", "echo other > /workspace/brandnewspace/other"},
 				}},
 			},
-		}, &v1alpha1.Task{
+		}, {
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,
 				Name:      "check-create-files-exists",
@@ -276,7 +276,7 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 					Args:    []string{"-c", "echo something > /workspace/something"},
 				}},
 			},
-		}, &v1alpha1.Task{
+		}, {
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,
 				Name:      "check-create-files-exists-2",
@@ -300,7 +300,7 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 					Args:    []string{"-c", "echo else > /workspace/else"},
 				}},
 			},
-		}, &v1alpha1.Task{
+		}, {
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: namespace,
 				Name:      "read-files",
