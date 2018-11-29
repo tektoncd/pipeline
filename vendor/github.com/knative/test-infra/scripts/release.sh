@@ -111,7 +111,8 @@ function parse_flags() {
 
   if (( TAG_RELEASE )); then
     # Get the commit, excluding any tags but keeping the "dirty" flag
-    local commit="$(git describe --always --dirty --exclude '*')"
+    local commit="$(git describe --always --dirty --match '^$')"
+    [[ -n "${commit}" ]] || abort "Error getting the current commit"
     # Like kubernetes, image tag is vYYYYMMDD-commit
     TAG="v$(date +%Y%m%d)-${commit}"
   fi

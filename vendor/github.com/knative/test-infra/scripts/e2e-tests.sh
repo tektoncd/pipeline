@@ -56,15 +56,8 @@ function teardown_test_resources() {
     teardown
   fi
 
-  # Delete Knative Serving images when using boskos.
-  if (( IS_BOSKOS )); then
-    echo "Images in ${DOCKER_REPO_OVERRIDE}:"
-    gcloud container images list --repository=${DOCKER_REPO_OVERRIDE}
-    delete_gcr_images ${DOCKER_REPO_OVERRIDE}
-  else
-    # Delete the kubernetes source downloaded by kubetest
-    rm -fr kubernetes kubernetes.tar.gz
-  fi
+  # Delete the kubernetes source downloaded by kubetest
+  rm -fr kubernetes kubernetes.tar.gz
 }
 
 # Exit test, dumping current state info.
@@ -362,6 +355,12 @@ function initialize() {
   fi
 
   (( IS_PROW )) && [[ -z "${GCP_PROJECT}" ]] && IS_BOSKOS=1
+
+  # Safety checks
+
+  if [[ "${DOCKER_REPO_OVERRIDE}" =~ ^gcr.io/knative-(releases|nightly)/?$ ]]; then
+    abort "\$DOCKER_REPO_OVERRIDE is set to ${DOCKER_REPO_OVERRIDE}, which is forbidden"
+  fi
 
   readonly RUN_TESTS
   readonly EMIT_METRICS

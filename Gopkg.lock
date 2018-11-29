@@ -246,11 +246,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ac37f7b2eb13f8d55d26c34d7461f54c2418660132233d815135fc1a2ea7cebd"
+  digest = "1:0cabae2c3a124c49ed5e862866e1228f08a1a6e49d0daf971e5a72e5e56095a4"
   name = "github.com/knative/test-infra"
   packages = ["scripts"]
   pruneopts = "UT"
-  revision = "6a266d8824043c54dfbcaca688b826458b77cb04"
+  revision = "7ed32409fa2c447a44a4281f0022ab25ce955f51"
 
 [[projects]]
   digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
@@ -837,6 +837,7 @@
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
     "k8s.io/apimachinery/pkg/util/sets/types",
+    "k8s.io/apimachinery/pkg/util/validation",
     "k8s.io/apimachinery/pkg/util/validation/field",
     "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
