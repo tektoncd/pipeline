@@ -52,8 +52,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=pipeline.knative.dev, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("pipelines"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().Pipelines().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("pipelineparamses"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().PipelineParamses().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("pipelineresources"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().PipelineResources().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("pipelineruns"):

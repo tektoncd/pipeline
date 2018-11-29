@@ -59,9 +59,6 @@ func TestPipelineRun(t *testing.T) {
 			if _, err := c.PipelineResourceClient.Create(getFanInFanOutGitResource(namespace)); err != nil {
 				t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
 			}
-			if _, err := c.PipelineParamsClient.Create(getHelloWorldPipelineParams(index, namespace)); err != nil {
-				t.Fatalf("Failed to create PipelineParams `%s`: %s", getName(hwPipelineParamsName, index), err)
-			}
 			if _, err := c.PipelineClient.Create(getFanInFanOutPipeline(index, namespace)); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(hwPipelineName, index), err)
 			}
@@ -80,13 +77,6 @@ func TestPipelineRun(t *testing.T) {
 
 			if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(getPipelineRunServiceAccount(index, namespace)); err != nil {
 				t.Fatalf("Failed to create SA `%s`: %s", getName(hwSA, index), err)
-			}
-
-			pp := getHelloWorldPipelineParams(index, namespace)
-			// Set SA pipeline params spec
-			pp.Spec.ServiceAccount = getName(hwSA, index)
-			if _, err := c.PipelineParamsClient.Create(pp); err != nil {
-				t.Fatalf("Failed to create PipelineParams `%s`: %s", pp.Name, err)
 			}
 
 			if _, err := c.TaskClient.Create(&v1alpha1.Task{
@@ -396,16 +386,6 @@ func getFanInFanOutGitResource(namespace string) *v1alpha1.PipelineResource {
 	}
 }
 
-func getHelloWorldPipelineParams(suffix int, namespace string) *v1alpha1.PipelineParams {
-	return &v1alpha1.PipelineParams{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      getName(hwPipelineParamsName, suffix),
-		},
-		Spec: v1alpha1.PipelineParamsSpec{},
-	}
-}
-
 func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -525,12 +505,10 @@ func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRu
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: getName(hwPipelineName, suffix),
 			},
-			PipelineParamsRef: v1alpha1.PipelineParamsRef{
-				Name: getName(hwPipelineParamsName, suffix),
-			},
 			PipelineTriggerRef: v1alpha1.PipelineTriggerRef{
 				Type: v1alpha1.PipelineTriggerTypeManual,
 			},
+			ServiceAccount: fmt.Sprintf("%s%d", hwSA, suffix),
 		},
 	}
 }

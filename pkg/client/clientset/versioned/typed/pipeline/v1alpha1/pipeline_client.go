@@ -25,7 +25,6 @@ import (
 type PipelineV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	PipelinesGetter
-	PipelineParamsesGetter
 	PipelineResourcesGetter
 	PipelineRunsGetter
 	TasksGetter
@@ -39,10 +38,6 @@ type PipelineV1alpha1Client struct {
 
 func (c *PipelineV1alpha1Client) Pipelines(namespace string) PipelineInterface {
 	return newPipelines(c, namespace)
-}
-
-func (c *PipelineV1alpha1Client) PipelineParamses(namespace string) PipelineParamsInterface {
-	return newPipelineParamses(c, namespace)
 }
 
 func (c *PipelineV1alpha1Client) PipelineResources(namespace string) PipelineResourceInterface {

@@ -29,10 +29,6 @@ func (c *FakePipelineV1alpha1) Pipelines(namespace string) v1alpha1.PipelineInte
 	return &FakePipelines{c, namespace}
 }
 
-func (c *FakePipelineV1alpha1) PipelineParamses(namespace string) v1alpha1.PipelineParamsInterface {
-	return &FakePipelineParamses{c, namespace}
-}
-
 func (c *FakePipelineV1alpha1) PipelineResources(namespace string) v1alpha1.PipelineResourceInterface {
 	return &FakePipelineResources{c, namespace}
 }

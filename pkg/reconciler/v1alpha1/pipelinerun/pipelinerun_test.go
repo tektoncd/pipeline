@@ -43,9 +43,6 @@ func TestReconcile(t *testing.T) {
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: "test-pipeline",
 			},
-			PipelineParamsRef: v1alpha1.PipelineParamsRef{
-				Name: "unit-test-pp",
-			},
 			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
 				Name: "unit-test-1",
 				Inputs: []v1alpha1.TaskResourceBinding{{
@@ -74,6 +71,7 @@ func TestReconcile(t *testing.T) {
 					},
 				}},
 			}},
+			ServiceAccount: "test-sa",
 		},
 	}}
 	ps := []*v1alpha1.Pipeline{{
@@ -148,15 +146,6 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}}
-	pp := []*v1alpha1.PipelineParams{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-test-pp",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineParamsSpec{
-			ServiceAccount: "test-sa",
-		},
-	}}
 	rs := []*v1alpha1.PipelineResource{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "some-repo",
@@ -186,7 +175,6 @@ func TestReconcile(t *testing.T) {
 		PipelineRuns:      prs,
 		Pipelines:         ps,
 		Tasks:             ts,
-		PipelineParams:    pp,
 		PipelineResources: rs,
 	}
 
@@ -348,9 +336,6 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: "a-fine-pipeline",
 			},
-			PipelineParamsRef: v1alpha1.PipelineParamsRef{
-				Name: "missing-params",
-			},
 		}},
 	}
 	d := test.Data{
@@ -370,10 +355,6 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		}, {
 			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
 			pipelineRun: prs[1],
-			reason:      pipelinerun.ReasonFailedValidation,
-		}, {
-			name:        "invalid-pipeline-run-non-existent-params-shd-stop-reconciling",
-			pipelineRun: prs[2],
 			reason:      pipelinerun.ReasonFailedValidation,
 		},
 	}

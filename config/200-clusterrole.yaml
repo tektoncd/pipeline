@@ -16,7 +16,7 @@ rules:
     resources: ["customresourcedefinitions"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["pipeline.knative.dev"]
-    resources: ["tasks", "taskruns", "pipelines", "pipelineruns", "pipelineparamses", "pipelineresources"]
+    resources: ["tasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["build.knative.dev"]
     resources: ["builds", "buildtemplates", "clusterbuildtemplates"]

@@ -24,7 +24,7 @@ import (
 
 // validate all references in pipelinerun exist at runtime
 func validatePipelineRun(c *Reconciler, pr *v1alpha1.PipelineRun) (*v1alpha1.Pipeline, string, error) {
-	var sa string
+	sa := pr.Spec.ServiceAccount
 	// verify pipeline reference and all corresponding tasks exist
 	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
 	if err != nil {
@@ -32,14 +32,6 @@ func validatePipelineRun(c *Reconciler, pr *v1alpha1.PipelineRun) (*v1alpha1.Pip
 	}
 	if err := validatePipelineTask(c, p.Spec.Tasks, pr.Spec.PipelineTaskResources, pr.Namespace); err != nil {
 		return nil, sa, fmt.Errorf("error validating tasks in pipeline %s: %v", p.Name, err)
-	}
-
-	if pr.Spec.PipelineParamsRef.Name != "" {
-		pp, err := c.pipelineParamsLister.PipelineParamses(pr.Namespace).Get(pr.Spec.PipelineParamsRef.Name)
-		if err != nil {
-			return nil, "", fmt.Errorf("error listing pipelineparams %s for pipelinerun %s: %v", pr.Spec.PipelineParamsRef.Name, pr.Name, err)
-		}
-		sa = pp.Spec.ServiceAccount
 	}
 	return p, sa, nil
 }

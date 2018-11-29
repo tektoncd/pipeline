@@ -118,7 +118,6 @@ func main() {
 
 	pipelineInformer := pipelineInformerFactory.Pipeline().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineRuns()
-	pipelineParamsInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineParamses()
 	// Build all of our controllers, with the clients constructed above.
 	controllers := []*controller.Impl{
 		// Pipeline Controllers
@@ -133,7 +132,6 @@ func main() {
 			pipelineInformer,
 			taskInformer,
 			taskRunInformer,
-			pipelineParamsInformer,
 			resourceInformer,
 		),
 	}

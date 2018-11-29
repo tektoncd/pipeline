@@ -42,10 +42,13 @@ var _ webhook.GenericCRD = (*TaskRun)(nil)
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
 	PipelineRef           PipelineRef            `json:"pipelineRef"`
-	PipelineParamsRef     PipelineParamsRef      `json:"pipelineParamsRef"`
 	PipelineTriggerRef    PipelineTriggerRef     `json:"triggerRef"`
 	PipelineTaskResources []PipelineTaskResource `json:"resources"`
-	Generation            int64                  `json:"generation,omitempty"`
+	// +optional
+	ServiceAccount string `json:"serviceAccount"`
+	// +optional
+	Results    *Results `json:"results"`
+	Generation int64    `json:"generation,omitempty"`
 }
 
 // PipelineTaskResource maps Task inputs and outputs to existing PipelineResources by their names.
@@ -89,14 +92,37 @@ type PipelineRef struct {
 	APIVersion string `json:"apiVersion,omitempty"`
 }
 
-// PipelineParamsRef can be used to refer to a specific instance of a Pipeline.
-// Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
-type PipelineParamsRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
-	// API version of the referent
+// AllResultTargetTypes is a list of all ResultTargetTypes, used for validation
+var AllResultTargetTypes = []ResultTargetType{ResultTargetTypeGCS}
+
+// ResultTargetType represents the type of endpoint that this result target is,
+// so that the controller will know how to write results to it.
+type ResultTargetType string
+
+const (
+	// ResultTargetTypeGCS indicates that the URL endpoint is a GCS bucket.
+	ResultTargetTypeGCS = "gcs"
+)
+
+// Results tells a pipeline where to persist the results of runnign the pipeline.
+type Results struct {
+	// Runs is used to store the yaml/json of TaskRuns and PipelineRuns.
+	Runs ResultTarget `json:"runs"`
+
+	// Logs will store all logs output from running a task.
+	Logs ResultTarget `json:"logs"`
+
+	// Tests will store test results, if a task provides them.
 	// +optional
-	APIVersion string `json:"apiVersion,omitempty"`
+	Tests *ResultTarget `json:"tests,omitempty"`
+}
+
+// ResultTarget is used to identify an endpoint where results can be uploaded. The
+// serviceaccount used for the pipeline must have access to this endpoint.
+type ResultTarget struct {
+	Name string           `json:"name"`
+	Type ResultTargetType `json:"type"`
+	URL  string           `json:"url"`
 }
 
 // PipelineTriggerType indicates the mechanism by which this PipelineRun was created.

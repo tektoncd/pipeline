@@ -51,7 +51,6 @@ type Data struct {
 	Pipelines         []*v1alpha1.Pipeline
 	TaskRuns          []*v1alpha1.TaskRun
 	Tasks             []*v1alpha1.Task
-	PipelineParams    []*v1alpha1.PipelineParams
 	PipelineResources []*v1alpha1.PipelineResource
 	Builds            []*buildv1alpha1.Build
 }
@@ -69,7 +68,6 @@ type Informers struct {
 	Pipeline         informersv1alpha1.PipelineInformer
 	TaskRun          informersv1alpha1.TaskRunInformer
 	Task             informersv1alpha1.TaskInformer
-	PipelineParams   informersv1alpha1.PipelineParamsInformer
 	PipelineResource informersv1alpha1.PipelineResourceInformer
 	Build            buildinformersv1alpha1.BuildInformer
 }
@@ -109,7 +107,6 @@ func seedTestData(d Data) (Clients, Informers) {
 		Pipeline:         sharedInformer.Pipeline().V1alpha1().Pipelines(),
 		TaskRun:          sharedInformer.Pipeline().V1alpha1().TaskRuns(),
 		Task:             sharedInformer.Pipeline().V1alpha1().Tasks(),
-		PipelineParams:   sharedInformer.Pipeline().V1alpha1().PipelineParamses(),
 		PipelineResource: sharedInformer.Pipeline().V1alpha1().PipelineResources(),
 		Build:            buildInformerFactory.Build().V1alpha1().Builds(),
 	}
@@ -125,9 +122,6 @@ func seedTestData(d Data) (Clients, Informers) {
 	}
 	for _, t := range d.Tasks {
 		i.Task.Informer().GetIndexer().Add(t)
-	}
-	for _, t := range d.PipelineParams {
-		i.PipelineParams.Informer().GetIndexer().Add(t)
 	}
 	for _, r := range d.PipelineResources {
 		i.PipelineResource.Informer().GetIndexer().Add(r)
@@ -174,7 +168,6 @@ func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs,
 		i.Pipeline,
 		i.Task,
 		i.TaskRun,
-		i.PipelineParams,
 		i.PipelineResource,
 	), logs, c
 }

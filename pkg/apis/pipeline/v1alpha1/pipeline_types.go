@@ -41,8 +41,7 @@ var _ apis.Defaultable = (*Pipeline)(nil)
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Pipeline describes a DAG of Tasks to execute. It expresses how outputs
-// of tasks feed into inputs of subsequent tasks, and how parameters from
-// a PipelineParams should be fed into each task. The DAG is constructed
+// of tasks feed into inputs of subsequent tasks. The DAG is constructed
 // from the 'prev' and 'next' of each PipelineTask as well as Task dependencies.
 // +k8s:openapi-gen=true
 type Pipeline struct {
@@ -59,7 +58,7 @@ type Pipeline struct {
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
-// PipelineParams and from the output of previous tasks.
+// Params and from the output of previous tasks.
 type PipelineTask struct {
 	Name    string  `json:"name"`
 	TaskRef TaskRef `json:"taskRef"`
