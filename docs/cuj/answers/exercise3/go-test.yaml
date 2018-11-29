@@ -4,17 +4,17 @@ metadata:
   name: go-test
   namespace: default
 spec:
-    inputs:
-        resources:
-            - name: workspace
-              type: git
-        params:
-            - name: package
-    steps:
-    - name: run-test
-      image: gcr.io/google_appengine/golang
-      command:
-      - go
-      args:
-      - test
-      - ${inputs.params.package}
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+    params:
+      - name: package
+  steps:
+  - name: run-test
+    image: gcr.io/google_appengine/golang
+    command:
+    - go
+    args:
+    - test
+    - ${inputs.params.package}
