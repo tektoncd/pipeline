@@ -68,6 +68,8 @@ function main() {
     kubectl version
     echo ">> go version"
     go version
+    echo ">> git version"
+    git version
   fi
 
   [[ -z $1 ]] && set -- "--all-tests"

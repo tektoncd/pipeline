@@ -22,12 +22,12 @@
 readonly SERVING_GKE_VERSION=latest
 readonly SERVING_GKE_IMAGE=cos
 
-# Public images and yaml files.
-readonly KNATIVE_ISTIO_CRD_YAML=https://storage.googleapis.com/knative-releases/serving/latest/istio-crds.yaml
-readonly KNATIVE_ISTIO_YAML=https://storage.googleapis.com/knative-releases/serving/latest/istio.yaml
-readonly KNATIVE_SERVING_RELEASE=https://storage.googleapis.com/knative-releases/serving/latest/release.yaml
-readonly KNATIVE_BUILD_RELEASE=https://storage.googleapis.com/knative-releases/build/latest/release.yaml
-readonly KNATIVE_EVENTING_RELEASE=https://storage.googleapis.com/knative-releases/eventing/latest/release.yaml
+# Public latest stable nightly images and yaml files.
+readonly KNATIVE_ISTIO_CRD_YAML=https://storage.googleapis.com/knative-nightly/serving/latest/istio-crds.yaml
+readonly KNATIVE_ISTIO_YAML=https://storage.googleapis.com/knative-nightly/serving/latest/istio.yaml
+readonly KNATIVE_SERVING_RELEASE=https://storage.googleapis.com/knative-nightly/serving/latest/release.yaml
+readonly KNATIVE_BUILD_RELEASE=https://storage.googleapis.com/knative-nightly/build/latest/release.yaml
+readonly KNATIVE_EVENTING_RELEASE=https://storage.googleapis.com/knative-nightly/eventing/latest/release.yaml
 
 # Conveniently set GOPATH if unset
 if [[ -z "${GOPATH:-}" ]]; then
@@ -185,9 +185,8 @@ function wait_until_routable() {
 # Parameters: $1 - app name.
 #             $2 - namespace (optional).
 function get_app_pod() {
-  local namespace=""
-  [[ -n $2 ]] && namespace="-n $2"
-  kubectl get pods ${namespace} --selector=app=$1 --output=jsonpath="{.items[0].metadata.name}"
+  local pods=($(get_app_pods $1 $2))
+  echo "${pods[0]}"
 }
 
 # Returns the name of all pods of the given app.
