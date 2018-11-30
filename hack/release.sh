@@ -17,8 +17,8 @@
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/release.sh
 
 # Set default GCS/GCR
-: ${BUILD_PIPELINE_RELEASE_GCS:="knative-releases/build-pipeline"}
-: ${BUILD_PIPELINE_RELEASE_GCR:="gcr.io/knative-releases"}
+: ${BUILD_PIPELINE_RELEASE_GCS:="knative-nightly/build-pipeline"}
+: ${BUILD_PIPELINE_RELEASE_GCR:="gcr.io/knative-nightly"}
 readonly BUILD_PIPELINE_RELEASE_GCS
 readonly BUILD_PIPELINE_RELEASE_GCR
 
