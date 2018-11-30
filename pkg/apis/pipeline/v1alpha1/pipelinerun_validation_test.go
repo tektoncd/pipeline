@@ -101,16 +101,15 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 						Type: PipelineTriggerTypeManual,
 					},
 					Results: &Results{
-						Runs: ResultTarget{
+						Logs: ResultTarget{
 							Name: "runs",
 							URL:  "badurl",
 							Type: "gcs",
 						},
-						Logs: validResultTarget("logs"),
 					},
 				},
 			},
-			want: apis.ErrInvalidValue("badurl", "pipelinerun.spec.Results.Runs.URL"),
+			want: apis.ErrInvalidValue("badurl", "pipelinerun.spec.Results.Logs.URL"),
 		},
 	}
 
@@ -137,7 +136,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Type: "manual",
 			},
 			Results: &Results{
-				Runs: validResultTarget("runs"),
 				Logs: validResultTarget("logs"),
 			},
 		},

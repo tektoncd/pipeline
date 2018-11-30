@@ -106,15 +106,8 @@ const (
 
 // Results tells a pipeline where to persist the results of runnign the pipeline.
 type Results struct {
-	// Runs is used to store the yaml/json of TaskRuns and PipelineRuns.
-	Runs ResultTarget `json:"runs"`
-
 	// Logs will store all logs output from running a task.
 	Logs ResultTarget `json:"logs"`
-
-	// Tests will store test results, if a task provides them.
-	// +optional
-	Tests *ResultTarget `json:"tests,omitempty"`
 }
 
 // ResultTarget is used to identify an endpoint where results can be uploaded. The

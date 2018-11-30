@@ -71,12 +71,6 @@ func (r *Results) Validate(path string) *apis.FieldError {
 	if err := r.Logs.Validate(fmt.Sprintf("%s.logs", path)); err != nil {
 		return err
 	}
-	if err := r.Runs.Validate(fmt.Sprintf("%s.runs", path)); err != nil {
-		return err
-	}
-	if r.Tests != nil {
-		return r.Tests.Validate(fmt.Sprintf("%s.tests", path))
-	}
 	return nil
 }
 
