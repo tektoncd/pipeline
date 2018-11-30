@@ -65,8 +65,8 @@ required = [
 
 [[constraint]]
   name = "github.com/knative/build"
-  # HEAD as of 2018-11-9
-  revision = "db94a44721837a973c20a95b3dec9af360783656"
+  # HEAD as of 2018-11-29
+  revision = "12475f79ab0326da57b2a9ba3851efe9e7b6dbd2"
 
 [prune]
   go-tests = true

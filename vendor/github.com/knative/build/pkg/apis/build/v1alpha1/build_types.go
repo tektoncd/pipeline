@@ -240,18 +240,19 @@ type BuildStatus struct {
 
 	// StartTime is the time the build is actually started.
 	// +optional
-	StartTime *metav1.Time `json:"startTime,omitEmpty"`
+	StartTime *metav1.Time `json:"startTime,omitempty"`
 
 	// CompletionTime is the time the build completed.
 	// +optional
-	CompletionTime *metav1.Time `json:"completionTime,omitEmpty"`
+	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
 	// StepStates describes the state of each build step container.
 	// +optional
-	StepStates []corev1.ContainerState `json:"stepStates,omitEmpty"`
+	StepStates []corev1.ContainerState `json:"stepStates,omitempty"`
 
 	// StepsCompleted lists the name of build steps completed.
-	StepsCompleted []string `json:"stepsCompleted"`
+	// +optional
+	StepsCompleted []string `json:"stepsCompleted",omitempty`
 
 	// Conditions describes the set of conditions of this build.
 	// +optional
