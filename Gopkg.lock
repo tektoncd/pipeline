@@ -124,6 +124,21 @@
   revision = "44d81051d367757e1c7c6a5a86423ece9afcf63c"
 
 [[projects]]
+  branch = "master"
+  digest = "1:0d5e3798bfa2642ac268341c96710b8def1f3cbc3bc803c421d90704d72107d8"
+  name = "github.com/google/licenseclassifier"
+  packages = [
+    ".",
+    "internal/sets",
+    "stringclassifier",
+    "stringclassifier/internal/pq",
+    "stringclassifier/searchset",
+    "stringclassifier/searchset/tokenizer",
+  ]
+  pruneopts = "NUT"
+  revision = "e979a0b10eebe748549c702a25e997c556349da6"
+
+[[projects]]
   digest = "1:27b4ab41ffdc76ad6db56db327a4db234a59588ef059fc3fd678ba0bc6b9094f"
   name = "github.com/googleapis/gnostic"
   packages = [
@@ -246,9 +261,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0cabae2c3a124c49ed5e862866e1228f08a1a6e49d0daf971e5a72e5e56095a4"
+  digest = "1:7a7aea24f67afa5dedb422fb3592d5a5c3af91b4b9d59eddf06767729915b3c4"
   name = "github.com/knative/test-infra"
-  packages = ["scripts"]
+  packages = [
+    "scripts",
+    "tools/dep-collector",
+  ]
   pruneopts = "UT"
   revision = "7ed32409fa2c447a44a4281f0022ab25ce955f51"
 
