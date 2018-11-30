@@ -974,6 +974,26 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 			},
 		},
 		{
+			name: "build validate failed",
+			buildStatus: buildv1alpha1.BuildStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  "BuildValidationFailed",
+					Message: `serviceaccounts "missing-sa" not-found`,
+				}},
+			},
+			expectedStatus: v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:    duckv1alpha1.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  "BuildValidationFailed",
+					Message: `serviceaccounts "missing-sa" not-found`,
+				}},
+				Steps: []v1alpha1.StepState{},
+			},
+		},
+		{
 			name: "running build status",
 			buildStatus: buildv1alpha1.BuildStatus{
 				StartTime: &startTime,
