@@ -12,16 +12,6 @@ required = [
   "github.com/knative/test-infra/scripts",
 ]
 
-# Use HEAD (2018-04-21) to pick up:
-# https://github.com/spf13/cobra/pull/662
-[[override]]
-  name = "github.com/spf13/cobra"
-  revision = "615425954c3b0d9485a7027d4d451fdcdfdee84e"
-
-[[override]]
-  name = "github.com/spf13/pflag"
-  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
-
 [[override]]
   name = "gopkg.in/yaml.v2"
   version = "v2.2.1"
