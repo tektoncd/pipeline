@@ -45,30 +45,12 @@ func (ps *PipelineRunSpec) Validate() *apis.FieldError {
 	}
 
 	if ps.Results != nil {
-		// Results.Runs should have a valid URL and ResultTargetType
-		if err := validateURL(ps.Results.Runs.URL, "pipelinerun.spec.Results.Runs.URL"); err != nil {
-			return err
-		}
-		if err := validateResultTargetType(ps.Results.Runs.Type, "pipelinerun.spec.Results.Runs.Type"); err != nil {
-			return err
-		}
-
 		// Results.Logs should have a valid URL and ResultTargetType
 		if err := validateURL(ps.Results.Logs.URL, "pipelinerun.spec.Results.Logs.URL"); err != nil {
 			return err
 		}
 		if err := validateResultTargetType(ps.Results.Logs.Type, "pipelinerun.spec.Results.Logs.Type"); err != nil {
 			return err
-		}
-
-		// If Results.Tests exists, it should have a valid URL and ResultTargetType
-		if ps.Results.Tests != nil {
-			if err := validateURL(ps.Results.Tests.URL, "pipelinerun.spec.Results.Tests.URL"); err != nil {
-				return err
-			}
-			if err := validateResultTargetType(ps.Results.Tests.Type, "pipelinerun.spec.Results.Tests.Type"); err != nil {
-				return err
-			}
 		}
 	}
 
