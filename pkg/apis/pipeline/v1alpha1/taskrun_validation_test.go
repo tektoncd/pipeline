@@ -186,6 +186,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 						Name: "testtrigger",
 					},
 				},
+				Results: &Results{
+					URL:  "http://www.google.com",
+					Type: "gcs",
+				},
 			},
 		},
 		{
@@ -298,68 +302,6 @@ func TestInput_Invalidate(t *testing.T) {
 				t.Errorf("TaskRunInputs.Validate/%s (-want, +got) = %v", ts.name, d)
 			}
 		})
-	}
-}
-
-func TestResult_Invalidate(t *testing.T) {
-	tests := []struct {
-		name    string
-		result  *Results
-		wantErr *apis.FieldError
-	}{
-		{
-			name: "invalid task type result",
-			result: &Results{
-				Name: "resultlogs",
-				Type: "wrongtype",
-			},
-			wantErr: apis.ErrInvalidValue("wrongtype", "spec.results.Type"),
-		},
-		{
-			name: "invalid task type result name",
-			result: &Results{
-				Name: "",
-				Type: ResultTargetTypeGCS,
-			},
-			wantErr: apis.ErrMissingField("spec.results.name"),
-		},
-		{
-			name: "invalid task type result url",
-			result: &Results{
-					Name: "resultrunname",
-					Type: ResultTargetTypeGCS,
-					URL:  "",
-			},
-			wantErr: apis.ErrMissingField("spec.results.URL"),
-		},
-		{
-			name: "invalid task type result url",
-			result: &Results{
-					Name: "resultrunname",
-					Type: "badtype",
-			},
-			wantErr: apis.ErrInvalidValue("badtype", "spec.results.Type"),
-		},
-	}
-
-	for _, ts := range tests {
-		t.Run(ts.name, func(t *testing.T) {
-			err := ts.result.Validate("spec.results")
-			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
-				t.Errorf("Validate/%s (-want, +got) = %v", ts.name, d)
-			}
-		})
-	}
-}
-
-func TestResultTarget_Validate(t *testing.T) {
-	rs := &Results{
-			Name: "testname",
-			Type: ResultTargetTypeGCS,
-			URL:  "http://github.com",
-	}
-	if err := rs.Validate("spec.results"); err != nil {
-		t.Errorf("ResultTarget.Validate() error = %v", err)
 	}
 }
 

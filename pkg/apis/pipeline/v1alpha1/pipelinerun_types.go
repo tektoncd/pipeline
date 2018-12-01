@@ -47,7 +47,7 @@ type PipelineRunSpec struct {
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
-	Results    *Results `json:"results"`
+	Results    *Results `json:"results,omitempty"`
 	Generation int64    `json:"generation,omitempty"`
 }
 
@@ -90,26 +90,6 @@ type PipelineRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
-}
-
-// AllResultTargetTypes is a list of all ResultTargetTypes, used for validation
-var AllResultTargetTypes = []ResultTargetType{ResultTargetTypeGCS}
-
-// ResultTargetType represents the type of endpoint that this result target is,
-// so that the controller will know how to write results to it.
-type ResultTargetType string
-
-const (
-	// ResultTargetTypeGCS indicates that the URL endpoint is a GCS bucket.
-	ResultTargetTypeGCS = "gcs"
-)
-
-// Results is used to identify an endpoint where results can be uploaded. The
-// serviceaccount used for the pipeline must have access to this endpoint.
-type Results struct {
-	Name string           `json:"name"`
-	Type ResultTargetType `json:"type"`
-	URL  string           `json:"url"`
 }
 
 // PipelineTriggerType indicates the mechanism by which this PipelineRun was created.
