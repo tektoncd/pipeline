@@ -454,6 +454,7 @@ func (in *PipelineRunStatus) DeepCopyInto(out *PipelineRunStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	out.Results = in.Results
 	if in.TaskRuns != nil {
 		in, out := &in.TaskRuns, &out.TaskRuns
 		*out = make(map[string]TaskRunStatus, len(*in))
@@ -1009,6 +1010,7 @@ func (in *TaskRunStatus) DeepCopyInto(out *TaskRunStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	out.Results = in.Results
 	if in.StartTime != nil {
 		in, out := &in.StartTime, &out.StartTime
 		if *in == nil {
