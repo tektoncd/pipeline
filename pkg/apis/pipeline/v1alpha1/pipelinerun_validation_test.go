@@ -25,13 +25,6 @@ import (
 
 var validURL = "http://www.google.com"
 
-func validResultTarget(name string) ResultTarget {
-	return ResultTarget{
-		URL:  validURL,
-		Name: name,
-		Type: "gcs",
-	}
-}
 func TestPipelineRun_Invalidate(t *testing.T) {
 	tests := []struct {
 		name string
@@ -101,15 +94,13 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 						Type: PipelineTriggerTypeManual,
 					},
 					Results: &Results{
-						Logs: ResultTarget{
-							Name: "runs",
-							URL:  "badurl",
-							Type: "gcs",
-						},
+						Name: "runs",
+						URL:  "badurl",
+						Type: "gcs",
 					},
 				},
 			},
-			want: apis.ErrInvalidValue("badurl", "pipelinerun.spec.Results.Logs.URL"),
+			want: apis.ErrInvalidValue("badurl", "pipelinerun.spec.Results.URL"),
 		},
 	}
 
@@ -136,7 +127,9 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Type: "manual",
 			},
 			Results: &Results{
-				Logs: validResultTarget("logs"),
+				URL:  validURL,
+				Name: "logs",
+				Type: "gcs",
 			},
 		},
 	}

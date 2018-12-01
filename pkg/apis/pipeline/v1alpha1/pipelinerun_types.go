@@ -104,15 +104,9 @@ const (
 	ResultTargetTypeGCS = "gcs"
 )
 
-// Results tells a pipeline where to persist the results of runnign the pipeline.
-type Results struct {
-	// Logs will store all logs output from running a task.
-	Logs ResultTarget `json:"logs"`
-}
-
-// ResultTarget is used to identify an endpoint where results can be uploaded. The
+// Results is used to identify an endpoint where results can be uploaded. The
 // serviceaccount used for the pipeline must have access to this endpoint.
-type ResultTarget struct {
+type Results struct {
 	Name string           `json:"name"`
 	Type ResultTargetType `json:"type"`
 	URL  string           `json:"url"`
