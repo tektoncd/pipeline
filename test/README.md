@@ -123,7 +123,7 @@ export KANIKO_SECRET_CONFIG_FILE="$PWD/config.json"
 
 Integration tests live in this directory. To run these tests, you must provide `go` with
 `-tags=e2e`. By default the tests run agains your current kubeconfig context,
- but you can change that and other settings with [the flags](#flags):
+but you can change that and other settings with [the flags](#flags):
 
 ```shell
 go test -v -count=1 -tags=e2e ./test
@@ -135,12 +135,12 @@ You can also use
 
 ### Flags
 
-* By default the e2e tests against the current cluster in `~/.kube/config`
+- By default the e2e tests against the current cluster in `~/.kube/config`
   using the environment specified in [your environment variables](/DEVELOPMENT.md#environment-setup).
-* Since these tests are fairly slow, running them with logging
+- Since these tests are fairly slow, running them with logging
   enabled is recommended (`-v`).
-* Using [`--logverbose`](#output-verbose-log) to see the verbose log output from test as well as from k8s libraries.
-* Using `-count=1` is [the idiomatic way to disable test caching](https://golang.org/doc/go1.10#test)
+- Using [`--logverbose`](#output-verbose-log) to see the verbose log output from test as well as from k8s libraries.
+- Using `-count=1` is [the idiomatic way to disable test caching](https://golang.org/doc/go1.10#test)
 
 You can [use test flags](#flags) to control the environment
 your tests run against, i.e. override [your environment variables](/DEVELOPMENT.md#environment-setup):
@@ -164,7 +164,6 @@ To run one e2e test case, e.g. TestTaskRun, use [the `-run` flag with `go test`]
 go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun$
 ```
 
-
 ### Adding integration tests
 
 In the [`test`](/test/) dir you will find several libraries in the `test` package
@@ -175,10 +174,10 @@ This library exists partially in this directory and partially in
 
 The libs in this dir can:
 
-* [`init_test.go`](./init_test.go) initializes anything needed globally be the tests
-* [Get access to client objects](#get-access-to-client-objects)
-* [Generate random names](#generate-random-names)
-* [Poll Pipeline resources](#poll-pipeline-resources)
+- [`init_test.go`](./init_test.go) initializes anything needed globally be the tests
+- [Get access to client objects](#get-access-to-client-objects)
+- [Generate random names](#generate-random-names)
+- [Poll Pipeline resources](#poll-pipeline-resources)
 
 All integration tests _must_ be marked with the `e2e` [build constraint](https://golang.org/pkg/go/build/)
 so that `go test ./...` can be used to run only [the unit tests](#unit-tests), i.e.:
@@ -204,9 +203,9 @@ func setup(t *testing.T) *test.Clients {
 
 The `Clients` struct contains initialized clients for accessing:
 
-* Kubernetes objects
-* [`Pipelines`](https://github.com/knative/build-pipeline#pipeline)
-* TODO: incrementally add clients for other types
+- Kubernetes objects
+- [`Pipelines`](https://github.com/knative/build-pipeline#pipeline)
+- TODO: incrementally add clients for other types
 
 For example, to create a `Pipeline`:
 
@@ -284,8 +283,8 @@ via the sections for `knative/build-pipeline`.
 
 The presubmit integration tests entrypoint will run:
 
-* [The integration tests](#integration-tests)
-* A sanity check deployment of [our example CRDs](../examples)
+- [The integration tests](#integration-tests)
+- A sanity check deployment of [our example CRDs](../examples)
 
 When run using Prow, integration tests will try to get a new cluster using [boskos](https://github.com/kubernetes/test-infra/tree/master/boskos) and
 [these hardcoded GKE projects](https://github.com/knative/test-infra/blob/master/ci/prow/boskos/resources.yaml#L15),

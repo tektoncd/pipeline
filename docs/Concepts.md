@@ -10,24 +10,24 @@ These resources run on-cluster and are implemeted by [Kubernetes Custom Resource
 
 High level details of this design:
 
-* [Pipelines](#pipeline) do not know what will trigger them, they can be
-   triggered by events or by manually creating [PipelineRuns](#pipelinerun)
-* [Tasks](#task) can exist and be invoked completely independently of
+- [Pipelines](#pipeline) do not know what will trigger them, they can be
+  triggered by events or by manually creating [PipelineRuns](#pipelinerun)
+- [Tasks](#task) can exist and be invoked completely independently of
   [Pipelines](#pipeline); they are highly cohesive and loosely coupled
-* Test results are a first class concept, being able to navigate test results
+- Test results are a first class concept, being able to navigate test results
   easily is powerful (e.g. see failures easily, dig into logs, e.g. like
   [the Jenkins test analyzer plugin](https://wiki.jenkins.io/display/JENKINS/Test+Results+Analyzer+Plugin))
-* [Tasks](#task) can depend on artifacts, output and parameters created by other tasks.
-* [Resources](#pipelineresources) are the artifacts used as inputs and outputs of TaskRuns.
+- [Tasks](#task) can depend on artifacts, output and parameters created by other tasks.
+- [Resources](#pipelineresources) are the artifacts used as inputs and outputs of TaskRuns.
 
 ## Building Blocks of Pipeline CRDs
 
 Below diagram lists the main custom resources created by Pipeline CRDs:
 
-* [Task](#task)
-* [Pipeline](#pipeline)
-* [Runs](#runs)
-* [PipelineResources](#pipelineresources)
+- [Task](#task)
+- [Pipeline](#pipeline)
+- [Runs](#runs)
+- [PipelineResources](#pipelineresources)
 
 ![Building Blocks](./images/building-blocks.png)
 
@@ -49,20 +49,20 @@ metadata:
 spec:
   inputs:
     resources:
-    - name: workspace
-      type: git
-      targetPath: go/src/github.com/knative/build-pipeline
+      - name: workspace
+        type: git
+        targetPath: go/src/github.com/knative/build-pipeline
   steps:
-  - name: unit-tests
-    image: golang
-    command: ['go']
-    args:
-    - 'test'
-    - './...'
-    workingDir: "/workspace/go/src/github.com/knative/build-pipeline"
-    env:
-    - name: GOPATH
-      value: /workspace/go
+    - name: unit-tests
+      image: golang
+      command: ["go"]
+      args:
+        - "test"
+        - "./..."
+      workingDir: "/workspace/go/src/github.com/knative/build-pipeline"
+      env:
+        - name: GOPATH
+          value: /workspace/go
 ```
 
 ### Outputs
@@ -85,12 +85,12 @@ metadata:
   namespace: default
 spec:
   steps:
-  - name: echo
-    image: busybox
-    command:
-    - echo
-    args:
-    - "hello world!"
+    - name: echo
+      image: busybox
+      command:
+        - echo
+      args:
+        - "hello world!"
 ```
 
 Examples of `Task` definitions with inputs and outputs are [here](../examples)
@@ -125,12 +125,12 @@ metadata:
   namespace: default
 spec:
   tasks:
-  - name: hello-world-first
-    taskRef:
-      name: hello-world
-  - name: hello-world-again
-    taskRef:
-      name: hello-world
+    - name: hello-world-first
+      taskRef:
+        name: hello-world
+    - name: hello-world-again
+      taskRef:
+        name: hello-world
 ```
 
 Examples of pipelines with more complex DAGs are [here](../examples/)
@@ -141,8 +141,8 @@ Examples of pipelines with more complex DAGs are [here](../examples/)
 
 For example:
 
-* A task's input could be a github source which contains your application code.
-* A task's output can be your application container image which can be then deployed in a cluster.
+- A task's input could be a github source which contains your application code.
+- A task's output can be your application container image which can be then deployed in a cluster.
 
 Read more on PipelineResources and their types [here](./using.md)
 
@@ -154,8 +154,8 @@ as inputs and outputs of a `TaskRun`.
 To invoke a [`Pipeline`](#pipeline) or a [`Task`](#task), you must create a corresponding
 `Run`:
 
-* [TaskRun](#taskrun)
-* [PipelineRun](#pipelinerun)
+- [TaskRun](#taskrun)
+- [PipelineRun](#pipelinerun)
 
 #### TaskRun
 
@@ -183,16 +183,16 @@ spec:
   generation: 1
   inputs:
     resources:
-    - name: workspace
-      type: git
+      - name: workspace
+        type: git
   steps:
-  - name: build-war
-    image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
-    command: jar
-    args: ['-cvf', 'projectname.war', '*']
-    volumeMounts:
-    - name: custom-volume
-      mountPath: /custom
+    - name: build-war
+      image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
+      command: jar
+      args: ["-cvf", "projectname.war", "*"]
+      volumeMounts:
+        - name: custom-volume
+          mountPath: /custom
 ```
 
 ```yaml
@@ -206,19 +206,19 @@ spec:
     name: volume-task
   inputs:
     resources:
-    - name: workspace
-      resourceRef:
-        name: java-git-resource
+      - name: workspace
+        resourceRef:
+          name: java-git-resource
   outputs:
     resources:
-    - name: workspace
-      paths:
-      - /custom/workspace/
-      resourceRef:
-        name: java-git-resource
+      - name: workspace
+        paths:
+          - /custom/workspace/
+        resourceRef:
+          name: java-git-resource
   volumes:
-  - name: custom-volume
-    emptyDir: {}
+    - name: custom-volume
+      emptyDir: {}
 ```
 
 `TaskRuns` can be created directly by a user or by a [PipelineRun](#pipelinerun).
@@ -230,14 +230,13 @@ task in the pipeline.
 
 `PipelineRuns` tie together:
 
-* A [Pipeline](#pipeline)
-* The [PipelineResources](#pipelineresources) to use for each [Task](#task)
-* Which **serviceAccount** to use (provided to all tasks)
-* Where **results** are stored (e.g. in GCS)
+- A [Pipeline](#pipeline)
+- The [PipelineResources](#pipelineresources) to use for each [Task](#task)
+- Which **serviceAccount** to use (provided to all tasks)
+- Where **results** are stored (e.g. in GCS)
 
 A `PipelineRun` could be created:
 
-* By a user manually
-* In response to an event (e.g. in response to a Github event, possibly processed via
+- By a user manually
+- In response to an event (e.g. in response to a Github event, possibly processed via
   [Knative eventing](https://github.com/knative/eventing))
-
