@@ -9,7 +9,6 @@ spec:
     triggerRef:
       type: manual
   results:
-    name: 'logBucket'
     type: 'gcs'
     url: 'gcs://somebucket/results/logs'
   inputs:

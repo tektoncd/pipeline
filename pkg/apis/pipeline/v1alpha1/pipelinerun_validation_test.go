@@ -105,7 +105,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 			Results: &Results{
 				URL:  "http://www.google.com",
-				Name: "logs",
 				Type: "gcs",
 			},
 		},

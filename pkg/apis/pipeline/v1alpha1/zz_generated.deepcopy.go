@@ -959,7 +959,15 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 	out.Trigger = in.Trigger
 	in.Inputs.DeepCopyInto(&out.Inputs)
 	in.Outputs.DeepCopyInto(&out.Outputs)
-	out.Results = in.Results
+	if in.Results != nil {
+		in, out := &in.Results, &out.Results
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(Results)
+			**out = **in
+		}
+	}
 	if in.TaskRef != nil {
 		in, out := &in.TaskRef, &out.TaskRef
 		if *in == nil {
