@@ -9,6 +9,8 @@ about: Template for both bug reports and feature requests
 
 ## Steps to Reproduce the Problem
 
-1. 2. 3.
+1.
+2.
+3.
 
 ## Additional Info
