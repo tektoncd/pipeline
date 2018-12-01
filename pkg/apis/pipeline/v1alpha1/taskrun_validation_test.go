@@ -310,43 +310,35 @@ func TestResult_Invalidate(t *testing.T) {
 		{
 			name: "invalid task type result",
 			result: &Results{
-				Logs: ResultTarget{
-					Name: "resultlogs",
-					Type: "wrongtype",
-				},
+				Name: "resultlogs",
+				Type: "wrongtype",
 			},
-			wantErr: apis.ErrInvalidValue("wrongtype", "spec.results.logs.Type"),
+			wantErr: apis.ErrInvalidValue("wrongtype", "spec.results.Type"),
 		},
 		{
 			name: "invalid task type result name",
 			result: &Results{
-				Logs: ResultTarget{
-					Name: "",
-					Type: ResultTargetTypeGCS,
-				},
+				Name: "",
+				Type: ResultTargetTypeGCS,
 			},
-			wantErr: apis.ErrMissingField("spec.results.logs.name"),
+			wantErr: apis.ErrMissingField("spec.results.name"),
 		},
 		{
 			name: "invalid task type result url",
 			result: &Results{
-				Logs: ResultTarget{
 					Name: "resultrunname",
 					Type: ResultTargetTypeGCS,
 					URL:  "",
-				},
 			},
-			wantErr: apis.ErrMissingField("spec.results.logs.URL"),
+			wantErr: apis.ErrMissingField("spec.results.URL"),
 		},
 		{
 			name: "invalid task type result url",
 			result: &Results{
-				Logs: ResultTarget{
 					Name: "resultrunname",
 					Type: "badtype",
-				},
 			},
-			wantErr: apis.ErrInvalidValue("badtype", "spec.results.logs.Type"),
+			wantErr: apis.ErrInvalidValue("badtype", "spec.results.Type"),
 		},
 	}
 
@@ -362,11 +354,9 @@ func TestResult_Invalidate(t *testing.T) {
 
 func TestResultTarget_Validate(t *testing.T) {
 	rs := &Results{
-		Logs: ResultTarget{
 			Name: "testname",
 			Type: ResultTargetTypeGCS,
 			URL:  "http://github.com",
-		},
 	}
 	if err := rs.Validate("spec.results"); err != nil {
 		t.Errorf("ResultTarget.Validate() error = %v", err)

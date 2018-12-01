@@ -10,10 +10,9 @@ spec:
     type: manual
   serviceAccount: 'default'
   results:
-    logs:
-      name: 'logBucket'
-      type: 'gcs'
-      url: 'gcs://somebucket/results/logs'
+    name: 'logBucket'
+    type: 'gcs'
+    url: 'gcs://somebucket/results/logs'
   resources:
   - name: build-skaffold-web
     inputs:
