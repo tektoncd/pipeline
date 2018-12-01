@@ -38,7 +38,6 @@ const (
 // Results is used to identify an endpoint where results can be uploaded. The
 // serviceaccount used for the pipeline must have access to this endpoint.
 type Results struct {
-	Name string           `json:"name"`
 	Type ResultTargetType `json:"type"`
 	URL  string           `json:"url"`
 }
@@ -47,11 +46,6 @@ type Results struct {
 // we found this instance of `Results` (since it is probably a member of another
 // structure) and will be used to report any errors.
 func (r *Results) Validate(path string) *apis.FieldError {
-	// If set then verify all variables pass the validation
-	if r.Name == "" {
-		return apis.ErrMissingField(fmt.Sprintf("%s.name", path))
-	}
-
 	if r.Type != ResultTargetTypeGCS {
 		return apis.ErrInvalidValue(string(r.Type), fmt.Sprintf("%s.Type", path))
 	}

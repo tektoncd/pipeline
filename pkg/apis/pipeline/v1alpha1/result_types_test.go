@@ -26,7 +26,6 @@ import (
 func TestValidate(t *testing.T) {
 	results := Results{
 		URL:  "http://google.com",
-		Name: "logs",
 		Type: "gcs",
 	}
 	err := results.Validate("somepath")
@@ -44,25 +43,14 @@ func TestValidate_Invalid(t *testing.T) {
 		{
 			name: "invalid task type result",
 			results: &Results{
-				Name: "resultlogs",
 				URL:  "http://www.google.com",
 				Type: "wrongtype",
 			},
 			want: apis.ErrInvalidValue("wrongtype", "spec.results.Type"),
 		},
 		{
-			name: "invalid task type results name",
-			results: &Results{
-				Name: "",
-				URL:  "http://www.google.com",
-				Type: ResultTargetTypeGCS,
-			},
-			want: apis.ErrMissingField("spec.results.name"),
-		},
-		{
 			name: "invalid task type results missing url",
 			results: &Results{
-				Name: "resultsrunname",
 				Type: ResultTargetTypeGCS,
 				URL:  "",
 			},
@@ -71,7 +59,6 @@ func TestValidate_Invalid(t *testing.T) {
 		{
 			name: "invalid task type results bad url",
 			results: &Results{
-				Name: "resultsrunname",
 				Type: ResultTargetTypeGCS,
 				URL:  "badurl",
 			},
@@ -80,7 +67,6 @@ func TestValidate_Invalid(t *testing.T) {
 		{
 			name: "invalid task type results type",
 			results: &Results{
-				Name: "resultsrunname",
 				Type: "badtype",
 				URL:  "http://www.google.com",
 			},
