@@ -64,7 +64,12 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 	}
 
 	// check for results
-	return ts.Results.Validate("spec.results")
+	if ts.Results != nil {
+		if err := ts.Results.Validate("spec.results"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (i TaskRunInputs) Validate(path string) *apis.FieldError {
@@ -76,29 +81,6 @@ func (i TaskRunInputs) Validate(path string) *apis.FieldError {
 
 func (o TaskRunOutputs) Validate(path string) *apis.FieldError {
 	return checkForPipelineResourceDuplicates(o.Resources, fmt.Sprintf("%s.Resources.Name", path))
-}
-
-// Validate will validate the result configuration, if it is present.
-func (r Results) Validate(path string) *apis.FieldError {
-	// if result is not set then do not error
-	var emptyTarget = Results{}
-	if r == emptyTarget {
-		return nil
-	}
-
-	// If set then verify all variables pass the validation
-	if r.Name == "" {
-		return apis.ErrMissingField(fmt.Sprintf("%s.name", path))
-	}
-
-	if r.Type != ResultTargetTypeGCS {
-		return apis.ErrInvalidValue(string(r.Type), fmt.Sprintf("%s.Type", path))
-	}
-
-	if r.URL == "" {
-		return apis.ErrMissingField(fmt.Sprintf("%s.URL", path))
-	}
-	return nil
 }
 
 func checkForPipelineResourceDuplicates(resources []TaskRunResource, path string) *apis.FieldError {

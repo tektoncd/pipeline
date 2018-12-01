@@ -23,8 +23,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var validURL = "http://www.google.com"
-
 func TestPipelineRun_Invalidate(t *testing.T) {
 	tests := []struct {
 		name string
@@ -80,27 +78,6 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 				},
 			},
 			want: apis.ErrInvalidValue("badtype", "pipelinerun.spec.triggerRef.type"),
-		}, {
-			name: "invalid results",
-			pr: PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: PipelineRunSpec{
-					PipelineRef: PipelineRef{
-						Name: "prname",
-					},
-					PipelineTriggerRef: PipelineTriggerRef{
-						Type: PipelineTriggerTypeManual,
-					},
-					Results: &Results{
-						Name: "runs",
-						URL:  "badurl",
-						Type: "gcs",
-					},
-				},
-			},
-			want: apis.ErrInvalidValue("badurl", "pipelinerun.spec.Results.URL"),
 		},
 	}
 
@@ -127,7 +104,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Type: "manual",
 			},
 			Results: &Results{
-				URL:  validURL,
+				URL:  "http://www.google.com",
 				Name: "logs",
 				Type: "gcs",
 			},

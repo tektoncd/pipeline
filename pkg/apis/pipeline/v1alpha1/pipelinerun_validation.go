@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"net/url"
-
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -43,36 +41,12 @@ func (ps *PipelineRunSpec) Validate() *apis.FieldError {
 	if ps.PipelineTriggerRef.Type != PipelineTriggerTypeManual {
 		return apis.ErrInvalidValue(string(ps.PipelineTriggerRef.Type), "pipelinerun.spec.triggerRef.type")
 	}
-
+	// check for results
 	if ps.Results != nil {
-		// Results.Logs should have a valid URL and ResultTargetType
-		if err := validateURL(ps.Results.URL, "pipelinerun.spec.Results.URL"); err != nil {
-			return err
-		}
-		if err := validateResultTargetType(ps.Results.Type, "pipelinerun.spec.Results.Type"); err != nil {
+		if err := ps.Results.Validate("spec.results"); err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func validateURL(u, path string) *apis.FieldError {
-	if u == "" {
-		return nil
-	}
-	_, err := url.ParseRequestURI(u)
-	if err != nil {
-		return apis.ErrInvalidValue(u, path)
-	}
-	return nil
-}
-
-func validateResultTargetType(r ResultTargetType, path string) *apis.FieldError {
-	for _, a := range AllResultTargetTypes {
-		if a == r {
-			return nil
-		}
-	}
-	return apis.ErrInvalidValue(string(r), path)
 }

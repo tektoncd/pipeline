@@ -40,7 +40,8 @@ type TaskRunSpec struct {
 	Inputs TaskRunInputs `json:"inputs,omitempty"`
 	// +optional
 	Outputs TaskRunOutputs `json:"outputs,omitempty"`
-	Results Results        `json:"results"`
+	// +optional
+	Results *Results `json:"results,omitempty"`
 	// +optional
 	Generation int64 `json:"generation,omitempty"`
 	// +optional
