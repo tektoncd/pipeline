@@ -16,7 +16,7 @@ var validBuildSteps = []corev1.Container{{
 	Command: []string{"mycmd"},
 }}
 
-func TestValidateTaskRunAndTask(t *testing.T) {
+func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 	rtr := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{
 			Steps: validBuildSteps,
@@ -42,12 +42,12 @@ func TestValidateTaskRunAndTask(t *testing.T) {
 				},
 			}},
 	}
-	if err := taskrun.ValidateTaskRunAndTask([]v1alpha1.Param{}, rtr); err != nil {
+	if err := taskrun.ValidateResolvedTaskResources([]v1alpha1.Param{}, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating valid resolved TaskRun but saw %v", err)
 	}
 }
 
-func Test_ValidParams(t *testing.T) {
+func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	rtr := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{
 			Steps: validBuildSteps,
@@ -67,12 +67,12 @@ func Test_ValidParams(t *testing.T) {
 		Name:  "bar",
 		Value: "somethinggood",
 	}}
-	if err := taskrun.ValidateTaskRunAndTask(p, rtr); err != nil {
+	if err := taskrun.ValidateResolvedTaskResources(p, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 	}
 }
 
-func Test_InvalidParams(t *testing.T) {
+func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	rtr := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{
 			Steps: validBuildSteps,
@@ -89,12 +89,12 @@ func Test_InvalidParams(t *testing.T) {
 		Name:  "foobar",
 		Value: "somethingfun",
 	}}
-	if err := taskrun.ValidateTaskRunAndTask(p, rtr); err == nil {
+	if err := taskrun.ValidateResolvedTaskResources(p, rtr); err == nil {
 		t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
 	}
 }
 
-func Test_InvalidTaskRunTask(t *testing.T) {
+func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 	r := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "git-test-resource",
@@ -165,7 +165,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := taskrun.ValidateTaskRunAndTask([]v1alpha1.Param{}, tc.rtr); err == nil {
+			if err := taskrun.ValidateResolvedTaskResources([]v1alpha1.Param{}, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun but saw none")
 			}
 		})
