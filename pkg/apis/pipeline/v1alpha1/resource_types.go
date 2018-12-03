@@ -116,9 +116,11 @@ type PipelineResource struct {
 	Status PipelineResourceStatus `json:"status,omitempty"`
 }
 
-// TaskRunResource points to the PipelineResource that
-// will be used for the Task input or output called Name.
-type TaskRunResource struct {
+// TaskResourceBinding points to the PipelineResource that
+// will be used for the Task input or output called Name. The optional Path field
+// corresponds to a path on disk at which the Resource can be found (used when providing
+// the resource via mounted volume, overriding the default logic to fetch the Resource).
+type TaskResourceBinding struct {
 	Name        string              `json:"name"`
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
 	// +optional

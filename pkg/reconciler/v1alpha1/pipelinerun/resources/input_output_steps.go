@@ -25,13 +25,11 @@ var (
 	pvcDir = "/pvc"
 )
 
-// GetOutputSteps function reads output task resources and constructs post task step
-// postSteps contains array of resource names and named path(pvcdir + name of task + name of resource) under which the output resource will be dumped in PVC
-func GetOutputSteps(taskResources []v1alpha1.TaskResourceBinding, taskName string) []v1alpha1.TaskRunResource {
-	var taskOutputResources []v1alpha1.TaskRunResource
+func GetOutputSteps(taskResources []v1alpha1.TaskResourceBinding, taskName string) []v1alpha1.TaskResourceBinding {
+	var taskOutputResources []v1alpha1.TaskResourceBinding
 
 	for _, outputRes := range taskResources {
-		taskOutputResources = append(taskOutputResources, v1alpha1.TaskRunResource{
+		taskOutputResources = append(taskOutputResources, v1alpha1.TaskResourceBinding{
 			ResourceRef: outputRes.ResourceRef,
 			Name:        outputRes.Name,
 			Paths:       []string{filepath.Join(pvcDir, taskName, outputRes.Name)},
@@ -40,13 +38,11 @@ func GetOutputSteps(taskResources []v1alpha1.TaskResourceBinding, taskName strin
 	return taskOutputResources
 }
 
-// GetInputSteps function reads input bindings and constructs pre build step
-// with information to create build step to setup altered inputs.
-func GetInputSteps(taskResources []v1alpha1.TaskResourceBinding, pt *v1alpha1.PipelineTask) []v1alpha1.TaskRunResource {
-	var taskInputResources []v1alpha1.TaskRunResource
+func GetInputSteps(taskResources []v1alpha1.TaskResourceBinding, pt *v1alpha1.PipelineTask) []v1alpha1.TaskResourceBinding {
+	var taskInputResources []v1alpha1.TaskResourceBinding
 
 	for _, inputResource := range taskResources {
-		taskInputResource := v1alpha1.TaskRunResource{
+		taskInputResource := v1alpha1.TaskResourceBinding{
 			ResourceRef: inputResource.ResourceRef,
 			Name:        inputResource.Name,
 		}
@@ -67,7 +63,6 @@ func GetInputSteps(taskResources []v1alpha1.TaskResourceBinding, pt *v1alpha1.Pi
 	return taskInputResources
 }
 
-// WrapSteps input and resources for taskrun along with presteps , poststeps
 func WrapSteps(tr *v1alpha1.TaskRunSpec, pipelineResources []v1alpha1.PipelineTaskResource, pt *v1alpha1.PipelineTask) {
 	if pt == nil {
 		return

@@ -30,7 +30,7 @@ import (
 
 var kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
 
-func getBoundResource(resourceName string, boundResources []v1alpha1.TaskRunResource) (*v1alpha1.TaskRunResource, error) {
+func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourceBinding) (*v1alpha1.TaskResourceBinding, error) {
 	for _, br := range boundResources {
 		if br.Name == resourceName {
 			return &br, nil

@@ -49,7 +49,7 @@ type ResourceGetter interface {
 
 // ApplyResources applies the templating from values in resources which are referenced in b as subitems
 // of the replacementStr. It retrieves the referenced resources via the getter.
-func ApplyResources(b *buildv1alpha1.Build, resources []v1alpha1.TaskRunResource, getter ResourceGetter, replacementStr string) (*buildv1alpha1.Build, error) {
+func ApplyResources(b *buildv1alpha1.Build, resources []v1alpha1.TaskResourceBinding, getter ResourceGetter, replacementStr string) (*buildv1alpha1.Build, error) {
 	replacements := map[string]string{}
 
 	for _, r := range resources {

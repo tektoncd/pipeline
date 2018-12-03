@@ -41,7 +41,7 @@ type GetResource func(string) (*v1alpha1.PipelineResource, error)
 // ResolveTaskRun looks up PipelineResources referenced by inputs and outputs and returns
 // a structure that unites the resolved references nad the Task Spec. If referenced PipelineResources
 // can't be found, an error is returned.
-func ResolveTaskRun(ts *v1alpha1.TaskSpec, taskName string, inputs []v1alpha1.TaskRunResource, outputs []v1alpha1.TaskRunResource, gr GetResource) (*ResolvedTaskRun, error) {
+func ResolveTaskRun(ts *v1alpha1.TaskSpec, taskName string, inputs []v1alpha1.TaskResourceBinding, outputs []v1alpha1.TaskResourceBinding, gr GetResource) (*ResolvedTaskRun, error) {
 	rtr := ResolvedTaskRun{
 		TaskName: taskName,
 		TaskSpec: ts,

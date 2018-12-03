@@ -61,14 +61,14 @@ var paramTaskRun = &v1alpha1.TaskRun{
 	},
 }
 
-var inputs = []v1alpha1.TaskRunResource{{
+var inputs = []v1alpha1.TaskResourceBinding{{
 	ResourceRef: v1alpha1.PipelineResourceRef{
 		Name: "git-resource",
 	},
 	Name: "workspace",
 }}
 
-var outputs = []v1alpha1.TaskRunResource{{
+var outputs = []v1alpha1.TaskResourceBinding{{
 	ResourceRef: v1alpha1.PipelineResourceRef{
 		Name: "image-resource",
 	},
@@ -184,7 +184,7 @@ func mockGetter() *rg {
 func TestApplyResources(t *testing.T) {
 	type args struct {
 		b      *buildv1alpha1.Build
-		r      []v1alpha1.TaskRunResource
+		r      []v1alpha1.TaskResourceBinding
 		getter ResourceGetter
 		rStr   string
 	}
@@ -198,7 +198,7 @@ func TestApplyResources(t *testing.T) {
 			name: "no replacements specified",
 			args: args{
 				b:      simpleBuild,
-				r:      []v1alpha1.TaskRunResource{},
+				r:      []v1alpha1.TaskResourceBinding{},
 				getter: mockGetter(),
 				rStr:   "inputs",
 			},

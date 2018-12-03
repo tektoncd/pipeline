@@ -22,6 +22,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	taskrunresources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/knative/build-pipeline/test"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -232,7 +233,7 @@ func TestReconcile(t *testing.T) {
 						Value: "${inputs.workspace.revision}",
 					},
 				},
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "some-repo",
 					},
@@ -240,7 +241,7 @@ func TestReconcile(t *testing.T) {
 				}},
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					Name:        "image-to-use",
 					ResourceRef: v1alpha1.PipelineResourceRef{Name: "some-image"},
 					Paths:       []string{"/pvc/unit-test-1/image-to-use"},
@@ -483,11 +484,13 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		TaskRuns: expectedTaskRunsStatus,
 	}
 
-	state := []*resources.PipelineRunTaskRun{{
-		Task:         task,
+	state := []*resources.ResolvedPipelineRunTask{{
 		PipelineTask: &pipelineTask,
 		TaskRunName:  "test-pipeline-run-success-unit-test-1",
 		TaskRun:      taskrun,
+		ResolvedTaskRun: &taskrunresources.ResolvedTaskRun{
+			TaskSpec: &task.Spec,
+		},
 	}}
 	pr.Status.InitializeConditions()
 	pipelinerun.UpdateTaskRunsStatus(pr, state)

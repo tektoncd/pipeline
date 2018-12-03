@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -24,9 +25,10 @@ import (
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -54,10 +56,13 @@ var p = &v1alpha1.Pipeline{
 
 var task = &v1alpha1.Task{
 	ObjectMeta: metav1.ObjectMeta{
-		Namespace: "namespace",
-		Name:      "task",
+		Name: "task",
 	},
-	Spec: v1alpha1.TaskSpec{},
+	Spec: v1alpha1.TaskSpec{
+		Steps: []corev1.Container{{
+			Name: "step1",
+		}},
+	},
 }
 
 var trs = []v1alpha1.TaskRun{{
@@ -107,78 +112,102 @@ func newTaskRun(tr v1alpha1.TaskRun) *v1alpha1.TaskRun {
 	}
 }
 
-var noneStartedState = []*PipelineRunTaskRun{{
-	Task:         task,
+var noneStartedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      nil,
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }, {
-	Task:         task,
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }}
-var oneStartedState = []*PipelineRunTaskRun{{
-	Task:         task,
+var oneStartedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeStarted(trs[0]),
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }, {
-	Task:         task,
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }}
-var oneFinishedState = []*PipelineRunTaskRun{{
-	Task:         task,
+var oneFinishedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeSucceeded(trs[0]),
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }, {
-	Task:         task,
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }}
-var oneFailedState = []*PipelineRunTaskRun{{
-	Task:         task,
+var oneFailedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeFailed(trs[0]),
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }, {
-	Task:         task,
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }}
-var firstFinishedState = []*PipelineRunTaskRun{{
-	Task:         task,
+var firstFinishedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeSucceeded(trs[0]),
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }, {
-	Task:         task,
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &v1alpha1.TaskSpec{},
+	},
 }}
-var allFinishedState = []*PipelineRunTaskRun{{
-	Task:         task,
+var allFinishedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeSucceeded(trs[0]),
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }, {
-	Task:         task,
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      makeSucceeded(trs[0]),
+	ResolvedTaskRun: &resources.ResolvedTaskRun{
+		TaskSpec: &task.Spec,
+	},
 }}
 
 func TestGetNextTask_NoneStarted(t *testing.T) {
 	tcs := []struct {
 		name         string
-		state        []*PipelineRunTaskRun
-		expectedTask *PipelineRunTaskRun
+		state        []*ResolvedPipelineRunTask
+		expectedTask *ResolvedPipelineRunTask
 	}{
 		{
 			name:         "no-tasks-started",
@@ -221,45 +250,97 @@ func TestGetNextTask_NoneStarted(t *testing.T) {
 	}
 }
 
-func TestGetPipelineState(t *testing.T) {
-	getTask := func(namespace, name string) (*v1alpha1.Task, error) {
-		return task, nil
+func TestResolvePipelineRun(t *testing.T) {
+	pr := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipeline",
+			},
+			// The Task "task" doesn't actually take any inputs or outputs, but validating
+			// that is not done as part of Run resolution
+			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
+				Name: "mytask1",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					Name: "input1",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "someresource",
+					},
+				}},
+			}, {
+				Name: "mytask2",
+				Outputs: []v1alpha1.TaskResourceBinding{{
+					Name: "output1",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "someresource",
+					},
+				}},
+			}},
+		},
 	}
-	getTaskRun := func(namespace, name string) (*v1alpha1.TaskRun, error) {
-		// We'll make it so that only the first Task has started running
-		if name == "pipelinerun-mytask1" {
-			return &trs[0], nil
-		}
-		return nil, errors.NewNotFound(v1alpha1.Resource("taskrun"), name)
+
+	r := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "someresource",
+		},
 	}
-	pipelineState, err := GetPipelineState(getTask, getTaskRun, p, "pipelinerun")
+
+	getTask := func(name string) (*v1alpha1.Task, error) { return task, nil }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return r, nil }
+
+	pipelineState, err := ResolvePipelineRun(getTask, getResource, p, pr)
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}
-	expectedState := []*PipelineRunTaskRun{{
-		Task:         task,
+	expectedState := []*ResolvedPipelineRunTask{{
 		PipelineTask: &pts[0],
 		TaskRunName:  "pipelinerun-mytask1",
-		TaskRun:      &trs[0],
+		TaskRun:      nil,
+		ResolvedTaskRun: &resources.ResolvedTaskRun{
+			TaskName: task.Name,
+			TaskSpec: &task.Spec,
+			Inputs: map[string]*v1alpha1.PipelineResource{
+				"input1": r,
+			},
+			Outputs: map[string]*v1alpha1.PipelineResource{},
+		},
 	}, {
-		Task:         task,
 		PipelineTask: &pts[1],
 		TaskRunName:  "pipelinerun-mytask2",
 		TaskRun:      nil,
+		ResolvedTaskRun: &resources.ResolvedTaskRun{
+			TaskName: task.Name,
+			TaskSpec: &task.Spec,
+			Inputs:   map[string]*v1alpha1.PipelineResource{},
+			Outputs: map[string]*v1alpha1.PipelineResource{
+				"output1": r,
+			},
+		},
 	}}
 	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
 		t.Fatalf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
 	}
 }
 
-func TestGetPipelineState_TaskDoesntExist(t *testing.T) {
-	getTask := func(namespace, name string) (*v1alpha1.Task, error) {
+func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
+	pr := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipeline",
+			},
+		},
+	}
+	getTask := func(name string) (*v1alpha1.Task, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("task"), name)
 	}
-	getTaskRun := func(namespace, name string) (*v1alpha1.TaskRun, error) {
-		return nil, nil
-	}
-	_, err := GetPipelineState(getTask, getTaskRun, p, "pipelinerun")
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
+
+	_, err := ResolvePipelineRun(getTask, getResource, p, pr)
 	if err == nil {
 		t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
 	}
@@ -268,10 +349,96 @@ func TestGetPipelineState_TaskDoesntExist(t *testing.T) {
 	}
 }
 
+func TestResolveTaskRuns_AllStarted(t *testing.T) {
+	state := []*ResolvedPipelineRunTask{{
+		TaskRunName: "pipelinerun-mytask1",
+	}, {
+		TaskRunName: "pipelinerun-mytask2",
+	}}
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
+		if name == "pipelinerun-mytask1" {
+			return &trs[0], nil
+		}
+		if name == "pipelinerun-mytask2" {
+			return &trs[1], nil
+		}
+		return nil, errors.NewNotFound(v1alpha1.Resource("taskrun"), name)
+	}
+	err := ResolveTaskRuns(getTaskRun, state)
+	if err != nil {
+		t.Fatalf("Didn't expect error resolving taskruns but got %v", err)
+	}
+	if state[0].TaskRun != &trs[0] {
+		t.Errorf("Expected first task to resolve to first taskrun but was %v", state[0].TaskRun)
+	}
+	if state[1].TaskRun != &trs[1] {
+		t.Errorf("Expected second task to resolve to second taskrun but was %v", state[1].TaskRun)
+	}
+}
+
+func TestResolveTaskRuns_SomeStarted(t *testing.T) {
+	state := []*ResolvedPipelineRunTask{{
+		TaskRunName: "pipelinerun-mytask1",
+	}, {
+		TaskRunName: "pipelinerun-mytask2",
+	}}
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
+		// only the first has started
+		if name == "pipelinerun-mytask1" {
+			return &trs[0], nil
+		}
+		return nil, errors.NewNotFound(v1alpha1.Resource("taskrun"), name)
+	}
+	err := ResolveTaskRuns(getTaskRun, state)
+	if err != nil {
+		t.Fatalf("Didn't expect error resolving taskruns but got %v", err)
+	}
+	if state[0].TaskRun != &trs[0] {
+		t.Errorf("Expected first task to resolve to first taskrun but was %v", state[0].TaskRun)
+	}
+	if state[1].TaskRun != nil {
+		t.Errorf("Expected second task to not resolve but was %v", state[1].TaskRun)
+	}
+}
+
+func TestResolveTaskRuns_NoneStarted(t *testing.T) {
+	state := []*ResolvedPipelineRunTask{{
+		TaskRunName: "pipelinerun-mytask1",
+	}, {
+		TaskRunName: "pipelinerun-mytask2",
+	}}
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
+		return nil, errors.NewNotFound(v1alpha1.Resource("taskrun"), name)
+	}
+	err := ResolveTaskRuns(getTaskRun, state)
+	if err != nil {
+		t.Fatalf("Didn't expect error resolving taskruns but got %v", err)
+	}
+	if state[0].TaskRun != nil {
+		t.Errorf("Expected first task to not resolve but was %v", state[0].TaskRun)
+	}
+	if state[1].TaskRun != nil {
+		t.Errorf("Expected second task to not resolve but was %v", state[1].TaskRun)
+	}
+}
+
+func TestResolveTaskRuns_Error(t *testing.T) {
+	state := []*ResolvedPipelineRunTask{{
+		TaskRunName: "pipelinerun-mytask1",
+	}}
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
+		return nil, fmt.Errorf("something has gone wrong")
+	}
+	err := ResolveTaskRuns(getTaskRun, state)
+	if err == nil {
+		t.Fatalf("Expected to get an error when unable to resolve task runs")
+	}
+}
+
 func TestGetPipelineConditionStatus(t *testing.T) {
 	tcs := []struct {
 		name           string
-		state          []*PipelineRunTaskRun
+		state          []*ResolvedPipelineRunTask
 		expectedStatus corev1.ConditionStatus
 	}{
 		{

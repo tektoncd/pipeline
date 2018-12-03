@@ -152,7 +152,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Name: "simpleTask",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "the-git",
 					},
@@ -213,7 +213,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResource{{
+					Resources: []v1alpha1.TaskResourceBinding{{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "the-git-with-branch",
 						},
@@ -264,7 +264,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResource{{
+					Resources: []v1alpha1.TaskResourceBinding{{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "the-git",
 						},
@@ -313,7 +313,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "simpleTask",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResource{{
+					Resources: []v1alpha1.TaskResourceBinding{{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "the-git-with-branch",
 						},
@@ -397,7 +397,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "build-from-repo",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResource{{
+					Resources: []v1alpha1.TaskResourceBinding{{
 						Name: "target-cluster",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "cluster3",
@@ -459,7 +459,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					Name: "build-from-repo",
 				},
 				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskRunResource{{
+					Resources: []v1alpha1.TaskResourceBinding{{
 						Name: "target-cluster",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "cluster2",

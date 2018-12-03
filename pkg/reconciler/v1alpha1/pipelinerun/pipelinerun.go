@@ -165,14 +165,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
-	pipelineState, err := resources.GetPipelineState(
-		func(namespace, name string) (*v1alpha1.Task, error) {
-			return c.taskLister.Tasks(namespace).Get(name)
-		},
-		func(namespace, name string) (*v1alpha1.TaskRun, error) {
-			return c.taskRunLister.TaskRuns(namespace).Get(name)
-		},
-		p, pr.Name,
+	pipelineState, err := resources.ResolvePipelineRun(
+		c.taskLister.Tasks(pr.Namespace).Get,
+		c.resourceLister.PipelineResources(pr.Namespace).Get,
+		p, pr,
 	)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -186,21 +182,26 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			})
 			return nil
 		}
-		return fmt.Errorf("error getting Tasks and/or TaskRuns for Pipeline %s: %s", p.Name, err)
+		return fmt.Errorf("error getting Tasks for Pipeline %s: %s", p.Name, err)
 	}
-	prtr := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
+	err = resources.ResolveTaskRuns(c.taskRunLister.TaskRuns(pr.Namespace).Get, pipelineState)
+	if err != nil {
+		return fmt.Errorf("error getting TaskRunss for Pipeline %s: %s", p.Name, err)
+	}
+
+	rprt := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
 
 	if err := getOrCreatePVC(pr, c.KubeClientSet); err != nil {
 		c.Logger.Infof("PipelineRun failed to create/get volume %s", pr.Name)
 		return fmt.Errorf("Failed to create/get persistent volume claim %s for task %q: %v", pr.Name, err, pr.Name)
 	}
 
-	if prtr != nil {
-		c.Logger.Infof("Creating a new TaskRun object %s", prtr.TaskRunName)
-		prtr.TaskRun, err = c.createTaskRun(c.Logger, prtr.Task, prtr.TaskRunName, pr, prtr.PipelineTask, serviceAccount)
+	if rprt != nil {
+		c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
+		rprt.TaskRun, err = c.createTaskRun(c.Logger, pr.Namespace, rprt.ResolvedTaskRun.TaskName, rprt.TaskRunName, pr, rprt.PipelineTask, serviceAccount)
 		if err != nil {
-			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", prtr.TaskRunName, err)
-			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", prtr.TaskRunName, prtr.PipelineTask.Name, pr.Name, err)
+			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
+			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
 		}
 	}
 
@@ -216,19 +217,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	return nil
 }
 
-func UpdateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.PipelineRunTaskRun) {
-	for _, prtr := range pipelineState {
-		if prtr.TaskRun != nil {
-			pr.Status.TaskRuns[prtr.TaskRun.Name] = prtr.TaskRun.Status
+func UpdateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask) {
+	for _, rprt := range pipelineState {
+		if rprt.TaskRun != nil {
+			pr.Status.TaskRuns[rprt.TaskRun.Name] = rprt.TaskRun.Status
 		}
 	}
 }
 
-func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, t *v1alpha1.Task, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, namespace, taskName, trName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            trName,
-			Namespace:       t.Namespace,
+			Namespace:       namespace,
 			OwnerReferences: pr.GetOwnerReference(),
 			Labels: map[string]string{
 				pipeline.GroupName + pipeline.PipelineLabelKey:    pr.Spec.PipelineRef.Name,
@@ -237,7 +238,7 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, t *v1alpha1.Task, 
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskRef: &v1alpha1.TaskRef{
-				Name: t.Name,
+				Name: taskName,
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: pt.Params,
@@ -247,7 +248,7 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, t *v1alpha1.Task, 
 	}
 	resources.WrapSteps(&tr.Spec, pr.Spec.PipelineTaskResources, pt)
 
-	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(t.Namespace).Create(tr)
+	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(namespace).Create(tr)
 }
 
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {

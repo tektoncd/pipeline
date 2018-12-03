@@ -26,7 +26,7 @@ import (
 )
 
 func TestResolveTaskRun(t *testing.T) {
-	inputs := []v1alpha1.TaskRunResource{{
+	inputs := []v1alpha1.TaskResourceBinding{{
 		Name: "repoToBuildFrom",
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "git-repo",
@@ -38,7 +38,7 @@ func TestResolveTaskRun(t *testing.T) {
 		},
 	}}
 
-	outputs := []v1alpha1.TaskRunResource{{
+	outputs := []v1alpha1.TaskResourceBinding{{
 		Name: "imageToBuild",
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "image",
@@ -136,7 +136,7 @@ func TestResolveTaskRun(t *testing.T) {
 }
 
 func TestResolveTaskRun_missingOutput(t *testing.T) {
-	outputs := []v1alpha1.TaskRunResource{{
+	outputs := []v1alpha1.TaskResourceBinding{{
 		Name: "repoToUpdate",
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "another-git-repo",
@@ -144,14 +144,14 @@ func TestResolveTaskRun_missingOutput(t *testing.T) {
 
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("nope") }
 
-	_, err := ResolveTaskRun(&v1alpha1.TaskSpec{}, "orchestrate", []v1alpha1.TaskRunResource{}, outputs, gr)
+	_, err := ResolveTaskRun(&v1alpha1.TaskSpec{}, "orchestrate", []v1alpha1.TaskResourceBinding{}, outputs, gr)
 	if err == nil {
 		t.Fatalf("Expected to get error because output resource couldn't be resolved")
 	}
 }
 
 func TestResolveTaskRun_missingInput(t *testing.T) {
-	inputs := []v1alpha1.TaskRunResource{{
+	inputs := []v1alpha1.TaskResourceBinding{{
 		Name: "repoToBuildFrom",
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "git-repo",
@@ -159,7 +159,7 @@ func TestResolveTaskRun_missingInput(t *testing.T) {
 
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("nope") }
 
-	_, err := ResolveTaskRun(&v1alpha1.TaskSpec{}, "orchestrate", inputs, []v1alpha1.TaskRunResource{}, gr)
+	_, err := ResolveTaskRun(&v1alpha1.TaskSpec{}, "orchestrate", inputs, []v1alpha1.TaskResourceBinding{}, gr)
 	if err == nil {
 		t.Fatalf("Expected to get error because output resource couldn't be resolved")
 	}
@@ -173,7 +173,7 @@ func TestResolveTaskRun_noResources(t *testing.T) {
 
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
 
-	rtr, err := ResolveTaskRun(taskSpec, "orchestrate", []v1alpha1.TaskRunResource{}, []v1alpha1.TaskRunResource{}, gr)
+	rtr, err := ResolveTaskRun(taskSpec, "orchestrate", []v1alpha1.TaskResourceBinding{}, []v1alpha1.TaskResourceBinding{}, gr)
 	if err != nil {
 		t.Fatalf("Did not expect error trying to resolve TaskRun: %s", err)
 	}
