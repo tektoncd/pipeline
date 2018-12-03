@@ -182,9 +182,20 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
-	rtr, err := resources.ResolveTaskRun(tr, c.taskLister.Tasks(tr.Namespace).Get, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	spec, taskName, err := resources.GetTaskSpec(&tr.Spec, tr.Name, c.taskLister.Tasks(tr.Namespace).Get)
 	if err != nil {
-		c.Logger.Error("Failed to resolve references for taskrun %s with error %v", tr.Name, err)
+		c.Logger.Error("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
+		tr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  ReasonFailedResolution,
+			Message: err.Error(),
+		})
+		return nil
+	}
+	rtr, err := resources.ResolveTaskRun(spec, taskName, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	if err != nil {
+		c.Logger.Error("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
@@ -195,7 +206,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	if err := ValidateTaskRunAndTask(tr.Spec.Inputs.Params, rtr); err != nil {
-		c.Logger.Error("Failed to validate taskrun %s with error %v", tr.Name, err)
+		c.Logger.Error("Failed to validate taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,

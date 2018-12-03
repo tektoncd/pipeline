@@ -26,257 +26,154 @@ import (
 )
 
 func TestResolveTaskRun(t *testing.T) {
-	inputs := v1alpha1.TaskRunInputs{
-		Resources: []v1alpha1.TaskRunResource{{
-			Name: "repoToBuildFrom",
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: "git-repo",
-			},
-		}, {
-			Name: "clusterToUse",
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: "k8s-cluster",
-			},
-		}},
-	}
-
-	outputs := v1alpha1.TaskRunOutputs{
-		Resources: []v1alpha1.TaskRunResource{{
-			Name: "imageToBuild",
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: "image",
-			},
-		}, {
-			Name: "gitRepoToUpdate",
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: "another-git-repo",
-			},
-		}},
-	}
-
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "orchestrate",
+	inputs := []v1alpha1.TaskRunResource{{
+		Name: "repoToBuildFrom",
+		ResourceRef: v1alpha1.PipelineResourceRef{
+			Name: "git-repo",
 		},
-		Spec: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
-				Name: "step1",
-			}},
-		},
-	}
-
-	tests := []struct {
-		name         string
-		taskRun      *v1alpha1.TaskRun
-		wantTaskName string
-	}{{
-		name: "using task ref",
-		taskRun: &v1alpha1.TaskRun{
-			Spec: v1alpha1.TaskRunSpec{
-				TaskRef: &v1alpha1.TaskRef{
-					Name: "orchestrate",
-				},
-				Inputs:  inputs,
-				Outputs: outputs,
-			}},
-		wantTaskName: "orchestrate",
 	}, {
-		name: "using embedded task spec",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "foo",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Steps: []corev1.Container{{
-						Name: "step1",
-					}},
-				},
-				Inputs:  inputs,
-				Outputs: outputs,
-			},
+		Name: "clusterToUse",
+		ResourceRef: v1alpha1.PipelineResourceRef{
+			Name: "k8s-cluster",
 		},
-		wantTaskName: "foo",
-	},
+	}}
+
+	outputs := []v1alpha1.TaskRunResource{{
+		Name: "imageToBuild",
+		ResourceRef: v1alpha1.PipelineResourceRef{
+			Name: "image",
+		},
+	}, {
+		Name: "gitRepoToUpdate",
+		ResourceRef: v1alpha1.PipelineResourceRef{
+			Name: "another-git-repo",
+		},
+	}}
+
+	taskName := "orchestrate"
+	taskSpec := &v1alpha1.TaskSpec{
+		Steps: []corev1.Container{{
+			Name: "step1",
+		}}}
+
+	resources := []*v1alpha1.PipelineResource{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "git-repo",
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "k8s-cluster",
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "image",
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "another-git-repo",
+		},
+	}}
+	resourceIndex := 0
+	gr := func(n string) (*v1alpha1.PipelineResource, error) {
+		r := resources[resourceIndex]
+		resourceIndex++
+		return r, nil
 	}
-	for _, ts := range tests {
-		t.Run(ts.name, func(t *testing.T) {
-			gt := func(n string) (*v1alpha1.Task, error) { return task, nil }
 
-			resources := []*v1alpha1.PipelineResource{{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "git-repo",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "k8s-cluster",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "image",
-				},
-			}, {
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "another-git-repo",
-				},
-			}}
-			resourceIndex := 0
-			gr := func(n string) (*v1alpha1.PipelineResource, error) {
-				r := resources[resourceIndex]
-				resourceIndex++
-				return r, nil
-			}
+	rtr, err := ResolveTaskRun(taskSpec, taskName, inputs, outputs, gr)
+	if err != nil {
+		t.Fatalf("Did not expect error trying to resolve TaskRun: %s", err)
+	}
 
-			rtr, err := ResolveTaskRun(ts.taskRun, gt, gr)
-			if err != nil {
-				t.Fatalf("Did not expect error trying to resolve TaskRun: %s", err)
-			}
+	if rtr.TaskName != "orchestrate" {
+		t.Errorf("Expected task name `orchestrate` Task but got: %v", rtr.TaskName)
+	}
+	if rtr.TaskSpec == nil || len(rtr.TaskSpec.Steps) != 1 || rtr.TaskSpec.Steps[0].Name != "step1" {
+		t.Errorf("Task not resolved, expected task's spec to be used but spec was: %v", rtr.TaskSpec)
+	}
 
-			if rtr.TaskName != ts.wantTaskName {
-				t.Errorf("Task not resolved, expected `orchestrate` Task but got: %v", rtr.TaskName)
+	if len(rtr.Inputs) == 2 {
+		r, ok := rtr.Inputs["repoToBuildFrom"]
+		if !ok {
+			t.Errorf("Expected value present in map for `repoToBuildFrom' but it was missing")
+		} else {
+			if r.Name != "git-repo" {
+				t.Errorf("Expected to use resource `git-repo` for `repoToBuildFrom` but used %s", r.Name)
 			}
-			if rtr.TaskSpec == nil || len(rtr.TaskSpec.Steps) != 1 || rtr.TaskSpec.Steps[0].Name != "step1" {
-				t.Errorf("Task not resolved, expected task's spec to be used but spec was: %v", rtr.TaskSpec)
+		}
+		r, ok = rtr.Inputs["clusterToUse"]
+		if !ok {
+			t.Errorf("Expected value present in map for `clusterToUse' but it was missing")
+		} else {
+			if r.Name != "k8s-cluster" {
+				t.Errorf("Expected to use resource `k8s-cluster` for `clusterToUse` but used %s", r.Name)
 			}
+		}
+	} else {
+		t.Errorf("Expected 2 resolved inputs but instead had: %v", rtr.Inputs)
+	}
 
-			if len(rtr.Inputs) == 2 {
-				r, ok := rtr.Inputs["repoToBuildFrom"]
-				if !ok {
-					t.Errorf("Expected value present in map for `repoToBuildFrom' but it was missing")
-				} else {
-					if r.Name != "git-repo" {
-						t.Errorf("Expected to use resource `git-repo` for `repoToBuildFrom` but used %s", r.Name)
-					}
-				}
-				r, ok = rtr.Inputs["clusterToUse"]
-				if !ok {
-					t.Errorf("Expected value present in map for `clusterToUse' but it was missing")
-				} else {
-					if r.Name != "k8s-cluster" {
-						t.Errorf("Expected to use resource `k8s-cluster` for `clusterToUse` but used %s", r.Name)
-					}
-				}
-			} else {
-				t.Errorf("Expected 2 resolved inputs but instead had: %v", rtr.Inputs)
+	if len(rtr.Outputs) == 2 {
+		r, ok := rtr.Outputs["imageToBuild"]
+		if !ok {
+			t.Errorf("Expected value present in map for `imageToBuild' but it was missing")
+		} else {
+			if r.Name != "image" {
+				t.Errorf("Expected to use resource `image` for `imageToBuild` but used %s", r.Name)
 			}
-
-			if len(rtr.Outputs) == 2 {
-				r, ok := rtr.Outputs["imageToBuild"]
-				if !ok {
-					t.Errorf("Expected value present in map for `imageToBuild' but it was missing")
-				} else {
-					if r.Name != "image" {
-						t.Errorf("Expected to use resource `image` for `imageToBuild` but used %s", r.Name)
-					}
-				}
-				r, ok = rtr.Outputs["gitRepoToUpdate"]
-				if !ok {
-					t.Errorf("Expected value present in map for `gitRepoToUpdate' but it was missing")
-				} else {
-					if r.Name != "another-git-repo" {
-						t.Errorf("Expected to use resource `another-git-repo` for `gitRepoToUpdate` but used %s", r.Name)
-					}
-				}
-			} else {
-				t.Errorf("Expected 2 resolved outputs but instead had: %v", rtr.Outputs)
+		}
+		r, ok = rtr.Outputs["gitRepoToUpdate"]
+		if !ok {
+			t.Errorf("Expected value present in map for `gitRepoToUpdate' but it was missing")
+		} else {
+			if r.Name != "another-git-repo" {
+				t.Errorf("Expected to use resource `another-git-repo` for `gitRepoToUpdate` but used %s", r.Name)
 			}
-
-		})
+		}
+	} else {
+		t.Errorf("Expected 2 resolved outputs but instead had: %v", rtr.Outputs)
 	}
 }
 
-func TestResolveTaskRun_missingTask(t *testing.T) {
-	tr := &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: "orchestrate",
-			},
-		},
-	}
-
-	gt := func(n string) (*v1alpha1.Task, error) { return nil, fmt.Errorf("nope") }
-	gr := func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
-
-	_, err := ResolveTaskRun(tr, gt, gr)
-	if err == nil {
-		t.Fatalf("Expected to get error because task couldn't be resolved")
-	}
-}
 func TestResolveTaskRun_missingOutput(t *testing.T) {
-	tr := &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: "orchestrate",
-			},
-			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResource{{
-					Name: "repoToUpdate",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "another-git-repo",
-					},
-				},
-				},
-			},
-		}}
+	outputs := []v1alpha1.TaskRunResource{{
+		Name: "repoToUpdate",
+		ResourceRef: v1alpha1.PipelineResourceRef{
+			Name: "another-git-repo",
+		}}}
 
-	gt := func(n string) (*v1alpha1.Task, error) { return &v1alpha1.Task{}, nil }
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("nope") }
 
-	_, err := ResolveTaskRun(tr, gt, gr)
+	_, err := ResolveTaskRun(&v1alpha1.TaskSpec{}, "orchestrate", []v1alpha1.TaskRunResource{}, outputs, gr)
 	if err == nil {
 		t.Fatalf("Expected to get error because output resource couldn't be resolved")
 	}
 }
 
 func TestResolveTaskRun_missingInput(t *testing.T) {
-	tr := &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: "orchestrate",
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{{
-					Name: "repoToBuildFrom",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "git-repo",
-					},
-				},
-				},
-			},
-		}}
+	inputs := []v1alpha1.TaskRunResource{{
+		Name: "repoToBuildFrom",
+		ResourceRef: v1alpha1.PipelineResourceRef{
+			Name: "git-repo",
+		}}}
 
-	gt := func(n string) (*v1alpha1.Task, error) { return &v1alpha1.Task{}, nil }
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("nope") }
 
-	_, err := ResolveTaskRun(tr, gt, gr)
+	_, err := ResolveTaskRun(&v1alpha1.TaskSpec{}, "orchestrate", inputs, []v1alpha1.TaskRunResource{}, gr)
 	if err == nil {
-		t.Fatalf("Expected to get error because input resource couldn't be resolved")
+		t.Fatalf("Expected to get error because output resource couldn't be resolved")
 	}
 }
 
 func TestResolveTaskRun_noResources(t *testing.T) {
-	tr := &v1alpha1.TaskRun{
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: "orchestrate",
-			},
-		},
-	}
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "orchestrate",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
-				Name: "step1",
-			}},
-		},
-	}
+	taskSpec := &v1alpha1.TaskSpec{
+		Steps: []corev1.Container{{
+			Name: "step1",
+		}}}
 
-	gt := func(n string) (*v1alpha1.Task, error) { return task, nil }
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
 
-	rtr, err := ResolveTaskRun(tr, gt, gr)
+	rtr, err := ResolveTaskRun(taskSpec, "orchestrate", []v1alpha1.TaskRunResource{}, []v1alpha1.TaskRunResource{}, gr)
 	if err != nil {
 		t.Fatalf("Did not expect error trying to resolve TaskRun: %s", err)
 	}
