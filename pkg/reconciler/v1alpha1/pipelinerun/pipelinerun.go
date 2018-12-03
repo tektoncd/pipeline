@@ -44,6 +44,9 @@ import (
 )
 
 const (
+	// ReasonCouldntGetPipeline indicates that the reason for the failure status is that the
+	// associated Pipeline couldn't be retrieved
+	ReasonCouldntGetPipeline = "CouldntGetPipeline"
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
 	ReasonCouldntGetTask = "CouldntGetTask"
@@ -153,23 +156,18 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
-	p, serviceAccount, verr := ValidatePipelineRun(
-		pr,
-		c.pipelineLister.Pipelines(pr.Namespace).Get,
-		c.taskLister.Tasks(pr.Namespace).Get,
-		c.resourceLister.PipelineResources(pr.Namespace).Get,
-	)
-	if verr != nil {
-		c.Logger.Error("Failed to validate pipelinerun %s with error %v", pr.Name, verr)
+	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
+	if err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  ReasonFailedValidation,
-			Message: verr.Error(),
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonCouldntGetPipeline,
+			Message: fmt.Sprintf("Pipeline %s can't be found:%s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
 		})
 		return nil
 	}
-
 	pipelineState, err := resources.ResolvePipelineRun(
 		c.taskLister.Tasks(pr.Namespace).Get,
 		c.resourceLister.PipelineResources(pr.Namespace).Get,
@@ -193,6 +191,23 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	if err != nil {
 		return fmt.Errorf("error getting TaskRunss for Pipeline %s: %s", p.Name, err)
 	}
+
+	err = ValidatePipelineRun(
+		pr, p,
+		c.taskLister.Tasks(pr.Namespace).Get,
+		c.resourceLister.PipelineResources(pr.Namespace).Get,
+	)
+	if err != nil {
+		c.Logger.Error("Failed to validate pipelinerun %s with error %v", pr.Name, err)
+		pr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  ReasonFailedValidation,
+			Message: err.Error(),
+		})
+		return nil
+	}
+	serviceAccount := pr.Spec.ServiceAccount
 
 	rprt := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
 

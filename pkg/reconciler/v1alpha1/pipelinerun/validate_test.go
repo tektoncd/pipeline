@@ -308,14 +308,6 @@ func Test_InvalidPipelineTask(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			getPipeline := func(name string) (*v1alpha1.Pipeline, error) {
-				for _, p := range ps {
-					if p.Name == name {
-						return p, nil
-					}
-				}
-				return nil, errors.NewNotFound(v1alpha1.Resource("pipeline"), name)
-			}
 			getTask := func(name string) (*v1alpha1.Task, error) {
 				for _, t := range ts {
 					if t.Name == name {
@@ -332,7 +324,7 @@ func Test_InvalidPipelineTask(t *testing.T) {
 				}
 				return nil, errors.NewNotFound(v1alpha1.Resource("pipelineResource"), name)
 			}
-			_, _, err := pipelinerun.ValidatePipelineRun(tc.pipelineRun, getPipeline, getTask, getResource)
+			err := pipelinerun.ValidatePipelineRun(tc.pipelineRun, tc.pipeline, getTask, getResource)
 			if err == nil {
 				t.Errorf("Expected error from validating invalid PipelineRun but was none")
 			}
