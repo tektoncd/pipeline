@@ -324,6 +324,44 @@ func TestResolvePipelineRun(t *testing.T) {
 	}
 }
 
+func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
+	pr := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipeline",
+			},
+			// We don't bind any Resources here
+		},
+	}
+	getTask := func(name string) (*v1alpha1.Task, error) {
+		return task, nil
+	}
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
+
+	pipelineState, err := ResolvePipelineRun(getTask, getResource, p, pr)
+	if err != nil {
+		t.Fatalf("Did not expect error when resolving PipelineRun without Resources: %v", err)
+	}
+	if len(pipelineState) != 2 {
+		t.Fatalf("Expected only 2 resolved PipelineTasks but got %d", len(pipelineState))
+	}
+	expectedTaskResources := &resources.ResolvedTaskResources{
+		TaskName: task.Name,
+		TaskSpec: &task.Spec,
+		Inputs:   map[string]*v1alpha1.PipelineResource{},
+		Outputs:  map[string]*v1alpha1.PipelineResource{},
+	}
+	if d := cmp.Diff(pipelineState[0].ResolvedTaskResources, expectedTaskResources, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
+		t.Fatalf("Expected resources where only Tasks were resolved but but actual differed: %s", d)
+	}
+	if d := cmp.Diff(pipelineState[1].ResolvedTaskResources, expectedTaskResources, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
+		t.Fatalf("Expected resources where only Tasks were resolved but but actual differed: %s", d)
+	}
+}
+
 func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	pr := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -335,6 +373,7 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 			},
 		},
 	}
+	// Return an error when the Task is retrieved, as if it didn't exist
 	getTask := func(name string) (*v1alpha1.Task, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("task"), name)
 	}

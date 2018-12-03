@@ -109,15 +109,15 @@ type ResolvedPipelineRunTask struct {
 // GetTaskRun is a function that will retrieve the TaskRun name.
 type GetTaskRun func(name string) (*v1alpha1.TaskRun, error)
 
-func getPipelineRunTask(pipelineTaskName string, pr *v1alpha1.PipelineRun) *v1alpha1.PipelineTaskResource {
+func getPipelineRunTaskResources(pipelineTaskName string, pr *v1alpha1.PipelineRun) ([]v1alpha1.TaskResourceBinding, []v1alpha1.TaskResourceBinding) {
 	for _, ptr := range pr.Spec.PipelineTaskResources {
 		if ptr.Name == pipelineTaskName {
-			return &ptr
+			return ptr.Inputs, ptr.Outputs
 		}
 	}
 	// It's not an error to not find corresponding resources, because a Task may not need resources.
 	// Validation should occur later once resolution is done.
-	return nil
+	return []v1alpha1.TaskResourceBinding{}, []v1alpha1.TaskResourceBinding{}
 }
 
 // ResolvePipelineRun retrieves all Tasks instances which the pipeline p references, getting
@@ -142,9 +142,9 @@ func ResolvePipelineRun(getTask resources.GetTask, getResource resources.GetReso
 			return nil, err
 		}
 
-		// Get all the resources that this task will be using
-		ptr := getPipelineRunTask(pt.Name, pr)
-		rtr, err := resources.ResolveTaskResources(&t.Spec, t.Name, ptr.Inputs, ptr.Outputs, getResource)
+		// Get all the resources that this task will be using, if any
+		inputs, outputs := getPipelineRunTaskResources(pt.Name, pr)
+		rtr, err := resources.ResolveTaskResources(&t.Spec, t.Name, inputs, outputs, getResource)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't resolve task resources for task %q: %v", t.Name, err)
 		}
