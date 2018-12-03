@@ -203,7 +203,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 	err = resources.ResolveTaskRuns(c.taskRunLister.TaskRuns(pr.Namespace).Get, pipelineState)
 	if err != nil {
-		return fmt.Errorf("error getting TaskRunss for Pipeline %s: %s", p.Name, err)
+		return fmt.Errorf("error getting TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
 
 	serviceAccount := pr.Spec.ServiceAccount
