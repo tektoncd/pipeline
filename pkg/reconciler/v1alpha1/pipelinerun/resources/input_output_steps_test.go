@@ -27,7 +27,7 @@ func Test_GetOutputSteps(t *testing.T) {
 	tcs := []struct {
 		name                       string
 		taskResourceBinding        []v1alpha1.TaskResourceBinding
-		expectedtaskOuputResources []v1alpha1.TaskRunResource
+		expectedtaskOuputResources []v1alpha1.TaskResourceBinding
 		pipelineTaskName           string
 	}{{
 		name: "output",
@@ -37,7 +37,7 @@ func Test_GetOutputSteps(t *testing.T) {
 				Name: "resource1",
 			},
 		}},
-		expectedtaskOuputResources: []v1alpha1.TaskRunResource{{
+		expectedtaskOuputResources: []v1alpha1.TaskResourceBinding{{
 			Name:        "test-output",
 			ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},
 			Paths:       []string{"/pvc/test-taskname/test-output"},
@@ -52,7 +52,7 @@ func Test_GetOutputSteps(t *testing.T) {
 			Name:        "test-output-2",
 			ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource2"},
 		}},
-		expectedtaskOuputResources: []v1alpha1.TaskRunResource{{
+		expectedtaskOuputResources: []v1alpha1.TaskResourceBinding{{
 			Name:        "test-output",
 			ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},
 			Paths:       []string{"/pvc/test-multiple-outputs/test-output"},
@@ -78,7 +78,7 @@ func Test_GetInputSteps(t *testing.T) {
 		name                       string
 		taskResourceBinding        []v1alpha1.TaskResourceBinding
 		pipelineTask               *v1alpha1.PipelineTask
-		expectedtaskInputResources []v1alpha1.TaskRunResource
+		expectedtaskInputResources []v1alpha1.TaskResourceBinding
 	}{
 		{
 			name: "task-with-a-constraint",
@@ -92,7 +92,7 @@ func Test_GetInputSteps(t *testing.T) {
 					ProvidedBy: []string{"prev-task-1"},
 				}},
 			},
-			expectedtaskInputResources: []v1alpha1.TaskRunResource{{
+			expectedtaskInputResources: []v1alpha1.TaskResourceBinding{{
 				ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},
 				Name:        "test-input",
 				Paths:       []string{"/pvc/prev-task-1/test-input"},
@@ -105,7 +105,7 @@ func Test_GetInputSteps(t *testing.T) {
 					Name: "resource1",
 				},
 			}},
-			expectedtaskInputResources: []v1alpha1.TaskRunResource{{
+			expectedtaskInputResources: []v1alpha1.TaskResourceBinding{{
 				ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},
 				Name:        "test-input",
 			}},
@@ -127,7 +127,7 @@ func Test_GetInputSteps(t *testing.T) {
 					ProvidedBy: []string{"prev-task-1", "prev-task-2"},
 				}},
 			},
-			expectedtaskInputResources: []v1alpha1.TaskRunResource{{
+			expectedtaskInputResources: []v1alpha1.TaskResourceBinding{{
 				ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},
 				Name:        "test-input",
 				Paths:       []string{"/pvc/prev-task-1/test-input", "/pvc/prev-task-2/test-input"},
@@ -172,7 +172,7 @@ func Test_WrapSteps(t *testing.T) {
 
 	resources.WrapSteps(taskRunSpec, pipelineResources, pt)
 
-	expectedtaskInputResources := []v1alpha1.TaskRunResource{{
+	expectedtaskInputResources := []v1alpha1.TaskResourceBinding{{
 		ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},
 		Name:        "test-input",
 		Paths:       []string{"/pvc/prev-task/test-input"},
@@ -180,7 +180,7 @@ func Test_WrapSteps(t *testing.T) {
 		ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},
 		Name:        "test-input-2",
 	}}
-	expectedtaskOuputResources := []v1alpha1.TaskRunResource{{
+	expectedtaskOuputResources := []v1alpha1.TaskResourceBinding{{
 		ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},
 		Name:        "test-output",
 		Paths:       []string{"/pvc/test-task/test-output"},

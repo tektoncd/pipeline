@@ -306,7 +306,7 @@ func TestReconcile(t *testing.T) {
 						Value: "foo",
 					},
 				},
-				Resources: []v1alpha1.TaskRunResource{
+				Resources: []v1alpha1.TaskResourceBinding{
 					{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name:       gitResource.Name,
@@ -317,7 +317,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name:       "image-resource",
 						APIVersion: "a1",
@@ -343,7 +343,7 @@ func TestReconcile(t *testing.T) {
 						Value: "foo",
 					},
 				},
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name:       gitResource.Name,
 						APIVersion: "a1",
@@ -363,7 +363,7 @@ func TestReconcile(t *testing.T) {
 				APIVersion: "a1",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name:       gitResource.Name,
 						APIVersion: "a1",
@@ -386,7 +386,7 @@ func TestReconcile(t *testing.T) {
 				Name: outputTask.Name,
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: gitResource.Name,
 					},
@@ -401,7 +401,7 @@ func TestReconcile(t *testing.T) {
 				}},
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: gitResource.Name,
 					},
@@ -423,7 +423,7 @@ func TestReconcile(t *testing.T) {
 						Value: "foo",
 					},
 				},
-				Resources: []v1alpha1.TaskRunResource{
+				Resources: []v1alpha1.TaskResourceBinding{
 					{
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name:       gitResource.Name,

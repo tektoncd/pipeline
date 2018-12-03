@@ -84,18 +84,16 @@ var mytaskruns = []v1alpha1.TaskRun{{
 func TestCanTaskRun(t *testing.T) {
 	tcs := []struct {
 		name             string
-		state            []*PipelineRunTaskRun
+		state            []*ResolvedPipelineRunTask
 		canSecondTaskRun bool
 	}{
 		{
 			name: "first-task-not-started",
-			state: []*PipelineRunTaskRun{{
-				Task:         mytask1,
+			state: []*ResolvedPipelineRunTask{{
 				PipelineTask: &mypipelinetasks[0],
 				TaskRunName:  "pipelinerun-mytask1",
 				TaskRun:      nil,
 			}, {
-				Task:         mytask2,
 				PipelineTask: &mypipelinetasks[1],
 				TaskRunName:  "pipelinerun-mytask2",
 				TaskRun:      nil,
@@ -104,13 +102,11 @@ func TestCanTaskRun(t *testing.T) {
 		},
 		{
 			name: "first-task-running",
-			state: []*PipelineRunTaskRun{{
-				Task:         mytask1,
+			state: []*ResolvedPipelineRunTask{{
 				PipelineTask: &mypipelinetasks[0],
 				TaskRunName:  "pipelinerun-mytask1",
 				TaskRun:      makeStarted(mytaskruns[0]),
 			}, {
-				Task:         mytask2,
 				PipelineTask: &mypipelinetasks[1],
 				TaskRunName:  "pipelinerun-mytask2",
 				TaskRun:      nil,
@@ -119,13 +115,11 @@ func TestCanTaskRun(t *testing.T) {
 		},
 		{
 			name: "first-task-failed",
-			state: []*PipelineRunTaskRun{{
-				Task:         mytask1,
+			state: []*ResolvedPipelineRunTask{{
 				PipelineTask: &mypipelinetasks[0],
 				TaskRunName:  "pipelinerun-mytask1",
 				TaskRun:      makeFailed(mytaskruns[0]),
 			}, {
-				Task:         mytask2,
 				PipelineTask: &mypipelinetasks[1],
 				TaskRunName:  "pipelinerun-mytask2",
 				TaskRun:      nil,
@@ -134,13 +128,11 @@ func TestCanTaskRun(t *testing.T) {
 		},
 		{
 			name: "first-task-finished",
-			state: []*PipelineRunTaskRun{{
-				Task:         mytask1,
+			state: []*ResolvedPipelineRunTask{{
 				PipelineTask: &mypipelinetasks[0],
 				TaskRunName:  "pipelinerun-mytask1",
 				TaskRun:      makeSucceeded(mytaskruns[0]),
 			}, {
-				Task:         mytask2,
 				PipelineTask: &mypipelinetasks[1],
 				TaskRunName:  "pipelinerun-mytask2",
 				TaskRun:      nil,

@@ -39,7 +39,7 @@ func TestPostBuildSteps(t *testing.T) {
 				APIVersion: "a1",
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					Name: "source-workspace",
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "source-git",
@@ -134,7 +134,7 @@ func TestPreBuildSteps(t *testing.T) {
 				APIVersion: "a1",
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskRunResource{{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					Name: "source-workspace",
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "source-git",

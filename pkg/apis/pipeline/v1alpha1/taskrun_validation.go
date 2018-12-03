@@ -83,7 +83,7 @@ func (o TaskRunOutputs) Validate(path string) *apis.FieldError {
 	return checkForPipelineResourceDuplicates(o.Resources, fmt.Sprintf("%s.Resources.Name", path))
 }
 
-func checkForPipelineResourceDuplicates(resources []TaskRunResource, path string) *apis.FieldError {
+func checkForPipelineResourceDuplicates(resources []TaskResourceBinding, path string) *apis.FieldError {
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
 		// We should provide only one binding for each resource required by the Task.

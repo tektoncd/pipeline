@@ -19,11 +19,13 @@ package resources
 import (
 	"fmt"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
 const (
@@ -41,7 +43,7 @@ const (
 
 // GetNextTask returns the next Task for which a TaskRun should be created,
 // or nil if no TaskRun should be created.
-func GetNextTask(prName string, state []*PipelineRunTaskRun, logger *zap.SugaredLogger) *PipelineRunTaskRun {
+func GetNextTask(prName string, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger) *ResolvedPipelineRunTask {
 	for _, prtr := range state {
 		if prtr.TaskRun != nil {
 			c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
@@ -66,7 +68,7 @@ func GetNextTask(prName string, state []*PipelineRunTaskRun, logger *zap.Sugared
 	return nil
 }
 
-func canTaskRun(pt *v1alpha1.PipelineTask, state []*PipelineRunTaskRun) bool {
+func canTaskRun(pt *v1alpha1.PipelineTask, state []*ResolvedPipelineRunTask) bool {
 	// Check if Task can run now. Go through all the input constraints
 	for _, rd := range pt.ResourceDependencies {
 		if len(rd.ProvidedBy) > 0 {
@@ -95,53 +97,81 @@ func canTaskRun(pt *v1alpha1.PipelineTask, state []*PipelineRunTaskRun) bool {
 	return true
 }
 
-// PipelineRunTaskRun contains a Task and its associated TaskRun, if it
+// ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
 // exists. TaskRun can be nil to represent there being no TaskRun.
-type PipelineRunTaskRun struct {
-	Task         *v1alpha1.Task
-	PipelineTask *v1alpha1.PipelineTask
-	TaskRunName  string
-	TaskRun      *v1alpha1.TaskRun
+type ResolvedPipelineRunTask struct {
+	TaskRunName     string
+	TaskRun         *v1alpha1.TaskRun
+	PipelineTask    *v1alpha1.PipelineTask
+	ResolvedTaskRun *resources.ResolvedTaskRun
 }
 
-// GetTask is a function that will retrieve the Task name from namespace.
-type GetTask func(namespace, name string) (*v1alpha1.Task, error)
+// GetTaskRun is a function that will retrieve the TaskRun name.
+type GetTaskRun func(name string) (*v1alpha1.TaskRun, error)
 
-// GetTaskRun is a function that will retrieve the TaskRun name from namespace.
-type GetTaskRun func(namespace, name string) (*v1alpha1.TaskRun, error)
+func getPipelineRunTask(pipelineTaskName string, pr *v1alpha1.PipelineRun) *v1alpha1.PipelineTaskResource {
+	for _, ptr := range pr.Spec.PipelineTaskResources {
+		if ptr.Name == pipelineTaskName {
+			return &ptr
+		}
+	}
+	// It's not an error to not find corresponding resources, because a Task may not need resources.
+	// Validation should occur later once resolution is done.
+	return nil
+}
 
-// GetPipelineState retrieves all Tasks instances which the pipeline p references, getting
-// instances from getTask. It will also check if there is a corresponding TaskRun for the
-// Task using getTaskRun (the name is built from pipelineRunName). If it is unable to
-// retrieve an instance of a referenced Task, it will return an error, otherwise it
-// returns a list of all of the Tasks retrieved, and their TaskRuns if applicable.
-func GetPipelineState(getTask GetTask, getTaskRun GetTaskRun, p *v1alpha1.Pipeline, pipelineRunName string) ([]*PipelineRunTaskRun, error) {
-	state := []*PipelineRunTaskRun{}
+// ResolvePipelineRun retrieves all Tasks instances which the pipeline p references, getting
+// instances from getTask. If it is unable to retrieve an instance of a referenced Task, it
+// will return an error, otherwise it returns a list of all of the Tasks retrieved.
+// It will retrieve the Resources needed for the TaskRun as well using getResource.
+func ResolvePipelineRun(getTask resources.GetTask, getResource resources.GetResource, p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) ([]*ResolvedPipelineRunTask, error) {
+	state := []*ResolvedPipelineRunTask{}
 	for i := range p.Spec.Tasks {
 		pt := p.Spec.Tasks[i]
-		t, err := getTask(p.Namespace, pt.TaskRef.Name)
+
+		rprt := ResolvedPipelineRunTask{
+			PipelineTask: &pt,
+			TaskRunName:  getTaskRunName(pr.Name, &pt),
+		}
+
+		// Find the Task that this task in the Pipeline is using
+		t, err := getTask(pt.TaskRef.Name)
 		if err != nil {
 			// If the Task can't be found, it means the PipelineRun is invalid. Return the same error
 			// type so it can be used by the caller.
 			return nil, err
 		}
-		prtr := PipelineRunTaskRun{
-			Task:         t,
-			PipelineTask: &pt,
+
+		// Get all the resources that this task will be using
+		ptr := getPipelineRunTask(pt.Name, pr)
+		rtr, err := resources.ResolveTaskRun(&t.Spec, t.Name, ptr.Inputs, ptr.Outputs, getResource)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't resolve task resources for task %q: %v", t.Name, err)
 		}
-		prtr.TaskRunName = getTaskRunName(pipelineRunName, &pt)
-		taskRun, err := getTaskRun(p.Namespace, prtr.TaskRunName)
+		rprt.ResolvedTaskRun = rtr
+
+		// Add this task to the state of the PipelineRun
+		state = append(state, &rprt)
+	}
+	return state, nil
+}
+
+// ResolveTaskRuns will go through all tasks in state and check if there are existing TaskRuns
+// for each of them by calling getTaskRun.
+func ResolveTaskRuns(getTaskRun GetTaskRun, state []*ResolvedPipelineRunTask) error {
+	for _, rprt := range state {
+		// Check if we have already started a TaskRun for this task
+		taskRun, err := getTaskRun(rprt.TaskRunName)
 		if err != nil {
 			// If the TaskRun isn't found, it just means it hasn't been run yet
 			if !errors.IsNotFound(err) {
-				return nil, fmt.Errorf("error retrieving TaskRun %s for Task %s: %s", prtr.TaskRunName, t.Name, err)
+				return fmt.Errorf("error retrieving TaskRun %s: %s", rprt.TaskRunName, err)
 			}
 		} else {
-			prtr.TaskRun = taskRun
+			rprt.TaskRun = taskRun
 		}
-		state = append(state, &prtr)
 	}
-	return state, nil
+	return nil
 }
 
 // getTaskRunName should return a uniquie name for a `TaskRun`.
@@ -151,32 +181,32 @@ func getTaskRunName(prName string, pt *v1alpha1.PipelineTask) string {
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
-func GetPipelineConditionStatus(prName string, state []*PipelineRunTaskRun, logger *zap.SugaredLogger) *duckv1alpha1.Condition {
+func GetPipelineConditionStatus(prName string, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger) *duckv1alpha1.Condition {
 	allFinished := true
-	for _, prtr := range state {
-		if prtr.TaskRun == nil {
-			logger.Infof("TaskRun %s doesn't have a Status, so PipelineRun %s isn't finished", prtr.TaskRunName, prName)
+	for _, rprt := range state {
+		if rprt.TaskRun == nil {
+			logger.Infof("TaskRun %s doesn't have a Status, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
 			allFinished = false
 			break
 		}
-		c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := rprt.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c == nil {
-			logger.Infof("TaskRun %s doens't have a condition, so PipelineRun %s isn't finished", prtr.TaskRunName, prName)
+			logger.Infof("TaskRun %s doens't have a condition, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
 			allFinished = false
 			break
 		}
 		// If any TaskRuns have failed, we should halt execution and consider the run failed
 		if c.Status == corev1.ConditionFalse {
-			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed", prtr.TaskRunName, prName)
+			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed", rprt.TaskRunName, prName)
 			return &duckv1alpha1.Condition{
 				Type:    duckv1alpha1.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  ReasonFailed,
-				Message: fmt.Sprintf("TaskRun %s for Task %s has failed", prtr.TaskRun.Name, prtr.Task.Name),
+				Message: fmt.Sprintf("TaskRun %s has failed", rprt.TaskRun.Name),
 			}
 		}
 		if c.Status != corev1.ConditionTrue {
-			logger.Infof("TaskRun %s is still running so PipelineRun %s is still running", prtr.TaskRunName, prName)
+			logger.Infof("TaskRun %s is still running so PipelineRun %s is still running", rprt.TaskRunName, prName)
 			allFinished = false
 		}
 	}

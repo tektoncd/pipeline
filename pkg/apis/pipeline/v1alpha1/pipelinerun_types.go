@@ -65,14 +65,6 @@ type PipelineTaskResource struct {
 	Outputs []TaskResourceBinding `json:"outputs"`
 }
 
-// TaskResourceBinding is used to bind a PipelineResource to a PipelineResource required for a Task as an input or an output.
-type TaskResourceBinding struct {
-	// Name is the name of the Task's input that this Resource should be used for.
-	Name string `json:"name"`
-	// The Resource that should be provided to the Task for the Resource it requires.
-	ResourceRef PipelineResourceRef `json:"resourceRef"`
-}
-
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
 type PipelineResourceRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
