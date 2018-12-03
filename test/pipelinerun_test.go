@@ -21,6 +21,7 @@ package test
 import (
 	"encoding/base64"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"strings"
 	"testing"
 	"time"
@@ -195,6 +196,101 @@ func TestPipelineRun(t *testing.T) {
 			}
 			logger.Infof("Successfully finished test %q", td.name)
 		})
+	}
+}
+
+func TestPipelineRunStaysFinished(t *testing.T) {
+	logger := getContextLogger(t.Name())
+	client, namespace := setup(t, logger)
+	index := 0
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, client, namespace) }, logger)
+	defer tearDown(t, logger, client, namespace)
+
+	logger.Infof("Setting up test resources for TestPipelineRunStaysFinished test in namespace %s", namespace)
+	if _, err := client.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
+		t.Fatalf("Failed to create secret `%s`: %s", getName(hwSecret, index), err)
+	}
+
+	if _, err := client.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(getPipelineRunServiceAccount(index, namespace)); err != nil {
+		t.Fatalf("Failed to create SA `%s`: %s", getName(hwSA, index), err)
+	}
+
+	if _, err := client.TaskClient.Create(&v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      getName(hwTaskName, index),
+		},
+		Spec: v1alpha1.TaskSpec{
+			// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
+			Steps: []corev1.Container{{
+				Name:  "say-hello",
+				Image: "ubuntu",
+				// Private docker image for Build CRD testing
+				Command: []string{"/bin/bash"},
+				Args:    []string{"-c", "echo hello"},
+			}},
+		},
+	}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", getName(hwTaskName, index), err)
+	}
+
+	if _, err := client.PipelineClient.Create(getHelloWorldPipelineWithSingularTask(index, namespace)); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", getName(hwPipelineName, index), err)
+	}
+
+	prName := fmt.Sprintf("%s%d", hwPipelineRunName, index)
+	if _, err := client.PipelineRunClient.Create(getHelloWorldPipelineRun(index, namespace)); err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(client, prName, pipelineRunTimeout, func(tr *v1alpha1.PipelineRun) (bool, error) {
+		condition := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if condition != nil {
+			if condition.IsTrue() {
+				return true, nil
+			} else if condition.IsFalse() {
+				return true, fmt.Errorf("Pipeline run %s has failed with status %v", prName, condition.Status)
+			}
+		}
+		return false, nil
+	}, "PipelineRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+
+	taskRunName := strings.Join([]string{prName, hwPipelineTaskName1}, "-")
+
+	logger.Infof("Deleting TaskRun and waiting for reconciliation")
+	if err := client.TaskRunClient.Delete(taskRunName, &metav1.DeleteOptions{}); err != nil {
+		t.Fatalf("Could not delete TaskRun %s: %s", taskRunName, err)
+	}
+
+	// TODO: I'm dead sure there's a better way to wait 30 seconds before checking stuff than wrapping it in a Poll, but...I don't know it.
+	// Verify that the PipelineRun doesn't leave the completed state
+	if err := wait.Poll(30 * time.Second, 2 * time.Minute, func() (bool, error) {
+		r, err := client.PipelineRunClient.Get(prName, metav1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+
+		c := r.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.IsUnknown() {
+				return true, fmt.Errorf("PipelineRun %s has restarted when it should have stayed completed", prName)
+			} else {
+				return true, nil
+			}
+		}
+		return false, nil
+	}); err != nil {
+		t.Fatalf("Error: %s", err)
+	}
+
+	// Verify that there is no TaskRun with the expected name.
+	_, err:= client.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
+	if err == nil {
+		t.Fatalf("Found unexpected TaskRun %s", taskRunName)
 	}
 }
 

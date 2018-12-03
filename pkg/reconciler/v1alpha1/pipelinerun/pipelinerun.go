@@ -139,6 +139,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	pr := original.DeepCopy()
 	pr.Status.InitializeConditions()
 
+	if isDone(&pr.Status) {
+		return nil
+	}
+
 	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
 		return err
@@ -301,4 +305,10 @@ func getOrCreatePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
 		return fmt.Errorf("failed to get claim Persistent Volume %q due to error: %s", pr.Name, err)
 	}
 	return nil
+}
+
+// isDone returns true if the PipelineRun's status indicates the build is done.
+func isDone(status *v1alpha1.PipelineRunStatus) bool {
+	cond := status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	return cond != nil && cond.Status != corev1.ConditionUnknown
 }
