@@ -105,7 +105,8 @@ type TaskRunStatus struct {
 	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
 
 	// In #107 should be updated to hold the location logs have been uploaded to
-	Results Results `json:"results"`
+	// +optional
+	Results *Results `json:"results,omitempty"`
 
 	// PodName is the name of the pod responsible for executing this task's steps.
 	PodName string `json:"podName"`
