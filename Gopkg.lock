@@ -849,6 +849,7 @@
     "github.com/knative/pkg/tracker",
     "github.com/knative/pkg/webhook",
     "github.com/knative/test-infra/scripts",
+    "github.com/knative/test-infra/tools/dep-collector",
     "go.opencensus.io/trace",
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest/observer",
