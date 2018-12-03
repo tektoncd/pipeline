@@ -488,7 +488,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		PipelineTask: &pipelineTask,
 		TaskRunName:  "test-pipeline-run-success-unit-test-1",
 		TaskRun:      taskrun,
-		ResolvedTaskRun: &taskrunresources.ResolvedTaskRun{
+		ResolvedTaskResources: &taskrunresources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}

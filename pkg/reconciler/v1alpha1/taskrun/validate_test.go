@@ -17,7 +17,7 @@ var validBuildSteps = []corev1.Container{{
 }}
 
 func TestValidateTaskRunAndTask(t *testing.T) {
-	rtr := &resources.ResolvedTaskRun{
+	rtr := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{
 			Steps: validBuildSteps,
 			Inputs: &v1alpha1.Inputs{
@@ -48,7 +48,7 @@ func TestValidateTaskRunAndTask(t *testing.T) {
 }
 
 func Test_ValidParams(t *testing.T) {
-	rtr := &resources.ResolvedTaskRun{
+	rtr := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{
 			Steps: validBuildSteps,
 			Inputs: &v1alpha1.Inputs{
@@ -73,7 +73,7 @@ func Test_ValidParams(t *testing.T) {
 }
 
 func Test_InvalidParams(t *testing.T) {
-	rtr := &resources.ResolvedTaskRun{
+	rtr := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{
 			Steps: validBuildSteps,
 			Inputs: &v1alpha1.Inputs{
@@ -110,10 +110,10 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 	}
 	tcs := []struct {
 		name string
-		rtr  *resources.ResolvedTaskRun
+		rtr  *resources.ResolvedTaskResources
 	}{{
 		name: "bad-inputkey",
-		rtr: &resources.ResolvedTaskRun{
+		rtr: &resources.ResolvedTaskResources{
 			TaskSpec: &v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
@@ -125,7 +125,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 		},
 	}, {
 		name: "bad-outputkey",
-		rtr: &resources.ResolvedTaskRun{
+		rtr: &resources.ResolvedTaskResources{
 			TaskSpec: &v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
@@ -137,7 +137,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 		},
 	}, {
 		name: "input-resource-mismatch",
-		rtr: &resources.ResolvedTaskRun{
+		rtr: &resources.ResolvedTaskResources{
 			TaskSpec: &v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
@@ -150,7 +150,7 @@ func Test_InvalidTaskRunTask(t *testing.T) {
 		},
 	}, {
 		name: "output-resource-mismatch",
-		rtr: &resources.ResolvedTaskRun{
+		rtr: &resources.ResolvedTaskResources{
 			TaskSpec: &v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{

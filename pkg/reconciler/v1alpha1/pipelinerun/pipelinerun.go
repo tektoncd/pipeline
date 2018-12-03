@@ -198,7 +198,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	if rprt != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-		rprt.TaskRun, err = c.createTaskRun(c.Logger, pr.Namespace, rprt.ResolvedTaskRun.TaskName, rprt.TaskRunName, pr, rprt.PipelineTask, serviceAccount)
+		rprt.TaskRun, err = c.createTaskRun(c.Logger, pr.Namespace, rprt.ResolvedTaskResources.TaskName, rprt.TaskRunName, pr, rprt.PipelineTask, serviceAccount)
 		if err != nil {
 			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)

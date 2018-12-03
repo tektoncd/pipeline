@@ -116,14 +116,14 @@ var noneStartedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      nil,
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }, {
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }}
@@ -131,14 +131,14 @@ var oneStartedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeStarted(trs[0]),
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }, {
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }}
@@ -146,14 +146,14 @@ var oneFinishedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeSucceeded(trs[0]),
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }, {
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }}
@@ -161,14 +161,14 @@ var oneFailedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeFailed(trs[0]),
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }, {
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }}
@@ -176,14 +176,14 @@ var firstFinishedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeSucceeded(trs[0]),
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }, {
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      nil,
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{},
 	},
 }}
@@ -191,14 +191,14 @@ var allFinishedState = []*ResolvedPipelineRunTask{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
 	TaskRun:      makeSucceeded(trs[0]),
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }, {
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      makeSucceeded(trs[0]),
-	ResolvedTaskRun: &resources.ResolvedTaskRun{
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
 }}
@@ -298,7 +298,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		PipelineTask: &pts[0],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      nil,
-		ResolvedTaskRun: &resources.ResolvedTaskRun{
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
 			TaskSpec: &task.Spec,
 			Inputs: map[string]*v1alpha1.PipelineResource{
@@ -310,7 +310,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		PipelineTask: &pts[1],
 		TaskRunName:  "pipelinerun-mytask2",
 		TaskRun:      nil,
-		ResolvedTaskRun: &resources.ResolvedTaskRun{
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
 			TaskSpec: &task.Spec,
 			Inputs:   map[string]*v1alpha1.PipelineResource{},
