@@ -3,9 +3,9 @@
 Tasks can declare input parameters that must be supplied to the task during a TaskRun.
 Some example use-cases of this include:
 
-* A task that needs to know what compilation flags to use when building an application.
-* A task that needs to know what to name a built artifact.
-* A task that supports several different strategies, and leaves the choice up to the other.
+- A task that needs to know what compilation flags to use when building an application.
+- A task that needs to know what to name a built artifact.
+- A task that supports several different strategies, and leaves the choice up to the other.
 
 ### Usage
 
@@ -23,12 +23,12 @@ metadata:
 spec:
   inputs:
     params:
-    - name: flags
-      value: string
+      - name: flags
+        value: string
   steps:
-  - name: build
-    image: my-builder
-    args: ['build', '--flags=${inputs.params.flags}']
+    - name: build
+      image: my-builder
+      args: ["build", "--flags=${inputs.params.flags}"]
 ```
 
 The following `TaskRun` supplies a value for `flags`:
@@ -43,6 +43,6 @@ spec:
     name: task-with-parameters
   inputs:
     params:
-    - name: 'flags'
-      value: 'foo=bar,baz=bat'
+      - name: "flags"
+        value: "foo=bar,baz=bat"
 ```

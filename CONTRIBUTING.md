@@ -8,12 +8,12 @@ To get started developing, see our [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 In this file you'll find info on:
 
-* [Principles](#principles)
-* [The pull request process](#pull-request-process) and [Prow commands](#prow-commands)
-* [Standards](#standards) around [commit messages](#commit-messages) and [code](#coding-standards)
-* [Finding something to work on](#finding-something-to-work-on)
-* [The roadmap](#roadmap)
-* [Contacting other contributors](#contact)
+- [Principles](#principles)
+- [The pull request process](#pull-request-process) and [Prow commands](#prow-commands)
+- [Standards](#standards) around [commit messages](#commit-messages) and [code](#coding-standards)
+- [Finding something to work on](#finding-something-to-work-on)
+- [The roadmap](#roadmap)
+- [Contacting other contributors](#contact)
 
 _See also [the contribution guidelines for Knative](https://github.com/knative/docs/blob/master/community/CONTRIBUTING.md)._
 
@@ -21,17 +21,17 @@ _See also [the contribution guidelines for Knative](https://github.com/knative/d
 
 When possbile, try to practice:
 
-* **Documentation driven development** - Before implementing anything, write docs to explain
+- **Documentation driven development** - Before implementing anything, write docs to explain
   how it will work
-* **Test driven development** - Before implementing anything, write tests to cover it
+- **Test driven development** - Before implementing anything, write tests to cover it
 
 Minimize the number of integration tests written and maximize the unit tests! Unit test
 coverage should increase or stay the same with every PR.
 
 This means that most PRs should include both:
 
-* Tests
-* Documentation explaining features being added, including updates to [DEVELOPMENT.md](./DEVELOPMENT.md) if required
+- Tests
+- Documentation explaining features being added, including updates to [DEVELOPMENT.md](./DEVELOPMENT.md) if required
 
 ## Pull Request Process
 
@@ -58,8 +58,8 @@ More on the Prow proces in general
 
 Before a PR can be merged, it must have both `/lgtm` AND `/approve`:
 
-* `/lgtm` can be added by anyone in [the knative org](https://github.com/orgs/knative/people)
-* `/approve` can be added only by [OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS)
+- `/lgtm` can be added by anyone in [the knative org](https://github.com/orgs/knative/people)
+- `/approve` can be added only by [OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS)
 
 [OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS) automatically get `/approve`
 but still will need an `/lgtm` to merge.
@@ -97,34 +97,34 @@ This section describes the standards we will try to maintain in this repo.
 All commit messages should follow [these best practices](https://chris.beams.io/posts/git-commit/),
 specifically:
 
-* Start with a subject line
-* Contain a body that explains _why_ you're making the change you're making
-* Reference an issue number one exists, closing it if applicable (with text such as
+- Start with a subject line
+- Contain a body that explains _why_ you're making the change you're making
+- Reference an issue number one exists, closing it if applicable (with text such as
   ["Fixes #245" or "Closes #111"](https://help.github.com/articles/closing-issues-using-keywords/))
 
 Aim for [2 paragraphs in the body](https://www.youtube.com/watch?v=PJjmw9TRB7s).
 Not sure what to put? Include:
 
-* What is the problem being solved?
-* Why is this the best approach?
-* What other approaches did you consider?
-* What side effects will this approach have?
-* What future work remains to be done?
+- What is the problem being solved?
+- Why is this the best approach?
+- What other approaches did you consider?
+- What side effects will this approach have?
+- What future work remains to be done?
 
 ### Coding standards
 
 The code in this repo should follow best practices, specifically:
 
-* [Go code review comments](https://github.com/golang/go/wiki/CodeReviewComments)
+- [Go code review comments](https://github.com/golang/go/wiki/CodeReviewComments)
 
 ## Finding something to work on
 
 Thanks so much for considering contributing to our project!! We hope very much you can find something
 interesting to work on:
 
-* To find issues that we particularly would like contributors to tackle, look for
+- To find issues that we particularly would like contributors to tackle, look for
   [issues with the "help wanted" label](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
-* Issues that are good for new folks will additionally be marked with
+- Issues that are good for new folks will additionally be marked with
   ["good first issue"](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 ### Assigning yourself an issue

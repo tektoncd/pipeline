@@ -1,18 +1,18 @@
 # How to use the Pipeline CRD
 
-* [How do I create a new Pipeline?](#creating-a-pipeline)
-* [How do I make a Task?](#creating-a-task)
-* [How do I make Resources?](#creating-resources)
-* [How do I run a Pipeline?](#running-a-pipeline)
-* [How do I run a Task on its own?](#running-a-task)
-* [How do I troubleshoot a PipelineRun?](#troubleshooting)
+- [How do I create a new Pipeline?](#creating-a-pipeline)
+- [How do I make a Task?](#creating-a-task)
+- [How do I make Resources?](#creating-resources)
+- [How do I run a Pipeline?](#running-a-pipeline)
+- [How do I run a Task on its own?](#running-a-task)
+- [How do I troubleshoot a PipelineRun?](#troubleshooting)
 
 ## Creating a Pipeline
 
 1. Create or copy [Task definitions](#creating-a-task) for the tasks you’d like to run.
    Some can be generic and reused (e.g. building with Kaniko) and others will be
    specific to your project (e.g. running your particular set of unit tests).
-3. Create a `Pipeline` which expresses the Tasks you would like to run and what
+2. Create a `Pipeline` which expresses the Tasks you would like to run and what
    [Resources](#creating-resources) the Tasks need.
    Use [`providedBy`](#providedBy) to express the order the `Tasks` should run in.
 
@@ -28,22 +28,22 @@ against that image).
 We express this ordering by adding `providedBy` on `Resources` that our `Tasks`
 need.
 
-* The (optional) `providedBy` key on an `input source` defines a set of previous
+- The (optional) `providedBy` key on an `input source` defines a set of previous
   task names.
-* When the `providedBy` key is specified on an input source, only the version of
+- When the `providedBy` key is specified on an input source, only the version of
   the resource that is provided by the defined list of tasks is used.
-* The `providedBy` allows for `Tasks` to fan in and fan out, and ordering can be
+- The `providedBy` allows for `Tasks` to fan in and fan out, and ordering can be
   expressed explicitly using this key since a task needing a resource from a another
   task would have to run after.
-* The name used in the `providedBy` is the name of `PipelineTask`
+- The name used in the `providedBy` is the name of `PipelineTask`
 
 ## Creating a Task
 
 To create a Task, you must:
 
-* Define [parameters](task-parameters.md) (i.e. string inputs) for your `Task`
-* Define the inputs and outputs of the `Task` as [`Resources`](./Concepts.md#pipelineresources)
-* Create a `Step` for each action you want to take in the `Task`
+- Define [parameters](task-parameters.md) (i.e. string inputs) for your `Task`
+- Define the inputs and outputs of the `Task` as [`Resources`](./Concepts.md#pipelineresources)
+- Create a `Step` for each action you want to take in the `Task`
 
 `Steps` are images which comply with the [container contract](#container-contract).
 
@@ -73,10 +73,10 @@ registry, resulting in the tasks running `gcloud` and `docker` respectively.
 ```yaml
 spec:
   steps:
-  - image: gcr.io/cloud-builders/gcloud
-    command: [gcloud]
-  - image: gcr.io/cloud-builders/docker
-    command: [docker]
+    - image: gcr.io/cloud-builders/gcloud
+      command: [gcloud]
+    - image: gcr.io/cloud-builders/docker
+      command: [docker]
 ```
 
 However, if the steps specified a custom `command`, that is what would be used.
@@ -84,32 +84,32 @@ However, if the steps specified a custom `command`, that is what would be used.
 ```yaml
 spec:
   steps:
-  - image: gcr.io/cloud-builders/gcloud
-    command:
-    - bash
-    - -c
-    - echo "Hello!"
+    - image: gcr.io/cloud-builders/gcloud
+      command:
+        - bash
+        - -c
+        - echo "Hello!"
 ```
 
 You can also provide `args` to the image's `command`:
 
 ```yaml
 steps:
-- image: ubuntu
-  command: ['/bin/bash']
-  args: ['-c', 'echo hello $FOO']
-  env:
-  - name: 'FOO'
-    value: 'world'
+  - image: ubuntu
+    command: ["/bin/bash"]
+    args: ["-c", "echo hello $FOO"]
+    env:
+      - name: "FOO"
+        value: "world"
 ```
 
 Pipeline Tasks are allowed to pass resources from previous tasks via `providedBy` field. This feature is implemented using Persistent Volume Claim under the hood but however has an implication that tasks cannot have any volume mounted under path `/pvc`.
 
 ### Conventions
 
-* `/workspace/<resource-name>`: [`PipelineResources` are made available in this mounted dir](#creating-resources)
-* `/builder/home`: This volume is exposed to steps via `$HOME`.
-* Credentials attached to the Build's service account may be exposed as Git or
+- `/workspace/<resource-name>`: [`PipelineResources` are made available in this mounted dir](#creating-resources)
+- `/builder/home`: This volume is exposed to steps via `$HOME`.
+- Credentials attached to the Build's service account may be exposed as Git or
   Docker credentials as outlined
   [in the auth docs](https://github.com/knative/docs/blob/master/build/auth.md#authentication).
 
@@ -143,9 +143,9 @@ On its own, a `Pipeline` declares what `Tasks` to run, and what order to run the
 need to specify the `PipelineResources` to use with it. One `Pipeline` may need to be run
 with different `PipelineResources` in cases such as:
 
-* When triggering the run of a `Pipeline` against a pull request, the triggering system must
+- When triggering the run of a `Pipeline` against a pull request, the triggering system must
   specify the commitish of a git `PipelineResource` to use
-* When invoking a `Pipeline` manually against one's own setup, one will need to ensure that
+- When invoking a `Pipeline` manually against one's own setup, one will need to ensure that
   one's own github fork (via the git `PipelineResource`), image registry (via the image
   `PipelineResource`) and kubernetes cluster (via the cluster `PipelineResource`).
 
@@ -153,22 +153,22 @@ Specify the `PipelineResources` in the PipelineRun using the `resources` section
 
 ```yaml
 resources:
-- name: push-kritis
-  inputs:
-    - key: workspace
-      resourceRef:
-        name: kritis-resources-git
-  outputs:
-    - key: builtImage
-      resourceRef:
-        name: kritis-resources-image
+  - name: push-kritis
+    inputs:
+      - key: workspace
+        resourceRef:
+          name: kritis-resources-git
+    outputs:
+      - key: builtImage
+        resourceRef:
+          name: kritis-resources-image
 ```
 
 This example section says:
 
-* For the `Task` in the `Pipeline` called `push-kritis`
-* For the input called `workspace`, use the existing resource called `kritis-resources-git`
-* For the output called `builtImage`, use the existing resource called `kritis-resources-image`
+- For the `Task` in the `Pipeline` called `push-kritis`
+- For the input called `workspace`, use the existing resource called `kritis-resources-git`
+- For the output called `builtImage`, use the existing resource called `kritis-resources-image`
 
 Creation of a `PipelineRun` will trigger the creation of [`TaskRuns`](#running-a-task)
 for each `Task` in your pipeline.
@@ -191,8 +191,8 @@ metadata:
 spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/pivotal-nader-ziada/gohelloworld
+    - name: url
+      value: https://github.com/pivotal-nader-ziada/gohelloworld
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: TaskRun
@@ -204,23 +204,24 @@ spec:
       type: manual
   inputs:
     resources:
-    - name: workspace
-      resourceRef:
-        name: go-example-git
-  taskSpec: 
+      - name: workspace
+        resourceRef:
+          name: go-example-git
+  taskSpec:
     inputs:
       resources:
-      - name: workspace
-        type: git    
+        - name: workspace
+          type: git
     steps:
-    - name: build-and-push
-      image: gcr.io/kaniko-project/executor
-      command:
-      - /kaniko/executor
-      args:
-      - --destination=gcr.io/my-project/gohelloworld
+      - name: build-and-push
+        image: gcr.io/kaniko-project/executor
+        command:
+          - /kaniko/executor
+        args:
+          - --destination=gcr.io/my-project/gohelloworld
 ```
-If the TaskSpec is provided, TaskRef is not allowed.  
+
+If the TaskSpec is provided, TaskRef is not allowed.
 
 See [the example TaskRun](../examples/runs/task-run.yaml).
 
@@ -228,9 +229,9 @@ See [the example TaskRun](../examples/runs/task-run.yaml).
 
 We current support these `PipelineResources`:
 
-* [Git resource](#git-resource)
-* [Image resource](#image-resource)
-* [Cluster resource](#cluster-resource)
+- [Git resource](#git-resource)
+- [Image resource](#image-resource)
+- [Cluster resource](#cluster-resource)
 
 When used as inputs, these resources will be made available in a mounted directory called `/workspace`
 at the path /workspace/<resource-name>`.
@@ -253,10 +254,10 @@ metadata:
 spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/wizzbangcorp/wizzbang.git
-  - name: revision
-    value: master
+    - name: url
+      value: https://github.com/wizzbangcorp/wizzbang.git
+    - name: revision
+      value: master
 ```
 
 Params that can be added are the following:
@@ -273,8 +274,8 @@ The `Url` parameter can be used to point at any git repository, for example to u
 spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/bobcatfish/wizzbang.git
+    - name: url
+      value: https://github.com/bobcatfish/wizzbang.git
 ```
 
 #### Using a branch
@@ -286,10 +287,10 @@ You can use this to create a git `PipelineResource` that points at a branch, for
 spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/wizzbangcorp/wizzbang.git
-  - name: revision
-    value: some_awesome_feature
+    - name: url
+      value: https://github.com/wizzbangcorp/wizzbang.git
+    - name: revision
+      value: some_awesome_feature
 ```
 
 To point at a pull request, you can use [the pull requests's branch](https://help.github.com/articles/checking-out-pull-requests-locally/):
@@ -298,10 +299,10 @@ To point at a pull request, you can use [the pull requests's branch](https://hel
 spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/wizzbangcorp/wizzbang.git
-  - name: revision
-    value: refs/pull/52525/head
+    - name: url
+      value: https://github.com/wizzbangcorp/wizzbang.git
+    - name: revision
+      value: refs/pull/52525/head
 ```
 
 ### Image Resource
@@ -326,8 +327,8 @@ metadata:
 spec:
   type: image
   params:
-  - name: url
-    value: gcr.io/staging-images/kritis
+    - name: url
+      value: gcr.io/staging-images/kritis
 ```
 
 ### Cluster Resource
@@ -342,13 +343,13 @@ placed in `/workspace/<your-cluster-name>/kubeconfig` on your task container
 
 The Cluster resource has the following parameters:
 
-* Name: The name of the Resource is also given to cluster, will be used in the kubeconfig and also as part of the path to the kubeconfig file
-* URL (required): Host url of the master node
-* Username (required): the user with access to the cluster
-* Password: to be used for clusters with basic auth
-* Token: to be used for authenication, if present will be used ahead of the password
-* Insecure: to indicate server should be accessed without verifying the TLS certificate.
-* CAData (required): holds PEM-encoded bytes (typically read from a root certificates bundle).
+- Name: The name of the Resource is also given to cluster, will be used in the kubeconfig and also as part of the path to the kubeconfig file
+- URL (required): Host url of the master node
+- Username (required): the user with access to the cluster
+- Password: to be used for clusters with basic auth
+- Token: to be used for authenication, if present will be used ahead of the password
+- Insecure: to indicate server should be accessed without verifying the TLS certificate.
+- CAData (required): holds PEM-encoded bytes (typically read from a root certificates bundle).
 
 Note: Since only one authentication technique is allowed per user, either a token or a password should be provided, if both are provided, the password will be ignored.
 
@@ -362,12 +363,12 @@ metadata:
 spec:
   type: cluster
   params:
-  - name: url
-    value: https://10.10.10.10    # url to the cluster master node
-  - name: cadata
-    value: LS0tLS1CRUdJTiBDRVJ.....
-  - name: token
-    value: ZXlKaGJHY2lPaU....
+    - name: url
+      value: https://10.10.10.10 # url to the cluster master node
+    - name: cadata
+      value: LS0tLS1CRUdJTiBDRVJ.....
+    - name: token
+      value: ZXlKaGJHY2lPaU....
 ```
 
 For added security, you can add the sensetive information in a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and populate the kubeconfig from them.
@@ -394,17 +395,17 @@ metadata:
 spec:
   type: cluster
   params:
-  - name: url
-    value: https://10.10.10.10
-  - name: username
-    value: admin
+    - name: url
+      value: https://10.10.10.10
+    - name: username
+      value: admin
   secrets:
-  - fieldName: token
-    secretKey: tokenKey
-    secretName:  target-cluster-secrets
-  - fieldName: cadata
-    secretKey: cadataKey
-    secretName:  target-cluster-secrets
+    - fieldName: token
+      secretKey: tokenKey
+      secretName: target-cluster-secrets
+    - fieldName: cadata
+      secretKey: cadataKey
+      secretName: target-cluster-secrets
 ```
 
 Example usage of the cluster resource in a task:
@@ -418,19 +419,19 @@ metadata:
 spec:
   inputs:
     resources:
-    - name: workspace
-      type: git
-    - name: dockerimage
-      type: image
-    - name: testcluster
-      type: cluster
+      - name: workspace
+        type: git
+      - name: dockerimage
+        type: image
+      - name: testcluster
+        type: cluster
   steps:
-  - name: deploy
-    image: image-wtih-kubectl
-    command: ['bash']
-    args:
-    - '-c'
-    - kubectl --kubeconfig /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
+    - name: deploy
+      image: image-wtih-kubectl
+      command: ["bash"]
+      args:
+        - "-c"
+        - kubectl --kubeconfig /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
 ```
 
 ## Troubleshooting
@@ -441,8 +442,8 @@ that object came from through labels, all the way down to the individual build.
 There are a common set of labels that are set on objects. For `TaskRun` objects,
 it will receive two labels:
 
-* `pipeline.knative.dev/pipeline`, which will be set to the name of the owning pipeline
-* `pipeline.knative.dev/pipelineRun`, which will be set to the name of the PipelineRun
+- `pipeline.knative.dev/pipeline`, which will be set to the name of the owning pipeline
+- `pipeline.knative.dev/pipelineRun`, which will be set to the name of the PipelineRun
 
 When the underlying `Build` is created, it will receive each of the `pipeline`
 and `pipelineRun` labels, as well as `pipeline.knative.dev/taskRun` which will

@@ -44,15 +44,15 @@ namespace with [default-cluster-admin.yaml](default-cluster-admin.yaml)).
 
 The [Tasks](../docs/Concepts.md#task) used by the simple examples are:
 
-* [build-task.yaml](build-task.yaml): Builds an image via [kaniko](https://github.com/GoogleContainerTools/kaniko) and pushes it to registry.
-* [deploy-task.yaml](deploy-task.yaml): This task deploys with `kubectl apply -f <filename>`
+- [build-task.yaml](build-task.yaml): Builds an image via [kaniko](https://github.com/GoogleContainerTools/kaniko) and pushes it to registry.
+- [deploy-task.yaml](deploy-task.yaml): This task deploys with `kubectl apply -f <filename>`
 
 #### Simple Runs
 
 The [runs](./runs/) directory contains an example [TaskRun](../docs/Concepts.md#taskrun) and an exmaple [PipelineRun](../docs/Concepts.md#pipelinerun):
 
-* [task-run.yaml](./runs/task-run.yaml) shows an example of how to manually run the `build-push` task
-* [pipeline-run.yaml](./runs/pipeline-run.yaml) invokes [the example pipeline](#example-pipeline)
+- [task-run.yaml](./runs/task-run.yaml) shows an example of how to manually run the `build-push` task
+- [pipeline-run.yaml](./runs/pipeline-run.yaml) invokes [the example pipeline](#example-pipeline)
 
 ### Pipeline with outputs
 
@@ -70,8 +70,8 @@ The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is provided as a
 
 The two [Tasks](../docs/Concepts.md#task) used by the output Pipeline are in [output-tasks.yaml](output-tasks.yaml):
 
-* `create-file`: Writes "some stuff" to a predefined path in the `workspace` `git` `PipelineResource`
-* `check-stuff-file-exists`: Reads a file from a predefined path in the `workspace` `git` `PipelineResource`
+- `create-file`: Writes "some stuff" to a predefined path in the `workspace` `git` `PipelineResource`
+- `check-stuff-file-exists`: Reads a file from a predefined path in the `workspace` `git` `PipelineResource`
 
 These work together when combined in a `Pipeline` because the git resource used as an
 [`Output`](../docs/Concepts.md#outputs) of the `create-file` `Task` can be an
