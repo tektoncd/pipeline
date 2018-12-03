@@ -352,11 +352,11 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		{
 			name:        "invalid-pipeline-shd-be-stop-reconciling",
 			pipelineRun: prs[0],
-			reason:      pipelinerun.ReasonFailedValidation,
+			reason:      pipelinerun.ReasonCouldntGetPipeline,
 		}, {
 			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
 			pipelineRun: prs[1],
-			reason:      pipelinerun.ReasonFailedValidation,
+			reason:      pipelinerun.ReasonCouldntGetTask,
 		},
 	}
 	for _, tc := range tcs {

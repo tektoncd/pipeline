@@ -22,9 +22,6 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// GetPipeline is used to retrieve existing instance of Pipeline called name
-type GetPipeline func(name string) (*v1alpha1.Pipeline, error)
-
 // GetResource is a function used to retrieve PipelineResources.
 type GetResource func(string) (*v1alpha1.PipelineResource, error)
 
@@ -32,17 +29,11 @@ type GetResource func(string) (*v1alpha1.PipelineResource, error)
 type GetTask func(name string) (*v1alpha1.Task, error)
 
 // ValidatePipelineRun validates all references in pipelinerun exist at runtime
-func ValidatePipelineRun(pr *v1alpha1.PipelineRun, getPipeline GetPipeline, getTask GetTask, getResource GetResource) (*v1alpha1.Pipeline, string, error) {
-	sa := pr.Spec.ServiceAccount
-	// verify pipeline reference and all corresponding tasks exist
-	p, err := getPipeline(pr.Spec.PipelineRef.Name)
-	if err != nil {
-		return nil, sa, fmt.Errorf("error listing pipeline ref %s: %v", pr.Spec.PipelineRef.Name, err)
-	}
+func ValidatePipelineRun(pr *v1alpha1.PipelineRun, p *v1alpha1.Pipeline, getTask GetTask, getResource GetResource) error {
 	if err := validatePipelineTask(getTask, getResource, p.Spec.Tasks, pr.Spec.PipelineTaskResources, pr.Namespace); err != nil {
-		return nil, sa, fmt.Errorf("error validating tasks in pipeline %s: %v", p.Name, err)
+		return fmt.Errorf("error validating tasks in pipeline %s: %v", p.Name, err)
 	}
-	return p, sa, nil
+	return nil
 }
 
 func validatePipelineTaskAndTask(getResource GetResource, ptask v1alpha1.PipelineTask, task *v1alpha1.Task, inputs []v1alpha1.TaskResourceBinding, outputs []v1alpha1.TaskResourceBinding, ns string) error {
