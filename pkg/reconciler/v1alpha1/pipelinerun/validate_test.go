@@ -1,13 +1,11 @@
 package pipelinerun_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/test"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -310,22 +308,33 @@ func Test_InvalidPipelineTask(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			d := test.Data{
-				PipelineRuns:      prs,
-				Pipelines:         ps,
-				Tasks:             ts,
-				PipelineResources: rr,
+			getPipeline := func(name string) (*v1alpha1.Pipeline, error) {
+				for _, p := range ps {
+					if p.Name == name {
+						return p, nil
+					}
+				}
+				return nil, errors.NewNotFound(v1alpha1.Resource("pipeline"), name)
 			}
-
-			c, _, _ := test.GetPipelineRunController(d)
-			err := c.Reconciler.Reconcile(context.Background(), "foo/"+tc.pipelineRun.Name)
-
-			if err != nil {
-				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
+			getTask := func(name string) (*v1alpha1.Task, error) {
+				for _, t := range ts {
+					if t.Name == name {
+						return t, nil
+					}
+				}
+				return nil, errors.NewNotFound(v1alpha1.Resource("task"), name)
 			}
-			condition := tc.pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-			if condition == nil || condition.Status != corev1.ConditionFalse {
-				t.Errorf("Expected status to be failed on invalid PipelineRun %s but was: %v", tc.pipeline.Name, condition)
+			getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+				for _, r := range rr {
+					if r.Name == name {
+						return r, nil
+					}
+				}
+				return nil, errors.NewNotFound(v1alpha1.Resource("pipelineResource"), name)
+			}
+			_, _, err := pipelinerun.ValidatePipelineRun(tc.pipelineRun, getPipeline, getTask, getResource)
+			if err == nil {
+				t.Errorf("Expected error from validating invalid PipelineRun but was none")
 			}
 		})
 	}
