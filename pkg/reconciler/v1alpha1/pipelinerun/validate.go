@@ -22,21 +22,30 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// validate all references in pipelinerun exist at runtime
-func validatePipelineRun(c *Reconciler, pr *v1alpha1.PipelineRun) (*v1alpha1.Pipeline, string, error) {
+// GetPipeline is used to retrieve existing instance of Pipeline called name
+type GetPipeline func(name string) (*v1alpha1.Pipeline, error)
+
+// GetResource is a function used to retrieve PipelineResources.
+type GetResource func(string) (*v1alpha1.PipelineResource, error)
+
+// GetTask is a function that will retrieve the task called name.
+type GetTask func(name string) (*v1alpha1.Task, error)
+
+// ValidatePipelineRun validates all references in pipelinerun exist at runtime
+func ValidatePipelineRun(pr *v1alpha1.PipelineRun, getPipeline GetPipeline, getTask GetTask, getResource GetResource) (*v1alpha1.Pipeline, string, error) {
 	sa := pr.Spec.ServiceAccount
 	// verify pipeline reference and all corresponding tasks exist
-	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
+	p, err := getPipeline(pr.Spec.PipelineRef.Name)
 	if err != nil {
 		return nil, sa, fmt.Errorf("error listing pipeline ref %s: %v", pr.Spec.PipelineRef.Name, err)
 	}
-	if err := validatePipelineTask(c, p.Spec.Tasks, pr.Spec.PipelineTaskResources, pr.Namespace); err != nil {
+	if err := validatePipelineTask(getTask, getResource, p.Spec.Tasks, pr.Spec.PipelineTaskResources, pr.Namespace); err != nil {
 		return nil, sa, fmt.Errorf("error validating tasks in pipeline %s: %v", p.Name, err)
 	}
 	return p, sa, nil
 }
 
-func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, task *v1alpha1.Task, inputs []v1alpha1.TaskResourceBinding, outputs []v1alpha1.TaskResourceBinding, ns string) error {
+func validatePipelineTaskAndTask(getResource GetResource, ptask v1alpha1.PipelineTask, task *v1alpha1.Task, inputs []v1alpha1.TaskResourceBinding, outputs []v1alpha1.TaskResourceBinding, ns string) error {
 	// a map from the name of the input resource to the type
 	inputMapping := map[string]v1alpha1.PipelineResourceType{}
 	// a map from the name of the output resource to the type
@@ -52,7 +61,7 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 		inputMapping[r.Name] = ""
 		// TODO(#213): if this is the empty string should it be an error? or maybe let the lookup fail?
 		if r.ResourceRef.Name != "" {
-			rr, err := c.resourceLister.PipelineResources(ns).Get(r.ResourceRef.Name)
+			rr, err := getResource(r.ResourceRef.Name)
 			if err != nil {
 				return fmt.Errorf("error listing input pipeline resource for task %s: %v ", ptask.Name, err)
 			}
@@ -64,7 +73,7 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 		outputMapping[r.Name] = ""
 		// TODO(#213): if this is the empty string should it be an error? or maybe let the lookup fail?
 		if r.ResourceRef.Name != "" {
-			rr, err := c.resourceLister.PipelineResources(ns).Get(r.ResourceRef.Name)
+			rr, err := getResource(r.ResourceRef.Name)
 			if err != nil {
 				return fmt.Errorf("error listing output pipeline resource for task %s: %v ", ptask.Name, err)
 			}
@@ -104,9 +113,9 @@ func validatePipelineTaskAndTask(c *Reconciler, ptask v1alpha1.PipelineTask, tas
 	return nil
 }
 
-func validatePipelineTask(c *Reconciler, tasks []v1alpha1.PipelineTask, resources []v1alpha1.PipelineTaskResource, ns string) error {
+func validatePipelineTask(getTask GetTask, getResource GetResource, tasks []v1alpha1.PipelineTask, resources []v1alpha1.PipelineTaskResource, ns string) error {
 	for _, pt := range tasks {
-		t, err := c.taskLister.Tasks(ns).Get(pt.TaskRef.Name)
+		t, err := getTask(pt.TaskRef.Name)
 		if err != nil {
 			return fmt.Errorf("couldn't get task %q: %s", pt.TaskRef.Name, err)
 		}
@@ -114,7 +123,7 @@ func validatePipelineTask(c *Reconciler, tasks []v1alpha1.PipelineTask, resource
 		found := false
 		for _, tr := range resources {
 			if tr.Name == pt.Name {
-				if err := validatePipelineTaskAndTask(c, pt, t, tr.Inputs, tr.Outputs, ns); err != nil {
+				if err := validatePipelineTaskAndTask(getResource, pt, t, tr.Inputs, tr.Outputs, ns); err != nil {
 					return fmt.Errorf("pipelineTask %q is invalid: %s", pt.Name, err)
 				}
 				found = true
