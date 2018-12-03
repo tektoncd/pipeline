@@ -28,6 +28,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 
@@ -187,28 +188,25 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		}
 		return fmt.Errorf("error getting Tasks for Pipeline %s: %s", p.Name, err)
 	}
+	for _, rprt := range pipelineState {
+		err := taskrun.ValidateResolvedTaskResources(rprt.PipelineTask.Params, rprt.ResolvedTaskResources)
+		if err != nil {
+			c.Logger.Error("Failed to validate pipelinerun %s with error %v", pr.Name, err)
+			pr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  ReasonFailedValidation,
+				Message: err.Error(),
+			})
+			return nil
+		}
+	}
 	err = resources.ResolveTaskRuns(c.taskRunLister.TaskRuns(pr.Namespace).Get, pipelineState)
 	if err != nil {
 		return fmt.Errorf("error getting TaskRunss for Pipeline %s: %s", p.Name, err)
 	}
 
-	err = ValidatePipelineRun(
-		pr, p,
-		c.taskLister.Tasks(pr.Namespace).Get,
-		c.resourceLister.PipelineResources(pr.Namespace).Get,
-	)
-	if err != nil {
-		c.Logger.Error("Failed to validate pipelinerun %s with error %v", pr.Name, err)
-		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  ReasonFailedValidation,
-			Message: err.Error(),
-		})
-		return nil
-	}
 	serviceAccount := pr.Spec.ServiceAccount
-
 	rprt := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
 
 	if err := getOrCreatePVC(pr, c.KubeClientSet); err != nil {

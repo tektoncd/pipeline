@@ -23,8 +23,8 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
-// ValidateTaskRunAndTask validates task inputs, params and output matches taskrun
-func ValidateTaskRunAndTask(params []v1alpha1.Param, rtr *resources.ResolvedTaskResources) error {
+// ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
+func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.ResolvedTaskResources) error {
 	// stores params to validate with task params
 	paramsMapping := map[string]string{}
 
@@ -65,6 +65,7 @@ func ValidateTaskRunAndTask(params []v1alpha1.Param, rtr *resources.ResolvedTask
 				}
 			}
 		}
+		// TODO: make sure there aren't missing???
 	}
 	return nil
 }

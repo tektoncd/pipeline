@@ -205,7 +205,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	if err := ValidateTaskRunAndTask(tr.Spec.Inputs.Params, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.Params, rtr); err != nil {
 		c.Logger.Error("Failed to validate taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
