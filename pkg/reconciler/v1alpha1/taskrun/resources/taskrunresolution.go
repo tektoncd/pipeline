@@ -38,32 +38,25 @@ type ResolvedTaskRun struct {
 // GetResource is a function used to retrieve PipelineResources.
 type GetResource func(string) (*v1alpha1.PipelineResource, error)
 
-// GetTask is a function used to retrieve Tasks.
-type GetTask func(string) (*v1alpha1.Task, error)
-
-// ResolveTaskRun looks up CRDs referenced by the TaskRun and returns an instance
-// of TaskRunResource with all of the relevant data populated. If referenced CRDs can't
-// be found, an error is returned.
-func ResolveTaskRun(tr *v1alpha1.TaskRun, getTask GetTask, gr GetResource) (*ResolvedTaskRun, error) {
-	var err error
+// ResolveTaskRun looks up PipelineResources referenced by inputs and outputs and returns
+// a structure that unites the resolved references nad the Task Spec. If referenced PipelineResources
+// can't be found, an error is returned.
+func ResolveTaskRun(ts *v1alpha1.TaskSpec, taskName string, inputs []v1alpha1.TaskRunResource, outputs []v1alpha1.TaskRunResource, gr GetResource) (*ResolvedTaskRun, error) {
 	rtr := ResolvedTaskRun{
-		Inputs:  map[string]*v1alpha1.PipelineResource{},
-		Outputs: map[string]*v1alpha1.PipelineResource{},
+		TaskName: taskName,
+		TaskSpec: ts,
+		Inputs:   map[string]*v1alpha1.PipelineResource{},
+		Outputs:  map[string]*v1alpha1.PipelineResource{},
 	}
 
-	rtr.TaskSpec, rtr.TaskName, err = getTaskSpec(tr, getTask)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't retrieve referenced Task %q: %s", tr.Spec.TaskRef.Name, err)
-	}
-
-	for _, r := range tr.Spec.Inputs.Resources {
+	for _, r := range inputs {
 		rr, err := gr(r.ResourceRef.Name)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't retrieve referenced input PipelineResource %q: %s", r.ResourceRef.Name, err)
 		}
 		rtr.Inputs[r.Name] = rr
 	}
-	for _, r := range tr.Spec.Outputs.Resources {
+	for _, r := range outputs {
 		rr, err := gr(r.ResourceRef.Name)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't retrieve referenced output PipelineResource %q: %s", r.ResourceRef.Name, err)
@@ -71,24 +64,4 @@ func ResolveTaskRun(tr *v1alpha1.TaskRun, getTask GetTask, gr GetResource) (*Res
 		rtr.Outputs[r.Name] = rr
 	}
 	return &rtr, nil
-}
-
-func getTaskSpec(taskRun *v1alpha1.TaskRun, getTask GetTask) (*v1alpha1.TaskSpec, string, error) {
-	taskSpec := &v1alpha1.TaskSpec{}
-	taskName := ""
-	if taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "" {
-		// Get related task for taskrun
-		t, err := getTask(taskRun.Spec.TaskRef.Name)
-		if err != nil {
-			return nil, taskName, fmt.Errorf("error when listing tasks for taskRun %s %v", taskRun.Name, err)
-		}
-		taskSpec = &t.Spec
-		taskName = t.Name
-	} else if taskRun.Spec.TaskSpec != nil {
-		taskSpec = taskRun.Spec.TaskSpec
-		taskName = taskRun.Name
-	} else {
-		return taskSpec, taskName, fmt.Errorf("TaskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
-	}
-	return taskSpec, taskName, nil
 }
