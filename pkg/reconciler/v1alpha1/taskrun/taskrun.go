@@ -193,7 +193,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		})
 		return nil
 	}
-	rtr, err := resources.ResolveTaskRun(spec, taskName, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	rtr, err := resources.ResolveTaskResources(spec, taskName, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Error("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{

@@ -24,7 +24,7 @@ import (
 )
 
 // ValidateTaskRunAndTask validates task inputs, params and output matches taskrun
-func ValidateTaskRunAndTask(params []v1alpha1.Param, rtr *resources.ResolvedTaskRun) error {
+func ValidateTaskRunAndTask(params []v1alpha1.Param, rtr *resources.ResolvedTaskResources) error {
 	// stores params to validate with task params
 	paramsMapping := map[string]string{}
 

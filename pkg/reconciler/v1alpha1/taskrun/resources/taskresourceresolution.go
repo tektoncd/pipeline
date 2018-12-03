@@ -22,9 +22,9 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// ResolvedTaskRun contains all the data that is needed to execute
+// ResolvedTaskResources contains all the data that is needed to execute
 // the TaskRun: the TaskRun, it's Task and the PipelineResources it needs.
-type ResolvedTaskRun struct {
+type ResolvedTaskResources struct {
 	TaskName string
 	TaskSpec *v1alpha1.TaskSpec
 	// Inputs is a map from the name of the input required by the Task
@@ -38,11 +38,11 @@ type ResolvedTaskRun struct {
 // GetResource is a function used to retrieve PipelineResources.
 type GetResource func(string) (*v1alpha1.PipelineResource, error)
 
-// ResolveTaskRun looks up PipelineResources referenced by inputs and outputs and returns
+// ResolveTaskResources looks up PipelineResources referenced by inputs and outputs and returns
 // a structure that unites the resolved references nad the Task Spec. If referenced PipelineResources
 // can't be found, an error is returned.
-func ResolveTaskRun(ts *v1alpha1.TaskSpec, taskName string, inputs []v1alpha1.TaskResourceBinding, outputs []v1alpha1.TaskResourceBinding, gr GetResource) (*ResolvedTaskRun, error) {
-	rtr := ResolvedTaskRun{
+func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, inputs []v1alpha1.TaskResourceBinding, outputs []v1alpha1.TaskResourceBinding, gr GetResource) (*ResolvedTaskResources, error) {
+	rtr := ResolvedTaskResources{
 		TaskName: taskName,
 		TaskSpec: ts,
 		Inputs:   map[string]*v1alpha1.PipelineResource{},

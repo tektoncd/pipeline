@@ -100,10 +100,10 @@ func canTaskRun(pt *v1alpha1.PipelineTask, state []*ResolvedPipelineRunTask) boo
 // ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
 // exists. TaskRun can be nil to represent there being no TaskRun.
 type ResolvedPipelineRunTask struct {
-	TaskRunName     string
-	TaskRun         *v1alpha1.TaskRun
-	PipelineTask    *v1alpha1.PipelineTask
-	ResolvedTaskRun *resources.ResolvedTaskRun
+	TaskRunName           string
+	TaskRun               *v1alpha1.TaskRun
+	PipelineTask          *v1alpha1.PipelineTask
+	ResolvedTaskResources *resources.ResolvedTaskResources
 }
 
 // GetTaskRun is a function that will retrieve the TaskRun name.
@@ -144,11 +144,11 @@ func ResolvePipelineRun(getTask resources.GetTask, getResource resources.GetReso
 
 		// Get all the resources that this task will be using
 		ptr := getPipelineRunTask(pt.Name, pr)
-		rtr, err := resources.ResolveTaskRun(&t.Spec, t.Name, ptr.Inputs, ptr.Outputs, getResource)
+		rtr, err := resources.ResolveTaskResources(&t.Spec, t.Name, ptr.Inputs, ptr.Outputs, getResource)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't resolve task resources for task %q: %v", t.Name, err)
 		}
-		rprt.ResolvedTaskRun = rtr
+		rprt.ResolvedTaskResources = rtr
 
 		// Add this task to the state of the PipelineRun
 		state = append(state, &rprt)
