@@ -9,21 +9,22 @@
 
 ## Creating a Pipeline
 
-1. Create or copy [Task definitions](#creating-a-task) for the tasks you’d like to run.
-   Some can be generic and reused (e.g. building with Kaniko) and others will be
-   specific to your project (e.g. running your particular set of unit tests).
+1. Create or copy [Task definitions](#creating-a-task) for the tasks you’d like
+   to run. Some can be generic and reused (e.g. building with Kaniko) and others
+   will be specific to your project (e.g. running your particular set of unit
+   tests).
 2. Create a `Pipeline` which expresses the Tasks you would like to run and what
-   [Resources](#creating-resources) the Tasks need.
-   Use [`providedBy`](#providedBy) to express the order the `Tasks` should run in.
+   [Resources](#creating-resources) the Tasks need. Use
+   [`providedBy`](#providedBy) to express the order the `Tasks` should run in.
 
 See [the example Pipeline](../examples/pipeline.yaml).
 
 ### ProvidedBy
 
-When you need to execute `Tasks` in a particular order, it will likely be because they
-are operating over the same `Resources` (e.g. your unit test task must run first against
-your git repo, then you build an image from that repo, then you run integration tests
-against that image).
+When you need to execute `Tasks` in a particular order, it will likely be
+because they are operating over the same `Resources` (e.g. your unit test task
+must run first against your git repo, then you build an image from that repo,
+then you run integration tests against that image).
 
 We express this ordering by adding `providedBy` on `Resources` that our `Tasks`
 need.
@@ -33,8 +34,8 @@ need.
 - When the `providedBy` key is specified on an input source, only the version of
   the resource that is provided by the defined list of tasks is used.
 - The `providedBy` allows for `Tasks` to fan in and fan out, and ordering can be
-  expressed explicitly using this key since a task needing a resource from a another
-  task would have to run after.
+  expressed explicitly using this key since a task needing a resource from a
+  another task would have to run after.
 - The name used in the `providedBy` is the name of `PipelineTask`
 
 ## Creating a Task
@@ -42,15 +43,17 @@ need.
 To create a Task, you must:
 
 - Define [parameters](task-parameters.md) (i.e. string inputs) for your `Task`
-- Define the inputs and outputs of the `Task` as [`Resources`](./Concepts.md#pipelineresources)
+- Define the inputs and outputs of the `Task` as
+  [`Resources`](./Concepts.md#pipelineresources)
 - Create a `Step` for each action you want to take in the `Task`
 
-`Steps` are images which comply with the [container contract](#container-contract).
+`Steps` are images which comply with the
+[container contract](#container-contract).
 
 ### Container Contract
 
-Each container image used as a step in a [`Task`](#task) must comply with a specific
-contract.
+Each container image used as a step in a [`Task`](#task) must comply with a
+specific contract.
 
 When containers are run in a `Task`, the `entrypoint` of the container will be
 overwritten with a custom binary that redirects the logs to a separate location
@@ -66,9 +69,10 @@ The simplest way to accomplish this is to add a `.docker/config.json` at
 `$HOME/.docker/config.json`, which will then be used by the controller when
 performing the lookup
 
-For example, in the following Task with the images, `gcr.io/cloud-builders/gcloud`
-and `gcr.io/cloud-builders/docker`, the entrypoint would be resolved from the
-registry, resulting in the tasks running `gcloud` and `docker` respectively.
+For example, in the following Task with the images,
+`gcr.io/cloud-builders/gcloud` and `gcr.io/cloud-builders/docker`, the
+entrypoint would be resolved from the registry, resulting in the tasks running
+`gcloud` and `docker` respectively.
 
 ```yaml
 spec:
@@ -103,11 +107,15 @@ steps:
         value: "world"
 ```
 
-Pipeline Tasks are allowed to pass resources from previous tasks via `providedBy` field. This feature is implemented using Persistent Volume Claim under the hood but however has an implication that tasks cannot have any volume mounted under path `/pvc`.
+Pipeline Tasks are allowed to pass resources from previous tasks via
+`providedBy` field. This feature is implemented using Persistent Volume Claim
+under the hood but however has an implication that tasks cannot have any volume
+mounted under path `/pvc`.
 
 ### Conventions
 
-- `/workspace/<resource-name>`: [`PipelineResources` are made available in this mounted dir](#creating-resources)
+- `/workspace/<resource-name>`:
+  [`PipelineResources` are made available in this mounted dir](#creating-resources)
 - `/builder/home`: This volume is exposed to steps via `$HOME`.
 - Credentials attached to the Build's service account may be exposed as Git or
   Docker credentials as outlined
@@ -138,18 +146,20 @@ In order to run a Pipeline, you will need to provide:
 1. A Pipeline to run (see [creating a Pipeline](#creating-a-pipeline))
 2. The `PipelineResources` to use with this Pipeline.
 
-On its own, a `Pipeline` declares what `Tasks` to run, and what order to run them in
-(implied by [`providedBy`](#providedby)). When running a `Pipeline`, you will
-need to specify the `PipelineResources` to use with it. One `Pipeline` may need to be run
-with different `PipelineResources` in cases such as:
+On its own, a `Pipeline` declares what `Tasks` to run, and what order to run
+them in (implied by [`providedBy`](#providedby)). When running a `Pipeline`, you
+will need to specify the `PipelineResources` to use with it. One `Pipeline` may
+need to be run with different `PipelineResources` in cases such as:
 
-- When triggering the run of a `Pipeline` against a pull request, the triggering system must
-  specify the commitish of a git `PipelineResource` to use
-- When invoking a `Pipeline` manually against one's own setup, one will need to ensure that
-  one's own github fork (via the git `PipelineResource`), image registry (via the image
-  `PipelineResource`) and kubernetes cluster (via the cluster `PipelineResource`).
+- When triggering the run of a `Pipeline` against a pull request, the triggering
+  system must specify the commitish of a git `PipelineResource` to use
+- When invoking a `Pipeline` manually against one's own setup, one will need to
+  ensure that one's own github fork (via the git `PipelineResource`), image
+  registry (via the image `PipelineResource`) and kubernetes cluster (via the
+  cluster `PipelineResource`).
 
-Specify the `PipelineResources` in the PipelineRun using the `resources` section, for example:
+Specify the `PipelineResources` in the PipelineRun using the `resources`
+section, for example:
 
 ```yaml
 resources:
@@ -167,11 +177,13 @@ resources:
 This example section says:
 
 - For the `Task` in the `Pipeline` called `push-kritis`
-- For the input called `workspace`, use the existing resource called `kritis-resources-git`
-- For the output called `builtImage`, use the existing resource called `kritis-resources-image`
+- For the input called `workspace`, use the existing resource called
+  `kritis-resources-git`
+- For the output called `builtImage`, use the existing resource called
+  `kritis-resources-image`
 
-Creation of a `PipelineRun` will trigger the creation of [`TaskRuns`](#running-a-task)
-for each `Task` in your pipeline.
+Creation of a `PipelineRun` will trigger the creation of
+[`TaskRuns`](#running-a-task) for each `Task` in your pipeline.
 
 See [the example PipelineRun](../examples/runs/pipeline-run.yaml).
 
@@ -179,9 +191,10 @@ See [the example PipelineRun](../examples/runs/pipeline-run.yaml).
 
 1. To run a `Task`, create a new `TaskRun` which defines all inputs, outputs
    that the `Task` needs to run.
-2. The `TaskRun` will also serve as a record of the history of the invocations of the
-   `Task`.
-3. Another way of running a Task is embedding the TaskSpec in the taskRun yaml as shown in the following example
+2. The `TaskRun` will also serve as a record of the history of the invocations
+   of the `Task`.
+3. Another way of running a Task is embedding the TaskSpec in the taskRun yaml
+   as shown in the following example
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -233,8 +246,8 @@ We current support these `PipelineResources`:
 - [Image resource](#image-resource)
 - [Cluster resource](#cluster-resource)
 
-When used as inputs, these resources will be made available in a mounted directory called `/workspace`
-at the path /workspace/<resource-name>`.
+When used as inputs, these resources will be made available in a mounted
+directory called `/workspace` at the path /workspace/<resource-name>`.
 
 ### Git Resource
 
@@ -262,13 +275,18 @@ spec:
 
 Params that can be added are the following:
 
-1. `url`: represents the location of the git repository, you can use this to change the repo, e.g. [to use a fork](#using-a-fork)
-1. `revision`: Git [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions) (branch, tag, commit SHA or ref) to clone.
-   You can use this to control what commit [or branch](#using-a-branch) is used. _If no revision is specified, the resource will default to `latest` from `master`._
+1. `url`: represents the location of the git repository, you can use this to
+   change the repo, e.g. [to use a fork](#using-a-fork)
+1. `revision`: Git
+   [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions)
+   (branch, tag, commit SHA or ref) to clone. You can use this to control what
+   commit [or branch](#using-a-branch) is used. _If no revision is specified,
+   the resource will default to `latest` from `master`._
 
 #### Using a fork
 
-The `Url` parameter can be used to point at any git repository, for example to use a GitHub fork at master:
+The `Url` parameter can be used to point at any git repository, for example to
+use a GitHub fork at master:
 
 ```yaml
 spec:
@@ -280,8 +298,10 @@ spec:
 
 #### Using a branch
 
-The `revision` can be any [git commit-ish (revision)](https://git-scm.com/docs/gitrevisions#_specifying_revisions).
-You can use this to create a git `PipelineResource` that points at a branch, for example:
+The `revision` can be any
+[git commit-ish (revision)](https://git-scm.com/docs/gitrevisions#_specifying_revisions).
+You can use this to create a git `PipelineResource` that points at a branch, for
+example:
 
 ```yaml
 spec:
@@ -293,7 +313,8 @@ spec:
       value: some_awesome_feature
 ```
 
-To point at a pull request, you can use [the pull requests's branch](https://help.github.com/articles/checking-out-pull-requests-locally/):
+To point at a pull request, you can use
+[the pull requests's branch](https://help.github.com/articles/checking-out-pull-requests-locally/):
 
 ```yaml
 spec:
@@ -307,14 +328,19 @@ spec:
 
 ### Image Resource
 
-An Image resource represents an image that lives in a remote repository. It is usually used as [a `Task` `output`](concepts.md#task) for
-`Tasks` that build images. This allows the same `Tasks` to be used to generically push to any registry.
+An Image resource represents an image that lives in a remote repository. It is
+usually used as [a `Task` `output`](concepts.md#task) for `Tasks` that build
+images. This allows the same `Tasks` to be used to generically push to any
+registry.
 
 Params that can be added are the following:
 
-1. `url`: The complete path to the image, including the registry and the image tag
-2. `digest`: The [image digest](https://success.docker.com/article/images-tagging-vs-digests) which uniquely identifies a
-   particular build of an image with a particular tag.
+1. `url`: The complete path to the image, including the registry and the image
+   tag
+2. `digest`: The
+   [image digest](https://success.docker.com/article/images-tagging-vs-digests)
+   which uniquely identifies a particular build of an image with a particular
+   tag.
 
 For example:
 
@@ -333,25 +359,33 @@ spec:
 
 ### Cluster Resource
 
-Cluster Resource represents a Kubernetes cluster other than the current cluster the pipleine
-CRD is running on. A common use case for this resource is to deploy your application/function
-on different clusters.
+Cluster Resource represents a Kubernetes cluster other than the current cluster
+the pipleine CRD is running on. A common use case for this resource is to deploy
+your application/function on different clusters.
 
-The resource will use the provided parameters to create a [kubeconfig](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/) file
-that can be used by other steps in the pipeline task to access the target cluster. The kubeconfig will be
-placed in `/workspace/<your-cluster-name>/kubeconfig` on your task container
+The resource will use the provided parameters to create a
+[kubeconfig](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+file that can be used by other steps in the pipeline task to access the target
+cluster. The kubeconfig will be placed in
+`/workspace/<your-cluster-name>/kubeconfig` on your task container
 
 The Cluster resource has the following parameters:
 
-- Name: The name of the Resource is also given to cluster, will be used in the kubeconfig and also as part of the path to the kubeconfig file
+- Name: The name of the Resource is also given to cluster, will be used in the
+  kubeconfig and also as part of the path to the kubeconfig file
 - URL (required): Host url of the master node
 - Username (required): the user with access to the cluster
 - Password: to be used for clusters with basic auth
-- Token: to be used for authenication, if present will be used ahead of the password
-- Insecure: to indicate server should be accessed without verifying the TLS certificate.
-- CAData (required): holds PEM-encoded bytes (typically read from a root certificates bundle).
+- Token: to be used for authenication, if present will be used ahead of the
+  password
+- Insecure: to indicate server should be accessed without verifying the TLS
+  certificate.
+- CAData (required): holds PEM-encoded bytes (typically read from a root
+  certificates bundle).
 
-Note: Since only one authentication technique is allowed per user, either a token or a password should be provided, if both are provided, the password will be ignored.
+Note: Since only one authentication technique is allowed per user, either a
+token or a password should be provided, if both are provided, the password will
+be ignored.
 
 The following example shows the syntax and structure of a Cluster Resource:
 
@@ -371,7 +405,9 @@ spec:
       value: ZXlKaGJHY2lPaU....
 ```
 
-For added security, you can add the sensetive information in a Kubernetes [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and populate the kubeconfig from them.
+For added security, you can add the sensetive information in a Kubernetes
+[Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and populate
+the kubeconfig from them.
 
 For example, create a secret like the following example:
 
@@ -431,7 +467,9 @@ spec:
       command: ["bash"]
       args:
         - "-c"
-        - kubectl --kubeconfig /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
+        - kubectl --kubeconfig
+          /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context
+          ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
 ```
 
 ## Troubleshooting
@@ -442,8 +480,10 @@ that object came from through labels, all the way down to the individual build.
 There are a common set of labels that are set on objects. For `TaskRun` objects,
 it will receive two labels:
 
-- `pipeline.knative.dev/pipeline`, which will be set to the name of the owning pipeline
-- `pipeline.knative.dev/pipelineRun`, which will be set to the name of the PipelineRun
+- `pipeline.knative.dev/pipeline`, which will be set to the name of the owning
+  pipeline
+- `pipeline.knative.dev/pipelineRun`, which will be set to the name of the
+  PipelineRun
 
 When the underlying `Build` is created, it will receive each of the `pipeline`
 and `pipelineRun` labels, as well as `pipeline.knative.dev/taskRun` which will
