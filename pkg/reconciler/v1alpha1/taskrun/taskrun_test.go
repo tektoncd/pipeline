@@ -772,7 +772,7 @@ func TestReconcile(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, clients := test.GetTaskRunController(d)
+			c, _, clients, _ := test.GetTaskRunController(d)
 			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
@@ -888,7 +888,7 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, clients := test.GetTaskRunController(d)
+			c, _, clients, _ := test.GetTaskRunController(d)
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
 			// When a TaskRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
@@ -932,7 +932,7 @@ func TestReconcileBuildFetchError(t *testing.T) {
 		Tasks: []*v1alpha1.Task{simpleTask},
 	}
 
-	c, _, clients := test.GetTaskRunController(d)
+	c, _, clients, _ := test.GetTaskRunController(d)
 
 	reactor := func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		if action.GetVerb() == "get" && action.GetResource().Resource == "builds" {
@@ -984,7 +984,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		Builds: []*buildv1alpha1.Build{build},
 	}
 
-	c, _, clients := test.GetTaskRunController(d)
+	c, _, clients, _ := test.GetTaskRunController(d)
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)

@@ -257,7 +257,7 @@ func TestReconcile(t *testing.T) {
 		PipelineResources: rs,
 	}
 
-	c, _, clients := test.GetPipelineRunController(d)
+	c, _, clients, informers := test.GetPipelineRunController(d)
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
 	if err != nil {
 		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
@@ -356,6 +356,43 @@ func TestReconcile(t *testing.T) {
 	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1"]; exists == false {
 		t.Errorf("Expected PipelineRun status to include TaskRun status")
 	}
+
+	if err := clients.Pipeline.Pipeline().TaskRuns("foo").Delete("test-pipeline-run-success-unit-test-1", &metav1.DeleteOptions{GracePeriodSeconds:new(int64)}); err != nil {
+		t.Fatalf("Failed to delete TaskRun: %s", err)
+	}
+
+	reconciledRun.Status.SetCondition(&duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  resources.ReasonSucceeded,
+		Message: "All Tasks have completed executing",
+	})
+
+	if _, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Update(reconciledRun); err != nil {
+		t.Fatalf("Error updating PipelineRun: %s", err)
+	}
+
+	informers.PipelineRun.Informer().GetIndexer().Add(reconciledRun)
+
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success"); err != nil {
+		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
+	}
+
+	// Check that the PipelineRun was not changed by reconciliation
+	twiceReconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// This PipelineRun should still be complete and the status should reflect that
+	if twiceReconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun status to be complete, but was %v", twiceReconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+
+	// Verify that there is no TaskRun with the expected name.
+	if _, err:= clients.Pipeline.Pipeline().TaskRuns("foo").Get("test-pipeline-run-success-unit-test-1", metav1.GetOptions{}); err == nil {
+		t.Errorf("Found unexpected TaskRun test-pipeline-run-success-unit-test-1")
+	}
 }
 
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
@@ -439,7 +476,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, _ := test.GetPipelineRunController(d)
+			c, _, _, _ := test.GetPipelineRunController(d)
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
 			// When a PipelineRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
@@ -480,7 +517,7 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs, _ := test.GetPipelineRunController(test.Data{})
+			c, logs, _, _ := test.GetPipelineRunController(test.Data{})
 			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
 			// No reason to keep reconciling something that doesnt or can't exist
 			if err != nil {
