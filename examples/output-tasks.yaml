@@ -2,7 +2,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
   name: create-file
-  namespace: default
 spec:
   inputs:
     resources:
@@ -28,7 +27,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
   name: check-stuff-file-exists
-  namespace: default
 spec:
   inputs:
     resources:

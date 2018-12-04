@@ -2,7 +2,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: output-pipeline
-  namespace: default
 spec:
   tasks:
   - name: first-create-file          # 1. create file
