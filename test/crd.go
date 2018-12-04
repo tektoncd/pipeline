@@ -84,38 +84,13 @@ func getHelloWorldValidationPod(namespace, volumeClaimName string) *corev1.Pod {
 }
 
 func getHelloWorldTask(namespace string, args []string) *v1alpha1.Task {
-	return &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      hwTaskName,
-		},
-		Spec: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
-				Name:    hwContainerName,
-				Image:   "busybox",
-				Command: args,
-			}},
-		},
-	}
+	return Task(hwTaskName, namespace,
+		TaskSpec(Step(hwContainerName, "busybox", Command(args...))),
+	)
 }
 
 func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
-	return &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      hwTaskRunName,
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: hwTaskName,
-			},
-			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
-			},
-		},
-	}
+	return TaskRun(hwTaskRunName, namespace, TaskRunSpec(hwTaskName))
 }
 
 func getBuildOutputFromVolume(logger *logging.BaseLogger, c *clients, namespace, testStr string) (string, error) {
