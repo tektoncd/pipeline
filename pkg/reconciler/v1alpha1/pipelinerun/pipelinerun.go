@@ -309,6 +309,5 @@ func getOrCreatePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
 
 // isDone returns true if the PipelineRun's status indicates the build is done.
 func isDone(status *v1alpha1.PipelineRunStatus) bool {
-	cond := status.GetCondition(duckv1alpha1.ConditionSucceeded)
-	return cond != nil && cond.Status != corev1.ConditionUnknown
+	return !status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
 }

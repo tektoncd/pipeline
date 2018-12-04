@@ -143,7 +143,7 @@ func seedTestData(d Data) (Clients, Informers) {
 
 // GetTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients) {
+func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients, Informers) {
 	c, i := seedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
@@ -160,12 +160,12 @@ func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Cli
 		i.ClusterTask,
 		i.Build,
 		i.PipelineResource,
-	), logs, c
+	), logs, c, i
 }
 
 // GetPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients) {
+func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients, Informers) {
 	c, i := seedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	return pipelinerun.NewController(
@@ -180,5 +180,5 @@ func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs,
 		i.ClusterTask,
 		i.TaskRun,
 		i.PipelineResource,
-	), logs, c
+	), logs, c, i
 }
