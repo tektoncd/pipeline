@@ -416,7 +416,12 @@ func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, ts *
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the BuildSpec and modifies it freely
 func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
-	bs.ServiceAccountName = tr.Spec.ServiceAccount
+	// Pass service account name from taskrun to build
+	// if task specifies service account name override with taskrun SA
+	if tr.Spec.ServiceAccount != "" {
+		bs.ServiceAccountName = tr.Spec.ServiceAccount
+	}
+
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
 	err := entrypoint.RedirectSteps(bs.Steps)
@@ -449,10 +454,6 @@ func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvc
 			},
 		},
 	})
-
-	// Pass service account name from taskrun to build
-	// if task specifies service account name override with taskrun SA
-	b.Spec.ServiceAccountName = tr.Spec.ServiceAccount
 
 	return b, nil
 }
