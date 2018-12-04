@@ -71,6 +71,25 @@ func TestReconcile(t *testing.T) {
 						Name: "some-repo",
 					},
 				}},
+			}, {
+				Name: "unit-test-cluster-task",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
+				}},
+				Outputs: []v1alpha1.TaskResourceBinding{{
+					Name: "image-to-use",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-image",
+					},
+				}, {
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
+				}},
 			}},
 			ServiceAccount: "test-sa",
 		},
@@ -101,6 +120,22 @@ func TestReconcile(t *testing.T) {
 					Name:       "workspace",
 					ProvidedBy: []string{"unit-test-1"},
 				}},
+			}, {
+				Name: "unit-test-cluster-task",
+				TaskRef: v1alpha1.TaskRef{
+					Name: "unit-test-cluster-task",
+					Kind: "ClusterTask",
+				},
+				Params: []v1alpha1.Param{{
+					Name:  "foo",
+					Value: "somethingfun",
+				}, {
+					Name:  "bar",
+					Value: "somethingmorefun",
+				}, {
+					Name:  "templatedparam",
+					Value: "${inputs.workspace.revision}",
+				}},
 			}},
 		},
 	}}
@@ -108,6 +143,48 @@ func TestReconcile(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "unit-test-task",
 			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: "git",
+				}},
+				Params: []v1alpha1.TaskParam{{
+					Name:        "foo",
+					Description: "foo",
+				}, {
+					Name:        "bar",
+					Description: "bar",
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "image-to-use",
+					Type: "image",
+				}, {
+					Name: "workspace",
+					Type: "git",
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-followup-task",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: "git",
+				}},
+			},
+		},
+	}}
+	clusterTasks := []*v1alpha1.ClusterTask{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "unit-test-cluster-task",
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
@@ -176,6 +253,7 @@ func TestReconcile(t *testing.T) {
 		PipelineRuns:      prs,
 		Pipelines:         ps,
 		Tasks:             ts,
+		ClusterTasks:      clusterTasks,
 		PipelineResources: rs,
 	}
 

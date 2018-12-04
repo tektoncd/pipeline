@@ -90,11 +90,12 @@ type Reconciler struct {
 	*reconciler.Base
 
 	// listers index properties about resources
-	taskRunLister  listers.TaskRunLister
-	taskLister     listers.TaskLister
-	resourceLister listers.PipelineResourceLister
-	tracker        tracker.Interface
-	configStore    configStore
+	taskRunLister     listers.TaskRunLister
+	taskLister        listers.TaskLister
+	clusterTaskLister listers.ClusterTaskLister
+	resourceLister    listers.PipelineResourceLister
+	tracker           tracker.Interface
+	configStore       configStore
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -105,15 +106,17 @@ func NewController(
 	opt reconciler.Options,
 	taskRunInformer informers.TaskRunInformer,
 	taskInformer informers.TaskInformer,
+	clusterTaskInformer informers.ClusterTaskInformer,
 	buildInformer buildinformers.BuildInformer,
 	resourceInformer informers.PipelineResourceInformer,
 ) *controller.Impl {
 
 	c := &Reconciler{
-		Base:           reconciler.NewBase(opt, taskRunAgentName),
-		taskRunLister:  taskRunInformer.Lister(),
-		taskLister:     taskInformer.Lister(),
-		resourceLister: resourceInformer.Lister(),
+		Base:              reconciler.NewBase(opt, taskRunAgentName),
+		taskRunLister:     taskRunInformer.Lister(),
+		taskLister:        taskInformer.Lister(),
+		clusterTaskLister: clusterTaskInformer.Lister(),
+		resourceLister:    resourceInformer.Lister(),
 	}
 	impl := controller.NewImpl(c, c.Logger, taskRunControllerName, reconciler.MustNewStatsReporter(taskRunControllerName, c.Logger))
 
@@ -181,8 +184,31 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return err
 }
 
+func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) resources.GetTask {
+	var gtFunc resources.GetTask
+	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
+		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
+			t, err := c.clusterTaskLister.Get(name)
+			if err != nil {
+				return nil, err
+			}
+			return t, nil
+		}
+	} else {
+		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
+			t, err := c.taskLister.Tasks(tr.Namespace).Get(name)
+			if err != nil {
+				return nil, err
+			}
+			return t, nil
+		}
+	}
+	return gtFunc
+}
+
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
-	spec, taskName, err := resources.GetTaskSpec(&tr.Spec, tr.Name, c.taskLister.Tasks(tr.Namespace).Get)
+	getTaskFunc := c.getTaskFunc(tr)
+	spec, taskName, err := resources.GetTaskSpec(&tr.Spec, tr.Name, getTaskFunc)
 	if err != nil {
 		c.Logger.Error("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{

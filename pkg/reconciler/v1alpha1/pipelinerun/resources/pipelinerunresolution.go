@@ -124,7 +124,7 @@ func getPipelineRunTaskResources(pipelineTaskName string, pr *v1alpha1.PipelineR
 // instances from getTask. If it is unable to retrieve an instance of a referenced Task, it
 // will return an error, otherwise it returns a list of all of the Tasks retrieved.
 // It will retrieve the Resources needed for the TaskRun as well using getResource.
-func ResolvePipelineRun(getTask resources.GetTask, getResource resources.GetResource, p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) ([]*ResolvedPipelineRunTask, error) {
+func ResolvePipelineRun(getTask resources.GetTask, getClusterTask resources.GetClusterTask, getResource resources.GetResource, p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) ([]*ResolvedPipelineRunTask, error) {
 	state := []*ResolvedPipelineRunTask{}
 	for i := range p.Spec.Tasks {
 		pt := p.Spec.Tasks[i]
@@ -135,7 +135,13 @@ func ResolvePipelineRun(getTask resources.GetTask, getResource resources.GetReso
 		}
 
 		// Find the Task that this task in the Pipeline is using
-		t, err := getTask(pt.TaskRef.Name)
+		var t v1alpha1.TaskInterface
+		var err error
+		if pt.TaskRef.Kind == v1alpha1.ClusterTaskKind {
+			t, err = getClusterTask(pt.TaskRef.Name)
+		} else {
+			t, err = getTask(pt.TaskRef.Name)
+		}
 		if err != nil {
 			// If the Task can't be found, it means the PipelineRun is invalid. Return the same error
 			// type so it can be used by the caller.
@@ -144,9 +150,10 @@ func ResolvePipelineRun(getTask resources.GetTask, getResource resources.GetReso
 
 		// Get all the resources that this task will be using, if any
 		inputs, outputs := getPipelineRunTaskResources(pt.Name, pr)
-		rtr, err := resources.ResolveTaskResources(&t.Spec, t.Name, inputs, outputs, getResource)
+		spec := t.TaskSpec()
+		rtr, err := resources.ResolveTaskResources(&spec, t.TaskMetadata().Name, inputs, outputs, getResource)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't resolve task resources for task %q: %v", t.Name, err)
+			return nil, fmt.Errorf("couldn't resolve task resources for task %q: %v", t.TaskMetadata().Name, err)
 		}
 		rprt.ResolvedTaskResources = rtr
 
