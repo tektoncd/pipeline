@@ -417,10 +417,7 @@ func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, ts *
 // its own copy of the BuildSpec and modifies it freely
 func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
 	// Pass service account name from taskrun to build
-	// if task specifies service account name override with taskrun SA
-	if tr.Spec.ServiceAccount != "" {
-		bs.ServiceAccountName = tr.Spec.ServiceAccount
-	}
+	bs.ServiceAccountName = tr.Spec.ServiceAccount
 
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
