@@ -257,7 +257,11 @@ func TestReconcile(t *testing.T) {
 		PipelineResources: rs,
 	}
 
-	c, _, clients, informers := test.GetPipelineRunController(d)
+	testAssets := test.GetPipelineRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	informers := testAssets.Informers
+
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
 	if err != nil {
 		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
@@ -476,7 +480,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, _, _ := test.GetPipelineRunController(d)
+			testAssets := test.GetPipelineRunController(d)
+			c := testAssets.Controller
+
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
 			// When a PipelineRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
@@ -517,7 +523,10 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs, _, _ := test.GetPipelineRunController(test.Data{})
+			testAssets := test.GetPipelineRunController(test.Data{})
+			c := testAssets.Controller
+			logs := testAssets.Logs
+
 			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
 			// No reason to keep reconciling something that doesnt or can't exist
 			if err != nil {
