@@ -112,6 +112,7 @@ func main() {
 	buildInformerFactory := buildinformers.NewSharedInformerFactory(buildClient, opt.ResyncPeriod)
 
 	taskInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
+	clusterTaskInformer := pipelineInformerFactory.Pipeline().V1alpha1().ClusterTasks()
 	taskRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
 	resourceInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineResources()
 	buildInformer := buildInformerFactory.Build().V1alpha1().Builds()
@@ -124,6 +125,7 @@ func main() {
 		taskrun.NewController(opt,
 			taskRunInformer,
 			taskInformer,
+			clusterTaskInformer,
 			buildInformer,
 			resourceInformer,
 		),
@@ -131,6 +133,7 @@ func main() {
 			pipelineRunInformer,
 			pipelineInformer,
 			taskInformer,
+			clusterTaskInformer,
 			taskRunInformer,
 			resourceInformer,
 		),
@@ -150,6 +153,7 @@ func main() {
 	logger.Info("Waiting for informer caches to sync")
 	for i, synced := range []cache.InformerSynced{
 		taskInformer.Informer().HasSynced,
+		clusterTaskInformer.Informer().HasSynced,
 		taskRunInformer.Informer().HasSynced,
 		buildInformer.Informer().HasSynced,
 		resourceInformer.Informer().HasSynced,

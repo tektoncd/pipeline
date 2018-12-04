@@ -37,6 +37,16 @@ type PipelineStatus struct {
 var _ apis.Validatable = (*Pipeline)(nil)
 var _ apis.Defaultable = (*Pipeline)(nil)
 
+// TaskKind defines the type of Task used by the pipeline.
+type TaskKind string
+
+const (
+	// NamespacedTaskKind indicates that the task type has a namepace scope.
+	NamespacedTaskKind TaskKind = "Task"
+	// ClusterTaskKind indicates that task type has a cluster scope.
+	ClusterTaskKind TaskKind = "ClusterTask"
+)
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -90,6 +100,8 @@ type ResourceDependency struct {
 type TaskRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name"`
+	// TaskKind inficates the kind of the task, namespaced or cluster scoped.
+	Kind TaskKind `json:"kind,omitempty"`
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`

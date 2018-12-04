@@ -126,6 +126,11 @@ pull in your environment, so we provide a way for you to configure that by edit
 the `image`'s value in a configmap named
 [`config-entrypoint`](./../config/config-entrypoint.yaml).
 
+### Cluster Task
+
+Similar to `Task` but with a cluster-wide scope. Cluster Tasks are available in 
+all namespaces, typically used to conveniently provide commonly used tasks to users.
+
 ### Pipeline
 
 `Pipelines` describes a graph of [Tasks](#Task) to execute.

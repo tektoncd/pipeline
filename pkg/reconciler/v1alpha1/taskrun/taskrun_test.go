@@ -105,6 +105,19 @@ var simpleTask = &v1alpha1.Task{
 	},
 }
 
+var clustertask = &v1alpha1.ClusterTask{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "test-cluster-task",
+	},
+	Spec: v1alpha1.TaskSpec{
+		Steps: []corev1.Container{{
+			Name:    "simple-step",
+			Image:   "foo",
+			Command: []string{"/mycmd"},
+		}},
+	},
+}
+
 var outputTask = &v1alpha1.Task{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "test-output-task",
@@ -464,11 +477,24 @@ func TestReconcile(t *testing.T) {
 				APIVersion: "a1",
 			},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-with-cluster-task",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name:       clustertask.Name,
+				APIVersion: "a1",
+				Kind:       "ClusterTask",
+			},
+		},
 	}}
 
 	d := test.Data{
 		TaskRuns:          taskruns,
 		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, defaultTemplatedTask, outputTask},
+		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
 	testcases := []struct {
@@ -719,6 +745,30 @@ func TestReconcile(t *testing.T) {
 				getToolsVolume(taskruns[6].Name),
 			},
 		},
+	}, {
+		name:    "success-with-cluster-task",
+		taskRun: taskruns[8],
+		wantedBuildSpec: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				entrypointCopyStep,
+				{
+					Name:    "simple-step",
+					Image:   "foo",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				},
+			},
+			Volumes: []corev1.Volume{
+				getToolsVolume(taskruns[8].Name),
+			},
+		},
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -797,6 +847,18 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 				APIVersion: "a1",
 			},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "taskrun-with-wrong-ref",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name:       "notask",
+				APIVersion: "a1",
+				Kind:       "ClusterTask",
+			},
+		},
 	}}
 	tasks := []*v1alpha1.Task{
 		simpleTask,
@@ -815,6 +877,11 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 		{
 			name:    "task run with no task",
 			taskRun: taskRuns[0],
+			reason:  taskrun.ReasonFailedResolution,
+		},
+		{
+			name:    "task run with no task",
+			taskRun: taskRuns[1],
 			reason:  taskrun.ReasonFailedResolution,
 		},
 	}

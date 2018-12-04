@@ -174,8 +174,6 @@ type TaskRunList struct {
 	Items           []TaskRun `json:"items"`
 }
 
-func (tr *TaskRun) SetDefaults() {}
-
 // GetBuildRef for task
 func (tr *TaskRun) GetBuildRef() corev1.ObjectReference {
 	return corev1.ObjectReference{

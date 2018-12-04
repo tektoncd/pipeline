@@ -24,6 +24,7 @@ import (
 
 type PipelineV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	ClusterTasksGetter
 	PipelinesGetter
 	PipelineResourcesGetter
 	PipelineRunsGetter
@@ -34,6 +35,10 @@ type PipelineV1alpha1Interface interface {
 // PipelineV1alpha1Client is used to interact with features provided by the pipeline.knative.dev group.
 type PipelineV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *PipelineV1alpha1Client) ClusterTasks() ClusterTaskInterface {
+	return newClusterTasks(c)
 }
 
 func (c *PipelineV1alpha1Client) Pipelines(namespace string) PipelineInterface {

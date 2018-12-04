@@ -139,6 +139,29 @@ To access a `Param`, replace `resources` with `params` as below:
 ${inputs.params.NAME}
 ```
 
+## Cluster Task
+
+Similar to Task, but with a cluster scope.
+
+In case of using a ClusterTask, the `TaskRef` kind should be added. The default kind is Task 
+which represents a namespaced Task
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: demo-pipeline
+  namespace: default
+spec:
+  tasks:
+  - name: build-skaffold-web
+    taskRef:
+      name: build-push
+      kind: ClusterTask
+    params:
+      ....
+```
+
 ## Running a Pipeline
 
 In order to run a Pipeline, you will need to provide:
