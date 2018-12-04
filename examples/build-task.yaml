@@ -2,7 +2,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
 metadata:
   name: build-push
-  namespace: default
 spec:
   inputs:
     resources:

@@ -2,7 +2,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineRun
 metadata:
   name: output-pipeline-run
-  namespace: default
 spec:
   pipelineRef:
     name: output-pipeline
