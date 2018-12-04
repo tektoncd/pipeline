@@ -96,9 +96,9 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		}
 		return false, nil
 	}, "PipelineRunCompleted"); err != nil {
-		taskruns, err := c.TaskRunClient.List(metav1.ListOptions{})
-		if err != nil {
-			t.Errorf("Error getting TaskRun list for PipelineRun %s %s", helmDeployPipelineRunName, err)
+		taskruns, secondErr := c.TaskRunClient.List(metav1.ListOptions{})
+		if secondErr != nil {
+			t.Errorf("Error getting TaskRun list for PipelineRun %s %s", helmDeployPipelineRunName, secondErr)
 		}
 		for _, tr := range taskruns.Items {
 			CollectBuildLogs(c, tr.Name, namespace, logger)
