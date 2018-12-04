@@ -100,8 +100,8 @@ function wait_until_object_does_not_exist() {
   fi
   echo -n "Waiting until ${DESCRIPTION} does not exist"
   for i in {1..150}; do  # timeout after 5 minutes
-    if kubectl ${KUBECTL_ARGS} > /dev/null 2>&1; then
-      echo "\n${DESCRIPTION} does not exist"
+    if ! kubectl ${KUBECTL_ARGS} > /dev/null 2>&1; then
+      echo -e "\n${DESCRIPTION} does not exist"
       return 0
     fi
     echo -n "."
@@ -265,10 +265,11 @@ function report_go_test() {
     local field0="${fields[0]}"
     local field1="${fields[1]}"
     local name="${fields[2]}"
-    # Deal with a SIGQUIT log entry (usually a test timeout).
+    # Deal with a SIGQUIT or panic log entry (usually a test timeout).
     # This is a fallback in case there's no kill signal log entry.
     # SIGQUIT: quit
-    if [[ "${field0}" == "SIGQUIT:" ]]; then
+    # panic: test timed out after 5m0s
+    if [[ "${field0}" == "SIGQUIT:" || "${field0}" == "panic:" ]]; then
       name="${last_run}"
       field1="FAIL:"
       error="${fields[@]}"

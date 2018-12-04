@@ -3,7 +3,8 @@
 The `release.sh` script automates the creation of Knative Build Pipeline
 releases, either nightly or versioned ones.
 
-By default, the script creates a nightly release but does not publish anywhere.
+By default, the script creates a nightly release but does not publish it
+anywhere.
 
 ## Common flags for cutting releases
 
@@ -17,14 +18,18 @@ the release.
   with either `vYYYYMMDD-<commit_short_hash>` (for nightly releases) or
   `vX.Y.Z` for versioned releases. _For versioned releases, a tag is always
   added._
+- `--release-gcs` Defines the GCS bucket where the manifests will be stored.
+  By default, this is `knative-nightly/build-pipeline`. This flag is ignored
+  if the release is not being published.
+- `--release-gcr` Defines the GCR where the images will be stored. By default,
+  this is `gcr.io/knative-nightly`. This flag is ignored if the release is not
+  being published.
 - `--publish`, `--nopublish` Whether the generated images should be published
   to a GCR, and the generated manifests written to a GCS bucket or not. If yes,
-  the destination GCR is defined by the environment variable
-  `$BUILD_PIPELINE_RELEASE_GCR` (defaults to `gcr.io/knative-nightly`) and the
-  destination GCS bucket is defined by the environment variable
-  `$BUILD_PIPELINE_RELEASE_GCS` (defaults to `knative-nightly/build-pipeline`).
-  If no, the images will be pushed to the `ko.local` registry, and the manifests
-  written to the local disk only (in the repository root directory).
+  the `--release-gcs` and `--release-gcr` flags can be used to change the
+  default values of the GCR/GCS used. If no, the images will be pushed to the
+  `ko.local` registry, and the manifests written to the local disk only (in the
+  repository root directory).
 
 ## Creating nightly releases
 
