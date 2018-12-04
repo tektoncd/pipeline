@@ -26,7 +26,7 @@ import (
 type GetTask func(string) (*v1alpha1.Task, error)
 
 // GetTaskSpec will retrieve the Task Spec associated with the provieded TaskRun. This can come from a
-// reference Task or from an embeded Task spec.
+// reference Task or from an embedded Task spec.
 func GetTaskSpec(taskRunSpec *v1alpha1.TaskRunSpec, taskRunName string, getTask GetTask) (*v1alpha1.TaskSpec, string, error) {
 	taskSpec := &v1alpha1.TaskSpec{}
 	taskName := ""
