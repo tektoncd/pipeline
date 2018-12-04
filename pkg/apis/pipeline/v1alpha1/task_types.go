@@ -42,9 +42,6 @@ type TaskSpec struct {
 	// steps of the build.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
-	// The name of the service account as which to run this build.
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
@@ -147,11 +144,10 @@ type TaskList struct {
 
 func (ts *TaskSpec) GetBuildSpec() *buildv1alpha1.BuildSpec {
 	return &buildv1alpha1.BuildSpec{
-		Steps:              ts.Steps,
-		Volumes:            ts.Volumes,
-		ServiceAccountName: ts.ServiceAccountName,
-		NodeSelector:       ts.NodeSelector,
-		Timeout:            ts.Timeout,
-		Affinity:           ts.Affinity,
+		Steps:        ts.Steps,
+		Volumes:      ts.Volumes,
+		NodeSelector: ts.NodeSelector,
+		Timeout:      ts.Timeout,
+		Affinity:     ts.Affinity,
 	}
 }

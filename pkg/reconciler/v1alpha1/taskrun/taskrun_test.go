@@ -140,7 +140,6 @@ var saTask = &v1alpha1.Task{
 		Namespace: "foo",
 	},
 	Spec: v1alpha1.TaskSpec{
-		ServiceAccountName: "task-test-sa",
 		Steps: []corev1.Container{{
 			Name:    "sa-step",
 			Image:   "foo",
@@ -501,32 +500,7 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}, {
-		name:    "task-serviceaccount",
-		taskRun: taskruns[7],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
-			ServiceAccountName: "task-test-sa",
-			Steps: []corev1.Container{
-				entrypointCopyStep,
-				{
-					Name:    "sa-step",
-					Image:   "foo",
-					Command: []string{entrypointLocation},
-					Args:    []string{},
-					Env: []corev1.EnvVar{
-						{
-							Name:  "ENTRYPOINT_OPTIONS",
-							Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-						},
-					},
-					VolumeMounts: []corev1.VolumeMount{toolsMount},
-				},
-			},
-			Volumes: []corev1.Volume{
-				getToolsVolume(taskruns[7].Name),
-			},
-		},
-	}, {
-		name:    "both-serviceaccount",
+		name:    "serviceaccount",
 		taskRun: taskruns[1],
 		wantedBuildSpec: buildv1alpha1.BuildSpec{
 			ServiceAccountName: "test-sa",
