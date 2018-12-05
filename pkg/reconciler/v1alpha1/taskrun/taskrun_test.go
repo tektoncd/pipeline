@@ -1240,3 +1240,46 @@ func TestCreateRedirectedBuild(t *testing.T) {
 		t.Errorf("services accounts do not match: %s should be %s", b.Spec.ServiceAccountName, tr.Spec.ServiceAccount)
 	}
 }
+
+func TestReconcileOnCompletedTaskRun(t *testing.T) {
+	taskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-run-success",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name:       simpleTask.Name,
+				APIVersion: "a1",
+			},
+		},
+	}
+	taskSt := &duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionTrue,
+			Reason:  "Build succeeded",
+			Message: "Build succeeded",
+	}
+	taskRun.Status.SetCondition(taskSt)
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{
+			taskRun,
+		},
+		Tasks:  []*v1alpha1.Task{simpleTask},
+	}
+
+	testAssets := test.GetTaskRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), taskSt, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+}

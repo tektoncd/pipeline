@@ -166,6 +166,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	tr := original.DeepCopy()
 	tr.Status.InitializeConditions()
 
+	if isDone(&tr.Status) {
+		return nil
+	}
+
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
 	err = c.reconcile(ctx, tr)
@@ -490,4 +494,9 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	}
 	return labels
 
+}
+
+// isDone returns true if the TaskRun's status indicates that it is done.
+func isDone(status *v1alpha1.TaskRunStatus) bool {
+	return !status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
 }
