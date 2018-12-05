@@ -1,0 +1,2 @@
+NAME	TYPE	STATUS
+.metadata.name	.status.conditions[*].type	.status.conditions[*].status
