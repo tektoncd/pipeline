@@ -20,33 +20,6 @@
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/e2e-tests.sh
 source $(dirname $0)/e2e-common.sh
 
-# Helper functions.
-
-function teardown() {
-    header "Tearing down Pipeline CRD"
-    ko delete --ignore-not-found=true -f config/
-    kubectl delete --ignore-not-found=true -f ./third_party/config/build/release.yaml
-    # teardown will be called when run against an existing cluster to cleanup before
-    # continuing, so we must wait for the cleanup to complete or the subsequent attempt
-    # to deploy to the same namespace will fail
-    wait_until_object_does_not_exist namespace knative-build-pipeline
-    wait_until_object_does_not_exist namespace knative-build
-}
-
-# Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
-function dump_extra_cluster_state() {
-  echo ">>> Pipeline controller log:"
-  kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-controller knative-build-pipeline)
-  echo ">>> Pipeline webhook log:"
-  kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-webhook knative-build-pipeline)
-}
-
-# Script entry point.
-
-initialize $@
-
-header "Setting up environment"
-
 # Handle failures ourselves, so we can dump useful info.
 set +o errexit
 set +o pipefail
@@ -57,20 +30,32 @@ kubectl apply -f ./third_party/config/build/release.yaml || fail_test "Build ins
 echo ">> Deploying Pipeline CRD"
 ko apply -f config/ || fail_test "Build pipeline installation failed"
 
-# Wait for pods to be running in the namespaces we are deploying to
-wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
+kubectl delete --ignore-not-found=true pipelineresources.pipeline.knative.dev --all
+kubectl delete --ignore-not-found=true tasks.pipeline.knative.dev --all
+kubectl delete --ignore-not-found=true pipelines.pipeline.knative.dev --all
+kubectl delete --ignore-not-found=true taskruns.pipeline.knative.dev --all
+kubectl delete --ignore-not-found=true pipelineruns.pipeline.knative.dev --all
 
+# Run the tests
 failed=0
-
-# Run the integration tests
-header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test || failed=1
 
 # Run the smoke tests for the examples dir to make sure they are valid
 # Run these _after_ the integration tests b/c they don't quite work all the way
 # and they cause a lot of noise in the logs, making it harder to debug integration
 # test failures.
-$(dirname $0)/e2e-yaml-tests.sh
-
-(( failed )) && fail_test
-success
+header "Running YAML e2e tests for taskruns"
+if ! run_yaml_tests "taskrun"; then
+  failed=1
+  echo "ERROR: one or more YAML tests failed"
+  # If formatting fails for any reason, use yaml as a fall back.
+  kubectl get taskrun.pipeline.knative.dev -o=custom-columns-file=./test/columns.txt || \
+    kubectl get taskrun.pipeline.knative.dev -oyaml
+fi
+header "Running YAML e2e tests for pipelineruns"
+if ! run_yaml_tests "pipelinerun"; then
+  failed=1
+  echo "ERROR: one or more YAML tests failed"
+  # If formatting fails for any reason, use yaml as a fall back.
+  kubectl get pipelinerun.pipeline.knative.dev -o=custom-columns-file=./test/columns.txt || \
+    kubectl get pipelinerun.pipeline.knative.dev -oyaml
+fi

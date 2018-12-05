@@ -181,6 +181,15 @@ To run one e2e test case, e.g. TestTaskRun, use
 go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun$
 ```
 
+### Running YAML tests
+
+To run the YAML e2e tests, from the examples folder, you need to have a valid cluster 
+and run the following command:
+
+```bash
+./test/e2e-yaml-tests.sh
+```
+
 ### Adding integration tests
 
 In the [`test`](/test/) dir you will find several libraries in the `test`
