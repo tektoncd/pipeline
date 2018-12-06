@@ -5,40 +5,40 @@ metadata:
   namespace: default
 spec:
   pipelineRef:
-    name: kritis-pipeline
+    name: microservices-pipeline
   resources:
     - name: build-productcatalog
       inputs:
         - name: workspace
           resourceRef:
-            name: hipster-source
+            name: hipster-git-source
       outputs:
         - name: builtImage
           resourceRef:
-            name: productcatalog
+            name: productcatalogservice-image
     - name: build-checkoutservice
       inputs:
         - name: workspace
           resourceRef:
-            name: hipster-source
+            name: hipster-git-source
       outputs:
         - name: builtImage
           resourceRef:
-            name: checkoutservice
+            name: checkoutservice-image
     - name: build-frontend
       inputs:
         - name: workspace
           resourceRef:
-            name: hipster-source
+            name: hipster-git-source
       outputs:
         - name: builtImage
           resourceRef:
-            name: frontend
+            name: frontend-image
     - name: deploy-all
       inputs:
         - name: workspace
           resourceRef:
-            name: hipster-source
+            name: hipster-git-source
           providedBy:
             - build-checkoutservice
             - build-productcatalog
