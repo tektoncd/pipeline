@@ -27,9 +27,10 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// TestTaskRunStatus is an integration test that will verify a very simple "hello world" TaskRun
-// failure execution lead to the correct TaskRun status.
-func TestTaskRunStatus(t *testing.T) {
+// TestTaskRunPipelineRunStatus is an integration test that will
+// verify a very simple "hello world" TaskRun and PipelineRun failure
+// execution lead to the correct TaskRun status.
+func TestTaskRunPipelineRunStatus(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 
@@ -63,31 +64,12 @@ func TestTaskRunStatus(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 
-}
-
-// TestPipelineRunStatus is an integration test that will verify a very simple "hello world" TaskRun
-// failure execution lead to the correct PipelineRun status.
-func TestPipelineRunStatus(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
-
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
-
-	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
-	task := Task("banana", namespace, TaskSpec(
-		Step("foo", "busybox", Command("ls", "-la")),
-	))
-	if _, err := c.TaskClient.Create(task); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
-	}
 	pipeline := Pipeline("tomatoes", namespace,
 		PipelineSpec(PipelineTask("foo", "banana")),
 	)
 	pipelineRun := PipelineRun("pear", namespace,
 		PipelineRunSpec("tomatoes", PipelineRunServiceAccount("inexistent")),
 	)
-
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
 	}
@@ -109,5 +91,4 @@ func TestPipelineRunStatus(t *testing.T) {
 	}, "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
-
 }
