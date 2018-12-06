@@ -48,9 +48,9 @@ type TaskRunSpec struct {
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
-	TaskRef *TaskRef `json:"taskRef"`
+	TaskRef *TaskRef `json:"taskRef,omitempty"`
 	//+optional
-	TaskSpec *TaskSpec `json:"taskSpec"`
+	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.

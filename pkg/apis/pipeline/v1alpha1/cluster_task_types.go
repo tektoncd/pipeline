@@ -68,5 +68,5 @@ type ClusterTaskList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Task `json:"items"`
+	Items           []ClusterTask `json:"items"`
 }

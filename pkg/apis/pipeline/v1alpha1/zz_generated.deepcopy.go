@@ -87,7 +87,7 @@ func (in *ClusterTaskList) DeepCopyInto(out *ClusterTaskList) {
 	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]Task, len(*in))
+		*out = make([]ClusterTask, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
