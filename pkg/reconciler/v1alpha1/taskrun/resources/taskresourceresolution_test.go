@@ -51,7 +51,7 @@ func TestResolveTaskRun(t *testing.T) {
 	}}
 
 	taskName := "orchestrate"
-	taskSpec := &v1alpha1.TaskSpec{
+	taskSpec := v1alpha1.TaskSpec{
 		Steps: []corev1.Container{{
 			Name: "step1",
 		}}}
@@ -80,7 +80,7 @@ func TestResolveTaskRun(t *testing.T) {
 		return r, nil
 	}
 
-	rtr, err := ResolveTaskResources(taskSpec, taskName, inputs, outputs, gr)
+	rtr, err := ResolveTaskResources(&taskSpec, taskName, inputs, outputs, gr)
 	if err != nil {
 		t.Fatalf("Did not expect error trying to resolve TaskRun: %s", err)
 	}
@@ -166,14 +166,14 @@ func TestResolveTaskRun_missingInput(t *testing.T) {
 }
 
 func TestResolveTaskRun_noResources(t *testing.T) {
-	taskSpec := &v1alpha1.TaskSpec{
+	taskSpec := v1alpha1.TaskSpec{
 		Steps: []corev1.Container{{
 			Name: "step1",
 		}}}
 
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
 
-	rtr, err := ResolveTaskResources(taskSpec, "orchestrate", []v1alpha1.TaskResourceBinding{}, []v1alpha1.TaskResourceBinding{}, gr)
+	rtr, err := ResolveTaskResources(&taskSpec, "orchestrate", []v1alpha1.TaskResourceBinding{}, []v1alpha1.TaskResourceBinding{}, gr)
 	if err != nil {
 		t.Fatalf("Did not expect error trying to resolve TaskRun: %s", err)
 	}

@@ -105,7 +105,7 @@ func TestReconcile(t *testing.T) {
 		tb.Task("unit-test-task", "foo", tb.TaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParam("foo"), tb.InputsParam("bar"),
+				tb.InputsParam("foo"), tb.InputsParam("bar"), tb.InputsParam("templatedparam"),
 			),
 			tb.TaskOutputs(
 				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
@@ -120,7 +120,7 @@ func TestReconcile(t *testing.T) {
 		tb.ClusterTask("unit-test-cluster-task", tb.ClusterTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParam("foo"), tb.InputsParam("bar"),
+				tb.InputsParam("foo"), tb.InputsParam("bar"), tb.InputsParam("templatedparam"),
 			),
 			tb.TaskOutputs(
 				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),

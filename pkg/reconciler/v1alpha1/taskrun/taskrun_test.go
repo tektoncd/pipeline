@@ -79,23 +79,20 @@ var (
 	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("sa-step", "foo", tb.Command("/mycmd"))))
 
 	templatedTask = tb.Task("test-task-with-templating", "foo", tb.TaskSpec(
-		tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskInputs(
+			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+			tb.InputsParam("myarg"), tb.InputsParam("myarghasdefault", tb.ParamDefault("dont see me")),
+			tb.InputsParam("myarghasdefault2", tb.ParamDefault("thedefault")),
+		),
 		tb.TaskOutputs(tb.OutputsResource("myimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
 			"--my-arg=${inputs.params.myarg}",
+			"--my-arg-with-default=${inputs.params.myarghasdefault}",
+			"--my-arg-with-default2=${inputs.params.myarghasdefault2}",
 			"--my-additional-arg=${outputs.resources.myimage.url}",
 		)),
 		tb.Step("myothercontainer", "myotherimage", tb.Command("/mycmd"), tb.Args(
 			"--my-other-arg=${inputs.resources.workspace.url}",
-		)),
-	))
-	defaultTemplatedTask = tb.Task("test-task-with-default-templating", "foo", tb.TaskSpec(
-		tb.TaskInputs(tb.InputsParam("myarg", tb.ParamDefault("mydefault"))),
-		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
-			"--my-arg=${inputs.params.myarg}",
-		)),
-		tb.Step("myothercontainer", "myotherimage", tb.Command("/mycmd"), tb.Args(
-			"--my-other-arg=${inputs.resources.git-resource.url}",
 		)),
 	))
 
@@ -185,22 +182,10 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunTaskRef(templatedTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
+			tb.TaskRunInputsParam("myarghasdefault", "bar"),
 			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(gitResource.Name)),
 		),
 		tb.TaskRunOutputs(tb.TaskRunOutputsResource("myimage", tb.ResourceBindingRef("image-resource"))),
-	))
-	taskRunOverrivdesDefaultTemplating := tb.TaskRun("test-taskrun-overrides-default-templating", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(defaultTemplatedTask.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunInputs(
-			tb.TaskRunInputsParam("myarg", "foo"),
-			tb.TaskRunInputsResource(gitResource.Name),
-		),
-	))
-	taskRunDefaultTemplating := tb.TaskRun("test-taskrun-default-templating", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(defaultTemplatedTask.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunInputs(
-			tb.TaskRunInputsResource(gitResource.Name),
-		),
 	))
 	taskRunInputOutput := tb.TaskRun("test-taskrun-input-output", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test"),
@@ -241,13 +226,12 @@ func TestReconcile(t *testing.T) {
 	)
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
-		taskRunTemplating, taskRunOverrivdesDefaultTemplating, taskRunDefaultTemplating,
-		taskRunInputOutput, taskRunWithTaskSpec, taskRunWithClusterTask,
+		taskRunTemplating, taskRunInputOutput, taskRunWithTaskSpec, taskRunWithClusterTask,
 	}
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, defaultTemplatedTask, outputTask},
+		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, outputTask},
 		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
@@ -283,7 +267,7 @@ func TestReconcile(t *testing.T) {
 			tb.BuildSource("git-resource", tb.BuildSourceGit("https://foo.git", "master")),
 			entrypointCopyStep,
 			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
+				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo","--my-arg-with-default=bar","--my-arg-with-default2=thedefault","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
 				tb.VolumeMount(toolsMount),
 			),
 			tb.BuildStep("myothercontainer", "myotherimage", tb.Command(entrypointLocation),
@@ -291,36 +275,6 @@ func TestReconcile(t *testing.T) {
 				tb.VolumeMount(toolsMount),
 			),
 			tb.BuildVolume(getToolsVolume(taskRunTemplating.Name)),
-		),
-	}, {
-		name:    "input-overrides-default-params",
-		taskRun: taskRunOverrivdesDefaultTemplating,
-		wantBuildSpec: tb.BuildSpec(
-			entrypointCopyStep,
-			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-				tb.VolumeMount(toolsMount),
-			),
-			tb.BuildStep("myothercontainer", "myotherimage", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-				tb.VolumeMount(toolsMount),
-			),
-			tb.BuildVolume(getToolsVolume(taskRunOverrivdesDefaultTemplating.Name)),
-		),
-	}, {
-		name:    "default-params",
-		taskRun: taskRunDefaultTemplating,
-		wantBuildSpec: tb.BuildSpec(
-			entrypointCopyStep,
-			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=mydefault"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-				tb.VolumeMount(toolsMount),
-			),
-			tb.BuildStep("myothercontainer", "myotherimage", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-				tb.VolumeMount(toolsMount),
-			),
-			tb.BuildVolume(getToolsVolume(taskRunDefaultTemplating.Name)),
 		),
 	}, {
 		name:    "wrap-steps",
@@ -397,15 +351,23 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Errorf("Invalid resource key: %v", err)
 			}
+
 			tr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
+			condition := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
+			}
+			if condition != nil && condition.Reason != reasonRunning {
+				t.Errorf("Expected reason %q but was %s", reasonRunning, condition.Reason)
+			}
+
 			if tr.Status.PodName == "" {
 				t.Fatalf("Reconcile didn't set pod name")
 			}
 
-			// check error
 			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to fetch build pod: %v", err)
@@ -420,26 +382,15 @@ func TestReconcile(t *testing.T) {
 			if d := cmp.Diff(pod.Spec, wantPod.Spec); d != "" {
 				t.Errorf("pod spec doesn't match, diff: %s", d)
 			}
-
-			// This TaskRun is in progress now and the status should reflect that.
-			condition := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-			if condition == nil || condition.Status != corev1.ConditionUnknown {
-				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
-			}
-			if condition != nil && condition.Reason != reasonRunning {
-				t.Errorf("Expected reason %q but was %s", reasonRunning, condition.Reason)
-			}
-
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
 			}
-			// 3. check that PVC was created
+
 			pvc, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Failed to fetch build: %v", err)
 			}
 
-			// get related TaskRun to populate expected PVC
 			expectedVolume := getExpectedPVC(tr)
 			if d := cmp.Diff(pvc.Name, expectedVolume.Name); d != "" {
 				t.Errorf("pvc doesn't match, diff: %s", d)
