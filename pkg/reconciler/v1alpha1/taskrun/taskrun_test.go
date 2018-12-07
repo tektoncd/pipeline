@@ -105,6 +105,19 @@ var simpleTask = &v1alpha1.Task{
 	},
 }
 
+var clustertask = &v1alpha1.ClusterTask{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "test-cluster-task",
+	},
+	Spec: v1alpha1.TaskSpec{
+		Steps: []corev1.Container{{
+			Name:    "simple-step",
+			Image:   "foo",
+			Command: []string{"/mycmd"},
+		}},
+	},
+}
+
 var outputTask = &v1alpha1.Task{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "test-output-task",
@@ -453,11 +466,35 @@ func TestReconcile(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-with-task-sa-run-success",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name:       saTask.Name,
+				APIVersion: "a1",
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-with-cluster-task",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name:       clustertask.Name,
+				APIVersion: "a1",
+				Kind:       "ClusterTask",
+			},
+		},
 	}}
 
 	d := test.Data{
 		TaskRuns:          taskruns,
 		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, defaultTemplatedTask, outputTask},
+		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
 	testcases := []struct {
@@ -708,10 +745,36 @@ func TestReconcile(t *testing.T) {
 				getToolsVolume(taskruns[6].Name),
 			},
 		},
+	}, {
+		name:    "success-with-cluster-task",
+		taskRun: taskruns[8],
+		wantedBuildSpec: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{
+				entrypointCopyStep,
+				{
+					Name:    "simple-step",
+					Image:   "foo",
+					Command: []string{entrypointLocation},
+					Args:    []string{},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ENTRYPOINT_OPTIONS",
+							Value: `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
+						},
+					},
+					VolumeMounts: []corev1.VolumeMount{toolsMount},
+				},
+			},
+			Volumes: []corev1.Volume{
+				getToolsVolume(taskruns[8].Name),
+			},
+		},
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, clients := test.GetTaskRunController(d)
+			testAssets := test.GetTaskRunController(d)
+			c := testAssets.Controller
+			clients := testAssets.Clients
 			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
@@ -786,6 +849,18 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 				APIVersion: "a1",
 			},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "taskrun-with-wrong-ref",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name:       "notask",
+				APIVersion: "a1",
+				Kind:       "ClusterTask",
+			},
+		},
 	}}
 	tasks := []*v1alpha1.Task{
 		simpleTask,
@@ -806,11 +881,18 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 			taskRun: taskRuns[0],
 			reason:  taskrun.ReasonFailedResolution,
 		},
+		{
+			name:    "task run with no task",
+			taskRun: taskRuns[1],
+			reason:  taskrun.ReasonFailedResolution,
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, clients := test.GetTaskRunController(d)
+			testAssets := test.GetTaskRunController(d)
+			c := testAssets.Controller
+			clients := testAssets.Clients
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
 			// When a TaskRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
@@ -854,7 +936,9 @@ func TestReconcileBuildFetchError(t *testing.T) {
 		Tasks: []*v1alpha1.Task{simpleTask},
 	}
 
-	c, _, clients := test.GetTaskRunController(d)
+	testAssets := test.GetTaskRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
 
 	reactor := func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		if action.GetVerb() == "get" && action.GetResource().Resource == "builds" {
@@ -906,7 +990,9 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		Builds: []*buildv1alpha1.Build{build},
 	}
 
-	c, _, clients := test.GetTaskRunController(d)
+	testAssets := test.GetTaskRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile() : %v", err)
@@ -1152,5 +1238,48 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	}
 	if b.Spec.ServiceAccountName != tr.Spec.ServiceAccount {
 		t.Errorf("services accounts do not match: %s should be %s", b.Spec.ServiceAccountName, tr.Spec.ServiceAccount)
+	}
+}
+
+func TestReconcileOnCompletedTaskRun(t *testing.T) {
+	taskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-run-success",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name:       simpleTask.Name,
+				APIVersion: "a1",
+			},
+		},
+	}
+	taskSt := &duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionTrue,
+			Reason:  "Build succeeded",
+			Message: "Build succeeded",
+	}
+	taskRun.Status.SetCondition(taskSt)
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{
+			taskRun,
+		},
+		Tasks:  []*v1alpha1.Task{simpleTask},
+	}
+
+	testAssets := test.GetTaskRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), taskSt, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
 	}
 }

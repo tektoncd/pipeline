@@ -2,7 +2,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: demo-pipeline
-  namespace: default
 spec:
   tasks:
   - name: build-skaffold-web

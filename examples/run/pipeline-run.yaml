@@ -2,7 +2,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineRun
 metadata:
   name: demo-pipeline-run-1
-  namespace: default
 spec:
   pipelineRef:
     name: demo-pipeline

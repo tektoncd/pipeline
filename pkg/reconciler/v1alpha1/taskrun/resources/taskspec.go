@@ -23,12 +23,15 @@ import (
 )
 
 // GetTask is a function used to retrieve Tasks.
-type GetTask func(string) (*v1alpha1.Task, error)
+type GetTask func(string) (v1alpha1.TaskInterface, error)
+
+// GetClusterTask is a function that will retrieve the Task from name and namespace.
+type GetClusterTask func(name string) (v1alpha1.TaskInterface, error)
 
 // GetTaskSpec will retrieve the Task Spec associated with the provieded TaskRun. This can come from a
 // reference Task or from an embedded Task spec.
 func GetTaskSpec(taskRunSpec *v1alpha1.TaskRunSpec, taskRunName string, getTask GetTask) (*v1alpha1.TaskSpec, string, error) {
-	taskSpec := &v1alpha1.TaskSpec{}
+	taskSpec := v1alpha1.TaskSpec{}
 	taskName := ""
 	if taskRunSpec.TaskRef != nil && taskRunSpec.TaskRef.Name != "" {
 		// Get related task for taskrun
@@ -36,13 +39,13 @@ func GetTaskSpec(taskRunSpec *v1alpha1.TaskRunSpec, taskRunName string, getTask 
 		if err != nil {
 			return nil, taskName, fmt.Errorf("error when listing tasks for taskRun %s %v", taskRunName, err)
 		}
-		taskSpec = &t.Spec
-		taskName = t.Name
+		taskSpec = t.TaskSpec()
+		taskName = t.TaskMetadata().Name
 	} else if taskRunSpec.TaskSpec != nil {
-		taskSpec = taskRunSpec.TaskSpec
+		taskSpec = *taskRunSpec.TaskSpec
 		taskName = taskRunName
 	} else {
-		return taskSpec, taskName, fmt.Errorf("TaskRun %s not providing TaskRef or TaskSpec", taskRunName)
+		return &taskSpec, taskName, fmt.Errorf("TaskRun %s not providing TaskRef or TaskSpec", taskRunName)
 	}
-	return taskSpec, taskName, nil
+	return &taskSpec, taskName, nil
 }

@@ -51,6 +51,7 @@ type Data struct {
 	Pipelines         []*v1alpha1.Pipeline
 	TaskRuns          []*v1alpha1.TaskRun
 	Tasks             []*v1alpha1.Task
+	ClusterTasks      []*v1alpha1.ClusterTask
 	PipelineResources []*v1alpha1.PipelineResource
 	Builds            []*buildv1alpha1.Build
 }
@@ -68,8 +69,17 @@ type Informers struct {
 	Pipeline         informersv1alpha1.PipelineInformer
 	TaskRun          informersv1alpha1.TaskRunInformer
 	Task             informersv1alpha1.TaskInformer
+	ClusterTask      informersv1alpha1.ClusterTaskInformer
 	PipelineResource informersv1alpha1.PipelineResourceInformer
 	Build            buildinformersv1alpha1.BuildInformer
+}
+
+// TestAssets holds references to the controller, logs, clients, and informers.
+type TestAssets struct {
+	Controller *controller.Impl
+	Logs *observer.ObservedLogs
+	Clients Clients
+	Informers Informers
 }
 
 func seedTestData(d Data) (Clients, Informers) {
@@ -85,6 +95,9 @@ func seedTestData(d Data) (Clients, Informers) {
 	}
 	for _, t := range d.Tasks {
 		objs = append(objs, t)
+	}
+	for _, ct := range d.ClusterTasks {
+		objs = append(objs, ct)
 	}
 	for _, tr := range d.TaskRuns {
 		objs = append(objs, tr)
@@ -107,6 +120,7 @@ func seedTestData(d Data) (Clients, Informers) {
 		Pipeline:         sharedInformer.Pipeline().V1alpha1().Pipelines(),
 		TaskRun:          sharedInformer.Pipeline().V1alpha1().TaskRuns(),
 		Task:             sharedInformer.Pipeline().V1alpha1().Tasks(),
+		ClusterTask:      sharedInformer.Pipeline().V1alpha1().ClusterTasks(),
 		PipelineResource: sharedInformer.Pipeline().V1alpha1().PipelineResources(),
 		Build:            buildInformerFactory.Build().V1alpha1().Builds(),
 	}
@@ -123,6 +137,9 @@ func seedTestData(d Data) (Clients, Informers) {
 	for _, t := range d.Tasks {
 		i.Task.Informer().GetIndexer().Add(t)
 	}
+	for _, ct := range d.ClusterTasks {
+		i.ClusterTask.Informer().GetIndexer().Add(ct)
+	}
 	for _, r := range d.PipelineResources {
 		i.PipelineResource.Informer().GetIndexer().Add(r)
 	}
@@ -134,40 +151,52 @@ func seedTestData(d Data) (Clients, Informers) {
 
 // GetTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetTaskRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients) {
+func GetTaskRunController(d Data) (TestAssets) {
 	c, i := seedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
-	return taskrun.NewController(
-		reconciler.Options{
-			Logger:            zap.New(observer).Sugar(),
-			KubeClientSet:     c.Kube,
-			PipelineClientSet: c.Pipeline,
-			BuildClientSet:    c.Build,
-			ConfigMapWatcher:  configMapWatcher,
-		},
-		i.TaskRun,
-		i.Task,
-		i.Build,
-		i.PipelineResource,
-	), logs, c
+	return TestAssets{
+		Controller: taskrun.NewController(
+			reconciler.Options{
+				Logger:            zap.New(observer).Sugar(),
+				KubeClientSet:     c.Kube,
+				PipelineClientSet: c.Pipeline,
+				BuildClientSet:    c.Build,
+				ConfigMapWatcher:  configMapWatcher,
+			},
+			i.TaskRun,
+			i.Task,
+			i.ClusterTask,
+			i.Build,
+			i.PipelineResource,
+		),
+		Logs: logs,
+		Clients: c,
+		Informers: i,
+	}
 }
 
 // GetPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetPipelineRunController(d Data) (*controller.Impl, *observer.ObservedLogs, Clients) {
+func GetPipelineRunController(d Data) (TestAssets) {
 	c, i := seedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
-	return pipelinerun.NewController(
-		reconciler.Options{
-			Logger:            zap.New(observer).Sugar(),
-			KubeClientSet:     c.Kube,
-			PipelineClientSet: c.Pipeline,
-		},
-		i.PipelineRun,
-		i.Pipeline,
-		i.Task,
-		i.TaskRun,
-		i.PipelineResource,
-	), logs, c
+	return TestAssets{
+		Controller: pipelinerun.NewController(
+			reconciler.Options{
+				Logger:            zap.New(observer).Sugar(),
+				KubeClientSet:     c.Kube,
+				PipelineClientSet: c.Pipeline,
+			},
+			i.PipelineRun,
+			i.Pipeline,
+			i.Task,
+			i.ClusterTask,
+			i.TaskRun,
+			i.PipelineResource,
+		),
+		Logs: logs,
+		Clients: c,
+		Informers: i,
+	}
 }

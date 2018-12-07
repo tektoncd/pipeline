@@ -20,4 +20,10 @@ func (p *Pipeline) SetDefaults() {
 	p.Spec.SetDefaults()
 }
 
-func (ps *PipelineSpec) SetDefaults() {}
+func (ps *PipelineSpec) SetDefaults() {
+	for _, pt := range ps.Tasks {
+		if pt.TaskRef.Kind == "" {
+			pt.TaskRef.Kind = NamespacedTaskKind
+		}
+	}
+}

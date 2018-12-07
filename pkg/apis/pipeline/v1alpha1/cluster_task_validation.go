@@ -13,16 +13,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package v1alpha1
 
-type ClusterTaskExpansion interface{}
+import (
+	"github.com/knative/pkg/apis"
+)
 
-type PipelineExpansion interface{}
-
-type PipelineResourceExpansion interface{}
-
-type PipelineRunExpansion interface{}
-
-type TaskExpansion interface{}
-
-type TaskRunExpansion interface{}
+func (t *ClusterTask) Validate() *apis.FieldError {
+	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
+		return err.ViaField("metadata")
+	}
+	return t.Spec.Validate()
+}

@@ -14,15 +14,15 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: pipelineresources.pipeline.knative.dev
+  name: clustertasks.pipeline.knative.dev
 spec:
   group: pipeline.knative.dev
   names:
-    kind: PipelineResource
-    plural: pipelineresources
+    kind: ClusterTask
+    plural: clustertasks
     categories:
     - all
     - knative
     - build-pipeline
-  scope: Namespaced
+  scope: Cluster
   version: v1alpha1

@@ -96,6 +96,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		}
 		return false, nil
 	}, "PipelineRunCompleted"); err != nil {
+		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 		taskruns, err := c.TaskRunClient.List(metav1.ListOptions{})
 		if err != nil {
 			t.Errorf("Error getting TaskRun list for PipelineRun %s %s", helmDeployPipelineRunName, err)
@@ -103,7 +104,6 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		for _, tr := range taskruns.Items {
 			CollectBuildLogs(c, tr.Name, namespace, logger)
 		}
-		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 	}
 
 	logger.Info("Waiting for service to get external IP")

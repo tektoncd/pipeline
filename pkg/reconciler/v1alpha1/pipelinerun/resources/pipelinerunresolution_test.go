@@ -42,6 +42,9 @@ var pts = []v1alpha1.PipelineTask{{
 }, {
 	Name:    "mytask2",
 	TaskRef: v1alpha1.TaskRef{Name: "task"},
+}, {
+	Name:    "mytask3",
+	TaskRef: v1alpha1.TaskRef{Name: "clustertask"},
 }}
 
 var p = &v1alpha1.Pipeline{
@@ -57,6 +60,17 @@ var p = &v1alpha1.Pipeline{
 var task = &v1alpha1.Task{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "task",
+	},
+	Spec: v1alpha1.TaskSpec{
+		Steps: []corev1.Container{{
+			Name: "step1",
+		}},
+	},
+}
+
+var clustertask = &v1alpha1.ClusterTask{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "clustertask",
 	},
 	Spec: v1alpha1.TaskSpec{
 		Steps: []corev1.Container{{
@@ -277,6 +291,14 @@ func TestResolvePipelineRun(t *testing.T) {
 						Name: "someresource",
 					},
 				}},
+			}, {
+				Name: "mytask3",
+				Outputs: []v1alpha1.TaskResourceBinding{{
+					Name: "output1",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "someresource",
+					},
+				}},
 			}},
 		},
 	}
@@ -287,10 +309,11 @@ func TestResolvePipelineRun(t *testing.T) {
 		},
 	}
 
-	getTask := func(name string) (*v1alpha1.Task, error) { return task, nil }
+	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return r, nil }
 
-	pipelineState, err := ResolvePipelineRun(getTask, getResource, p, pr)
+	pipelineState, err := ResolvePipelineRun(getTask, getClusterTask, getResource, p, pr)
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}
@@ -318,6 +341,18 @@ func TestResolvePipelineRun(t *testing.T) {
 				"output1": r,
 			},
 		},
+	}, {
+		PipelineTask: &pts[2],
+		TaskRunName:  "pipelinerun-mytask3",
+		TaskRun:      nil,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskName: task.Name,
+			TaskSpec: &task.Spec,
+			Inputs:   map[string]*v1alpha1.PipelineResource{},
+			Outputs: map[string]*v1alpha1.PipelineResource{
+				"output1": r,
+			},
+		},
 	}}
 	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
 		t.Fatalf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
@@ -336,16 +371,19 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 			// We don't bind any Resources here
 		},
 	}
-	getTask := func(name string) (*v1alpha1.Task, error) {
+	getTask := func(name string) (v1alpha1.TaskInterface, error) {
 		return task, nil
+	}
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) {
+		return clustertask, nil
 	}
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
 
-	pipelineState, err := ResolvePipelineRun(getTask, getResource, p, pr)
+	pipelineState, err := ResolvePipelineRun(getTask, getClusterTask, getResource, p, pr)
 	if err != nil {
 		t.Fatalf("Did not expect error when resolving PipelineRun without Resources: %v", err)
 	}
-	if len(pipelineState) != 2 {
+	if len(pipelineState) != 3 {
 		t.Fatalf("Expected only 2 resolved PipelineTasks but got %d", len(pipelineState))
 	}
 	expectedTaskResources := &resources.ResolvedTaskResources{
@@ -374,12 +412,15 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 		},
 	}
 	// Return an error when the Task is retrieved, as if it didn't exist
-	getTask := func(name string) (*v1alpha1.Task, error) {
+	getTask := func(name string) (v1alpha1.TaskInterface, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("task"), name)
+	}
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) {
+		return nil, errors.NewNotFound(v1alpha1.Resource("clustertask"), name)
 	}
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
 
-	_, err := ResolvePipelineRun(getTask, getResource, p, pr)
+	_, err := ResolvePipelineRun(getTask, getClusterTask, getResource, p, pr)
 	if err == nil {
 		t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
 	}

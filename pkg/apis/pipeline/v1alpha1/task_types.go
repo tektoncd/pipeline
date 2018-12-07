@@ -25,6 +25,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func (t *Task) TaskSpec() TaskSpec {
+	return t.Spec
+}
+
+func (t *Task) TaskMetadata() metav1.ObjectMeta {
+	return t.ObjectMeta
+}
+
+func (t *Task) Copy() TaskInterface {
+	return t.DeepCopy()
+}
+
 // TaskSpec defines the desired state of Task
 type TaskSpec struct {
 	// +optional
@@ -41,9 +53,6 @@ type TaskSpec struct {
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
-
-	// The name of the service account as which to run this build.
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
 	// Selector which must match a node's labels for the pod to be scheduled on that node.
@@ -62,12 +71,6 @@ type TaskSpec struct {
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
-// TaskStatus does not contain anything because Tasks on their own
-// do not have a status, they just hold data which is later used by a
-// TaskRun.
-type TaskStatus struct {
-}
-
 // Check that Task may be validated and defaulted.
 var _ apis.Validatable = (*Task)(nil)
 var _ apis.Defaultable = (*Task)(nil)
@@ -76,6 +79,7 @@ var _ apis.Defaultable = (*Task)(nil)
 var _ webhook.GenericCRD = (*Task)(nil)
 
 // +genclient
+// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Task is the Schema for the tasks API
@@ -88,9 +92,6 @@ type Task struct {
 	// Spec holds the desired state of the Task from the client
 	// +optional
 	Spec TaskSpec `json:"spec,omitempty"`
-	// Status communicates the observed state of the Task from the controller
-	// +optional
-	Status TaskStatus `json:"status,omitempty"`
 }
 
 // Inputs are the requirements that a task needs to run a Build.
@@ -147,11 +148,10 @@ type TaskList struct {
 
 func (ts *TaskSpec) GetBuildSpec() *buildv1alpha1.BuildSpec {
 	return &buildv1alpha1.BuildSpec{
-		Steps:              ts.Steps,
-		Volumes:            ts.Volumes,
-		ServiceAccountName: ts.ServiceAccountName,
-		NodeSelector:       ts.NodeSelector,
-		Timeout:            ts.Timeout,
-		Affinity:           ts.Affinity,
+		Steps:        ts.Steps,
+		Volumes:      ts.Volumes,
+		NodeSelector: ts.NodeSelector,
+		Timeout:      ts.Timeout,
+		Affinity:     ts.Affinity,
 	}
 }

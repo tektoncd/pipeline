@@ -2,7 +2,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-git
-  namespace: default
 spec:
   type: git
   params:
@@ -15,7 +14,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-web
-  namespace: default
 spec:        
   type: image
   params:
@@ -26,7 +24,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-app
-  namespace: default
 spec:        
   type: image
   params:

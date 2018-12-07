@@ -41,7 +41,7 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 			Name: "orchestrate",
 		},
 	}
-	gt := func(n string) (*v1alpha1.Task, error) { return task, nil }
+	gt := func(n string) (v1alpha1.TaskInterface, error) { return task, nil }
 	taskSpec, name, err := GetTaskSpec(spec, "mytaskrun", gt)
 
 	if err != nil {
@@ -64,7 +64,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 				Name: "step1",
 			}},
 		}}
-	gt := func(n string) (*v1alpha1.Task, error) { return nil, fmt.Errorf("shouldn't be called") }
+	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, fmt.Errorf("shouldn't be called") }
 	taskSpec, name, err := GetTaskSpec(spec, "mytaskrun", gt)
 
 	if err != nil {
@@ -82,7 +82,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 
 func TestGetTaskSpec_Invalid(t *testing.T) {
 	spec := &v1alpha1.TaskRunSpec{}
-	gt := func(n string) (*v1alpha1.Task, error) { return nil, fmt.Errorf("shouldn't be called") }
+	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, fmt.Errorf("shouldn't be called") }
 	_, _, err := GetTaskSpec(spec, "mytaskrun", gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
@@ -95,7 +95,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			Name: "orchestrate",
 		},
 	}
-	gt := func(n string) (*v1alpha1.Task, error) { return nil, fmt.Errorf("something went wrong") }
+	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, fmt.Errorf("something went wrong") }
 	_, _, err := GetTaskSpec(spec, "mytaskrun", gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")

@@ -71,6 +71,25 @@ func TestReconcile(t *testing.T) {
 						Name: "some-repo",
 					},
 				}},
+			}, {
+				Name: "unit-test-cluster-task",
+				Inputs: []v1alpha1.TaskResourceBinding{{
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
+				}},
+				Outputs: []v1alpha1.TaskResourceBinding{{
+					Name: "image-to-use",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-image",
+					},
+				}, {
+					Name: "workspace",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "some-repo",
+					},
+				}},
 			}},
 			ServiceAccount: "test-sa",
 		},
@@ -101,6 +120,22 @@ func TestReconcile(t *testing.T) {
 					Name:       "workspace",
 					ProvidedBy: []string{"unit-test-1"},
 				}},
+			}, {
+				Name: "unit-test-cluster-task",
+				TaskRef: v1alpha1.TaskRef{
+					Name: "unit-test-cluster-task",
+					Kind: "ClusterTask",
+				},
+				Params: []v1alpha1.Param{{
+					Name:  "foo",
+					Value: "somethingfun",
+				}, {
+					Name:  "bar",
+					Value: "somethingmorefun",
+				}, {
+					Name:  "templatedparam",
+					Value: "${inputs.workspace.revision}",
+				}},
 			}},
 		},
 	}}
@@ -108,6 +143,48 @@ func TestReconcile(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "unit-test-task",
 			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: "git",
+				}},
+				Params: []v1alpha1.TaskParam{{
+					Name:        "foo",
+					Description: "foo",
+				}, {
+					Name:        "bar",
+					Description: "bar",
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "image-to-use",
+					Type: "image",
+				}, {
+					Name: "workspace",
+					Type: "git",
+				}},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "unit-test-followup-task",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: "git",
+				}},
+			},
+		},
+	}}
+	clusterTasks := []*v1alpha1.ClusterTask{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "unit-test-cluster-task",
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
@@ -176,10 +253,14 @@ func TestReconcile(t *testing.T) {
 		PipelineRuns:      prs,
 		Pipelines:         ps,
 		Tasks:             ts,
+		ClusterTasks:      clusterTasks,
 		PipelineResources: rs,
 	}
 
-	c, _, clients := test.GetPipelineRunController(d)
+	testAssets := test.GetPipelineRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
 	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
 	if err != nil {
 		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
@@ -361,7 +442,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _, _ := test.GetPipelineRunController(d)
+			testAssets := test.GetPipelineRunController(d)
+			c := testAssets.Controller
+
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
 			// When a PipelineRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
@@ -402,7 +485,10 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c, logs, _ := test.GetPipelineRunController(test.Data{})
+			testAssets := test.GetPipelineRunController(test.Data{})
+			c := testAssets.Controller
+			logs := testAssets.Logs
+
 			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
 			// No reason to keep reconciling something that doesnt or can't exist
 			if err != nil {
@@ -498,4 +584,73 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
 	}
 
+}
+
+func TestReconcileOnCompletedPipelineRun(t *testing.T) {
+	prs := []*v1alpha1.PipelineRun{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline-run-completed",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "test-pipeline",
+			},
+			ServiceAccount: "test-sa",
+		},
+		Status: v1alpha1.PipelineRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionTrue,
+				Reason:  resources.ReasonSucceeded,
+				Message: "All Tasks have completed executing",
+			}},
+		},
+	}}
+	ps := []*v1alpha1.Pipeline{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{{
+				Name:    "hello-world-1",
+				TaskRef: v1alpha1.TaskRef{Name: "hello-world"},
+			}},
+		},
+	}}
+	ts := []*v1alpha1.Task{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "hello-world",
+			Namespace: "foo",
+		},
+	}}
+	d := test.Data{
+		PipelineRuns:      prs,
+		Pipelines:         ps,
+		Tasks:             ts,
+	}
+
+	testAssets := test.GetPipelineRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-completed")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+	if len(clients.Pipeline.Actions()) != 0 {
+		t.Fatalf("Expected client to not have created a TaskRun for the completed PipelineRun, but it did")
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-completed", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// This PipelineRun should still be complete and the status should reflect that
+	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun status to be complete, but was %v", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
 }

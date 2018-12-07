@@ -25,6 +25,10 @@ type FakePipelineV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakePipelineV1alpha1) ClusterTasks() v1alpha1.ClusterTaskInterface {
+	return &FakeClusterTasks{c}
+}
+
 func (c *FakePipelineV1alpha1) Pipelines(namespace string) v1alpha1.PipelineInterface {
 	return &FakePipelines{c, namespace}
 }
