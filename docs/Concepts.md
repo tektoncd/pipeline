@@ -128,8 +128,9 @@ the `image`'s value in a configmap named
 
 ### Cluster Task
 
-Similar to `Task` but with a cluster-wide scope. Cluster Tasks are available in 
-all namespaces, typically used to conveniently provide commonly used tasks to users.
+Similar to `Task` but with a cluster-wide scope. Cluster Tasks are available in
+all namespaces, typically used to conveniently provide commonly used tasks to
+users.
 
 ### Pipeline
 

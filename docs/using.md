@@ -143,8 +143,8 @@ ${inputs.params.NAME}
 
 Similar to Task, but with a cluster scope.
 
-In case of using a ClusterTask, the `TaskRef` kind should be added. The default kind is Task 
-which represents a namespaced Task
+In case of using a ClusterTask, the `TaskRef` kind should be added. The default
+kind is Task which represents a namespaced Task
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -154,12 +154,11 @@ metadata:
   namespace: default
 spec:
   tasks:
-  - name: build-skaffold-web
-    taskRef:
-      name: build-push
-      kind: ClusterTask
-    params:
-      ....
+    - name: build-skaffold-web
+      taskRef:
+        name: build-push
+        kind: ClusterTask
+      params: ....
 ```
 
 ## Running a Pipeline
