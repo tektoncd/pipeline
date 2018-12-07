@@ -230,6 +230,7 @@ func TestResolvedTaskResources(t *testing.T) {
 			tb.Step("step", "image", tb.Command("/mycmd")),
 		),
 		tb.ResolvedTaskResourcesInputs("foo", tb.PipelineResource("bar", "baz")),
+		tb.ResolvedTaskResourcesOutputs("qux", tb.PipelineResource("quux", "quuz")),
 	)
 	expectedResolvedTaskResources := &resources.ResolvedTaskResources{
 		TaskSpec: &v1alpha1.TaskSpec{
@@ -244,6 +245,14 @@ func TestResolvedTaskResources(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "baz",
+				},
+			},
+		},
+		Outputs: map[string]*v1alpha1.PipelineResource{
+			"qux": &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "quux",
+					Namespace: "quuz",
 				},
 			},
 		},
