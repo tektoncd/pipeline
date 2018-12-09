@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestClusterResourceValidation_Invalid(t *testing.T) {
+func TestResourceValidation_Invalid(t *testing.T) {
 	tests := []struct {
 		name string
 		res  PipelineResource
@@ -104,6 +104,69 @@ func TestClusterResourceValidation_Invalid(t *testing.T) {
 				},
 			},
 			want: apis.ErrMissingField("CAData param"),
+		}, {
+			name: "storage with no type",
+			res: PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "storage-resource",
+				},
+				Spec: PipelineResourceSpec{
+					Type: PipelineResourceTypeStorage,
+					Params: []Param{{
+						Name:  "no-type-param",
+						Value: "sometype",
+					}},
+				},
+			},
+			want: apis.ErrMissingField("spec.params.type"),
+		}, {
+			name: "storage with unimplemented type",
+			res: PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "storage-resource",
+				},
+				Spec: PipelineResourceSpec{
+					Type: PipelineResourceTypeStorage,
+					Params: []Param{{
+						Name:  "type",
+						Value: "not-implemented-yet",
+					}},
+				},
+			},
+			want: apis.ErrInvalidValue("not-implemented-yet", "spec.params.type"),
+		}, {
+			name: "storage with gcs type with no location param",
+			res: PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "storage-resource",
+				},
+				Spec: PipelineResourceSpec{
+					Type: PipelineResourceTypeStorage,
+					Params: []Param{{
+						Name:  "type",
+						Value: "gcs",
+					}},
+				},
+			},
+			want: apis.ErrMissingField("spec.params.location"),
+		}, {
+			name: "storage with gcs type with empty location param",
+			res: PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "storage-resource",
+				},
+				Spec: PipelineResourceSpec{
+					Type: PipelineResourceTypeStorage,
+					Params: []Param{{
+						Name:  "type",
+						Value: "gcs",
+					}, {
+						Name:  "location",
+						Value: "",
+					}},
+				},
+			},
+			want: apis.ErrMissingField("spec.params.location"),
 		},
 	}
 	for _, tt := range tests {

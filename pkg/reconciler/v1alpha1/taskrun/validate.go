@@ -65,7 +65,6 @@ func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.Resol
 				}
 			}
 		}
-		// TODO: make sure there aren't missing???
 	}
 	return nil
 }

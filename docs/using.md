@@ -112,6 +112,23 @@ Pipeline Tasks are allowed to pass resources from previous tasks via
 under the hood but however has an implication that tasks cannot have any volume
 mounted under path `/pvc`.
 
+
+```yaml
+resources:
+  outputs:
+  name: storage-gcs
+steps:
+  - image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
+    command: [jar]
+    args: ["-cvf", "-o", "/outputs/storage-gcs/", "projectname.war", "*"]
+    env:
+    - name: "FOO"
+      value: "world"
+```
+
+If resources are only declared in output then a copy of resource to be uploaded 
+or shared for next task is expected to be present under `/output/resource_name/`. If resource is declared in both input and output then resource destination path is used instead of `/output/resource_name`.
+
 ### Conventions
 
 - `/workspace/<resource-name>`:
@@ -560,6 +577,73 @@ spec:
           /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context
           ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
 ```
+
+### Storage Resource
+
+Storage resource represents a blob storage, that contains either an object or directory.
+Adding the storage resource as an input to a task will download the blob and allow the task to perform the required actions on the contents of the blob. Blob storage type "Google Cloud Storage" is supported as of now.
+
+#### GCS Storage Resource
+
+GCS Storage resource points to "Google Cloud Storage" blob.
+
+To create a GCS type of storage resource using the `PipelineResource` CRD:
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: wizzbang-storage
+  namespace: default
+spec:
+  type: storage
+  params:
+    - name: type
+      value: gcs
+    - name: location
+      value: gs://some-bucket
+```
+
+Params that can be added are the following:
+
+1. `location`: represents the location of the blobstorage.
+1. `type`: represents the type of blob storage. Currently there is implementation
+   for only GCS.
+1. `dir`: represents whether the blob storage is a director or not.
+
+To use GCS private buckets, [service accounts](https://cloud.google.com/compute/docs/access/service-accounts
+) could be configured to access GCS bucket for `read` and `write` authorities. Download the service accunt keys to create a secret.
+
+For example, create a secret like the following example:
+
+```bash
+$ kubectl create secret generic bucket-sa --from-file=./service_account.json
+```
+
+and then apply secrets to the GCS storage resource
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: wizzbang-storage
+  namespace: default
+spec:
+  type: storage
+  params:
+    - name: type
+      value: gcs
+    - name: url
+      value: gs://some-bucket
+    - name: dir
+      value: "diectory"
+  secrets:
+    - fieldName: GOOGLE_APPLICATION_CREDENTIALS
+      secretKey: bucket-sa
+      secretName: service_account.json
+```
+
+Note: `GOOGLE_APPLICATION_CREDENTIALS` is the environment variable to be set for the container to download/upload GCS resource.
 
 ## Troubleshooting
 

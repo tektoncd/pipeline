@@ -41,36 +41,46 @@ func TestTaskRun_GetBuildPodRef(t *testing.T) {
 	}
 }
 
-func TestTasRun_Valid_GetPipelineRunPVCName(t *testing.T) {
-	tr := TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "taskrunname",
-			Namespace: "testns",
-			OwnerReferences: []metav1.OwnerReference{{
-				Kind: "PipelineRun",
-				Name: "testpr",
-			}},
+func TestTasRun_GetPipelineRunPVCName(t *testing.T) {
+	tests := []struct {
+		name            string
+		tr              *TaskRun
+		expectedPVCName string
+	}{{
+		name: "invalid owner reference",
+		tr: &TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrunname",
+				Namespace: "testns",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "SomeOtherOwner",
+					Name: "testpr",
+				}},
+			},
 		},
-	}
-	expectedPVCName := "testpr-pvc"
-	if tr.GetPipelineRunPVCName() != expectedPVCName {
-		t.Fatalf("taskrun pipeline run mismatch: got %s ; expected %s", tr.GetPipelineRunPVCName(), expectedPVCName)
-	}
-}
-
-func TestTasRun_InvalidOwner_GetPipelineRunPVCName(t *testing.T) {
-	tr := TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "taskrunname",
-			Namespace: "testns",
-			OwnerReferences: []metav1.OwnerReference{{
-				Kind: "SomeOtherOwner",
-				Name: "testpr",
-			}},
+		expectedPVCName: "",
+	}, {
+		name: "valid pipelinerun owner",
+		tr: &TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrunname",
+				Namespace: "testns",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "testpr",
+				}},
+			},
 		},
-	}
-	expectedPVCName := ""
-	if tr.GetPipelineRunPVCName() != expectedPVCName {
-		t.Fatalf("taskrun pipeline run pvc name mismatch: got %s ; expected %s", tr.GetPipelineRunPVCName(), expectedPVCName)
+		expectedPVCName: "testpr-pvc",
+	}, {
+		name:            "nil taskrun",
+		expectedPVCName: "",
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.tr.GetPipelineRunPVCName() != tt.expectedPVCName {
+				t.Fatalf("taskrun pipeline run pvc name mismatch: got %s ; expected %s", tt.tr.GetPipelineRunPVCName(), tt.expectedPVCName)
+			}
+		})
 	}
 }

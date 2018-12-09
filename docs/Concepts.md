@@ -173,6 +173,7 @@ For example:
 - A task's input could be a github source which contains your application code.
 - A task's output can be your application container image which can be then
   deployed in a cluster.
+- A task's output can be a jar file to be uploaded to a storage bucket.
 
 Read more on PipelineResources and their types [here](./using.md)
 

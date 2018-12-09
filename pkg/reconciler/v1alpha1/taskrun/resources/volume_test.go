@@ -1,9 +1,12 @@
 /*
 Copyright 2018 The Knative Authors
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,24 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package resources_test
 
 import (
-	"strings"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/google/go-cmp/cmp"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	corev1 "k8s.io/api/core/v1"
 )
 
-func TestMetadataInvalidLongName(t *testing.T) {
-
-	invalidMetas := []*metav1.ObjectMeta{
-		{Name: strings.Repeat("s", maxLength+1)},
-		{Name: "bad.name"},
+func Test_PVC_Volume(t *testing.T) {
+	expectedVolume := corev1.Volume{
+		Name: "test-pvc",
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "test-pvc"},
+		},
 	}
-	for _, invalidMeta := range invalidMetas {
-		if err := validateObjectMetadata(invalidMeta); err == nil {
-			t.Errorf("Failed to validate object meta data: %v", err)
-		}
+	if d := cmp.Diff(expectedVolume, resources.GetPVCVolume("test-pvc")); d != "" {
+		t.Fatalf("PVC volume mismatch: %s", d)
 	}
 }
