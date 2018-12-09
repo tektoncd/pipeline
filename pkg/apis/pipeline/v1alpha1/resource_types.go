@@ -33,8 +33,8 @@ const (
 	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
 	PipelineResourceTypeGit PipelineResourceType = "git"
 
-	// PipelineResourceTypeGCS indicates that this source is a GCS bucket.
-	PipelineResourceTypeGCS PipelineResourceType = "gcs"
+	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
+	PipelineResourceTypeStorage PipelineResourceType = "storage"
 
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
 	PipelineResourceTypeImage PipelineResourceType = "image"
@@ -44,7 +44,7 @@ const (
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeGCS, PipelineResourceTypeImage, PipelineResourceTypeCluster}
+var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypeCluster}
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {
@@ -96,6 +96,7 @@ type TaskResource struct {
 	// +optional
 	// TargetPath is the path in workspace directory where the task resource will be copied.
 	TargetPath string `json:"targetPath"`
+	// Resource Value stuff
 }
 
 // +genclient
@@ -146,6 +147,8 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 		return NewImageResource(r)
 	case PipelineResourceTypeCluster:
 		return NewClusterResource(r)
+	case PipelineResourceTypeStorage:
+		return NewStorageResource(r)
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

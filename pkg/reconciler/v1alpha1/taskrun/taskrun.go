@@ -93,6 +93,7 @@ type Reconciler struct {
 	resourceLister    listers.PipelineResourceLister
 	tracker           tracker.Interface
 	configStore       configStore
+	defaultBaseImage  string
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -233,7 +234,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.Params, rtr); err != nil {
-		c.Logger.Error("Failed to validate taskrun %s: %v", tr.Name, err)
+		c.Logger.Error("Failed to validate taskrun %q: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
@@ -403,19 +404,18 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
 
-	build, err = resources.AddInputResource(build, taskName, ts, tr, c.resourceLister, c.Logger)
+	build, err := resources.AddInputResource(b, taskName, ts, tr, c.resourceLister, c.Logger, c.defaultBaseImage)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	pipelineRunpvcName := tr.GetPipelineRunPVCName()
-	beforeStepsNeedPVC := resources.AddAfterSteps(tr.Spec, build, pipelineRunpvcName)
-	afterStepsNeedPVC := resources.AddBeforeSteps(tr.Spec, build, pipelineRunpvcName)
-	// attach PVC volume to build if output or inputs resource steps require
-	if beforeStepsNeedPVC || afterStepsNeedPVC {
-		build.Spec.Volumes = append(build.Spec.Volumes, resources.GetPVCVolume(pipelineRunpvcName))
+	err = resources.AddOutputResources(b, taskName, ts, tr, c.resourceLister, c.Logger, c.defaultBaseImage)
+	if err != nil {
+		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
+		return nil, err
 	}
+
 	var defaults []v1alpha1.TaskParam
 	if ts.Inputs != nil {
 		defaults = append(defaults, ts.Inputs.Params...)

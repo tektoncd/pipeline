@@ -186,6 +186,9 @@ func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
 
 // GetPipelineRunPVCName for taskrun gets pipelinerun
 func (tr *TaskRun) GetPipelineRunPVCName() string {
+	if tr == nil {
+		return ""
+	}
 	for _, ref := range tr.GetOwnerReferences() {
 		if ref.Kind == pipelineRunControllerName {
 			return fmt.Sprintf("%s-pvc", ref.Name)

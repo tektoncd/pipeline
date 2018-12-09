@@ -59,6 +59,28 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 			return apis.ErrMissingField("CAData param")
 		}
 	}
+	if r.Spec.Type == PipelineResourceTypeStorage {
+		foundTypeParam := false
+		var location string
+		for _, param := range r.Spec.Params {
+			switch {
+			case strings.EqualFold(param.Name, "type"):
+				if !allowedStorageType(param.Value) {
+					return apis.ErrInvalidValue(param.Value, "spec.params.type")
+				}
+				foundTypeParam = true
+			case strings.EqualFold(param.Name, "Location"):
+				location = param.Value
+			}
+		}
+
+		if !foundTypeParam {
+			return apis.ErrMissingField("spec.params.type")
+		}
+		if location == "" {
+			return apis.ErrMissingField("spec.params.location")
+		}
+	}
 	return nil
 }
 
@@ -68,4 +90,8 @@ func (rs *PipelineResourceSpec) Validate() *apis.FieldError {
 	}
 
 	return nil
+}
+
+func allowedStorageType(gotType string) bool {
+	return string(PipelineResourceTypeGCS) == gotType
 }
