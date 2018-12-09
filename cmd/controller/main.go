@@ -88,6 +88,14 @@ func main() {
 		logger.Fatalf("Error building pipeline clientset: %v", err)
 	}
 
+<<<<<<< HEAD
+=======
+	buildClient, err := buildclientset.NewForConfig(cfg)
+	if err != nil {
+		logger.Fatalf("Error building Build clientset: %v", err)
+	}
+
+>>>>>>> Add the ability to override base image busybox through flag.
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
 
 	opt := reconciler.Options{
@@ -118,7 +126,10 @@ func main() {
 			taskInformer,
 			clusterTaskInformer,
 			resourceInformer,
+<<<<<<< HEAD
 			podInformer,
+=======
+>>>>>>> Add the ability to override base image busybox through flag.
 		),
 		pipelinerun.NewController(opt,
 			pipelineRunInformer,
