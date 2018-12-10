@@ -29,7 +29,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
+var (
+	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
+	bashNoopImage         = flag.String("bash-noop-image", "override-with-bash-noop:latest", "The container image containing bash shell")
+)
 
 func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourceBinding) (*v1alpha1.TaskResourceBinding, error) {
 	for _, br := range boundResources {
@@ -53,7 +56,6 @@ func AddInputResource(
 	taskRun *v1alpha1.TaskRun,
 	pipelineResourceLister listers.PipelineResourceLister,
 	logger *zap.SugaredLogger,
-	overrideBaseImage string,
 ) (*buildv1alpha1.Build, error) {
 
 	if taskSpec.Inputs == nil {
@@ -73,26 +75,8 @@ func AddInputResource(
 			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q", taskName, boundResource)
 		}
 
-		// git resource sets source in build so execute this always.
-		switch resource.Spec.Type {
-		case v1alpha1.PipelineResourceTypeGit:
-			{
-				gitResource, err := v1alpha1.NewGitResource(resource)
-				if err != nil {
-					return nil, fmt.Errorf("task %q invalid git Pipeline Resource: %q; error %s", taskName, boundResource.ResourceRef.Name, err.Error())
-				}
-				gitSourceSpec := &buildv1alpha1.GitSourceSpec{
-					Url:      gitResource.URL,
-					Revision: gitResource.Revision,
-				}
-				build.Spec.Sources = append(build.Spec.Sources, buildv1alpha1.SourceSpec{
-					Git:        gitSourceSpec,
-					TargetPath: input.TargetPath,
-					Name:       gitResource.Name,
-				})
-			}
-		}
-		// if taskrun is fetching from previous task then execute simply copy step instead of fetching new copy
+		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
+		// to the desired destination directory
 		var copyStepsFromPrevTasks []corev1.Container
 
 		for i, path := range boundResource.Paths {
@@ -102,13 +86,9 @@ func AddInputResource(
 			} else {
 				dPath = filepath.Join(workspaceDir, input.TargetPath)
 			}
-			copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, corev1.Container{
-				Name:         fmt.Sprintf("source-copy-%s-%d", boundResource.Name, i),
-				Image:        overrideBaseImage,
-				Command:      []string{"cp"},
-				Args:         []string{"-r", fmt.Sprintf("%s/.", path), dPath},
-				VolumeMounts: []corev1.VolumeMount{getPvcMount(pvcName)},
-			})
+			cpContainer := copyContainer(fmt.Sprintf("%s-%d", boundResource.Name, i), path, dPath)
+			cpContainer.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}
+			copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpContainer)
 			mountPVC = true
 		}
 
@@ -117,6 +97,22 @@ func AddInputResource(
 			build.Spec.Steps = append(copyStepsFromPrevTasks, build.Spec.Steps...)
 		} else {
 			switch resource.Spec.Type {
+			case v1alpha1.PipelineResourceTypeGit:
+				{
+					gitResource, err := v1alpha1.NewGitResource(resource)
+					if err != nil {
+						return nil, fmt.Errorf("task %q invalid git Pipeline Resource: %q; error %s", taskName, boundResource.ResourceRef.Name, err.Error())
+					}
+					gitSourceSpec := &buildv1alpha1.GitSourceSpec{
+						Url:      gitResource.URL,
+						Revision: gitResource.Revision,
+					}
+					build.Spec.Sources = append(build.Spec.Sources, buildv1alpha1.SourceSpec{
+						Git:        gitSourceSpec,
+						TargetPath: input.TargetPath,
+						Name:       gitResource.Name,
+					})
+				}
 			case v1alpha1.PipelineResourceTypeCluster:
 				{
 					clusterResource, err := v1alpha1.NewClusterResource(resource)
@@ -131,7 +127,10 @@ func AddInputResource(
 					if err != nil {
 						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource: %q: %s", taskName, boundResource.ResourceRef.Name, err.Error())
 					}
-					addStorageFetchStep(build, storageResource, input.TargetPath)
+					fetchErr := addStorageFetchStep(build, storageResource, input.TargetPath)
+					if err != nil {
+						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource download steps: %q: %s", taskName, boundResource.ResourceRef.Name, fetchErr.Error())
+					}
 				}
 			}
 		}
@@ -173,24 +172,24 @@ func addClusterBuildStep(build *buildv1alpha1.Build, clusterResource *v1alpha1.C
 	build.Spec.Steps = buildSteps
 }
 
-func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.PipelineStorageResourceInterface, destPath string) {
+func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.PipelineStorageResourceInterface, destPath string) error {
 	var destDirectory = workspaceDir
 	if destPath != "" {
 		destDirectory = filepath.Join(workspaceDir, destPath)
 	}
 
 	storageResource.SetDestinationDirectory(destDirectory)
-
-	gcsContainers, err := storageResource.GetDownloadContainerSpec()
+	gcsCreateDirContainer := createDirContainer(storageResource.GetName(), destDirectory)
+	gcsDownloadContainers, err := storageResource.GetDownloadContainerSpec()
 	if err != nil {
-		return
-		// How to surface this error
+		return err
 	}
 	mountedSecrets := map[string]string{}
 	for _, volume := range build.Spec.Volumes {
 		mountedSecrets[volume.Name] = ""
 	}
 	var buildSteps []corev1.Container
+	gcsContainers := append([]corev1.Container{gcsCreateDirContainer}, gcsDownloadContainers...)
 	for _, gcsContainer := range gcsContainers {
 
 		gcsContainer.VolumeMounts = append(gcsContainer.VolumeMounts, corev1.VolumeMount{
@@ -217,4 +216,21 @@ func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.Pi
 		buildSteps = append(buildSteps, gcsContainer)
 	}
 	build.Spec.Steps = append(buildSteps, build.Spec.Steps...)
+	return nil
+}
+
+func createDirContainer(name, destinationPath string) corev1.Container {
+	return corev1.Container{
+		Name:  fmt.Sprintf("create-dir-%s", name),
+		Image: *bashNoopImage,
+		Args:  []string{"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " ")},
+	}
+}
+
+func copyContainer(name, sourcePath, destinationPath string) corev1.Container {
+	return corev1.Container{
+		Name:  fmt.Sprintf("source-copy-%s", name),
+		Image: *bashNoopImage,
+		Args:  []string{"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath}, " ")},
+	}
 }

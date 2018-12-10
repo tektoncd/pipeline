@@ -18,7 +18,6 @@ package taskrun
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"reflect"
 
@@ -73,8 +72,6 @@ const (
 )
 
 var (
-	overrideBaseImage = flag.String("overrideBaseImage", "busybox", "Name of image to override default image for copy steps. Expects bash to be present on the image.")
-
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   v1alpha1.SchemeGroupVersion.Group,
 		Version: v1alpha1.SchemeGroupVersion.Version,
@@ -408,13 +405,13 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
 
-	build, err := resources.AddInputResource(b, taskName, ts, tr, c.resourceLister, c.Logger, *overrideBaseImage)
+	build, err := resources.AddInputResource(b, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	err = resources.AddOutputResources(b, taskName, ts, tr, c.resourceLister, c.Logger, *overrideBaseImage)
+	err = resources.AddOutputResources(b, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err

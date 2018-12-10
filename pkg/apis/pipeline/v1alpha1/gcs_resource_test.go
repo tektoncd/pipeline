@@ -224,11 +224,6 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 			}},
 		},
 		wantContainers: []corev1.Container{{
-			Name:    "storage-create-dir-gcs-valid",
-			Image:   "busybox",
-			Command: []string{"mkdir"},
-			Args:    []string{"-p", "/workspace"},
-		}, {
 			Name:    "storage-fetch-gcs-valid",
 			Image:   "google/cloud-sdk",
 			Command: []string{"gsutil"},
@@ -265,11 +260,6 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 			}},
 		},
 		wantContainers: []corev1.Container{{
-			Name:    "storage-create-dir-gcs-valid",
-			Image:   "busybox",
-			Command: []string{"mkdir"},
-			Args:    []string{"-p", "/workspace"},
-		}, {
 			Name:    "storage-fetch-gcs-valid",
 			Image:   "google/cloud-sdk",
 			Command: []string{"gsutil"},
@@ -314,11 +304,12 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 		wantContainers []corev1.Container
 		wantErr        bool
 	}{{
-		name: "valid upload to protected buckets",
+		name: "valid upload to protected buckets with directory paths",
 		gcsResource: &GCSResource{
 			Name:           "gcs-valid",
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace/",
+			TypeDir:        true,
 			Secrets: []SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "fieldName",
@@ -356,7 +347,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 			Name:    "storage-upload-gcs-valid",
 			Image:   "google/cloud-sdk",
 			Command: []string{"gsutil"},
-			Args:    []string{"-m", "cp", "-r", "/workspace/*", "gs://some-bucket"},
+			Args:    []string{"-m", "cp", "/workspace/*", "gs://some-bucket"},
 			Env: []corev1.EnvVar{
 				{Name: "FIELDNAME", Value: "/var/secret/secretName/key.json"},
 				{Name: "GOOGLE_ANOTHER_CREDENTIALS", Value: "/var/secret/secretName/key.json"},
@@ -366,15 +357,28 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 				MountPath: "/var/secret/secretName",
 			}},
 		}},
-	},
-		{
-			name: "invalid upload with no source directory path",
-			gcsResource: &GCSResource{
-				Name:     "gcs-invalid",
-				Location: "gs://some-bucket",
-			},
-			wantErr: true,
-		}}
+	}, {
+		name: "valid upload to protected buckets with single file",
+		gcsResource: &GCSResource{
+			Name:           "gcs-valid",
+			Location:       "gs://some-bucket",
+			DestinationDir: "/workspace/",
+			TypeDir:        false,
+		},
+		wantContainers: []corev1.Container{{
+			Name:    "storage-upload-gcs-valid",
+			Image:   "google/cloud-sdk",
+			Command: []string{"gsutil"},
+			Args:    []string{"-m", "cp", "/workspace/*", "gs://some-bucket"},
+		}},
+	}, {
+		name: "invalid upload with no source directory path",
+		gcsResource: &GCSResource{
+			Name:     "gcs-invalid",
+			Location: "gs://some-bucket",
+		},
+		wantErr: true,
+	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			gotContainers, err := tc.gcsResource.GetUploadContainerSpec()

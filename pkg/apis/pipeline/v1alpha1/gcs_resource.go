@@ -107,8 +107,12 @@ func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	if s.DestinationDir == "" {
 		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set: %s", s.Name)
 	}
+	args := []string{"-m", "cp"}
+	if s.TypeDir {
+		args = append(args, "-r")
+	}
+	args = append(args, []string{filepath.Join(s.DestinationDir, "*"), s.Location}...)
 
-	args := []string{"-m", "cp", "-r", filepath.Join(s.DestinationDir, "*"), s.Location}
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, s.Secrets)
 
 	return []corev1.Container{{
@@ -133,11 +137,6 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	args := []string{"-m", "cp", "-r", s.Location, s.DestinationDir}
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, s.Secrets)
 	return []corev1.Container{{
-		Name:    fmt.Sprintf("storage-create-dir-%s", s.Name),
-		Image:   "busybox", // some replacable string
-		Command: []string{"mkdir"},
-		Args:    []string{"-p", s.DestinationDir},
-	}, {
 		Name:         fmt.Sprintf("storage-fetch-%s", s.Name),
 		Image:        gsutilImage,
 		Command:      []string{"gsutil"},

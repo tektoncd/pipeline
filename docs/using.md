@@ -116,7 +116,7 @@ mounted under path `/pvc`.
 ```yaml
 resources:
   outputs:
-  name: storage-gcs
+    name: storage-gcs
 steps:
   - image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
     command: [jar]
@@ -612,7 +612,7 @@ Params that can be added are the following:
 1. `dir`: represents whether the blob storage is a director or not.
 
 To use GCS private buckets, [service accounts](https://cloud.google.com/compute/docs/access/service-accounts
-) could be configured to access GCS bucket for `read` and `write` authorities. Download the service accunt keys to create a secret.
+) could be configured to access GCS bucket for `read` and `write` authorities. Download the service account keys to create a secret.
 
 For example, create a secret like the following example:
 
@@ -620,7 +620,9 @@ For example, create a secret like the following example:
 $ kubectl create secret generic bucket-sa --from-file=./service_account.json
 ```
 
-and then apply secrets to the GCS storage resource
+and then apply secret to the GCS storage resource in `fieldName` key and `GOOGLE_APPLICATION_CREDENTIALS` value.
+
+**Note**: For GCS private buckets [`GOOGLE_APPLICATION_CREDENTIALS`](https://cloud.google.com/docs/authentication/production) is the environment variable to be set for the container to download/upload GCS resource.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -643,7 +645,6 @@ spec:
       secretName: service_account.json
 ```
 
-Note: `GOOGLE_APPLICATION_CREDENTIALS` is the environment variable to be set for the container to download/upload GCS resource.
 
 ## Troubleshooting
 
