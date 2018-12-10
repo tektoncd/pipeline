@@ -19,6 +19,7 @@ package resources
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
@@ -50,7 +51,6 @@ func AddOutputResources(
 	taskRun *v1alpha1.TaskRun,
 	pipelineResourceLister listers.PipelineResourceLister,
 	logger *zap.SugaredLogger,
-	overrideBaseImage string,
 ) error {
 
 	if taskSpec == nil || taskSpec.Outputs == nil {
@@ -110,16 +110,18 @@ func AddOutputResources(
 			var newSteps []corev1.Container
 			for _, dPath := range boundResource.Paths {
 				newSteps = append(newSteps, []corev1.Container{{
-					Name:         fmt.Sprintf("source-mkdir-%s", resource.GetName()),
-					Image:        overrideBaseImage,
-					Command:      []string{"mkdir"},
-					Args:         []string{"-p", dPath},
+					Name:  fmt.Sprintf("source-mkdir-%s", resource.GetName()),
+					Image: *bashNoopImage,
+					Args: []string{
+						"-args", strings.Join([]string{"mkdir", "-p", dPath}, " "),
+					},
 					VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
 				}, {
-					Name:         fmt.Sprintf("source-copy-%s", resource.GetName()),
-					Image:        overrideBaseImage,
-					Command:      []string{"cp"},
-					Args:         []string{"-r", fmt.Sprintf("%s/.", sourcePath), dPath},
+					Name:  fmt.Sprintf("source-copy-%s", resource.GetName()),
+					Image: *bashNoopImage,
+					Args: []string{
+						"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), dPath}, " "),
+					},
 					VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
 				}}...)
 			}

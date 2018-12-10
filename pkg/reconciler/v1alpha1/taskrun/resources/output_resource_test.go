@@ -75,6 +75,9 @@ func outputResourcesetUp() {
 			}, {
 				Name:  "type",
 				Value: "gcs",
+			}, {
+				Name:  "dir",
+				Value: "true",
 			}},
 			SecretParams: []v1alpha1.SecretParam{{
 				SecretKey:  "key.json",
@@ -151,19 +154,17 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:    "source-mkdir-source-git",
-			Image:   "busybox",
-			Command: []string{"mkdir"},
-			Args:    []string{"-p", "pipeline-task-name"},
+			Name:  "source-mkdir-source-git",
+			Image: "override-with-bash-noop:latest",
+			Args:  []string{"-args", "mkdir -p pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
 		}, {
-			Name:    "source-copy-source-git",
-			Image:   "busybox",
-			Command: []string{"cp"},
-			Args:    []string{"-r", "/workspace/.", "pipeline-task-name"},
+			Name:  "source-copy-source-git",
+			Image: "override-with-bash-noop:latest",
+			Args:  []string{"-args", "cp -r /workspace/. pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
@@ -209,19 +210,17 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:    "source-mkdir-source-git",
-			Image:   "busybox",
-			Command: []string{"mkdir"},
-			Args:    []string{"-p", "pipeline-task-name"},
+			Name:  "source-mkdir-source-git",
+			Image: "override-with-bash-noop:latest",
+			Args:  []string{"-args", "mkdir -p pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
 		}, {
-			Name:    "source-copy-source-git",
-			Image:   "busybox",
-			Command: []string{"cp"},
-			Args:    []string{"-r", "/output/source-workspace/.", "pipeline-task-name"},
+			Name:  "source-copy-source-git",
+			Image: "override-with-bash-noop:latest",
+			Args:  []string{"-args", "cp -r /output/source-workspace/. pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
@@ -332,15 +331,13 @@ func Test_Valid_OutputResources(t *testing.T) {
 			}},
 		}, {
 			Name:         "source-mkdir-source-gcs",
-			Image:        "busybox",
-			Command:      []string{"mkdir"},
-			Args:         []string{"-p", "pipeline-task-path"},
+			Image:        "override-with-bash-noop:latest",
+			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 		}, {
 			Name:         "source-copy-source-gcs",
-			Image:        "busybox",
-			Command:      []string{"cp"},
-			Args:         []string{"-r", "/workspace/faraway-disk/.", "pipeline-task-path"},
+			Image:        "override-with-bash-noop:latest",
+			Args:         []string{"-args", "cp -r /workspace/faraway-disk/. pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 		}},
 		build: build(),
@@ -403,15 +400,13 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Args: []string{"-m", "cp", "-r", "/output/source-workspace/*", "gs://some-bucket"},
 		}, {
 			Name:         "source-mkdir-source-gcs",
-			Image:        "busybox",
-			Command:      []string{"mkdir"},
-			Args:         []string{"-p", "pipeline-task-path"},
+			Image:        "override-with-bash-noop:latest",
+			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 		}, {
 			Name:         "source-copy-source-gcs",
-			Image:        "busybox",
-			Command:      []string{"cp"},
-			Args:         []string{"-r", "/output/source-workspace/.", "pipeline-task-path"},
+			Image:        "override-with-bash-noop:latest",
+			Args:         []string{"-args", "cp -r /output/source-workspace/. pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 		}},
 		build: build(),
@@ -561,7 +556,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			outputResourcesetUp()
-			err := AddOutputResources(c.build, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger, "busybox")
+			err := AddOutputResources(c.build, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
@@ -718,7 +713,7 @@ func Test_InValid_OutputResources(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			outputResourcesetUp()
-			err := AddOutputResources(build(), c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger, "busybox")
+			err := AddOutputResources(build(), c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Fatalf("Test AddOutputResourceSteps error %v ", c.desc)
 			}

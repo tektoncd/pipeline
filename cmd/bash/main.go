@@ -1,9 +1,12 @@
 /*
 Copyright 2018 The Knative Authors
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -11,24 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package main
 
 import (
-	"strings"
-	"testing"
+	"flag"
+	"log"
+	"os/exec"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/knative/build-pipeline/pkg/logging"
 )
 
-func TestMetadataInvalidLongName(t *testing.T) {
+var (
+	args = flag.String("args", "", "space separated arguments for bash")
+)
 
-	invalidMetas := []*metav1.ObjectMeta{
-		{Name: strings.Repeat("s", maxLength+1)},
-		{Name: "bad.name"},
+func main() {
+	flag.Parse()
+	logger, _ := logging.NewLogger("", "bash_command")
+	defer logger.Sync()
+	cmd := exec.Command("sh", "-c", *args)
+	stdoutStderr, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Errorf("Error executing command %q with arguments %s", *args, stdoutStderr)
+		log.Fatal(err)
 	}
-	for _, invalidMeta := range invalidMetas {
-		if err := validateObjectMetadata(invalidMeta); err == nil {
-			t.Errorf("Failed to validate object meta data: %s", err)
-		}
-	}
+	logger.Infof("Successfully executed command %q", *args)
 }

@@ -462,10 +462,9 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
-					Name:    "storage-create-dir-storage1",
-					Image:   "busybox",
-					Command: []string{"mkdir"},
-					Args:    []string{"-p", "/workspace/gcs-dir"},
+					Name:  "create-dir-storage1",
+					Image: "override-with-bash-noop:latest",
+					Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
 					VolumeMounts: []corev1.VolumeMount{{
 						Name: "workspace", MountPath: "/workspace",
 					}},
@@ -522,9 +521,8 @@ func TestAddResourceToBuild(t *testing.T) {
 			Spec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
 					Name:         "source-copy-workspace-0",
-					Image:        "busybox",
-					Command:      []string{"cp"},
-					Args:         []string{"-r", "prev-task-path/.", "/workspace/gcs-dir"},
+					Image:        "override-with-bash-noop:latest",
+					Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gcs-dir"},
 					VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 				}},
 				Volumes: []corev1.Volume{{
@@ -737,7 +735,7 @@ func TestAddResourceToBuild(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
-			got, err := AddInputResource(c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger, "busybox")
+			got, err := AddInputResource(c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
@@ -773,93 +771,91 @@ func Test_StorageInputResource(t *testing.T) {
 		},
 		build:   nil,
 		wantErr: false,
-	},
-		{
-			desc: "storage resource as input",
-			task: &v1alpha1.Task{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "get-storage",
-					Namespace: "marshmallow",
-				},
-				Spec: v1alpha1.TaskSpec{
-					Inputs: &v1alpha1.Inputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "gcs-input-resource",
-							Type: "storage",
-						}},
-					},
-				},
+	}, {
+		desc: "storage resource as input",
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-storage",
+				Namespace: "marshmallow",
 			},
-			taskRun: &v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "get-storage-run",
-					Namespace: "marshmallow",
-				},
-				Spec: v1alpha1.TaskRunSpec{
-					Inputs: v1alpha1.TaskRunInputs{
-						Resources: []v1alpha1.TaskResourceBinding{{
-							Name: "gcs-input-resource",
-							ResourceRef: v1alpha1.PipelineResourceRef{
-								Name: "storage-gcs-keys",
-							},
-						}},
-					},
-				},
-			},
-			build:   build(),
-			wantErr: false,
-			want: &buildv1alpha1.Build{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Build",
-					APIVersion: "build.knative.dev/v1alpha1"},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "build-from-repo",
-					Namespace: "marshmallow",
-					OwnerReferences: []metav1.OwnerReference{{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "gcs-input-resource",
+						Type: "storage",
 					}},
 				},
-				Spec: buildv1alpha1.BuildSpec{
-					Steps: []corev1.Container{{
-						Name:    "storage-create-dir-storage-gcs-keys",
-						Image:   "busybox",
-						Command: []string{"mkdir"},
-						Args:    []string{"-p", "/workspace"},
-						VolumeMounts: []corev1.VolumeMount{{
-							Name: "workspace", MountPath: "/workspace",
-						}},
-					}, {
-						Name:    "storage-fetch-storage-gcs-keys",
-						Image:   "google/cloud-sdk",
-						Command: []string{"gsutil"},
-						Args:    []string{"-m", "cp", "-r", "gs://fake-bucket/rules.zip", "/workspace"},
-						VolumeMounts: []corev1.VolumeMount{{
-							Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"}, {
-							Name: "volume-storage-gcs-keys-secret-name2", MountPath: "/var/secret/secret-name2"}, {
-							Name: "workspace", MountPath: "/workspace"},
-						},
-						Env: []corev1.EnvVar{
-							{Name: "GOOGLE_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
-							{Name: "GOOGLE_TOKEN", Value: "/var/secret/secret-name2/token"},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-storage-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "gcs-input-resource",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "storage-gcs-keys",
 						},
 					}},
-					Volumes: []corev1.Volume{{
-						Name:         "volume-storage-gcs-keys-secret-name",
-						VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name"}},
-					}, {
-						Name:         "volume-storage-gcs-keys-secret-name2",
-						VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name2"}},
-					}},
 				},
 			},
-		}} {
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:  "create-dir-storage-gcs-keys",
+					Image: "override-with-bash-noop:latest",
+					Args:  []string{"-args", "mkdir -p /workspace"},
+					VolumeMounts: []corev1.VolumeMount{{
+						Name: "workspace", MountPath: "/workspace",
+					}},
+				}, {
+					Name:    "storage-fetch-storage-gcs-keys",
+					Image:   "google/cloud-sdk",
+					Command: []string{"gsutil"},
+					Args:    []string{"-m", "cp", "-r", "gs://fake-bucket/rules.zip", "/workspace"},
+					VolumeMounts: []corev1.VolumeMount{{
+						Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"}, {
+						Name: "volume-storage-gcs-keys-secret-name2", MountPath: "/var/secret/secret-name2"}, {
+						Name: "workspace", MountPath: "/workspace"},
+					},
+					Env: []corev1.EnvVar{
+						{Name: "GOOGLE_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
+						{Name: "GOOGLE_TOKEN", Value: "/var/secret/secret-name2/token"},
+					},
+				}},
+				Volumes: []corev1.Volume{{
+					Name:         "volume-storage-gcs-keys-secret-name",
+					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name"}},
+				}, {
+					Name:         "volume-storage-gcs-keys-secret-name2",
+					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name2"}},
+				}},
+			},
+		},
+	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
-			got, err := AddInputResource(c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger, "busybox")
+			got, err := AddInputResource(c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
