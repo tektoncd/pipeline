@@ -22,21 +22,22 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/knative/build-pipeline/test"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	buildresources "github.com/knative/build/pkg/reconciler/build/resources"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
-
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
-	"github.com/knative/build-pipeline/test"
 )
 
 var (
@@ -497,14 +498,14 @@ func TestReconcile(t *testing.T) {
 		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
-	testcases := []struct {
-		name            string
-		taskRun         *v1alpha1.TaskRun
-		wantedBuildSpec buildv1alpha1.BuildSpec
+	for _, tc := range []struct {
+		name          string
+		taskRun       *v1alpha1.TaskRun
+		wantBuildSpec buildv1alpha1.BuildSpec
 	}{{
 		name:    "success",
 		taskRun: taskruns[0],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
+		wantBuildSpec: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{
 				entrypointCopyStep,
 				{
@@ -528,7 +529,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskruns[1],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
+		wantBuildSpec: buildv1alpha1.BuildSpec{
 			ServiceAccountName: "test-sa",
 			Steps: []corev1.Container{
 				entrypointCopyStep,
@@ -553,7 +554,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "params",
 		taskRun: taskruns[2],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
+		wantBuildSpec: buildv1alpha1.BuildSpec{
 			Sources: []buildv1alpha1.SourceSpec{{
 				Git: &buildv1alpha1.GitSourceSpec{
 					Url:      "https://foo.git",
@@ -595,7 +596,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "input-overrides-default-params",
 		taskRun: taskruns[3],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
+		wantBuildSpec: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{
 				entrypointCopyStep,
 				{
@@ -629,7 +630,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "default-params",
 		taskRun: taskruns[4],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
+		wantBuildSpec: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{
 				entrypointCopyStep,
 				{
@@ -663,7 +664,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "wrap-steps",
 		taskRun: taskruns[5],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
+		wantBuildSpec: buildv1alpha1.BuildSpec{
 			Sources: []buildv1alpha1.SourceSpec{{
 				Git:  &buildv1alpha1.GitSourceSpec{Url: "https://foo.git", Revision: "master"},
 				Name: "git-resource",
@@ -717,7 +718,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskruns[6],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
+		wantBuildSpec: buildv1alpha1.BuildSpec{
 			Sources: []buildv1alpha1.SourceSpec{{
 				Name: "git-resource",
 				Git: &buildv1alpha1.GitSourceSpec{
@@ -769,29 +770,59 @@ func TestReconcile(t *testing.T) {
 				getToolsVolume(taskruns[8].Name),
 			},
 		},
-	}}
-	for _, tc := range testcases {
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets := test.GetTaskRunController(d)
 			c := testAssets.Controller
 			clients := testAssets.Clients
+			saName := tc.taskRun.Spec.ServiceAccount
+			if saName == "" {
+				saName = "default"
+			}
+			clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      saName,
+					Namespace: tc.taskRun.Namespace,
+				},
+			})
+
 			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
-			if len(clients.Build.Actions()) == 0 {
-				t.Errorf("Expected actions to be logged in the buildclient, got none")
-			}
-			// check error
-			build, err := clients.Build.BuildV1alpha1().Builds(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("Failed to fetch build: %v", err)
-			}
-			if d := cmp.Diff(build.Spec, tc.wantedBuildSpec); d != "" {
-				t.Errorf("buildspec doesn't match, diff: %s", d)
+			if len(clients.Kube.Actions()) == 0 {
+				t.Errorf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			// This TaskRun is in progress now and the status should reflect that
-			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun.Name)
+			if err != nil {
+				t.Errorf("Invalid resource key: %v", err)
+			}
+			tr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			if tr.Status.PodName == "" {
+				t.Fatalf("Reconcile didn't set pod name")
+			}
+
+			// check error
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to fetch build pod: %v", err)
+			}
+			wantPod, err := buildresources.MakePod(&buildv1alpha1.Build{
+				Spec: tc.wantBuildSpec,
+			}, clients.Kube)
+			if err != nil {
+				t.Fatalf("MakePod: %v", err)
+			}
+
+			if d := cmp.Diff(pod.Spec, wantPod.Spec); d != "" {
+				t.Errorf("pod spec doesn't match, diff: %s", d)
+			}
+
+			// This TaskRun is in progress now and the status should reflect that.
+			condition := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
@@ -799,25 +830,16 @@ func TestReconcile(t *testing.T) {
 				t.Errorf("Expected reason %q but was %s", taskrun.ReasonRunning, condition.Reason)
 			}
 
-			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun.Name)
-			if err != nil {
-				t.Errorf("Invalid resource key: %v", err)
-			}
-			//Command, Args, Env, VolumeMounts
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
 			}
-			// 3. check that volume was created
+			// 3. check that PVC was created
 			pvc, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("Failed to fetch build: %v", err)
 			}
 
 			// get related TaskRun to populate expected PVC
-			tr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
-			if err != nil {
-				t.Errorf("Failed to fetch build: %v", err)
-			}
 			expectedVolume := getExpectedPVC(tr)
 			if d := cmp.Diff(pvc.Name, expectedVolume.Name); d != "" {
 				t.Errorf("pvc doesn't match, diff: %s", d)
@@ -900,8 +922,8 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid TaskRun but saw %q", err)
 			}
-			if len(clients.Build.Actions()) != 0 {
-				t.Errorf("expected no actions created by the reconciler, got %v", clients.Build.Actions())
+			if len(clients.Kube.Actions()) != 0 {
+				t.Errorf("expected no actions created by the reconciler, got %v", clients.Kube.Actions())
 			}
 			// Since the TaskRun is invalid, the status should say it has failed
 			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
@@ -940,18 +962,16 @@ func TestReconcileBuildFetchError(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	reactor := func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		if action.GetVerb() == "get" && action.GetResource().Resource == "builds" {
-			// handled fetching builds
-			return true, nil, fmt.Errorf("induce failure fetching builds")
+	clients.Kube.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		if action.GetVerb() == "get" && action.GetResource().Resource == "pods" {
+			// handled fetching pods
+			return true, nil, fmt.Errorf("induce failure fetching pods")
 		}
 		return false, nil, nil
-	}
-
-	clients.Build.PrependReactor("*", "*", reactor)
+	})
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err == nil {
-		t.Fatal("expected error when reconciling a Task for which we couldn't get the corresponding Build but got nil")
+		t.Fatal("expected error when reconciling a Task for which we couldn't get the corresponding Build Pod but got nil")
 	}
 }
 
@@ -975,19 +995,28 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		},
 		Spec: *simpleTask.Spec.GetBuildSpec(),
 	}
-	buildSt := &duckv1alpha1.Condition{
-		Type: duckv1alpha1.ConditionSucceeded,
-		// build is not completed
-		Status:  corev1.ConditionUnknown,
-		Message: "Running build",
+	// TODO(jasonhall): This avoids a circular dependency where
+	// GetTaskRunController takes a test.Data which must be populated with
+	// a pod created from MakePod which requires a (fake) Kube client. When
+	// we remove Build entirely from this controller, we should simply
+	// specify the Pod we want to exist directly, and not call MakePod from
+	// the build. This will break the cycle and allow us to simply use
+	// clients normally.
+	pod, err := buildresources.MakePod(build, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: taskRun.Namespace,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
 	}
-	build.Status.SetCondition(buildSt)
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{
 			taskRun,
 		},
-		Tasks:  []*v1alpha1.Task{simpleTask},
-		Builds: []*buildv1alpha1.Build{build},
+		Tasks: []*v1alpha1.Task{simpleTask},
+		Pods:  []*corev1.Pod{pod},
 	}
 
 	testAssets := test.GetTaskRunController(d)
@@ -1001,17 +1030,21 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), &duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Message: "Running",
+		Reason:  "Running",
+	}, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-got, +want: %v", d)
 	}
 
-	// update build status and trigger reconcile : build is completed
-	buildSt.Status = corev1.ConditionTrue
-	buildSt.Message = "Build completed"
-	build.Status.SetCondition(buildSt)
-
-	if _, err = clients.Build.BuildV1alpha1().Builds(taskRun.Namespace).Update(build); err != nil {
-		t.Errorf("Unexpected error while creating build: %v", err)
+	// update pod status and trigger reconcile : build is completed
+	pod.Status = corev1.PodStatus{
+		Phase: corev1.PodSucceeded,
+	}
+	if _, err := clients.Kube.CoreV1().Pods(taskRun.Namespace).Update(pod); err != nil {
+		t.Errorf("Unexpected error while updating build: %v", err)
 	}
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
 		t.Fatalf("Unexpected error when Reconcile(): %v", err)
@@ -1021,8 +1054,11 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), buildSt, ignoreLastTransitionTime); d != "" {
-		t.Errorf("Taskrun Status diff -want, +got: %v", d)
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), &duckv1alpha1.Condition{
+		Type:   duckv1alpha1.ConditionSucceeded,
+		Status: corev1.ConditionTrue,
+	}, ignoreLastTransitionTime); d != "" {
+		t.Errorf("Taskrun Status diff -got, +want: %v", d)
 	}
 }
 
@@ -1041,146 +1077,139 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 	}
 	startTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 0, 0, 0, time.UTC))
 	completionTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 8, 0, 0, time.UTC))
-	testCases := []struct {
+	for _, tc := range []struct {
 		name           string
 		buildStatus    buildv1alpha1.BuildStatus
 		expectedStatus v1alpha1.TaskRunStatus
-	}{
-		{
-			name:        "empty build status",
-			buildStatus: buildv1alpha1.BuildStatus{},
-			expectedStatus: v1alpha1.TaskRunStatus{
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Status:  corev1.ConditionUnknown,
-					Reason:  taskrun.ReasonRunning,
-					Message: taskrun.ReasonRunning,
-				}},
-				Steps: []v1alpha1.StepState{},
-			},
+	}{{
+		name:        "empty build status",
+		buildStatus: buildv1alpha1.BuildStatus{},
+		expectedStatus: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  taskrun.ReasonRunning,
+				Message: taskrun.ReasonRunning,
+			}},
+			Steps: []v1alpha1.StepState{},
 		},
-		{
-			name: "build validate failed",
-			buildStatus: buildv1alpha1.BuildStatus{
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Status:  corev1.ConditionFalse,
-					Reason:  "BuildValidationFailed",
-					Message: `serviceaccounts "missing-sa" not-found`,
-				}},
-			},
-			expectedStatus: v1alpha1.TaskRunStatus{
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Status:  corev1.ConditionFalse,
-					Reason:  "BuildValidationFailed",
-					Message: `serviceaccounts "missing-sa" not-found`,
-				}},
-				Steps: []v1alpha1.StepState{},
-			},
+	}, {
+		name: "build validate failed",
+		buildStatus: buildv1alpha1.BuildStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "BuildValidationFailed",
+				Message: `serviceaccounts "missing-sa" not-found`,
+			}},
 		},
-		{
-			name: "running build status",
-			buildStatus: buildv1alpha1.BuildStatus{
-				StartTime: &startTime,
-				StepStates: []corev1.ContainerState{
-					waiting,
-				},
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Reason:  "Running build",
-					Message: "Running build",
-				}},
-				Cluster: &buildv1alpha1.ClusterSpec{
-					Namespace: "default",
-					PodName:   "im-am-the-pod",
-				},
+		expectedStatus: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "BuildValidationFailed",
+				Message: `serviceaccounts "missing-sa" not-found`,
+			}},
+			Steps: []v1alpha1.StepState{},
+		},
+	}, {
+		name: "running build status",
+		buildStatus: buildv1alpha1.BuildStatus{
+			StartTime: &startTime,
+			StepStates: []corev1.ContainerState{
+				waiting,
 			},
-			expectedStatus: v1alpha1.TaskRunStatus{
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Reason:  "Running build",
-					Message: "Running build",
-				}},
-				Steps: []v1alpha1.StepState{
-					{ContainerState: *waiting.DeepCopy()},
-				},
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Reason:  "Running build",
+				Message: "Running build",
+			}},
+			Cluster: &buildv1alpha1.ClusterSpec{
+				Namespace: "default",
 				PodName:   "im-am-the-pod",
-				StartTime: &startTime,
 			},
 		},
-		{
-			name: "completed build status (success)",
-			buildStatus: buildv1alpha1.BuildStatus{
-				StartTime:      &startTime,
-				CompletionTime: &completionTime,
-				StepStates: []corev1.ContainerState{
-					completed,
-				},
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Status:  corev1.ConditionTrue,
-					Reason:  "Build succeeded",
-					Message: "Build succeeded",
-				}},
-				Cluster: &buildv1alpha1.ClusterSpec{
-					Namespace: "default",
-					PodName:   "im-am-the-pod",
-				},
+		expectedStatus: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Reason:  "Running build",
+				Message: "Running build",
+			}},
+			Steps: []v1alpha1.StepState{
+				{ContainerState: *waiting.DeepCopy()},
 			},
-			expectedStatus: v1alpha1.TaskRunStatus{
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Status:  corev1.ConditionTrue,
-					Reason:  "Build succeeded",
-					Message: "Build succeeded",
-				}},
-				Steps: []v1alpha1.StepState{
-					{ContainerState: *completed.DeepCopy()},
-				},
-				PodName:        "im-am-the-pod",
-				StartTime:      &startTime,
-				CompletionTime: &completionTime,
+			PodName:   "im-am-the-pod",
+			StartTime: &startTime,
+		},
+	}, {
+		name: "completed build status (success)",
+		buildStatus: buildv1alpha1.BuildStatus{
+			StartTime:      &startTime,
+			CompletionTime: &completionTime,
+			StepStates: []corev1.ContainerState{
+				completed,
+			},
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionTrue,
+				Reason:  "Build succeeded",
+				Message: "Build succeeded",
+			}},
+			Cluster: &buildv1alpha1.ClusterSpec{
+				Namespace: "default",
+				PodName:   "im-am-the-pod",
 			},
 		},
-		{
-			name: "completed build status (failure)",
-			buildStatus: buildv1alpha1.BuildStatus{
-				StartTime:      &startTime,
-				CompletionTime: &completionTime,
-				StepStates: []corev1.ContainerState{
-					completed,
-					failed,
-				},
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Status:  corev1.ConditionFalse,
-					Reason:  "Build failed",
-					Message: "Build failed",
-				}},
-				Cluster: &buildv1alpha1.ClusterSpec{
-					Namespace: "default",
-					PodName:   "im-am-the-pod",
-				},
+		expectedStatus: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionTrue,
+				Reason:  "Build succeeded",
+				Message: "Build succeeded",
+			}},
+			Steps: []v1alpha1.StepState{
+				{ContainerState: *completed.DeepCopy()},
 			},
-			expectedStatus: v1alpha1.TaskRunStatus{
-				Conditions: []duckv1alpha1.Condition{{
-					Type:    duckv1alpha1.ConditionSucceeded,
-					Status:  corev1.ConditionFalse,
-					Reason:  "Build failed",
-					Message: "Build failed",
-				}},
-				Steps: []v1alpha1.StepState{
-					{ContainerState: *completed.DeepCopy()},
-					{ContainerState: *failed.DeepCopy()},
-				},
-				PodName:        "im-am-the-pod",
-				StartTime:      &startTime,
-				CompletionTime: &completionTime,
+			PodName:        "im-am-the-pod",
+			StartTime:      &startTime,
+			CompletionTime: &completionTime,
+		},
+	}, {
+		name: "completed build status (failure)",
+		buildStatus: buildv1alpha1.BuildStatus{
+			StartTime:      &startTime,
+			CompletionTime: &completionTime,
+			StepStates: []corev1.ContainerState{
+				completed,
+				failed,
+			},
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "Build failed",
+				Message: "Build failed",
+			}},
+			Cluster: &buildv1alpha1.ClusterSpec{
+				Namespace: "default",
+				PodName:   "im-am-the-pod",
 			},
 		},
-	}
-	for _, tc := range testCases {
+		expectedStatus: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "Build failed",
+				Message: "Build failed",
+			}},
+			Steps: []v1alpha1.StepState{
+				{ContainerState: *completed.DeepCopy()},
+				{ContainerState: *failed.DeepCopy()},
+			},
+			PodName:        "im-am-the-pod",
+			StartTime:      &startTime,
+			CompletionTime: &completionTime,
+		},
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			taskRun := &v1alpha1.TaskRun{}
 			taskrun.UpdateStatusFromBuildStatus(taskRun, tc.buildStatus)

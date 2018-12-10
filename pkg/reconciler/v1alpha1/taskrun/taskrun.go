@@ -21,8 +21,16 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline"
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
+	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	buildinformers "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
+	buildresources "github.com/knative/build/pkg/reconciler/build/resources"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
@@ -34,17 +42,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-
-	"github.com/knative/build-pipeline/pkg/apis/pipeline"
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
-	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
 const (
@@ -107,8 +107,8 @@ func NewController(
 	taskRunInformer informers.TaskRunInformer,
 	taskInformer informers.TaskInformer,
 	clusterTaskInformer informers.ClusterTaskInformer,
-	buildInformer buildinformers.BuildInformer,
 	resourceInformer informers.PipelineResourceInformer,
+	podInformer coreinformers.PodInformer,
 ) *controller.Impl {
 
 	c := &Reconciler{
@@ -127,7 +127,7 @@ func NewController(
 	})
 
 	c.tracker = tracker.New(impl.EnqueueKey, opt.GetTrackerLease())
-	buildInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.tracker.OnChanged,
 		UpdateFunc: controller.PassNew(c.tracker.OnChanged),
 	})
@@ -172,9 +172,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
-	err = c.reconcile(ctx, tr)
-	if err != nil {
+	if err := c.reconcile(ctx, tr); err != nil {
 		c.Logger.Errorf("Reconcile error: %v", err.Error())
+		return err
 	}
 	if equality.Semantic.DeepEqual(original.Status, tr.Status) {
 		// If we didn't change anything then don't call updateStatus.
@@ -247,7 +247,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	// get build the same as the taskrun, this is the value we use for 1:1 mapping and retrieval
-	build, err := c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
+	pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		pvc, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
@@ -260,8 +260,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get pvc %q: %v", tr.Name, tr.Name, err)
 			return err
 		}
-		// Build is not present, create build
-		build, err = c.createBuild(ctx, tr, rtr.TaskSpec, rtr.TaskName, pvc.Name)
+		// Build pod is not present, create build pod.
+		pod, err = c.createBuildPod(ctx, tr, rtr.TaskSpec, rtr.TaskName, pvc.Name)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			var msg string
@@ -276,16 +276,16 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 				Reason:  ReasonCouldntGetTask,
 				Message: fmt.Sprintf("%s %v", msg, err),
 			})
-			c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build %q: %v", tr.Name, err)
-			c.Logger.Errorf("Failed to create build for task %q :%v", err, tr.Name)
+			c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build pod %q: %v", tr.Name, err)
+			c.Logger.Errorf("Failed to create build pod for task %q :%v", err, tr.Name)
 			return nil
 		}
 	} else if err != nil {
-		c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get build %q; %v", tr.Name, tr.Name, err)
+		c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get build pod %q; %v", tr.Name, tr.Name, err)
 		return err
 	}
 	if err := c.tracker.Track(tr.GetBuildRef(), tr); err != nil {
-		c.Logger.Errorf("Failed to create tracker for build %q for taskrun %q: %v", tr.Name, tr.Name, err)
+		c.Logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
 		return err
 	}
 
@@ -297,14 +297,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
-	// sync build status with taskrun status
-	UpdateStatusFromBuildStatus(tr, build.Status)
+	// Translate Pod -> BuildStatus
+	buildStatus := buildresources.BuildStatusFromPod(pod, buildv1alpha1.BuildSpec{})
+	// Translate BuildStatus -> TaskRunStatus
+	UpdateStatusFromBuildStatus(tr, buildStatus)
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 
-	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace,
-		after)
+	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
 
 	return nil
 }
@@ -379,9 +380,9 @@ func createPVC(kc kubernetes.Interface, tr *v1alpha1.TaskRun) (*corev1.Persisten
 	return v, nil
 }
 
-// createBuild creates a build from the task, using the task's buildspec
+// createBuildPod creates a build from the task, using the task's buildspec
 // with pvcName as a volumeMount
-func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName, pvcName string) (*buildv1alpha1.Build, error) {
+func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName, pvcName string) (*corev1.Pod, error) {
 	// TODO: Preferably use Validate on task.spec to catch validation error
 	bs := ts.GetBuildSpec()
 	if bs == nil {
@@ -438,7 +439,22 @@ func (c *Reconciler) createBuild(ctx context.Context, tr *v1alpha1.TaskRun, ts *
 		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
 	}
 
-	return c.BuildClientSet.BuildV1alpha1().Builds(tr.Namespace).Create(build)
+	pod, err := buildresources.MakePod(build, c.KubeClientSet)
+	if err != nil {
+		return nil, fmt.Errorf("translating Build to Pod: %v", err)
+	}
+
+	// Rewrite the pod's OwnerRef to point the TaskRun, instead of a
+	// non-existent build.
+	pod.OwnerReferences = []metav1.OwnerReference{
+		*metav1.NewControllerRef(tr, schema.GroupVersionKind{
+			Group:   v1alpha1.SchemeGroupVersion.Group,
+			Version: v1alpha1.SchemeGroupVersion.Version,
+			Kind:    "TaskRun",
+		}),
+	}
+
+	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
 }
 
 // CreateRedirectedBuild takes a build, a persistent volume claim name, a taskrun and
@@ -493,7 +509,6 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 		labels[k] = v
 	}
 	return labels
-
 }
 
 // isDone returns true if the TaskRun's status indicates that it is done.
