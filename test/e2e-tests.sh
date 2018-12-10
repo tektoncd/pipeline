@@ -25,12 +25,10 @@ source $(dirname $0)/e2e-common.sh
 function teardown() {
     header "Tearing down Pipeline CRD"
     ko delete --ignore-not-found=true -f config/
-    kubectl delete --ignore-not-found=true -f ./third_party/config/build/release.yaml
     # teardown will be called when run against an existing cluster to cleanup before
     # continuing, so we must wait for the cleanup to complete or the subsequent attempt
     # to deploy to the same namespace will fail
     wait_until_object_does_not_exist namespace knative-build-pipeline
-    wait_until_object_does_not_exist namespace knative-build
 }
 
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
@@ -50,9 +48,6 @@ header "Setting up environment"
 # Handle failures ourselves, so we can dump useful info.
 set +o errexit
 set +o pipefail
-
-echo ">> Deploying Build CRD"
-kubectl apply -f ./third_party/config/build/release.yaml || fail_test "Build installation failed"
 
 echo ">> Deploying Pipeline CRD"
 ko apply -f config/ || fail_test "Build pipeline installation failed"
