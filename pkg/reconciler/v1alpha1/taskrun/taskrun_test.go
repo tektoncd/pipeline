@@ -1255,17 +1255,17 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		},
 	}
 	taskSt := &duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionTrue,
-			Reason:  "Build succeeded",
-			Message: "Build succeeded",
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  "Build succeeded",
+		Message: "Build succeeded",
 	}
 	taskRun.Status.SetCondition(taskSt)
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{
 			taskRun,
 		},
-		Tasks:  []*v1alpha1.Task{simpleTask},
+		Tasks: []*v1alpha1.Task{simpleTask},
 	}
 
 	testAssets := test.GetTaskRunController(d)
