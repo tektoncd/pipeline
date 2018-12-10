@@ -77,9 +77,9 @@ type Informers struct {
 // TestAssets holds references to the controller, logs, clients, and informers.
 type TestAssets struct {
 	Controller *controller.Impl
-	Logs *observer.ObservedLogs
-	Clients Clients
-	Informers Informers
+	Logs       *observer.ObservedLogs
+	Clients    Clients
+	Informers  Informers
 }
 
 func seedTestData(d Data) (Clients, Informers) {
@@ -151,7 +151,7 @@ func seedTestData(d Data) (Clients, Informers) {
 
 // GetTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetTaskRunController(d Data) (TestAssets) {
+func GetTaskRunController(d Data) TestAssets {
 	c, i := seedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
@@ -170,15 +170,15 @@ func GetTaskRunController(d Data) (TestAssets) {
 			i.Build,
 			i.PipelineResource,
 		),
-		Logs: logs,
-		Clients: c,
+		Logs:      logs,
+		Clients:   c,
 		Informers: i,
 	}
 }
 
 // GetPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func GetPipelineRunController(d Data) (TestAssets) {
+func GetPipelineRunController(d Data) TestAssets {
 	c, i := seedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	return TestAssets{
@@ -195,8 +195,8 @@ func GetPipelineRunController(d Data) (TestAssets) {
 			i.TaskRun,
 			i.PipelineResource,
 		),
-		Logs: logs,
-		Clients: c,
+		Logs:      logs,
+		Clients:   c,
 		Informers: i,
 	}
 }

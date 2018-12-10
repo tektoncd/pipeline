@@ -626,9 +626,9 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		},
 	}}
 	d := test.Data{
-		PipelineRuns:      prs,
-		Pipelines:         ps,
-		Tasks:             ts,
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
 	}
 
 	testAssets := test.GetPipelineRunController(d)
