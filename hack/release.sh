@@ -16,17 +16,8 @@
 
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/release.sh
 
-# Set default GCS/GCR
-: ${BUILD_PIPELINE_RELEASE_GCS:="knative-nightly/build-pipeline"}
-: ${BUILD_PIPELINE_RELEASE_GCR:="gcr.io/knative-nightly"}
-readonly BUILD_PIPELINE_RELEASE_GCS
-readonly BUILD_PIPELINE_RELEASE_GCR
-
 # Local generated yaml file
 readonly OUTPUT_YAML=release.yaml
-
-# Set the repository
-export KO_DOCKER_REPO=${BUILD_PIPELINE_RELEASE_GCR}
 
 # Script entry point
 
@@ -37,6 +28,8 @@ set -o pipefail
 
 run_validation_tests ./test/presubmit-tests.sh
 
+# Build the release
+
 banner "Building the release"
 
 # Build should not try to deploy anything, use a bogus value for cluster.
@@ -44,14 +37,8 @@ export K8S_CLUSTER_OVERRIDE=CLUSTER_NOT_SET
 export K8S_USER_OVERRIDE=USER_NOT_SET
 export DOCKER_REPO_OVERRIDE=DOCKER_NOT_SET
 
-echo "- Destination GCR: ${KO_DOCKER_REPO}"
-if (( PUBLISH_RELEASE )); then
-  echo "- Destination GCS: ${BUILD_PIPELINE_RELEASE_GCS}"
-fi
-
-echo "Building build-pipeline"
 ko resolve ${KO_FLAGS} -f config/ > ${OUTPUT_YAML}
-tag_images_in_yaml ${OUTPUT_YAML} ${KO_DOCKER_REPO} ${TAG}
+tag_images_in_yaml ${OUTPUT_YAML}
 
 echo "New release built successfully"
 
@@ -59,8 +46,7 @@ if (( ! PUBLISH_RELEASE )); then
  exit 0
 fi
 
-echo "Publishing ${OUTPUT_YAML}"
-publish_yaml ${OUTPUT_YAML} ${BUILD_PIPELINE_RELEASE_GCS} ${TAG}
+publish_yaml ${OUTPUT_YAML}
 
 branch_release "Knative Build Pipeline" "${OUTPUT_YAML}"
 

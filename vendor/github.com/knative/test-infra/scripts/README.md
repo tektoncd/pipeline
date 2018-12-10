@@ -163,8 +163,14 @@ also overrides the value of the `TAG` variable as `v<version>`.
 it's empty and `master` HEAD will be considered the release branch.
     * `RELEASE_NOTES`: contains the filename with the release notes if `--release-notes`
 was passed. The release notes is a simple markdown file.
+    * `RELEASE_GCS_BUCKET`: contains the GCS bucket name to store the manifests if
+`--release-gcs` was passed, otherwise the default value `knative-nightly/<repo>` will be
+used. It is empty if `--publish` was not passed.
+    * `KO_DOCKER_REPO`: contains the GCR to store the images if `--release-gcr` was
+passed, otherwise the default value `gcr.io/knative-nightly` will be used. It is set to
+`ko.local` if `--publish` was not passed.
     * `SKIP_TESTS`: true if `--skip-tests` was passed. This is handled automatically
-by the run_validation_tests() function.
+by the `run_validation_tests()` function.
     * `TAG_RELEASE`: true if `--tag-release` was passed. In this case, the environment
 variable `TAG` will contain the release tag in the form `vYYYYMMDD-<commit_short_hash>`.
     * `PUBLISH_RELEASE`: true if `--publish` was passed. In this case, the environment
@@ -186,14 +192,12 @@ initialize $@
 run_validation_tests ./test/presubmit-tests.sh
 
 # config/ contains the manifests
-KO_DOCKER_REPO=gcr.io/knative-foo
 ko resolve ${KO_FLAGS} -f config/ > release.yaml
 
-tag_images_in_yaml release.yaml $KO_DOCKER_REPO $TAG
+tag_images_in_yaml release.yaml
 
 if (( PUBLISH_RELEASE )); then
-  # gs://knative-foo hosts the manifest
-  publish_yaml release.yaml knative-foo $TAG
+  publish_yaml release.yaml
 fi
 
 branch_release "Knative Foo" release.yaml
