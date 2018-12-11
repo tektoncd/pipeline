@@ -11,9 +11,6 @@ required = [
   "github.com/knative/caching/pkg/apis/caching",
   "github.com/knative/test-infra/scripts",
   "github.com/knative/test-infra/tools/dep-collector",
-  "github.com/knative/build/cmd/creds-init",
-  "github.com/knative/build/cmd/git-init",
-  "github.com/knative/build/cmd/nop",
 ]
 
 [[override]]

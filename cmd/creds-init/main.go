@@ -18,9 +18,9 @@ package main
 import (
 	"flag"
 
-	"github.com/knative/build/pkg/credentials"
-	"github.com/knative/build/pkg/credentials/dockercreds"
-	"github.com/knative/build/pkg/credentials/gitcreds"
+	"github.com/knative/build-pipeline/pkg/credentials"
+	"github.com/knative/build-pipeline/pkg/credentials/dockercreds"
+	"github.com/knative/build-pipeline/pkg/credentials/gitcreds"
 	"github.com/knative/pkg/logging"
 )
 
