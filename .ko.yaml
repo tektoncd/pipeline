@@ -1,3 +1,4 @@
 baseImageOverrides:
-  github.com/knative/build-pipeline/vendor/github.com/knative/build/cmd/creds-init: gcr.io/knative-releases/github.com/knative/build-pipeline/build-base:latest
-  github.com/knative/build-pipeline/vendor/github.com/knative/build/cmd/git-init: gcr.io/knative-releases/github.com/knative/build-pipeline/build-base:latest
+  # TODO(jasonhall): Use build-base in the build-pipeline path, when it's build/released.
+  github.com/knative/build-pipeline/vendor/github.com/knative/build/cmd/creds-init: gcr.io/knative-nightly/github.com/knative/build/build-base:latest
+  github.com/knative/build-pipeline/vendor/github.com/knative/build/cmd/git-init: gcr.io/knative-nightly/github.com/knative/build/build-base:latest
