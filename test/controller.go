@@ -157,7 +157,6 @@ func GetTaskRunController(d Data) TestAssets {
 				Logger:            zap.New(observer).Sugar(),
 				KubeClientSet:     c.Kube,
 				PipelineClientSet: c.Pipeline,
-				BuildClientSet:    c.Build,
 				ConfigMapWatcher:  configMapWatcher,
 			},
 			i.TaskRun,

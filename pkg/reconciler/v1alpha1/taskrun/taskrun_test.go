@@ -749,7 +749,7 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:    "success-with-cluster-task",
 		taskRun: taskruns[8],
-		wantedBuildSpec: buildv1alpha1.BuildSpec{
+		wantBuildSpec: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{
 				entrypointCopyStep,
 				{
