@@ -194,7 +194,7 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:651f6cd93867af286370359e799508a9e70f92e52a743e0d67511f2269e6c7f1"
+  digest = "1:52f3f984d2e19141869fb5773bcc3336510b1881124cf73fef4fef8de2a22536"
   name = "github.com/knative/build"
   packages = [
     "pkg/apis/build",
@@ -202,10 +202,7 @@
     "pkg/client/clientset/versioned",
     "pkg/client/clientset/versioned/scheme",
     "pkg/client/clientset/versioned/typed/build/v1alpha1",
-    "pkg/credentials",
-    "pkg/credentials/dockercreds",
-    "pkg/credentials/gitcreds",
-    "pkg/reconciler/build/resources",
+    "pkg/system",
   ]
   pruneopts = "NUT"
   revision = "12475f79ab0326da57b2a9ba3851efe9e7b6dbd2"
@@ -827,7 +824,7 @@
     "github.com/knative/build/pkg/apis/build/v1alpha1",
     "github.com/knative/build/pkg/client/clientset/versioned",
     "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1",
-    "github.com/knative/build/pkg/reconciler/build/resources",
+    "github.com/knative/build/pkg/system",
     "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/caching/pkg/client/clientset/versioned",
     "github.com/knative/pkg/apis",

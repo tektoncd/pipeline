@@ -30,7 +30,6 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	buildresources "github.com/knative/build/pkg/reconciler/build/resources"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
@@ -295,7 +294,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
 	// Translate Pod -> BuildStatus
-	buildStatus := buildresources.BuildStatusFromPod(pod, buildv1alpha1.BuildSpec{})
+	buildStatus := resources.BuildStatusFromPod(pod, buildv1alpha1.BuildSpec{})
 	// Translate BuildStatus -> TaskRunStatus
 	UpdateStatusFromBuildStatus(tr, buildStatus)
 
@@ -436,7 +435,7 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
 	}
 
-	pod, err := buildresources.MakePod(build, c.KubeClientSet)
+	pod, err := resources.MakePod(build, c.KubeClientSet)
 	if err != nil {
 		return nil, fmt.Errorf("translating Build to Pod: %v", err)
 	}

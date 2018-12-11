@@ -28,16 +28,17 @@ import (
 	"path/filepath"
 	"strconv"
 
-	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	"github.com/knative/build/pkg/credentials"
-	"github.com/knative/build/pkg/credentials/dockercreds"
-	"github.com/knative/build/pkg/credentials/gitcreds"
-	"github.com/knative/pkg/apis"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
+
+	"github.com/knative/build-pipeline/pkg/credentials"
+	"github.com/knative/build-pipeline/pkg/credentials/dockercreds"
+	"github.com/knative/build-pipeline/pkg/credentials/gitcreds"
+	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/knative/pkg/apis"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 )
 
 const workspaceDir = "/workspace"
@@ -249,6 +250,14 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
 	build = build.DeepCopy()
 
+	// Copy annotations on the build through to the underlying pod to allow users
+	// to specify pod annotations.
+	annotations := map[string]string{}
+	for key, val := range build.Annotations {
+		annotations[key] = val
+	}
+	annotations["sidecar.istio.io/inject"] = "false"
+
 	cred, secrets, err := makeCredentialInitializer(build, kubeclient)
 	if err != nil {
 		return nil, err
@@ -357,9 +366,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 					Kind:    "Build",
 				}),
 			},
-			Annotations: map[string]string{
-				"sidecar.istio.io/inject": "false",
-			},
+			Annotations: annotations,
 			Labels: map[string]string{
 				buildNameLabelKey: build.Name,
 			},

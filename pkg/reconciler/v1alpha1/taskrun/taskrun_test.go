@@ -28,7 +28,6 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/knative/build-pipeline/test"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	buildresources "github.com/knative/build/pkg/reconciler/build/resources"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -810,7 +809,7 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
-			wantPod, err := buildresources.MakePod(&buildv1alpha1.Build{
+			wantPod, err := resources.MakePod(&buildv1alpha1.Build{
 				Spec: tc.wantBuildSpec,
 			}, clients.Kube)
 			if err != nil {
@@ -1005,7 +1004,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	// specify the Pod we want to exist directly, and not call MakePod from
 	// the build. This will break the cycle and allow us to simply use
 	// clients normally.
-	pod, err := buildresources.MakePod(build, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+	pod, err := resources.MakePod(build, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: taskRun.Namespace,
