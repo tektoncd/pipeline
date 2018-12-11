@@ -12,14 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal
+package trace
 
 import (
-	"go.opencensus.io/tag"
+	"context"
+	"encoding/hex"
+
+	"go.opencensus.io/exemplar"
 )
 
-// DefaultRecorder will be called for each Record call.
-var DefaultRecorder func(tags *tag.Map, measurement interface{}, attachments map[string]string)
+func init() {
+	exemplar.RegisterAttachmentExtractor(attachSpanContext)
+}
 
-// SubscriptionReporter reports when a view subscribed with a measure.
-var SubscriptionReporter func(measure string)
+func attachSpanContext(ctx context.Context, a exemplar.Attachments) exemplar.Attachments {
+	span := FromContext(ctx)
+	if span == nil {
+		return a
+	}
+	sc := span.SpanContext()
+	if !sc.IsSampled() {
+		return a
+	}
+	if a == nil {
+		a = make(exemplar.Attachments)
+	}
+	a[exemplar.KeyTraceID] = hex.EncodeToString(sc.TraceID[:])
+	a[exemplar.KeySpanID] = hex.EncodeToString(sc.SpanID[:])
+	return a
+}
