@@ -41,7 +41,7 @@ run_validation_tests ./test/presubmit-tests.sh
 banner "Building the release"
 
 # Location of the base image for creds-init and git images
-readonly BUILD_BASE_GCR="${KO_DOCKER_REPO}/github.com/knative/build-pipeline/build-base"
+readonly PIPELINE_BASE_GCR="${KO_DOCKER_REPO}/github.com/knative/build-pipeline/build-base"
 
 # Build should not try to deploy anything, use a bogus value for cluster.
 export K8S_CLUSTER_OVERRIDE=CLUSTER_NOT_SET
@@ -49,7 +49,7 @@ export K8S_USER_OVERRIDE=USER_NOT_SET
 export DOCKER_REPO_OVERRIDE=DOCKER_NOT_SET
 
 # Build the base image for creds-init and git images.
-docker build -t ${BUILD_BASE_GCR} -f images/Dockerfile images/
+docker build -t ${PIPELINE_BASE_GCR} -f images/Dockerfile images/
 
 echo "Building build-pipeline"
 ko resolve ${KO_FLAGS} -f config/ > ${OUTPUT_YAML}
@@ -62,8 +62,8 @@ if (( ! PUBLISH_RELEASE )); then
 fi
 
 # Push the base image for creds-init and git images.
-echo "Pushing base images to ${BUILD_BASE_GCR}"
-docker push ${BUILD_BASE_GCR}
+echo "Pushing base images to ${PIPELINE_BASE_GCR}"
+docker push ${PIPELINE_BASE_GCR}
 
 publish_yaml ${OUTPUT_YAML} ${BUILD_PIPELINE_RELEASE_GCS} ${TAG}
 

@@ -442,12 +442,10 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 
 	// Rewrite the pod's OwnerRef to point the TaskRun, instead of a
 	// non-existent build.
+	// TODO(jasonhall): Just set this directly when creating a Pod from a
+	// TaskRun.
 	pod.OwnerReferences = []metav1.OwnerReference{
-		*metav1.NewControllerRef(tr, schema.GroupVersionKind{
-			Group:   v1alpha1.SchemeGroupVersion.Group,
-			Version: v1alpha1.SchemeGroupVersion.Version,
-			Kind:    "TaskRun",
-		}),
+		*metav1.NewControllerRef(tr, groupVersionKind),
 	}
 
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)

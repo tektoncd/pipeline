@@ -174,7 +174,7 @@ type TaskRunList struct {
 	Items           []TaskRun `json:"items"`
 }
 
-// GetBuildRef for task
+// GetBuildPodRef for task
 func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
 	return corev1.ObjectReference{
 		APIVersion: "v1",
