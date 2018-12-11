@@ -14,6 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+This tool is for executing `shell` command
+
+To use it, run
+```
+image: github.com/build-pipeline/cmd/bash
+args: ['-args', 'ARGUMENTS_FOR_SHELL_COMMAND']
+```
+
+For help, run `man sub-command`
+```
+image: github.com/build-pipeline/cmd/bash
+args: ['-args', `man`,`mkdir`]
+```
+
+For example:
+Following example executes shell sub-command `mkdir`
+
+```
+image: github.com/build-pipeline/cmd/bash
+args:  ['-args', 'mkdir', '-p', '/workspace/gcs-dir']
+```
+*/
+
 package main
 
 import (
@@ -25,12 +49,12 @@ import (
 )
 
 var (
-	args = flag.String("args", "", "space separated arguments for bash")
+	args = flag.String("args", "", "space separated arguments for shell")
 )
 
 func main() {
 	flag.Parse()
-	logger, _ := logging.NewLogger("", "bash_command")
+	logger, _ := logging.NewLogger("", "shell_command")
 	defer logger.Sync()
 	cmd := exec.Command("sh", "-c", *args)
 	stdoutStderr, err := cmd.CombinedOutput()

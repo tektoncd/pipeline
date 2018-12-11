@@ -220,7 +220,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 		}, {
 			Name:  "source-copy-source-git",
 			Image: "override-with-bash-noop:latest",
-			Args:  []string{"-args", "cp -r /output/source-workspace/. pipeline-task-name"},
+			Args:  []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
@@ -315,9 +315,8 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:    "storage-upload-source-gcs",
-			Image:   "google/cloud-sdk",
-			Command: []string{"gsutil"},
+			Name:  "storage-upload-source-gcs",
+			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-source-gcs-sname",
 				MountPath: "/var/secret/sname",
@@ -325,7 +324,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 				Name:      "workspace",
 				MountPath: "/workspace",
 			}},
-			Args: []string{"-m", "cp", "-r", "/workspace/faraway-disk/*", "gs://some-bucket"},
+			Args: []string{"-args", "cp -r /workspace/faraway-disk/* gs://some-bucket"},
 			Env: []corev1.EnvVar{{
 				Name: "STORAGE_CREDS", Value: "/var/secret/sname/key.json",
 			}},
@@ -386,9 +385,8 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:    "storage-upload-source-gcs",
-			Image:   "google/cloud-sdk",
-			Command: []string{"gsutil"},
+			Name:  "storage-upload-source-gcs",
+			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 			}, {
@@ -397,7 +395,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "STORAGE_CREDS", Value: "/var/secret/sname/key.json",
 			}},
-			Args: []string{"-m", "cp", "-r", "/output/source-workspace/*", "gs://some-bucket"},
+			Args: []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}, {
 			Name:         "source-mkdir-source-gcs",
 			Image:        "override-with-bash-noop:latest",
@@ -406,7 +404,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 		}, {
 			Name:         "source-copy-source-gcs",
 			Image:        "override-with-bash-noop:latest",
-			Args:         []string{"-args", "cp -r /output/source-workspace/. pipeline-task-path"},
+			Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 		}},
 		build: build(),
@@ -451,9 +449,8 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:    "storage-upload-source-gcs",
-			Image:   "google/cloud-sdk",
-			Command: []string{"gsutil"},
+			Name:  "storage-upload-source-gcs",
+			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 			}, {
@@ -462,7 +459,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "STORAGE_CREDS", Value: "/var/secret/sname/key.json",
 			}},
-			Args: []string{"-m", "cp", "-r", "/output/source-workspace/*", "gs://some-bucket"},
+			Args: []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}},
 		build: build(),
 		wantVolumes: []corev1.Volume{{
@@ -505,9 +502,8 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:    "storage-upload-source-gcs",
-			Image:   "google/cloud-sdk",
-			Command: []string{"gsutil"},
+			Name:  "storage-upload-source-gcs",
+			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 			}, {
@@ -516,7 +512,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Env: []corev1.EnvVar{{
 				Name: "STORAGE_CREDS", Value: "/var/secret/sname/key.json",
 			}},
-			Args: []string{"-m", "cp", "-r", "/output/source-workspace/*", "gs://some-bucket"},
+			Args: []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}},
 		build: &buildv1alpha1.Build{
 			TypeMeta: metav1.TypeMeta{

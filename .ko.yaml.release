@@ -2,3 +2,5 @@ baseImageOverrides:
   # TODO(jasonhall): Use build-base in the build-pipeline path, when it's build/released.
   github.com/knative/build-pipeline/cmd/creds-init: gcr.io/knative-release/github.com/knative/build/build-base:latest
   github.com/knative/build-pipeline/cmd/git-init: gcr.io/knative-release/github.com/knative/build/build-base:latest
+  github.com/knative/build-pipeline/cmd/bash: busybox
+  github.com/knative/build-pipeline/cmd/gsutil: google/cloud-sdk:alpine

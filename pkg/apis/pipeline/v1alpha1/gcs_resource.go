@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -25,7 +26,7 @@ import (
 )
 
 var (
-	gsutilImage              = "google/cloud-sdk"
+	gsutilImage              = flag.String("gsutil-image", "override-with-gsutil-image:latest", "The container image containing gsutil")
 	gcsSecretVolumeMountPath = "/var/secret"
 )
 
@@ -107,18 +108,18 @@ func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	if s.DestinationDir == "" {
 		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set: %s", s.Name)
 	}
-	args := []string{"-m", "cp"}
+	var args []string
 	if s.TypeDir {
-		args = append(args, "-r")
+		args = []string{"-args", fmt.Sprintf("cp -r %s %s", filepath.Join(s.DestinationDir, "*"), s.Location)}
+	} else {
+		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(s.DestinationDir, "*"), s.Location)}
 	}
-	args = append(args, []string{filepath.Join(s.DestinationDir, "*"), s.Location}...)
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, s.Secrets)
 
 	return []corev1.Container{{
 		Name:         fmt.Sprintf("storage-upload-%s", s.Name),
-		Image:        gsutilImage,
-		Command:      []string{"gsutil"},
+		Image:        *gsutilImage,
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
 		Env:          envVars,
@@ -130,16 +131,17 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	if s.DestinationDir == "" {
 		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
+	var args []string
 	if s.TypeDir {
-		s.Location = fmt.Sprintf("%s/**", s.Location)
+		args = []string{"-args", fmt.Sprintf("cp -r %s %s", fmt.Sprintf("%s/**", s.Location), s.DestinationDir)}
+	} else {
+		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, s.DestinationDir)}
 	}
 
-	args := []string{"-m", "cp", "-r", s.Location, s.DestinationDir}
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, s.Secrets)
 	return []corev1.Container{{
 		Name:         fmt.Sprintf("storage-fetch-%s", s.Name),
-		Image:        gsutilImage,
-		Command:      []string{"gsutil"},
+		Image:        *gsutilImage,
 		Args:         args,
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,

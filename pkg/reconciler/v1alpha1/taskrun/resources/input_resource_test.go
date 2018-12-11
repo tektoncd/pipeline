@@ -113,9 +113,6 @@ func setUp() {
 			}, {
 				Name:  "Type",
 				Value: "gcs",
-			}, {
-				Name:  "SourceType",
-				Value: "Archive",
 			}},
 		},
 	}, {
@@ -131,6 +128,9 @@ func setUp() {
 			}, {
 				Name:  "Type",
 				Value: "gcs",
+			}, {
+				Name:  "Dir",
+				Value: "true",
 			}},
 			SecretParams: []v1alpha1.SecretParam{{
 				SecretKey:  "key.json",
@@ -470,9 +470,8 @@ func TestAddResourceToBuild(t *testing.T) {
 					}},
 				}, {
 					Name:         "storage-fetch-storage1",
-					Image:        "google/cloud-sdk",
-					Command:      []string{"gsutil"},
-					Args:         []string{"-m", "cp", "-r", "gs://fake-bucket/rules.zip", "/workspace/gcs-dir"},
+					Image:        "override-with-gsutil-image:latest",
+					Args:         []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-dir"},
 					VolumeMounts: []corev1.VolumeMount{{Name: "workspace", MountPath: "/workspace"}},
 				}},
 			},
@@ -829,10 +828,9 @@ func Test_StorageInputResource(t *testing.T) {
 						Name: "workspace", MountPath: "/workspace",
 					}},
 				}, {
-					Name:    "storage-fetch-storage-gcs-keys",
-					Image:   "google/cloud-sdk",
-					Command: []string{"gsutil"},
-					Args:    []string{"-m", "cp", "-r", "gs://fake-bucket/rules.zip", "/workspace"},
+					Name:  "storage-fetch-storage-gcs-keys",
+					Image: "override-with-gsutil-image:latest",
+					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/** /workspace"},
 					VolumeMounts: []corev1.VolumeMount{{
 						Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"}, {
 						Name: "volume-storage-gcs-keys-secret-name2", MountPath: "/var/secret/secret-name2"}, {
