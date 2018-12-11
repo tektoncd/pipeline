@@ -221,6 +221,7 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 
 	// Verify status of TaskRun (wait for it)
+	var podName string
 	if err := WaitForTaskRunState(c, kanikoTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
 		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
@@ -230,28 +231,24 @@ func TestKanikoTaskRun(t *testing.T) {
 				return true, fmt.Errorf("pipeline run %s failed", hwPipelineRunName)
 			}
 		}
+		podName = tr.Status.PodName
 		return false, nil
 	}, "TaskRunCompleted"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", kanikoTaskRunName, err)
 	}
 
-	// The Build created by the TaskRun will have the same name
-	b, err := c.BuildClient.Get(kanikoTaskRunName, metav1.GetOptions{})
-	if err != nil {
-		t.Errorf("Expected there to be a Build with the same name as TaskRun %s but got error: %s", kanikoTaskRunName, err)
-	}
-	cluster := b.Status.Cluster
-	if cluster == nil || cluster.PodName == "" {
-		t.Fatalf("Expected build status to have a podname but it didn't!")
+	// There will be a Pod with the expected name.
+	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{}); err != nil {
+		t.Fatalf("Error getting build pod: %v", err)
 	}
 
-	logs, err := getAllLogsFromPod(c.KubeClient.Kube, cluster.PodName, namespace)
+	logs, err := getAllLogsFromPod(c.KubeClient.Kube, podName, namespace)
 	if err != nil {
-		t.Fatalf("Expected to get logs from pod %s: %v", cluster.PodName, err)
+		t.Fatalf("Expected to get logs from pod %s: %v", podName, err)
 	}
 	// check the logs contain our success criteria
 	if !strings.Contains(logs, kanikoBuildOutput) {
-		t.Fatalf("Expected output %s from pod %s but got %s", kanikoBuildOutput, cluster.PodName, logs)
+		t.Fatalf("Expected output %s from pod %s but got %s", kanikoBuildOutput, podName, logs)
 	}
 	// make sure the pushed digest matches the one we pushed
 	re := regexp.MustCompile("digest: (sha256:\\w+)")
