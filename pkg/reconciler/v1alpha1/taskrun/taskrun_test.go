@@ -950,6 +950,9 @@ func TestReconcileBuildFetchError(t *testing.T) {
 				APIVersion: "a1",
 			},
 		},
+		Status: v1alpha1.TaskRunStatus{
+			PodName: "will-not-be-found",
+		},
 	}
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{
@@ -1010,6 +1013,9 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	}))
 	if err != nil {
 		t.Fatalf("MakePod: %v", err)
+	}
+	taskRun.Status = v1alpha1.TaskRunStatus{
+		PodName: pod.Name,
 	}
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{

@@ -246,9 +246,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	// get build the same as the taskrun, this is the value we use for 1:1 mapping and retrieval
-	pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
+	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
+	var pod *corev1.Pod
+	if tr.Status.PodName != "" {
+		pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+		if err != nil {
+			c.Logger.Error("Error getting pod %q: %v", tr.Status.PodName, err)
+			return err
+		}
+	} else {
 		pvc, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			// Create a persistent volume claim to hold Build logs
@@ -280,20 +286,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			c.Logger.Errorf("Failed to create build pod for task %q :%v", err, tr.Name)
 			return nil
 		}
-	} else if err != nil {
-		c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get build pod %q; %v", tr.Name, tr.Name, err)
-		return err
 	}
-	if err := c.tracker.Track(tr.GetBuildRef(), tr); err != nil {
+	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
 		return err
 	}
-
-	// switch ownerref := metav1.GetControllerOf(b); {
-	// case ownerref == nil, ownerref.APIVersion != groupVersionKind.GroupVersion().String(), ownerref.Kind != groupVersionKind.Kind:
-	// 	logger.Infof("build %s not controlled by taskrun controller", b.Name)
-	// 	return nil
-	// }
 
 	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
