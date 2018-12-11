@@ -21,8 +21,7 @@ import (
 )
 
 var (
-	pvcDir       = "/pvc"
-	workspaceDir = "/workspace"
+	pvcDir = "/pvc"
 )
 
 func getPvcMount(name string) corev1.VolumeMount {

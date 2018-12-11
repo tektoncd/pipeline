@@ -405,13 +405,13 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
 
-	build, err := resources.AddInputResource(b, taskName, ts, tr, c.resourceLister, c.Logger)
+	build, err = resources.AddInputResource(build, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	err = resources.AddOutputResources(b, taskName, ts, tr, c.resourceLister, c.Logger)
+	err = resources.AddOutputResources(build, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err

@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	outputDir = "/output/"
+	outputDir = "/workspace/output/"
 )
 
 // AddOutputResources reads the output resources and adds the corresponding container steps
