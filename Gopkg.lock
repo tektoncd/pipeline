@@ -469,7 +469,7 @@
   revision = "66487607e2081c7c2af2281c62c14ee000d5024b"
 
 [[projects]]
-  digest = "1:e2da54c7866453ac5831c61c7ec5d887f39328cac088c806553303bff4048e6f"
+  digest = "1:b63b351b57e64ae8aec1af030dc5e74a2676fcda62102f006ae4411fac1b04c8"
   name = "google.golang.org/appengine"
   packages = [
     ".",
@@ -484,8 +484,8 @@
     "urlfetch",
   ]
   pruneopts = "NUT"
-  revision = "ae0ab99deb4dc413a2b4bd6c8bdd0eb67f1e4d06"
-  version = "v1.2.0"
+  revision = "4a4468ece617fc8205e99368fa2200e9d1fad421"
+  version = "v1.3.0"
 
 [[projects]]
   digest = "1:ef72505cf098abdd34efeea032103377bec06abb61d8a06f002d5d296a4b1185"
