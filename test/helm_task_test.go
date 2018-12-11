@@ -102,7 +102,9 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 			t.Errorf("Error getting TaskRun list for PipelineRun %s %s", helmDeployPipelineRunName, err)
 		}
 		for _, tr := range taskruns.Items {
-			CollectBuildLogs(c, tr.Name, namespace, logger)
+			if tr.Status.PodName != "" {
+				CollectBuildLogs(c, tr.Status.PodName, namespace, logger)
+			}
 		}
 	}
 

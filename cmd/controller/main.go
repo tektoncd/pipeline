@@ -37,7 +37,6 @@ import (
 
 	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
 	pipelineinformers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
-	buildclientset "github.com/knative/build/pkg/client/clientset/versioned"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/signals"
 )
@@ -89,16 +88,10 @@ func main() {
 		logger.Fatalf("Error building pipeline clientset: %v", err)
 	}
 
-	buildClient, err := buildclientset.NewForConfig(cfg)
-	if err != nil {
-		logger.Fatalf("Error building Build clientset: %v", err)
-	}
-
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
 
 	opt := reconciler.Options{
 		KubeClientSet:     kubeClient,
-		BuildClientSet:    buildClient,
 		SharedClientSet:   sharedClient,
 		PipelineClientSet: pipelineClient,
 		ConfigMapWatcher:  configMapWatcher,

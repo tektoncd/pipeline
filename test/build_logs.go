@@ -27,16 +27,8 @@ import (
 )
 
 //CollectBuildLogs will get the build logs for a task run
-func CollectBuildLogs(c *clients, buildName, namespace string, logger *logging.BaseLogger) {
-	b, err := c.BuildClient.Get(buildName, metav1.GetOptions{})
-	if err != nil {
-		logger.Infof("Expected there to be a Build with the same name as TaskRun %s but got error: %s", buildName, err)
-	}
-	cluster := b.Status.Cluster
-	if cluster == nil || cluster.PodName == "" {
-		logger.Infof("Expected build status to have a podname but it didn't!")
-	}
-	logs, err := getInitContainerLogsFromPod(c.KubeClient.Kube, cluster.PodName, namespace)
+func CollectBuildLogs(c *clients, podName, namespace string, logger *logging.BaseLogger) {
+	logs, err := getInitContainerLogsFromPod(c.KubeClient.Kube, podName, namespace)
 	if err != nil {
 		logger.Infof("Expected there to be logs from build helm-deploy-pipeline-run-helm-deploy %s", err)
 	}
