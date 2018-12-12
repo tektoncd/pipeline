@@ -143,14 +143,6 @@ func getCRDYaml(cs *clients) ([]byte, error) {
 		printOrAdd("Pipeline", i.Name, i)
 	}
 
-	bds, err := cs.BuildClient.List(metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	for _, i := range bds.Items {
-		printOrAdd("Build", i.Name, i)
-	}
-
 	prs, err := cs.PipelineResourceClient.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err

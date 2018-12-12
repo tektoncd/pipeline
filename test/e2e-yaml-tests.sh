@@ -24,9 +24,6 @@ source $(dirname $0)/e2e-common.sh
 set +o errexit
 set +o pipefail
 
-echo ">> Deploying Build CRD"
-kubectl apply -f ./third_party/config/build/release.yaml || fail_test "Build installation failed"
-
 echo ">> Deploying Pipeline CRD"
 ko apply -f config/ || fail_test "Build pipeline installation failed"
 

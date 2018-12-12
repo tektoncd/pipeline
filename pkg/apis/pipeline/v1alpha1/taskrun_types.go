@@ -174,11 +174,11 @@ type TaskRunList struct {
 	Items           []TaskRun `json:"items"`
 }
 
-// GetBuildRef for task
-func (tr *TaskRun) GetBuildRef() corev1.ObjectReference {
+// GetBuildPodRef for task
+func (tr *TaskRun) GetBuildPodRef() corev1.ObjectReference {
 	return corev1.ObjectReference{
-		APIVersion: "build.knative.dev/v1alpha1",
-		Kind:       "Build",
+		APIVersion: "v1",
+		Kind:       "Pod",
 		Namespace:  tr.Namespace,
 		Name:       tr.Name,
 	}

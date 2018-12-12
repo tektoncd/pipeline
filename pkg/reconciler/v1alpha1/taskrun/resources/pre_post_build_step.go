@@ -27,8 +27,7 @@ import (
 )
 
 var (
-	pvcDir       = "/pvc"
-	workspaceDir = "/workspace"
+	pvcDir = "/pvc"
 )
 
 // AddAfterSteps adds steps to build that can run after all build steps have completed

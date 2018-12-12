@@ -20,8 +20,6 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/client/clientset/versioned"
 	"github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
-	buildversioned "github.com/knative/build/pkg/client/clientset/versioned"
-	buildv1alpha1 "github.com/knative/build/pkg/client/clientset/versioned/typed/build/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 )
 
@@ -34,8 +32,6 @@ type clients struct {
 	TaskRunClient          v1alpha1.TaskRunInterface
 	PipelineRunClient      v1alpha1.PipelineRunInterface
 	PipelineResourceClient v1alpha1.PipelineResourceInterface
-
-	BuildClient buildv1alpha1.BuildInterface
 }
 
 // newClients instantiates and returns several clientsets required for making requests to the
@@ -64,12 +60,5 @@ func newClients(configPath, clusterName, namespace string) (*clients, error) {
 	c.TaskRunClient = cs.PipelineV1alpha1().TaskRuns(namespace)
 	c.PipelineRunClient = cs.PipelineV1alpha1().PipelineRuns(namespace)
 	c.PipelineResourceClient = cs.PipelineV1alpha1().PipelineResources(namespace)
-
-	bcs, err := buildversioned.NewForConfig(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create build clientset from config file at %s: %s", configPath, err)
-	}
-	c.BuildClient = bcs.BuildV1alpha1().Builds(namespace)
-
 	return c, nil
 }

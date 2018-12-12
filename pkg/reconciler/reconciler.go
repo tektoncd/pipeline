@@ -21,7 +21,6 @@ import (
 
 	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
 	pipelineScheme "github.com/knative/build-pipeline/pkg/client/clientset/versioned/scheme"
-	buildclientset "github.com/knative/build/pkg/client/clientset/versioned"
 	cachingclientset "github.com/knative/caching/pkg/client/clientset/versioned"
 	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
 	"github.com/knative/pkg/configmap"
@@ -41,7 +40,6 @@ type Options struct {
 	KubeClientSet     kubernetes.Interface
 	SharedClientSet   sharedclientset.Interface
 	PipelineClientSet clientset.Interface
-	BuildClientSet    buildclientset.Interface
 	CachingClientSet  cachingclientset.Interface
 
 	ConfigMapWatcher configmap.Watcher
@@ -68,9 +66,6 @@ type Base struct {
 
 	// PipelineClientSet allows us to configure pipeline objects
 	PipelineClientSet clientset.Interface
-
-	// PipelineClientSet allows us to configure pipeline objects
-	BuildClientSet buildclientset.Interface
 
 	// CachingClientSet allows us to instantiate Image objects
 	CachingClientSet cachingclientset.Interface
@@ -108,7 +103,6 @@ func NewBase(opt Options, controllerAgentName string) *Base {
 		KubeClientSet:     opt.KubeClientSet,
 		SharedClientSet:   opt.SharedClientSet,
 		PipelineClientSet: opt.PipelineClientSet,
-		BuildClientSet:    opt.BuildClientSet,
 		CachingClientSet:  opt.CachingClientSet,
 		ConfigMapWatcher:  opt.ConfigMapWatcher,
 		Recorder:          recorder,

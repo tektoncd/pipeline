@@ -14,17 +14,6 @@ limitations under the License.
 package test
 
 import (
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	fakebuildclientset "github.com/knative/build/pkg/client/clientset/versioned/fake"
-	buildinformers "github.com/knative/build/pkg/client/informers/externalversions"
-	buildinformersv1alpha1 "github.com/knative/build/pkg/client/informers/externalversions/build/v1alpha1"
-	"github.com/knative/pkg/configmap"
-	"github.com/knative/pkg/controller"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
-	"k8s.io/apimachinery/pkg/runtime"
-	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
-
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
@@ -33,6 +22,15 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
 	"github.com/knative/build-pipeline/pkg/system"
+	"github.com/knative/pkg/configmap"
+	"github.com/knative/pkg/controller"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	kubeinformers "k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 )
 
 // GetLogMessages returns a list of all string logs in logs.
@@ -53,13 +51,12 @@ type Data struct {
 	Tasks             []*v1alpha1.Task
 	ClusterTasks      []*v1alpha1.ClusterTask
 	PipelineResources []*v1alpha1.PipelineResource
-	Builds            []*buildv1alpha1.Build
+	Pods              []*corev1.Pod
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
 type Clients struct {
 	Pipeline *fakepipelineclientset.Clientset
-	Build    *fakebuildclientset.Clientset
 	Kube     *fakekubeclientset.Clientset
 }
 
@@ -71,7 +68,7 @@ type Informers struct {
 	Task             informersv1alpha1.TaskInformer
 	ClusterTask      informersv1alpha1.ClusterTaskInformer
 	PipelineResource informersv1alpha1.PipelineResourceInformer
-	Build            buildinformersv1alpha1.BuildInformer
+	Pod              coreinformers.PodInformer
 }
 
 // TestAssets holds references to the controller, logs, clients, and informers.
@@ -103,17 +100,16 @@ func seedTestData(d Data) (Clients, Informers) {
 		objs = append(objs, tr)
 	}
 
-	buildObjs := []runtime.Object{}
-	for _, b := range d.Builds {
-		buildObjs = append(buildObjs, b)
+	kubeObjs := []runtime.Object{}
+	for _, p := range d.Pods {
+		kubeObjs = append(kubeObjs, p)
 	}
 	c := Clients{
 		Pipeline: fakepipelineclientset.NewSimpleClientset(objs...),
-		Build:    fakebuildclientset.NewSimpleClientset(buildObjs...),
-		Kube:     fakekubeclientset.NewSimpleClientset(),
+		Kube:     fakekubeclientset.NewSimpleClientset(kubeObjs...),
 	}
 	sharedInformer := informers.NewSharedInformerFactory(c.Pipeline, 0)
-	buildInformerFactory := buildinformers.NewSharedInformerFactory(c.Build, 0)
+	kubeInformer := kubeinformers.NewSharedInformerFactory(c.Kube, 0)
 
 	i := Informers{
 		PipelineRun:      sharedInformer.Pipeline().V1alpha1().PipelineRuns(),
@@ -122,7 +118,7 @@ func seedTestData(d Data) (Clients, Informers) {
 		Task:             sharedInformer.Pipeline().V1alpha1().Tasks(),
 		ClusterTask:      sharedInformer.Pipeline().V1alpha1().ClusterTasks(),
 		PipelineResource: sharedInformer.Pipeline().V1alpha1().PipelineResources(),
-		Build:            buildInformerFactory.Build().V1alpha1().Builds(),
+		Pod:              kubeInformer.Core().V1().Pods(),
 	}
 
 	for _, pr := range d.PipelineRuns {
@@ -143,8 +139,8 @@ func seedTestData(d Data) (Clients, Informers) {
 	for _, r := range d.PipelineResources {
 		i.PipelineResource.Informer().GetIndexer().Add(r)
 	}
-	for _, b := range d.Builds {
-		i.Build.Informer().GetIndexer().Add(b)
+	for _, p := range d.Pods {
+		i.Pod.Informer().GetIndexer().Add(p)
 	}
 	return c, i
 }
@@ -161,14 +157,13 @@ func GetTaskRunController(d Data) TestAssets {
 				Logger:            zap.New(observer).Sugar(),
 				KubeClientSet:     c.Kube,
 				PipelineClientSet: c.Pipeline,
-				BuildClientSet:    c.Build,
 				ConfigMapWatcher:  configMapWatcher,
 			},
 			i.TaskRun,
 			i.Task,
 			i.ClusterTask,
-			i.Build,
 			i.PipelineResource,
+			i.Pod,
 		),
 		Logs:      logs,
 		Clients:   c,

@@ -24,21 +24,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestTaskRun_GetBuildRef(t *testing.T) {
+func TestTaskRun_GetBuildPodRef(t *testing.T) {
 	tr := TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "taskrunname",
 			Namespace: "testns",
 		},
 	}
-	expectedBuildRef := corev1.ObjectReference{
-		APIVersion: "build.knative.dev/v1alpha1",
-		Kind:       "Build",
+	if d := cmp.Diff(tr.GetBuildPodRef(), corev1.ObjectReference{
+		APIVersion: "v1",
+		Kind:       "Pod",
 		Namespace:  "testns",
 		Name:       "taskrunname",
-	}
-	if d := cmp.Diff(tr.GetBuildRef(), expectedBuildRef); d != "" {
-		t.Fatalf("taskrun build ref mismatch: %s", d)
+	}); d != "" {
+		t.Fatalf("taskrun build pod ref mismatch: %s", d)
 	}
 }
 

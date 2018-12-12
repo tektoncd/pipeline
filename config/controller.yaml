@@ -31,6 +31,9 @@ spec:
           "-logtostderr",
           "-stderrthreshold", "INFO",
           "-kubeconfig-writer-image", "github.com/knative/build-pipeline/cmd/kubeconfigwriter",
+          "-creds-image", "github.com/knative/build-pipeline/cmd/creds-init",
+          "-git-image", "github.com/knative/build-pipeline/cmd/git-init",
+          "-nop-image", "github.com/knative/build-pipeline/cmd/nop",
         ]
         volumeMounts:
         - name: config-logging

@@ -37,8 +37,6 @@ import (
 
 	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
 	pipelineinformers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
-	buildclientset "github.com/knative/build/pkg/client/clientset/versioned"
-	buildinformers "github.com/knative/build/pkg/client/informers/externalversions"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/signals"
 )
@@ -90,16 +88,10 @@ func main() {
 		logger.Fatalf("Error building pipeline clientset: %v", err)
 	}
 
-	buildClient, err := buildclientset.NewForConfig(cfg)
-	if err != nil {
-		logger.Fatalf("Error building Build clientset: %v", err)
-	}
-
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
 
 	opt := reconciler.Options{
 		KubeClientSet:     kubeClient,
-		BuildClientSet:    buildClient,
 		SharedClientSet:   sharedClient,
 		PipelineClientSet: pipelineClient,
 		ConfigMapWatcher:  configMapWatcher,
@@ -109,13 +101,12 @@ func main() {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, opt.ResyncPeriod)
 	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, opt.ResyncPeriod)
-	buildInformerFactory := buildinformers.NewSharedInformerFactory(buildClient, opt.ResyncPeriod)
 
 	taskInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
 	clusterTaskInformer := pipelineInformerFactory.Pipeline().V1alpha1().ClusterTasks()
 	taskRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
 	resourceInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineResources()
-	buildInformer := buildInformerFactory.Build().V1alpha1().Builds()
+	podInformer := kubeInformerFactory.Core().V1().Pods()
 
 	pipelineInformer := pipelineInformerFactory.Pipeline().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineRuns()
@@ -126,8 +117,8 @@ func main() {
 			taskRunInformer,
 			taskInformer,
 			clusterTaskInformer,
-			buildInformer,
 			resourceInformer,
+			podInformer,
 		),
 		pipelinerun.NewController(opt,
 			pipelineRunInformer,
@@ -144,7 +135,6 @@ func main() {
 
 	kubeInformerFactory.Start(stopCh)
 	pipelineInformerFactory.Start(stopCh)
-	buildInformerFactory.Start(stopCh)
 	if err := configMapWatcher.Start(stopCh); err != nil {
 		logger.Fatalf("failed to start configuration manager: %v", err)
 	}
@@ -155,8 +145,8 @@ func main() {
 		taskInformer.Informer().HasSynced,
 		clusterTaskInformer.Informer().HasSynced,
 		taskRunInformer.Informer().HasSynced,
-		buildInformer.Informer().HasSynced,
 		resourceInformer.Informer().HasSynced,
+		podInformer.Informer().HasSynced,
 	} {
 		if ok := cache.WaitForCacheSync(stopCh, synced); !ok {
 			logger.Fatalf("failed to wait for cache at index %v to sync", i)
