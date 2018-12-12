@@ -37,7 +37,7 @@ func TestTaskRun_GetBuildPodRef(t *testing.T) {
 		Namespace:  "testns",
 		Name:       "taskrunname",
 	}); d != "" {
-		t.Fatalf("taskrun build ref mismatch: %s", d)
+		t.Fatalf("taskrun build pod ref mismatch: %s", d)
 	}
 }
 
