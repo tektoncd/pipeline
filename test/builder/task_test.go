@@ -1,0 +1,163 @@
+/*
+Copyright 2018 The Knative Authors
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package builder_test
+
+import (
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/knative/build-pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var (
+	gitResource = tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foo.git"),
+	))
+	anotherGitResource = tb.PipelineResource("another-git-resource", "foo", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foobar.git"),
+	))
+)
+
+func TestTask(t *testing.T) {
+	task := tb.Task("test-task", "foo", tb.TaskSpec(
+		tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskOutputs(tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage)),
+		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
+			"--my-other-arg=${inputs.resources.workspace.url}",
+		)),
+	))
+	expectedTask := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
+		Spec: v1alpha1.TaskSpec{
+			Steps: []corev1.Container{{
+				Name:    "mycontainer",
+				Image:   "myimage",
+				Command: []string{"/mycmd"},
+				Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
+			}},
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "workspace",
+					Type: v1alpha1.PipelineResourceTypeGit,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "myotherimage",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+			},
+		},
+	}
+	if d := cmp.Diff(expectedTask, task); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
+}
+
+func TestClusterTask(t *testing.T) {
+	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskSpec(
+		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
+			"--my-other-arg=${inputs.resources.workspace.url}",
+		)),
+	))
+	expectedTask := &v1alpha1.ClusterTask{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-clustertask"},
+		Spec: v1alpha1.TaskSpec{
+			Steps: []corev1.Container{{
+				Name:    "mycontainer",
+				Image:   "myimage",
+				Command: []string{"/mycmd"},
+				Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
+			}},
+		},
+	}
+	if d := cmp.Diff(expectedTask, task); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
+}
+
+func TestTaskRun(t *testing.T) {
+	TaskRun := tb.TaskRun("test-taskrun", "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("task-output"),
+			tb.TaskRunInputs(
+				tb.TaskRunInputsResource(gitResource.Name,
+					tb.ResourceBindingPaths("source-folder"),
+				),
+				tb.TaskRunInputsResource(anotherGitResource.Name,
+					tb.ResourceBindingPaths("source-folder"),
+				),
+			),
+			tb.TaskRunOutputs(
+				tb.TaskRunOutputsResource(gitResource.Name,
+					tb.ResourceBindingPaths("output-folder"),
+				),
+			),
+		),
+	)
+	expectedTaskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-taskrun", Namespace: "foo",
+			OwnerReferences: []metav1.OwnerReference{{
+				Name: "test",
+				Kind: "PipelineRun",
+			}},
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			Trigger: v1alpha1.TaskTrigger{
+				TriggerRef: v1alpha1.TaskTriggerRef{
+					Type: v1alpha1.TaskTriggerTypeManual,
+				},
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					Name: "git-resource",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name:       "git-resource",
+						APIVersion: "a1",
+					},
+					Paths: []string{"source-folder"},
+				}, {
+					Name: "another-git-resource",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name:       "another-git-resource",
+						APIVersion: "a1",
+					},
+					Paths: []string{"source-folder"},
+				}},
+			},
+			Outputs: v1alpha1.TaskRunOutputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					Name: "git-resource",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name:       "git-resource",
+						APIVersion: "a1",
+					},
+					Paths: []string{"output-folder"},
+				}},
+			},
+			TaskRef: &v1alpha1.TaskRef{
+				Name:       "task-output",
+				APIVersion: "a1",
+			},
+		},
+	}
+	if d := cmp.Diff(expectedTaskRun, TaskRun); d != "" {
+		t.Fatalf("TaskRun diff -want, +got: %v", d)
+	}
+}
