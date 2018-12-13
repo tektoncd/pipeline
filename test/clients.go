@@ -16,7 +16,7 @@ limitations under the License.
 package test
 
 import (
-	"fmt"
+	"testing"
 
 	"github.com/knative/build-pipeline/pkg/client/clientset/versioned"
 	"github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
@@ -37,28 +37,29 @@ type clients struct {
 // newClients instantiates and returns several clientsets required for making requests to the
 // Pipeline cluster specified by the combination of clusterName and configPath. Clients can
 // make requests within namespace.
-func newClients(configPath, clusterName, namespace string) (*clients, error) {
+func newClients(t *testing.T, configPath, clusterName, namespace string) *clients {
+	t.Helper()
 	var err error
 	c := &clients{}
 
 	c.KubeClient, err = knativetest.NewKubeClient(configPath, clusterName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create kubeclient from config file at %s: %s", configPath, err)
+		t.Fatalf("failed to create kubeclient from config file at %s: %s", configPath, err)
 	}
 
 	cfg, err := knativetest.BuildClientConfig(configPath, clusterName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create configuration obj from %s for cluster %s: %s", configPath, clusterName, err)
+		t.Fatalf("failed to create configuration obj from %s for cluster %s: %s", configPath, clusterName, err)
 	}
 
 	cs, err := versioned.NewForConfig(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
+		t.Fatalf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
 	}
 	c.PipelineClient = cs.PipelineV1alpha1().Pipelines(namespace)
 	c.TaskClient = cs.PipelineV1alpha1().Tasks(namespace)
 	c.TaskRunClient = cs.PipelineV1alpha1().TaskRuns(namespace)
 	c.PipelineRunClient = cs.PipelineV1alpha1().PipelineRuns(namespace)
 	c.PipelineResourceClient = cs.PipelineV1alpha1().PipelineResources(namespace)
-	return c, nil
+	return c
 }

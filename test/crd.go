@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"testing"
 
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
@@ -93,13 +94,14 @@ func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
 	return TaskRun(hwTaskRunName, namespace, TaskRunSpec(hwTaskName))
 }
 
-func getBuildOutputFromVolume(logger *logging.BaseLogger, c *clients, namespace, testStr string) (string, error) {
+func getBuildOutputFromVolume(t *testing.T, logger *logging.BaseLogger, c *clients, namespace, testStr string) string {
+	t.Helper()
 	// Create Validation Pod
 	pods := c.KubeClient.Kube.CoreV1().Pods(namespace)
 
 	// Volume created for Task should have the same name as the Task
 	if _, err := pods.Create(getHelloWorldValidationPod(namespace, hwTaskRunName)); err != nil {
-		return "", fmt.Errorf("failed to create Validation pod to mount volume `%s`: %s", hwTaskRunName, err)
+		t.Fatalf("failed to create Validation pod to mount volume `%s`: %s", hwTaskRunName, err)
 	}
 
 	logger.Infof("Waiting for pod with test volume %s to come up so we can read logs from it", hwTaskRunName)
@@ -111,18 +113,18 @@ func getBuildOutputFromVolume(logger *logging.BaseLogger, c *clients, namespace,
 		}
 		return false, nil
 	}, "ValidationPodCompleted"); err != nil {
-		return "", fmt.Errorf("error waiting for Pod %s to finish: %s", hwValidationPodName, err)
+		t.Fatalf("error waiting for Pod %s to finish: %s", hwValidationPodName, err)
 	}
 
 	// Get validation pod logs and verify that the build executed a container w/ desired output
 	req := pods.GetLogs(hwValidationPodName, &corev1.PodLogOptions{})
 	readCloser, err := req.Stream()
 	if err != nil {
-		return "", fmt.Errorf("failed to open stream to read: %v", err)
+		t.Fatalf("failed to open stream to read: %v", err)
 	}
 	defer readCloser.Close()
 	var buf bytes.Buffer
 	out := bufio.NewWriter(&buf)
 	_, err = io.Copy(out, readCloser)
-	return buf.String(), nil
+	return buf.String()
 }
