@@ -14,12 +14,17 @@ limitations under the License.
 package builder_test
 
 import (
-	"fmt"
+	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/knative/build-pipeline/test/builder"
+	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
+
+// This is a "hack" to make the example "look" like tests
+var t *testing.T
 
 func ExampleTask() {
 	// You can declare re-usable modifiers
@@ -35,14 +40,32 @@ func ExampleTask() {
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
 		),
 	)
-	fmt.Println("Task", myTask, myOtherTask)
+	expectedTask := &v1alpha1.Task{
+		// […]
+	}
+	expectedOtherTask := &v1alpha1.Task{
+		// […]
+	}
+	// […]
+	if d := cmp.Diff(expectedTask, myTask); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
+	if d := cmp.Diff(expectedOtherTask, myOtherTask); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
 }
 
 func ExampleClusterTask() {
 	myClusterTask := tb.ClusterTask("my-task", tb.ClusterTaskSpec(
 		tb.Step("simple-step", "myotherimage", tb.Command("/mycmd")),
 	))
-	fmt.Println("ClusterTask", myClusterTask)
+	expectedClusterTask := &v1alpha1.Task{
+		// […]
+	}
+	// […]
+	if d := cmp.Diff(expectedClusterTask, myClusterTask); d != "" {
+		t.Fatalf("ClusterTask diff -want, +got: %v", d)
+	}
 }
 
 func ExampleTaskRun() {
@@ -66,34 +89,67 @@ func ExampleTaskRun() {
 			),
 		),
 	))
-	fmt.Println("TaskRun", myTaskRun, myTaskRunWithSpec)
+	expectedTaskRun := &v1alpha1.TaskRun{
+		// […]
+	}
+	expectedTaskRunWithSpec := &v1alpha1.TaskRun{
+		// […]
+	}
+	// […]
+	if d := cmp.Diff(expectedTaskRun, myTaskRun); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
+	if d := cmp.Diff(expectedTaskRunWithSpec, myTaskRunWithSpec); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
 }
 
 func ExamplePipeline() {
 	pipeline := tb.Pipeline("tomatoes", "namespace",
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
-	fmt.Println("Pipeline", pipeline)
+	expectedPipeline := &v1alpha1.Pipeline{
+		// […]
+	}
+	// […]
+	if d := cmp.Diff(expectedPipeline, pipeline); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
 }
 
 func ExamplePipelineRun() {
 	pipelineRun := tb.PipelineRun("pear", "namespace",
 		tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccount("inexistent")),
 	)
-	fmt.Println("PipelineRun", pipelineRun)
+	expectedPipelineRun := &v1alpha1.PipelineRun{
+		// […]
+	}
+	// […]
+	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
 }
 
 func ExamplePipelineResource() {
 	gitResource := tb.PipelineResource("git-resource", "namespace", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foo.git"),
 	))
-	anotherGitResource := tb.PipelineResource("another-git-resource", "namespace", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foobar.git"),
-	))
 	imageResource := tb.PipelineResource("image-resource", "namespace", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeImage, tb.PipelineSpecParam("URL", "gcr.io/kristoff/sven"),
 	))
-	fmt.Println("PipelineResource", gitResource, anotherGitResource, imageResource)
+	expectedGitResource := v1alpha1.PipelineResource{
+		// […]
+	}
+	expectedImageResource := v1alpha1.PipelineResource{
+		// […]
+	}
+	// […]
+	if d := cmp.Diff(expectedGitResource, gitResource); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
+	if d := cmp.Diff(expectedImageResource, imageResource); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
 }
 
 func ExampleBuildSpec() {
@@ -113,5 +169,11 @@ func ExampleBuildSpec() {
 		),
 		tb.BuildVolume(volume),
 	)
-	fmt.Println("BuildSpec", buildSpec)
+	expectedBuildSpec := buildv1alpha1.BuildSpec{
+		// […]
+	}
+	// […]
+	if d := cmp.Diff(expectedBuildSpec, buildSpec); d != "" {
+		t.Fatalf("Task diff -want, +got: %v", d)
+	}
 }
