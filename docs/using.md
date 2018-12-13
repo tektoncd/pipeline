@@ -6,6 +6,7 @@
 - [How do I run a Pipeline?](#running-a-pipeline)
 - [How do I run a Task on its own?](#running-a-task)
 - [How do I troubleshoot a PipelineRun?](#troubleshooting)
+- [How do I follow logs](../test/logs/README.md)
 
 ## Creating a Pipeline
 
