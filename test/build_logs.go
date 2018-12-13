@@ -26,7 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-//CollectBuildLogs will get the build logs for a task run
+// CollectBuildLogs will get the build logs for a task run
 func CollectBuildLogs(c *clients, podName, namespace string, logger *logging.BaseLogger) {
 	logs, err := getInitContainerLogsFromPod(c.KubeClient.Kube, podName, namespace)
 	if err != nil {

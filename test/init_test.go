@@ -51,13 +51,10 @@ func getContextLogger(n string) *logging.BaseLogger {
 }
 
 func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
+	t.Helper()
 	namespace := AppendRandomString("arendelle")
 
-	c, err := newClients(knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
-	if err != nil {
-		t.Fatalf("Couldn't initialize clients: %v", err)
-	}
-
+	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	createNamespace(namespace, logger, c.KubeClient)
 
 	return c, namespace
@@ -74,6 +71,7 @@ func header(logger *logging.BaseLogger, text string) {
 }
 
 func tearDown(t *testing.T, logger *logging.BaseLogger, cs *clients, namespace string) {
+	t.Helper()
 	if cs.KubeClient == nil {
 		return
 	}
