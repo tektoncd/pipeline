@@ -209,6 +209,39 @@ Creation of a `PipelineRun` will trigger the creation of
 
 See [the example PipelineRun](../examples/runs/pipeline-run.yaml).
 
+### Using a ServiceAccount
+
+In order to access to private resources, you may need to provide a
+`ServiceAccount` to the build-pipeline objects.
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: demo-pipeline
+  namespace: default
+spec:
+  serviceAccount: test-build-robot-git-ssh
+  tasks:
+    - name: build-skaffold-web
+      taskRef:
+        name: build-push
+        kind: ClusterTask
+      params: ....
+```
+
+Where `serviceAccount: test-build-robot-git-ssh` references to the following
+`ServiceAccount`:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-build-robot-git-ssh
+secrets:
+  - name: test-git-ssh
+```
+
 ## Running a Task
 
 1. To run a `Task`, create a new `TaskRun` which defines all inputs, outputs
@@ -259,6 +292,41 @@ spec:
 If the TaskSpec is provided, TaskRef is not allowed.
 
 See [the example TaskRun](../examples/runs/task-run.yaml).
+
+### Using a ServiceAccount
+
+In order to access to private resources, you may need to provide a
+`ServiceAccount` to the build-pipeline objects.
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: build-push-task-run-2
+spec:
+  sericeAccount: test-build-robot-git-ssh
+  trigger:
+    triggerRef:
+      type: manual
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name: go-example-git
+...
+```
+
+Where `serviceAccount: test-build-robot-git-ssh` references to the following
+`ServiceAccount`:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-build-robot-git-ssh
+secrets:
+  - name: test-git-ssh
+```
 
 ## Creating Resources
 
