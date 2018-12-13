@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/knative/build-pipeline/test/builder"
 )
 
 const (
@@ -85,13 +86,13 @@ func getHelloWorldValidationPod(namespace, volumeClaimName string) *corev1.Pod {
 }
 
 func getHelloWorldTask(namespace string, args []string) *v1alpha1.Task {
-	return Task(hwTaskName, namespace,
-		TaskSpec(Step(hwContainerName, "busybox", Command(args...))),
+	return tb.Task(hwTaskName, namespace,
+		tb.TaskSpec(tb.Step(hwContainerName, "busybox", tb.Command(args...))),
 	)
 }
 
 func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
-	return TaskRun(hwTaskRunName, namespace, TaskRunSpec(hwTaskName))
+	return tb.TaskRun(hwTaskRunName, namespace, tb.TaskRunSpec(tb.TaskRunTaskRef(hwTaskName)))
 }
 
 func getBuildOutputFromVolume(t *testing.T, logger *logging.BaseLogger, c *clients, namespace, testStr string) string {

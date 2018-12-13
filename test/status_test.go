@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/knative/build-pipeline/test/builder"
 )
 
 // TestTaskRunPipelineRunStatus is an integration test that will
@@ -38,13 +39,15 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	defer tearDown(t, logger, c, namespace)
 
 	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
-	task := Task("banana", namespace, TaskSpec(
-		Step("foo", "busybox", Command("ls", "-la")),
+	task := tb.Task("banana", namespace, tb.TaskSpec(
+		tb.Step("foo", "busybox", tb.Command("ls", "-la")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
 	}
-	taskRun := TaskRun("apple", namespace, TaskRunSpec("banana", TaskRunServiceAccount("inexistent")))
+	taskRun := tb.TaskRun("apple", namespace, tb.TaskRunSpec(
+		tb.TaskRunTaskRef("banana"), tb.TaskRunServiceAccount("inexistent"),
+	))
 	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", hwTaskRunName, err)
 	}
@@ -64,12 +67,12 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 
-	pipeline := Pipeline("tomatoes", namespace,
-		PipelineSpec(PipelineTask("foo", "banana")),
+	pipeline := tb.Pipeline("tomatoes", namespace,
+		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
-	pipelineRun := PipelineRun("pear", namespace,
-		PipelineRunSpec("tomatoes", PipelineRunServiceAccount("inexistent")),
-	)
+	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(
+		"tomatoes", tb.PipelineRunServiceAccount("inexistent"),
+	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
 	}
