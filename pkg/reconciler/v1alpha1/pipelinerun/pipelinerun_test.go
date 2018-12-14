@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipelinerun_test
+package pipelinerun
 
 import (
 	"context"
@@ -20,11 +20,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
+	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	taskrunresources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/knative/build-pipeline/test"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktesting "k8s.io/client-go/testing"
@@ -32,6 +34,31 @@ import (
 
 func getRunName(pr *v1alpha1.PipelineRun) string {
 	return strings.Join([]string{pr.Namespace, pr.Name}, "/")
+}
+
+// getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
+// d, where d represents the state of the system (existing resources) needed for the test.
+func getPipelineRunController(d test.Data) test.TestAssets {
+	c, i := test.SeedTestData(d)
+	observer, logs := observer.New(zap.InfoLevel)
+	return test.TestAssets{
+		Controller: NewController(
+			reconciler.Options{
+				Logger:            zap.New(observer).Sugar(),
+				KubeClientSet:     c.Kube,
+				PipelineClientSet: c.Pipeline,
+			},
+			i.PipelineRun,
+			i.Pipeline,
+			i.Task,
+			i.ClusterTask,
+			i.TaskRun,
+			i.PipelineResource,
+		),
+		Logs:      logs,
+		Clients:   c,
+		Informers: i,
+	}
 }
 
 func TestReconcile(t *testing.T) {
@@ -257,7 +284,7 @@ func TestReconcile(t *testing.T) {
 		PipelineResources: rs,
 	}
 
-	testAssets := test.GetPipelineRunController(d)
+	testAssets := getPipelineRunController(d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -433,16 +460,16 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		{
 			name:        "invalid-pipeline-shd-be-stop-reconciling",
 			pipelineRun: prs[0],
-			reason:      pipelinerun.ReasonCouldntGetPipeline,
+			reason:      ReasonCouldntGetPipeline,
 		}, {
 			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
 			pipelineRun: prs[1],
-			reason:      pipelinerun.ReasonCouldntGetTask,
+			reason:      ReasonCouldntGetTask,
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := test.GetPipelineRunController(d)
+			testAssets := getPipelineRunController(d)
 			c := testAssets.Controller
 
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
@@ -485,7 +512,7 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := test.GetPipelineRunController(test.Data{})
+			testAssets := getPipelineRunController(test.Data{})
 			c := testAssets.Controller
 			logs := testAssets.Logs
 
@@ -579,7 +606,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		},
 	}}
 	pr.Status.InitializeConditions()
-	pipelinerun.UpdateTaskRunsStatus(pr, state)
+	updateTaskRunsStatus(pr, state)
 	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
 	}
@@ -631,7 +658,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		Tasks:        ts,
 	}
 
-	testAssets := test.GetPipelineRunController(d)
+	testAssets := getPipelineRunController(d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 

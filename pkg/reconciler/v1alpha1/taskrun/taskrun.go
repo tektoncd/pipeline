@@ -47,21 +47,21 @@ import (
 )
 
 const (
-	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
+	// reasonCouldntGetTask indicates that the reason for the failure status is that the
 	// Task couldn't be found
-	ReasonCouldntGetTask = "CouldntGetTask"
+	reasonCouldntGetTask = "CouldntGetTask"
 
-	// ReasonFailedResolution indicated that the reason for failure status is
+	// reasonFailedResolution indicated that the reason for failure status is
 	// that references within the TaskRun could not be resolved
-	ReasonFailedResolution = "TaskRunResolutionFailed"
+	reasonFailedResolution = "TaskRunResolutionFailed"
 
-	// ReasonFailedValidation indicated that the reason for failure status is
+	// reasonFailedValidation indicated that the reason for failure status is
 	// that taskrun failed runtime validation
-	ReasonFailedValidation = "TaskRunValidationFailed"
+	reasonFailedValidation = "TaskRunValidationFailed"
 
-	// ReasonRunning indicates that the reason for the inprogress status is that the TaskRun
+	// reasonRunning indicates that the reason for the inprogress status is that the TaskRun
 	// is just starting to be reconciled
-	ReasonRunning = "Running"
+	reasonRunning = "Running"
 
 	// taskRunAgentName defines logging agent name for TaskRun Controller
 	taskRunAgentName = "taskrun-controller"
@@ -71,13 +71,11 @@ const (
 	pvcSizeBytes = 5 * 1024 * 1024 * 1024 // 5 GBs
 )
 
-var (
-	groupVersionKind = schema.GroupVersionKind{
-		Group:   v1alpha1.SchemeGroupVersion.Group,
-		Version: v1alpha1.SchemeGroupVersion.Version,
-		Kind:    "TaskRun",
-	}
-)
+var groupVersionKind = schema.GroupVersionKind{
+	Group:   v1alpha1.SchemeGroupVersion.Group,
+	Version: v1alpha1.SchemeGroupVersion.Version,
+	Kind:    "TaskRun",
+}
 
 type configStore interface {
 	ToContext(ctx context.Context) context.Context
@@ -217,7 +215,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  ReasonFailedResolution,
+			Reason:  reasonFailedResolution,
 			Message: err.Error(),
 		})
 		return nil
@@ -228,7 +226,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  ReasonFailedResolution,
+			Reason:  reasonFailedResolution,
 			Message: err.Error(),
 		})
 		return nil
@@ -239,7 +237,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  ReasonFailedValidation,
+			Reason:  reasonFailedValidation,
 			Message: err.Error(),
 		})
 		return nil
@@ -278,7 +276,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			tr.Status.SetCondition(&duckv1alpha1.Condition{
 				Type:    duckv1alpha1.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
-				Reason:  ReasonCouldntGetTask,
+				Reason:  reasonCouldntGetTask,
 				Message: fmt.Sprintf("%s %v", msg, err),
 			})
 			c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build pod %q: %v", tr.Name, err)
@@ -296,7 +294,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// Translate Pod -> BuildStatus
 	buildStatus := resources.BuildStatusFromPod(pod, buildv1alpha1.BuildSpec{})
 	// Translate BuildStatus -> TaskRunStatus
-	UpdateStatusFromBuildStatus(tr, buildStatus)
+	updateStatusFromBuildStatus(tr, buildStatus)
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
@@ -306,7 +304,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	return nil
 }
 
-func UpdateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1alpha1.BuildStatus) {
+func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1alpha1.BuildStatus) {
 	if buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded) != nil {
 		taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
 	} else {
@@ -314,8 +312,8 @@ func UpdateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1a
 		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonRunning,
-			Message: ReasonRunning,
+			Reason:  reasonRunning,
+			Message: reasonRunning,
 		})
 	}
 	taskRun.Status.StartTime = buildStatus.StartTime
@@ -376,8 +374,8 @@ func createPVC(kc kubernetes.Interface, tr *v1alpha1.TaskRun) (*corev1.Persisten
 	return v, nil
 }
 
-// createBuildPod creates a build from the task, using the task's buildspec
-// with pvcName as a volumeMount
+// createPod creates a Pod based on the Task's configuration, with pvcName as a
+// volumeMount
 func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName, pvcName string) (*corev1.Pod, error) {
 	// TODO: Preferably use Validate on task.spec to catch validation error
 	bs := ts.GetBuildSpec()
@@ -400,12 +398,12 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 		}
 	}
 
-	b, err := CreateRedirectedBuild(ctx, bSpec, pvcName, tr)
+	build, err := createRedirectedBuild(ctx, bSpec, pvcName, tr)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
 
-	build, err := resources.AddInputResource(b, taskName, ts, tr, c.resourceLister, c.Logger)
+	build, err = resources.AddInputResource(build, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
@@ -455,7 +453,7 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the BuildSpec and modifies it freely
-func CreateRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
+func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
 	// Pass service account name from taskrun to build
 	bs.ServiceAccountName = tr.Spec.ServiceAccount
 
