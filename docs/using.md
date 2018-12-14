@@ -313,7 +313,6 @@ spec:
       - name: workspace
         resourceRef:
           name: go-example-git
-...
 ```
 
 Where `serviceAccount: test-build-robot-git-ssh` references to the following
