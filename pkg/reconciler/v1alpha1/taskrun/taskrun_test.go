@@ -11,7 +11,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package taskrun_test
+package taskrun
 
 import (
 	"context"
@@ -23,34 +23,28 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/knative/build-pipeline/pkg/system"
 	"github.com/knative/build-pipeline/test"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/configmap"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
 )
 
-var (
-	groupVersionKind = schema.GroupVersionKind{
-		Group:   v1alpha1.SchemeGroupVersion.Group,
-		Version: v1alpha1.SchemeGroupVersion.Version,
-		Kind:    "TaskRun",
-	}
-)
-
 const (
 	entrypointLocation = "/tools/entrypoint"
 	toolsMountName     = "tools"
-	pvcSizeBytes       = 5 * 1024 * 1024 * 1024 // 5 GBs
 )
 
 var ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
@@ -276,6 +270,32 @@ func getToolsVolume(claimName string) corev1.Volume {
 
 func getRunName(tr *v1alpha1.TaskRun) string {
 	return strings.Join([]string{tr.Namespace, tr.Name}, "/")
+}
+
+// getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
+// d, where d represents the state of the system (existing resources) needed for the test.
+func getTaskRunController(d test.Data) test.TestAssets {
+	c, i := test.SeedTestData(d)
+	observer, logs := observer.New(zap.InfoLevel)
+	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
+	return test.TestAssets{
+		Controller: NewController(
+			reconciler.Options{
+				Logger:            zap.New(observer).Sugar(),
+				KubeClientSet:     c.Kube,
+				PipelineClientSet: c.Pipeline,
+				ConfigMapWatcher:  configMapWatcher,
+			},
+			i.TaskRun,
+			i.Task,
+			i.ClusterTask,
+			i.PipelineResource,
+			i.Pod,
+		),
+		Logs:      logs,
+		Clients:   c,
+		Informers: i,
+	}
 }
 
 func TestReconcile(t *testing.T) {
@@ -771,7 +791,7 @@ func TestReconcile(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := test.GetTaskRunController(d)
+			testAssets := getTaskRunController(d)
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			saName := tc.taskRun.Spec.ServiceAccount
@@ -825,8 +845,8 @@ func TestReconcile(t *testing.T) {
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
-			if condition != nil && condition.Reason != taskrun.ReasonRunning {
-				t.Errorf("Expected reason %q but was %s", taskrun.ReasonRunning, condition.Reason)
+			if condition != nil && condition.Reason != reasonRunning {
+				t.Errorf("Expected reason %q but was %s", reasonRunning, condition.Reason)
 			}
 
 			if len(clients.Kube.Actions()) == 0 {
@@ -900,18 +920,18 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 		{
 			name:    "task run with no task",
 			taskRun: taskRuns[0],
-			reason:  taskrun.ReasonFailedResolution,
+			reason:  reasonFailedResolution,
 		},
 		{
 			name:    "task run with no task",
 			taskRun: taskRuns[1],
-			reason:  taskrun.ReasonFailedResolution,
+			reason:  reasonFailedResolution,
 		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := test.GetTaskRunController(d)
+			testAssets := getTaskRunController(d)
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
@@ -960,7 +980,7 @@ func TestReconcileBuildFetchError(t *testing.T) {
 		Tasks: []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := test.GetTaskRunController(d)
+	testAssets := getTaskRunController(d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -998,7 +1018,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		Spec: *simpleTask.Spec.GetBuildSpec(),
 	}
 	// TODO(jasonhall): This avoids a circular dependency where
-	// GetTaskRunController takes a test.Data which must be populated with
+	// getTaskRunController takes a test.Data which must be populated with
 	// a pod created from MakePod which requires a (fake) Kube client. When
 	// we remove Build entirely from this controller, we should simply
 	// specify the Pod we want to exist directly, and not call MakePod from
@@ -1024,7 +1044,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 		Pods:  []*corev1.Pod{pod},
 	}
 
-	testAssets := test.GetTaskRunController(d)
+	testAssets := getTaskRunController(d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1093,8 +1113,8 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 			Conditions: []duckv1alpha1.Condition{{
 				Type:    duckv1alpha1.ConditionSucceeded,
 				Status:  corev1.ConditionUnknown,
-				Reason:  taskrun.ReasonRunning,
-				Message: taskrun.ReasonRunning,
+				Reason:  reasonRunning,
+				Message: reasonRunning,
 			}},
 			Steps: []v1alpha1.StepState{},
 		},
@@ -1217,7 +1237,7 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			taskRun := &v1alpha1.TaskRun{}
-			taskrun.UpdateStatusFromBuildStatus(taskRun, tc.buildStatus)
+			updateStatusFromBuildStatus(taskRun, tc.buildStatus)
 			if d := cmp.Diff(taskRun.Status, tc.expectedStatus, ignoreLastTransitionTime); d != "" {
 				t.Errorf("-want, +got: %v", d)
 			}
@@ -1242,24 +1262,21 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	tr.Namespace = "tr"
 
 	bs := &buildv1alpha1.BuildSpec{
-		Steps: []corev1.Container{
-			{
-				Command: []string{"abcd"},
-				Args:    []string{"efgh"},
-			},
-			{
-				Command: []string{"abcd"},
-				Args:    []string{"efgh"},
-			},
-		},
+		Steps: []corev1.Container{{
+			Command: []string{"abcd"},
+			Args:    []string{"efgh"},
+		}, {
+			Command: []string{"abcd"},
+			Args:    []string{"efgh"},
+		}},
 		Volumes: []corev1.Volume{{Name: "v"}},
 	}
 	expectedSteps := len(bs.Steps) + 1
 	expectedVolumes := len(bs.Volumes) + 1
 
-	b, err := taskrun.CreateRedirectedBuild(ctx, bs, "pvc", tr)
+	b, err := createRedirectedBuild(ctx, bs, "pvc", tr)
 	if err != nil {
-		t.Errorf("expected CreateRedirectedBuild to pass: %v", err)
+		t.Errorf("expected createRedirectedBuild to pass: %v", err)
 	}
 	if b.Name != tr.Name {
 		t.Errorf("names do not match: %s should be %s", b.Name, tr.Name)
@@ -1302,7 +1319,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		Tasks: []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := test.GetTaskRunController(d)
+	testAssets := getTaskRunController(d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 

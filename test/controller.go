@@ -18,13 +18,7 @@ import (
 	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
 	informersv1alpha1 "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
-	"github.com/knative/build-pipeline/pkg/system"
-	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -79,7 +73,9 @@ type TestAssets struct {
 	Informers  Informers
 }
 
-func seedTestData(d Data) (Clients, Informers) {
+// SeedTestData returns Clients and Informers populated with the
+// given Data.
+func SeedTestData(d Data) (Clients, Informers) {
 	objs := []runtime.Object{}
 	for _, r := range d.PipelineResources {
 		objs = append(objs, r)
@@ -143,55 +139,4 @@ func seedTestData(d Data) (Clients, Informers) {
 		i.Pod.Informer().GetIndexer().Add(p)
 	}
 	return c, i
-}
-
-// GetTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
-// d, where d represents the state of the system (existing resources) needed for the test.
-func GetTaskRunController(d Data) TestAssets {
-	c, i := seedTestData(d)
-	observer, logs := observer.New(zap.InfoLevel)
-	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
-	return TestAssets{
-		Controller: taskrun.NewController(
-			reconciler.Options{
-				Logger:            zap.New(observer).Sugar(),
-				KubeClientSet:     c.Kube,
-				PipelineClientSet: c.Pipeline,
-				ConfigMapWatcher:  configMapWatcher,
-			},
-			i.TaskRun,
-			i.Task,
-			i.ClusterTask,
-			i.PipelineResource,
-			i.Pod,
-		),
-		Logs:      logs,
-		Clients:   c,
-		Informers: i,
-	}
-}
-
-// GetPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
-// d, where d represents the state of the system (existing resources) needed for the test.
-func GetPipelineRunController(d Data) TestAssets {
-	c, i := seedTestData(d)
-	observer, logs := observer.New(zap.InfoLevel)
-	return TestAssets{
-		Controller: pipelinerun.NewController(
-			reconciler.Options{
-				Logger:            zap.New(observer).Sugar(),
-				KubeClientSet:     c.Kube,
-				PipelineClientSet: c.Pipeline,
-			},
-			i.PipelineRun,
-			i.Pipeline,
-			i.Task,
-			i.ClusterTask,
-			i.TaskRun,
-			i.PipelineResource,
-		),
-		Logs:      logs,
-		Clients:   c,
-		Informers: i,
-	}
 }
