@@ -109,7 +109,7 @@ func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.Pipelin
 	return pr
 }
 
-// PipelineRunSpec sets the PipelineRunSpec, with specifed name, to the PipelineRun.
+// PipelineRunSpec sets the PipelineRunSpec, with specified name, to the PipelineRun.
 // Any number of PipelineRunSpec modifier can be passed to transform it.
 func PipelineRunSpec(name string, ops ...PipelineRunSpecOp) PipelineRunOp {
 	return func(pr *v1alpha1.PipelineRun) {
