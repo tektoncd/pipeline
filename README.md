@@ -36,6 +36,7 @@ We are so excited to have you!
 
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for an overview of our processes
 - See [DEVELOPMENT.md](DEVELOPMENT.md) for how to get started
+- [Deep dive](./docs/developers/README.md) into demystifying the inner workings (advanced reading material)
 - Look at our
   [good first issues](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
   and our

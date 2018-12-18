@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 /*
-This tool is for executing `shell` command
+This tool is for executing `shell` command. To override base shell image update `.ko.yaml` file.
 
 To use it, run
 ```
