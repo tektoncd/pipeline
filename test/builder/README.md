@@ -1,25 +1,24 @@
 # Builder package for tests
 
-This package holds `Builder` functions that can be used to create
-struct in tests with less noise.
+This package holds `Builder` functions that can be used to create struct in
+tests with less noise.
 
-One of the most important characteristic of a unit test (and any type
-of test really) is **readability**. This means it should be easy to read
-but most importantly it should clearly show the intent of the
-test. The setup (and cleanup) of the tests should be as small as
-possible to avoid the noise. Those builders exists to help with that.
+One of the most important characteristic of a unit test (and any type of test
+really) is **readability**. This means it should be easy to read but most
+importantly it should clearly show the intent of the test. The setup (and
+cleanup) of the tests should be as small as possible to avoid the noise. Those
+builders exists to help with that.
 
 There is two types of functions defined in that package :
 
-	* *Builders*: create and return a struct
-	* *Modifiers*: return a function
-	  that will operate on a given struct. They can be applied to other
-	  Modifiers or Builders.
+    * *Builders*: create and return a struct
+    * *Modifiers*: return a function
+      that will operate on a given struct. They can be applied to other
+      Modifiers or Builders.
 
-Most of the Builder (and Modifier) that accepts Modifiers defines a
-type (`TypeOp`) that can be satisfied by existing function in this
-package, from other package *or* inline. An example would be the
-following.
+Most of the Builder (and Modifier) that accepts Modifiers defines a type
+(`TypeOp`) that can be satisfied by existing function in this package, from
+other package _or_ inline. An example would be the following.
 
 ```go
 	// Definition
@@ -39,12 +38,12 @@ following.
 	})
 ```
 
-The main reason to define the `Op` type, and using it in the methods
-signatures is to group Modifier function together. It makes it easier
-to see what is a Modifier (or Builder) and on what it operates.
+The main reason to define the `Op` type, and using it in the methods signatures
+is to group Modifier function together. It makes it easier to see what is a
+Modifier (or Builder) and on what it operates.
 
-By convention, this package is import with the "tb" as alias. The
-examples make that assumption.
+By convention, this package is import with the "tb" as alias. The examples make
+that assumption.
 
 # Example
 
