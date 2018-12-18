@@ -17,6 +17,7 @@ limitations under the License.
 /*
 This tool is for executing `gsutil` command
 gsutil command is prefixed with `-m` flag(default) for faster download and uploads.
+To override gsutil base image update `.ko.yaml` file.
 
 To use it, run
 ```
