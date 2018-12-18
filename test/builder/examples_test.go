@@ -77,7 +77,7 @@ func ExampleTaskRun() {
 	myTaskRunWithSpec := tb.TaskRun("my-taskrun-with-spec", "namespace", tb.TaskRunSpec(
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
-			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef("git-resource", "a1")),
+			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef("git-resource")),
 		),
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(
@@ -132,10 +132,10 @@ func ExamplePipelineRun() {
 
 func ExamplePipelineResource() {
 	gitResource := tb.PipelineResource("git-resource", "namespace", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foo.git"),
+		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
 	))
 	imageResource := tb.PipelineResource("image-resource", "namespace", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeImage, tb.PipelineSpecParam("URL", "gcr.io/kristoff/sven"),
+		v1alpha1.PipelineResourceTypeImage, tb.PipelineResourceSpecParam("URL", "gcr.io/kristoff/sven"),
 	))
 	expectedGitResource := v1alpha1.PipelineResource{
 		// […]

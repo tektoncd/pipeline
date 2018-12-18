@@ -15,6 +15,8 @@ package builder
 
 import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -57,6 +59,19 @@ type TaskRunInputsOp func(*v1alpha1.TaskRunInputs)
 
 // TaskRunOutputsOp is an operation which modify a TaskRunOutputs struct.
 type TaskRunOutputsOp func(*v1alpha1.TaskRunOutputs)
+
+// ResolvedTaskResourcesOp is an operation which modify a ResolvedTaskResources struct.
+type ResolvedTaskResourcesOp func(*resources.ResolvedTaskResources)
+
+// OwnerReferenceOp is an operation which modify an OwnerReference struct.
+type OwnerReferenceOp func(*metav1.OwnerReference)
+
+// StepStateOp is an operation which modify a StepStep struct.
+type StepStateOp func(*v1alpha1.StepState)
+
+var (
+	trueB = true
+)
 
 // Task creates a Task with default values.
 // Any number of Task modifier can be passed to transform it.
@@ -207,13 +222,6 @@ func TaskRun(name, namespace string, ops ...TaskRunOp) *v1alpha1.TaskRun {
 			Namespace: namespace,
 			Name:      name,
 		},
-		Spec: v1alpha1.TaskRunSpec{
-			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
-			},
-		},
 	}
 
 	for _, op := range ops {
@@ -234,20 +242,75 @@ func TaskRunStatus(ops ...TaskRunStatusOp) TaskRunOp {
 	}
 }
 
-// PodName sets the Pod name to the TaskRunStatus
+// PodName sets the Pod name to the TaskRunStatus.
 func PodName(name string) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
 		s.PodName = name
 	}
 }
 
-// TaskRunOwnerReference sets the OwnerReference, with specified kind and name, to the TaskRun
-func TaskRunOwnerReference(kind, name string) TaskRunOp {
+// Condition adds a Condition to the TaskRunStatus.
+func Condition(condition duckv1alpha1.Condition) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.Conditions = append(s.Conditions, condition)
+	}
+}
+
+// StepState adds a StepState to the TaskRunStatus.
+func StepState(ops ...StepStateOp) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		state := &v1alpha1.StepState{}
+		for _, op := range ops {
+			op(state)
+		}
+		s.Steps = append(s.Steps, *state)
+	}
+}
+
+// StateTerminated set Terminated to the StepState.
+func StateTerminated(exitcode int) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(exitcode)},
+		}
+	}
+}
+
+// TaskRunOwnerReference sets the OwnerReference, with specified kind and name, to the TaskRun.
+func TaskRunOwnerReference(kind, name string, ops ...OwnerReferenceOp) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {
-		tr.ObjectMeta.OwnerReferences = append(tr.ObjectMeta.OwnerReferences, metav1.OwnerReference{
+		o := &metav1.OwnerReference{
 			Kind: kind,
 			Name: name,
-		})
+		}
+		for _, op := range ops {
+			op(o)
+		}
+		tr.ObjectMeta.OwnerReferences = append(tr.ObjectMeta.OwnerReferences, *o)
+	}
+}
+
+// OwnerReferenceAPIVersion sets the APIVersion to the OwnerReference.
+func OwnerReferenceAPIVersion(version string) OwnerReferenceOp {
+	return func(o *metav1.OwnerReference) {
+		o.APIVersion = version
+	}
+}
+
+func Controller(o *metav1.OwnerReference) {
+	o.Controller = &trueB
+}
+
+func BlockOwnerDeletion(o *metav1.OwnerReference) {
+	o.BlockOwnerDeletion = &trueB
+}
+
+func TaskRunLabel(key, value string) TaskRunOp {
+	return func(tr *v1alpha1.TaskRun) {
+		if tr.ObjectMeta.Labels == nil {
+			tr.ObjectMeta.Labels = map[string]string{}
+		}
+		tr.ObjectMeta.Labels[key] = value
 	}
 }
 
@@ -267,7 +330,7 @@ func TaskRunSpec(ops ...TaskRunSpecOp) TaskRunOp {
 // Any number of TaskRef modifier can be passed to transform it.
 func TaskRunTaskRef(name string, ops ...TaskRefOp) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		ref := &v1alpha1.TaskRef{Name: name, APIVersion: defaultAPIVersion}
+		ref := &v1alpha1.TaskRef{Name: name}
 		for _, op := range ops {
 			op(ref)
 		}
@@ -283,13 +346,13 @@ func TaskRefKind(kind v1alpha1.TaskKind) TaskRefOp {
 }
 
 // TaskRefAPIVersion sets the specified api version to the TaskRef.
-func TaskRefAPIVersion(version string) TaskRunSpecOp {
-	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.TaskRef.APIVersion = version
+func TaskRefAPIVersion(version string) TaskRefOp {
+	return func(ref *v1alpha1.TaskRef) {
+		ref.APIVersion = version
 	}
 }
 
-// TaskRunTaskRef sets the specified TaskRunSpec reference to the TaskRunSpec.
+// TaskRunTaskSpec sets the specified TaskRunSpec reference to the TaskRunSpec.
 // Any number of TaskRunSpec modifier can be passed to transform it.
 func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
@@ -349,8 +412,7 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 		binding := &v1alpha1.TaskResourceBinding{
 			Name: name,
 			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name:       name,
-				APIVersion: defaultAPIVersion,
+				Name: name,
 			},
 		}
 		for _, op := range ops {
@@ -360,13 +422,17 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 	}
 }
 
-// ResourceBindingRef set the PipelineResourceRef, with specified name and apiversion, to the TaskResourceBinding.
-func ResourceBindingRef(name, apiversion string) TaskResourceBindingOp {
+// ResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
+func ResourceBindingRef(name string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
-		b.ResourceRef = v1alpha1.PipelineResourceRef{
-			Name:       name,
-			APIVersion: apiversion,
-		}
+		b.ResourceRef.Name = name
+	}
+}
+
+// ResourceBindingRefAPIVersion set the PipelineResourceRef APIVersion to the TaskResourceBinding.
+func ResourceBindingRefAPIVersion(version string) TaskResourceBindingOp {
+	return func(b *v1alpha1.TaskResourceBinding) {
+		b.ResourceRef.APIVersion = version
 	}
 }
 
@@ -396,13 +462,44 @@ func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOu
 		binding := &v1alpha1.TaskResourceBinding{
 			Name: name,
 			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name:       name,
-				APIVersion: "a1",
+				Name: name,
 			},
 		}
 		for _, op := range ops {
 			op(binding)
 		}
 		i.Resources = append(i.Resources, *binding)
+	}
+}
+
+// ResolvedTaskResources creates a ResolvedTaskResources with default values.
+// Any number of ResolvedTaskResources modifier can be passed to transform it.
+func ResolvedTaskResources(ops ...ResolvedTaskResourcesOp) *resources.ResolvedTaskResources {
+	resources := &resources.ResolvedTaskResources{}
+	for _, op := range ops {
+		op(resources)
+	}
+	return resources
+}
+
+// ResolvedTaskResourcesTaskSpec sets a TaskSpec to the ResolvedTaskResources.
+// Any number of TaskSpec modifier can be passed to transform it.
+func ResolvedTaskResourcesTaskSpec(ops ...TaskSpecOp) ResolvedTaskResourcesOp {
+	return func(r *resources.ResolvedTaskResources) {
+		spec := &v1alpha1.TaskSpec{}
+		for _, op := range ops {
+			op(spec)
+		}
+		r.TaskSpec = spec
+	}
+}
+
+// ResolvedTaskResourcesInputs adds a PipelineResource, with specified name, to the ResolvedTaskResources.
+func ResolvedTaskResourcesInputs(name string, resource *v1alpha1.PipelineResource) ResolvedTaskResourcesOp {
+	return func(r *resources.ResolvedTaskResources) {
+		if r.Inputs == nil {
+			r.Inputs = map[string]*v1alpha1.PipelineResource{}
+		}
+		r.Inputs[name] = resource
 	}
 }

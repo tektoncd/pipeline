@@ -100,13 +100,13 @@ var (
 	))
 
 	gitResource = tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foo.git"),
+		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
 	))
 	anotherGitResource = tb.PipelineResource("another-git-resource", "foo", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foobar.git"),
+		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foobar.git"),
 	))
 	imageResource = tb.PipelineResource("image-resource", "foo", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeImage, tb.PipelineSpecParam("URL", "gcr.io/kristoff/sven"),
+		v1alpha1.PipelineResourceTypeImage, tb.PipelineResourceSpecParam("URL", "gcr.io/kristoff/sven"),
 	))
 )
 
@@ -176,28 +176,28 @@ func getTaskRunController(d test.Data) test.TestAssets {
 
 func TestReconcile(t *testing.T) {
 	taskRunSuccess := tb.TaskRun("test-taskrun-run-success", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(simpleTask.Name), tb.TaskRefAPIVersion("a1"),
+		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 	))
 	taskRunWithSaSuccess := tb.TaskRun("test-taskrun-with-sa-run-success", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(saTask.Name), tb.TaskRefAPIVersion("a1"), tb.TaskRunServiceAccount("test-sa"),
+		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")), tb.TaskRunServiceAccount("test-sa"),
 	))
 	taskRunTemplating := tb.TaskRun("test-taskrun-templating", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(templatedTask.Name), tb.TaskRefAPIVersion("a1"),
+		tb.TaskRunTaskRef(templatedTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
-			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(gitResource.Name, "a1")),
+			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(gitResource.Name)),
 		),
-		tb.TaskRunOutputs(tb.TaskRunOutputsResource("myimage", tb.ResourceBindingRef("image-resource", "a1"))),
+		tb.TaskRunOutputs(tb.TaskRunOutputsResource("myimage", tb.ResourceBindingRef("image-resource"))),
 	))
 	taskRunOverrivdesDefaultTemplating := tb.TaskRun("test-taskrun-overrides-default-templating", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(defaultTemplatedTask.Name), tb.TaskRefAPIVersion("a1"),
+		tb.TaskRunTaskRef(defaultTemplatedTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
 			tb.TaskRunInputsResource(gitResource.Name),
 		),
 	))
 	taskRunDefaultTemplating := tb.TaskRun("test-taskrun-default-templating", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(defaultTemplatedTask.Name), tb.TaskRefAPIVersion("a1"),
+		tb.TaskRunTaskRef(defaultTemplatedTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunInputs(
 			tb.TaskRunInputsResource(gitResource.Name),
 		),
@@ -224,7 +224,7 @@ func TestReconcile(t *testing.T) {
 	taskRunWithTaskSpec := tb.TaskRun("test-taskrun-with-taskSpec", "foo", tb.TaskRunSpec(
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
-			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(gitResource.Name, "a1")),
+			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(gitResource.Name)),
 		),
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(
