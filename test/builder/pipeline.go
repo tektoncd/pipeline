@@ -15,6 +15,7 @@ package builder
 
 import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -38,6 +39,15 @@ type PipelineResourceOp func(*v1alpha1.PipelineResource)
 
 // PipelineResourceSpecOp is an operation which modify a PipelineResourceSpec struct.
 type PipelineResourceSpecOp func(*v1alpha1.PipelineResourceSpec)
+
+// PipelineTaskResourceOp is an operation which modify a PipelineTaskResource struct.
+type PipelineTaskResourceOp func(*v1alpha1.PipelineTaskResource)
+
+// ResourceDependencyOp is an operation which modify a ResourceDependency
+type ResourceDependencyOp func(*v1alpha1.ResourceDependency)
+
+// PipelineRunStatusOp is an operation which modify a PipelineRunStatus
+type PipelineRunStatusOp func(*v1alpha1.PipelineRunStatus)
 
 // Pipeline creates a Pipeline with default values.
 // Any number of Pipeline modifier can be passed to transform it.
@@ -87,6 +97,42 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 	}
 }
 
+// PipelineTaskRefKind sets the TaskKind to the PipelineTaskRef.
+func PipelineTaskRefKind(kind v1alpha1.TaskKind) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.TaskRef.Kind = kind
+	}
+}
+
+// PipelineTaskParam adds a Param, with specified name and value, to the PipelineTask.
+func PipelineTaskParam(name, value string) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.Params = append(pt.Params, v1alpha1.Param{
+			Name:  name,
+			Value: value,
+		})
+	}
+}
+
+// PipelineTaskResourceDependency adds a ResourceDependency, with specified name, to the PipelineTask.
+// Any number of ResourceDependency modifier can be passed to transform it.
+func PipelineTaskResourceDependency(name string, ops ...ResourceDependencyOp) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		d := &v1alpha1.ResourceDependency{Name: name}
+		for _, op := range ops {
+			op(d)
+		}
+		pt.ResourceDependencies = append(pt.ResourceDependencies, *d)
+	}
+}
+
+// Providedy adds Providedy tasks to the ResourceDependency.
+func ProvidedBy(tasks ...string) ResourceDependencyOp {
+	return func(d *v1alpha1.ResourceDependency) {
+		d.ProvidedBy = tasks
+	}
+}
+
 // PipelineRun creates a PipelineRun with default values.
 // Any number of PipelineRun modifier can be passed to transform it.
 func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.PipelineRun {
@@ -132,6 +178,65 @@ func PipelineRunServiceAccount(sa string) PipelineRunSpecOp {
 	}
 }
 
+// PipelineRunTaskResource adds a PipelineTaskResource, with specified name, to the PipelineRunSpec.
+// Any number of PipelineTaskResource modifier can be passed to transform it.
+func PipelineRunTaskResource(name string, ops ...PipelineTaskResourceOp) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		r := &v1alpha1.PipelineTaskResource{Name: name}
+		for _, op := range ops {
+			op(r)
+		}
+		prs.PipelineTaskResources = append(prs.PipelineTaskResources, *r)
+	}
+}
+
+// PipelineTaskResourceInputs adds an Inputs, with specified name, to the PipelineTaskResource.
+// Any number of TaskResourceBinding modifier can be passed to transform it.
+func PipelineTaskResourceInputs(name string, ops ...TaskResourceBindingOp) PipelineTaskResourceOp {
+	return func(r *v1alpha1.PipelineTaskResource) {
+		b := &v1alpha1.TaskResourceBinding{
+			Name: name,
+		}
+		for _, op := range ops {
+			op(b)
+		}
+		r.Inputs = append(r.Inputs, *b)
+	}
+}
+
+// PipelineTaskResourceOutputs adds an Outputs, with specified name, to the PipelineTaskResource.
+// Any number of TaskResourceBinding modifier can be passed to transform it.
+func PipelineTaskResourceOutputs(name string, ops ...TaskResourceBindingOp) PipelineTaskResourceOp {
+	return func(r *v1alpha1.PipelineTaskResource) {
+		b := &v1alpha1.TaskResourceBinding{
+			Name: name,
+		}
+		for _, op := range ops {
+			op(b)
+		}
+		r.Outputs = append(r.Outputs, *b)
+	}
+}
+
+// PipelineRunStatus sets the PipelineRunStatus to the PipelineRun.
+// Any number of PipelineRunStatus modifier can be passed to transform it.
+func PipelineRunStatus(ops ...PipelineRunStatusOp) PipelineRunOp {
+	return func(pr *v1alpha1.PipelineRun) {
+		s := &v1alpha1.PipelineRunStatus{}
+		for _, op := range ops {
+			op(s)
+		}
+		pr.Status = *s
+	}
+}
+
+// PipelineRunStatusCondition adds a Condition to the TaskRunStatus.
+func PipelineRunStatusCondition(condition duckv1alpha1.Condition) PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		s.Conditions = append(s.Conditions, condition)
+	}
+}
+
 // PipelineResource creates a PipelineResource with default values.
 // Any number of PipelineResource modifier can be passed to transform it.
 func PipelineResource(name, namespace string, ops ...PipelineResourceOp) *v1alpha1.PipelineResource {
@@ -160,8 +265,8 @@ func PipelineResourceSpec(resourceType v1alpha1.PipelineResourceType, ops ...Pip
 	}
 }
 
-// PipelineSpecParam adds a Param, with specified name and value, to the PipelineResourceSpec.
-func PipelineSpecParam(name, value string) PipelineResourceSpecOp {
+// PipelineResourceSpecParam adds a Param, with specified name and value, to the PipelineResourceSpec.
+func PipelineResourceSpecParam(name, value string) PipelineResourceSpecOp {
 	return func(spec *v1alpha1.PipelineResourceSpec) {
 		spec.Params = append(spec.Params, v1alpha1.Param{
 			Name:  name,

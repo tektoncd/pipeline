@@ -24,6 +24,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	taskrunresources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/knative/build-pipeline/test"
+	tb "github.com/knative/build-pipeline/test/builder"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
@@ -62,220 +63,84 @@ func getPipelineRunController(d test.Data) test.TestAssets {
 }
 
 func TestReconcile(t *testing.T) {
-	prs := []*v1alpha1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-success",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name: "test-pipeline",
-			},
-			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
-				Name: "unit-test-1",
-				Inputs: []v1alpha1.TaskResourceBinding{{
-					Name: "workspace",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-				}},
-				Outputs: []v1alpha1.TaskResourceBinding{{
-					Name: "image-to-use",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-image",
-					},
-				}, {
-					Name: "workspace",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-				}},
-			}, {
-				Name: "unit-test-2",
-				Inputs: []v1alpha1.TaskResourceBinding{{
-					Name: "workspace",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-				}},
-			}, {
-				Name: "unit-test-cluster-task",
-				Inputs: []v1alpha1.TaskResourceBinding{{
-					Name: "workspace",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-				}},
-				Outputs: []v1alpha1.TaskResourceBinding{{
-					Name: "image-to-use",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-image",
-					},
-				}, {
-					Name: "workspace",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-				}},
-			}},
-			ServiceAccount: "test-sa",
-		},
-	}}
-	ps := []*v1alpha1.Pipeline{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{{
-				Name:    "unit-test-1",
-				TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
-				Params: []v1alpha1.Param{{
-					Name:  "foo",
-					Value: "somethingfun",
-				}, {
-					Name:  "bar",
-					Value: "somethingmorefun",
-				}, {
-					Name:  "templatedparam",
-					Value: "${inputs.workspace.revision}",
-				}},
-			}, {
-				Name:    "unit-test-2",
-				TaskRef: v1alpha1.TaskRef{Name: "unit-test-followup-task"},
-				ResourceDependencies: []v1alpha1.ResourceDependency{{
-					Name:       "workspace",
-					ProvidedBy: []string{"unit-test-1"},
-				}},
-			}, {
-				Name: "unit-test-cluster-task",
-				TaskRef: v1alpha1.TaskRef{
-					Name: "unit-test-cluster-task",
-					Kind: "ClusterTask",
-				},
-				Params: []v1alpha1.Param{{
-					Name:  "foo",
-					Value: "somethingfun",
-				}, {
-					Name:  "bar",
-					Value: "somethingmorefun",
-				}, {
-					Name:  "templatedparam",
-					Value: "${inputs.workspace.revision}",
-				}},
-			}},
-		},
-	}}
-	ts := []*v1alpha1.Task{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-test-task",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: "git",
-				}},
-				Params: []v1alpha1.TaskParam{{
-					Name:        "foo",
-					Description: "foo",
-				}, {
-					Name:        "bar",
-					Description: "bar",
-				}},
-			},
-			Outputs: &v1alpha1.Outputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "image-to-use",
-					Type: "image",
-				}, {
-					Name: "workspace",
-					Type: "git",
-				}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-test-followup-task",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: "git",
-				}},
-			},
-		},
-	}}
-	clusterTasks := []*v1alpha1.ClusterTask{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "unit-test-cluster-task",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: "git",
-				}},
-				Params: []v1alpha1.TaskParam{{
-					Name:        "foo",
-					Description: "foo",
-				}, {
-					Name:        "bar",
-					Description: "bar",
-				}},
-			},
-			Outputs: &v1alpha1.Outputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "image-to-use",
-					Type: "image",
-				}, {
-					Name: "workspace",
-					Type: "git",
-				}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-test-followup-task",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: "git",
-				}},
-			},
-		},
-	}}
-	rs := []*v1alpha1.PipelineResource{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "some-repo",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "git",
-			Params: []v1alpha1.Param{{
-				Name:  "url",
-				Value: "http://github.com/kristoff/reindeer",
-			}},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "some-image",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "image",
-			Params: []v1alpha1.Param{{
-				Name:  "url",
-				Value: "gcr.io/sven",
-			}},
-		},
-	}}
+	workspaceInput := tb.PipelineTaskResourceInputs("workspace", tb.ResourceBindingRef("some-repo"))
+	imageOutput := tb.PipelineTaskResourceOutputs("image-to-use", tb.ResourceBindingRef("some-image"))
+	workspaceOutput := tb.PipelineTaskResourceOutputs("workspace", tb.ResourceBindingRef("some-repo"))
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun("test-pipeline-run-success", "foo",
+			tb.PipelineRunSpec("test-pipeline",
+				tb.PipelineRunServiceAccount("test-sa"),
+				tb.PipelineRunTaskResource("unit-test-1",
+					workspaceInput, imageOutput, workspaceOutput,
+				),
+				tb.PipelineRunTaskResource("unit-test-2",
+					workspaceInput,
+				),
+				tb.PipelineRunTaskResource("unit-test-cluster-task",
+					workspaceInput, imageOutput, workspaceOutput,
+				),
+			),
+		),
+	}
+	funParam := tb.PipelineTaskParam("foo", "somethingfun")
+	moreFunParam := tb.PipelineTaskParam("bar", "somethingmorefun")
+	templatedParam := tb.PipelineTaskParam("templatedparam", "${inputs.workspace.revision}")
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineTask("unit-test-1", "unit-test-task",
+					funParam, moreFunParam, templatedParam,
+				),
+				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
+					tb.PipelineTaskResourceDependency("workspace", tb.ProvidedBy("unit-test-1")),
+				),
+				tb.PipelineTask("unit-test-cluster-task", "unit-test-cluster-task",
+					tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
+					funParam, moreFunParam, templatedParam,
+				),
+			),
+		),
+	}
+	ts := []*v1alpha1.Task{
+		tb.Task("unit-test-task", "foo", tb.TaskSpec(
+			tb.TaskInputs(
+				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+				tb.InputsParam("foo"), tb.InputsParam("bar"),
+			),
+			tb.TaskOutputs(
+				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
+				tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+			),
+		)),
+		tb.Task("unit-test-followup-task", "foo", tb.TaskSpec(
+			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+		)),
+	}
+	clusterTasks := []*v1alpha1.ClusterTask{
+		tb.ClusterTask("unit-test-cluster-task", tb.ClusterTaskSpec(
+			tb.TaskInputs(
+				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+				tb.InputsParam("foo"), tb.InputsParam("bar"),
+			),
+			tb.TaskOutputs(
+				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
+				tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+			),
+		)),
+		tb.ClusterTask("unit-test-followup-task", tb.ClusterTaskSpec(
+			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+		)),
+	}
+	rs := []*v1alpha1.PipelineResource{
+		tb.PipelineResource("some-repo", "foo", tb.PipelineResourceSpec(
+			v1alpha1.PipelineResourceTypeGit,
+			tb.PipelineResourceSpecParam("url", "https://github.com/kristoff/reindeer"),
+		)),
+		tb.PipelineResource("some-image", "foo", tb.PipelineResourceSpec(
+			v1alpha1.PipelineResourceTypeImage,
+			tb.PipelineResourceSpecParam("url", "gcr.io/sven"),
+		)),
+	}
 	d := test.Data{
 		PipelineRuns:      prs,
 		Pipelines:         ps,
@@ -304,63 +169,31 @@ func TestReconcile(t *testing.T) {
 
 	// Check that the expected TaskRun was created
 	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject()
-	trueB := true
-	expectedTaskRun := &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-success-unit-test-1",
-			Namespace: "foo",
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "pipeline.knative.dev/v1alpha1",
-				Kind:               "PipelineRun",
-				Name:               "test-pipeline-run-success",
-				Controller:         &trueB,
-				BlockOwnerDeletion: &trueB,
-			}},
-			Labels: map[string]string{
-				"pipeline.knative.dev/pipeline":    "test-pipeline",
-				"pipeline.knative.dev/pipelineRun": "test-pipeline-run-success",
-			},
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			ServiceAccount: "test-sa",
-			TaskRef: &v1alpha1.TaskRef{
-				Name: "unit-test-task",
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: []v1alpha1.Param{
-					{
-						Name:  "foo",
-						Value: "somethingfun",
-					},
-					{
-						Name:  "bar",
-						Value: "somethingmorefun",
-					},
-					{
-						Name:  "templatedparam",
-						Value: "${inputs.workspace.revision}",
-					},
-				},
-				Resources: []v1alpha1.TaskResourceBinding{{
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-					Name: "workspace",
-				}},
-			},
-			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskResourceBinding{{
-					Name:        "image-to-use",
-					ResourceRef: v1alpha1.PipelineResourceRef{Name: "some-image"},
-					Paths:       []string{"/pvc/unit-test-1/image-to-use"},
-				}, {
-					Name:        "workspace",
-					ResourceRef: v1alpha1.PipelineResourceRef{Name: "some-repo"},
-					Paths:       []string{"/pvc/unit-test-1/workspace"},
-				}},
-			},
-		},
-	}
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1", "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
+			tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("pipeline.knative.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel("pipeline.knative.dev/pipelineRun", "test-pipeline-run-success"),
+		tb.TaskRunSpec(tb.TaskRunTaskRef("unit-test-task"),
+			tb.TaskRunServiceAccount("test-sa"),
+			tb.TaskRunInputs(
+				tb.TaskRunInputsParam("foo", "somethingfun"),
+				tb.TaskRunInputsParam("bar", "somethingmorefun"),
+				tb.TaskRunInputsParam("templatedparam", "${inputs.workspace.revision}"),
+				tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef("some-repo")),
+			),
+			tb.TaskRunOutputs(
+				tb.TaskRunOutputsResource("image-to-use", tb.ResourceBindingRef("some-image"),
+					tb.ResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
+				),
+				tb.TaskRunOutputsResource("workspace", tb.ResourceBindingRef("some-repo"),
+					tb.ResourceBindingPaths("/pvc/unit-test-1/workspace"),
+				),
+			),
+		),
+	)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
@@ -389,63 +222,19 @@ func TestReconcile(t *testing.T) {
 }
 
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
-	ts := []*v1alpha1.Task{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "a-task-that-exists",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{},
-	}}
+	ts := []*v1alpha1.Task{tb.Task("a-task-that-exists", "foo")}
 	ps := []*v1alpha1.Pipeline{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pipeline-missing-tasks",
-				Namespace: "foo",
-			},
-			Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
-				Name:    "myspecialtask",
-				TaskRef: v1alpha1.TaskRef{Name: "sometask"},
-			}},
-			}},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "a-fine-pipeline",
-				Namespace: "foo",
-			},
-			Spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{{
-				Name:    "some-task",
-				TaskRef: v1alpha1.TaskRef{Name: "a-task-that-exists"},
-			}},
-			}},
+		tb.Pipeline("pipeline-missing-tasks", "foo", tb.PipelineSpec(
+			tb.PipelineTask("myspecialtask", "sometask"),
+		)),
+		tb.Pipeline("a-fine-pipeline", "foo", tb.PipelineSpec(
+			tb.PipelineTask("some-task", "a-task-that-exists"),
+		)),
 	}
-	prs := []*v1alpha1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "invalid-pipeline",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name: "pipeline-not-exist",
-			},
-		}}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pipelinerun-missing-tasks",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name: "pipeline-missing-tasks",
-			},
-		}}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pipelinerun-params-dont-exist",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name: "a-fine-pipeline",
-			},
-		}},
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun("invalid-pipeline", "foo", tb.PipelineRunSpec("pipeline-not-exist")),
+		tb.PipelineRun("pipelinerun-missing-tasks", "foo", tb.PipelineRunSpec("pipeline-missing-tasks")),
+		tb.PipelineRun("pipeline-params-dont-exist", "foo", tb.PipelineRunSpec("a-fine-pipeline")),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -530,57 +319,21 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 }
 
 func TestUpdateTaskRunsState(t *testing.T) {
-	pr := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name: "test-pipeline",
-			},
-		},
-	}
+	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
 	pipelineTask := v1alpha1.PipelineTask{
 		Name:    "unit-test-1",
 		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
 	}
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "unit-test-task",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: "git",
-				}},
-			},
-		},
-	}
-	taskrun := &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-success-unit-test-1",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			ServiceAccount: "test-sa",
-			TaskRef: &v1alpha1.TaskRef{
-				Name: "unit-test-task",
-			},
-		},
-		Status: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type: duckv1alpha1.ConditionSucceeded,
-			}},
-			Steps: []v1alpha1.StepState{{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
-				},
-			}},
-		},
-	}
+	task := tb.Task("unit-test-task", "foo", tb.TaskSpec(
+		tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+	))
+	taskrun := tb.TaskRun("test-pipeline-run-success-unit-test-1", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef("unit-test-task"),
+		tb.TaskRunServiceAccount("test-sa"),
+	), tb.TaskRunStatus(
+		tb.Condition(duckv1alpha1.Condition{Type: duckv1alpha1.ConditionSucceeded}),
+		tb.StepState(tb.StateTerminated(0)),
+	))
 
 	expectedTaskRunsStatus := make(map[string]v1alpha1.TaskRunStatus)
 	expectedTaskRunsStatus["test-pipeline-run-success-unit-test-1"] = v1alpha1.TaskRunStatus{
@@ -614,44 +367,19 @@ func TestUpdateTaskRunsState(t *testing.T) {
 }
 
 func TestReconcileOnCompletedPipelineRun(t *testing.T) {
-	prs := []*v1alpha1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-completed",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name: "test-pipeline",
-			},
-			ServiceAccount: "test-sa",
-		},
-		Status: v1alpha1.PipelineRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionTrue,
-				Reason:  resources.ReasonSucceeded,
-				Message: "All Tasks have completed executing",
-			}},
-		},
-	}}
-	ps := []*v1alpha1.Pipeline{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{{
-				Name:    "hello-world-1",
-				TaskRef: v1alpha1.TaskRef{Name: "hello-world"},
-			}},
-		},
-	}}
-	ts := []*v1alpha1.Task{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "hello-world",
-			Namespace: "foo",
-		},
-	}}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa")),
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionTrue,
+			Reason:  resources.ReasonSucceeded,
+			Message: "All Tasks have completed executing",
+		})),
+	)}
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hellow-world"),
+	))}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,

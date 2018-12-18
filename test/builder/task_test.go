@@ -18,23 +18,28 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	tb "github.com/knative/build-pipeline/test/builder"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
 	gitResource = tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foo.git"),
+		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
 	))
 	anotherGitResource = tb.PipelineResource("another-git-resource", "foo", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit, tb.PipelineSpecParam("URL", "https://foobar.git"),
+		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foobar.git"),
 	))
 )
 
 func TestTask(t *testing.T) {
 	task := tb.Task("test-task", "foo", tb.TaskSpec(
-		tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskInputs(
+			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+			tb.InputsParam("param", tb.ParamDescription("mydesc"), tb.ParamDefault("default")),
+		),
 		tb.TaskOutputs(tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
 			"--my-other-arg=${inputs.resources.workspace.url}",
@@ -54,6 +59,7 @@ func TestTask(t *testing.T) {
 					Name: "workspace",
 					Type: v1alpha1.PipelineResourceTypeGit,
 				}},
+				Params: []v1alpha1.TaskParam{{Name: "param", Description: "mydesc", Default: "default"}},
 			},
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{{
@@ -90,18 +96,29 @@ func TestClusterTask(t *testing.T) {
 	}
 }
 
-func TestTaskRun(t *testing.T) {
-	TaskRun := tb.TaskRun("test-taskrun", "foo",
-		tb.TaskRunOwnerReference("PipelineRun", "test"),
+func TestTaskRunWitTaskRef(t *testing.T) {
+	var trueB = true
+	taskRun := tb.TaskRun("test-taskrun", "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test",
+			tb.OwnerReferenceAPIVersion("a1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("label", "label-value"),
 		tb.TaskRunSpec(
-			tb.TaskRunTaskRef("task-output"),
+			tb.TaskRunTaskRef("task-output",
+				tb.TaskRefKind(v1alpha1.ClusterTaskKind),
+				tb.TaskRefAPIVersion("a1"),
+			),
 			tb.TaskRunInputs(
 				tb.TaskRunInputsResource(gitResource.Name,
+					tb.ResourceBindingRef("my-git"),
 					tb.ResourceBindingPaths("source-folder"),
+					tb.ResourceBindingRefAPIVersion("a1"),
 				),
 				tb.TaskRunInputsResource(anotherGitResource.Name,
 					tb.ResourceBindingPaths("source-folder"),
 				),
+				tb.TaskRunInputsParam("iparam", "ivalue"),
 			),
 			tb.TaskRunOutputs(
 				tb.TaskRunOutputsResource(gitResource.Name,
@@ -109,55 +126,129 @@ func TestTaskRun(t *testing.T) {
 				),
 			),
 		),
+		tb.TaskRunStatus(
+			tb.PodName("my-pod-name"),
+			tb.Condition(duckv1alpha1.Condition{Type: duckv1alpha1.ConditionSucceeded}),
+			tb.StepState(tb.StateTerminated(127)),
+		),
 	)
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-taskrun", Namespace: "foo",
 			OwnerReferences: []metav1.OwnerReference{{
-				Name: "test",
-				Kind: "PipelineRun",
+				Name:               "test",
+				Kind:               "PipelineRun",
+				APIVersion:         "a1",
+				Controller:         &trueB,
+				BlockOwnerDeletion: &trueB,
 			}},
+			Labels: map[string]string{"label": "label-value"},
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
-			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskResourceBinding{{
 					Name: "git-resource",
 					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name:       "git-resource",
+						Name:       "my-git",
 						APIVersion: "a1",
 					},
 					Paths: []string{"source-folder"},
 				}, {
 					Name: "another-git-resource",
 					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name:       "another-git-resource",
-						APIVersion: "a1",
+						Name: "another-git-resource",
 					},
 					Paths: []string{"source-folder"},
 				}},
+				Params: []v1alpha1.Param{{Name: "iparam", Value: "ivalue"}},
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
 				Resources: []v1alpha1.TaskResourceBinding{{
 					Name: "git-resource",
 					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name:       "git-resource",
-						APIVersion: "a1",
+						Name: "git-resource",
 					},
 					Paths: []string{"output-folder"},
 				}},
 			},
 			TaskRef: &v1alpha1.TaskRef{
 				Name:       "task-output",
+				Kind:       v1alpha1.ClusterTaskKind,
 				APIVersion: "a1",
 			},
 		},
+		Status: v1alpha1.TaskRunStatus{
+			PodName:    "my-pod-name",
+			Conditions: []duckv1alpha1.Condition{{Type: duckv1alpha1.ConditionSucceeded}},
+			Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+			}}},
+		},
 	}
-	if d := cmp.Diff(expectedTaskRun, TaskRun); d != "" {
+	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {
 		t.Fatalf("TaskRun diff -want, +got: %v", d)
+	}
+}
+
+func TestTaskRunWithTaskSpec(t *testing.T) {
+	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskSpec(
+			tb.Step("step", "image", tb.Command("/mycmd")),
+		),
+		tb.TaskTrigger("mytrigger", v1alpha1.TaskTriggerTypeManual),
+		tb.TaskRunServiceAccount("sa"),
+	))
+	expectedTaskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-taskrun", Namespace: "foo",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskSpec: &v1alpha1.TaskSpec{
+				Steps: []corev1.Container{{
+					Name:    "step",
+					Image:   "image",
+					Command: []string{"/mycmd"},
+				}},
+			},
+			Trigger: v1alpha1.TaskTrigger{
+				TriggerRef: v1alpha1.TaskTriggerRef{
+					Name: "mytrigger",
+					Type: v1alpha1.TaskTriggerTypeManual,
+				},
+			},
+			ServiceAccount: "sa",
+		},
+	}
+	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {
+		t.Fatalf("TaskRun diff -want, +got: %v", d)
+	}
+}
+
+func TestResolvedTaskResources(t *testing.T) {
+	resolvedTaskResources := tb.ResolvedTaskResources(
+		tb.ResolvedTaskResourcesTaskSpec(
+			tb.Step("step", "image", tb.Command("/mycmd")),
+		),
+		tb.ResolvedTaskResourcesInputs("foo", tb.PipelineResource("bar", "baz")),
+	)
+	expectedResolvedTaskResources := &resources.ResolvedTaskResources{
+		TaskSpec: &v1alpha1.TaskSpec{
+			Steps: []corev1.Container{{
+				Name:    "step",
+				Image:   "image",
+				Command: []string{"/mycmd"},
+			}},
+		},
+		Inputs: map[string]*v1alpha1.PipelineResource{
+			"foo": &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "bar",
+					Namespace: "baz",
+				},
+			},
+		},
+	}
+	if d := cmp.Diff(expectedResolvedTaskResources, resolvedTaskResources); d != "" {
+		t.Fatalf("ResolvedTaskResources diff -want, +got: %v", d)
 	}
 }
