@@ -116,7 +116,10 @@ mounted under path `/pvc`.
 
 ### Outputs
 
-`Task` definition can include inputs and outputs resource declaration. If specific set of resources are only declared in output then a copy of resource to be uploaded or shared for next task is expected to be present under the path `/workspace/output/resource_name/`. 
+`Task` definition can include inputs and outputs resource declaration. If
+specific set of resources are only declared in output then a copy of resource to
+be uploaded or shared for next task is expected to be present under the path
+`/workspace/output/resource_name/`.
 
 ```yaml
 resources:
@@ -125,17 +128,28 @@ resources:
 steps:
   - image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
     command: [jar]
-    args: ["-cvf", "-o", "/workspace/output/storage-gcs/", "projectname.war", "*"]
+    args:
+      ["-cvf", "-o", "/workspace/output/storage-gcs/", "projectname.war", "*"]
     env:
-    - name: "FOO"
-      value: "world"
+      - name: "FOO"
+        value: "world"
 ```
 
-**Note**: If task is relying on output resource functionality then they cannot mount anything in file path `/workspace/output`.
+**Note**: If task is relying on output resource functionality then they cannot
+mount anything in file path `/workspace/output`.
 
-If resource is declared in both input and output then input resource, then destination path of input resource is used instead of `/workspace/output/resource_name`. 
+If resource is declared in both input and output then input resource, then
+destination path of input resource is used instead of
+`/workspace/output/resource_name`.
 
-In the following example Task `tar-artifact` resource is used both as input and output so input resource is downloaded into directory `customworkspace`(as specified in `targetPath`). Step `untar` extracts tar file into `tar-scratch-space` directory , `edit-tar` adds a new file and last step `tar-it-up` creates new tar file and places in `/workspace/customworkspace/` directory. After execution of task steps, (new) tar file in directory `/workspace/customworkspace` will be uploaded to the bucket defined in `tar-artifact` resource definition.
+In the following example Task `tar-artifact` resource is used both as input and
+output so input resource is downloaded into directory `customworkspace`(as
+specified in `targetPath`). Step `untar` extracts tar file into
+`tar-scratch-space` directory , `edit-tar` adds a new file and last step
+`tar-it-up` creates new tar file and places in `/workspace/customworkspace/`
+directory. After execution of task steps, (new) tar file in directory
+`/workspace/customworkspace` will be uploaded to the bucket defined in
+`tar-artifact` resource definition.
 
 ```yaml
 resources:
@@ -610,8 +624,10 @@ spec:
 
 ### Storage Resource
 
-Storage resource represents blob storage, that contains either an object or directory.
-Adding the storage resource as an input to a task will download the blob and allow the task to perform the required actions on the contents of the blob. Blob storage type "Google Cloud Storage"(gcs) is supported as of now.
+Storage resource represents blob storage, that contains either an object or
+directory. Adding the storage resource as an input to a task will download the
+blob and allow the task to perform the required actions on the contents of the
+blob. Blob storage type "Google Cloud Storage"(gcs) is supported as of now.
 
 #### GCS Storage Resource
 
@@ -637,41 +653,57 @@ spec:
 Params that can be added are the following:
 
 1. `location`: represents the location of the blob storage.
-2. `type`: represents the type of blob storage. Currently there is implementation for only `gcs`.
-3. `dir`: represents whether the blob storage is a directory or not. By default storage artifact is considered not a directory.
-    * If artifact is a directory then `-r`(recursive) flag is used to copy all files under source directory to GCS bucket. Eg: `gsutil cp -r source_dir gs://some-bucket`
-    * If artifact is a single file like zip, tar files then copy will be only 1 level deep(no recursive). It will not trigger copy of sub directories in source directory. Eg: `gsutil cp source.tar gs://some-bucket.tar`.
+2. `type`: represents the type of blob storage. Currently there is
+   implementation for only `gcs`.
+3. `dir`: represents whether the blob storage is a directory or not. By default
+   storage artifact is considered not a directory.
+   - If artifact is a directory then `-r`(recursive) flag is used to copy all
+     files under source directory to GCS bucket. Eg:
+     `gsutil cp -r source_dir gs://some-bucket`
+   - If artifact is a single file like zip, tar files then copy will be only 1
+     level deep(no recursive). It will not trigger copy of sub directories in
+     source directory. Eg: `gsutil cp source.tar gs://some-bucket.tar`.
 
-Private buckets can also be configured as storage resources. To access GCS private buckets, service accounts are required with correct permissions. `secrets` field on storage resource is used for configuring this information. Below is an example on how to create a storage resource with service account.
-1. Refer to [official documentation](https://cloud.google.com/compute/docs/access/service-accounts) on how to create service accounts and configuring IAM permissions to access bucket.
+Private buckets can also be configured as storage resources. To access GCS
+private buckets, service accounts are required with correct permissions.
+`secrets` field on storage resource is used for configuring this information.
+Below is an example on how to create a storage resource with service account.
+
+1. Refer to
+   [official documentation](https://cloud.google.com/compute/docs/access/service-accounts)
+   on how to create service accounts and configuring IAM permissions to access
+   bucket.
 2. Create a kubernetes secret from downloaded service account json key
 
-    ```bash
-    $ kubectl create secret generic bucket-sa --from-file=./service_account.json
-    ```
+   ```bash
+   $ kubectl create secret generic bucket-sa --from-file=./service_account.json
+   ```
 
-3. To access GCS private bucket environment variable [`GOOGLE_APPLICATION_CREDENTIALS`](https://cloud.google.com/docs/authentication/production) should be set so apply above created secret to the GCS storage resource under `fieldName` key.
+3. To access GCS private bucket environment variable
+   [`GOOGLE_APPLICATION_CREDENTIALS`](https://cloud.google.com/docs/authentication/production)
+   should be set so apply above created secret to the GCS storage resource under
+   `fieldName` key.
 
-    ```yaml
-    apiVersion: pipeline.knative.dev/v1alpha1
-    kind: PipelineResource
-    metadata:
-      name: wizzbang-storage
-      namespace: default
-    spec:
-      type: storage
-      params:
-        - name: type
-          value: gcs
-        - name: url
-          value: gs://some-private-bucket
-        - name: dir
-          value: "directory"
-      secrets:
-        - fieldName: GOOGLE_APPLICATION_CREDENTIALS
-          secretKey: bucket-sa
-          secretName: service_account.json
-    ```
+   ```yaml
+   apiVersion: pipeline.knative.dev/v1alpha1
+   kind: PipelineResource
+   metadata:
+     name: wizzbang-storage
+     namespace: default
+   spec:
+     type: storage
+     params:
+       - name: type
+         value: gcs
+       - name: url
+         value: gs://some-private-bucket
+       - name: dir
+         value: "directory"
+     secrets:
+       - fieldName: GOOGLE_APPLICATION_CREDENTIALS
+         secretKey: bucket-sa
+         secretName: service_account.json
+   ```
 
 ## Troubleshooting
 
