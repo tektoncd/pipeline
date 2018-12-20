@@ -20,12 +20,8 @@ import (
 	"strings"
 	"testing"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
-	corev1 "k8s.io/api/core/v1"
-
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 // TestTaskRun is an integration test that will verify a very simple "hello world" TaskRun can be
@@ -46,17 +42,7 @@ func TestTaskRun(t *testing.T) {
 	}
 
 	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", hwTaskRunName, namespace)
-	if err := WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionTrue {
-				return true, nil
-			} else if c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("pipeline run %s failed!", hwPipelineRunName)
-			}
-		}
-		return false, nil
-	}, "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(c, hwTaskRunName, TaskRunSucceed(hwTaskRunName), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 

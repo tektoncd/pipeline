@@ -149,17 +149,7 @@ func TestPipelineRun(t *testing.T) {
 			}
 
 			logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-			if err := WaitForPipelineRunState(c, prName, pipelineRunTimeout, func(tr *v1alpha1.PipelineRun) (bool, error) {
-				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-				if c != nil {
-					if c.IsTrue() {
-						return true, nil
-					} else if c.IsFalse() {
-						return true, fmt.Errorf("Pipeline run has %s failed with status %v", prName, c.Status)
-					}
-				}
-				return false, nil
-			}, "PipelineRunSuccess"); err != nil {
+			if err := WaitForPipelineRunState(c, prName, pipelineRunTimeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
 
