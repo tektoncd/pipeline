@@ -561,3 +561,283 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateProvidedBy(t *testing.T) {
+	r := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "holygrail",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeImage,
+		},
+	}
+	state := []*ResolvedPipelineRunTask{{
+		PipelineTask: &v1alpha1.PipelineTask{
+			Name: "quest",
+		},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "sweet-artifact",
+						Type: v1alpha1.PipelineResourceTypeImage,
+					}},
+				},
+			},
+			Outputs: map[string]*v1alpha1.PipelineResource{
+				"sweet-artifact": r,
+			},
+		},
+	}, {
+		PipelineTask: &v1alpha1.PipelineTask{
+			Name: "winning",
+			ResourceDependencies: []v1alpha1.ResourceDependency{{
+				Name:       "awesome-thing",
+				ProvidedBy: []string{"quest"},
+			}}},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "awesome-thing",
+						Type: v1alpha1.PipelineResourceTypeImage,
+					}},
+				},
+			},
+			Inputs: map[string]*v1alpha1.PipelineResource{
+				"awesome-thing": r,
+			},
+		},
+	}}
+	err := ValidateProvidedBy(state)
+	if err != nil {
+		t.Fatalf("Didn't expect error when validating valid providedBy clause but got: %v", err)
+	}
+}
+
+func TestValidateProvidedBy_Invalid(t *testing.T) {
+	r := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "holygrail",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeImage,
+		},
+	}
+	otherR := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "holyhandgrenade",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeImage,
+		},
+	}
+
+	for _, tc := range []struct {
+		name  string
+		state []*ResolvedPipelineRunTask
+	}{{
+		name: "providedBy tries to reference input",
+		state: []*ResolvedPipelineRunTask{{
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "quest",
+			},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "sweet-artifact",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Inputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": r,
+				},
+			},
+		}, {
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "winning",
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "awesome-thing",
+					ProvidedBy: []string{"quest"},
+				}}},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "awesome-thing",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Inputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": r,
+				},
+			},
+		}},
+	}, {
+		name: "providedBy resource doesn't exist",
+		state: []*ResolvedPipelineRunTask{{
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "quest",
+			},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{},
+			},
+		}, {
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "winning",
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "awesome-thing",
+					ProvidedBy: []string{"quest"},
+				}}},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "awesome-thing",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Inputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": r,
+				},
+			},
+		}},
+	}, {
+		name: "providedBy task doesn't exist",
+		state: []*ResolvedPipelineRunTask{{
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "winning",
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "awesome-thing",
+					ProvidedBy: []string{"quest"},
+				}}},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "awesome-thing",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Inputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": r,
+				},
+			},
+		}},
+	}, {
+		name: "providedBy task refers to itself",
+		state: []*ResolvedPipelineRunTask{{
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "winning",
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "awesome-thing",
+					ProvidedBy: []string{"winning"},
+				}}},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "awesome-thing",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Inputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": r,
+				},
+			},
+		}},
+	}, {
+		name: "providedBy is bound to different resource",
+		state: []*ResolvedPipelineRunTask{{
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "quest",
+			},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "sweet-artifact",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Outputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": r,
+				},
+			},
+		}, {
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "winning",
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "awesome-thing",
+					ProvidedBy: []string{"quest"},
+				}}},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "awesome-thing",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Inputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": otherR,
+				},
+			},
+		}},
+	}, {
+		name: "providedBy is on output",
+		state: []*ResolvedPipelineRunTask{{
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "quest",
+			},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "sweet-artifact",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Outputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": r,
+				},
+			},
+		}, {
+			PipelineTask: &v1alpha1.PipelineTask{
+				Name: "winning",
+				ResourceDependencies: []v1alpha1.ResourceDependency{{
+					Name:       "awesome-thing",
+					ProvidedBy: []string{"quest"},
+				}}},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "awesome-thing",
+							Type: v1alpha1.PipelineResourceTypeImage,
+						}},
+					},
+				},
+				Outputs: map[string]*v1alpha1.PipelineResource{
+					"sweet-artifact": otherR,
+				},
+			},
+		}},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateProvidedBy(tc.state)
+			if err == nil {
+				t.Fatalf("Expected error when validating invalid providedBy but got none")
+			}
+		})
+	}
+}

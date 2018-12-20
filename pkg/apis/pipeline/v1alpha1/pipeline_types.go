@@ -90,7 +90,7 @@ type PipelineTaskParam struct {
 type ResourceDependency struct {
 	// Name is the name of the Task's input that this Resource should be used for.
 	Name string `json:"name"`
-	// ProvidedBy is the list of Task names that the resource has to come from.
+	// ProvidedBy is the list of PipelineTask names that the resource has to come from.
 	// +optional
 	ProvidedBy []string `json:"providedBy,omitempty"`
 }

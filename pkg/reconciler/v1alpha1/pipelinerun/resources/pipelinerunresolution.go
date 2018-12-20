@@ -234,3 +234,51 @@ func GetPipelineConditionStatus(prName string, state []*ResolvedPipelineRunTask,
 		Message: "All Tasks have completed executing",
 	}
 }
+
+func findReferencedTask(pb string, state []*ResolvedPipelineRunTask) *ResolvedPipelineRunTask {
+	for _, rprtRef := range state {
+		if rprtRef.PipelineTask.Name == pb {
+			return rprtRef
+		}
+	}
+	return nil
+}
+
+// ValidateProvidedBy will look at any `providedBy` clauses in the resolved PipelineRun state
+// and validate it: the `providedBy` must specify an input of the current `Task`. The `PipelineTask`
+// it is provided by must actually exist in the `Pipeline`. The `PipelineResource` that is bound to the input
+// must be the same `PipelineResource` that was bound to the output of the previous `Task`. If the state is
+// not valid, it will return an error.
+func ValidateProvidedBy(state []*ResolvedPipelineRunTask) error {
+	for _, rprt := range state {
+		for _, dep := range rprt.PipelineTask.ResourceDependencies {
+			inputBinding, ok := rprt.ResolvedTaskResources.Inputs[dep.Name]
+			if !ok {
+				return fmt.Errorf("PipelineTask %s is trying to declare dependency for Resource %s which is not an input of PipelineTask %q", rprt.PipelineTask.Name, dep.Name, rprt.PipelineTask.Name)
+			}
+
+			for _, pb := range dep.ProvidedBy {
+				if pb == rprt.PipelineTask.Name {
+					return fmt.Errorf("PipelineTask %s is trying to depend on a PipelineResource from itself", pb)
+				}
+				depTask := findReferencedTask(pb, state)
+				if depTask == nil {
+					return fmt.Errorf("pipelineTask %s is trying to depend on previous Task %q but it does not exist", rprt.PipelineTask.Name, pb)
+				}
+
+				sameBindingExists := false
+				for _, output := range depTask.ResolvedTaskResources.Outputs {
+					if output.Name == inputBinding.Name {
+						sameBindingExists = true
+					}
+				}
+				if !sameBindingExists {
+					return fmt.Errorf("providedBy is ambiguous: input %q for PipelineTask %q is bound to %q but no outputs in PipelineTask %q are bound to same resource",
+						dep.Name, rprt.PipelineTask.Name, inputBinding.Name, depTask.PipelineTask.Name)
+				}
+			}
+		}
+	}
+
+	return nil
+}
