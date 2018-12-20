@@ -240,7 +240,7 @@ func TestResolvedTaskResources(t *testing.T) {
 			}},
 		},
 		Inputs: map[string]*v1alpha1.PipelineResource{
-			"foo": &v1alpha1.PipelineResource{
+			"foo": {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "baz",
