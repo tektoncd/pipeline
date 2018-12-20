@@ -197,6 +197,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		}
 		return fmt.Errorf("error getting Tasks for Pipeline %s: %s", p.Name, err)
 	}
+
+	if err := resources.ValidateProvidedBy(pipelineState); err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonFailedValidation,
+			Message: fmt.Sprintf("Pipeline %s can't be Run; it invalid input/output linkages: %s",
+				fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
+		})
+		return nil
+	}
+
 	for _, rprt := range pipelineState {
 		err := taskrun.ValidateResolvedTaskResources(rprt.PipelineTask.Params, rprt.ResolvedTaskResources)
 		if err != nil {
