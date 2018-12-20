@@ -16,15 +16,11 @@ limitations under the License.
 package test
 
 import (
-	"fmt"
 	"testing"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
-	corev1 "k8s.io/api/core/v1"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/knative/build-pipeline/test/builder"
 )
 
@@ -53,17 +49,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	}
 
 	logger.Infof("Waiting for TaskRun %s in namespace %s to fail", hwTaskRunName, namespace)
-	if err := WaitForTaskRunState(c, "apple", func(tr *v1alpha1.TaskRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionTrue {
-				return true, fmt.Errorf("task run %s succeeded!", "apple")
-			} else if c.Status == corev1.ConditionFalse {
-				return true, nil
-			}
-		}
-		return false, nil
-	}, "BuildValidationFailed"); err != nil {
+	if err := WaitForTaskRunState(c, "apple", TaskRunFailed("apple"), "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 
@@ -81,17 +67,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	}
 
 	logger.Infof("Waiting for PipelineRun %s in namespace %s to fail", hwTaskRunName, namespace)
-	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, func(tr *v1alpha1.PipelineRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionTrue {
-				return true, fmt.Errorf("task run %s succeeded!", "apple")
-			} else if c.Status == corev1.ConditionFalse {
-				return true, nil
-			}
-		}
-		return false, nil
-	}, "BuildValidationFailed"); err != nil {
+	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, PipelineRunFailed("pear"), "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 }

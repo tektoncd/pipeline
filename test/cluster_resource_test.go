@@ -16,11 +16,9 @@ limitations under the License.
 package test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
@@ -66,17 +64,7 @@ func TestClusterResource(t *testing.T) {
 	}
 
 	// Verify status of TaskRun (wait for it)
-	if err := WaitForTaskRunState(c, taskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionTrue {
-				return true, nil
-			} else if c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("task run %s failed", taskRunName)
-			}
-		}
-		return false, nil
-	}, "TaskRunCompleted"); err != nil {
+	if err := WaitForTaskRunState(c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunCompleted"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", taskRunName, err)
 	}
 }

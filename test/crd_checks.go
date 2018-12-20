@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"go.opencensus.io/trace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,11 +34,17 @@ const (
 	timeout  = 5 * time.Minute
 )
 
+// TaskRunStateFn is a condition function on TaskRun used polling functions
+type TaskRunStateFn func(r *v1alpha1.TaskRun) (bool, error)
+
+// PipelineRunStateFn is a condition function on TaskRun used polling functions
+type PipelineRunStateFn func(pr *v1alpha1.PipelineRun) (bool, error)
+
 // WaitForTaskRunState polls the status of the TaskRun called name from client every
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForTaskRunState(c *clients, name string, inState func(r *v1alpha1.TaskRun) (bool, error), desc string) error {
+func WaitForTaskRunState(c *clients, name string, inState TaskRunStateFn, desc string) error {
 	metricName := fmt.Sprintf("WaitForTaskRunState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
@@ -73,7 +80,7 @@ func WaitForPodState(c *clients, name string, namespace string, inState func(r *
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
 // track how long it took for name to get into the state checked by inState.
-func WaitForPipelineRunState(c *clients, name string, polltimeout time.Duration, inState func(r *v1alpha1.PipelineRun) (bool, error), desc string) error {
+func WaitForPipelineRunState(c *clients, name string, polltimeout time.Duration, inState PipelineRunStateFn, desc string) error {
 	metricName := fmt.Sprintf("WaitForPipelineRunState/%s/%s", name, desc)
 	_, span := trace.StartSpan(context.Background(), metricName)
 	defer span.End()
@@ -103,4 +110,68 @@ func WaitForServiceExternalIPState(c *clients, namespace, name string, inState f
 		}
 		return inState(r)
 	})
+}
+
+// TaskRunSucceed provides a poll condition function that checks if the TaskRun
+// has successfully completed.
+func TaskRunSucceed(name string) TaskRunStateFn {
+	return func(tr *v1alpha1.TaskRun) (bool, error) {
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, nil
+			} else if c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("task run %s failed!", name)
+			}
+		}
+		return false, nil
+	}
+}
+
+// TaskRunFailed provides a poll condition function that checks if the TaskRun
+// has failed.
+func TaskRunFailed(name string) TaskRunStateFn {
+	return func(tr *v1alpha1.TaskRun) (bool, error) {
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, fmt.Errorf("task run %s succeeded!", name)
+			} else if c.Status == corev1.ConditionFalse {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+}
+
+// PipelineRunSucceed provides a poll condition function that checks if the PipelineRun
+// has successfully completed.
+func PipelineRunSucceed(name string) PipelineRunStateFn {
+	return func(pr *v1alpha1.PipelineRun) (bool, error) {
+		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, nil
+			} else if c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("pipeline run %s failed!", name)
+			}
+		}
+		return false, nil
+	}
+}
+
+// PipelineRunFailed provides a poll condition function that checks if the PipelineRun
+// has failed.
+func PipelineRunFailed(name string) PipelineRunStateFn {
+	return func(tr *v1alpha1.PipelineRun) (bool, error) {
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue {
+				return true, fmt.Errorf("task run %s succeeded!", name)
+			} else if c.Status == corev1.ConditionFalse {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
 }
