@@ -37,33 +37,33 @@ need.
   expressed explicitly using this key since a task needing a resource from a
   another task would have to run after.
 - The name used in the `providedBy` is the name of `PipelineTask`
-- The name of the `PipelineResource` must correspond to a `PipelineResource` from
-  the `Task` that the referenced `PipelineTask` provides as an output
+- The name of the `PipelineResource` must correspond to a `PipelineResource`
+  from the `Task` that the referenced `PipelineTask` provides as an output
 
 For example see this `Pipeline` spec:
 
 ```yaml
-  - name: build-skaffold-app
-    taskRef:
-      name: build-push
-    params:
+- name: build-skaffold-app
+  taskRef:
+    name: build-push
+  params:
     - name: pathToDockerFile
       value: Dockerfile
     - name: pathToContext
       value: /workspace/examples/microservices/leeroy-app
-  - name: deploy-app
-    taskRef:
-      name: demo-deploy-kubectl
-    resources:
+- name: deploy-app
+  taskRef:
+    name: demo-deploy-kubectl
+  resources:
     - name: image
       providedBy:
-      - build-skaffold-app
+        - build-skaffold-app
 ```
 
-The `image` resource is expected to be provided to the `deploy-app` `Task` from the
-`build-skaffold-app` `Task`. This means that the `PipelineResource` bound to the `image`
-input for `deploy-app` must be bound to the same `PipelineResource` as an output from
-`build-skaffold-app`.
+The `image` resource is expected to be provided to the `deploy-app` `Task` from
+the `build-skaffold-app` `Task`. This means that the `PipelineResource` bound to
+the `image` input for `deploy-app` must be bound to the same `PipelineResource`
+as an output from `build-skaffold-app`.
 
 This is the corresponding `PipelineRun` spec:
 
@@ -81,15 +81,17 @@ This is the corresponding `PipelineRun` spec:
         name: skaffold-image-leeroy-app
 ```
 
-You can see that the `builtImage` output from `build-skaffold-app` is bound to the
-`skaffold-image-leeroy-app` `PipelineResource`, and the same `PipelineResource` is bound
-to `image` for `deploy-app`.
+You can see that the `builtImage` output from `build-skaffold-app` is bound to
+the `skaffold-image-leeroy-app` `PipelineResource`, and the same
+`PipelineResource` is bound to `image` for `deploy-app`.
 
 This controls two things:
 
-1. The order the `Tasks` are executed in: `deploy-app` must come after `build-skaffold-app`
-2. The state of the `PipelineResources`: the image provided to `deploy-app` may be changed
-   by `build-skaffold-app` (WIP, see [#216](https://github.com/knative/build-pipeline/issues/216))
+1. The order the `Tasks` are executed in: `deploy-app` must come after
+   `build-skaffold-app`
+2. The state of the `PipelineResources`: the image provided to `deploy-app` may
+   be changed by `build-skaffold-app` (WIP, see
+   [#216](https://github.com/knative/build-pipeline/issues/216))
 
 ## Creating a Task
 
