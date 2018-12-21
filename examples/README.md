@@ -54,13 +54,13 @@ The [Tasks](../docs/Concepts.md#task) used by the simple examples are:
 
 #### Simple Runs
 
-The [runs](./runs/) directory contains an example
+The [run](./run/) directory contains an example
 [TaskRun](../docs/Concepts.md#taskrun) and an exmaple
 [PipelineRun](../docs/Concepts.md#pipelinerun):
 
-- [task-run.yaml](./runs/task-run.yaml) shows an example of how to manually run
+- [task-run.yaml](./run/task-run.yaml) shows an example of how to manually run
   the `build-push` task
-- [pipeline-run.yaml](./runs/pipeline-run.yaml) invokes
+- [pipeline-run.yaml](./run/pipeline-run.yaml) invokes
   [the example pipeline](#example-pipeline)
 
 ### Pipeline with outputs
@@ -93,6 +93,6 @@ an [`Input`](../docs/Concepts.md#inputs) of the `check-stuff-file-exists`
 
 #### Output Runs
 
-The [runs](./runs/) directory contains an exmaple
+The [run](./run/) directory contains an exmaple
 [PipelineRun](../docs/Concepts.md#pipelinerun) that invokes this `Pipeline` in
 [`run/output-pipeline-run.yaml`](./run/output-pipeline-run.yaml).
