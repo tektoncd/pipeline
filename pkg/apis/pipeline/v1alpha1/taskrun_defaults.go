@@ -21,7 +21,7 @@ func (tr *TaskRun) SetDefaults() {
 }
 
 func (trs *TaskRunSpec) SetDefaults() {
-	if trs.TaskRef.Kind == "" {
+	if trs.TaskRef != nil && trs.TaskRef.Kind == "" {
 		trs.TaskRef.Kind = NamespacedTaskKind
 	}
 }
