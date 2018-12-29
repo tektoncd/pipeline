@@ -70,9 +70,9 @@ function run_yaml_tests() {
 
   ko apply -R -f examples/ || return 1
 
-  failed=$(validate_run)
-
-  (( failed )) && return 1
-  echo ">> All YAML tests passed"
-  return 0
+  if validate_run; then
+    echo ">> All YAML tests passed"
+    return 0
+  fi
+  return 1
 }
