@@ -14,10 +14,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script calls out to scripts in knative/test-infra to setup a cluster
-# and deploy the Pipeline CRD to it for running integration tests.
+# Helper functions for E2E tests.
 
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/e2e-tests.sh
+
+function teardown() {
+    subheader "Tearing down Pipeline CRD"
+    ko delete --ignore-not-found=true -f config/
+    # teardown will be called when run against an existing cluster to cleanup before
+    # continuing, so we must wait for the cleanup to complete or the subsequent attempt
+    # to deploy to the same namespace will fail
+    wait_until_object_does_not_exist namespace knative-build-pipeline
+}
+
+function output_yaml_test_results() {
+  # If formatting fails for any reason, use yaml as a fall back.
+  kubectl get $1.pipeline.knative.dev -o=custom-columns-file=${REPO_ROOT_DIR}/test/columns.txt || \
+    kubectl get $1.pipeline.knative.dev -oyaml
+}
+
+# Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
+function dump_extra_cluster_state() {
+  echo ">>> Pipeline controller log:"
+  kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-controller knative-build-pipeline)
+  echo ">>> Pipeline webhook log:"
+  kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-webhook knative-build-pipeline)
+}
 
 function validate_run() {
   # Wait for tests to finish.
@@ -61,18 +83,21 @@ function validate_run() {
       fi
     done
   done
+  return ${failed}
 }
 
 function run_yaml_tests() {
   echo ">> Starting tests"
 
-  sed -i.bak 's/christiewilson-catfactory/${KO_DOCKER_REPO}/' examples/resources.yaml
+  find ${REPO_ROOT_DIR}/examples/ -name *.yaml -exec cat {} \; \
+      | sed 's/christiewilson-catfactory/${KO_DOCKER_REPO}/' \
+      | ko apply -f - \
+      || return 1
 
-  ko apply -R -f examples/ || return 1
+  if validate_run $1; then
+    echo ">> All YAML tests passed"
+    return 0
+  fi
 
-  failed=$(validate_run)
-
-  (( failed )) && return 1
-  echo ">> All YAML tests passed"
-  return 0
+  return 1
 }

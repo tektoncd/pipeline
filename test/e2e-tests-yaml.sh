@@ -32,19 +32,21 @@ set +o pipefail
 echo ">> Deploying Pipeline CRD"
 ko apply -f config/ || fail_test "Build pipeline installation failed"
 
-# Wait for pods to be running in the namespaces we are deploying to
-wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
+for res in pipelineresources tasks pipelines taskruns pipelineruns; do
+  kubectl delete --ignore-not-found=true ${res}.pipeline.knative.dev --all
+done
 
+# Run the tests
 failed=0
-
-# Run the integration tests
-header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test || failed=1
-
-# Run these _after_ the integration tests b/c they don't quite work all the way
-# and they cause a lot of noise in the logs, making it harder to debug integration
-# test failures.
-${REPO_ROOT_DIR}/test/e2e-tests-yaml.sh --run-tests || failed=1
+for test in taskrun pipelinerun; do
+  header "Running YAML e2e tests for ${test}s"
+  if ! run_yaml_tests ${test}; then
+    echo "ERROR: one or more YAML tests failed"
+    failed=1
+    output_yaml_test_results ${test}
+  fi
+done
 
 (( failed )) && fail_test
+
 success
