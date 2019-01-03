@@ -494,12 +494,22 @@ func ResolvedTaskResourcesTaskSpec(ops ...TaskSpecOp) ResolvedTaskResourcesOp {
 	}
 }
 
-// ResolvedTaskResourcesInputs adds a PipelineResource, with specified name, to the ResolvedTaskResources.
+// ResolvedTaskResourcesInputs adds an input PipelineResource, with specified name, to the ResolvedTaskResources.
 func ResolvedTaskResourcesInputs(name string, resource *v1alpha1.PipelineResource) ResolvedTaskResourcesOp {
 	return func(r *resources.ResolvedTaskResources) {
 		if r.Inputs == nil {
 			r.Inputs = map[string]*v1alpha1.PipelineResource{}
 		}
 		r.Inputs[name] = resource
+	}
+}
+
+// ResolvedTaskResourcesOutputs adds an output PipelineResource, with specified name, to the ResolvedTaskResources.
+func ResolvedTaskResourcesOutputs(name string, resource *v1alpha1.PipelineResource) ResolvedTaskResourcesOp {
+	return func(r *resources.ResolvedTaskResources) {
+		if r.Outputs == nil {
+			r.Outputs = map[string]*v1alpha1.PipelineResource{}
+		}
+		r.Outputs[name] = resource
 	}
 }

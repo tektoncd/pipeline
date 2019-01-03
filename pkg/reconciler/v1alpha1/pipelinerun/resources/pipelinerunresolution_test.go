@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -569,19 +570,12 @@ func TestValidateProvidedBy(t *testing.T) {
 		PipelineTask: &v1alpha1.PipelineTask{
 			Name: "quest",
 		},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
-			TaskSpec: &v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "sweet-artifact",
-						Type: v1alpha1.PipelineResourceTypeImage,
-					}},
-				},
-			},
-			Outputs: map[string]*v1alpha1.PipelineResource{
-				"sweet-artifact": r,
-			},
-		},
+		ResolvedTaskResources: tb.ResolvedTaskResources(
+			tb.ResolvedTaskResourcesTaskSpec(
+				tb.TaskOutputs(tb.OutputsResource("sweet-artifact", v1alpha1.PipelineResourceTypeImage)),
+			),
+			tb.ResolvedTaskResourcesOutputs("sweet-artifact", r),
+		),
 	}, {
 		PipelineTask: &v1alpha1.PipelineTask{
 			Name: "winning",
@@ -589,19 +583,12 @@ func TestValidateProvidedBy(t *testing.T) {
 				Name:       "awesome-thing",
 				ProvidedBy: []string{"quest"},
 			}}},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
-			TaskSpec: &v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "awesome-thing",
-						Type: v1alpha1.PipelineResourceTypeImage,
-					}},
-				},
-			},
-			Inputs: map[string]*v1alpha1.PipelineResource{
-				"awesome-thing": r,
-			},
-		},
+		ResolvedTaskResources: tb.ResolvedTaskResources(
+			tb.ResolvedTaskResourcesTaskSpec(
+				tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
+			),
+			tb.ResolvedTaskResourcesInputs("awesome-thing", r),
+		),
 	}}
 	err := ValidateProvidedBy(state)
 	if err != nil {
@@ -614,27 +601,21 @@ func TestValidateProvidedBy_Invalid(t *testing.T) {
 	otherR := tb.PipelineResource("holyhandgrenade", namespace, tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage))
 
 	for _, tc := range []struct {
-		name  string
-		state []*ResolvedPipelineRunTask
+		name        string
+		state       []*ResolvedPipelineRunTask
+		errContains string
 	}{{
 		name: "providedBy tries to reference input",
 		state: []*ResolvedPipelineRunTask{{
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name: "quest",
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Inputs: &v1alpha1.Inputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "sweet-artifact",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Inputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": r,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskInputs(tb.InputsResource("sweet-artifact", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesInputs("sweet-artifact", r),
+			),
 		}, {
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name: "winning",
@@ -642,29 +623,21 @@ func TestValidateProvidedBy_Invalid(t *testing.T) {
 					Name:       "awesome-thing",
 					ProvidedBy: []string{"quest"},
 				}}},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Inputs: &v1alpha1.Inputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "awesome-thing",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Inputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": r,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesInputs("awesome-thing", r),
+			),
 		}},
+		errContains: "ambiguous",
 	}, {
 		name: "providedBy resource doesn't exist",
 		state: []*ResolvedPipelineRunTask{{
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name: "quest",
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(),
 		}, {
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name: "winning",
@@ -672,20 +645,14 @@ func TestValidateProvidedBy_Invalid(t *testing.T) {
 					Name:       "awesome-thing",
 					ProvidedBy: []string{"quest"},
 				}}},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Inputs: &v1alpha1.Inputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "awesome-thing",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Inputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": r,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesInputs("awesome-thing", r),
+			),
 		}},
+		errContains: "ambiguous",
 	}, {
 		name: "providedBy task doesn't exist",
 		state: []*ResolvedPipelineRunTask{{
@@ -695,20 +662,14 @@ func TestValidateProvidedBy_Invalid(t *testing.T) {
 					Name:       "awesome-thing",
 					ProvidedBy: []string{"quest"},
 				}}},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Inputs: &v1alpha1.Inputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "awesome-thing",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Inputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": r,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesInputs("awesome-thing", r),
+			),
 		}},
+		errContains: "does not exist",
 	}, {
 		name: "providedBy task refers to itself",
 		state: []*ResolvedPipelineRunTask{{
@@ -718,39 +679,26 @@ func TestValidateProvidedBy_Invalid(t *testing.T) {
 					Name:       "awesome-thing",
 					ProvidedBy: []string{"winning"},
 				}}},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Inputs: &v1alpha1.Inputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "awesome-thing",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Inputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": r,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesInputs("awesome-thing", r),
+			),
 		}},
+		errContains: "from itself",
 	}, {
 		name: "providedBy is bound to different resource",
 		state: []*ResolvedPipelineRunTask{{
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name: "quest",
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Outputs: &v1alpha1.Outputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "sweet-artifact",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Outputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": r,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskOutputs(tb.OutputsResource("sweet-artifact", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesOutputs("sweet-artifact", r),
+			),
 		}, {
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name: "winning",
@@ -758,39 +706,26 @@ func TestValidateProvidedBy_Invalid(t *testing.T) {
 					Name:       "awesome-thing",
 					ProvidedBy: []string{"quest"},
 				}}},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Inputs: &v1alpha1.Inputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "awesome-thing",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Inputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": otherR,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesInputs("awesome-thing", otherR),
+			),
 		}},
+		errContains: "ambiguous",
 	}, {
 		name: "providedBy is on output",
 		state: []*ResolvedPipelineRunTask{{
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name: "quest",
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Outputs: &v1alpha1.Outputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "sweet-artifact",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Outputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": r,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskOutputs(tb.OutputsResource("sweet-artifact", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesOutputs("sweet-artifact", r),
+			),
 		}, {
 			PipelineTask: &v1alpha1.PipelineTask{
 				Name: "winning",
@@ -798,25 +733,22 @@ func TestValidateProvidedBy_Invalid(t *testing.T) {
 					Name:       "awesome-thing",
 					ProvidedBy: []string{"quest"},
 				}}},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
-				TaskSpec: &v1alpha1.TaskSpec{
-					Outputs: &v1alpha1.Outputs{
-						Resources: []v1alpha1.TaskResource{{
-							Name: "awesome-thing",
-							Type: v1alpha1.PipelineResourceTypeImage,
-						}},
-					},
-				},
-				Outputs: map[string]*v1alpha1.PipelineResource{
-					"sweet-artifact": otherR,
-				},
-			},
+			ResolvedTaskResources: tb.ResolvedTaskResources(
+				tb.ResolvedTaskResourcesTaskSpec(
+					tb.TaskOutputs(tb.OutputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
+				),
+				tb.ResolvedTaskResourcesOutputs("awesome-thing", r),
+			),
 		}},
+		errContains: "not an input",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := ValidateProvidedBy(tc.state)
 			if err == nil {
 				t.Fatalf("Expected error when validating invalid providedBy but got none")
+			}
+			if !strings.Contains(err.Error(), tc.errContains) {
+				t.Errorf("Expected error to contain %q but was: %v", tc.errContains, err)
 			}
 		})
 	}
