@@ -7,32 +7,22 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	tb "github.com/knative/build-pipeline/test/builder"
-	corev1 "k8s.io/api/core/v1"
-)
-
-var (
-	validBuildSteps = []corev1.Container{{
-		Name:    "mystep",
-		Image:   "myimage",
-		Command: []string{"mycmd"},
-	}}
-	validBuildStepFn = tb.Step("mystep", "myimage", tb.Command("mycmd"))
 )
 
 func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 	rtr := tb.ResolvedTaskResources(
 		tb.ResolvedTaskResourcesTaskSpec(
-			validBuildStepFn,
+			tb.Step("mystep", "myimage", tb.Command("mycmd")),
 			tb.TaskInputs(tb.InputsResource("resource-to-build", v1alpha1.PipelineResourceTypeGit)),
 			tb.TaskOutputs(tb.OutputsResource("resource-to-provide", v1alpha1.PipelineResourceTypeImage)),
 		),
 		tb.ResolvedTaskResourcesInputs("resource-to-build", tb.PipelineResource("example-resource", "foo",
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("foo", "bar"),
-		))),
+			))),
 		tb.ResolvedTaskResourcesOutputs("resource-to-provide", tb.PipelineResource("example-image", "bar",
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage)),
-	))
+		))
 	if err := taskrun.ValidateResolvedTaskResources([]v1alpha1.Param{}, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating valid resolved TaskRun but saw %v", err)
 	}
@@ -40,7 +30,7 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 
 func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	rtr := tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
-		validBuildStepFn,
+		tb.Step("mystep", "myimage", tb.Command("mycmd")),
 		tb.TaskInputs(tb.InputsParam("foo"), tb.InputsParam("bar")),
 	))
 	p := []v1alpha1.Param{{
@@ -63,7 +53,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	}{{
 		name: "missing-params",
 		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
-			validBuildStepFn,
+			tb.Step("mystep", "myimage", tb.Command("mycmd")),
 			tb.TaskInputs(tb.InputsParam("foo")),
 		)),
 		params: []v1alpha1.Param{{
@@ -73,7 +63,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	}, {
 		name: "missing-params",
 		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
-			validBuildStepFn,
+			tb.Step("mystep", "myimage", tb.Command("mycmd")),
 			tb.TaskInputs(tb.InputsParam("foo")),
 		)),
 		params: []v1alpha1.Param{{
@@ -117,10 +107,20 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 			tb.TaskInputs(tb.InputsResource("testimageinput", v1alpha1.PipelineResourceTypeImage)),
 		), tb.ResolvedTaskResourcesInputs("testimageinput", r)),
 	}, {
+		name: "input-resource-missing",
+		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
+			tb.TaskInputs(tb.InputsResource("testimageinput", v1alpha1.PipelineResourceTypeImage)),
+		)),
+	}, {
 		name: "output-resource-mismatch",
 		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
 			tb.TaskOutputs(tb.OutputsResource("testimageoutput", v1alpha1.PipelineResourceTypeImage)),
 		), tb.ResolvedTaskResourcesOutputs("testimageoutput", r)),
+	}, {
+		name: "output-resource-missing",
+		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
+			tb.TaskOutputs(tb.OutputsResource("testimageoutput", v1alpha1.PipelineResourceTypeImage)),
+		)),
 	}, {
 		name: "extra-input-resource",
 		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
