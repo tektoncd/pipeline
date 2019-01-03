@@ -16,7 +16,7 @@ limitations under the License.
 
 package list
 
-// DiffLeft will return all strings which are in the left list of stirngs but
+// DiffLeft will return all strings which are in the left slice of strings but
 // not in the right.
 func DiffLeft(left, right []string) []string {
 	extra := []string{}

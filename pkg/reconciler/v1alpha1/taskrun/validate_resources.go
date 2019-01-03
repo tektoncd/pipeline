@@ -53,10 +53,14 @@ func validateResources(neededResources []v1alpha1.TaskResource, providedResource
 	}
 	extra := list.DiffLeft(provided, needed)
 	if len(extra) > 0 {
-		return fmt.Errorf("didn't need these resources by they were provided anyway: %s", extra)
+		return fmt.Errorf("didn't need these resources but they were provided anyway: %s", extra)
 	}
 	for _, resource := range neededResources {
 		r := providedResources[resource.Name]
+		if r == nil {
+			// This case should never be hit due to the check for missing resources at the beginning of the function
+			return fmt.Errorf("resource %q is missing", resource.Name)
+		}
 		if resource.Type != r.Spec.Type {
 			return fmt.Errorf("resource %q should be type %q but was %q", resource.Name, r.Spec.Type, resource.Type)
 		}
