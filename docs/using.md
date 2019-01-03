@@ -77,6 +77,7 @@ This is the corresponding `PipelineRun` spec:
         name: skaffold-image-leeroy-app
   - name: deploy-app
     ...
+    inputs:
     - name: image
       resourceRef:
         name: skaffold-image-leeroy-app

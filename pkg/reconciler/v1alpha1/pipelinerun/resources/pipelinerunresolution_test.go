@@ -28,6 +28,7 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	tb "github.com/knative/build-pipeline/test/builder"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -563,14 +564,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 }
 
 func TestValidateProvidedBy(t *testing.T) {
-	r := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "holygrail",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeImage,
-		},
-	}
+	r := tb.PipelineResource("holygrail", namespace, tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage))
 	state := []*ResolvedPipelineRunTask{{
 		PipelineTask: &v1alpha1.PipelineTask{
 			Name: "quest",
@@ -616,22 +610,8 @@ func TestValidateProvidedBy(t *testing.T) {
 }
 
 func TestValidateProvidedBy_Invalid(t *testing.T) {
-	r := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "holygrail",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeImage,
-		},
-	}
-	otherR := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "holyhandgrenade",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeImage,
-		},
-	}
+	r := tb.PipelineResource("holygrail", namespace, tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage))
+	otherR := tb.PipelineResource("holyhandgrenade", namespace, tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage))
 
 	for _, tc := range []struct {
 		name  string
