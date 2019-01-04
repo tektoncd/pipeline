@@ -495,7 +495,7 @@ func (in *PipelineRunList) DeepCopyObject() runtime.Object {
 func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 	*out = *in
 	out.PipelineRef = in.PipelineRef
-	out.PipelineTrigger = in.PipelineTrigger
+	out.Trigger = in.Trigger
 	if in.PipelineTaskResources != nil {
 		in, out := &in.PipelineTaskResources, &out.PipelineTaskResources
 		*out = make([]PipelineTaskResource, len(*in))

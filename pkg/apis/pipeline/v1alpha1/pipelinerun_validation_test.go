@@ -56,7 +56,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					Name: "pipelinelineName",
 				},
 				Spec: PipelineRunSpec{
-					PipelineTrigger: PipelineTrigger{
+					Trigger: PipelineTrigger{
 						Type: PipelineTriggerTypeManual,
 					},
 				},
@@ -72,7 +72,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					PipelineRef: PipelineRef{
 						Name: "prname",
 					},
-					PipelineTrigger: PipelineTrigger{
+					Trigger: PipelineTrigger{
 						Type: "badtype",
 					},
 				},
@@ -100,7 +100,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 			PipelineRef: PipelineRef{
 				Name: "prname",
 			},
-			PipelineTrigger: PipelineTrigger{
+			Trigger: PipelineTrigger{
 				Type: "manual",
 			},
 			Results: &Results{

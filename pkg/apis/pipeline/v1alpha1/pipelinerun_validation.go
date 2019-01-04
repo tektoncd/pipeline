@@ -38,8 +38,8 @@ func (ps *PipelineRunSpec) Validate() *apis.FieldError {
 	if ps.PipelineRef.Name == "" {
 		return apis.ErrMissingField("pipelinerun.spec.Pipelineref.Name")
 	}
-	if ps.PipelineTrigger.Type != PipelineTriggerTypeManual {
-		return apis.ErrInvalidValue(string(ps.PipelineTrigger.Type), "pipelinerun.spec.trigger.type")
+	if ps.Trigger.Type != PipelineTriggerTypeManual {
+		return apis.ErrInvalidValue(string(ps.Trigger.Type), "pipelinerun.spec.trigger.type")
 	}
 	// check for results
 	if ps.Results != nil {
