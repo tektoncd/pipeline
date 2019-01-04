@@ -65,9 +65,9 @@ func TestPipelineRun(t *testing.T) {
 	expectedPipelineRun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "pear", Namespace: "foo"},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef:     v1alpha1.PipelineRef{Name: "tomatoes"},
-			PipelineTrigger: v1alpha1.PipelineTrigger{Type: v1alpha1.PipelineTriggerTypeManual},
-			ServiceAccount:  "sa",
+			PipelineRef:    v1alpha1.PipelineRef{Name: "tomatoes"},
+			Trigger:        v1alpha1.PipelineTrigger{Type: v1alpha1.PipelineTriggerTypeManual},
+			ServiceAccount: "sa",
 			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
 				Name:    "res1",
 				Inputs:  []v1alpha1.TaskResourceBinding{{Name: "inputs"}},

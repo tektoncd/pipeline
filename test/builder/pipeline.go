@@ -142,7 +142,7 @@ func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.Pipelin
 			Name:      name,
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineTrigger: v1alpha1.PipelineTrigger{
+			Trigger: v1alpha1.PipelineTrigger{
 				Type: v1alpha1.PipelineTriggerTypeManual,
 			},
 		},
