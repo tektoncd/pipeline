@@ -6,8 +6,7 @@ spec:
   taskRef:
     name: build-push
   trigger:
-    triggerRef:
-      type: manual
+    type: manual
   results:
     type: 'gcs'
     url: 'gcs://somebucket/results/logs'

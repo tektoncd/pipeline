@@ -56,7 +56,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					Name: "pipelinelineName",
 				},
 				Spec: PipelineRunSpec{
-					PipelineTriggerRef: PipelineTriggerRef{
+					PipelineTrigger: PipelineTrigger{
 						Type: PipelineTriggerTypeManual,
 					},
 				},
@@ -72,12 +72,12 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					PipelineRef: PipelineRef{
 						Name: "prname",
 					},
-					PipelineTriggerRef: PipelineTriggerRef{
+					PipelineTrigger: PipelineTrigger{
 						Type: "badtype",
 					},
 				},
 			},
-			want: apis.ErrInvalidValue("badtype", "pipelinerun.spec.triggerRef.type"),
+			want: apis.ErrInvalidValue("badtype", "pipelinerun.spec.trigger.type"),
 		},
 	}
 
@@ -100,7 +100,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 			PipelineRef: PipelineRef{
 				Name: "prname",
 			},
-			PipelineTriggerRef: PipelineTriggerRef{
+			PipelineTrigger: PipelineTrigger{
 				Type: "manual",
 			},
 			Results: &Results{

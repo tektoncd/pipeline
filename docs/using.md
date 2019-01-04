@@ -385,8 +385,7 @@ metadata:
   name: build-push-task-run-2
 spec:
   trigger:
-    triggerRef:
-      type: manual
+    type: manual
   inputs:
     resources:
       - name: workspace
@@ -423,8 +422,7 @@ metadata:
 spec:
   sericeAccount: test-build-robot-git-ssh
   trigger:
-    triggerRef:
-      type: manual
+    type: manual
   inputs:
     resources:
       - name: workspace

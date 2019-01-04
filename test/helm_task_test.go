@@ -274,7 +274,7 @@ func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: helmDeployPipelineName,
 			},
-			PipelineTriggerRef: v1alpha1.PipelineTriggerRef{
+			PipelineTrigger: v1alpha1.PipelineTrigger{
 				Type: v1alpha1.PipelineTriggerTypeManual,
 			},
 			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
@@ -422,9 +422,7 @@ func removeAllHelmReleases(c *clients, t *testing.T, namespace string, logger *l
 				Name: helmRemoveAllTaskName,
 			},
 			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
+				Type: v1alpha1.TaskTriggerTypeManual,
 			},
 		},
 	}
@@ -472,9 +470,7 @@ func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *l
 				Name: helmResetTaskName,
 			},
 			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
+				Type: v1alpha1.TaskTriggerTypeManual,
 			},
 		},
 	}

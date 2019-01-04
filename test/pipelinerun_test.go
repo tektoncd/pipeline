@@ -463,7 +463,7 @@ func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineR
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: getName(hwPipelineName, suffix),
 			},
-			PipelineTriggerRef: v1alpha1.PipelineTriggerRef{
+			PipelineTrigger: v1alpha1.PipelineTrigger{
 				Type: v1alpha1.PipelineTriggerTypeManual,
 			},
 			PipelineTaskResources: []v1alpha1.PipelineTaskResource{
@@ -590,7 +590,7 @@ func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRu
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: getName(hwPipelineName, suffix),
 			},
-			PipelineTriggerRef: v1alpha1.PipelineTriggerRef{
+			PipelineTrigger: v1alpha1.PipelineTrigger{
 				Type: v1alpha1.PipelineTriggerTypeManual,
 			},
 			ServiceAccount: fmt.Sprintf("%s%d", hwSA, suffix),

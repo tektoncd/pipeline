@@ -42,7 +42,7 @@ var _ webhook.GenericCRD = (*TaskRun)(nil)
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
 	PipelineRef           PipelineRef            `json:"pipelineRef"`
-	PipelineTriggerRef    PipelineTriggerRef     `json:"triggerRef"`
+	PipelineTrigger       PipelineTrigger        `json:"trigger"`
 	PipelineTaskResources []PipelineTaskResource `json:"resources"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
@@ -92,9 +92,9 @@ const (
 	PipelineTriggerTypeManual PipelineTriggerType = "manual"
 )
 
-// PipelineTriggerRef describes what triggered this Pipeline to run. It could be triggered manually,
+// PipelineTrigger describes what triggered this Pipeline to run. It could be triggered manually,
 // or it could have been some kind of external event (not yet designed).
-type PipelineTriggerRef struct {
+type PipelineTrigger struct {
 	Type PipelineTriggerType `json:"type"`
 	// +optional
 	Name string `json:"name,omitempty"`

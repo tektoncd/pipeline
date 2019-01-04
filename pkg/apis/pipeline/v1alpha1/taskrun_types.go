@@ -69,11 +69,6 @@ type TaskRunOutputs struct {
 	Params []Param `json:"params,omitempty"`
 }
 
-// TaskTrigger defines a webhook style trigger to start a TaskRun
-type TaskTrigger struct {
-	TriggerRef TaskTriggerRef `json:"triggerRef"`
-}
-
 // TaskTriggerType indicates the mechanism by which this TaskRun was created.
 type TaskTriggerType string
 
@@ -87,10 +82,10 @@ const (
 	TaskTriggerTypePipelineRun TaskTriggerType = "pipelineRun"
 )
 
-// TaskTriggerRef describes what triggered this Task to run. It could be triggered manually,
+// TaskTrigger describes what triggered this Task to run. It could be triggered manually,
 // or it may have been part of a PipelineRun in which case this ref would refer
 // to the corresponding PipelineRun.
-type TaskTriggerRef struct {
+type TaskTrigger struct {
 	Type TaskTriggerType `json:"type"`
 	// +optional
 	Name string `json:"name,omitempty"`

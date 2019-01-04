@@ -176,9 +176,7 @@ func getClusterResourceTaskRun(namespace, name, taskName, resName string) *v1alp
 				Name: taskName,
 			},
 			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
+				Type: v1alpha1.TaskTriggerTypeManual,
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskResourceBinding{{
