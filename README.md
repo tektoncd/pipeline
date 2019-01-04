@@ -24,11 +24,12 @@ Pipelines are **Typed**:
   [kaniko](https://github.com/GoogleContainerTools/kaniko) v.s.
   [buildkit](https://github.com/moby/buildkit))
 
-## Want to start using the Pipeline CRD?
+## Want to start using Pipelines?
 
-- [Learn about the Concepts](./docs/Concepts.md)
-- [See how to use it](./docs/using.md)
-- Look at [some examples](./examples)
+- Jump in with [the quickstart!](docs/tutorial.md)
+- [Learn about the Concepts](/docs/Concepts.md)
+- [See how to use it](/docs/using.md)
+- Look at [some examples](/examples)
 
 ## Want to contribute?
 
