@@ -211,10 +211,8 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 				}},
 			},
 			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Name: "mytrigger",
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
+				Name: "mytrigger",
+				Type: v1alpha1.TaskTriggerTypeManual,
 			},
 			ServiceAccount: "sa",
 		},

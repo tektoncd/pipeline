@@ -38,8 +38,7 @@ spec:
   taskRef:
     name: echo-hello-world
   trigger:
-    triggerRef:
-      type: manual
+    type: manual
 ```
 
 To apply the yaml files use the following command
@@ -62,7 +61,7 @@ kind: TaskRun
 metadata:
   annotations:
     kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"TaskRun","metadata":{"annotations":{},"name":"echo-hello-world-task-run","namespace":"default"},"spec":{"taskRef":{"name":"echo-hello-world"},"trigger":{"triggerRef":{"type":"manual"}}}}
+      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"TaskRun","metadata":{"annotations":{},"name":"echo-hello-world-task-run","namespace":"default"},"spec":{"taskRef":{"name":"echo-hello-world"},"trigger":{"type":"manual"}}}
   creationTimestamp: 2018-12-11T15:49:13Z
   generation: 1
   name: echo-hello-world-task-run
@@ -78,8 +77,7 @@ spec:
     name: echo-hello-world
   taskSpec: null
   trigger:
-    triggerRef:
-      type: manual
+    type: manual
 status:
   conditions:
     - lastTransitionTime: 2018-12-11T15:50:09Z
@@ -198,8 +196,7 @@ spec:
   taskRef:
     name: build-docker-image-from-git-source
   trigger:
-    triggerRef:
-      type: manual
+    type: manual
   inputs:
     resources:
       - name: workspace
@@ -259,7 +256,7 @@ kind: TaskRun
 metadata:
   annotations:
     kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"TaskRun","metadata":{"annotations":{},"name":"build-docker-image-from-git-source-task-run","namespace":"default"},"spec":{"inputs":{"params":[{"name":"pathToDockerFile","value":"Dockerfile"},{"name":"pathToContext","value":"/workspace/examples/microservices/leeroy-web"}],"resources":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}}]},"outputs":{"resources":[{"name":"builtImage","resourceRef":{"name":"skaffold-image-leeroy-web"}}]},"results":{"type":"gcs","url":"gcs://somebucket/results/logs"},"taskRef":{"name":"build-docker-image-from-git-source"},"trigger":{"triggerRef":{"type":"manual"}}}}
+      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"TaskRun","metadata":{"annotations":{},"name":"build-docker-image-from-git-source-task-run","namespace":"default"},"spec":{"inputs":{"params":[{"name":"pathToDockerFile","value":"Dockerfile"},{"name":"pathToContext","value":"/workspace/examples/microservices/leeroy-web"}],"resources":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}}]},"outputs":{"resources":[{"name":"builtImage","resourceRef":{"name":"skaffold-image-leeroy-web"}}]},"results":{"type":"gcs","url":"gcs://somebucket/results/logs"},"taskRef":{"name":"build-docker-image-from-git-source"},"trigger":{"type":"manual"}}}
   creationTimestamp: 2018-12-11T18:14:29Z
   generation: 1
   name: build-docker-image-from-git-source-task-run
@@ -293,8 +290,7 @@ spec:
     name: build-docker-image-from-git-source
   taskSpec: null
   trigger:
-    triggerRef:
-      type: manual
+    type: manual
 status:
   conditions:
     - lastTransitionTime: 2018-12-11T18:15:09Z
@@ -416,7 +412,7 @@ metadata:
 spec:
   pipelineRef:
     name: tutorial-pipeline
-  triggerRef:
+  trigger:
     type: manual
   resources:
     - name: build-skaffold-web
@@ -462,7 +458,7 @@ kind: PipelineRun
 metadata:
   annotations:
     kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"PipelineRun","metadata":{"annotations":{},"name":"tutorial-pipeline-run-1","namespace":"default"},"spec":{"pipelineRef":{"name":"tutorial-pipeline"},"resources":[{"inputs":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}}],"name":"build-skaffold-web","outputs":[{"name":"builtImage","resourceRef":{"name":"skaffold-image-leeroy-web"}}]},{"inputs":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}},{"name":"image","resourceRef":{"name":"skaffold-image-leeroy-web"}}],"name":"deploy-web"}],"triggerRef":{"type":"manual"}}}
+      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"PipelineRun","metadata":{"annotations":{},"name":"tutorial-pipeline-run-1","namespace":"default"},"spec":{"pipelineRef":{"name":"tutorial-pipeline"},"resources":[{"inputs":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}}],"name":"build-skaffold-web","outputs":[{"name":"builtImage","resourceRef":{"name":"skaffold-image-leeroy-web"}}]},{"inputs":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}},{"name":"image","resourceRef":{"name":"skaffold-image-leeroy-web"}}],"name":"deploy-web"}],"trigger":{"type":"manual"}}}
   creationTimestamp: 2018-12-11T20:30:19Z
   generation: 1
   name: tutorial-pipeline-run-1
@@ -498,7 +494,7 @@ spec:
       name: deploy-web
       outputs: null
   serviceAccount: ""
-  triggerRef:
+  trigger:
     type: manual
 status:
   conditions:

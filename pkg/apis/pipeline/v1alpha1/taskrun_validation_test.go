@@ -73,10 +73,8 @@ func TestTaskRun_Validate(t *testing.T) {
 				Name: "taskrefname",
 			},
 			Trigger: TaskTrigger{
-				TriggerRef: TaskTriggerRef{
-					Type: TaskTriggerTypePipelineRun,
-					Name: "testtriggername",
-				},
+				Type: TaskTriggerTypePipelineRun,
+				Name: "testtriggername",
 			},
 		},
 	}
@@ -101,41 +99,35 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			spec: TaskRunSpec{
 				TaskRef: &TaskRef{},
 				Trigger: TaskTrigger{
-					TriggerRef: TaskTriggerRef{
-						Type: TaskTriggerTypeManual,
-					},
+					Type: TaskTriggerTypeManual,
 				},
 			},
 			wantErr: apis.ErrMissingField("spec.taskref.name, spec.taskspec"),
 		},
 		{
-			name: "invalid taskref type",
+			name: "invalid trigger type",
 			spec: TaskRunSpec{
 				TaskRef: &TaskRef{
 					Name: "taskrefname",
 				},
 				Trigger: TaskTrigger{
-					TriggerRef: TaskTriggerRef{
-						Type: "wrongtype",
-					},
+					Type: "wrongtype",
 				},
 			},
-			wantErr: apis.ErrInvalidValue("wrongtype", "spec.trigger.triggerref.type"),
+			wantErr: apis.ErrInvalidValue("wrongtype", "spec.trigger.type"),
 		},
 		{
-			name: "invalid taskref",
+			name: "triggered by pipelinerun without name",
 			spec: TaskRunSpec{
 				TaskRef: &TaskRef{
 					Name: "taskrefname",
 				},
 				Trigger: TaskTrigger{
-					TriggerRef: TaskTriggerRef{
-						Type: TaskTriggerTypePipelineRun,
-						Name: "",
-					},
+					Type: TaskTriggerTypePipelineRun,
+					Name: "",
 				},
 			},
-			wantErr: apis.ErrMissingField("spec.trigger.triggerref.name"),
+			wantErr: apis.ErrMissingField("spec.trigger.name"),
 		},
 		{
 			name: "invalid taskref and taskspec together",
@@ -150,9 +142,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 					}},
 				},
 				Trigger: TaskTrigger{
-					TriggerRef: TaskTriggerRef{
-						Type: "manual",
-					},
+					Type: "manual",
 				},
 			},
 			wantErr: apis.ErrDisallowedFields("spec.taskspec", "spec.taskref"),
@@ -181,10 +171,8 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 					Name: "taskrefname",
 				},
 				Trigger: TaskTrigger{
-					TriggerRef: TaskTriggerRef{
-						Type: TaskTriggerTypePipelineRun,
-						Name: "testtrigger",
-					},
+					Type: TaskTriggerTypePipelineRun,
+					Name: "testtrigger",
 				},
 				Results: &Results{
 					URL:  "http://www.google.com",
@@ -199,10 +187,8 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 					Name: "taskrefname",
 				},
 				Trigger: TaskTrigger{
-					TriggerRef: TaskTriggerRef{
-						Type: "PiPeLiNeRuN",
-						Name: "testtrigger",
-					},
+					Type: "PiPeLiNeRuN",
+					Name: "testtrigger",
 				},
 			},
 		},
@@ -216,10 +202,8 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 					}},
 				},
 				Trigger: TaskTrigger{
-					TriggerRef: TaskTriggerRef{
-						Type: "PiPeLiNeRuN",
-						Name: "testtrigger",
-					},
+					Type: "PiPeLiNeRuN",
+					Name: "testtrigger",
 				},
 			},
 		},

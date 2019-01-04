@@ -5,7 +5,7 @@ metadata:
 spec:
   pipelineRef:
     name: output-pipeline
-  triggerRef:
+  trigger:
     type: manual
   serviceAccount: 'default'
   results:

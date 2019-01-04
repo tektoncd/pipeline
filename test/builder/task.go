@@ -368,10 +368,8 @@ func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
 func TaskTrigger(name string, triggerType v1alpha1.TaskTriggerType) TaskRunSpecOp {
 	return func(trs *v1alpha1.TaskRunSpec) {
 		trs.Trigger = v1alpha1.TaskTrigger{
-			TriggerRef: v1alpha1.TaskTriggerRef{
-				Name: name,
-				Type: triggerType,
-			},
+			Name: name,
+			Type: triggerType,
 		}
 	}
 }

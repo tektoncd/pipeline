@@ -163,9 +163,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 				Name: kanikoTaskName,
 			},
 			Trigger: v1alpha1.TaskTrigger{
-				TriggerRef: v1alpha1.TaskTriggerRef{
-					Type: v1alpha1.TaskTriggerTypeManual,
-				},
+				Type: v1alpha1.TaskTriggerTypeManual,
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Resources: []v1alpha1.TaskResourceBinding{

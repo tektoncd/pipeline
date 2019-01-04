@@ -49,7 +49,7 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 	}
 
 	// Check for Trigger
-	if err := ts.Trigger.TriggerRef.Validate("spec.trigger.triggerref"); err != nil {
+	if err := ts.Trigger.Validate("spec.trigger"); err != nil {
 		return err
 	}
 
@@ -96,7 +96,9 @@ func checkForPipelineResourceDuplicates(resources []TaskResourceBinding, path st
 	return nil
 }
 
-func (r TaskTriggerRef) Validate(path string) *apis.FieldError {
+// Validate validates that the task trigger is of a known type. If it was triggered by a PipelineRun, the
+// name of the trigger should be the name of a PipelienRun.
+func (r TaskTrigger) Validate(path string) *apis.FieldError {
 	if r.Type == "" {
 		return nil
 	}
