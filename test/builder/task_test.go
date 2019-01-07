@@ -15,6 +15,7 @@ package builder_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -37,13 +38,17 @@ var (
 func TestTask(t *testing.T) {
 	task := tb.Task("test-task", "foo", tb.TaskSpec(
 		tb.TaskInputs(
-			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceTargetPath("/foo/bar")),
 			tb.InputsParam("param", tb.ParamDescription("mydesc"), tb.ParamDefault("default")),
 		),
 		tb.TaskOutputs(tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
 			"--my-other-arg=${inputs.resources.workspace.url}",
 		)),
+		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
+		})),
+		tb.TaskTimeout(2*time.Minute),
 	))
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
@@ -56,8 +61,9 @@ func TestTask(t *testing.T) {
 			}},
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: v1alpha1.PipelineResourceTypeGit,
+					Name:       "workspace",
+					Type:       v1alpha1.PipelineResourceTypeGit,
+					TargetPath: "/foo/bar",
 				}},
 				Params: []v1alpha1.TaskParam{{Name: "param", Description: "mydesc", Default: "default"}},
 			},
@@ -67,6 +73,13 @@ func TestTask(t *testing.T) {
 					Type: v1alpha1.PipelineResourceTypeImage,
 				}},
 			},
+			Timeout: &metav1.Duration{Duration: 2 * time.Minute},
+			Volumes: []corev1.Volume{{
+				Name: "foo",
+				VolumeSource: corev1.VolumeSource{
+					HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
+				},
+			}},
 		},
 	}
 	if d := cmp.Diff(expectedTask, task); d != "" {

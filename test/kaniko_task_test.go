@@ -35,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/knative/build-pipeline/test/builder"
 )
 
 const (
@@ -45,21 +46,10 @@ const (
 )
 
 func getGitResource(namespace string) *v1alpha1.PipelineResource {
-	return &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kanikoResourceName,
-			Namespace: namespace,
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeGit,
-			Params: []v1alpha1.Param{
-				{
-					Name:  "Url",
-					Value: "https://github.com/pivotal-nader-ziada/gohelloworld",
-				},
-			},
-		},
-	}
+	return tb.PipelineResource(kanikoResourceName, namespace, tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeGit,
+		tb.PipelineResourceSpecParam("Url", "https://github.com/pivotal-nader-ziada/gohelloworld"),
+	))
 }
 
 func getDockerRepo() (string, error) {
@@ -97,86 +87,38 @@ func createSecret(c *knativetest.KubeClient, namespace string) (bool, error) {
 }
 
 func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      kanikoTaskName,
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{
-					{
-						Name: "workspace",
-						Type: v1alpha1.PipelineResourceTypeGit,
-					},
-				},
-			},
-			Timeout: &metav1.Duration{Duration: 2 * time.Minute},
-		},
+	taskSpecOps := []tb.TaskSpecOp{
+		tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskTimeout(2 * time.Minute),
 	}
-
-	step := corev1.Container{
-		Name:  "kaniko",
-		Image: "gcr.io/kaniko-project/executor",
-		Args: []string{"--dockerfile=/workspace/Dockerfile",
+	stepOps := []tb.ContainerOp{
+		tb.Args(
+			"--dockerfile=/workspace/Dockerfile",
 			fmt.Sprintf("--destination=%s", repo),
-		},
+		),
 	}
 	if withSecretConfig {
-		step.VolumeMounts = []corev1.VolumeMount{
-			{
-				Name:      "kaniko-secret",
-				MountPath: "/secrets",
+		stepOps = append(stepOps,
+			tb.VolumeMount(corev1.VolumeMount{Name: "kaniko-secret", MountPath: "/secrets"}),
+			tb.EnvVar("GOOGLE_APPLICATION_CREDENTIALS", "/secrets/config.json"),
+		)
+		taskSpecOps = append(taskSpecOps, tb.TaskVolume("kaniko-secret", tb.VolumeSource(corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "kaniko-secret",
 			},
-		}
-		step.Env = []corev1.EnvVar{
-			{
-				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-				Value: "/secrets/config.json",
-			},
-		}
-		task.Spec.Volumes = []corev1.Volume{
-			{
-				Name: "kaniko-secret",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: "kaniko-secret",
-					},
-				},
-			},
-		}
+		})))
 	}
+	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor", stepOps...)
+	taskSpecOps = append(taskSpecOps, step)
 
-	task.Spec.Steps = []corev1.Container{step}
-
-	return task
+	return tb.Task(kanikoTaskName, namespace, tb.TaskSpec(taskSpecOps...))
 }
 
 func getTaskRun(namespace string) *v1alpha1.TaskRun {
-	return &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      kanikoTaskRunName,
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: kanikoTaskName,
-			},
-			Trigger: v1alpha1.TaskTrigger{
-				Type: v1alpha1.TaskTriggerTypeManual,
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskResourceBinding{
-					{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: kanikoResourceName,
-						},
-						Name: "workspace",
-					},
-				},
-			},
-		},
-	}
+	return tb.TaskRun(kanikoTaskRunName, namespace, tb.TaskRunSpec(
+		tb.TaskRunTaskRef(kanikoTaskName),
+		tb.TaskRunInputs(tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(kanikoResourceName))),
+	))
 }
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko

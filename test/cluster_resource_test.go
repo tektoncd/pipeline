@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/knative/build-pipeline/test/builder"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
@@ -70,34 +71,14 @@ func TestClusterResource(t *testing.T) {
 }
 
 func getClusterResource(namespace, name, sname string) *v1alpha1.PipelineResource {
-	return &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeCluster,
-			Params: []v1alpha1.Param{{
-				Name:  "Url",
-				Value: "https://1.1.1.1",
-			}, {
-				Name:  "username",
-				Value: "test-user",
-			}, {
-				Name:  "password",
-				Value: "test-password",
-			}},
-			SecretParams: []v1alpha1.SecretParam{{
-				FieldName:  "cadata",
-				SecretKey:  "cadatakey",
-				SecretName: sname,
-			}, {
-				FieldName:  "token",
-				SecretKey:  "tokenkey",
-				SecretName: sname,
-			}},
-		},
-	}
+	return tb.PipelineResource(name, namespace, tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeCluster,
+		tb.PipelineResourceSpecParam("Url", "https://1.1.1.1"),
+		tb.PipelineResourceSpecParam("username", "test-user"),
+		tb.PipelineResourceSpecParam("password", "test-password"),
+		tb.PipelineResourceSpecSecretParam("cadata", sname, "cadatakey"),
+		tb.PipelineResourceSpecSecretParam("token", sname, "tokenkey"),
+	))
 }
 
 func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
@@ -114,55 +95,26 @@ func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
 }
 
 func getClusterResourceTask(namespace, name, resName, configName string) *v1alpha1.Task {
-	return &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "target-cluster",
-					Type: v1alpha1.PipelineResourceTypeCluster,
-				}},
-				Params: []v1alpha1.TaskParam{},
-			},
-			Volumes: []corev1.Volume{{
-				Name: "config-vol",
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: configName,
-						},
-					},
+	return tb.Task(name, namespace, tb.TaskSpec(
+		tb.TaskInputs(tb.InputsResource("target-cluster", v1alpha1.PipelineResourceTypeCluster)),
+		tb.TaskVolume("config-vol", tb.VolumeSource(corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: configName,
 				},
-			}},
-			Steps: []corev1.Container{{
-				Name:    "check-file-existence",
-				Image:   "ubuntu",
-				Command: []string{"cat"},
-				Args:    []string{"/workspace/helloworld-cluster/kubeconfig"},
-			}, {
-				Name:    "check-config-data",
-				Image:   "ubuntu",
-				Command: []string{"cat"},
-				Args:    []string{"/config/test.data"},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "config-vol",
-					MountPath: "/config",
-				}},
-			}, {
-				Name:    "check-contents",
-				Image:   "ubuntu",
-				Command: []string{"bash"},
-				Args:    []string{"-c", "cmp -b /workspace/helloworld-cluster/kubeconfig /config/test.data"},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "config-vol",
-					MountPath: "/config",
-				}},
-			}},
-		},
-	}
+			},
+		})),
+		tb.Step("check-file-existence", "ubuntu",
+			tb.Command("cat"), tb.Args("/workspace/helloworld-cluster/kubeconfig"),
+		),
+		tb.Step("check-config-data", "ubuntu", tb.Command("cat"), tb.Args("/config/test.data"),
+			tb.VolumeMount(corev1.VolumeMount{Name: "config-vol", MountPath: "/config"}),
+		),
+		tb.Step("check-contents", "ubuntu",
+			tb.Command("bash"), tb.Args("-c", "cmp -b /workspace/helloworld-cluster/kubeconfig /config/test.data"),
+			tb.VolumeMount(corev1.VolumeMount{Name: "config-vol", MountPath: "/config"}),
+		),
+	))
 }
 
 func getClusterResourceTaskRun(namespace, name, taskName, resName string) *v1alpha1.TaskRun {

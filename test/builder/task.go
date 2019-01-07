@@ -14,6 +14,8 @@ limitations under the License.
 package builder
 
 import (
+	"time"
+
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -45,6 +47,9 @@ type TaskRunOp func(*v1alpha1.TaskRun)
 // TaskRunSpecOp is an operation which modify a TaskRunSpec struct.
 type TaskRunSpecOp func(*v1alpha1.TaskRunSpec)
 
+// TaskResourceOp is an operation which modify a TaskResource struct.
+type TaskResourceOp func(*v1alpha1.TaskResource)
+
 // TaskResourceBindingOp is an operation which modify a TaskResourceBindingOp struct.
 type TaskResourceBindingOp func(*v1alpha1.TaskResourceBinding)
 
@@ -68,6 +73,9 @@ type OwnerReferenceOp func(*metav1.OwnerReference)
 
 // StepStateOp is an operation which modify a StepStep struct.
 type StepStateOp func(*v1alpha1.StepState)
+
+// VolumeOp is an operation which modify a Volume struct.
+type VolumeOp func(*corev1.Volume)
 
 var (
 	trueB = true
@@ -148,6 +156,32 @@ func Step(name, image string, ops ...ContainerOp) TaskSpecOp {
 	}
 }
 
+// TaskTimeout sets the timeout duration to the TaskSpec.
+func TaskTimeout(d time.Duration) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		spec.Timeout = &metav1.Duration{Duration: d}
+	}
+}
+
+// TaskVolume adds a volume with specified name to the TaskSpec.
+// Any number of Volume modifier can be passed to transform it.
+func TaskVolume(name string, ops ...VolumeOp) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		v := &corev1.Volume{Name: name}
+		for _, op := range ops {
+			op(v)
+		}
+		spec.Volumes = append(spec.Volumes, *v)
+	}
+}
+
+// VolumeSource sets the VolumeSource to the Volume.
+func VolumeSource(s corev1.VolumeSource) VolumeOp {
+	return func(v *corev1.Volume) {
+		v.VolumeSource = s
+	}
+}
+
 // TaskInputs sets inputs to the TaskSpec.
 // Any number of Inputs modifier can be passed to transform it.
 func TaskInputs(ops ...InputsOp) TaskSpecOp {
@@ -175,9 +209,20 @@ func TaskOutputs(ops ...OutputsOp) TaskSpecOp {
 }
 
 // InputsResource adds a resource, with specified name and type, to the Inputs.
-func InputsResource(name string, resourceType v1alpha1.PipelineResourceType) InputsOp {
+// Any number of TaskResource modifier can be passed to transform it.
+func InputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) InputsOp {
 	return func(i *v1alpha1.Inputs) {
-		i.Resources = append(i.Resources, v1alpha1.TaskResource{Name: name, Type: resourceType})
+		r := &v1alpha1.TaskResource{Name: name, Type: resourceType}
+		for _, op := range ops {
+			op(r)
+		}
+		i.Resources = append(i.Resources, *r)
+	}
+}
+
+func ResourceTargetPath(path string) TaskResourceOp {
+	return func(r *v1alpha1.TaskResource) {
+		r.TargetPath = path
 	}
 }
 
