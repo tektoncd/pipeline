@@ -11,6 +11,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+Generate random names
+
+You can use the function AppendRandomString to create random names for crds
+or anything else, so that your tests can use unique names each time they run.
+*/
 package test
 
 import (

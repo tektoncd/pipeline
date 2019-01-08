@@ -14,6 +14,33 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+Poll Pipeline resources
+
+After creating Pipeline resources or making changes to them, you will need to
+wait for the system to realize those changes. You can use polling methods to
+check the resources reach the desired state.
+
+The WaitFor* functions use the kubernetes
+wait package (https://godoc.org/k8s.io/apimachinery/pkg/util/wait). To poll
+they use
+PollImmediate (https://godoc.org/k8s.io/apimachinery/pkg/util/wait#PollImmediate)
+and the return values of the function you provide behave the same as
+ConditionFunc (https://godoc.org/k8s.io/apimachinery/pkg/util/wait#ConditionFunc):
+a boolean to indicate if the function should stop or continue polling, and an
+error to indicate if there has been an error.
+
+
+For example, you can poll a TaskRun object to wait for it to have a Status.Condition:
+
+	err = WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
+		if len(tr.Status.Conditions) > 0 {
+			return true, nil
+		}
+		return false, nil
+	}, "TaskRunHasCondition")
+
+*/
 package test
 
 import (

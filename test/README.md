@@ -213,6 +213,32 @@ be used to run only [the unit tests](#unit-tests), i.e.:
 // +build e2e
 ```
 
+#### Create build-pipeline objects
+
+To create `build-pipeline` objects (e.g. `Task`, `Pipeline`, …), you
+can use the [`builder`](./builder) package to reduce noise:
+
+```go
+func MyTest(t *testing.T){
+	// Pipeline
+	pipeline := tb.Pipeline("tomatoes", "namespace",
+		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
+	)
+ 	// … and PipelineRun
+	pipelineRun := tb.PipelineRun("pear", "namespace",
+		tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccount("inexistent")),
+	)
+	// And do something with them
+	// […]
+	if _, err := c.PipelineClient.Create(pipeline); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
+	}
+	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
+	}
+}
+```
+
 #### Get access to client objects
 
 To initialize client objects use [the command line flags](#use-flags) which
@@ -232,7 +258,6 @@ The `Clients` struct contains initialized clients for accessing:
 
 - Kubernetes objects
 - [`Pipelines`](https://github.com/knative/build-pipeline#pipeline)
-- TODO: incrementally add clients for other types
 
 For example, to create a `Pipeline`:
 
