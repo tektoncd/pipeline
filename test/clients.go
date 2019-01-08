@@ -11,8 +11,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// This file contains an object which encapsulated k8s clients which are useful for integration tests.
+/*
+Get access to client objects
 
+To initialize client objects you can use the setup function. It returns a clients struct
+that contains initialized clients for accessing:
+
+	- Kubernetes objects
+	- Pipelines (https://github.com/knative/build-pipeline#pipeline)
+
+For example, to create a Pipeline
+
+	_, err = clients.PipelineClient.Pipelines.Create(test.Pipeline(namespaceName, pipelineName))
+
+And you can use the client to clean up resources created by your test
+
+	func tearDown(clients *test.Clients) {
+	    if clients != nil {
+	        clients.Delete([]string{routeName}, []string{configName})
+	    }
+	}
+
+*/
 package test
 
 import (
