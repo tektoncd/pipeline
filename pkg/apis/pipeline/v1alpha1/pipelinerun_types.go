@@ -51,8 +51,7 @@ type PipelineRunSpec struct {
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
-	Results    *Results `json:"results,omitempty"`
-	Generation int64    `json:"generation,omitempty"`
+	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus

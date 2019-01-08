@@ -399,7 +399,7 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	}
 	if !reflect.DeepEqual(pr.Status, newPr.Status) {
 		newPr.Status = pr.Status
-		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
+		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).UpdateStatus(newPr)
 	}
 	return newPr, nil
 }

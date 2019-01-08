@@ -44,8 +44,6 @@ type TaskRunSpec struct {
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// +optional
-	Generation int64 `json:"generation,omitempty"`
-	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
