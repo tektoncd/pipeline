@@ -206,7 +206,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:826576a2dbea52eb350ed5c0fd3e53f1f24cd6bdcfaf89ff89239b8cd426cd0d"
+  digest = "1:ad0cca2383dc5678f6711c51cd38594906701e07d713998e3c9240e926f22867"
   name = "github.com/knative/caching"
   packages = [
     "pkg/apis/caching",
@@ -216,7 +216,7 @@
     "pkg/client/clientset/versioned/typed/caching/v1alpha1",
   ]
   pruneopts = "T"
-  revision = "f0d7bb60956f88d4743f5fea66b5607b96d262c9"
+  revision = "06e9787157505a649b07677e77d26202ac91431c"
 
 [[projects]]
   digest = "1:0fa5d5d0a2848f6fae6bebecd8a33d1042535f6feaa5178a4943d622eb5169e7"

@@ -30,3 +30,5 @@ spec:
     shortNames:
     - img
   scope: Namespaced
+  subresources:
+    status: {}

@@ -18,15 +18,15 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:8679b8a64f3613e9749c5640c3535c83399b8e69f67ce54d91dc73f6d77373af"
+  digest = "1:abea725bcf0210887f5da19d804fffa1dd45a42a56bdf5f02322345e3fee4f0d"
   name = "github.com/gogo/protobuf"
   packages = [
     "proto",
     "sortkeys",
   ]
   pruneopts = "NUT"
-  revision = "636bf0302bc95575d69441b25a2603156ffdddf1"
-  version = "v1.1.1"
+  revision = "4cbf7e384e768b4e01799441fdf2a706a5635ae7"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -122,19 +122,22 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:79de2389d32812b2e35a4f686a1cd33a672ccb63d11ba204167443e369ae4fff"
+  digest = "1:0f5c0a93ea5a62ea721282a07746832546580707042f705710f6e9f9778a0598"
   name = "github.com/knative/pkg"
-  packages = ["apis"]
+  packages = [
+    "apis",
+    "kmeta",
+  ]
   pruneopts = "NUT"
-  revision = "382a2bff0af11980b0cc9d24f8ec8a5b8ade471f"
+  revision = "2a7e950c4e2d635d6e32ba3d050dd32ba7be5be3"
 
 [[projects]]
   branch = "master"
-  digest = "1:893ebf54301776b1a306f8c10eafea7c3e9d51b946e59a5b05bfbb1fca60c4ce"
+  digest = "1:09521a823a008f7df66962ac2637c22e1cdc842ebfcc7a083c444d35258986f7"
   name = "github.com/knative/test-infra"
   packages = ["."]
   pruneopts = "T"
-  revision = "84856ef3511c4eb653aaba3ca6f55f656551ad58"
+  revision = "7ed32409fa2c447a44a4281f0022ab25ce955f51"
 
 [[projects]]
   digest = "1:2f42fa12d6911c7b7659738758631bec870b7e9b4c6be5444f963cdcfccc191f"
@@ -169,12 +172,12 @@
   version = "v2.0.1"
 
 [[projects]]
-  digest = "1:e3707aeaccd2adc89eba6c062fec72116fe1fc1ba71097da85b4d8ae1668a675"
+  digest = "1:9d8420bbf131d1618bde6530af37c3799340d3762cc47210c1d9532a4c3a2779"
   name = "github.com/spf13/pflag"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "9a97c102cda95a86cec2345a6f09f55a939babf5"
-  version = "v1.0.2"
+  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
+  version = "v1.0.3"
 
 [[projects]]
   branch = "master"
@@ -261,12 +264,12 @@
   version = "v0.9.1"
 
 [[projects]]
-  digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"
+  digest = "1:18108594151654e9e696b27b181b953f9a90b16bf14d253dd1b397b025a1487f"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
-  version = "v2.2.1"
+  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  version = "v2.2.2"
 
 [[projects]]
   digest = "1:8960ef753a87391086a307122d23cd5007cee93c28189437e4f1b6ed72bffc50"
@@ -448,6 +451,7 @@
   input-imports = [
     "github.com/google/go-cmp/cmp",
     "github.com/knative/pkg/apis",
+    "github.com/knative/pkg/kmeta",
     "github.com/knative/test-infra",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/equality",

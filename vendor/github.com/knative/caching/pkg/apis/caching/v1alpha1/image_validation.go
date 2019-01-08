@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 
@@ -34,9 +36,9 @@ func (rs *ImageSpec) Validate() *apis.FieldError {
 	// TODO(mattmoor): Consider using go-containerregistry to validate
 	// the image reference.  This is effectively the function we want.
 	// https://github.com/google/go-containerregistry/blob/2f3e3e1/pkg/name/ref.go#L41
-	if rs.ImagePullSecrets != nil {
-		if equality.Semantic.DeepEqual(rs.ImagePullSecrets, &corev1.LocalObjectReference{}) {
-			return apis.ErrMissingField("imagePullSecrets.name")
+	for index, ips := range rs.ImagePullSecrets {
+		if equality.Semantic.DeepEqual(ips, corev1.LocalObjectReference{}) {
+			return apis.ErrMissingField(fmt.Sprintf("imagePullSecrets[%d].name", index))
 		}
 	}
 	return nil
