@@ -750,14 +750,14 @@ Below is an example on how to create a storage resource with service account.
      params:
        - name: type
          value: gcs
-       - name: url
+       - name: location
          value: gs://some-private-bucket
        - name: dir
          value: "directory"
      secrets:
        - fieldName: GOOGLE_APPLICATION_CREDENTIALS
-         secretKey: bucket-sa
-         secretName: service_account.json
+         secretName: bucket-sa
+         secretKey: service_account.json
    ```
 
 ## Troubleshooting
