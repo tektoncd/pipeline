@@ -20,15 +20,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/hashicorp/golang-lru"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
+	"github.com/knative/build/pkg/apis/build/v1alpha1"
 )
 
 const (
@@ -41,6 +41,8 @@ const (
 	InitContainerName = "place-tools"
 	ProcessLogFile    = "/tools/process-log.txt"
 	MarkerFile        = "/tools/marker-file.txt"
+
+	cacheSize = 1024
 )
 
 var toolsMount = corev1.VolumeMount{
@@ -49,35 +51,28 @@ var toolsMount = corev1.VolumeMount{
 }
 
 // Cache is a simple caching mechanism allowing for caching the results of
-// getting the Entrypoint of a container image from a remote registry. It
-// is synchronized via a mutex so that we can share a single Cache across
-// each worker thread that the reconciler is running. The mutex is necessary
-// due to the possibility of a panic if two workers were to attempt to read and
-// write to the internal map at the same time.
+// getting the Entrypoint of a container image from a remote registry. The
+// internal lru cache is thread-safe.
 type Cache struct {
-	mtx   sync.RWMutex
-	cache map[string][]string
+	lru *lru.Cache
 }
 
 // NewCache is a simple helper function that returns a pointer to a Cache that
-// has had the internal cache map initialized.
-func NewCache() *Cache {
-	return &Cache{
-		cache: make(map[string][]string),
-	}
+// has had the internal fixed-sized lru cache initialized.
+func NewCache() (*Cache, error) {
+	lru, err := lru.New(cacheSize)
+	return &Cache{lru}, err
 }
 
 func (c *Cache) get(sha string) ([]string, bool) {
-	c.mtx.RLock()
-	ep, ok := c.cache[sha]
-	c.mtx.RUnlock()
-	return ep, ok
+	if ep, ok := c.lru.Get(sha); ok {
+		return ep.([]string), true
+	}
+	return nil, false
 }
 
 func (c *Cache) set(sha string, ep []string) {
-	c.mtx.Lock()
-	c.cache[sha] = ep
-	c.mtx.Unlock()
+	c.lru.Add(sha, ep)
 }
 
 // AddCopyStep will prepend a BuildStep (Container) that will
