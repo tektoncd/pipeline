@@ -108,8 +108,8 @@ func (in *ImageSpec) DeepCopyInto(out *ImageSpec) {
 	*out = *in
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
-		*out = new(v1.LocalObjectReference)
-		**out = **in
+		*out = make([]v1.LocalObjectReference, len(*in))
+		copy(*out, *in)
 	}
 	return
 }
