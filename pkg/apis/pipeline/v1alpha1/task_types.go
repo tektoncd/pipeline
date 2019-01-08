@@ -43,8 +43,6 @@ type TaskSpec struct {
 	Inputs *Inputs `json:"inputs,omitempty"`
 	// +optional
 	Outputs *Outputs `json:"outputs,omitempty"`
-	// +optional
-	Generation int64 `json:"generation,omitempty"`
 
 	// Steps are the steps of the build; each step is run sequentially with the
 	// source mounted into /workspace.

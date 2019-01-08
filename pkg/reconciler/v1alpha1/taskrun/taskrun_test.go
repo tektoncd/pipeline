@@ -644,7 +644,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	pod.Status = corev1.PodStatus{
 		Phase: corev1.PodSucceeded,
 	}
-	if _, err := clients.Kube.CoreV1().Pods(taskRun.Namespace).Update(pod); err != nil {
+	if _, err := clients.Kube.CoreV1().Pods(taskRun.Namespace).UpdateStatus(pod); err != nil {
 		t.Errorf("Unexpected error while updating build: %v", err)
 	}
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {

@@ -23,10 +23,9 @@ import (
 
 // PipelineSpec defines the desired state of PipeLine.
 type PipelineSpec struct {
-	Resources  []PipelineDeclaredResource `json:"resources"`
-	Tasks      []PipelineTask             `json:"tasks"`
-	Params     []PipelineParam            `json:"params"`
-	Generation int64                      `json:"generation,omitempty"`
+	Resources []PipelineDeclaredResource `json:"resources"`
+	Tasks     []PipelineTask             `json:"tasks"`
+	Params    []PipelineParam            `json:"params"`
 }
 
 // PipelineStatus does not contain anything because Pipelines on their own

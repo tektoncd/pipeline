@@ -25,4 +25,8 @@ spec:
     - knative
     - build-pipeline
   scope: Cluster
+  # Opt into the status subresource so metadata.generation
+  # starts to increment
+  subresources:
+    status: {}
   version: v1alpha1

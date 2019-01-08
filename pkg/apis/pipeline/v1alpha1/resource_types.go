@@ -72,8 +72,6 @@ type PipelineResourceSpec struct {
 	// Secrets to fetch to populate some of resource fields
 	// +optional
 	SecretParams []SecretParam `json:"secrets,omitempty"`
-	// +optional
-	Generation int64 `json:"generation,omitempty"`
 }
 
 // PipelineResourceStatus does not contain anything because Resources on their own
