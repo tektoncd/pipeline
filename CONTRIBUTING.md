@@ -162,13 +162,7 @@ like to work on it** and we will consider it assigned to you.
 
 ## Roadmap
 
-As of Nov 2018, our goal for the end of the year is to get the project into a
-usable state by releasing a 0.0.1 version, also known as our Alpha version. At
-this point the API should be relatively stable and we would feel confident
-inviting users to start trying out the project.
-
-This work is visible in
-[the Alpha 0.0.1 milestone](https://github.com/knative/build-pipeline/milestone/2).
+The project's roadmap for 2019 is published [here](./roadmap-2019.md).
 
 ## Contact
 
