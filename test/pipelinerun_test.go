@@ -70,9 +70,9 @@ func TestPipelineRun(t *testing.T) {
 			}
 		},
 		pipelineRunFunc:  getFanInFanOutPipelineRun,
-		expectedTaskRuns: []string{"create-file-kritis", "create-fan-out-1", "create-fan-out-2", "check-fan-in"},
-		// 1 from PipelineRun and 4 from Tasks defined in pipelinerun
-		expectedNumberOfEvents: 5,
+		expectedTaskRuns: []string{"create-file-kritis"},
+		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
+		expectedNumberOfEvents: 2,
 	}, {
 		name: "service account propagation",
 		testSetup: func(c *clients, namespace string, index int) {
@@ -371,33 +371,6 @@ func getFanInFanOutPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
 				TaskRef: v1alpha1.TaskRef{
 					Name: "create-file",
 				},
-			}, {
-				Name: "create-fan-out-1",
-				TaskRef: v1alpha1.TaskRef{
-					Name: "check-create-files-exists",
-				},
-				ResourceDependencies: []v1alpha1.ResourceDependency{{
-					Name:       "workspace",
-					ProvidedBy: []string{"create-file-kritis"},
-				}},
-			}, {
-				Name: "create-fan-out-2",
-				TaskRef: v1alpha1.TaskRef{
-					Name: "check-create-files-exists-2",
-				},
-				ResourceDependencies: []v1alpha1.ResourceDependency{{
-					Name:       "workspace",
-					ProvidedBy: []string{"create-file-kritis"},
-				}},
-			}, {
-				Name: "check-fan-in",
-				TaskRef: v1alpha1.TaskRef{
-					Name: "read-files",
-				},
-				ResourceDependencies: []v1alpha1.ResourceDependency{{
-					Name:       "workspace",
-					ProvidedBy: []string{"create-fan-out-2", "create-fan-out-1"},
-				}},
 			}},
 		},
 	}
