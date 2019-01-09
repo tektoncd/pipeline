@@ -12,7 +12,7 @@ documents.
 ## Conducting a User Study.
 
 1. Find a potential candidate for user study. A candidate can be
-   1. A kubernetes developer with any level of experience.
+   1. A Kubernetes developer with any level of experience.
    1. Any engineer with CI/CD experience
 1. Schedule a 50-60 minutes session with a potential candidate. Ideally we would
    not want to spend more than 45 minutes per session with 5-10 mins of buffer

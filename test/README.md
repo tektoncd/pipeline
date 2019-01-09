@@ -26,7 +26,7 @@ which need `-tags=e2e` to be enabled._
 Kubernetes client-go provides a number of fake clients and objects for unit
 testing. The ones we will be using are:
 
-1. [Fake kubernetes client](https://godoc.org/k8s.io/client-go/kubernetes/fake):
+1. [Fake Kubernetes client](https://godoc.org/k8s.io/client-go/kubernetes/fake):
    Provides a fake REST interface to interact with Kubernetes API
 1. [Fake pipeline client](./../pkg/client/clientset/versioned/fake/clientset_generated.go)
    : Provides a fake REST PipelineClient Interface to interact with Pipeline
@@ -45,7 +45,7 @@ pipelineClient := fakepipelineclientset.NewSimpleClientset()
 This
 [pipelineClient](https://github.com/knative/build-pipeline/blob/d97057a58e16c11ca5e38b780a7bb3ddae42bae1/pkg/client/clientset/versioned/clientset.go#L34)
 is initialized with no runtime objects. You can also initialie the client with
-kubernetes objects and can interact with them using the
+Kubernetes objects and can interact with them using the
 `pipelineClient.Pipeline()`
 
 ```go
@@ -270,7 +270,7 @@ After creating Pipeline resources or making changes to them, you will need to
 wait for the system to realize those changes. You can use polling methods to
 check the resources reach the desired state.
 
-The `WaitFor*` functions use the kubernetes
+The `WaitFor*` functions use the Kubernetes
 [`wait` package](https://godoc.org/k8s.io/apimachinery/pkg/util/wait). To poll
 they use
 [`PollImmediate`](https://godoc.org/k8s.io/apimachinery/pkg/util/wait#PollImmediate)

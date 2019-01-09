@@ -295,7 +295,7 @@ need to be run with different `PipelineResources` in cases such as:
   system must specify the commitish of a git `PipelineResource` to use
 - When invoking a `Pipeline` manually against one's own setup, one will need to
   ensure that one's own github fork (via the git `PipelineResource`), image
-  registry (via the image `PipelineResource`) and kubernetes cluster (via the
+  registry (via the image `PipelineResource`) and Kubernetes cluster (via the
   cluster `PipelineResource`).
 
 Specify the `PipelineResources` in the PipelineRun using the `resources`
@@ -728,7 +728,7 @@ Below is an example on how to create a storage resource with service account.
    [official documentation](https://cloud.google.com/compute/docs/access/service-accounts)
    on how to create service accounts and configuring IAM permissions to access
    bucket.
-2. Create a kubernetes secret from downloaded service account json key
+2. Create a Kubernetes secret from downloaded service account json key
 
    ```bash
    $ kubectl create secret generic bucket-sa --from-file=./service_account.json
