@@ -3,7 +3,7 @@
 This document is aimed at helping maintainers/developers of project understand
 the complexity.
 
-### How are resources shared between tasks
+### How are resources shared between tasks?
 
 Pipelineruns uses PVC to share resources between tasks. PVC volume is mounted on
 path `/pvc` by Pipelinerun.
