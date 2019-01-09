@@ -218,17 +218,14 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			Name:      "create-file",
 		},
 		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name:       "workspace",
-					Type:       v1alpha1.PipelineResourceTypeGit,
-					TargetPath: "brandnewspace",
-				}, {
-					Name:       "gcsbucket",
-					Type:       v1alpha1.PipelineResourceTypeStorage,
-					TargetPath: "gcs-workspace",
-				}},
-			},
+			/*
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name:       "workspace",
+						Type:       v1alpha1.PipelineResourceTypeGit,
+						TargetPath: "brandnewspace",
+					},
+				},*/
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{{
 					Name: "workspace",
@@ -240,120 +237,6 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				Image:   "ubuntu",
 				Command: []string{"/bin/bash"},
 				Args:    []string{"-c", "echo stuff > /workspace/brandnewspace/stuff"},
-			}, {
-				Name:    "write-data-task-0-step-1",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "echo other > /workspace/brandnewspace/other"},
-			}, {
-				Name:    "read-gcs-bucket",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "ls -la /workspace/gcs-workspace/rules_docker-master.zip"},
-			}, {
-				Name:    "read-secret-env",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "cat $CREDENTIALS"},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name: "volume-gcs-resource-service-account-secret", // this build should have volume with
-					// name volume-(resource_name)-(secret_name) because of storage resource(gcs)
-					MountPath: "/var/secret/service-account-secret",
-				}},
-				Env: []corev1.EnvVar{{
-					Name:  "CREDENTIALS",
-					Value: "/var/secret/service-account-secret/service_account-key.json",
-				}},
-			}},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "check-create-files-exists",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: v1alpha1.PipelineResourceTypeGit,
-				}},
-			},
-			Outputs: &v1alpha1.Outputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: v1alpha1.PipelineResourceTypeGit,
-				}},
-			},
-			Steps: []corev1.Container{{
-				Name:    "read-from-task-0",
-				Image:   "ubuntu",
-				Command: []string{"bash"},
-				Args:    []string{"-c", "[[ stuff == $(cat /workspace/stuff) ]]"},
-			}, {
-				Name:    "write-data-task-1",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "echo something > /workspace/something"},
-			}},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "check-create-files-exists-2",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: v1alpha1.PipelineResourceTypeGit,
-				}},
-			},
-			Outputs: &v1alpha1.Outputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
-					Type: v1alpha1.PipelineResourceTypeGit,
-				}},
-			},
-			Steps: []corev1.Container{{
-				Name:    "read-from-task-0",
-				Image:   "ubuntu",
-				Command: []string{"bash"},
-				Args:    []string{"-c", "[[ other == $(cat /workspace/other) ]]"},
-			}, {
-				Name:    "write-data-task-1",
-				Image:   "ubuntu",
-				Command: []string{"/bin/bash"},
-				Args:    []string{"-c", "echo else > /workspace/else"},
-			}},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "read-files",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name:       "workspace",
-					Type:       v1alpha1.PipelineResourceTypeGit,
-					TargetPath: "readingspace",
-				}},
-			},
-			Steps: []corev1.Container{{
-				Name:    "read-from-task-0",
-				Image:   "ubuntu",
-				Command: []string{"bash"},
-				Args:    []string{"-c", "[[ stuff == $(cat /workspace/readingspace/stuff) ]]"},
-			}, {
-				Name:    "read-from-task-1",
-				Image:   "ubuntu",
-				Command: []string{"bash"},
-				Args:    []string{"-c", "[[ something == $(cat /workspace/readingspace/something) ]]"},
-			}, {
-				Name:    "read-from-task-2",
-				Image:   "ubuntu",
-				Command: []string{"bash"},
-				Args:    []string{"-c", "[[ else == $(cat /workspace/readingspace/else) ]]"},
 			}},
 		},
 	}}
@@ -392,26 +275,6 @@ func getFanInFanOutGitResources(namespace string) []*v1alpha1.PipelineResource {
 				Value: "master",
 			}},
 		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "gcs-resource",
-			Namespace: namespace,
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeStorage,
-			Params: []v1alpha1.Param{{
-				Name:  "location",
-				Value: "gs://build-crd-tests/rules_docker-master.zip",
-			}, {
-				Name:  "type",
-				Value: "gcs",
-			}},
-			SecretParams: []v1alpha1.SecretParam{{
-				SecretName: "service-account-secret",
-				SecretKey:  "service_account-key.json",
-				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-			}},
-		},
 	}}
 }
 
@@ -442,54 +305,7 @@ func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineR
 			PipelineTaskResources: []v1alpha1.PipelineTaskResource{
 				{
 					Name: "create-file-kritis",
-					Inputs: []v1alpha1.TaskResourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "kritis-resource-git",
-						},
-					}, {
-						Name: "gcsbucket",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "gcs-resource",
-						},
-					}},
 					Outputs: []v1alpha1.TaskResourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "kritis-resource-git",
-						},
-					}},
-				}, {
-					Name: "create-fan-out-1",
-					Inputs: []v1alpha1.TaskResourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "kritis-resource-git",
-						},
-					}},
-					Outputs: []v1alpha1.TaskResourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "kritis-resource-git",
-						},
-					}},
-				}, {
-					Name: "create-fan-out-2",
-					Inputs: []v1alpha1.TaskResourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "kritis-resource-git",
-						},
-					}},
-					Outputs: []v1alpha1.TaskResourceBinding{{
-						Name: "workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "kritis-resource-git",
-						},
-					}},
-				}, {
-					Name: "check-fan-in",
-					Inputs: []v1alpha1.TaskResourceBinding{{
 						Name: "workspace",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "kritis-resource-git",
