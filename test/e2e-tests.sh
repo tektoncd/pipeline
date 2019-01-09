@@ -39,12 +39,7 @@ failed=0
 
 # Run the integration tests
 header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test || failed=1
-
-# Run these _after_ the integration tests b/c they don't quite work all the way
-# and they cause a lot of noise in the logs, making it harder to debug integration
-# test failures.
-${REPO_ROOT_DIR}/test/e2e-tests-yaml.sh --run-tests || failed=1
+go_test_e2e -timeout=20m  -run=TestPipelineRun/fan-in_and_fan-out ./test || failed=1
 
 (( failed )) && fail_test
 success
