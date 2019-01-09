@@ -229,12 +229,14 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 					TargetPath: "gcs-workspace",
 				}},
 			},
+			/*
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{{
 					Name: "workspace",
 					Type: v1alpha1.PipelineResourceTypeGit,
 				}},
 			},
+			*/
 			Steps: []corev1.Container{{
 				Name:    "write-data-task-0-step-0",
 				Image:   "ubuntu",
