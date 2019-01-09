@@ -2,7 +2,7 @@
 
 The main objective of the Pipeline CRD is to run your task individually or as a
 part of a pipeline. Every task runs as a Pod on your Kubernetes cluster with
-each step as a its own container.
+each step as its own container.
 
 ## Tasks
 
@@ -26,8 +26,8 @@ spec:
 
 The `steps` are a series of commands to be sequentially executed by the task.
 
-A `TaskRun` runs the `task` you defined. Here is a simple example of a taskRun
-you can use to exeute your task
+A `TaskRun` runs the `task` you defined. Here is a simple example of a `TaskRun`
+you can use to execute your task:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -41,19 +41,19 @@ spec:
     type: manual
 ```
 
-To apply the yaml files use the following command
+To apply the yaml files use the following command:
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
 ```
 
-To see the output of the taskRun, use the following command
+To see the output of the `TaskRun`, use the following command:
 
 ```bash
 kubectl get taskruns/echo-hello-world-task-run -o yaml
 ```
 
-you will get an output similar to the following:
+You will get an output similar to the following:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -102,19 +102,19 @@ status:
         startedAt: 2018-12-11T15:50:02Z
 ```
 
-The status of type `Succeeded = True` shows the task ran successfully
+The status of type `Succeeded = True` shows the task ran successfully.
 
 # Task Inputs and Outputs
 
 In more common scenarios, your task needs multiple steps with input and output
-resources to process, for example a task could fetch source code from a github
-repository and build a docker image from it.
+resources to process. For example a task could fetch source code from a GitHub
+repository and build a Docker image from it.
 
 `PipelinesResources` are used to define the artifacts that can be passed in and
 out of a task. There are a few system defined resource types ready to use, and
-the following are two examples of the resources commonly needed
+the following are two examples of the resources commonly needed.
 
-`git` resource represents a git repository with a specific revision
+`git` resource represents a git repository with a specific revision:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -130,7 +130,7 @@ spec:
       value: https://github.com/GoogleContainerTools/skaffold
 ```
 
-and the `image` resource represents the docker image to be built by the task
+and the `image` resource represents the Docker image to be built by the task:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -144,8 +144,8 @@ spec:
       value: gcr.io/<use your project>/leeroy-web
 ```
 
-The following is a task with inputs and outputs. The input resource is a github
-repository and the output is the docker image produced from that source. The
+The following is a task with inputs and outputs. The input resource is a GitHub
+repository and the output is the Docker image produced from that source. The
 args of the task command support templating so that the definition of task is
 constant and the value of parameters can change in runtime.
 
@@ -222,13 +222,13 @@ kubectl apply -f <name-of-file.yaml>
 ```
 
 To see all the resource created so far as part of the pipeline-crd, run the
-command
+command:
 
 ```bash
 kubectl get build-pipeline
 ```
 
-and you will get an output similar to the following:
+You will get an output similar to the following:
 
 ```
 NAME                                                   AGE
@@ -242,13 +242,13 @@ NAME                                       AGE
 tasks/build-docker-image-from-git-source   7m
 ```
 
-To see the output of the taskRun, use the following command
+To see the output of the taskRun, use the following command:
 
 ```bash
 kubectl get taskruns/echo-hello-world-task-run -o yaml
 ```
 
-you will get an output similar to the following:
+You will get an output similar to the following:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -316,7 +316,7 @@ status:
 ```
 
 The status of type `Succeeded = True` shows the task ran successfully and you
-can also validate the docker image is created in the location specified in the
+can also validate the Docker image is created in the location specified in the
 resource definition.
 
 # Pipeline
@@ -324,7 +324,7 @@ resource definition.
 Pipeline defines a graph of tasks to execute in a specific order, while also
 indicating if any outputs should be used as inputs of a following task by using
 the `providedBy` field. The same templating you used in tasks is also available
-in pipeline
+in pipeline:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -358,7 +358,7 @@ spec:
 ```
 
 This pipeline is referencing a task to `deploy-using-kubectl` which can be found
-here
+here:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -402,7 +402,7 @@ spec:
         - "${inputs.params.path}"
 ```
 
-To run the pipeline, create a pipelineRun as follows,
+To run the pipeline, create a pipelineRun as follows:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -435,7 +435,7 @@ spec:
 ```
 
 The pipelineRun will create the taskRuns corresponding to each task and collect
-the results
+the results.
 
 To apply the yaml files use the following command, you will need to apply the
 `deploy-task` if you want to run the pipeline.
@@ -444,13 +444,13 @@ To apply the yaml files use the following command, you will need to apply the
 kubectl apply -f <name-of-file.yaml>
 ```
 
-To see the output of the pipelineRun, use the following command
+To see the output of the pipelineRun, use the following command:
 
 ```bash
 kubectl get pipelineruns/tutorial-pipeline-run-1 -o yaml
 ```
 
-you will get an output similar to the following:
+You will get an output similar to the following:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
