@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -26,10 +27,55 @@ import (
 )
 
 func (t *Task) Validate() *apis.FieldError {
+	if appliedConfig, present := t.Annotations["kubectl.kubernetes.io/last-applied-configuration"]; present {
+		buf, _ := json.Marshal(*t)
+		var mapFromObject map[string]interface{}
+		var mapFromJSON map[string]interface{}
+		json.Unmarshal(buf, &mapFromObject)
+		json.Unmarshal([]byte(appliedConfig), &mapFromJSON)
+
+		if err := checkExtraFields("/", mapFromObject, mapFromJSON); err != nil {
+			return err
+		}
+	}
+
 	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 	return t.Spec.Validate()
+}
+
+func checkExtraFields(path string, left, right interface{}) *apis.FieldError {
+	switch r := right.(type) {
+	case []interface{}:
+		l, ok := left.([]interface{})
+		if !ok {
+			return nil // Error?
+		}
+		for i, rv := range r {
+			lv := l[i]
+			if err := checkExtraFields(fmt.Sprintf("%s[%d]", path, i), lv, rv); err != nil {
+				return err
+			}
+		}
+	case map[string]interface{}:
+		l, ok := left.(map[string]interface{})
+		if !ok {
+			return nil // Error?
+		}
+		for k, rv := range r {
+			lv, present := l[k]
+			if !present {
+				return apis.ErrInvalidKeyName(k, path)
+			}
+
+			if err := checkExtraFields(fmt.Sprintf("%s/%s", path, k), lv, rv); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (ts *TaskSpec) Validate() *apis.FieldError {

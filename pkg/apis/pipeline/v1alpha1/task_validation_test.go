@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var validResource = TaskResource{
@@ -207,5 +208,40 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				t.Errorf("TaskSpec.Validate() did not return error.")
 			}
 		})
+	}
+}
+
+func TestTaskSpec_ValidateExtraField(t *testing.T) {
+	invalidJSON := `{"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"Task","metadata":{"annotations":{},"name":"echo-hello-world","namespace":"default"},"spec":{"steps":[{"args":["hello world"],"command":["echo"],"image":"ubuntu","name":"echo","extra":"unused"}]}}`
+	task := Task{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "pipeline.knative.dev/v1alpha1",
+			Kind:       "Task",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"kubectl.kubernetes.io/last-applied-configuration": invalidJSON,
+			},
+			Name:      "echo-hello-world",
+			Namespace: "default",
+		},
+		Spec: TaskSpec{
+			Steps: []corev1.Container{{
+				Name:    "echo",
+				Image:   "ubuntu",
+				Command: []string{"echo"},
+				Args:    []string{"hello world"},
+			}},
+		},
+	}
+
+	err := task.Validate()
+	if err == nil {
+		t.Errorf("validation should have failed")
+	}
+
+	expectedError := "invalid key name \"extra\": //spec/steps[0]"
+	if err.Error() != expectedError {
+		t.Errorf("invalid error message. Expected: %s. Got: %s", expectedError, err.Error())
 	}
 }
