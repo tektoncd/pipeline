@@ -274,7 +274,7 @@ func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 			PipelineRef: v1alpha1.PipelineRef{
 				Name: helmDeployPipelineName,
 			},
-			PipelineTrigger: v1alpha1.PipelineTrigger{
+			Trigger: v1alpha1.PipelineTrigger{
 				Type: v1alpha1.PipelineTriggerTypeManual,
 			},
 			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
