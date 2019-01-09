@@ -8,7 +8,7 @@
 1. [Create and checkout a repo fork](#checkout-your-fork)
 1. Set up your [shell environment](#environment-setup)
 1. Install [requirements](#requirements)
-1. [Set up a kubernetes cluster](#kubernetes-cluster)
+1. [Set up a Kubernetes cluster](#kubernetes-cluster)
 1. [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
 1. [Set up a docker repository you can push to](https://github.com/knative/serving/blob/master/docs/setting-up-a-docker-registry.md)
 

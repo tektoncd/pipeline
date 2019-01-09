@@ -7,8 +7,8 @@ pipelines.
 
 Pipelines are **Cloud Native**:
 
-- Run on kubernetes
-- Have kubernetes clusters as a first class type
+- Run on Kubernetes
+- Have Kubernetes clusters as a first class type
 - Use containers as their building blocks
 
 Pipelines are **Decoupled**:

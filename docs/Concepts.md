@@ -1,7 +1,7 @@
 # Pipeline CRDs
 
 Pipeline CRDs is an open source implementation to configure and run CI/CD style
-pipelines for your kubernetes application.
+pipelines for your Kubernetes application.
 
 Pipeline CRDs creates
 [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
