@@ -683,11 +683,14 @@ spec:
 Storage resource represents blob storage, that contains either an object or
 directory. Adding the storage resource as an input to a task will download the
 blob and allow the task to perform the required actions on the contents of the
-blob. Blob storage type "Google Cloud Storage"(gcs) is supported as of now.
+blob. Blob storage type
+[Google Cloud Storage](https://cloud.google.com/storage/)(gcs) is supported as
+of now.
 
 #### GCS Storage Resource
 
-GCS Storage resource points to "Google Cloud Storage" blob.
+GCS Storage resource points to
+[Google Cloud Storage](https://cloud.google.com/storage/) blob.
 
 To create a GCS type of storage resource using the `PipelineResource` CRD:
 
