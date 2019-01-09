@@ -42,6 +42,7 @@ for test in taskrun pipelinerun; do
   header "Running YAML e2e tests for ${test}s"
   if ! run_yaml_tests ${test}; then
     echo "ERROR: one or more YAML tests failed"
+    # TODO(#376): Make failures fatal once the yaml tests are fixed.
     # failed=1
     output_yaml_test_results ${test}
   fi
