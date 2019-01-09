@@ -170,7 +170,7 @@ used as inputs to a [`Task`](#Task) and can be output of [`Task`](#Task) .
 
 For example:
 
-- A task's input could be a github source which contains your application code.
+- A task's input could be a GitHub source which contains your application code.
 - A task's output can be your application container image which can be then
   deployed in a cluster.
 - A task's output can be a jar file to be uploaded to a storage bucket.
@@ -285,5 +285,5 @@ for each task in the pipeline.
 A `PipelineRun` could be created:
 
 - By a user manually
-- In response to an event (e.g. in response to a Github event, possibly
+- In response to an event (e.g. in response to a GitHub event, possibly
   processed via [Knative eventing](https://github.com/knative/eventing))
