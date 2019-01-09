@@ -39,7 +39,8 @@ function build_resource_name() {
 readonly E2E_BASE_NAME="k${REPO_NAME}"
 readonly E2E_CLUSTER_NAME=$(build_resource_name e2e-cls)
 readonly E2E_NETWORK_NAME=$(build_resource_name e2e-net)
-readonly E2E_CLUSTER_REGION=us-central1
+#readonly E2E_CLUSTER_REGION=us-central1
+readonly E2E_CLUSTER_ZONE=us-central1-a
 readonly E2E_CLUSTER_MACHINE=n1-standard-4
 readonly TEST_RESULT_FILE=/tmp/${E2E_BASE_NAME}-e2e-result
 # Each knative repository may have a different cluster size requirement here,
@@ -154,7 +155,8 @@ function create_test_cluster() {
     --provider=gke
     --deployment=gke
     --cluster="${E2E_CLUSTER_NAME}"
-    --gcp-region="${E2E_CLUSTER_REGION}"
+    #--gcp-region="${E2E_CLUSTER_REGION}"
+    --gcp-zone="${E2E_CLUSTER_ZONE}"
     --gcp-network="${E2E_NETWORK_NAME}"
     --gke-environment=prod
   )
