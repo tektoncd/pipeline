@@ -73,7 +73,8 @@ func TestPipelineRun(t *testing.T) {
 		expectedTaskRuns: []string{"create-file-kritis", "create-fan-out-1", "create-fan-out-2", "check-fan-in"},
 		// 1 from PipelineRun and 4 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 5,
-	}, {
+        }}
+	tds = []tests{{
 		name: "service account propagation",
 		testSetup: func(c *clients, namespace string, index int) {
 			t.Helper()
