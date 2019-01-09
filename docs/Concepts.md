@@ -11,7 +11,7 @@ A custom resource is an extension of Kubernetes API which can create a custom
 [Kubernetes Object](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#understanding-kubernetes-objects).
 Once a custom resource is installed, users can create and access its objects
 with kubectl, just as they do for built-in resources like pods, deployments etc.
-These resources run on-cluster and are implemeted by
+These resources run on-cluster and are implemented by
 [Kubernetes Custom Resource Definition (CRD)](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/#customresourcedefinitions).
 
 High level details of this design:
@@ -42,7 +42,7 @@ Below diagram lists the main custom resources created by Pipeline CRDs:
 ### Task
 
 A Task is a collection of sequential steps you would want to run as part of your
-continous integration flow. A task will run inside a container on your cluster.
+continuous integration flow. A task will run inside a container on your cluster.
 A Task declares:
 
 ### Inputs

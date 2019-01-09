@@ -55,7 +55,7 @@ The [Tasks](../docs/Concepts.md#task) used by the simple examples are:
 #### Simple Runs
 
 The [run](./run/) directory contains an example
-[TaskRun](../docs/Concepts.md#taskrun) and an exmaple
+[TaskRun](../docs/Concepts.md#taskrun) and an example
 [PipelineRun](../docs/Concepts.md#pipelinerun):
 
 - [task-run.yaml](./run/task-run.yaml) shows an example of how to manually run
@@ -93,6 +93,6 @@ an [`Input`](../docs/Concepts.md#inputs) of the `check-stuff-file-exists`
 
 #### Output Runs
 
-The [run](./run/) directory contains an exmaple
+The [run](./run/) directory contains an example
 [PipelineRun](../docs/Concepts.md#pipelinerun) that invokes this `Pipeline` in
 [`run/output-pipeline-run.yaml`](./run/output-pipeline-run.yaml).

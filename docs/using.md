@@ -565,7 +565,7 @@ spec:
 ### Cluster Resource
 
 Cluster Resource represents a Kubernetes cluster other than the current cluster
-the pipleine CRD is running on. A common use case for this resource is to deploy
+the pipeline CRD is running on. A common use case for this resource is to deploy
 your application/function on different clusters.
 
 The resource will use the provided parameters to create a
@@ -581,7 +581,7 @@ The Cluster resource has the following parameters:
 - URL (required): Host url of the master node
 - Username (required): the user with access to the cluster
 - Password: to be used for clusters with basic auth
-- Token: to be used for authenication, if present will be used ahead of the
+- Token: to be used for authentication, if present will be used ahead of the
   password
 - Insecure: to indicate server should be accessed without verifying the TLS
   certificate.
@@ -610,7 +610,7 @@ spec:
       value: ZXlKaGJHY2lPaU....
 ```
 
-For added security, you can add the sensetive information in a Kubernetes
+For added security, you can add the sensitive information in a Kubernetes
 [Secret](https://kubernetes.io/docs/concepts/configuration/secret/) and populate
 the kubeconfig from them.
 
