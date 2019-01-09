@@ -65,7 +65,7 @@ func main() {
 
 	logger.Infof("gsutil binary at path %s", gsutilPath)
 
-	cmd := exec.Command("gsutil", "-m")
+	cmd := exec.Command("gsutil")
 	cmd.Args = append(cmd.Args, strings.Split(*args, " ")...)
 
 	stdoutStderr, err := cmd.CombinedOutput()
