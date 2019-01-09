@@ -74,6 +74,7 @@ func TestPipelineRun(t *testing.T) {
 		// 1 from PipelineRun and 4 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 5,
         }}
+        // TODO(#375): Reenable the 'fan-in and fan-out' test once it's fixed.
 	tds = []tests{{
 		name: "service account propagation",
 		testSetup: func(c *clients, namespace string, index int) {
