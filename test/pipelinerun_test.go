@@ -229,14 +229,12 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 					TargetPath: "gcs-workspace",
 				}},
 			},
-			/*
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{{
 					Name: "workspace",
 					Type: v1alpha1.PipelineResourceTypeGit,
 				}},
 			},
-			*/
 			Steps: []corev1.Container{{
 				Name:    "write-data-task-0-step-0",
 				Image:   "ubuntu",
@@ -455,14 +453,12 @@ func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineR
 							Name: "gcs-resource",
 						},
 					}},
-					/*
 					Outputs: []v1alpha1.TaskResourceBinding{{
 						Name: "workspace",
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "kritis-resource-git",
 						},
 					}},
-					*/
 				}, {
 					Name: "create-fan-out-1",
 					Inputs: []v1alpha1.TaskResourceBinding{{
