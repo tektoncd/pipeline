@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	pipelineRunTimeout = 10 * time.Minute
+	pipelineRunTimeout = 2 * time.Minute
 )
 
 func TestPipelineRun(t *testing.T) {
