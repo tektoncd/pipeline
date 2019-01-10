@@ -247,7 +247,7 @@ func TestResolvedTaskResources(t *testing.T) {
 			},
 		},
 		Outputs: map[string]*v1alpha1.PipelineResource{
-			"qux": &v1alpha1.PipelineResource{
+			"qux": {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "quux",
 					Namespace: "quuz",
