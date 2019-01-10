@@ -12,9 +12,8 @@
 
 1. Create or copy [Task definitions](#creating-a-task) for the tasks you’d like
    to run. Some can be generic and reused (e.g. building with
-   [Kaniko](https://github.com/GoogleContainerTools/kaniko)) and others
-   will be specific to your project (e.g. running your particular set of unit
-   tests).
+   [Kaniko](https://github.com/GoogleContainerTools/kaniko)) and others will be
+   specific to your project (e.g. running your particular set of unit tests).
 2. Create a `Pipeline` which expresses the Tasks you would like to run and what
    [Resources](#creating-resources) the Tasks need. Use
    [`providedBy`](#providedBy) to express the order the `Tasks` should run in.
