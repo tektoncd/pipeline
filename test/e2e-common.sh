@@ -102,9 +102,8 @@ function run_yaml_tests() {
 }
 
 function install_pipeline_crd() {
-  local failed=0
   echo ">> Deploying Pipeline CRD"  
-  ko apply -f config/ || failed=1 "Build pipeline installation failed"
+  ko apply -f config/ || fail_test "Build pipeline installation failed"
 
   # Make sure thateveything is cleaned up in the current namespace.
   for res in pipelineresources tasks pipelines taskruns pipelineruns; do
@@ -112,7 +111,5 @@ function install_pipeline_crd() {
   done
 
   # Wait for pods to be running in the namespaces we are deploying to
-  wait_until_pods_running knative-build-pipeline || failed=1 "Pipeline CRD did not come up"
-
-  return ${failed}
+  wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
 }
