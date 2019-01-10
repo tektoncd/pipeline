@@ -29,7 +29,7 @@ header "Setting up environment"
 set +o errexit
 set +o pipefail
 
-install_pipeline_crd || fail_test "Pipeline CRD head release installation failed"
+install_pipeline_crd 
 
 failed=0
 
