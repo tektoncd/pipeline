@@ -89,10 +89,9 @@ function validate_run() {
 function run_yaml_tests() {
   echo ">> Starting tests"
 
-  find ${REPO_ROOT_DIR}/examples/ -name *.yaml -exec cat {} \; \
-      | sed 's/christiewilson-catfactory/${KO_DOCKER_REPO}/' \
-      | ko apply -f - \
-      || return 1
+  for file in $(find ${REPO_ROOT_DIR}/examples/ -name *.yaml); do
+    sed 's/christiewilson-catfactory/${KO_DOCKER_REPO}/' ${file} | ko apply -f - || return 1
+  done
 
   if validate_run $1; then
     echo ">> All YAML tests passed"
