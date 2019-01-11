@@ -23,10 +23,6 @@
 
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/presubmit-tests.sh
 
-# We use the default build test runner.
-
-# We use the default unit test runner.
-
-# We use the default integration test runner.
+# We use the default build, unit and integration test runners.
 
 main $@
