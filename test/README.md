@@ -215,8 +215,8 @@ be used to run only [the unit tests](#unit-tests), i.e.:
 
 #### Create build-pipeline objects
 
-To create `build-pipeline` objects (e.g. `Task`, `Pipeline`, …), you
-can use the [`builder`](./builder) package to reduce noise:
+To create `build-pipeline` objects (e.g. `Task`, `Pipeline`, …), you can use the
+[`builder`](./builder) package to reduce noise:
 
 ```go
 func MyTest(t *testing.T){
