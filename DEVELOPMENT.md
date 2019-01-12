@@ -140,7 +140,6 @@ by [`Task`](docs/Concepts.md#task)):
 
 ```shell
 ko apply -f config/
-kubectl apply -f ./third_party/config/build/release.yaml
 ```
 
 ### Redeploy controller
@@ -157,7 +156,6 @@ You can clean up everything with:
 
 ```shell
 ko delete -f config/
-kubectl delete -f ./third_party/config/build/release.yaml
 ```
 
 ## Accessing logs
