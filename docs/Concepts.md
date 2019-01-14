@@ -158,76 +158,8 @@ requirements of the `Task`.
 
 `TaskRun` definition includes `inputs`, `outputs` for `Task` referred in spec.
 
-Input resource includes name and reference to pipeline resource and optionally
-`paths`. The `paths` are used by `TaskRun` as the resource's new source paths
-i.e., copy the resource from specified list of paths. `TaskRun` expects the
-folder and contents to be already present in specified paths. The `paths`
-feature could be used to provide extra files or altered version of existing
-resource before execution of steps.
-
-Output resource includes name and reference to pipeline resource and optionally
-`paths`. The `paths` are used by `TaskRun` as the resource's new destination
-paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
-responsible for creating required directories and copying contents over. The
-`paths` feature could be used to inspect the results of taskrun after execution
-of steps.
-
-The `paths` feature for input and output resource is heavily used to pass same
-version of resources across tasks in context of pipelinerun.
-
-In the following example, task and taskrun are defined with input resource,
-output resource and step which builds war artifact. After execution of Taskrun
-(`volume-taskrun`), `custom` volume has the entire resource `java-git-resource`
-(including the war artifact) copied to the destination path
-`/custom/workspace/`.
-
-```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
-kind: Task
-metadata:
-  name: volume-task
-  namespace: default
-spec:
-  generation: 1
-  inputs:
-    resources:
-      - name: workspace
-        type: git
-  steps:
-    - name: build-war
-      image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
-      command: jar
-      args: ["-cvf", "projectname.war", "*"]
-      volumeMounts:
-        - name: custom-volume
-          mountPath: /custom
-```
-
-```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
-kind: TaskRun
-metadata:
-  name: volume-taskrun
-  namespace: default
-spec:
-  taskRef:
-    name: volume-task
-  inputs:
-    resources:
-      - name: workspace
-        resourceRef:
-          name: java-git-resource
-  outputs:
-    resources:
-      - name: workspace
-        paths:
-          - /custom/workspace/
-        resourceRef:
-          name: java-git-resource
-  volumes:
-    - name: custom-volume
-      emptyDir: {}
-```
+Input and output resources include the PipelineResource's name in the `Task`
+spec and a reference to the actual `PipelineResource` that should be used.
 
 `TaskRuns` can be created directly by a user or by a
 [PipelineRun](#pipelinerun).
