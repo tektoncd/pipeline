@@ -12,37 +12,12 @@ spec:
     type: 'gcs'
     url: 'gcs://somebucket/results/logs'
   resources:
-  - name: build-skaffold-web
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: skaffold-git
-    outputs:
-    - name: builtImage
-      resourceRef:
-        name: skaffold-image-leeroy-web
-  - name: build-skaffold-app
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: skaffold-git
-    outputs:
-    - name: builtImage
-      resourceRef:
-        name: skaffold-image-leeroy-app
-  - name: deploy-app
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: skaffold-git
-    - name: image
-      resourceRef:
-        name: skaffold-image-leeroy-app
-  - name: deploy-web
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: skaffold-git
-    - name: image
-      resourceRef:
-        name: skaffold-image-leeroy-web
+  - name: source-repo
+    resourceRef:
+      name: skaffold-git
+  - name: web-image
+    resourceRef:
+      name: skaffold-image-leeroy-web
+  - name: app-image
+    resourceRef:
+      name: skaffold-image-leeroy-app

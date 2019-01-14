@@ -3,6 +3,13 @@ kind: Pipeline
 metadata:
   name: demo-pipeline
 spec:
+  resources:
+  - name: source-repo
+    type: git
+  - name: web-image
+    type: image
+  - name: app-image
+    type: image
   tasks:
   - name: build-skaffold-web
     taskRef:
@@ -12,6 +19,13 @@ spec:
       value: Dockerfile
     - name: pathToContext
       value: /workspace/examples/microservices/leeroy-web
+    resources:
+      inputs:
+      - name: workspace
+        resource: source-repo
+      outputs:
+      - name: image
+        resource: web-image
   - name: build-skaffold-app
     taskRef:
       name: build-push
@@ -20,13 +34,24 @@ spec:
       value: Dockerfile
     - name: pathToContext
       value: /workspace/examples/microservices/leeroy-app
+    resources:
+      inputs:
+      - name: workspace
+        resource: source-repo
+      outputs:
+      - name: image
+        resource: app-image
   - name: deploy-app
     taskRef:
       name: demo-deploy-kubectl
     resources:
-    - name: image
-      providedBy:
-      - build-skaffold-app
+      inputs:
+      - name: workspace
+        resource: source-repo
+      - name: image
+        resource: app-image
+        providedBy:
+        - build-skaffold-app
     params:
     - name: path
       value: /workspace/examples/microservices/leeroy-app/kubernetes/deployment.yaml
@@ -38,9 +63,13 @@ spec:
     taskRef:
       name: demo-deploy-kubectl
     resources:
-    - name: image
-      providedBy:
-      - build-skaffold-web
+      inputs:
+      - name: workspace
+        resource: source-repo
+      - name: image
+        resource: web-image
+        providedBy:
+        - build-skaffold-web
     params:
     - name: path
       value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml

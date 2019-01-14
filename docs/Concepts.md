@@ -20,13 +20,10 @@ High level details of this design:
   triggered by events or by manually creating [PipelineRuns](#pipelinerun)
 - [Tasks](#task) can exist and be invoked completely independently of
   [Pipelines](#pipeline); they are highly cohesive and loosely coupled
-- Test results are a first class concept, being able to navigate test results
-  easily is powerful (e.g. see failures easily, dig into logs, e.g. like
-  [the Jenkins test analyzer plugin](https://wiki.jenkins.io/display/JENKINS/Test+Results+Analyzer+Plugin))
 - [Tasks](#task) can depend on artifacts, output and parameters created by other
   tasks.
-- [Resources](#pipelineresources) are the artifacts used as inputs and outputs
-  of TaskRuns.
+- [PipelineResources](#pipelineresources) are the artifacts used as inputs and outputs
+  of Tasks.
 
 ## Building Blocks of Pipeline CRDs
 
@@ -44,11 +41,10 @@ Below diagram lists the main custom resources created by Pipeline CRDs:
 
 ### Task
 
-A `Task` is a collection of sequential steps you would want to run as part of
-your continuous integration flow. A Task will run inside a container on your
-cluster.
+A `Task` is a collection of sequential steps you would want to run as part of your
+continuous integration flow. A task will run inside a container on your cluster.
 
-A Task declares:
+A `Task` declares:
 
 - [Inputs](#inputs)
 - [Outputs](#outputs)
@@ -56,49 +52,19 @@ A Task declares:
 
 #### Inputs
 
-Inputs declare the inputs the Task needs. Every task input resource should
-provide name and type (like git, image). It can also provide optionally
-`targetPath` to initialize the resource in specific directory. If `targetPath`
-is set then the resource will be initialized under `/workspace/targetPath`. If
-`targetPath` is not specified then the resource will be initialized
-under`/workspace`. The following example demonstrates how git input repository
-could be initialized in `GOPATH` to run tests.
-
-```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
-kind: Task
-metadata:
-  name: task-with-input
-  namespace: default
-spec:
-  inputs:
-    resources:
-      - name: workspace
-        type: git
-        targetPath: go/src/github.com/knative/build-pipeline
-  steps:
-    - name: unit-tests
-      image: golang
-      command: ["go"]
-      args:
-        - "test"
-        - "./..."
-      workingDir: "/workspace/go/src/github.com/knative/build-pipeline"
-      env:
-        - name: GOPATH
-          value: /workspace/go
-```
+Declare the inputs the `Task` needs. Every `Task` input resource should provide name
+and type (like git, image).
 
 #### Outputs
 
-Outputs declare the outputs task will produce.
+Outputs declare the outputs `Task` will produce.
 
 #### Steps
 
 Steps is a sequence of steps to execute. Each step is
 [a container image](./using.md#image-contract).
 
-Here is an example simple Task definition which echoes "hello world". The
+Here is an example simple `Task` definition which echoes "hello world". The
 `hello-world` task does not define any inputs or outputs.
 
 It only has one step named `echo`. The step uses the builder image `busybox`
@@ -122,21 +88,7 @@ spec:
 
 Examples of `Task` definitions with inputs and outputs are [here](../examples)
 
-##### Step Entrypoint
-
-To get the logs out of a [`Task`](#task), Knative provides its own executable
-that wraps the `command` and `args` values specified in the `steps`. This means
-that every `Task` must use `command`, and cannot rely on the image's
-`entrypoint`.
-
-##### Configure Entrypoint image
-
-To run a step needs to pull an `Entrypoint` image. Knative provides a way for
-you to configure the `Entrypoint` image in case it is hard to pull in your
-environment. To do that you can edit the `image`'s value in a configmap named
-[`config-entrypoint`](./../config/config-entrypoint.yaml).
-
-#### ClusterTask
+#### Cluster Task
 
 A `ClusterTask` is similar to `Task` but with a cluster-wide scope. Cluster
 Tasks are available in all namespaces, typically used to conveniently provide
@@ -171,7 +123,7 @@ spec:
         name: hello-world
 ```
 
-Examples of pipelines with more complex DAGs are [here](../examples/)
+Examples of more complex `Pipelines` are [in our examples dir](../examples/).
 
 #### PipelineResources
 
@@ -185,10 +137,10 @@ For example:
   deployed in a cluster.
 - A Task's output can be a jar file to be uploaded to a storage bucket.
 
-Read more on `PipelineResources` and their types [here](./using.md)
+Read more on PipelineResources and their types [here](./using.md#creating-pipelineresources).
 
 `PipelineResources` in a Pipeline are the set of objects that are going to be
-used as inputs and outputs of a `TaskRun`.
+used as inputs and outputs of a `Task`.
 
 #### Runs
 
