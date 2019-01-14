@@ -135,8 +135,7 @@ To make changes to these CRDs, you will probably interact with:
 ## Install Pipeline
 
 You can stand up a version of this controller on-cluster (to your
-`kubectl config current-context`), including `knative/build` (which is wrapped
-by [`Task`](docs/Concepts.md#task)):
+`kubectl config current-context`):
 
 ```shell
 ko apply -f config/
