@@ -183,14 +183,14 @@ the `image`'s value in a configmap named
 
 ### Resource sharing between tasks
 
-Pipeline Tasks are allowed to pass resources from previous tasks via
+Pipeline Tasks are allowed to pass resources from previous tasks via the
 [`providedBy`](#providedby) field. This feature is implemented using
 Persistent Volume Claims under the hood but however has an implication
 that tasks cannot have any volume mounted under path `/pvc`.
 
 ### Outputs
 
-`Task` definition can include inputs and outputs resource declaration. If
+`Task` definitions can include inputs and outputs resource declaration. If
 specific set of resources are only declared in output then a copy of resource to
 be uploaded or shared for next Task is expected to be present under the path
 `/workspace/output/resource_name/`.
@@ -199,6 +199,7 @@ be uploaded or shared for next Task is expected to be present under the path
 resources:
   outputs:
     name: storage-gcs
+    type: gcs
 steps:
   - image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
     command: [jar]
@@ -515,6 +516,79 @@ metadata:
 spec:
   # […]
   status: "TaskRunCancelled"
+```
+
+### Using custom paths
+
+When specifying input and output `PipelineResources`, you can optionally specify
+`paths` for each resource. `paths` will be used by `TaskRun` as the resource's new source paths
+i.e., copy the resource from specified list of paths. `TaskRun` expects the
+folder and contents to be already present in specified paths. `paths` feature
+could be used to provide extra files or altered version of existing resource
+before execution of steps.
+
+Output resource includes name and reference to pipeline resource and optionally
+`paths`. `paths` will be used by `TaskRun` as the resource's new destination
+paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
+responsible for creating required directories and copying contents over. `paths`
+feature could be used to inspect the results of taskrun after execution of
+steps.
+
+`paths` feature for input and output resource is heavily used to pass same
+version of resources across tasks in context of pipelinerun.
+
+In the following example, task and taskrun are defined with input resource,
+output resource and step which builds war artifact. After execution of
+taskrun(`volume-taskrun`), `custom` volume will have entire resource
+`java-git-resource` (including the war artifact) copied to the destination path
+`/custom/workspace/`.
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: volume-task
+  namespace: default
+spec:
+  generation: 1
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: build-war
+      image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
+      command: jar
+      args: ["-cvf", "projectname.war", "*"]
+      volumeMounts:
+        - name: custom-volume
+          mountPath: /custom
+```
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: volume-taskrun
+  namespace: default
+spec:
+  taskRef:
+    name: volume-task
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name: java-git-resource
+  outputs:
+    resources:
+      - name: workspace
+        paths:
+          - /custom/workspace/
+        resourceRef:
+          name: java-git-resource
+  volumes:
+    - name: custom-volume
+      emptyDir: {}
 ```
 
 ## Creating PipelineResources
