@@ -52,6 +52,7 @@ var (
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
+	t.Skip()
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 	setupClusterBindingForHelm(c, t, namespace, logger)

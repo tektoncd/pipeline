@@ -111,6 +111,7 @@ func TestMakePod(t *testing.T) {
 		desc: "source",
 		b: v1alpha1.BuildSpec{
 			Source: &v1alpha1.SourceSpec{
+				Name: "myrepo",
 				Git: &v1alpha1.GitSourceSpec{
 					Url:      "github.com/my/repo",
 					Revision: "master",
@@ -131,9 +132,9 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
 			}, {
-				Name:         initContainerPrefix + gitSource + "-0",
+				Name:         initContainerPrefix + gitSource + "-myrepo",
 				Image:        *gitImage,
-				Args:         []string{"-url", "github.com/my/repo", "-revision", "master"},
+				Args:         []string{"-url", "github.com/my/repo", "-revision", "master", "-path", "myrepo"},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
@@ -178,16 +179,22 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
 			}, {
-				Name:         initContainerPrefix + gitSource + "-" + "repo1",
-				Image:        *gitImage,
-				Args:         []string{"-url", "github.com/my/repo", "-revision", "master"},
+				Name:  initContainerPrefix + gitSource + "-" + "repo1",
+				Image: *gitImage,
+				Args: []string{"-url", "github.com/my/repo",
+					"-revision", "master",
+					"-path", "repo1",
+				},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
 			}, {
-				Name:         initContainerPrefix + gitSource + "-" + "repo2",
-				Image:        *gitImage,
-				Args:         []string{"-url", "github.com/my/repo", "-revision", "master"},
+				Name:  initContainerPrefix + gitSource + "-" + "repo2",
+				Image: *gitImage,
+				Args: []string{"-url", "github.com/my/repo",
+					"-revision", "master",
+					"-path", "repo2",
+				},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
@@ -205,6 +212,7 @@ func TestMakePod(t *testing.T) {
 		desc: "git-source-with-subpath",
 		b: v1alpha1.BuildSpec{
 			Source: &v1alpha1.SourceSpec{
+				Name: "myrepo",
 				Git: &v1alpha1.GitSourceSpec{
 					Url:      "github.com/my/repo",
 					Revision: "master",
@@ -226,9 +234,9 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
 			}, {
-				Name:         initContainerPrefix + gitSource + "-0",
+				Name:         initContainerPrefix + gitSource + "-myrepo",
 				Image:        *gitImage,
-				Args:         []string{"-url", "github.com/my/repo", "-revision", "master"},
+				Args:         []string{"-url", "github.com/my/repo", "-revision", "master", "-path", "myrepo"},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
@@ -275,16 +283,16 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
 			}, {
-				Name:         initContainerPrefix + gitSource + "-" + "myrepo",
+				Name:         initContainerPrefix + gitSource + "-myrepo",
 				Image:        *gitImage,
-				Args:         []string{"-url", "github.com/my/repo", "-revision", "master"},
+				Args:         []string{"-url", "github.com/my/repo", "-revision", "master", "-path", "myrepo"},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
 			}, {
 				Name:         initContainerPrefix + gitSource + "-" + "ownrepo",
 				Image:        *gitImage,
-				Args:         []string{"-url", "github.com/own/repo", "-revision", "master"},
+				Args:         []string{"-url", "github.com/own/repo", "-revision", "master", "-path", "ownrepo"},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
@@ -325,7 +333,7 @@ func TestMakePod(t *testing.T) {
 			}, {
 				Name:         initContainerPrefix + gcsSource + "-0",
 				Image:        *gcsFetcherImage,
-				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar"},
+				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar", "--dest_dir", "/workspace"},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
@@ -343,6 +351,7 @@ func TestMakePod(t *testing.T) {
 		desc: "gcs-source-with-targetPath",
 		b: v1alpha1.BuildSpec{
 			Source: &v1alpha1.SourceSpec{
+				Name: "gcs-foo-bar",
 				GCS: &v1alpha1.GCSSourceSpec{
 					Type:     v1alpha1.GCSManifest,
 					Location: "gs://foo/bar",
@@ -360,9 +369,9 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
 			}, {
-				Name:         initContainerPrefix + gcsSource + "-0",
+				Name:         initContainerPrefix + gcsSource + "-gcs-foo-bar",
 				Image:        *gcsFetcherImage,
-				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar", "--dest_dir", "/workspace/path/foo"},
+				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar", "--dest_dir", "/workspace/gcs-foo-bar/path/foo"},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,

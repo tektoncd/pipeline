@@ -450,6 +450,7 @@ We current support these `PipelineResources`:
 - [Git resource](#git-resource)
 - [Image resource](#image-resource)
 - [Cluster resource](#cluster-resource)
+- [Storage resource](#storage-resource)
 
 When used as inputs, these resources will be made available in a mounted
 directory called `/workspace` at the path /workspace/<resource-name>`.

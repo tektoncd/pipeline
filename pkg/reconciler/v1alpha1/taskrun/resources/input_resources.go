@@ -82,7 +82,7 @@ func AddInputResource(
 		for i, path := range boundResource.Paths {
 			var dPath string
 			if input.TargetPath == "" {
-				dPath = workspaceDir
+				dPath = filepath.Join(workspaceDir, input.Name)
 			} else {
 				dPath = filepath.Join(workspaceDir, input.TargetPath)
 			}

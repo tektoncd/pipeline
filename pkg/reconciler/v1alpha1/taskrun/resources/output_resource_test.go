@@ -164,7 +164,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 		}, {
 			Name:  "source-copy-source-git",
 			Image: "override-with-bash-noop:latest",
-			Args:  []string{"-args", "cp -r /workspace/. pipeline-task-name"},
+			Args:  []string{"-args", "cp -r /workspace/source-workspace/. pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
