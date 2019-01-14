@@ -26,9 +26,9 @@ Pipelines are **Typed**:
 
 ## Want to start using Pipelines?
 
-- Jump in with [the quickstart!](docs/tutorial.md)
+- Jump in with [the tutorial!](docs/tutorial.md)
 - [Learn about the Concepts](/docs/Concepts.md)
-- [See how to use it](/docs/using.md)
+- [Read about how to use it](/docs/using.md)
 - Look at [some examples](/examples)
 
 ## Want to contribute?
