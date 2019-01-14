@@ -157,17 +157,17 @@ metadata:
 spec:
   inputs:
     resources:
-      - name: workspace
+      - name: docker-source
         type: git
     params:
       - name: pathToDockerFile
         description: The path to the dockerfile to build
-        default: /workspace/Dockerfile
+        default: /workspace/docker-source/Dockerfile
       - name: pathToContext
         description:
           The build context used by Kaniko
           (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
-        default: /workspace
+        default: /workspace/docker-source
   outputs:
     resources:
       - name: builtImage
@@ -199,14 +199,14 @@ spec:
     type: manual
   inputs:
     resources:
-      - name: workspace
+      - name: gitspace
         resourceRef:
           name: skaffold-git
     params:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/examples/microservices/leeroy-web
+        value: /workspace/gitspace/examples/microservices/leeroy-web
   outputs:
     resources:
       - name: builtImage
@@ -271,9 +271,9 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/examples/microservices/leeroy-web
+        value: /workspace/git-source/examples/microservices/leeroy-web
     resources:
-      - name: workspace
+      - name: git-source
         paths: null
         resourceRef:
           name: skaffold-git

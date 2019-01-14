@@ -93,8 +93,9 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	}
 	stepOps := []tb.ContainerOp{
 		tb.Args(
-			"--dockerfile=/workspace/Dockerfile",
+			"--dockerfile=/workspace/go-example-git/Dockerfile",
 			fmt.Sprintf("--destination=%s", repo),
+			"--context=/workspace/go-example-git",
 		),
 	}
 	if withSecretConfig {

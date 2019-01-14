@@ -193,7 +193,7 @@ func TestAddResourceToBuild(t *testing.T) {
 		Spec: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
-					Name: "workspace",
+					Name: "gitspace",
 					Type: "git",
 				}},
 			},
@@ -230,7 +230,7 @@ func TestAddResourceToBuild(t *testing.T) {
 					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "the-git",
 					},
-					Name: "workspace",
+					Name: "gitspace",
 				}},
 			},
 		},
@@ -291,7 +291,7 @@ func TestAddResourceToBuild(t *testing.T) {
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "the-git-with-branch",
 						},
-						Name: "workspace",
+						Name: "gitspace",
 					}},
 				},
 			},
@@ -342,7 +342,7 @@ func TestAddResourceToBuild(t *testing.T) {
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "the-git",
 						},
-						Name: "workspace",
+						Name: "gitspace",
 					}},
 				},
 			},
@@ -391,7 +391,7 @@ func TestAddResourceToBuild(t *testing.T) {
 						ResourceRef: v1alpha1.PipelineResourceRef{
 							Name: "the-git-with-branch",
 						},
-						Name: "workspace",
+						Name: "gitspace",
 					}},
 				},
 			},
@@ -421,6 +421,62 @@ func TestAddResourceToBuild(t *testing.T) {
 						Revision: "branch",
 					},
 					Name: "the-git-with-branch",
+				}},
+			},
+		},
+	}, {
+		desc: "git resource as input from previous task",
+		task: task,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-git",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "the-git",
+						},
+						Name:  "gitspace",
+						Paths: []string{"prev-task-path"},
+					}},
+				},
+			},
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:         "source-copy-gitspace-0",
+					Image:        "override-with-bash-noop:latest",
+					Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gitspace"},
+					VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+				}},
+				Volumes: []corev1.Volume{{
+					Name: "pipelinerun-pvc",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
+					},
 				}},
 			},
 		},

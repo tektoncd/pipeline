@@ -118,7 +118,9 @@ func gitToContainer(source v1alpha1.SourceSpec, index int) (*corev1.Container, e
 	}
 
 	if source.TargetPath != "" {
-		args = append(args, []string{"-path", source.TargetPath}...)
+		args = append(args, []string{"-path", filepath.Join(source.Name, source.TargetPath)}...)
+	} else {
+		args = append(args, []string{"-path", source.Name}...)
 	}
 
 	containerName := initContainerPrefix + gitSource + "-"
@@ -148,7 +150,9 @@ func gcsToContainer(source v1alpha1.SourceSpec, index int) (*corev1.Container, e
 	args := []string{"--type", string(gcs.Type), "--location", gcs.Location}
 	// dest_dir is the destination directory for GCS files to be copies"
 	if source.TargetPath != "" {
-		args = append(args, "--dest_dir", filepath.Join(workspaceDir, source.TargetPath))
+		args = append(args, "--dest_dir", filepath.Join(workspaceDir, source.Name, source.TargetPath))
+	} else {
+		args = append(args, "--dest_dir", filepath.Join(workspaceDir, source.Name))
 	}
 
 	// source name is empty then use `build-step-gcs-source` name

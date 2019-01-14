@@ -64,7 +64,7 @@ func AddOutputResources(
 
 	if taskSpec.Inputs != nil {
 		for _, input := range taskSpec.Inputs.Resources {
-			var targetPath = workspaceDir
+			var targetPath = filepath.Join(workspaceDir, input.Name)
 			if input.TargetPath != "" {
 				targetPath = filepath.Join(workspaceDir, input.TargetPath)
 			}
