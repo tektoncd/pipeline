@@ -137,6 +137,11 @@ func mustConfigName(t *testing.T, img v1.Image) v1.Hash {
 	return h
 }
 
+func getDigestAsString(image v1.Image) string {
+	digestHash, _ := image.Digest()
+	return digestHash.String()
+}
+
 func TestGetRemoteEntrypoint(t *testing.T) {
 	expectedEntrypoint := []string{"/bin/expected", "entrypoint"}
 	img := getImage(t, &v1.ConfigFile{
@@ -145,8 +150,9 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 		},
 	})
 	expectedRepo := "image"
+	digetsSha := getDigestAsString(img)
 	configPath := fmt.Sprintf("/v2/%s/blobs/%s", expectedRepo, mustConfigName(t, img))
-	manifestPath := fmt.Sprintf("/v2/%s/manifests/latest", expectedRepo)
+	manifestPath := fmt.Sprintf("/v2/%s/manifests/%s", expectedRepo, digetsSha)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -167,17 +173,57 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	image := path.Join(strings.TrimPrefix(server.URL, "http://"), "image:latest")
+	image := path.Join(strings.TrimPrefix(server.URL, "http://"), expectedRepo)
+	finalDigest := image + "@" + digetsSha
+
 	entrypointCache, err := NewCache()
 	if err != nil {
 		t.Fatalf("couldn't create new entrypoint cache: %v", err)
 	}
-	ep, err := GetRemoteEntrypoint(entrypointCache, image)
+	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest)
 	if err != nil {
 		t.Errorf("couldn't get entrypoint remote: %v", err)
 	}
 	if !reflect.DeepEqual(ep, expectedEntrypoint) {
 		t.Errorf("entrypoints do not match: %s should be %s", ep[0], expectedEntrypoint)
+	}
+}
+
+func TestGetImageDigest(t *testing.T) {
+	img := getImage(t, &v1.ConfigFile{
+		ContainerConfig: v1.Config{},
+	})
+	digetsSha := getDigestAsString(img)
+	expectedRepo := "image"
+	manifestPath := fmt.Sprintf("/v2/%s/manifests/latest", expectedRepo)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/":
+			w.WriteHeader(http.StatusOK)
+		case manifestPath:
+			if r.Method != http.MethodGet {
+				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
+			}
+			w.Write(mustRawManifest(t, img))
+		default:
+			t.Fatalf("Unexpected path: %v", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	image := path.Join(strings.TrimPrefix(server.URL, "http://"), "image:latest")
+	expectedDigetsSha := image + "@" + digetsSha
+
+	digestCache, err := NewCache()
+	if err != nil {
+		t.Fatalf("couldn't create new digest cache: %v", err)
+	}
+	digest, err := GetImageDigest(digestCache, image)
+	if err != nil {
+		t.Errorf("couldn't get digest remote: %v", err)
+	}
+	if !reflect.DeepEqual(expectedDigetsSha, digest) {
+		t.Errorf("digest do not match: %s should be %s", expectedDigetsSha, digest)
 	}
 }
 
