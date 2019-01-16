@@ -32,27 +32,35 @@ High level details of this design:
 
 Below diagram lists the main custom resources created by Pipeline CRDs:
 
-- [Task](#task)
-- [Pipeline](#pipeline)
+- [`Task`](#task)
+- [`ClusterTask`](#clustertask)
+- [`Pipeline`](#pipeline)
 - [Runs](#runs)
-- [PipelineResources](#pipelineresources)
+  - [`PipelineRun`](#pipelinerun)
+  - [`TaskRun`](#taskrun)
+- [`PipelineResources`](#pipelineresources)
 
 ![Building Blocks](./images/building-blocks.png)
 
 ### Task
 
-A Task is a collection of sequential steps you would want to run as part of your
-continuous integration flow. A task will run inside a container on your cluster.
+A `Task` is a collection of sequential steps you would want to run as part of your
+continuous integration flow. A Task will run inside a container on your cluster.
+
 A Task declares:
 
-### Inputs
+- [Inputs](#inputs)
+- [Outputs](#outputs)
+- [Steps](#steps)
 
-Declare the inputs the task needs. Every task input resource should provide name
+#### Inputs
+
+Inputs declare the inputs the Task needs. Every task input resource should provide name
 and type (like git, image). It can also provide optionally `targetPath` to
-initialize resource in specific directory. If `targetPath` is set then resource
+initialize the resource in specific directory. If `targetPath` is set then the resource
 will be initialized under `/workspace/targetPath`. If `targetPath` is not
-specified then resource will be initialized under `/workspace`. Following
-example demonstrates how git input repository could be initialized in GOPATH to
+specified then the resource will be initialized under`/workspace`. The following
+example demonstrates how git input repository could be initialized in `GOPATH` to
 run tests.
 
 ```yaml
@@ -80,20 +88,20 @@ spec:
           value: /workspace/go
 ```
 
-### Outputs
+#### Outputs
 
-Declare the outputs task will produce.
+Outputs declare the outputs task will produce.
 
-### Steps
+#### Steps
 
-Sequence of steps to execute. Each step is
+Steps is a sequence of steps to execute. Each step is
 [a container image](./using.md#image-contract).
 
 Here is an example simple Task definition which echoes "hello world". The
 `hello-world` task does not define any inputs or outputs.
 
 It only has one step named `echo`. The step uses the builder image `busybox`
-whose entrypoint set to `\bin\sh`.
+whose entrypoint set to `/bin/sh`.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -113,28 +121,29 @@ spec:
 
 Examples of `Task` definitions with inputs and outputs are [here](../examples)
 
-### Step Entrypoint
+##### Step Entrypoint
 
-To get the logs out of a [step](#task), we provide our own executable that wraps
-the `command` and `args` values specified in the `step`. This means that every
+To get the logs out of a [`Task`](#task), Knative provides its own executable that wraps
+the `command` and `args` values specified in the `steps`. This means that every
 `Task` must use `command`, and cannot rely on the image's `entrypoint`.
 
-### Configure Entrypoint image
+##### Configure Entrypoint image
 
-To run a step needs to pull an `Entrypoint` image. Maybe the image is hard to
-pull in your environment, so we provide a way for you to configure that by edit
-the `image`'s value in a configmap named
+To run a step needs to pull an `Entrypoint` image. Knative provides a
+way for you to configure the `Entrypoint` image in case it is hard to
+pull in your environment. To do that you can edit the `image`'s value
+in a configmap named
 [`config-entrypoint`](./../config/config-entrypoint.yaml).
 
-### Cluster Task
+#### ClusterTask
 
-Similar to `Task` but with a cluster-wide scope. Cluster Tasks are available in
+A `ClusterTask` is similar to `Task` but with a cluster-wide scope. Cluster Tasks are available in
 all namespaces, typically used to conveniently provide commonly used tasks to
 users.
 
-### Pipeline
+#### Pipeline
 
-`Pipelines` describes a graph of [Tasks](#Task) to execute.
+A `Pipeline` describes a graph of [Tasks](#Task) to execute.
 
 Below, is a simple pipeline which runs `hello-world-task` twice one after the
 other.
@@ -163,60 +172,60 @@ spec:
 
 Examples of pipelines with more complex DAGs are [here](../examples/)
 
-### PipelineResources
+#### PipelineResources
 
 `PipelinesResources` in a pipeline are the set of objects that are going to be
 used as inputs to a [`Task`](#Task) and can be output of [`Task`](#Task) .
 
 For example:
 
-- A task's input could be a GitHub source which contains your application code.
-- A task's output can be your application container image which can be then
+- A Task's input could be a GitHub source which contains your application code.
+- A Task's output can be your application container image which can be then
   deployed in a cluster.
-- A task's output can be a jar file to be uploaded to a storage bucket.
+- A Task's output can be a jar file to be uploaded to a storage bucket.
 
-Read more on PipelineResources and their types [here](./using.md)
+Read more on `PipelineResources` and their types [here](./using.md)
 
-`PipelineResources` in a pipeline are the set of objects that are going to be
+`PipelineResources` in a Pipeline are the set of objects that are going to be
 used as inputs and outputs of a `TaskRun`.
 
-### Runs
+#### Runs
 
 To invoke a [`Pipeline`](#pipeline) or a [`Task`](#task), you must create a
-corresponding `Run`:
+corresponding `Run` object:
 
 - [TaskRun](#taskrun)
 - [PipelineRun](#pipelinerun)
 
-#### TaskRun
+##### TaskRun
 
-Creating a `TaskRun` will invoke a [Task](#task), running all of the steps until
-completion or failure. Creating a `TaskRun` will require satisfying all of the
+Creating a `TaskRun` invokes a [Task](#task), running all of the steps until
+completion or failure. Creating a `TaskRun` requires satisfying all of the
 input requirements of the `Task`.
 
 `TaskRun` definition includes `inputs`, `outputs` for `Task` referred in spec.
 
 Input resource includes name and reference to pipeline resource and optionally
-`paths`. `paths` will be used by `TaskRun` as the resource's new source paths
+`paths`. The `paths` are used by `TaskRun` as the resource's new source paths
 i.e., copy the resource from specified list of paths. `TaskRun` expects the
-folder and contents to be already present in specified paths. `paths` feature
+folder and contents to be already present in specified paths. The `paths` feature
 could be used to provide extra files or altered version of existing resource
 before execution of steps.
 
 Output resource includes name and reference to pipeline resource and optionally
-`paths`. `paths` will be used by `TaskRun` as the resource's new destination
+`paths`. The `paths` are used by `TaskRun` as the resource's new destination
 paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
-responsible for creating required directories and copying contents over. `paths`
+responsible for creating required directories and copying contents over. The `paths`
 feature could be used to inspect the results of taskrun after execution of
 steps.
 
-`paths` feature for input and output resource is heavily used to pass same
+The `paths` feature for input and output resource is heavily used to pass same
 version of resources across tasks in context of pipelinerun.
 
 In the following example, task and taskrun are defined with input resource,
 output resource and step which builds war artifact. After execution of
-taskrun(`volume-taskrun`), `custom` volume will have entire resource
-`java-git-resource`(including the war artifact) copied to the destination path
+Taskrun (`volume-taskrun`), `custom` volume has the entire resource
+`java-git-resource` (including the war artifact) copied to the destination path
 `/custom/workspace/`.
 
 ```yaml
@@ -270,12 +279,12 @@ spec:
 `TaskRuns` can be created directly by a user or by a
 [PipelineRun](#pipelinerun).
 
-#### PipelineRun
+##### PipelineRun
 
-Creating a `PipelineRun` executes the pipeline, creating [TaskRuns](#taskrun)
+Creating a `PipelineRun` invokes the pipeline, creating [TaskRuns](#taskrun)
 for each task in the pipeline.
 
-`PipelineRuns` tie together:
+A `PipelineRun` ties together:
 
 - A [Pipeline](#pipeline)
 - The [PipelineResources](#pipelineresources) to use for each [Task](#task)
