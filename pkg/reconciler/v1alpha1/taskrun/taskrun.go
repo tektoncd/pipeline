@@ -387,15 +387,23 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 
 	// For each step with no entrypoint set, try to populate it with the info
 	// from the remote registry
-	cache, err := entrypoint.NewCache()
+	entrypointCache, err := entrypoint.NewCache()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create new entrypoint cache: %v", err)
+	}
+	digestCache, err := entrypoint.NewCache()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create new digest cache: %v", err)
 	}
 	bSpec := bs.DeepCopy()
 	for i := range bSpec.Steps {
 		step := &bSpec.Steps[i]
 		if len(step.Command) == 0 {
-			ep, err := entrypoint.GetRemoteEntrypoint(cache, step.Image)
+			digest, err := entrypoint.GetImageDigest(digestCache, step.Image)
+			if err != nil {
+				return nil, fmt.Errorf("could not get digest for %s: %v", step.Image, err)
+			}
+			ep, err := entrypoint.GetRemoteEntrypoint(entrypointCache, digest)
 			if err != nil {
 				return nil, fmt.Errorf("could not get entrypoint from registry for %s: %v", step.Image, err)
 			}

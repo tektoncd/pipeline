@@ -20,9 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/hashicorp/golang-lru"
 	corev1 "k8s.io/api/core/v1"
@@ -41,8 +41,8 @@ const (
 	InitContainerName = "place-tools"
 	ProcessLogFile    = "/tools/process-log.txt"
 	MarkerFile        = "/tools/marker-file.txt"
-
-	cacheSize = 1024
+	digestSeparator   = "@"
+	cacheSize         = 1024
 )
 
 var toolsMount = corev1.VolumeMount{
@@ -112,28 +112,45 @@ func getEnvVar(cmd, args []string) (string, error) {
 	return string(j), nil
 }
 
-// GetRemoteEntrypoint accepts a cache of image lookups, as well as the image
-// to look for. If the cache does not contain the image, it will lookup the
+// GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
+// to look for. If the cache does not contain the digest, it will lookup the
 // metadata from the images registry, and then commit that to the cache
-func GetRemoteEntrypoint(cache *Cache, image string) ([]string, error) {
-	if ep, ok := cache.get(image); ok {
+func GetRemoteEntrypoint(cache *Cache, digest string) ([]string, error) {
+	if ep, ok := cache.get(digest); ok {
 		return ep, nil
 	}
-	// verify the image name, then download the remote config file
-	ref, err := name.ParseReference(image, name.WeakValidation)
+	img, err := getRemoteImage(digest)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse image %s: %v", image, err)
-	}
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get container image info from registry %s: %v", image, err)
+		return nil, fmt.Errorf("failed to fetch remote image %s: %v", digest, err)
 	}
 	cfg, err := img.ConfigFile()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get config for image %s: %v", image, err)
+		return nil, fmt.Errorf("couldn't get config for image %s: %v", digest, err)
 	}
-	cache.set(image, cfg.ContainerConfig.Entrypoint)
+	cache.set(digest, cfg.ContainerConfig.Entrypoint)
 	return cfg.ContainerConfig.Entrypoint, nil
+}
+
+// GetImageDigest tries to find and return image digest in cache, if
+// cache doesn't exists it will lookup the digest in remote image manifest
+// and then cache it
+func GetImageDigest(cache *Cache, image string) (string, error) {
+	if digestList, ok := cache.get(image); ok && (len(digestList) > 0) {
+		return digestList[0], nil
+	}
+	img, err := getRemoteImage(image)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch remote image %s: %v", image, err)
+	}
+	digestHash, err := img.Digest()
+	if err != nil {
+		return "", fmt.Errorf("couldn't get digest hash for image %s: %v", image, err)
+	}
+	// Parse Digest Hash struct into sha string
+	digest := fmt.Sprintf("%s%s%s", image, digestSeparator, digestHash.String())
+	cache.set(image, []string{digest})
+
+	return digest, nil
 }
 
 // RedirectSteps will modify each of the steps/containers such that
@@ -157,4 +174,18 @@ func RedirectSteps(steps []corev1.Container) error {
 		step.VolumeMounts = append(step.VolumeMounts, toolsMount)
 	}
 	return nil
+}
+
+func getRemoteImage(image string) (v1.Image, error) {
+	// verify the image name, then download the remote config file
+	ref, err := name.ParseReference(image, name.WeakValidation)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse image %s: %v", image, err)
+	}
+	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get container image info from registry %s: %v", image, err)
+	}
+
+	return img, nil
 }
