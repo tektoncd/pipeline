@@ -3,10 +3,10 @@
 Tasks can declare input parameters that must be supplied to the task during a
 TaskRun. Some example use-cases of this include:
 
-- A task that needs to know what compilation flags to use when building an
+- A Task that needs to know what compilation flags to use when building an
   application.
-- A task that needs to know what to name a built artifact.
-- A task that supports several different strategies, and leaves the choice up to
+- A Task that needs to know what to name a built artifact.
+- A Task that supports several different strategies, and leaves the choice up to
   the other.
 
 ### Usage

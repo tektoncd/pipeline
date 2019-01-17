@@ -23,7 +23,7 @@ See [the example Pipeline](../examples/pipeline.yaml).
 ### ProvidedBy
 
 When you need to execute `Tasks` in a particular order, it will likely be
-because they are operating over the same `Resources` (e.g. your unit test task
+because they are operating over the same `Resources` (e.g. your unit test Task
 must run first against your git repo, then you build an image from that repo,
 then you run integration tests against that image).
 
@@ -31,13 +31,13 @@ We express this ordering by adding `providedBy` on `Resources` that our `Tasks`
 need.
 
 - The (optional) `providedBy` key on an `input source` defines a set of previous
-  task names.
+  Task names.
 - When the `providedBy` key is specified on an input source, only the version of
   the resource that is provided by the defined list of tasks is used.
-- The `providedBy` allows for `Tasks` to fan in and fan out, and ordering can be
-  expressed explicitly using this key since a task needing a resource from a
-  another task would have to run after.
-- The name used in the `providedBy` is the name of `PipelineTask`
+- The `providedBy` allows for `Task`s to fan in and fan out, and ordering can be
+  expressed explicitly using this key since a Task needing a resource from a
+  another Task would have to run after.
+- The name used in the `providedBy` is the name of `PipelineTask`.
 - The name of the `PipelineResource` must correspond to a `PipelineResource`
   from the `Task` that the referenced `PipelineTask` provides as an output
 
@@ -89,7 +89,7 @@ the `skaffold-image-leeroy-app` `PipelineResource`, and the same
 
 This controls two things:
 
-1. The order the `Tasks` are executed in: `deploy-app` must come after
+1. The order the `Task`s are executed in: `deploy-app` must come after
    `build-skaffold-app`
 2. The state of the `PipelineResources`: the image provided to `deploy-app` may
    be changed by `build-skaffold-app` (WIP, see
@@ -112,7 +112,7 @@ To create a Task, you must:
 Each container image used as a step in a [`Task`](#task) must comply with a
 specific contract.
 
-When containers are run in a `Task`, the `entrypoint` of the container will be
+When containers are run in a `Task`, the `entrypoint` of the container is
 overwritten with a custom binary that redirects the logs to a separate location
 for aggregating the log output. As such, it is always recommended to explicitly
 specify a command.
@@ -175,7 +175,7 @@ mounted under path `/pvc`.
 
 `Task` definition can include inputs and outputs resource declaration. If
 specific set of resources are only declared in output then a copy of resource to
-be uploaded or shared for next task is expected to be present under the path
+be uploaded or shared for next Task is expected to be present under the path
 `/workspace/output/resource_name/`.
 
 ```yaml
@@ -192,7 +192,7 @@ steps:
         value: "world"
 ```
 
-**Note**: If task is relying on output resource functionality then they cannot
+**Note**: If the Task is relying on output resource functionality then they cannot
 mount anything in file path `/workspace/output`.
 
 If resource is declared in both input and output then input resource, then
@@ -204,7 +204,7 @@ output so input resource is downloaded into directory `customworkspace`(as
 specified in `targetPath`). Step `untar` extracts tar file into
 `tar-scratch-space` directory , `edit-tar` adds a new file and last step
 `tar-it-up` creates new tar file and places in `/workspace/customworkspace/`
-directory. After execution of task steps, (new) tar file in directory
+directory. After execution of the Task steps, (new) tar file in directory
 `/workspace/customworkspace` will be uploaded to the bucket defined in
 `tar-artifact` resource definition.
 
@@ -445,7 +445,7 @@ secrets:
 
 ## Creating Resources
 
-We current support these `PipelineResources`:
+The following `PipelineResources` are currently supported:
 
 - [Git resource](#git-resource)
 - [Image resource](#image-resource)
@@ -453,13 +453,13 @@ We current support these `PipelineResources`:
 - [Storage resource](#storage-resource)
 
 When used as inputs, these resources will be made available in a mounted
-directory called `/workspace` at the path /workspace/<resource-name>`.
+directory called `/workspace` at the path `/workspace/<resource-name>`.
 
 ### Git Resource
 
 Git resource represents a [git](https://git-scm.com/) repository, that contains
 the source code to be built by the pipeline. Adding the git resource as an input
-to a task will clone this repository and allow the task to perform the required
+to a Task will clone this repository and allow the Task to perform the required
 actions on the contents of the repo.
 
 To create a git resource using the `PipelineResource` CRD:
@@ -571,9 +571,9 @@ your application/function on different clusters.
 
 The resource will use the provided parameters to create a
 [kubeconfig](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
-file that can be used by other steps in the pipeline task to access the target
+file that can be used by other steps in the pipeline Task to access the target
 cluster. The kubeconfig will be placed in
-`/workspace/<your-cluster-name>/kubeconfig` on your task container
+`/workspace/<your-cluster-name>/kubeconfig` on your Task container
 
 The Cluster resource has the following parameters:
 
@@ -650,7 +650,7 @@ spec:
       secretName: target-cluster-secrets
 ```
 
-Example usage of the cluster resource in a task:
+Example usage of the cluster resource in a Task:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -681,8 +681,8 @@ spec:
 ### Storage Resource
 
 Storage resource represents blob storage, that contains either an object or
-directory. Adding the storage resource as an input to a task will download the
-blob and allow the task to perform the required actions on the contents of the
+directory. Adding the storage resource as an input to a Task will download the
+blob and allow the Task to perform the required actions on the contents of the
 blob. Blob storage type
 [Google Cloud Storage](https://cloud.google.com/storage/)(gcs) is supported as
 of now.
