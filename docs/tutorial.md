@@ -1,7 +1,7 @@
 # Hello World Task
 
-The main objective of the Pipeline CRD is to run your task individually or as a
-part of a pipeline. Every task runs as a Pod on your Kubernetes cluster with
+The main objective of the Pipeline CRDs is to run your Task individually or as a
+part of a Pipeline. Every task runs as a Pod on your Kubernetes cluster with
 each step as its own container.
 
 ## Tasks
@@ -106,8 +106,8 @@ The status of type `Succeeded = True` shows the task ran successfully.
 
 # Task Inputs and Outputs
 
-In more common scenarios, your task needs multiple steps with input and output
-resources to process. For example a task could fetch source code from a GitHub
+In more common scenarios, a Task needs multiple steps with input and output
+resources to process. For example a Task could fetch source code from a GitHub
 repository and build a Docker image from it.
 
 `PipelinesResources` are used to define the artifacts that can be passed in and
@@ -144,9 +144,9 @@ spec:
       value: gcr.io/<use your project>/leeroy-web
 ```
 
-The following is a task with inputs and outputs. The input resource is a GitHub
+The following is a Task with inputs and outputs. The input resource is a GitHub
 repository and the output is the Docker image produced from that source. The
-args of the task command support templating so that the definition of task is
+args of the Task command support templating so that the definition of Task is
 constant and the value of parameters can change in runtime.
 
 ```yaml
@@ -214,14 +214,14 @@ spec:
           name: skaffold-image-leeroy-web
 ```
 
-To apply the yaml files use the following command, you will need to apply the
+To apply the yaml files use the following command, you need to apply the
 two resources, the task and taskrun.
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
 ```
 
-To see all the resource created so far as part of the pipeline-crd, run the
+To see all the resource created so far as part of the Pipeline CRD, run the
 command:
 
 ```bash
@@ -242,7 +242,7 @@ NAME                                       AGE
 tasks/build-docker-image-from-git-source   7m
 ```
 
-To see the output of the taskRun, use the following command:
+To see the output of the TaskRun, use the following command:
 
 ```bash
 kubectl get taskruns/echo-hello-world-task-run -o yaml
@@ -315,14 +315,14 @@ status:
         startedAt: 2018-12-11T18:14:48Z
 ```
 
-The status of type `Succeeded = True` shows the task ran successfully and you
+The status of type `Succeeded = True` shows the Task ran successfully and you
 can also validate the Docker image is created in the location specified in the
 resource definition.
 
 # Pipeline
 
 Pipeline defines a graph of tasks to execute in a specific order, while also
-indicating if any outputs should be used as inputs of a following task by using
+indicating if any outputs should be used as inputs of a following Task by using
 the `providedBy` field. The same templating you used in tasks is also available
 in pipeline:
 
@@ -357,7 +357,7 @@ spec:
           value: "spec.template.spec.containers[0].image"
 ```
 
-This pipeline is referencing a task to `deploy-using-kubectl` which can be found
+The above Pipeline is referencing a task to `deploy-using-kubectl` which can be found
 here:
 
 ```yaml
@@ -402,7 +402,7 @@ spec:
         - "${inputs.params.path}"
 ```
 
-To run the pipeline, create a pipelineRun as follows:
+To run the Pipeline, create a PipelineRun as follows:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -434,17 +434,17 @@ spec:
             name: skaffold-image-leeroy-web
 ```
 
-The pipelineRun will create the taskRuns corresponding to each task and collect
+The PipelineRun will create the TaskRuns corresponding to each Task and collect
 the results.
 
 To apply the yaml files use the following command, you will need to apply the
-`deploy-task` if you want to run the pipeline.
+`deploy-task` if you want to run the Pipeline.
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
 ```
 
-To see the output of the pipelineRun, use the following command:
+To see the output of the PipelineRun, use the following command:
 
 ```bash
 kubectl get pipelineruns/tutorial-pipeline-run-1 -o yaml
@@ -558,4 +558,4 @@ status:
 ```
 
 The status of type `Succeeded = True` shows the pipeline ran successfully, also
-the status of individual task runs are shown.
+the status of individual Task runs are shown.
