@@ -371,7 +371,7 @@ func TestMakePod(t *testing.T) {
 			}, {
 				Name:         initContainerPrefix + gcsSource + "-gcs-foo-bar",
 				Image:        *gcsFetcherImage,
-				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar", "--dest_dir", "/workspace/gcs-foo-bar/path/foo"},
+				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar", "--dest_dir", "/workspace/path/foo"},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,

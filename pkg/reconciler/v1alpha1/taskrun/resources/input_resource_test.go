@@ -199,7 +199,23 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 		},
 	}
-
+	taskWithMultipleGitSources := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "build-from-repo",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "gitspace",
+					Type: "git",
+				}, {
+					Name: "git-duplicate-space",
+					Type: "git",
+				}},
+			},
+		},
+	}
 	taskWithTargetPath := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "task-with-targetpath",
@@ -270,7 +286,7 @@ func TestAddResourceToBuild(t *testing.T) {
 						Url:      "https://github.com/grafeas/kritis",
 						Revision: "master",
 					},
-					Name: "the-git",
+					Name: "gitspace",
 				}},
 			},
 		},
@@ -317,7 +333,69 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Sources: []buildv1alpha1.SourceSpec{{
-					Name: "the-git-with-branch",
+					Name: "gitspace",
+					Git: &buildv1alpha1.GitSourceSpec{
+						Url:      "https://github.com/grafeas/kritis",
+						Revision: "branch",
+					},
+				}},
+			},
+		},
+	}, {
+		desc: "same git input resource for task with diff resource name",
+		task: taskWithMultipleGitSources,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "simpleTask",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "the-git-with-branch",
+						},
+						Name: "gitspace",
+					}, {
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "the-git-with-branch",
+						},
+						Name: "git-duplicate-space",
+					}},
+				},
+			},
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion:         "pipeline.knative.dev/v1alpha1",
+						Kind:               "TaskRun",
+						Name:               "build-from-repo-run",
+						Controller:         &boolTrue,
+						BlockOwnerDeletion: &boolTrue,
+					},
+				},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Sources: []buildv1alpha1.SourceSpec{{
+					Name: "gitspace",
+					Git: &buildv1alpha1.GitSourceSpec{
+						Url:      "https://github.com/grafeas/kritis",
+						Revision: "branch",
+					},
+				}, {
+					Name: "git-duplicate-space",
 					Git: &buildv1alpha1.GitSourceSpec{
 						Url:      "https://github.com/grafeas/kritis",
 						Revision: "branch",
@@ -370,7 +448,7 @@ func TestAddResourceToBuild(t *testing.T) {
 						Url:      "https://github.com/grafeas/kritis",
 						Revision: "master",
 					},
-					Name: "the-git",
+					Name: "gitspace",
 				}},
 			},
 		},
@@ -420,7 +498,7 @@ func TestAddResourceToBuild(t *testing.T) {
 						Url:      "https://github.com/grafeas/kritis",
 						Revision: "branch",
 					},
-					Name: "the-git-with-branch",
+					Name: "gitspace",
 				}},
 			},
 		},
@@ -879,14 +957,14 @@ func Test_StorageInputResource(t *testing.T) {
 				Steps: []corev1.Container{{
 					Name:  "create-dir-storage-gcs-keys",
 					Image: "override-with-bash-noop:latest",
-					Args:  []string{"-args", "mkdir -p /workspace"},
+					Args:  []string{"-args", "mkdir -p /workspace/storage-gcs-keys"},
 					VolumeMounts: []corev1.VolumeMount{{
 						Name: "workspace", MountPath: "/workspace",
 					}},
 				}, {
 					Name:  "storage-fetch-storage-gcs-keys",
 					Image: "override-with-gsutil-image:latest",
-					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/** /workspace"},
+					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/** /workspace/storage-gcs-keys"},
 					VolumeMounts: []corev1.VolumeMount{{
 						Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"}, {
 						Name: "volume-storage-gcs-keys-secret-name2", MountPath: "/var/secret/secret-name2"}, {
