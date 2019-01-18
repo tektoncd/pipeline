@@ -17,10 +17,10 @@ path `/pvc` by Pipelinerun.
 ### How are inputs handled?
 
 Input resources like source code(git) or artifacts are dumped at path
-`/workspace/task_resource_name`. Resource definition in task can have custom target directory. If
-`targetPath` is mentioned in task input then controllers have to be responsible for adding
-container definitions to create directories and also to fetch versioned
-artifacts into that directory.
+`/workspace/task_resource_name`. Resource definition in task can have custom
+target directory. If `targetPath` is mentioned in task input then controllers
+have to be responsible for adding container definitions to create directories
+and also to fetch versioned artifacts into that directory.
 
 ### How are outputs handled?
 
@@ -32,7 +32,10 @@ expected in directory path `/workspace/output/resource_name`.
 - If there is PVC volume present(taskrun holds owner reference to pipelinerun)
   then copy step is added as well.
 
-  - If resource is declared only in output but not in input for task then copy step includes resource being copied to PVC to path `/pvc/task_name/resource_name` from `/workspace/output/resource_name` like the following example.
+  - If resource is declared only in output but not in input for task then copy
+    step includes resource being copied to PVC to path
+    `/pvc/task_name/resource_name` from `/workspace/output/resource_name` like
+    the following example.
 
   ```yaml
   kind: Task
@@ -46,7 +49,10 @@ expected in directory path `/workspace/output/resource_name`.
     type: storage
   ```
 
-  - If resource is declared both in input and output for task then copy step includes resource being copied to PVC to path `/pvc/task_name/resource_name` from `/workspace/random-space/` if input resource has custom target directory(`random-space`) declared like the following example.
+  - If resource is declared both in input and output for task then copy step
+    includes resource being copied to PVC to path `/pvc/task_name/resource_name`
+    from `/workspace/random-space/` if input resource has custom target
+    directory(`random-space`) declared like the following example.
 
   ```yaml
   kind: Task
@@ -65,7 +71,10 @@ expected in directory path `/workspace/output/resource_name`.
     type: storage
   ```
 
-  - If resource is declared both in input and output for task without custom target directory then copy step includes resource being copied to PVC to path `/pvc/task_name/resource_name` from `/workspace/random-space/` like the following example.
+  - If resource is declared both in input and output for task without custom
+    target directory then copy step includes resource being copied to PVC to
+    path `/pvc/task_name/resource_name` from `/workspace/random-space/` like the
+    following example.
 
   ```yaml
   kind: Task
