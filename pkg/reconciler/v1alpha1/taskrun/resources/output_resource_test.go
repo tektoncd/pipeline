@@ -82,7 +82,7 @@ func outputResourcesetUp() {
 			SecretParams: []v1alpha1.SecretParam{{
 				SecretKey:  "key.json",
 				SecretName: "sname",
-				FieldName:  "STORAGE_CREDS",
+				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
 	}}
@@ -326,7 +326,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			}},
 			Args: []string{"-args", "cp -r /workspace/faraway-disk/* gs://some-bucket"},
 			Env: []corev1.EnvVar{{
-				Name: "STORAGE_CREDS", Value: "/var/secret/sname/key.json",
+				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
 		}, {
 			Name:         "source-mkdir-source-gcs",
@@ -393,7 +393,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 				Name: "workspace", MountPath: "/workspace",
 			}},
 			Env: []corev1.EnvVar{{
-				Name: "STORAGE_CREDS", Value: "/var/secret/sname/key.json",
+				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
 			Args: []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}, {
@@ -457,7 +457,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 				Name: "workspace", MountPath: "/workspace",
 			}},
 			Env: []corev1.EnvVar{{
-				Name: "STORAGE_CREDS", Value: "/var/secret/sname/key.json",
+				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
 			Args: []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}},
@@ -510,7 +510,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 				Name: "workspace", MountPath: "/workspace",
 			}},
 			Env: []corev1.EnvVar{{
-				Name: "STORAGE_CREDS", Value: "/var/secret/sname/key.json",
+				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
 			Args: []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}},

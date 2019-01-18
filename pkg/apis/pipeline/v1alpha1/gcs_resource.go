@@ -150,22 +150,29 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 
 func getSecretEnvVarsAndVolumeMounts(resourceName string, s []SecretParam) ([]corev1.EnvVar, []corev1.VolumeMount) {
 	mountPaths := make(map[string]struct{})
-	var envVars []corev1.EnvVar
-	var secretVolumeMount []corev1.VolumeMount
+	var (
+		envVars           []corev1.EnvVar
+		secretVolumeMount []corev1.VolumeMount
+		authVar           bool
+	)
+
 	for _, secretParam := range s {
-		mountPath := filepath.Join(gcsSecretVolumeMountPath, secretParam.SecretName)
+		if secretParam.FieldName == "GOOGLE_APPLICATION_CREDENTIALS" && !authVar {
+			authVar = true
+			mountPath := filepath.Join(gcsSecretVolumeMountPath, secretParam.SecretName)
 
-		envVars = append(envVars, corev1.EnvVar{
-			Name:  strings.ToUpper(secretParam.FieldName),
-			Value: filepath.Join(mountPath, secretParam.SecretKey),
-		})
-
-		if _, ok := mountPaths[mountPath]; !ok {
-			secretVolumeMount = append(secretVolumeMount, corev1.VolumeMount{
-				Name:      fmt.Sprintf("volume-%s-%s", resourceName, secretParam.SecretName),
-				MountPath: mountPath,
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  strings.ToUpper(secretParam.FieldName),
+				Value: filepath.Join(mountPath, secretParam.SecretKey),
 			})
-			mountPaths[mountPath] = struct{}{}
+
+			if _, ok := mountPaths[mountPath]; !ok {
+				secretVolumeMount = append(secretVolumeMount, corev1.VolumeMount{
+					Name:      fmt.Sprintf("volume-%s-%s", resourceName, secretParam.SecretName),
+					MountPath: mountPath,
+				})
+				mountPaths[mountPath] = struct{}{}
+			}
 		}
 	}
 	return envVars, secretVolumeMount

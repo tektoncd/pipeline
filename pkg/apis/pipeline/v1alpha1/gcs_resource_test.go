@@ -216,12 +216,8 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 			TypeDir:        true,
 			Secrets: []SecretParam{{
 				SecretName: "secretName",
-				FieldName:  "fieldName",
+				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
-			}, {
-				SecretKey:  "key.json",
-				SecretName: "secretNameSomethingelse",
-				FieldName:  "GOOGLE_ANOTHER_CREDENTIALS",
 			}},
 		},
 		wantContainers: []corev1.Container{{
@@ -229,18 +225,12 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 			Image: "override-with-gsutil-image:latest",
 			Args:  []string{"-args", "cp -r gs://some-bucket/** /workspace"},
 			Env: []corev1.EnvVar{{
-				Name:  "FIELDNAME",
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 				Value: "/var/secret/secretName/key.json",
-			}, {
-				Name:  "GOOGLE_ANOTHER_CREDENTIALS",
-				Value: "/var/secret/secretNameSomethingelse/key.json",
 			}},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
-			}, {
-				Name:      "volume-gcs-valid-secretNameSomethingelse",
-				MountPath: "/var/secret/secretNameSomethingelse",
 			}},
 		}},
 	}, {
@@ -256,7 +246,7 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 			}, {
 				SecretKey:  "key.json",
 				SecretName: "secretName",
-				FieldName:  "GOOGLE_ANOTHER_CREDENTIALS",
+				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
 		wantContainers: []corev1.Container{{
@@ -264,10 +254,7 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 			Image: "override-with-gsutil-image:latest",
 			Args:  []string{"-args", "cp gs://some-bucket /workspace"},
 			Env: []corev1.EnvVar{{
-				Name:  "FIELDNAME",
-				Value: "/var/secret/secretName/key.json",
-			}, {
-				Name:  "GOOGLE_ANOTHER_CREDENTIALS",
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 				Value: "/var/secret/secretName/key.json",
 			}},
 			VolumeMounts: []corev1.VolumeMount{{
@@ -311,7 +298,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 			TypeDir:        true,
 			Secrets: []SecretParam{{
 				SecretName: "secretName",
-				FieldName:  "fieldName",
+				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
 			}},
 		},
@@ -319,7 +306,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 			Name:  "storage-upload-gcs-valid",
 			Image: "override-with-gsutil-image:latest",
 			Args:  []string{"-args", "cp -r /workspace/* gs://some-bucket"},
-			Env:   []corev1.EnvVar{{Name: "FIELDNAME", Value: "/var/secret/secretName/key.json"}},
+			Env:   []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"}},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
@@ -333,12 +320,12 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 			DestinationDir: "/workspace",
 			Secrets: []SecretParam{{
 				SecretName: "secretName",
-				FieldName:  "fieldName",
+				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
 			}, {
 				SecretKey:  "key.json",
 				SecretName: "secretName",
-				FieldName:  "GOOGLE_ANOTHER_CREDENTIALS",
+				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
 		wantContainers: []corev1.Container{{
@@ -346,8 +333,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 			Image: "override-with-gsutil-image:latest",
 			Args:  []string{"-args", "cp /workspace/* gs://some-bucket"},
 			Env: []corev1.EnvVar{
-				{Name: "FIELDNAME", Value: "/var/secret/secretName/key.json"},
-				{Name: "GOOGLE_ANOTHER_CREDENTIALS", Value: "/var/secret/secretName/key.json"},
+				{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"},
 			},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-gcs-valid-secretName",

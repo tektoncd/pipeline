@@ -135,7 +135,7 @@ func setUp() {
 			SecretParams: []v1alpha1.SecretParam{{
 				SecretKey:  "key.json",
 				SecretName: "secret-name",
-				FieldName:  "GOOGLE_CREDENTIALS",
+				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}, {
 				SecretKey:  "token",
 				SecretName: "secret-name2",
@@ -967,12 +967,10 @@ func Test_StorageInputResource(t *testing.T) {
 					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/** /workspace/storage-gcs-keys"},
 					VolumeMounts: []corev1.VolumeMount{{
 						Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"}, {
-						Name: "volume-storage-gcs-keys-secret-name2", MountPath: "/var/secret/secret-name2"}, {
 						Name: "workspace", MountPath: "/workspace"},
 					},
 					Env: []corev1.EnvVar{
-						{Name: "GOOGLE_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
-						{Name: "GOOGLE_TOKEN", Value: "/var/secret/secret-name2/token"},
+						{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
 					},
 				}},
 				Volumes: []corev1.Volume{{

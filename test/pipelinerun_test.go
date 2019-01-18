@@ -57,9 +57,7 @@ func TestPipelineRun(t *testing.T) {
 					t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 				}
 			}
-			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getServiceAccountSecret(namespace)); err != nil {
-				t.Fatalf("Failed to create secret `%s`: %s", "service-account-secret", err)
-			}
+
 			for _, res := range getFanInFanOutGitResources(namespace) {
 				if _, err := c.PipelineResourceClient.Create(res); err != nil {
 					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
@@ -196,8 +194,6 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 		tb.Task("create-file", namespace, tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit,
 				tb.ResourceTargetPath("brandnewspace"),
-			), tb.InputsResource("gcsbucket", v1alpha1.PipelineResourceTypeStorage,
-				tb.ResourceTargetPath("gcs-workspace"),
 			)),
 			tb.TaskOutputs(tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
 			tb.Step("write-data-task-0-step-0", "ubuntu", tb.Command("/bin/bash"),
@@ -206,35 +202,23 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			tb.Step("write-data-task-0-step-1", "ubuntu", tb.Command("/bin/bash"),
 				tb.Args("-c", "echo other > /workspace/brandnewspace/other"),
 			),
-			tb.Step("read-gcs-bucket", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "ls -la /workspace/gcs-workspace/rules_docker-master.zip"),
-			),
-			tb.Step("read-secret-env", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "cat $CREDENTIALS"),
-				tb.VolumeMount(corev1.VolumeMount{
-					Name: "volume-gcs-resource-service-account-secret", // this build should have volume with
-					// name volume-(resource_name)-(secret_name) because of storage resource(gcs)
-					MountPath: "/var/secret/service-account-secret",
-				}),
-				tb.EnvVar("CREDENTIALS", "/var/secret/service-account-secret/service_account-key.json"),
-			),
 		)), tb.Task("check-create-files-exists", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "[[ stuff == $(cat /workspace/stuff) ]]"),
+				tb.Args("-c", "[[ stuff == $(cat /workspace//workspace/stuff) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "echo something > /workspace/something"),
+				tb.Args("-c", "echo something > /workspace/workspace/something"),
 			),
 		)), tb.Task("check-create-files-exists-2", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "[[ other == $(cat /workspace/other) ]]"),
+				tb.Args("-c", "[[ other == $(cat /workspace/workspace/other) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "echo else > /workspace/else"),
+				tb.Args("-c", "echo else > /workspace/workspace/else"),
 			),
 		)), tb.Task("read-files", namespace, tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit,
@@ -277,12 +261,6 @@ func getFanInFanOutGitResources(namespace string) []*v1alpha1.PipelineResource {
 			tb.PipelineResourceSpecParam("Url", "https://github.com/grafeas/kritis"),
 			tb.PipelineResourceSpecParam("Revision", "master"),
 		)),
-		tb.PipelineResource("gcs-resource", namespace, tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeStorage,
-			tb.PipelineResourceSpecParam("location", "gs://build-crd-tests/rules_docker-master.zip"),
-			tb.PipelineResourceSpecParam("type", "gcs"),
-			tb.PipelineResourceSpecSecretParam("GOOGLE_APPLICATION_CREDENTIALS", "service-account-secret", "service_account-key.json"),
-		)),
 	}
 }
 
@@ -303,37 +281,12 @@ func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineR
 	return tb.PipelineRun(getName(hwPipelineRunName, suffix), namespace, tb.PipelineRunSpec(
 		getName(hwPipelineName, suffix),
 		tb.PipelineRunTaskResource("create-file-kritis", workspaceInputs,
-			tb.PipelineTaskResourceInputs("gcsbucket", tb.ResourceBindingRef("gcs-resource")),
 			workspaceOutputs,
 		),
 		tb.PipelineRunTaskResource("create-fan-out-1", workspaceInputs, workspaceOutputs),
 		tb.PipelineRunTaskResource("create-fan-out-2", workspaceInputs, workspaceOutputs),
 		tb.PipelineRunTaskResource("check-fan-in", workspaceInputs),
 	))
-}
-
-func getServiceAccountSecret(namespace string) *corev1.Secret {
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "service-account-secret",
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{ // Reference: https://cloud.google.com/iam/docs/creating-managing-service-account-keys
-			"service_account-key.json": []byte(`{
-				"type": "service_account",
-				"project_id": "[PROJECT-ID]",
-				"private_key_id": "[KEY-ID]",
-				"private_key": "-----BEGIN PRIVATE KEY-----\n[PRIVATE-KEY]\n-----END PRIVATE KEY-----\n",
-				"client_email": "[SERVICE-ACCOUNT-EMAIL]",
-				"client_id": "[CLIENT-ID]",
-				"auth_uri": "https://accounts.google.com/o/oauth2/auth",
-				"token_uri": "https://accounts.google.com/o/oauth2/token",
-				"auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-				"client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/[SERVICE-ACCOUNT-EMAIL]"
-			}`),
-		},
-	}
 }
 
 func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {

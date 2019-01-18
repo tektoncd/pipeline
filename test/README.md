@@ -104,17 +104,21 @@ pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 
 ### Setup
 
-Besides the environment variable `KO_DOCKER_REPO`, you may also need the
-permissions inside the Build to run the Kaniko e2e test. If so, setting
-`KANIKO_SECRET_CONFIG_FILE` as the path of the GCP service account JSON key
-which has permissions to push to the registry specified in `KO_DOCKER_REPO` will
-enable Kaniko to use those credentials when pushing.
+Besides the environment variable `KO_DOCKER_REPO`, you may also need the permissions 
+inside the TaskRun to run the Kaniko e2e test and GCS taskrun test.
+- In Kaniko e2e test, setting `KANIKO_SECRET_CONFIG_FILE` as the path of the GCP service account 
+JSON key which has permissions to push to the registry specified in `KO_DOCKER_REPO` will 
+enable Kaniko to use those credentials when pushing an image.
+- In GCS taskrun test, GCP service account JSON key file at path `KANIKO_SECRET_CONFIG_FILE` is used to generate 
+Kubernetes secret to access GCS bucket. This e2e test requires valid service account configuration 
+json but it does not require any role binding. 
 
-To create a service account usable in the e2e tests:
+To reduce e2e test setup developers can use the same environment variable for both Kaniko e2e test and GCS taskrun test. To create a service account usable in the e2e tests:
 
-```shell
+```bash
 PROJECT_ID=your-gcp-project
 ACCOUNT_NAME=service-account-name
+# gcloud configure project
 gcloud config set project $PROJECT_ID
 
 # create the service account
