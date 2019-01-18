@@ -264,7 +264,7 @@ func TestReconcile(t *testing.T) {
 		name:    "params",
 		taskRun: taskRunTemplating,
 		wantBuildSpec: tb.BuildSpec(
-			tb.BuildSource("git-resource", tb.BuildSourceGit("https://foo.git", "master")),
+			tb.BuildSource("workspace", tb.BuildSourceGit("https://foo.git", "master")),
 			entrypointCopyStep,
 			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
 				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo","--my-arg-with-default=bar","--my-arg-with-default2=thedefault","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
@@ -307,7 +307,7 @@ func TestReconcile(t *testing.T) {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
 		wantBuildSpec: tb.BuildSpec(
-			tb.BuildSource("git-resource", tb.BuildSourceGit("https://foo.git", "master")),
+			tb.BuildSource("workspace", tb.BuildSourceGit("https://foo.git", "master")),
 			entrypointCopyStep,
 			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
 				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),

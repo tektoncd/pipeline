@@ -110,7 +110,7 @@ func AddInputResource(
 					build.Spec.Sources = append(build.Spec.Sources, buildv1alpha1.SourceSpec{
 						Git:        gitSourceSpec,
 						TargetPath: input.TargetPath,
-						Name:       gitResource.Name,
+						Name:       input.Name,
 					})
 				}
 			case v1alpha1.PipelineResourceTypeCluster:
@@ -173,7 +173,7 @@ func addClusterBuildStep(build *buildv1alpha1.Build, clusterResource *v1alpha1.C
 }
 
 func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.PipelineStorageResourceInterface, destPath string) error {
-	var destDirectory = workspaceDir
+	var destDirectory = filepath.Join(workspaceDir, storageResource.GetName())
 	if destPath != "" {
 		destDirectory = filepath.Join(workspaceDir, destPath)
 	}

@@ -52,7 +52,6 @@ var (
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
-	t.Skip()
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 	setupClusterBindingForHelm(c, t, namespace, logger)
@@ -159,9 +158,10 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 	t.Logf("Image to be pusblished: %s", imageName)
 
 	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
-		tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("kaniko", "gcr.io/kaniko-project/executor", tb.Args(
-			"--dockerfile=/workspace/test/gohelloworld/Dockerfile",
+			"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
+			"--context=/workspace/gitsource/",
 			fmt.Sprintf("--destination=%s", imageName),
 		)),
 	))
@@ -170,7 +170,7 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 func getHelmDeployTask(namespace string) *v1alpha1.Task {
 	return tb.Task(helmDeployTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(
-			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+			tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit),
 			tb.InputsParam("pathToHelmCharts", tb.ParamDescription("Path to the helm charts")),
 			tb.InputsParam("image"), tb.InputsParam("chartname"),
 		),
@@ -190,9 +190,8 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(helmDeployPipelineName, namespace, tb.PipelineSpec(
 		tb.PipelineTask("push-image", createImageTaskName),
 		tb.PipelineTask("helm-deploy", helmDeployTaskName,
-			tb.PipelineTaskResourceDependency("workspace"), // tb.ProvidedBy(createImageTaskName), //TODO: https://github.com/knative/build-pipeline/issues/148
-
-			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/test/gohelloworld/gohelloworld-chart"),
+			tb.PipelineTaskResourceDependency("gitsource"), // tb.ProvidedBy(createImageTaskName), //TODO: https://github.com/knative/build-pipeline/issues/148
+			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
 			tb.PipelineTaskParam("chartname", "gohelloworld"),
 			tb.PipelineTaskParam("image", imageName),
 		),
@@ -203,10 +202,10 @@ func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	return tb.PipelineRun(helmDeployPipelineRunName, namespace, tb.PipelineRunSpec(
 		helmDeployPipelineName,
 		tb.PipelineRunTaskResource("helm-deploy",
-			tb.PipelineTaskResourceInputs("workspace", tb.ResourceBindingRef(sourceResourceName)),
+			tb.PipelineTaskResourceInputs("gitsource", tb.ResourceBindingRef(sourceResourceName)),
 		),
 		tb.PipelineRunTaskResource("push-image",
-			tb.PipelineTaskResourceInputs("workspace", tb.ResourceBindingRef(sourceResourceName)),
+			tb.PipelineTaskResourceInputs("gitsource", tb.ResourceBindingRef(sourceResourceName)),
 		),
 	))
 }

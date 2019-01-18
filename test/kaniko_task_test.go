@@ -88,14 +88,14 @@ func createSecret(c *knativetest.KubeClient, namespace string) (bool, error) {
 
 func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	taskSpecOps := []tb.TaskSpecOp{
-		tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskTimeout(2 * time.Minute),
 	}
 	stepOps := []tb.ContainerOp{
 		tb.Args(
-			"--dockerfile=/workspace/go-example-git/Dockerfile",
+			"--dockerfile=/workspace/gitsource/Dockerfile",
 			fmt.Sprintf("--destination=%s", repo),
-			"--context=/workspace/go-example-git",
+			"--context=/workspace/gitsource",
 		),
 	}
 	if withSecretConfig {
@@ -118,7 +118,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 func getTaskRun(namespace string) *v1alpha1.TaskRun {
 	return tb.TaskRun(kanikoTaskRunName, namespace, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(kanikoTaskName),
-		tb.TaskRunInputs(tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(kanikoResourceName))),
+		tb.TaskRunInputs(tb.TaskRunInputsResource("gitsource", tb.ResourceBindingRef(kanikoResourceName))),
 	))
 }
 
