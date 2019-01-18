@@ -44,6 +44,7 @@ type Options struct {
 
 	ConfigMapWatcher configmap.Watcher
 	Logger           *zap.SugaredLogger
+	Recorder         record.EventRecorder
 
 	ResyncPeriod time.Duration
 }
@@ -91,13 +92,20 @@ func NewBase(opt Options, controllerAgentName string) *Base {
 	// Enrich the logs with controller name
 	logger := opt.Logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
 
-	// Create event broadcaster
-	logger.Debug("Creating event broadcaster")
-	eventBroadcaster := record.NewBroadcaster()
-	eventBroadcaster.StartLogging(logger.Named("event-broadcaster").Infof)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: opt.KubeClientSet.CoreV1().Events("")})
-	recorder := eventBroadcaster.NewRecorder(
-		scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+	// Use recorder provided in options if presents.   Otherwise, create a new one.
+	recorder := opt.Recorder
+
+	if recorder == nil {
+		// Create event broadcaster
+		logger.Debug("Creating event broadcaster")
+		eventBroadcaster := record.NewBroadcaster()
+		eventBroadcaster.StartLogging(logger.Named("event-broadcaster").Infof)
+		eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: opt.KubeClientSet.CoreV1().Events("")})
+
+		recorder = eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
+	} else {
+		logger.Debug("Using recorder from option")
+	}
 
 	base := &Base{
 		KubeClientSet:     opt.KubeClientSet,
