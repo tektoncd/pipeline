@@ -17,6 +17,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -31,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/tools/record"
 )
 
 func getRunName(pr *v1alpha1.PipelineRun) string {
@@ -39,7 +41,8 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 
 // getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func getPipelineRunController(d test.Data) test.TestAssets {
+// recorder can be a fake recorder that is used for testing
+func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.TestAssets {
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	return test.TestAssets{
@@ -48,6 +51,7 @@ func getPipelineRunController(d test.Data) test.TestAssets {
 				Logger:            zap.New(observer).Sugar(),
 				KubeClientSet:     c.Kube,
 				PipelineClientSet: c.Pipeline,
+				Recorder:          recorder,
 			},
 			i.PipelineRun,
 			i.Pipeline,
@@ -149,14 +153,18 @@ func TestReconcile(t *testing.T) {
 		PipelineResources: rs,
 	}
 
-	testAssets := getPipelineRunController(d)
+	// create fake recorder for testing
+	fr := record.NewFakeRecorder(1)
+
+	testAssets := getPipelineRunController(d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
-	if err != nil {
-		t.Errorf("Did not expect to see error when reconciling valid Pipeline but saw %s", err)
-	}
+	c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
+
+	// make sure there is no failed events
+	validateEvents(t, fr)
+
 	if len(clients.Pipeline.Actions()) == 0 {
 		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
 	}
@@ -256,18 +264,23 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			reason:      ReasonCouldntGetTask,
 		},
 	}
+
+	// Create fake recorder for testing
+	fr := record.NewFakeRecorder(1)
+
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := getPipelineRunController(d)
+			testAssets := getPipelineRunController(d, fr)
 			c := testAssets.Controller
 
-			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
+			c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
 			// When a PipelineRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
 			// and forget about the Run.
-			if err != nil {
-				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
-			}
+
+			// make sure there is no failed events
+			validateEvents(t, fr)
+
 			// Since the PipelineRun is invalid, the status should say it has failed
 			condition := tc.pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
@@ -299,9 +312,13 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 			log:         "invalid resource key: test/invalidformat/t",
 		},
 	}
+
+	// create fake recorder for testing
+	fr := record.NewFakeRecorder(1)
+
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := getPipelineRunController(test.Data{})
+			testAssets := getPipelineRunController(test.Data{}, fr)
 			c := testAssets.Controller
 			logs := testAssets.Logs
 
@@ -310,6 +327,7 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
 			}
+
 			if logs.FilterMessage(tc.log).Len() == 0 {
 				m := test.GetLogMessages(logs)
 				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
@@ -386,14 +404,18 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		Tasks:        ts,
 	}
 
-	testAssets := getPipelineRunController(d)
+	// create fake recorder for testing
+	fr := record.NewFakeRecorder(1)
+
+	testAssets := getPipelineRunController(d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-completed")
-	if err != nil {
-		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
-	}
+	c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-completed")
+
+	// make sure there is no failed events
+	validateEvents(t, fr)
+
 	if len(clients.Pipeline.Actions()) != 0 {
 		t.Fatalf("Expected client to not have created a TaskRun for the completed PipelineRun, but it did")
 	}
@@ -407,5 +429,19 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// This PipelineRun should still be complete and the status should reflect that
 	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown() {
 		t.Errorf("Expected PipelineRun status to be complete, but was %v", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+}
+
+func validateEvents(t *testing.T, r *record.FakeRecorder) {
+	t.Helper()
+	timer := time.NewTimer(1 * time.Second)
+
+	select {
+	case event := <-r.Events:
+		if !strings.HasPrefix(event, corev1.EventTypeNormal) {
+			t.Errorf("Failed with error %s", event)
+		}
+	case <-timer.C:
+		t.Error("Failed.  No event was received")
 	}
 }
