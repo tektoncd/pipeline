@@ -23,8 +23,8 @@ which need `-tags=e2e` to be enabled.
 
 ### Unit testing Controllers
 
-Kubernetes [client-go](https://godoc.org/k8s.io/client-go) provides a number of fake clients and objects for unit
-testing. The ones we are using are:
+Kubernetes [client-go](https://godoc.org/k8s.io/client-go) provides a number of
+fake clients and objects for unit testing. The ones we are using are:
 
 1. [Fake Kubernetes client](https://godoc.org/k8s.io/client-go/kubernetes/fake):
    Provides a fake REST interface to interact with Kubernetes API
@@ -57,10 +57,10 @@ obj := &v1alpha1.PipelineRun {
 	ObjectMeta: metav1.ObjectMeta {
         Name:      "name",
         Namespace: "namespace",
-    }, 
+    },
     Spec: v1alpha1.PipelineRunSpec {
     	PipelineRef: v1alpha1.PipelineRef {
-    		Name:       "test-pipeline", 
+    		Name:       "test-pipeline",
     		APIVersion: "a1",
     	},
     }
@@ -74,10 +74,11 @@ if action.GetVerb() != "list" {
 }
 ```
 
-To test the Controller of _CRD (CustomResourceDefinitions)_, you need to add the CRD to
-the [informers](./../pkg/client/informers) so that the [listers](./../pkg/client/listers) can get the access.
+To test the Controller of _CRD (CustomResourceDefinitions)_, you need to add the
+CRD to the [informers](./../pkg/client/informers) so that the
+[listers](./../pkg/client/listers) can get the access.
 
-For example, the following code will test `PipelineRun` 
+For example, the following code will test `PipelineRun`
 
 ```go
 pipelineClient := fakepipelineclientset.NewSimpleClientset()
@@ -86,12 +87,12 @@ pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
 
 obj := &v1alpha1.PipelineRun {
 	ObjectMeta: metav1.ObjectMeta {
-		Name:      "name", 
+		Name:      "name",
 		Namespace: "namespace",
-	}, 
+	},
 	Spec: v1alpha1.PipelineRunSpec {
 		PipelineRef: v1alpha1.PipelineRef {
-			Name:       "test-pipeline", 
+			Name:       "test-pipeline",
 			APIVersion: "a1",
 		},
 	}
@@ -103,10 +104,11 @@ pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 
 ### Setup
 
-Besides the environment variable `KO_DOCKER_REPO`, you may also need the permissions 
-inside the Build to run the Kaniko e2e test. If so, setting `KANIKO_SECRET_CONFIG_FILE` 
-as the path of the GCP service account JSON key which has permissions to push to the 
-registry specified in `KO_DOCKER_REPO` will enable Kaniko to use those credentials when pushing.
+Besides the environment variable `KO_DOCKER_REPO`, you may also need the
+permissions inside the Build to run the Kaniko e2e test. If so, setting
+`KANIKO_SECRET_CONFIG_FILE` as the path of the GCP service account JSON key
+which has permissions to push to the registry specified in `KO_DOCKER_REPO` will
+enable Kaniko to use those credentials when pushing.
 
 To create a service account usable in the e2e tests:
 
@@ -296,13 +298,13 @@ wait for the system to realize those changes. You can use polling methods to
 check the resources reach the desired state.
 
 The `WaitFor*` functions use the Kubernetes
-[`wait` package](https://godoc.org/k8s.io/apimachinery/pkg/util/wait). For polling
-they use
+[`wait` package](https://godoc.org/k8s.io/apimachinery/pkg/util/wait). For
+polling they use
 [`PollImmediate`](https://godoc.org/k8s.io/apimachinery/pkg/util/wait#PollImmediate)
-behind the scene. And the callback function is 
+behind the scene. And the callback function is
 [`ConditionFunc`](https://godoc.org/k8s.io/apimachinery/pkg/util/wait#ConditionFunc),
-which returns a `bool` to indicate if the function should stop, and an
-`error` to indicate if there was an error.
+which returns a `bool` to indicate if the function should stop, and an `error`
+to indicate if there was an error.
 
 For example, you can poll a `TaskRun` until having a `Status.Condition`:
 
