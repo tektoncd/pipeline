@@ -192,8 +192,8 @@ steps:
         value: "world"
 ```
 
-**Note**: If the Task is relying on output resource functionality then they cannot
-mount anything in file path `/workspace/output`.
+**Note**: If the Task is relying on output resource functionality then they
+cannot mount anything in file path `/workspace/output`.
 
 If resource is declared in both input and output then input resource, then
 destination path of input resource is used instead of

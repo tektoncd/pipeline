@@ -44,8 +44,9 @@ Below diagram lists the main custom resources created by Pipeline CRDs:
 
 ### Task
 
-A `Task` is a collection of sequential steps you would want to run as part of your
-continuous integration flow. A Task will run inside a container on your cluster.
+A `Task` is a collection of sequential steps you would want to run as part of
+your continuous integration flow. A Task will run inside a container on your
+cluster.
 
 A Task declares:
 
@@ -55,13 +56,13 @@ A Task declares:
 
 #### Inputs
 
-Inputs declare the inputs the Task needs. Every task input resource should provide name
-and type (like git, image). It can also provide optionally `targetPath` to
-initialize the resource in specific directory. If `targetPath` is set then the resource
-will be initialized under `/workspace/targetPath`. If `targetPath` is not
-specified then the resource will be initialized under`/workspace`. The following
-example demonstrates how git input repository could be initialized in `GOPATH` to
-run tests.
+Inputs declare the inputs the Task needs. Every task input resource should
+provide name and type (like git, image). It can also provide optionally
+`targetPath` to initialize the resource in specific directory. If `targetPath`
+is set then the resource will be initialized under `/workspace/targetPath`. If
+`targetPath` is not specified then the resource will be initialized
+under`/workspace`. The following example demonstrates how git input repository
+could be initialized in `GOPATH` to run tests.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -123,23 +124,23 @@ Examples of `Task` definitions with inputs and outputs are [here](../examples)
 
 ##### Step Entrypoint
 
-To get the logs out of a [`Task`](#task), Knative provides its own executable that wraps
-the `command` and `args` values specified in the `steps`. This means that every
-`Task` must use `command`, and cannot rely on the image's `entrypoint`.
+To get the logs out of a [`Task`](#task), Knative provides its own executable
+that wraps the `command` and `args` values specified in the `steps`. This means
+that every `Task` must use `command`, and cannot rely on the image's
+`entrypoint`.
 
 ##### Configure Entrypoint image
 
-To run a step needs to pull an `Entrypoint` image. Knative provides a
-way for you to configure the `Entrypoint` image in case it is hard to
-pull in your environment. To do that you can edit the `image`'s value
-in a configmap named
+To run a step needs to pull an `Entrypoint` image. Knative provides a way for
+you to configure the `Entrypoint` image in case it is hard to pull in your
+environment. To do that you can edit the `image`'s value in a configmap named
 [`config-entrypoint`](./../config/config-entrypoint.yaml).
 
 #### ClusterTask
 
-A `ClusterTask` is similar to `Task` but with a cluster-wide scope. Cluster Tasks are available in
-all namespaces, typically used to conveniently provide commonly used tasks to
-users.
+A `ClusterTask` is similar to `Task` but with a cluster-wide scope. Cluster
+Tasks are available in all namespaces, typically used to conveniently provide
+commonly used tasks to users.
 
 #### Pipeline
 
@@ -200,32 +201,32 @@ corresponding `Run` object:
 ##### TaskRun
 
 Creating a `TaskRun` invokes a [Task](#task), running all of the steps until
-completion or failure. Creating a `TaskRun` requires satisfying all of the
-input requirements of the `Task`.
+completion or failure. Creating a `TaskRun` requires satisfying all of the input
+requirements of the `Task`.
 
 `TaskRun` definition includes `inputs`, `outputs` for `Task` referred in spec.
 
 Input resource includes name and reference to pipeline resource and optionally
 `paths`. The `paths` are used by `TaskRun` as the resource's new source paths
 i.e., copy the resource from specified list of paths. `TaskRun` expects the
-folder and contents to be already present in specified paths. The `paths` feature
-could be used to provide extra files or altered version of existing resource
-before execution of steps.
+folder and contents to be already present in specified paths. The `paths`
+feature could be used to provide extra files or altered version of existing
+resource before execution of steps.
 
 Output resource includes name and reference to pipeline resource and optionally
 `paths`. The `paths` are used by `TaskRun` as the resource's new destination
 paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
-responsible for creating required directories and copying contents over. The `paths`
-feature could be used to inspect the results of taskrun after execution of
-steps.
+responsible for creating required directories and copying contents over. The
+`paths` feature could be used to inspect the results of taskrun after execution
+of steps.
 
 The `paths` feature for input and output resource is heavily used to pass same
 version of resources across tasks in context of pipelinerun.
 
 In the following example, task and taskrun are defined with input resource,
-output resource and step which builds war artifact. After execution of
-Taskrun (`volume-taskrun`), `custom` volume has the entire resource
-`java-git-resource` (including the war artifact) copied to the destination path
+output resource and step which builds war artifact. After execution of Taskrun
+(`volume-taskrun`), `custom` volume has the entire resource `java-git-resource`
+(including the war artifact) copied to the destination path
 `/custom/workspace/`.
 
 ```yaml
@@ -281,8 +282,8 @@ spec:
 
 ##### PipelineRun
 
-Creating a `PipelineRun` invokes the pipeline, creating [TaskRuns](#taskrun)
-for each task in the pipeline.
+Creating a `PipelineRun` invokes the pipeline, creating [TaskRuns](#taskrun) for
+each task in the pipeline.
 
 A `PipelineRun` ties together:
 

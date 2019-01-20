@@ -214,8 +214,8 @@ spec:
           name: skaffold-image-leeroy-web
 ```
 
-To apply the yaml files use the following command, you need to apply the
-two resources, the task and taskrun.
+To apply the yaml files use the following command, you need to apply the two
+resources, the task and taskrun.
 
 ```bash
 kubectl apply -f <name-of-file.yaml>
@@ -357,8 +357,8 @@ spec:
           value: "spec.template.spec.containers[0].image"
 ```
 
-The above Pipeline is referencing a task to `deploy-using-kubectl` which can be found
-here:
+The above Pipeline is referencing a task to `deploy-using-kubectl` which can be
+found here:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
