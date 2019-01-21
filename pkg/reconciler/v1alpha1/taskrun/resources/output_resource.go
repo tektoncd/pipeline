@@ -30,6 +30,13 @@ import (
 
 var (
 	outputDir = "/workspace/output/"
+
+	// allowedOutputResource checks if an output resource type produces
+	// an output that should be copied to the PVC
+	allowedOutputResources = map[v1alpha1.PipelineResourceType]bool{
+		v1alpha1.PipelineResourceTypeStorage: true,
+		v1alpha1.PipelineResourceTypeGit:     true,
+	}
 )
 
 // AddOutputResources reads the output resources and adds the corresponding container steps
@@ -109,30 +116,27 @@ func AddOutputResources(
 		// outputs, or until we have metadata on the resource that declares whether
 		// the output should be copied to the PVC, only copy git and storage output
 		// resources.
-		if (resource.Spec.Type == v1alpha1.PipelineResourceTypeStorage ||
-			resource.Spec.Type == v1alpha1.PipelineResourceTypeGit) {
-				// copy to pvc if pvc is present
-				if pipelineRunpvcName != "" {
-					var newSteps []corev1.Container
-					for _, dPath := range boundResource.Paths {
-						newSteps = append(newSteps, []corev1.Container{{
-							Name:  fmt.Sprintf("source-mkdir-%s", resource.GetName()),
-							Image: *bashNoopImage,
-							Args: []string{
-								"-args", strings.Join([]string{"mkdir", "-p", dPath}, " "),
-							},
-							VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
-						}, {
-							Name:  fmt.Sprintf("source-copy-%s", resource.GetName()),
-							Image: *bashNoopImage,
-							Args: []string{
-								"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), dPath}, " "),
-							},
-							VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
-						}}...)
-					}
-					b.Spec.Steps = append(b.Spec.Steps, newSteps...)
-				}
+		// copy to pvc if pvc is present
+		if allowedOutputResources[resource.Spec.Type] && pipelineRunpvcName != "" {
+			var newSteps []corev1.Container
+			for _, dPath := range boundResource.Paths {
+				newSteps = append(newSteps, []corev1.Container{{
+					Name:  fmt.Sprintf("source-mkdir-%s", resource.GetName()),
+					Image: *bashNoopImage,
+					Args: []string{
+						"-args", strings.Join([]string{"mkdir", "-p", dPath}, " "),
+					},
+					VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
+				}, {
+					Name:  fmt.Sprintf("source-copy-%s", resource.GetName()),
+					Image: *bashNoopImage,
+					Args: []string{
+						"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), dPath}, " "),
+					},
+					VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
+				}}...)
+			}
+			b.Spec.Steps = append(b.Spec.Steps, newSteps...)
 		}
 	}
 
@@ -192,4 +196,11 @@ func addStoreUploadStep(build *buildv1alpha1.Build,
 	}
 	build.Spec.Steps = append(build.Spec.Steps, buildSteps...)
 	return nil
+}
+
+// allowedOutputResource checks if an output resource type produces
+// an output that should be copied to the PVC
+func allowedOutputResource(resourceType v1alpha1.PipelineResourceType) bool {
+
+	return allowedOutputResources[resourceType]
 }
