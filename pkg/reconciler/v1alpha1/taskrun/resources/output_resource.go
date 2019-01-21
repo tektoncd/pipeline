@@ -105,27 +105,34 @@ func AddOutputResources(
 			}
 		}
 
-		// copy to pvc if pvc is present
-		if pipelineRunpvcName != "" {
-			var newSteps []corev1.Container
-			for _, dPath := range boundResource.Paths {
-				newSteps = append(newSteps, []corev1.Container{{
-					Name:  fmt.Sprintf("source-mkdir-%s", resource.GetName()),
-					Image: *bashNoopImage,
-					Args: []string{
-						"-args", strings.Join([]string{"mkdir", "-p", dPath}, " "),
-					},
-					VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
-				}, {
-					Name:  fmt.Sprintf("source-copy-%s", resource.GetName()),
-					Image: *bashNoopImage,
-					Args: []string{
-						"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), dPath}, " "),
-					},
-					VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
-				}}...)
-			}
-			b.Spec.Steps = append(b.Spec.Steps, newSteps...)
+		// Workaround for issue #401. Unless all resource types are implemented as
+		// outputs, or until we have metadata on the resource that declares whether
+		// the output should be copied to the PVC, only copy git and storage output
+		// resources.
+		if (resource.Spec.Type == v1alpha1.PipelineResourceTypeStorage ||
+			resource.Spec.Type == v1alpha1.PipelineResourceTypeGit) {
+				// copy to pvc if pvc is present
+				if pipelineRunpvcName != "" {
+					var newSteps []corev1.Container
+					for _, dPath := range boundResource.Paths {
+						newSteps = append(newSteps, []corev1.Container{{
+							Name:  fmt.Sprintf("source-mkdir-%s", resource.GetName()),
+							Image: *bashNoopImage,
+							Args: []string{
+								"-args", strings.Join([]string{"mkdir", "-p", dPath}, " "),
+							},
+							VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
+						}, {
+							Name:  fmt.Sprintf("source-copy-%s", resource.GetName()),
+							Image: *bashNoopImage,
+							Args: []string{
+								"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), dPath}, " "),
+							},
+							VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
+						}}...)
+					}
+					b.Spec.Steps = append(b.Spec.Steps, newSteps...)
+				}
 		}
 	}
 

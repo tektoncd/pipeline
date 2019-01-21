@@ -85,6 +85,14 @@ func outputResourcesetUp() {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "source-image",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "image",
+		},
 	}}
 
 	for _, r := range rs {
@@ -549,6 +557,45 @@ func Test_Valid_OutputResources(t *testing.T) {
 				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
 			},
 		}},
+	}, {
+		name: "image resource as output",
+		desc: "image resource defined only in output",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-only-output-step",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image",
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "image",
+					}},
+				},
+			},
+		},
+		wantSteps: nil,
+		build: build(),
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			outputResourcesetUp()
