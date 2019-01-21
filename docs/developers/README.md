@@ -42,13 +42,13 @@ expected in directory path `/workspace/output/resource_name`.
   ```yaml
   kind: Task
   metadata:
-  name: get-gcs-task
-  namespace: default
+    name: get-gcs-task
+    namespace: default
   spec:
-  outputs:
-    resources:
-      - name: gcs-workspace
-    type: storage
+    outputs:
+      resources:
+        - name: gcs-workspace
+          type: storage
   ```
 
 - If the resource is declared both in input and output for task the then copy
@@ -60,18 +60,18 @@ expected in directory path `/workspace/output/resource_name`.
   ```yaml
   kind: Task
   metadata:
-  name: get-gcs-task
-  namespace: default
+    name: get-gcs-task
+    namespace: default
   spec:
-  inputs:
-    resources:
-      - name: gcs-workspace
-    type: storage
-    targetPath: random-space
-  outputs:
-    resources:
-      - name: gcs-workspace
-    type: storage
+    inputs:
+      resources:
+        - name: gcs-workspace
+          type: storage
+          targetPath: random-space
+    outputs:
+      resources:
+        - name: gcs-workspace
+          type: storage
   ```
 
   - If resource is declared both in input and output for task without custom
@@ -82,16 +82,15 @@ expected in directory path `/workspace/output/resource_name`.
   ```yaml
   kind: Task
   metadata:
-  name: get-gcs-task
-  namespace: default
+    name: get-gcs-task
+    namespace: default
   spec:
-  inputs:
-    resources:
-      - name: gcs-workspace
-    type: storage
-    name: storage
-  outputs:
-    resources:
-      - name: gcs-workspace
-    type: storage
+    inputs:
+      resources:
+        - name: gcs-workspace
+          type: storage
+    outputs:
+      resources:
+        - name: gcs-workspace
+          type: storage
   ```
