@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -28,6 +29,39 @@ import (
 func (p *Pipeline) Validate() *apis.FieldError {
 	if err := validateObjectMetadata(p.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
+	}
+	return nil
+}
+
+func isOutput(task PipelineTask, resource string) bool {
+	for _, output := range task.Resources.Outputs {
+		if output.Resource == resource {
+			return true
+		}
+	}
+	return false
+}
+
+func validateDeclaredResources(ps *PipelineSpec) error {
+	needed := []string{}
+	for _, t := range ps.Tasks {
+		if t.Resources != nil {
+			for _, input := range t.Resources.Inputs {
+				needed = append(needed, input.Resource)
+			}
+			for _, output := range t.Resources.Outputs {
+				needed = append(needed, output.Resource)
+			}
+		}
+	}
+
+	provided := make([]string, 0, len(ps.Resources))
+	for _, resource := range ps.Resources {
+		provided = append(provided, resource.Name)
+	}
+	err := list.IsSame(needed, provided)
+	if err != nil {
+		return fmt.Errorf("Pipeline declared resources didn't match usage in Tasks: %s", err)
 	}
 	return nil
 }
@@ -48,6 +82,12 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 		taskNames[t.Name] = struct{}{}
 	}
 
+	// All declared resources should be used, and the Pipeline shouldn't try to use any resources
+	// that aren't declared
+	if err := validateDeclaredResources(ps); err != nil {
+		return apis.ErrInvalidValue(err.Error(), "spec.resources")
+	}
+
 	// providedBy should match future tasks
 	// TODO(#168) when pipelines don't just execute linearly this will need to be more sophisticated
 	for i, t := range ps.Tasks {
@@ -56,17 +96,21 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 				for _, pb := range rd.ProvidedBy {
 					if i == 0 {
 						// First Task can't depend on anything before it (b/c there is nothing)
-						return apis.ErrInvalidKeyName(pb, fmt.Sprintf("spec.tasks.resources.%s", pb))
+						return apis.ErrInvalidValue(pb, "spec.tasks.resources.inputs.providedBy")
 					}
 					found := false
 					// Look for previous Task that satisfies constraint
 					for j := i - 1; j >= 0; j-- {
 						if ps.Tasks[j].Name == pb {
+							// The input resource must actually be an output of the providedBy tasks
+							if !isOutput(ps.Tasks[j], rd.Resource) {
+								return apis.ErrInvalidKeyName(pb, "spec.tasks.resources.inputs.providedBy")
+							}
 							found = true
 						}
 					}
 					if !found {
-						return apis.ErrInvalidKeyName(pb, fmt.Sprintf("spec.tasks.resources.%s", pb))
+						return apis.ErrInvalidKeyName(pb, "spec.tasks.resources.inputs.providedBy")
 					}
 				}
 			}

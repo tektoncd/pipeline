@@ -47,13 +47,9 @@ func validateResources(neededResources []v1alpha1.TaskResource, providedResource
 	for resource := range providedResources {
 		provided = append(provided, resource)
 	}
-	missing := list.DiffLeft(needed, provided)
-	if len(missing) > 0 {
-		return fmt.Errorf("missing resources: %s", missing)
-	}
-	extra := list.DiffLeft(provided, needed)
-	if len(extra) > 0 {
-		return fmt.Errorf("didn't need these resources but they were provided anyway: %s", extra)
+	err := list.IsSame(needed, provided)
+	if err != nil {
+		return fmt.Errorf("TaskRun's declared resources didn't match usage in Task: %s", err)
 	}
 	for _, resource := range neededResources {
 		r := providedResources[resource.Name]
