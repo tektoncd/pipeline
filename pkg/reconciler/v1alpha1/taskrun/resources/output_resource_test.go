@@ -763,3 +763,29 @@ func Test_InValid_OutputResources(t *testing.T) {
 		})
 	}
 }
+
+func Test_AllowedOutputResource(t *testing.T) {
+	for _, c := range []struct {
+		desc      	    string
+		resourceType    v1alpha1.PipelineResourceType
+		expectedAllowed bool
+	}{{
+		desc: "storage type is allowed",
+		resourceType: v1alpha1.PipelineResourceTypeStorage,
+		expectedAllowed: true,
+	}, {
+		desc: "git type is allowed",
+		resourceType: v1alpha1.PipelineResourceTypeGit,
+		expectedAllowed: true,
+	}, {
+		desc: "anything else is not allowed",
+		resourceType: "fooType",
+		expectedAllowed: false,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			if c.expectedAllowed != allowedOutputResources[c.resourceType] {
+				t.Fatalf("Test AllowedOutputResource %s expected %t but got %t", c.desc, c.expectedAllowed, allowedOutputResources[c.resourceType])
+			}
+		})
+	}
+}
