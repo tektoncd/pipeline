@@ -93,7 +93,7 @@ func AddOutputResources(
 		case v1alpha1.PipelineResourceTypeStorage:
 			storageResource, err := v1alpha1.NewStorageResource(resource)
 			if err != nil {
-				return fmt.Errorf("task %q invalid git Pipeline Resource: %q",
+				return fmt.Errorf("task %q invalid storage Pipeline Resource: %q",
 					taskName,
 					boundResource.ResourceRef.Name,
 				)
