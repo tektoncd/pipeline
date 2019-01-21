@@ -199,7 +199,7 @@ spec:
     type: manual
   inputs:
     resources:
-      - name: gitspace
+      - name: docker-source
         resourceRef:
           name: skaffold-git
     params:

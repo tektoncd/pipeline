@@ -421,7 +421,7 @@ kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  sericeAccount: test-build-robot-git-ssh
+  serviceAccount: test-build-robot-git-ssh
   trigger:
     type: manual
   inputs:
