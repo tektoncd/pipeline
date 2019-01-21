@@ -60,44 +60,13 @@ func GetNextTask(prName string, state []*ResolvedPipelineRunTask, logger *zap.Su
 				logger.Infof("TaskRun %s is still running so we shouldn't start more for PipelineRun %s", prtr.TaskRunName, prName)
 				return nil
 			}
-		} else if canTaskRun(prtr.PipelineTask, state) {
+		} else {
 			logger.Infof("TaskRun %s should be started for PipelineRun %s", prtr.TaskRunName, prName)
 			return prtr
 		}
 	}
 	logger.Infof("No TaskRuns to start for PipelineRun %s", prName)
 	return nil
-}
-
-func canTaskRun(pt *v1alpha1.PipelineTask, state []*ResolvedPipelineRunTask) bool {
-	// Check if Task can run now. Go through all the input constraints
-	if pt.Resources != nil {
-		for _, rd := range pt.Resources.Inputs {
-			if len(rd.ProvidedBy) > 0 {
-				for _, constrainingTaskName := range rd.ProvidedBy {
-					for _, prtr := range state {
-						// the constraining task must have a successful task run to allow this task to run
-						if prtr.PipelineTask.Name == constrainingTaskName {
-							if prtr.TaskRun == nil {
-								return false
-							}
-							c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-							if c == nil {
-								return false
-							}
-							switch c.Status {
-							case corev1.ConditionFalse:
-								return false
-							case corev1.ConditionUnknown:
-								return false
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return true
 }
 
 // ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it

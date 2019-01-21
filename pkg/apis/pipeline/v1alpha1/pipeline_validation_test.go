@@ -40,7 +40,7 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid constraint tasks",
+			name: "providedby task doesnt exist",
 			fields: fields{
 				Tasks: []PipelineTask{{
 					Name: "foo",
@@ -49,6 +49,21 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 							ProvidedBy: []string{"bar"},
 						}},
 					},
+				}},
+			},
+		},
+		{
+			name: "providedby task is afterward",
+			fields: fields{
+				Tasks: []PipelineTask{{
+					Name: "foo",
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							ProvidedBy: []string{"bar"},
+						}},
+					},
+				}, {
+					Name: "bar",
 				}},
 			},
 		},
@@ -89,14 +104,14 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 			name: "valid constraint tasks",
 			fields: fields{
 				Tasks: []PipelineTask{{
+					Name: "bar",
+				}, {
 					Name: "foo",
 					Resources: &PipelineTaskResources{
 						Inputs: []PipelineTaskInputResource{{
 							ProvidedBy: []string{"bar"},
 						}},
 					},
-				}, {
-					Name: "bar",
 				}},
 			},
 		},

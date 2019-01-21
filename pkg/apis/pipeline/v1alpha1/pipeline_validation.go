@@ -48,12 +48,24 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 		taskNames[t.Name] = struct{}{}
 	}
 
-	// providedBy should match other tasks.
-	for _, t := range ps.Tasks {
+	// providedBy should match future tasks
+	// TODO(#168) when pipelines don't just execute linearly this will need to be more sophisticated
+	for i, t := range ps.Tasks {
 		if t.Resources != nil {
 			for _, rd := range t.Resources.Inputs {
 				for _, pb := range rd.ProvidedBy {
-					if _, ok := taskNames[pb]; !ok {
+					if i == 0 {
+						// First Task can't depend on anything before it (b/c there is nothing)
+						return apis.ErrInvalidKeyName(pb, fmt.Sprintf("spec.tasks.resources.%s", pb))
+					}
+					found := false
+					// Look for previous Task that satisfies constraint
+					for j := i - 1; j >= 0; j-- {
+						if ps.Tasks[j].Name == pb {
+							found = true
+						}
+					}
+					if !found {
 						return apis.ErrInvalidKeyName(pb, fmt.Sprintf("spec.tasks.resources.%s", pb))
 					}
 				}
