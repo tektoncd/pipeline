@@ -87,7 +87,6 @@ type GetTaskRun func(name string) (*v1alpha1.TaskRun, error)
 func GetResourcesFromBindings(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) (map[string]v1alpha1.PipelineResourceRef, error) {
 	resources := map[string]v1alpha1.PipelineResourceRef{}
 
-	// TODO: this is very similar to logic in validateResources - use the same logic?
 	needed := make([]string, 0, len(p.Spec.Resources))
 	for _, resource := range p.Spec.Resources {
 		needed = append(needed, resource.Name)
@@ -96,13 +95,9 @@ func GetResourcesFromBindings(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) (m
 	for _, resource := range pr.Spec.Resources {
 		provided = append(provided, resource.Name)
 	}
-	missing := list.DiffLeft(needed, provided)
-	if len(missing) > 0 {
-		return resources, fmt.Errorf("PipelineRun didn't bind Pipeline's declared resources: %s", missing)
-	}
-	extra := list.DiffLeft(provided, needed)
-	if len(extra) > 0 {
-		return resources, fmt.Errorf("Pipeline didn't declare these resources but they were bound in PipelineRun: %s", extra)
+	err := list.IsSame(needed, provided)
+	if err != nil {
+		return resources, fmt.Errorf("PipelineRun bound resources didn't match Pipeline: %s", err)
 	}
 
 	for _, resource := range pr.Spec.Resources {

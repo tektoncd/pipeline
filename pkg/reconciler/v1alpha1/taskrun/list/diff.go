@@ -16,6 +16,23 @@ limitations under the License.
 
 package list
 
+import "fmt"
+
+// IsSame will return an error indicating if there are extra or missing strings
+// between the needed and provided strings, or will return no error if the two
+// contain the same values.
+func IsSame(needed, provided []string) error {
+	missing := DiffLeft(needed, provided)
+	if len(missing) > 0 {
+		return fmt.Errorf("Didn't provide needed values: %s", missing)
+	}
+	extra := DiffLeft(provided, needed)
+	if len(extra) > 0 {
+		return fmt.Errorf("Provided extra values: %s", extra)
+	}
+	return nil
+}
+
 // DiffLeft will return all strings which are in the left slice of strings but
 // not in the right.
 func DiffLeft(left, right []string) []string {

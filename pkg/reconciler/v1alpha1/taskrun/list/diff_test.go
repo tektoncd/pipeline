@@ -21,6 +21,33 @@ import (
 	"testing"
 )
 
+func TestIsSame_same(t *testing.T) {
+	needed := []string{"elsa", "anna", "olaf", "kristoff"}
+	provided := []string{"elsa", "anna", "olaf", "kristoff"}
+	err := IsSame(needed, provided)
+	if err != nil {
+		t.Errorf("Didn't expect error when everything needed has been provided")
+	}
+}
+
+func TestIsSame_missing(t *testing.T) {
+	needed := []string{"elsa", "anna", "olaf", "kristoff"}
+	provided := []string{"elsa", "anna", "olaf"}
+	err := IsSame(needed, provided)
+	if err == nil {
+		t.Errorf("Expected error since `kristoff` should be missing")
+	}
+}
+
+func TestIsSame_extra(t *testing.T) {
+	needed := []string{"elsa", "anna", "olaf"}
+	provided := []string{"elsa", "anna", "olaf", "kristoff"}
+	err := IsSame(needed, provided)
+	if err == nil {
+		t.Errorf("Expected error since `kristoff` should be extra")
+	}
+}
+
 func TestDiffLeft_same(t *testing.T) {
 	left := []string{"elsa", "anna", "olaf", "kristoff"}
 	right := []string{"elsa", "anna", "olaf", "kristoff"}

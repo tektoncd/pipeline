@@ -22,6 +22,7 @@ import (
 
 func TestPipelineSpec_Validate_Error(t *testing.T) {
 	type fields struct {
+		Resources  []PipelineDeclaredResource
 		Tasks      []PipelineTask
 		Generation int64
 	}
@@ -42,10 +43,16 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 		{
 			name: "providedby task doesnt exist",
 			fields: fields{
+				Resources: []PipelineDeclaredResource{{
+					Name: "great-resource",
+					Type: "git",
+				}},
 				Tasks: []PipelineTask{{
 					Name: "foo",
 					Resources: &PipelineTaskResources{
 						Inputs: []PipelineTaskInputResource{{
+							Name:       "the-resource",
+							Resource:   "great-resource",
 							ProvidedBy: []string{"bar"},
 						}},
 					},
@@ -55,15 +62,122 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 		{
 			name: "providedby task is afterward",
 			fields: fields{
+				Resources: []PipelineDeclaredResource{{
+					Name: "great-resource",
+					Type: "git",
+				}},
 				Tasks: []PipelineTask{{
 					Name: "foo",
 					Resources: &PipelineTaskResources{
 						Inputs: []PipelineTaskInputResource{{
+							Name:       "the-resource",
+							Resource:   "great-resource",
 							ProvidedBy: []string{"bar"},
 						}},
 					},
 				}, {
 					Name: "bar",
+					Resources: &PipelineTaskResources{
+						Outputs: []PipelineTaskOutputResource{{
+							Name:     "the-resource",
+							Resource: "great-resource",
+						}},
+					},
+				}},
+			},
+		},
+		{
+			name: "unused resources declared",
+			fields: fields{
+				Resources: []PipelineDeclaredResource{{
+					Name: "great-resource",
+					Type: "git",
+				}, {
+					Name: "extra-resource",
+					Type: "image",
+				}},
+				Tasks: []PipelineTask{{
+					Name: "foo",
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							Name:     "the-resource",
+							Resource: "great-resource",
+						}},
+					},
+				}},
+			},
+		},
+		{
+			name: "output resources missing from declaration",
+			fields: fields{
+				Resources: []PipelineDeclaredResource{{
+					Name: "great-resource",
+					Type: "git",
+				}},
+				Tasks: []PipelineTask{{
+					Name: "foo",
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							Name:     "the-resource",
+							Resource: "great-resource",
+						}},
+						Outputs: []PipelineTaskOutputResource{{
+							Name:     "the-magic-resource",
+							Resource: "missing-resource",
+						}},
+					},
+				}},
+			},
+		},
+		{
+			name: "input resources missing from declaration",
+			fields: fields{
+				Resources: []PipelineDeclaredResource{{
+					Name: "great-resource",
+					Type: "git",
+				}},
+				Tasks: []PipelineTask{{
+					Name: "foo",
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							Name:     "the-resource",
+							Resource: "missing-resource",
+						}},
+						Outputs: []PipelineTaskOutputResource{{
+							Name:     "the-magic-resource",
+							Resource: "great-resource",
+						}},
+					},
+				}},
+			},
+		},
+		{
+			name: "providedBy resource isn't output by task",
+			fields: fields{
+				Resources: []PipelineDeclaredResource{{
+					Name: "great-resource",
+					Type: "git",
+				}, {
+					Name: "wonderful-resource",
+					Type: "image",
+				}},
+				Tasks: []PipelineTask{{
+					Name: "bar",
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							Name:     "some-workspace",
+							Resource: "great-resource",
+						}},
+					},
+				}, {
+					Name: "foo",
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							Name:       "wow-image",
+							Resource:   "wonderful-resource",
+							ProvidedBy: []string{"bar"},
+						}},
+					},
 				}},
 			},
 		},
@@ -71,6 +185,7 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ps := &PipelineSpec{
+				Resources:  tt.fields.Resources,
 				Tasks:      tt.fields.Tasks,
 				Generation: tt.fields.Generation,
 			}
@@ -83,6 +198,7 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 
 func TestPipelineSpec_Validate_Valid(t *testing.T) {
 	type fields struct {
+		Resources  []PipelineDeclaredResource
 		Tasks      []PipelineTask
 		Generation int64
 	}
@@ -101,14 +217,33 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 			},
 		},
 		{
-			name: "valid constraint tasks",
+			name: "valid resource declarations and usage",
 			fields: fields{
+				Resources: []PipelineDeclaredResource{{
+					Name: "great-resource",
+					Type: "git",
+				}, {
+					Name: "wonderful-resource",
+					Type: "image",
+				}},
 				Tasks: []PipelineTask{{
 					Name: "bar",
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							Name:     "some-workspace",
+							Resource: "great-resource",
+						}},
+						Outputs: []PipelineTaskOutputResource{{
+							Name:     "some-image",
+							Resource: "wonderful-resource",
+						}},
+					},
 				}, {
 					Name: "foo",
 					Resources: &PipelineTaskResources{
 						Inputs: []PipelineTaskInputResource{{
+							Name:       "wow-image",
+							Resource:   "wonderful-resource",
 							ProvidedBy: []string{"bar"},
 						}},
 					},
@@ -119,6 +254,7 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ps := &PipelineSpec{
+				Resources:  tt.fields.Resources,
 				Tasks:      tt.fields.Tasks,
 				Generation: tt.fields.Generation,
 			}
