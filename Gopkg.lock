@@ -310,6 +310,14 @@
   version = "v2.0.1"
 
 [[projects]]
+  digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
   digest = "1:d917313f309bda80d27274d53985bc65651f81a5b66b820749ac7f8ef061fd04"
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
@@ -493,6 +501,23 @@
   pruneopts = "NUT"
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
   version = "v2.2.1"
+
+[[projects]]
+  digest = "1:c913f620a55a668834f288c19b6046fff63d033dd5d70e93cc37ea49480a01ea"
+  name = "gotest.tools"
+  packages = [
+    "assert",
+    "assert/cmp",
+    "env",
+    "fs",
+    "internal/difflib",
+    "internal/format",
+    "internal/source",
+    "x/subtest",
+  ]
+  pruneopts = "NUT"
+  revision = "1083505acf35a0bd8a696b26837e1fb3187a7a83"
+  version = "v2.3.0"
 
 [[projects]]
   digest = "1:6dd53537a34d9b612e66acd39859953cf7ad70e5b5953937bed5ea998355e7b8"
@@ -819,6 +844,7 @@
     "github.com/google/go-containerregistry/pkg/v1/partial",
     "github.com/google/go-containerregistry/pkg/v1/remote",
     "github.com/google/go-containerregistry/pkg/v1/types",
+    "github.com/hashicorp/golang-lru",
     "github.com/knative/build/pkg/apis/build/v1alpha1",
     "github.com/knative/build/pkg/system",
     "github.com/knative/caching/pkg/apis/caching",
@@ -841,6 +867,9 @@
     "go.opencensus.io/trace",
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest/observer",
+    "gotest.tools/assert",
+    "gotest.tools/env",
+    "gotest.tools/fs",
     "k8s.io/api/core/v1",
     "k8s.io/api/rbac/v1beta1",
     "k8s.io/apimachinery/pkg/api/equality",
