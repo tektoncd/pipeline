@@ -29,28 +29,40 @@ func TestBuild(t *testing.T) {
 	b := v1alpha1.PipelineTask{Name: "b"}
 	c := v1alpha1.PipelineTask{Name: "c"}
 	xDependsOnA := v1alpha1.PipelineTask{
-		Name:                 "x",
-		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"a"}}},
+		Name: "x",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"a"}}},
+		},
 	}
 	yDependsOnAB := v1alpha1.PipelineTask{
-		Name:                 "y",
-		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"b", "a"}}},
+		Name: "y",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"b", "a"}}},
+		},
 	}
 	zDependsOnX := v1alpha1.PipelineTask{
-		Name:                 "z",
-		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"x"}}},
+		Name: "z",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"x"}}},
+		},
 	}
 	aDependsOnZ := v1alpha1.PipelineTask{
-		Name:                 "a",
-		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"z"}}},
+		Name: "a",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"z"}}},
+		},
 	}
 	selfLink := v1alpha1.PipelineTask{
-		Name:                 "a",
-		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"a"}}},
+		Name: "a",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"a"}}},
+		},
 	}
 	invalidTask := v1alpha1.PipelineTask{
-		Name:                 "a",
-		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"none"}}},
+		Name: "a",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"none"}}},
+		},
 	}
 	nodeX := &Node{Task: xDependsOnA, Prev: []*Node{{Task: a}}}
 
@@ -135,12 +147,16 @@ func TestBuild(t *testing.T) {
 func TestGetPrevTasks(t *testing.T) {
 	a := v1alpha1.PipelineTask{Name: "a"}
 	x := v1alpha1.PipelineTask{
-		Name:                 "x",
-		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"a"}}},
+		Name: "x",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"a"}}},
+		},
 	}
 	y := v1alpha1.PipelineTask{
-		Name:                 "y",
-		ResourceDependencies: []v1alpha1.ResourceDependency{{ProvidedBy: []string{"x", "a"}}},
+		Name: "y",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"x", "a"}}},
+		},
 	}
 	p := v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{

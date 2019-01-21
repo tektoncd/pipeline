@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
@@ -70,24 +71,26 @@ func GetNextTask(prName string, state []*ResolvedPipelineRunTask, logger *zap.Su
 
 func canTaskRun(pt *v1alpha1.PipelineTask, state []*ResolvedPipelineRunTask) bool {
 	// Check if Task can run now. Go through all the input constraints
-	for _, rd := range pt.ResourceDependencies {
-		if len(rd.ProvidedBy) > 0 {
-			for _, constrainingTaskName := range rd.ProvidedBy {
-				for _, prtr := range state {
-					// the constraining task must have a successful task run to allow this task to run
-					if prtr.PipelineTask.Name == constrainingTaskName {
-						if prtr.TaskRun == nil {
-							return false
-						}
-						c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-						if c == nil {
-							return false
-						}
-						switch c.Status {
-						case corev1.ConditionFalse:
-							return false
-						case corev1.ConditionUnknown:
-							return false
+	if pt.Resources != nil {
+		for _, rd := range pt.Resources.Inputs {
+			if len(rd.ProvidedBy) > 0 {
+				for _, constrainingTaskName := range rd.ProvidedBy {
+					for _, prtr := range state {
+						// the constraining task must have a successful task run to allow this task to run
+						if prtr.PipelineTask.Name == constrainingTaskName {
+							if prtr.TaskRun == nil {
+								return false
+							}
+							c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+							if c == nil {
+								return false
+							}
+							switch c.Status {
+							case corev1.ConditionFalse:
+								return false
+							case corev1.ConditionUnknown:
+								return false
+							}
 						}
 					}
 				}
@@ -109,32 +112,79 @@ type ResolvedPipelineRunTask struct {
 // GetTaskRun is a function that will retrieve the TaskRun name.
 type GetTaskRun func(name string) (*v1alpha1.TaskRun, error)
 
-func getPipelineRunTaskResources(pipelineTaskName string, pr *v1alpha1.PipelineRun) ([]v1alpha1.TaskResourceBinding, []v1alpha1.TaskResourceBinding) {
-	for _, ptr := range pr.Spec.PipelineTaskResources {
-		if ptr.Name == pipelineTaskName {
-			return ptr.Inputs, ptr.Outputs
-		}
+// GetResourcesFromBindings will validate that all PipelineResources declared in Pipeline p are bound in PipelineRun pr
+// and if so, will return a map from the declared name of the PipelineResource (which is how the PipelineResource will
+// be referred to in the PipelineRun) to the ResourceRef.
+func GetResourcesFromBindings(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) (map[string]v1alpha1.PipelineResourceRef, error) {
+	resources := map[string]v1alpha1.PipelineResourceRef{}
+
+	// TODO: this is very similar to logic in validateResources - use the same logic?
+	needed := make([]string, 0, len(p.Spec.Resources))
+	for _, resource := range p.Spec.Resources {
+		needed = append(needed, resource.Name)
 	}
-	// It's not an error to not find corresponding resources, because a Task may not need resources.
-	// Validation should occur later once resolution is done.
-	return []v1alpha1.TaskResourceBinding{}, []v1alpha1.TaskResourceBinding{}
+	provided := make([]string, 0, len(pr.Spec.Resources))
+	for _, resource := range pr.Spec.Resources {
+		provided = append(provided, resource.Name)
+	}
+	missing := list.DiffLeft(needed, provided)
+	if len(missing) > 0 {
+		return resources, fmt.Errorf("PipelineRun didn't bind Pipeline's declared resources: %s", missing)
+	}
+	extra := list.DiffLeft(provided, needed)
+	if len(extra) > 0 {
+		return resources, fmt.Errorf("Pipeline didn't declare these resources but they were bound in PipelineRun: %s", extra)
+	}
+
+	for _, resource := range pr.Spec.Resources {
+		resources[resource.Name] = resource.ResourceRef
+	}
+	return resources, nil
 }
 
-// ResolvePipelineRun retrieves all Tasks instances which the pipeline p references, getting
+func getPipelineRunTaskResources(pt v1alpha1.PipelineTask, providedResources map[string]v1alpha1.PipelineResourceRef) ([]v1alpha1.TaskResourceBinding, []v1alpha1.TaskResourceBinding, error) {
+	inputs, outputs := []v1alpha1.TaskResourceBinding{}, []v1alpha1.TaskResourceBinding{}
+	if pt.Resources != nil {
+		for _, taskInput := range pt.Resources.Inputs {
+			resource, ok := providedResources[taskInput.Resource]
+			if !ok {
+				return inputs, outputs, fmt.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
+			}
+			inputs = append(inputs, v1alpha1.TaskResourceBinding{
+				Name:        taskInput.Name,
+				ResourceRef: resource,
+			})
+		}
+		for _, taskOutput := range pt.Resources.Outputs {
+			resource, ok := providedResources[taskOutput.Resource]
+			if !ok {
+				return outputs, outputs, fmt.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
+			}
+			outputs = append(outputs, v1alpha1.TaskResourceBinding{
+				Name:        taskOutput.Name,
+				ResourceRef: resource,
+			})
+		}
+	}
+	return inputs, outputs, nil
+}
+
+// ResolvePipelineRun retrieves all Tasks instances which are reference by tasks, getting
 // instances from getTask. If it is unable to retrieve an instance of a referenced Task, it
 // will return an error, otherwise it returns a list of all of the Tasks retrieved.
-// It will retrieve the Resources needed for the TaskRun as well using getResource.
-func ResolvePipelineRun(getTask resources.GetTask, getClusterTask resources.GetClusterTask, getResource resources.GetResource, p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) ([]*ResolvedPipelineRunTask, error) {
+// It will retrieve the Resources needed for the TaskRun as well using getResource and the mapping
+// of providedResources.
+func ResolvePipelineRun(prName string, getTask resources.GetTask, getClusterTask resources.GetClusterTask, getResource resources.GetResource, tasks []v1alpha1.PipelineTask, providedResources map[string]v1alpha1.PipelineResourceRef) ([]*ResolvedPipelineRunTask, error) {
 	state := []*ResolvedPipelineRunTask{}
-	for i := range p.Spec.Tasks {
-		pt := p.Spec.Tasks[i]
+	for i := range tasks {
+		pt := tasks[i]
 
 		rprt := ResolvedPipelineRunTask{
 			PipelineTask: &pt,
-			TaskRunName:  getTaskRunName(pr.Name, &pt),
+			TaskRunName:  getTaskRunName(prName, &pt),
 		}
 
-		// Find the Task that this task in the Pipeline is using
+		// Find the Task that this task in the Pipeline this PipelineTask is using
 		var t v1alpha1.TaskInterface
 		var err error
 		if pt.TaskRef.Kind == v1alpha1.ClusterTaskKind {
@@ -149,7 +199,11 @@ func ResolvePipelineRun(getTask resources.GetTask, getClusterTask resources.GetC
 		}
 
 		// Get all the resources that this task will be using, if any
-		inputs, outputs := getPipelineRunTaskResources(pt.Name, pr)
+		inputs, outputs, err := getPipelineRunTaskResources(pt, providedResources)
+		if err != nil {
+			return nil, fmt.Errorf("unexpected error which should have been caught by Pipeline webhook: %v", err)
+		}
+
 		spec := t.TaskSpec()
 		rtr, err := resources.ResolveTaskResources(&spec, t.TaskMetadata().Name, inputs, outputs, getResource)
 		if err != nil {
@@ -251,30 +305,32 @@ func findReferencedTask(pb string, state []*ResolvedPipelineRunTask) *ResolvedPi
 // not valid, it will return an error.
 func ValidateProvidedBy(state []*ResolvedPipelineRunTask) error {
 	for _, rprt := range state {
-		for _, dep := range rprt.PipelineTask.ResourceDependencies {
-			inputBinding, ok := rprt.ResolvedTaskResources.Inputs[dep.Name]
-			if !ok {
-				return fmt.Errorf("PipelineTask %s is trying to declare dependency for Resource %s which is not an input of PipelineTask %q", rprt.PipelineTask.Name, dep.Name, rprt.PipelineTask.Name)
-			}
-
-			for _, pb := range dep.ProvidedBy {
-				if pb == rprt.PipelineTask.Name {
-					return fmt.Errorf("PipelineTask %s is trying to depend on a PipelineResource from itself", pb)
-				}
-				depTask := findReferencedTask(pb, state)
-				if depTask == nil {
-					return fmt.Errorf("pipelineTask %s is trying to depend on previous Task %q but it does not exist", rprt.PipelineTask.Name, pb)
+		if rprt.PipelineTask.Resources != nil {
+			for _, dep := range rprt.PipelineTask.Resources.Inputs {
+				inputBinding, ok := rprt.ResolvedTaskResources.Inputs[dep.Name]
+				if !ok {
+					return fmt.Errorf("PipelineTask %s is trying to declare dependency for Resource %s which is not an input of PipelineTask %q", rprt.PipelineTask.Name, dep.Name, rprt.PipelineTask.Name)
 				}
 
-				sameBindingExists := false
-				for _, output := range depTask.ResolvedTaskResources.Outputs {
-					if output.Name == inputBinding.Name {
-						sameBindingExists = true
+				for _, pb := range dep.ProvidedBy {
+					if pb == rprt.PipelineTask.Name {
+						return fmt.Errorf("PipelineTask %s is trying to depend on a PipelineResource from itself", pb)
 					}
-				}
-				if !sameBindingExists {
-					return fmt.Errorf("providedBy is ambiguous: input %q for PipelineTask %q is bound to %q but no outputs in PipelineTask %q are bound to same resource",
-						dep.Name, rprt.PipelineTask.Name, inputBinding.Name, depTask.PipelineTask.Name)
+					depTask := findReferencedTask(pb, state)
+					if depTask == nil {
+						return fmt.Errorf("pipelineTask %s is trying to depend on previous Task %q but it does not exist", rprt.PipelineTask.Name, pb)
+					}
+
+					sameBindingExists := false
+					for _, output := range depTask.ResolvedTaskResources.Outputs {
+						if output.Name == inputBinding.Name {
+							sameBindingExists = true
+						}
+					}
+					if !sameBindingExists {
+						return fmt.Errorf("providedBy is ambiguous: input %q for PipelineTask %q is bound to %q but no outputs in PipelineTask %q are bound to same resource",
+							dep.Name, rprt.PipelineTask.Name, inputBinding.Name, depTask.PipelineTask.Name)
+					}
 				}
 			}
 		}

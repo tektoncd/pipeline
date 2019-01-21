@@ -98,7 +98,7 @@ func getGCSTaskRun(namespace, name, resName string) *v1alpha1.TaskRun {
 	return tb.TaskRun(name, namespace,
 		tb.TaskRunSpec(tb.TaskRunTaskRef("gcs-file"),
 			tb.TaskRunInputs(
-				tb.TaskRunInputsResource("gcsbucket", tb.ResourceBindingRef(resName)),
+				tb.TaskRunInputsResource("gcsbucket", tb.TaskResourceBindingRef(resName)),
 			)))
 }
 
