@@ -18,7 +18,7 @@ Unit tests live side by side with the code they are testing and can be run with:
 go test ./...
 ```
 
-By default `go test` will not run [the integration tests](#integration-tests),
+By default `go test` will not run [the end to end tests](#end-to-end-tests),
 which need `-tags=e2e` to be enabled.
 
 ### Unit testing Controllers
@@ -100,7 +100,7 @@ obj := &v1alpha1.PipelineRun {
 pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 ```
 
-## Integration tests
+## End to end tests
 
 ### Setup
 
@@ -351,7 +351,7 @@ via the sections for `knative/build-pipeline`.
 The presubmit integration tests entrypoint will run:
 
 - [The integration tests](#integration-tests)
-- A sanity check deployment of [our example CRDs](../examples)
+- A test of [our example CRDs](../examples/README.md#testing-the-examples)
 
 When run using Prow, integration tests will try to get a new cluster using
 [boskos](https://github.com/kubernetes/test-infra/tree/master/boskos) and

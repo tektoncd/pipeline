@@ -44,9 +44,11 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 			fields: fields{
 				Tasks: []PipelineTask{{
 					Name: "foo",
-					ResourceDependencies: []ResourceDependency{{
-						ProvidedBy: []string{"bar"},
-					}},
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							ProvidedBy: []string{"bar"},
+						}},
+					},
 				}},
 			},
 		},
@@ -88,9 +90,11 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 			fields: fields{
 				Tasks: []PipelineTask{{
 					Name: "foo",
-					ResourceDependencies: []ResourceDependency{{
-						ProvidedBy: []string{"bar"},
-					}},
+					Resources: &PipelineTaskResources{
+						Inputs: []PipelineTaskInputResource{{
+							ProvidedBy: []string{"bar"},
+						}},
+					},
 				}, {
 					Name: "bar",
 				}},

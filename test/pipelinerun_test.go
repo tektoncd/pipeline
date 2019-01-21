@@ -239,17 +239,20 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 
 func getFanInFanOutPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(getName(hwPipelineName, suffix), namespace, tb.PipelineSpec(
-		tb.PipelineTask("create-file-kritis", "create-file"),
+		tb.PipelineDeclaredResource("git-repo", "git"),
+		tb.PipelineTask("create-file-kritis", "create-file",
+			tb.PipelineTaskOutputResource("workspace", "git-repo"),
+		),
 		tb.PipelineTask("create-fan-out-1", "check-create-files-exists",
-			tb.PipelineTaskResourceDependency("workspace", tb.ProvidedBy("create-file-kritis")),
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("create-file-kritis")),
+			tb.PipelineTaskOutputResource("workspace", "git-repo"),
 		),
 		tb.PipelineTask("create-fan-out-2", "check-create-files-exists-2",
-			tb.PipelineTaskResourceDependency("workspace", tb.ProvidedBy("create-file-kritis")),
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("create-file-kritis")),
+			tb.PipelineTaskOutputResource("workspace", "git-repo"),
 		),
 		tb.PipelineTask("check-fan-in", "read-files",
-			tb.PipelineTaskResourceDependency("workspace",
-				tb.ProvidedBy("create-fan-out-2", "create-fan-out-1"),
-			),
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("create-fan-out-2", "create-fan-out-1")),
 		),
 	))
 }
@@ -276,16 +279,9 @@ func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceA
 	}
 }
 func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
-	workspaceInputs := tb.PipelineTaskResourceInputs("workspace", tb.ResourceBindingRef("kritis-resource-git"))
-	workspaceOutputs := tb.PipelineTaskResourceOutputs("workspace", tb.ResourceBindingRef("kritis-resource-git"))
 	return tb.PipelineRun(getName(hwPipelineRunName, suffix), namespace, tb.PipelineRunSpec(
 		getName(hwPipelineName, suffix),
-		tb.PipelineRunTaskResource("create-file-kritis", workspaceInputs,
-			workspaceOutputs,
-		),
-		tb.PipelineRunTaskResource("create-fan-out-1", workspaceInputs, workspaceOutputs),
-		tb.PipelineRunTaskResource("create-fan-out-2", workspaceInputs, workspaceOutputs),
-		tb.PipelineRunTaskResource("check-fan-in", workspaceInputs),
+		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("kritis-resource-git")),
 	))
 }
 

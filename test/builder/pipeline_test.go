@@ -25,25 +25,45 @@ import (
 
 func TestPipeline(t *testing.T) {
 	pipeline := tb.Pipeline("tomatoes", "foo", tb.PipelineSpec(
+		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
+		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
 		tb.PipelineTask("foo", "banana",
 			tb.PipelineTaskParam("name", "value"),
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
-			tb.PipelineTaskResourceDependency("i-am", tb.ProvidedBy("foo")),
+			tb.PipelineTaskInputResource("some-repo", "my-only-git-resource", tb.ProvidedBy("foo")),
+			tb.PipelineTaskOutputResource("some-image", "my-only-image-resource"),
 		),
 	))
 	expectedPipeline := &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: "foo"},
 		Spec: v1alpha1.PipelineSpec{
+			Resources: []v1alpha1.PipelineDeclaredResource{{
+				Name: "my-only-git-resource",
+				Type: "git",
+			}, {
+				Name: "my-only-image-resource",
+				Type: "image",
+			}},
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "foo",
 				TaskRef: v1alpha1.TaskRef{Name: "banana"},
 				Params:  []v1alpha1.Param{{Name: "name", Value: "value"}},
 			}, {
-				Name:                 "bar",
-				TaskRef:              v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},
-				ResourceDependencies: []v1alpha1.ResourceDependency{{Name: "i-am", ProvidedBy: []string{"foo"}}},
+				Name:    "bar",
+				TaskRef: v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},
+				Resources: &v1alpha1.PipelineTaskResources{
+					Inputs: []v1alpha1.PipelineTaskInputResource{{
+						Name:       "some-repo",
+						Resource:   "my-only-git-resource",
+						ProvidedBy: []string{"foo"},
+					}},
+					Outputs: []v1alpha1.PipelineTaskOutputResource{{
+						Name:     "some-image",
+						Resource: "my-only-image-resource",
+					}},
+				},
 			}},
 		},
 	}
@@ -55,10 +75,7 @@ func TestPipeline(t *testing.T) {
 func TestPipelineRun(t *testing.T) {
 	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccount("sa"),
-		tb.PipelineRunTaskResource("res1",
-			tb.PipelineTaskResourceInputs("inputs"),
-			tb.PipelineTaskResourceOutputs("outputs"),
-		),
+		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
 		Type: duckv1alpha1.ConditionSucceeded,
 	})))
@@ -68,10 +85,11 @@ func TestPipelineRun(t *testing.T) {
 			PipelineRef:    v1alpha1.PipelineRef{Name: "tomatoes"},
 			Trigger:        v1alpha1.PipelineTrigger{Type: v1alpha1.PipelineTriggerTypeManual},
 			ServiceAccount: "sa",
-			PipelineTaskResources: []v1alpha1.PipelineTaskResource{{
-				Name:    "res1",
-				Inputs:  []v1alpha1.TaskResourceBinding{{Name: "inputs"}},
-				Outputs: []v1alpha1.TaskResourceBinding{{Name: "outputs"}},
+			Resources: []v1alpha1.PipelineResourceBinding{{
+				Name: "some-resource",
+				ResourceRef: v1alpha1.PipelineResourceRef{
+					Name: "my-special-resource",
+				},
 			}},
 		},
 		Status: v1alpha1.PipelineRunStatus{

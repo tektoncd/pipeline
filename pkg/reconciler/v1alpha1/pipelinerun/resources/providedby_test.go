@@ -61,10 +61,12 @@ var mypipelinetasks = []v1alpha1.PipelineTask{{
 }, {
 	Name:    "mypipelinetask2",
 	TaskRef: v1alpha1.TaskRef{Name: "mytask2"},
-	ResourceDependencies: []v1alpha1.ResourceDependency{{
-		Name:       "myresource1",
-		ProvidedBy: []string{"mypipelinetask1"},
-	}},
+	Resources: &v1alpha1.PipelineTaskResources{
+		Inputs: []v1alpha1.PipelineTaskInputResource{{
+			Name:       "myresource1",
+			ProvidedBy: []string{"mypipelinetask1"},
+		}},
+	},
 }}
 
 var mytaskruns = []v1alpha1.TaskRun{{

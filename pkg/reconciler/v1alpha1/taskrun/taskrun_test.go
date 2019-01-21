@@ -183,9 +183,9 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
 			tb.TaskRunInputsParam("myarghasdefault", "bar"),
-			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(gitResource.Name)),
+			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
 		),
-		tb.TaskRunOutputs(tb.TaskRunOutputsResource("myimage", tb.ResourceBindingRef("image-resource"))),
+		tb.TaskRunOutputs(tb.TaskRunOutputsResource("myimage", tb.TaskResourceBindingRef("image-resource"))),
 	))
 	taskRunInputOutput := tb.TaskRun("test-taskrun-input-output", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test"),
@@ -193,15 +193,15 @@ func TestReconcile(t *testing.T) {
 			tb.TaskRunTaskRef(outputTask.Name),
 			tb.TaskRunInputs(
 				tb.TaskRunInputsResource(gitResource.Name,
-					tb.ResourceBindingPaths("source-folder"),
+					tb.TaskResourceBindingPaths("source-folder"),
 				),
 				tb.TaskRunInputsResource(anotherGitResource.Name,
-					tb.ResourceBindingPaths("source-folder"),
+					tb.TaskResourceBindingPaths("source-folder"),
 				),
 			),
 			tb.TaskRunOutputs(
 				tb.TaskRunOutputsResource(gitResource.Name,
-					tb.ResourceBindingPaths("output-folder"),
+					tb.TaskResourceBindingPaths("output-folder"),
 				),
 			),
 		),
@@ -209,7 +209,7 @@ func TestReconcile(t *testing.T) {
 	taskRunWithTaskSpec := tb.TaskRun("test-taskrun-with-taskSpec", "foo", tb.TaskRunSpec(
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
-			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef(gitResource.Name)),
+			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
 		),
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(

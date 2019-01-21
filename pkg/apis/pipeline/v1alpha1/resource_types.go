@@ -117,6 +117,16 @@ type PipelineResource struct {
 	Status PipelineResourceStatus `json:"status,omitempty"`
 }
 
+// PipelineResourceBinding connects a reference to an instance of a PipelineResource
+// with a PipelineResource dependency that the Pipeline has declared
+type PipelineResourceBinding struct {
+	// Name is the name of the PipelineResource in the Pipeline's declaration
+	Name string `json:"name"`
+	// ResourceRef is a reference to the instance of the actual PipelineResource
+	// that should be used
+	ResourceRef PipelineResourceRef `json:"resourceRef"`
+}
+
 // TaskResourceBinding points to the PipelineResource that
 // will be used for the Task input or output called Name. The optional Path field
 // corresponds to a path on disk at which the Resource can be found (used when providing

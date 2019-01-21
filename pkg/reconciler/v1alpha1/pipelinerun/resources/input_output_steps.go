@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package resources
 
 import (
@@ -25,33 +26,44 @@ var (
 	pvcDir = "/pvc"
 )
 
-func GetOutputSteps(taskResources []v1alpha1.TaskResourceBinding, taskName string) []v1alpha1.TaskResourceBinding {
+// GetOutputSteps will add the correct `path` to the input resources for pt
+func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName string) []v1alpha1.TaskResourceBinding {
 	var taskOutputResources []v1alpha1.TaskResourceBinding
 
-	for _, outputRes := range taskResources {
+	for name, outputResource := range outputs {
 		taskOutputResources = append(taskOutputResources, v1alpha1.TaskResourceBinding{
-			ResourceRef: outputRes.ResourceRef,
-			Name:        outputRes.Name,
-			Paths:       []string{filepath.Join(pvcDir, taskName, outputRes.Name)},
+			Name: name,
+			ResourceRef: v1alpha1.PipelineResourceRef{
+				Name:       outputResource.Name,
+				APIVersion: outputResource.APIVersion,
+			},
+			Paths: []string{filepath.Join(pvcDir, taskName, name)},
 		})
 	}
 	return taskOutputResources
 }
 
-func GetInputSteps(taskResources []v1alpha1.TaskResourceBinding, pt *v1alpha1.PipelineTask) []v1alpha1.TaskResourceBinding {
+// GetInputSteps will add the correct `path` to the input resources for pt. If the resources are provided by
+// a previous task, the correct `path` will be used so that the resource provided by that task will be used.
+func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.PipelineTask) []v1alpha1.TaskResourceBinding {
 	var taskInputResources []v1alpha1.TaskResourceBinding
 
-	for _, inputResource := range taskResources {
+	for name, inputResource := range inputs {
 		taskInputResource := v1alpha1.TaskResourceBinding{
-			ResourceRef: inputResource.ResourceRef,
-			Name:        inputResource.Name,
+			Name: name,
+			ResourceRef: v1alpha1.PipelineResourceRef{
+				Name:       inputResource.Name,
+				APIVersion: inputResource.APIVersion,
+			},
 		}
 
 		var stepSourceNames []string
-		for _, resourceDep := range pt.ResourceDependencies {
-			if resourceDep.Name == inputResource.Name {
-				for _, constr := range resourceDep.ProvidedBy {
-					stepSourceNames = append(stepSourceNames, filepath.Join(pvcDir, constr, inputResource.Name))
+		if pt.Resources != nil {
+			for _, pipelineTaskInput := range pt.Resources.Inputs {
+				if pipelineTaskInput.Name == name {
+					for _, constr := range pipelineTaskInput.ProvidedBy {
+						stepSourceNames = append(stepSourceNames, filepath.Join(pvcDir, constr, name))
+					}
 				}
 			}
 		}
@@ -63,16 +75,13 @@ func GetInputSteps(taskResources []v1alpha1.TaskResourceBinding, pt *v1alpha1.Pi
 	return taskInputResources
 }
 
-func WrapSteps(tr *v1alpha1.TaskRunSpec, pipelineResources []v1alpha1.PipelineTaskResource, pt *v1alpha1.PipelineTask) {
+// WrapSteps will add the correct `paths` to all of the inputs and outputs for pt
+func WrapSteps(tr *v1alpha1.TaskRunSpec, pt *v1alpha1.PipelineTask, inputs, outputs map[string]*v1alpha1.PipelineResource) {
 	if pt == nil {
 		return
 	}
-	for _, prTask := range pipelineResources {
-		if prTask.Name == pt.Name {
-			// Add presteps to setup updated input
-			tr.Inputs.Resources = append(tr.Inputs.Resources, GetInputSteps(prTask.Inputs, pt)...)
-			// Add poststeps to setup outputs
-			tr.Outputs.Resources = append(tr.Outputs.Resources, GetOutputSteps(prTask.Outputs, prTask.Name)...)
-		}
-	}
+	// Add presteps to setup updated input
+	tr.Inputs.Resources = append(tr.Inputs.Resources, GetInputSteps(inputs, pt)...)
+	// Add poststeps to setup outputs
+	tr.Outputs.Resources = append(tr.Outputs.Resources, GetOutputSteps(outputs, pt.Name)...)
 }

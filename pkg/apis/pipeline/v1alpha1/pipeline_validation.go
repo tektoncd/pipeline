@@ -50,10 +50,12 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 
 	// providedBy should match other tasks.
 	for _, t := range ps.Tasks {
-		for _, rd := range t.ResourceDependencies {
-			for _, pb := range rd.ProvidedBy {
-				if _, ok := taskNames[pb]; !ok {
-					return apis.ErrInvalidKeyName(pb, fmt.Sprintf("spec.tasks.resources.%s", pb))
+		if t.Resources != nil {
+			for _, rd := range t.Resources.Inputs {
+				for _, pb := range rd.ProvidedBy {
+					if _, ok := taskNames[pb]; !ok {
+						return apis.ErrInvalidKeyName(pb, fmt.Sprintf("spec.tasks.resources.%s", pb))
+					}
 				}
 			}
 		}

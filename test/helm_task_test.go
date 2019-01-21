@@ -188,10 +188,13 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 
 func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(helmDeployPipelineName, namespace, tb.PipelineSpec(
-		tb.PipelineTask("push-image", createImageTaskName),
+		tb.PipelineDeclaredResource("git-repo", "git"),
+		tb.PipelineTask("push-image", createImageTaskName,
+			tb.PipelineTaskInputResource("gitsource", "git-repo"),
+		),
 		tb.PipelineTask("helm-deploy", helmDeployTaskName,
-			tb.PipelineTaskResourceDependency("gitsource"), // tb.ProvidedBy(createImageTaskName), //TODO: https://github.com/knative/build-pipeline/issues/148
-			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
+			tb.PipelineTaskInputResource("gitsource", "git-repo", tb.ProvidedBy(createImageTaskName)),
+			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/test/gohelloworld/gohelloworld-chart"),
 			tb.PipelineTaskParam("chartname", "gohelloworld"),
 			tb.PipelineTaskParam("image", imageName),
 		),
@@ -201,12 +204,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	return tb.PipelineRun(helmDeployPipelineRunName, namespace, tb.PipelineRunSpec(
 		helmDeployPipelineName,
-		tb.PipelineRunTaskResource("helm-deploy",
-			tb.PipelineTaskResourceInputs("gitsource", tb.ResourceBindingRef(sourceResourceName)),
-		),
-		tb.PipelineRunTaskResource("push-image",
-			tb.PipelineTaskResourceInputs("gitsource", tb.ResourceBindingRef(sourceResourceName)),
-		),
+		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("my-special-resource")),
 	))
 }
 

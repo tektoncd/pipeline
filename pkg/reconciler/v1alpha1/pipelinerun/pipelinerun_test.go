@@ -68,22 +68,12 @@ func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.T
 }
 
 func TestReconcile(t *testing.T) {
-	workspaceInput := tb.PipelineTaskResourceInputs("workspace", tb.ResourceBindingRef("some-repo"))
-	imageOutput := tb.PipelineTaskResourceOutputs("image-to-use", tb.ResourceBindingRef("some-image"))
-	workspaceOutput := tb.PipelineTaskResourceOutputs("workspace", tb.ResourceBindingRef("some-repo"))
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("test-pipeline-run-success", "foo",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunServiceAccount("test-sa"),
-				tb.PipelineRunTaskResource("unit-test-1",
-					workspaceInput, imageOutput, workspaceOutput,
-				),
-				tb.PipelineRunTaskResource("unit-test-2",
-					workspaceInput,
-				),
-				tb.PipelineRunTaskResource("unit-test-cluster-task",
-					workspaceInput, imageOutput, workspaceOutput,
-				),
+				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
+				tb.PipelineRunResourceBinding("best-image", tb.PipelineResourceBindingRef("some-image")),
 			),
 		),
 	}
@@ -93,15 +83,23 @@ func TestReconcile(t *testing.T) {
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
+				tb.PipelineDeclaredResource("git-repo", "git"),
+				tb.PipelineDeclaredResource("best-image", "image"),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
 				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
-					tb.PipelineTaskResourceDependency("workspace", tb.ProvidedBy("unit-test-1")),
+					tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("unit-test-1")),
 				),
 				tb.PipelineTask("unit-test-cluster-task", "unit-test-cluster-task",
 					tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
 					funParam, moreFunParam, templatedParam,
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
 			),
 		),
@@ -191,14 +189,14 @@ func TestReconcile(t *testing.T) {
 				tb.TaskRunInputsParam("foo", "somethingfun"),
 				tb.TaskRunInputsParam("bar", "somethingmorefun"),
 				tb.TaskRunInputsParam("templatedparam", "${inputs.workspace.revision}"),
-				tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef("some-repo")),
+				tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("some-repo")),
 			),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource("image-to-use", tb.ResourceBindingRef("some-image"),
-					tb.ResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
+				tb.TaskRunOutputsResource("image-to-use", tb.TaskResourceBindingRef("some-image"),
+					tb.TaskResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
 				),
-				tb.TaskRunOutputsResource("workspace", tb.ResourceBindingRef("some-repo"),
-					tb.ResourceBindingPaths("/pvc/unit-test-1/workspace"),
+				tb.TaskRunOutputsResource("workspace", tb.TaskResourceBindingRef("some-repo"),
+					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
 				),
 			),
 		),
