@@ -48,8 +48,8 @@ func TestCancelPipelineRun(t *testing.T) {
 			),
 		),
 		pipelineState: []*resources.ResolvedPipelineRunTask{
-			&resources.ResolvedPipelineRunTask{TaskRunName: "t1", TaskRun: tb.TaskRun("t1", "foo")},
-			&resources.ResolvedPipelineRunTask{TaskRunName: "t2"},
+			{TaskRunName: "t1", TaskRun: tb.TaskRun("t1", "foo")},
+			{TaskRunName: "t2"},
 		},
 		taskRuns: []*v1alpha1.TaskRun{tb.TaskRun("t1", "foo")},
 	}, {
@@ -60,8 +60,8 @@ func TestCancelPipelineRun(t *testing.T) {
 			),
 		),
 		pipelineState: []*resources.ResolvedPipelineRunTask{
-			&resources.ResolvedPipelineRunTask{TaskRunName: "t1", TaskRun: tb.TaskRun("t1", "foo")},
-			&resources.ResolvedPipelineRunTask{TaskRunName: "t2", TaskRun: tb.TaskRun("t2", "foo")},
+			{TaskRunName: "t1", TaskRun: tb.TaskRun("t1", "foo")},
+			{TaskRunName: "t2", TaskRun: tb.TaskRun("t2", "foo")},
 		},
 		taskRuns: []*v1alpha1.TaskRun{tb.TaskRun("t1", "foo"), tb.TaskRun("t2", "foo")},
 	}}
