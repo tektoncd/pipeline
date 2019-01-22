@@ -595,7 +595,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: nil,
-		build: build(),
+		build:     build(),
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			outputResourcesetUp()
@@ -766,20 +766,20 @@ func Test_InValid_OutputResources(t *testing.T) {
 
 func Test_AllowedOutputResource(t *testing.T) {
 	for _, c := range []struct {
-		desc      	    string
+		desc            string
 		resourceType    v1alpha1.PipelineResourceType
 		expectedAllowed bool
 	}{{
-		desc: "storage type is allowed",
-		resourceType: v1alpha1.PipelineResourceTypeStorage,
+		desc:            "storage type is allowed",
+		resourceType:    v1alpha1.PipelineResourceTypeStorage,
 		expectedAllowed: true,
 	}, {
-		desc: "git type is allowed",
-		resourceType: v1alpha1.PipelineResourceTypeGit,
+		desc:            "git type is allowed",
+		resourceType:    v1alpha1.PipelineResourceTypeGit,
 		expectedAllowed: true,
 	}, {
-		desc: "anything else is not allowed",
-		resourceType: "fooType",
+		desc:            "anything else is not allowed",
+		resourceType:    "fooType",
 		expectedAllowed: false,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
