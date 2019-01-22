@@ -819,6 +819,7 @@
     "github.com/google/go-containerregistry/pkg/v1/partial",
     "github.com/google/go-containerregistry/pkg/v1/remote",
     "github.com/google/go-containerregistry/pkg/v1/types",
+    "github.com/hashicorp/golang-lru",
     "github.com/knative/build/pkg/apis/build/v1alpha1",
     "github.com/knative/build/pkg/system",
     "github.com/knative/caching/pkg/apis/caching",
