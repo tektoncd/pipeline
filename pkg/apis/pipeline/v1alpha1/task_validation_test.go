@@ -39,8 +39,9 @@ var invalidBuildSteps = []corev1.Container{{
 
 func TestTaskSpec_Validate(t *testing.T) {
 	type fields struct {
-		Inputs  *Inputs
-		Outputs *Outputs
+		Inputs     *Inputs
+		Outputs    *Outputs
+		BuildSteps []corev1.Container
 	}
 	tests := []struct {
 		name   string
@@ -58,6 +59,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 					},
 				},
 			},
+			BuildSteps: validBuildSteps,
 		},
 	}, {
 		name: "valid outputs",
@@ -65,6 +67,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 			Outputs: &Outputs{
 				Resources: []TaskResource{validResource},
 			},
+			BuildSteps: validBuildSteps,
 		},
 	}, {
 		name: "both valid",
@@ -75,6 +78,29 @@ func TestTaskSpec_Validate(t *testing.T) {
 			Outputs: &Outputs{
 				Resources: []TaskResource{validResource},
 			},
+			BuildSteps: validBuildSteps,
+		},
+	}, {
+		name: "valid template variable",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{{
+					Name: "foo",
+					Type: PipelineResourceTypeImage,
+				}},
+				Params: []TaskParam{{
+					Name: "baz",
+				}},
+			},
+			Outputs: &Outputs{
+				Resources: []TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "${inputs.resources.foo.url}",
+				Args:       []string{"--flag=${inputs.params.baz}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
 		},
 	}}
 	for _, tt := range tests {
@@ -82,7 +108,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 			ts := &TaskSpec{
 				Inputs:  tt.fields.Inputs,
 				Outputs: tt.fields.Outputs,
-				Steps:   validBuildSteps,
+				Steps:   tt.fields.BuildSteps,
 			}
 			if err := ts.Validate(); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -194,6 +220,32 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Resources: []TaskResource{validResource},
 			},
 			BuildSteps: invalidBuildSteps,
+		},
+	}, {
+		name: "inexistent input param variable",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"--flag=${inputs.params.inexistent}"},
+			}},
+		},
+	}, {
+		name: "inexistent input resource variable",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage:${inputs.resources.inputs}",
+			}},
+		},
+	}, {
+		name: "inexistent output param variable",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "myimage",
+				WorkingDir: "/foo/bar/${outputs.resources.inexistent}",
+			}},
 		},
 	}}
 	for _, tt := range tests {
