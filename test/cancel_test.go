@@ -1,0 +1,136 @@
+// +build e2e
+
+/*
+Copyright 2018 Knative Authors LLC
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package test
+
+import (
+	"fmt"
+	"testing"
+
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	knativetest "github.com/knative/pkg/test"
+	"github.com/knative/pkg/test/logging"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/knative/build-pipeline/test/builder"
+)
+
+// TestTaskRunPipelineRunCancel is an integration test that will
+// verify that pipelinerun cancel lead to the the correct TaskRun statuses
+// and pod deletions.
+func TestTaskRunPipelineRunCancel(t *testing.T) {
+	logger := logging.GetContextLogger(t.Name())
+	c, namespace := setup(t, logger)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+	defer tearDown(t, logger, c, namespace)
+
+	logger.Infof("Creating Task in namespace %s", namespace)
+	task := tb.Task("banana", namespace, tb.TaskSpec(
+		tb.Step("foo", "ubuntu", tb.Command("/bin/bash"), tb.Args("-c", "sleep 500")),
+	))
+	if _, err := c.TaskClient.Create(task); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
+	}
+
+	pipeline := tb.Pipeline("tomatoes", namespace,
+		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
+	)
+	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec("tomatoes"))
+	if _, err := c.PipelineClient.Create(pipeline); err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
+	}
+	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
+	}
+
+	logger.Infof("Waiting for Pipelinerun %s in namespace %s to be started", "pear", namespace)
+	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
+		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("pipelineRun %s already finished!", "pear")
+			} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
+				return true, nil
+			}
+		}
+		return false, nil
+	}, "PipelineRunRunning"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", "pear", err)
+	}
+
+	logger.Infof("Waiting for TaskRun %s in namespace %s to be running", "pear-foo", namespace)
+	if err := WaitForTaskRunState(c, "pear-foo", func(tr *v1alpha1.TaskRun) (bool, error) {
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
+				return true, fmt.Errorf("taskRun %s already finished!", "pear-foo")
+			} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
+				return true, nil
+			}
+		}
+		return false, nil
+	}, "TarkRunRunning"); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to be running: %s", "pear-foo", err)
+	}
+
+	pr, err := c.PipelineRunClient.Get("pear", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get PipelineRun `%s`: %s", "pear", err)
+	}
+
+	pr.Spec.Status = v1alpha1.PipelineRunSpecStatusCancelled
+	if _, err := c.PipelineRunClient.Update(pr); err != nil {
+		t.Fatalf("Failed to cancel PipelineRun `%s`: %s", "pear", err)
+	}
+
+	logger.Infof("Waiting for PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
+	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
+		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionFalse {
+				if c.Reason == "PipelineRunCancelled" {
+					return true, nil
+				}
+				return true, fmt.Errorf("pipelineRun %s completed with the wrong reason: %s", "pear", c.Reason)
+			} else if c.Status == corev1.ConditionTrue {
+				return true, fmt.Errorf("pipelineRun %s completed successfully, should have been cancelled", "pear")
+			}
+		}
+		return false, nil
+	}, "PipelineRunCancelled"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
+	}
+
+	logger.Infof("Waiting for TaskRun %s in namespace %s to be cancelled", hwTaskRunName, namespace)
+	if err := WaitForTaskRunState(c, "pear-foo", func(tr *v1alpha1.TaskRun) (bool, error) {
+		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if c != nil {
+			if c.Status == corev1.ConditionFalse {
+				if c.Reason == "TaskRunCancelled" {
+					return true, nil
+				}
+				return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", "pear-foo", c.Reason)
+			} else if c.Status == corev1.ConditionTrue {
+				return true, fmt.Errorf("taskRun %s completed successfully, should have been cancelled", "pear-foo")
+			}
+		}
+		return false, nil
+	}, "TaskRunCancelled"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", "pear-foo", err)
+	}
+}

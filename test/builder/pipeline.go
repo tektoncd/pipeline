@@ -80,6 +80,11 @@ func PipelineSpec(ops ...PipelineSpecOp) PipelineOp {
 	}
 }
 
+// PipelineRunCancelled sets the status to cancel to the TaskRunSpec.
+func PipelineRunCancelled(spec *v1alpha1.PipelineRunSpec) {
+	spec.Status = v1alpha1.PipelineRunSpecStatusCancelled
+}
+
 // PipelineTask adds a PipelineTask, with specified name and task name, to the PipelineSpec.
 // Any number of PipelineTask modifier can be passed to transform it.
 func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {

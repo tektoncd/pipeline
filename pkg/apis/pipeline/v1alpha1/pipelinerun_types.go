@@ -49,7 +49,19 @@ type PipelineRunSpec struct {
 	// +optional
 	Results    *Results `json:"results,omitempty"`
 	Generation int64    `json:"generation,omitempty"`
+	// Used for cancelling a pipelinerun (and maybe more later on)
+	// +optional
+	Status PipelineRunSpecStatus
 }
+
+// PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
+type PipelineRunSpecStatus string
+
+const (
+	// PipelineRunSpecStatusCancelled indicates that the user wants to cancel the task,
+	// if not already cancelled or terminated
+	PipelineRunSpecStatusCancelled = "PipelineRunCancelled"
+)
 
 // PipelineTaskResource maps Task inputs and outputs to existing PipelineResources by their names.
 type PipelineTaskResource struct {
