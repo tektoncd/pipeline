@@ -210,6 +210,15 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) resources.GetTask {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
+	// If the taskrun is cancelled, kill resources and update status
+	if isCancelled(tr.Spec) {
+		before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		err := cancelTaskRun(tr, c.KubeClientSet, c.Logger)
+		after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		reconciler.EmitEvent(c.Recorder, before, after, tr)
+		return err
+	}
+
 	getTaskFunc := c.getTaskFunc(tr)
 	spec, taskName, err := resources.GetTaskSpec(&tr.Spec, tr.Name, getTaskFunc)
 	if err != nil {

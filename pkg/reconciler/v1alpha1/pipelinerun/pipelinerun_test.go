@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -443,5 +444,56 @@ func validateEvents(t *testing.T, r *record.FakeRecorder) {
 		}
 	case <-timer.C:
 		t.Error("Failed.  No event was received")
+	}
+}
+
+func TestReconcileOnCancelledPipelineRun(t *testing.T) {
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-cancelled", "foo",
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunCancelled,
+		),
+	)}
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world"),
+	))}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("test-pipeline-run-cancelled-hello-world", "foo",
+			tb.TaskRunOwnerReference("kind", "name"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-cancelled"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world"),
+				tb.TaskRunServiceAccount("test-sa"),
+			),
+		),
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+	}
+
+	// create fake recorder for testing
+	fr := record.NewFakeRecorder(1)
+
+	testAssets := getPipelineRunController(d, fr)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-cancelled")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-cancelled", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// This PipelineRun should still be complete and false, and the status should reflect that
+	if !reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsFalse() {
+		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
 	}
 }

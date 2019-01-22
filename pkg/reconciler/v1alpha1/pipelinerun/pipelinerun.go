@@ -241,6 +241,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return fmt.Errorf("error getting TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
 
+	// If the pipelinerun is cancelled, cancel tasks and update status
+	if isCancelled(pr.Spec) {
+		return cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
+	}
+
 	serviceAccount := pr.Spec.ServiceAccount
 	rprt := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
 

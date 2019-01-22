@@ -371,6 +371,11 @@ func TaskRunSpec(ops ...TaskRunSpecOp) TaskRunOp {
 	}
 }
 
+// TaskRunCancelled sets the status to cancel to the TaskRunSpec.
+func TaskRunCancelled(spec *v1alpha1.TaskRunSpec) {
+	spec.Status = v1alpha1.TaskRunSpecStatusCancelled
+}
+
 // TaskRunTaskRef sets the specified Task reference to the TaskRunSpec.
 // Any number of TaskRef modifier can be passed to transform it.
 func TaskRunTaskRef(name string, ops ...TaskRefOp) TaskRunSpecOp {

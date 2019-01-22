@@ -360,6 +360,22 @@ secrets:
   - name: test-git-ssh
 ```
 
+### Cancelling a PipelineRun
+
+In order to cancel a running pipeline (`PipelineRun`), you need to
+updated its spec to mark it as cancelled. Related `TaskRun` will be
+marked as cancelled and building Pods deleted. 
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  status: "PipelineRunCancelled"
+```
+
 ## Running a Task
 
 1. To run a `Task`, create a new `TaskRun` which defines all inputs, outputs
@@ -441,6 +457,21 @@ metadata:
   name: test-build-robot-git-ssh
 secrets:
   - name: test-git-ssh
+```
+
+### Cancelling a TaskRun
+
+In order to cancel a running task (`TaskRun`), you need to
+updated its spec to mark it as cancelle, building Pods deleted. 
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  status: "TaskRunCancelled"
 ```
 
 ## Creating Resources

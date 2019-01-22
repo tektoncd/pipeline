@@ -49,9 +49,21 @@ type TaskRunSpec struct {
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
-	//+optional
+	// +optional
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
+	// Used for cancelling a taskrun (and maybe more later on)
+	// +optional
+	Status TaskRunSpecStatus
 }
+
+// TaskRunSpecStatus defines the taskrun spec status the user can provide
+type TaskRunSpecStatus string
+
+const (
+	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
+	// if not already cancelled or terminated
+	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+)
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
