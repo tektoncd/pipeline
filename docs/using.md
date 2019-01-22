@@ -362,9 +362,9 @@ secrets:
 
 ### Cancelling a PipelineRun
 
-In order to cancel a running pipeline (`PipelineRun`), you need to
-updated its spec to mark it as cancelled. Related `TaskRun` will be
-marked as cancelled and building Pods deleted. 
+In order to cancel a running pipeline (`PipelineRun`), you need to updated its
+spec to mark it as cancelled. Related `TaskRun` will be marked as cancelled and
+building Pods deleted.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -461,8 +461,8 @@ secrets:
 
 ### Cancelling a TaskRun
 
-In order to cancel a running task (`TaskRun`), you need to
-updated its spec to mark it as cancelle, building Pods deleted. 
+In order to cancel a running task (`TaskRun`), you need to updated its spec to
+mark it as cancelle, building Pods deleted.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
