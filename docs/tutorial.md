@@ -1,32 +1,14 @@
 # Tutorial for using Knative build pipelines
 
-**[Want to modify this tutorial? See the experimentation section](#experimentation)**<br>
-
-**[Want to develop on your own workstation?](#local-development)**<br>
-
-## Local development
-
-### Known good configuration
-
-Knative (as of version 0.3) is known to work with:
-- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed
-- The following [pre-requisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
-- A local Docker registry: this can be run with
-
-`docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
-
-### Images
-- Any hardcoded image locations should be replaced with `localhost:5000/myregistry/<image name>` equivalents: look for `PipelineResource` definitions which define an `image` specification
-- The `KO_DOCKER_REPO` variable should be set to `localhost:5000/myregistry` before using `ko`
-
-### Logging
-- Logs can remain in-memory only as opposed to sent to a service such as [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results` specification
+**[This tutorial can be run on a local workstation](#local-development)**<br>
 
 # Hello World Task
 
 The main objective of the Pipeline CRDs is to run your Task individually or as a
 part of a Pipeline. Every task runs as a Pod on your Kubernetes cluster with
 each step as its own container.
+
+todo mention pod lifecycles and how one should kick off multiple pipeline runs that do the same thing: do you just delete one and apply another?
 
 ## Tasks
 
@@ -230,7 +212,7 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/gitspace/examples/microservices/leeroy-web #configure: this may change according to what you'd like to build
+        value: /workspace/gitspace/examples/microservices/leeroy-web #configure: may change according to your source
   outputs:
     resources:
       - name: builtImage
@@ -309,7 +291,7 @@ spec:
           name: skaffold-image-leeroy-web
   results:
     type: gcs
-    url: gcs://somebucket/results/logs
+    url: gcs://somebucket/results/logs #configure: remove results entirely if you're happy to use stdout
   taskRef:
     name: build-docker-image-from-git-source
   taskSpec: null
@@ -584,6 +566,27 @@ status:
 The status of type `Succeeded = True` shows the pipeline ran successfully, also
 the status of individual Task runs are shown.
 
+
+## Local development
+
+### Known good configuration
+
+Knative (as of version 0.3) is known to work with:
+- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed
+- The following [pre-requisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
+- A local Docker registry: this can be run with
+
+`docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
+
+### Images
+- Any hardcoded image locations should be replaced with `localhost:5000/myregistry/<image name>` equivalents: look for `PipelineResource` definitions which define an `image` specification
+- The `KO_DOCKER_REPO` variable should be set to `localhost:5000/myregistry` before using `ko`
+
+### Logging
+- Logs can remain in-memory only as opposed to sent to a service such as [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results` specification.
+
+todo mention elasticsearch tutorial
+
 ## Experimentation
-Lines of code you may want to configure have the #changeme annotation. This annotation applies to subjects such as Docker registries, log output locations and other nuances that may be specific to particular cloud providers or services.
+Lines of code you may want to configure have the #configure annotation. This annotation applies to subjects such as Docker registries, log output locations and other nuances that may be specific to particular cloud providers or services.
 
