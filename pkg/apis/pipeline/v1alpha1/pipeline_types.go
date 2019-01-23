@@ -101,10 +101,10 @@ type PipelineDeclaredResource struct {
 // should be provided to a Task as its inputs and outputs.
 type PipelineTaskResources struct {
 	// Inputs holds the mapping from the PipelineResources declared in
-	// DeclaredPipelineResources to the input PipelineResources reuqired by the Task.
+	// DeclaredPipelineResources to the input PipelineResources required by the Task.
 	Inputs []PipelineTaskInputResource `json:"inputs"`
 	// Outputs holds the mapping from the PipelineResources declared in
-	// DeclaredPipelineResources to the input PipelineResources reuqired by the Task.
+	// DeclaredPipelineResources to the input PipelineResources required by the Task.
 	Outputs []PipelineTaskOutputResource `json:"outputs"`
 }
 

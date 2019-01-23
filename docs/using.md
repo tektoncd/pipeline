@@ -66,7 +66,7 @@ spec:
 Sometimes you will have `Tasks` that need to take as input the output of a previous
 `Task`, for example, an image built by a previous `Task`.
 
-We express this dependency by adding `providedBy` on `Resources` that our `Tasks`
+Express this dependency by adding `providedBy` on `Resources` that your `Tasks`
 need.
 
 - The (optional) `providedBy` key on an `input source` defines a set of previous
@@ -97,7 +97,7 @@ For example see this `Pipeline` spec:
           - build-app
 ```
 
-The `my-image` resource is expected to be provided to the `deploy-app` `Task` from
+The resource `my-image` is expected to be provided to the `deploy-app` `Task` from
 the `build-app` `Task`. This means that the `PipelineResource` `my-image` must also
 be declared as an output of `build-app`.
 
@@ -176,14 +176,14 @@ steps:
 
 ##### Configure Entrypoint image
 
-To run a step needs to pull an `Entrypoint` image. Maybe the image is hard to
-pull in your environment, so we provide a way for you to configure that by edit
-the `image`'s value in a configmap named
+To run a step, the `pod` will need to pull an `Entrypoint` image. Maybe the
+image is hard to pull in your environment, so we provide a way for you to
+configure that by edit the `image`'s value in a configmap named
 [`config-entrypoint`](./../config/config-entrypoint.yaml).
 
 ### Resource sharing between tasks
 
-Pipeline Tasks are allowed to pass resources from previous tasks via the
+Pipeline `Tasks` are allowed to pass resources from previous `Tasks` via the
 [`providedBy`](#providedby) field. This feature is implemented using
 Persistent Volume Claims under the hood but however has an implication
 that tasks cannot have any volume mounted under path `/pvc`.
