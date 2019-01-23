@@ -50,7 +50,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 	pipeline := tb.Pipeline("tomatoes", namespace,
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
-	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec("tomatoes"))
+	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
 	}

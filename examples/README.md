@@ -17,6 +17,9 @@ kubectl apply -f examples/run/pipeline-run.yaml
 
 # To invoke the Pipeline that links outputs
 kubectl apply -f examples/run/output-pipeline-run.yaml
+
+# To invoke the TaskRun with embedded Resource spec and task Spec
+kubectl apply -f examples/run/task-run-resource-spec.yaml
 ```
 
 ## Example Pipelines
@@ -62,6 +65,7 @@ The [run](./run/) directory contains an example
   the `build-push` task
 - [pipeline-run.yaml](./run/pipeline-run.yaml) invokes
   [the example pipeline](#example-pipeline)
+- [embed-resource-spec.yaml](./run/task-run-resource-spec.yaml) shows an example how to create TaskRun with embedded Task spec and resource spec.
 
 ### Pipeline with outputs
 

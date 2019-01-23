@@ -87,12 +87,30 @@ func getHelloWorldValidationPod(namespace, volumeClaimName string) *corev1.Pod {
 
 func getHelloWorldTask(namespace string, args []string) *v1alpha1.Task {
 	return tb.Task(hwTaskName, namespace,
-		tb.TaskSpec(tb.Step(hwContainerName, "busybox", tb.Command(args...))),
-	)
+		tb.TaskSpec(
+			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
+			tb.Step("read", "ubuntu",
+				tb.Command("/bin/bash"),
+				tb.Args("-c", "cat /workspace/docs/README.md"),
+			),
+			tb.Step(hwContainerName, "busybox", tb.Command(args...)),
+		))
 }
 
 func getHelloWorldTaskRun(namespace string) *v1alpha1.TaskRun {
-	return tb.TaskRun(hwTaskRunName, namespace, tb.TaskRunSpec(tb.TaskRunTaskRef(hwTaskName)))
+	testSpec := &v1alpha1.PipelineResourceSpec{
+		Type: v1alpha1.PipelineResourceTypeGit,
+		Params: []v1alpha1.Param{{
+			Name:  "URL",
+			Value: "http://github.com/knative/docs",
+		}},
+	}
+	return tb.TaskRun(hwTaskRunName, namespace,
+		tb.TaskRunSpec(
+			tb.TaskRunInputs(
+				tb.TaskRunInputsResource("docs", tb.TaskResourceBindingResourceSpec(testSpec)),
+			),
+			tb.TaskRunTaskRef(hwTaskName)))
 }
 
 func getBuildOutputFromVolume(t *testing.T, logger *logging.BaseLogger, c *clients, namespace, testStr string) string {

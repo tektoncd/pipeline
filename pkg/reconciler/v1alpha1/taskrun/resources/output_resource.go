@@ -85,9 +85,9 @@ func AddOutputResources(
 			return fmt.Errorf("Failed to get bound resource: %s", err)
 		}
 
-		resource, err := pipelineResourceLister.PipelineResources(taskRun.Namespace).Get(boundResource.ResourceRef.Name)
+		resource, err := getResource(boundResource, pipelineResourceLister.PipelineResources(taskRun.Namespace).Get)
 		if err != nil {
-			return fmt.Errorf("Failed to get output pipeline Resource for task %q: %q", boundResource.ResourceRef.Name, taskName)
+			return fmt.Errorf("Failed to get output pipeline Resource for task %q resource %q; error: %s", taskName, boundResource, err.Error())
 		}
 
 		// if resource is declared in input then copy outputs to pvc
@@ -196,11 +196,4 @@ func addStoreUploadStep(build *buildv1alpha1.Build,
 	}
 	build.Spec.Steps = append(build.Spec.Steps, buildSteps...)
 	return nil
-}
-
-// allowedOutputResource checks if an output resource type produces
-// an output that should be copied to the PVC
-func allowedOutputResource(resourceType v1alpha1.PipelineResourceType) bool {
-
-	return allowedOutputResources[resourceType]
 }

@@ -309,7 +309,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	updateTaskRunsStatus(pr, pipelineState)
 
-	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status)
+	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
 	return nil
 }
 

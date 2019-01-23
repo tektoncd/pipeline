@@ -889,6 +889,132 @@ func Test_StorageInputResource(t *testing.T) {
 		wantErr bool
 		want    *buildv1alpha1.Build
 	}{{
+		desc: "inputs with no resource spec and resource ref",
+		task: &v1alpha1.Task{
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "gcs-input-resource",
+						Type: "storage",
+					}},
+				},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-storage-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "gcs-input-resource",
+					}},
+				},
+			},
+		},
+		build:   nil,
+		wantErr: true,
+	}, {
+		desc: "inputs with both resource spec and resource ref",
+		task: &v1alpha1.Task{
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "gcs-input-resource",
+						Type: "storage",
+					}},
+				},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-storage-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "gcs-input-resource",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "storage-gcs-keys",
+						},
+						ResourceSpec: &v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeStorage,
+						},
+					}},
+				},
+			},
+		},
+		build:   nil,
+		wantErr: true,
+	}, {
+		desc: "inputs with resource spec and no resource ref",
+		task: &v1alpha1.Task{
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "gcs-input-resource",
+						Type: "storage",
+					}},
+				},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-storage-run",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "gcs-input-resource",
+						ResourceSpec: &v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeStorage,
+							Params: []v1alpha1.Param{{
+								Name:  "Location",
+								Value: "gs://fake-bucket/rules.zip",
+							}, {
+								Name:  "Type",
+								Value: "gcs",
+							}},
+						},
+					}},
+				},
+			},
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:         "create-dir-gcs-input-resource",
+					Image:        "override-with-bash-noop:latest",
+					Args:         []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
+					VolumeMounts: []corev1.VolumeMount{{Name: "workspace", MountPath: "/workspace"}},
+				}, {
+					Name:         "storage-fetch-gcs-input-resource",
+					Image:        "override-with-gsutil-image:latest",
+					Args:         []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource"},
+					VolumeMounts: []corev1.VolumeMount{{Name: "workspace", MountPath: "/workspace"}},
+				}},
+			},
+		},
+	}, {
 		desc: "no inputs",
 		task: &v1alpha1.Task{
 			ObjectMeta: metav1.ObjectMeta{

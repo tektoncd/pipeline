@@ -636,6 +636,108 @@ func Test_InValid_OutputResources(t *testing.T) {
 		wantSteps []corev1.Container
 		wantErr   bool
 	}{{
+		desc: "git declared in both resource spec and resource ref",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git",
+						},
+						ResourceSpec: &v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeGit,
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		wantErr: true,
+	}, {
+		desc: "git declared in output both in resource ref and spec",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git",
+						},
+						ResourceSpec: &v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeGit,
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		wantErr: true,
+	}, {
+		desc: "git declared in neither resource ref and spec",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		wantErr: true,
+	}, {
 		desc: "no outputs defined",
 		task: &v1alpha1.Task{
 			ObjectMeta: metav1.ObjectMeta{
@@ -758,7 +860,7 @@ func Test_InValid_OutputResources(t *testing.T) {
 			outputResourcesetUp()
 			err := AddOutputResources(build(), c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
-				t.Fatalf("Test AddOutputResourceSteps error %v ", c.desc)
+				t.Fatalf("Test AddOutputResourceSteps %v ; error: %s", c.desc, err)
 			}
 		})
 	}

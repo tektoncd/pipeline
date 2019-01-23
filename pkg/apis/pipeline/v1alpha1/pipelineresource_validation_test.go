@@ -167,6 +167,17 @@ func TestResourceValidation_Invalid(t *testing.T) {
 				},
 			},
 			want: apis.ErrMissingField("spec.params.location"),
+		}, {
+			name: "invalid resoure type",
+			res: PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "invalid-resource",
+				},
+				Spec: PipelineResourceSpec{
+					Type: "not-supported",
+				},
+			},
+			want: apis.ErrInvalidValue("spec.type", "not-supported"),
 		},
 	}
 	for _, tt := range tests {

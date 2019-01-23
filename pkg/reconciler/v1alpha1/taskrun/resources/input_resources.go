@@ -27,6 +27,7 @@ import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -40,7 +41,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 			return &br, nil
 		}
 	}
-	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %s", resourceName, boundResources)
+	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
 }
 
 // AddInputResource reads the inputs resources and adds the corresponding container steps
@@ -70,9 +71,9 @@ func AddInputResource(
 			return nil, fmt.Errorf("Failed to get bound resource: %s", err)
 		}
 
-		resource, err := pipelineResourceLister.PipelineResources(taskRun.Namespace).Get(boundResource.ResourceRef.Name)
+		resource, err := getResource(boundResource, pipelineResourceLister.PipelineResources(taskRun.Namespace).Get)
 		if err != nil {
-			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q", taskName, boundResource)
+			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q: error: %s", taskName, boundResource, err.Error())
 		}
 
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
@@ -233,4 +234,24 @@ func copyContainer(name, sourcePath, destinationPath string) corev1.Container {
 		Image: *bashNoopImage,
 		Args:  []string{"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath}, " ")},
 	}
+}
+
+func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {
+	// Check both resource ref or resource Spec are not present. Taskrun webhook should catch this in validation error.
+	if r.ResourceRef.Name != "" && r.ResourceSpec != nil {
+		return nil, fmt.Errorf("Both ResourseRef and ResourceSpec are defined. Expected only one")
+	}
+
+	if r.ResourceRef.Name != "" {
+		return getter(r.ResourceRef.Name)
+	}
+	if r.ResourceSpec != nil {
+		return &v1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: r.Name,
+			},
+			Spec: *r.ResourceSpec,
+		}, nil
+	}
+	return nil, fmt.Errorf("Neither ResourseRef not ResourceSpec is defined")
 }
