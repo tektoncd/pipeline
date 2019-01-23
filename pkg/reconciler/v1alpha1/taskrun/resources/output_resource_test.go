@@ -886,7 +886,7 @@ func Test_AllowedOutputResource(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			if c.expectedAllowed != allowedOutputResources[c.resourceType] {
-				t.Fatalf("Test AllowedOutputResource %s expected %t but got %t", c.desc, c.expectedAllowed, allowedOutputResources[c.resourceType])
+				t.Fatalf("Test allowedOutputResource %s expected %t but got %t", c.desc, c.expectedAllowed, allowedOutputResources[c.resourceType])
 			}
 		})
 	}
