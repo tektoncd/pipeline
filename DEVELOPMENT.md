@@ -52,8 +52,12 @@ You must install these tools:
    For development.
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
    interacting with your kube cluster
+   
+Your [`$GOPATH`] setting is critical for `ko apply` to function properly: a successful run will typically involve building pushing images instead of only configuring Kubernetes resources.
 
 ## Kubernetes cluster
+
+Docker for Desktop using an edge version has been proven to work for both developing and running Knative. Your Kubernetes version must be 1.11 or later.
 
 To setup a cluster with GKE:
 
@@ -78,7 +82,7 @@ environment variables (we recommend adding them to your `.bashrc`):
 1. `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will
    work properly.
 1. `KO_DOCKER_REPO`: The docker repository to which developer images should be
-   pushed (e.g. `gcr.io/[gcloud-project]`).
+   pushed (e.g. `gcr.io/[gcloud-project]`). You can also run a local registry and set `KO_DOCKER_REPO` to reference the registry (e.g. at `localhost:5000/myknativeimages`).
 
 `.bashrc` example:
 
