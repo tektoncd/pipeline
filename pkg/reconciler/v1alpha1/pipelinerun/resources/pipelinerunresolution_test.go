@@ -457,6 +457,45 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	}
 }
 
+func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
+	tests := []struct {
+		name string
+		p    *v1alpha1.Pipeline
+	}{
+		{
+			name: "input doesnt exist",
+			p: tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("mytask1", "task",
+					tb.PipelineTaskInputResource("input1", "git-resource"),
+				),
+			)),
+		},
+		{
+			name: "output doesnt exist",
+			p: tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("mytask1", "task",
+					tb.PipelineTaskOutputResource("input1", "git-resource"),
+				),
+			)),
+		},
+	}
+	providedResources := map[string]v1alpha1.PipelineResourceRef{}
+
+	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
+			if err == nil {
+				t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
+			}
+		})
+	}
+
+}
+
 func TestResolveTaskRuns_AllStarted(t *testing.T) {
 	state := []*ResolvedPipelineRunTask{{
 		TaskRunName: "pipelinerun-mytask1",
