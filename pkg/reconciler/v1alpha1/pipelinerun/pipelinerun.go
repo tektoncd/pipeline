@@ -51,6 +51,9 @@ const (
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
 	ReasonCouldntGetTask = "CouldntGetTask"
+	// ReasonCouldntGetResource indicates that the reason for the failure status is that the
+	// associated PipelineRun's bound PipelineResources couldn't all be retrieved
+	ReasonCouldntGetResource = "CouldntGetResource"
 	// ReasonFailedValidation indicated that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	ReasonFailedValidation = "PipelineValidationFailed"
@@ -200,6 +203,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			Message: fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's PipelineResources correctly: %s",
 				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
 		})
+		return nil
 	}
 
 	pipelineState, err := resources.ResolvePipelineRun(
@@ -213,19 +217,36 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		c.resourceLister.PipelineResources(pr.Namespace).Get,
 		p.Spec.Tasks, providedResources,
 	)
+
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// This Run has failed, so we need to mark it as failed and stop reconciling it
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		switch err := err.(type) {
+		case *resources.TaskNotFoundError:
 			pr.Status.SetCondition(&duckv1alpha1.Condition{
 				Type:   duckv1alpha1.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
 				Reason: ReasonCouldntGetTask,
 				Message: fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
+					fmt.Sprintf("%s/%s", p.Namespace, p.Name), err),
+			})
+		case *resources.ResourceNotFoundError:
+			pr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:   duckv1alpha1.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: ReasonCouldntGetResource,
+				Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
 					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
 			})
-			return nil
+		default:
+			pr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:   duckv1alpha1.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: ReasonFailedValidation,
+				Message: fmt.Sprintf("PipelineRun %s can't be Run; couldn't resolve all references: %s",
+					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
+			})
 		}
-		return fmt.Errorf("error getting Tasks for Pipeline %s: %s", p.Name, err)
+		return nil
 	}
 
 	if err := resources.ValidateProvidedBy(pipelineState); err != nil {

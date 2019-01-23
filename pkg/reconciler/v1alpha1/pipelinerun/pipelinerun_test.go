@@ -229,19 +229,33 @@ func TestReconcile(t *testing.T) {
 }
 
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
-	ts := []*v1alpha1.Task{tb.Task("a-task-that-exists", "foo")}
+	ts := []*v1alpha1.Task{
+		tb.Task("a-task-that-exists", "foo"),
+		tb.Task("a-task-that-needs-params", "foo", tb.TaskSpec(
+			tb.TaskInputs(tb.InputsParam("some-param")))),
+	}
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("pipeline-missing-tasks", "foo", tb.PipelineSpec(
 			tb.PipelineTask("myspecialtask", "sometask"),
 		)),
+		tb.Pipeline("a-pipeline-without-params", "foo", tb.PipelineSpec(
+			tb.PipelineTask("some-task", "a-task-that-needs-params"))),
 		tb.Pipeline("a-fine-pipeline", "foo", tb.PipelineSpec(
-			tb.PipelineTask("some-task", "a-task-that-exists"),
-		)),
+			tb.PipelineDeclaredResource("a-resource", v1alpha1.PipelineResourceTypeGit),
+			tb.PipelineTask("some-task", "a-task-that-exists",
+				tb.PipelineTaskInputResource("needed-resource", "a-resource")))),
+		tb.Pipeline("a-pipeline-that-should-be-caught-by-admission-control", "foo", tb.PipelineSpec(
+			tb.PipelineTask("some-task", "a-task-that-exists",
+				tb.PipelineTaskInputResource("needed-resource", "a-resource")))),
 	}
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("invalid-pipeline", "foo", tb.PipelineRunSpec("pipeline-not-exist")),
 		tb.PipelineRun("pipelinerun-missing-tasks", "foo", tb.PipelineRunSpec("pipeline-missing-tasks")),
-		tb.PipelineRun("pipeline-params-dont-exist", "foo", tb.PipelineRunSpec("a-fine-pipeline")),
+		tb.PipelineRun("pipeline-params-dont-exist", "foo", tb.PipelineRunSpec("a-pipeline-without-params")),
+		tb.PipelineRun("pipeline-resources-not-bound", "foo", tb.PipelineRunSpec("a-fine-pipeline")),
+		tb.PipelineRun("pipeline-resources-dont-exist", "foo", tb.PipelineRunSpec("a-fine-pipeline",
+			tb.PipelineRunResourceBinding("a-resource", tb.PipelineResourceBindingRef("missing-resource")))),
+		tb.PipelineRun("pipeline-resources-not-declared", "foo", tb.PipelineRunSpec("a-pipeline-that-should-be-caught-by-admission-control")),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -261,6 +275,22 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
 			pipelineRun: prs[1],
 			reason:      ReasonCouldntGetTask,
+		}, {
+			name:        "invalid-pipeline-run-params-dont-exist-shd-stop-reconciling",
+			pipelineRun: prs[2],
+			reason:      ReasonFailedValidation,
+		}, {
+			name:        "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
+			pipelineRun: prs[3],
+			reason:      ReasonInvalidBindings,
+		}, {
+			name:        "invalid-pipeline-run-missing-resource-shd-stop-reconciling",
+			pipelineRun: prs[4],
+			reason:      ReasonCouldntGetResource,
+		}, {
+			name:        "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
+			pipelineRun: prs[5],
+			reason:      ReasonFailedValidation,
 		},
 	}
 

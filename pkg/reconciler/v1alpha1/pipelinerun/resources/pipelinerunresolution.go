@@ -133,6 +133,25 @@ func getPipelineRunTaskResources(pt v1alpha1.PipelineTask, providedResources map
 	return inputs, outputs, nil
 }
 
+// TaskNotFoundError indicates that the resolution failed because a referenced Task couldn't be retrieved
+type TaskNotFoundError struct {
+	Name string
+	Msg  string
+}
+
+func (e *TaskNotFoundError) Error() string {
+	return fmt.Sprintf("Couldn't retrieve Task %q: %s", e.Name, e.Msg)
+}
+
+// ResourceNotFoundError indicates that the resolution failed because a referenced PipelineResource couldn't be retrieved
+type ResourceNotFoundError struct {
+	Msg string
+}
+
+func (e *ResourceNotFoundError) Error() string {
+	return fmt.Sprintf("Couldn't retrieve PipelineResource: %s", e.Msg)
+}
+
 // ResolvePipelineRun retrieves all Tasks instances which are reference by tasks, getting
 // instances from getTask. If it is unable to retrieve an instance of a referenced Task, it
 // will return an error, otherwise it returns a list of all of the Tasks retrieved.
@@ -157,9 +176,10 @@ func ResolvePipelineRun(prName string, getTask resources.GetTask, getClusterTask
 			t, err = getTask(pt.TaskRef.Name)
 		}
 		if err != nil {
-			// If the Task can't be found, it means the PipelineRun is invalid. Return the same error
-			// type so it can be used by the caller.
-			return nil, err
+			return nil, &TaskNotFoundError{
+				Name: pt.TaskRef.Name,
+				Msg:  err.Error(),
+			}
 		}
 
 		// Get all the resources that this task will be using, if any
@@ -171,7 +191,7 @@ func ResolvePipelineRun(prName string, getTask resources.GetTask, getClusterTask
 		spec := t.TaskSpec()
 		rtr, err := resources.ResolveTaskResources(&spec, t.TaskMetadata().Name, inputs, outputs, getResource)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't resolve task resources for task %q: %v", t.TaskMetadata().Name, err)
+			return nil, &ResourceNotFoundError{Msg: err.Error()}
 		}
 		rprt.ResolvedTaskResources = rtr
 
