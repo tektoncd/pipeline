@@ -1,4 +1,5 @@
-## Want to run this on your laptop? Skip to the section below.
+### Want to run this on your laptop? Skip to the section below for the pre-requisites. ###
+
 Each line of code you'll want to configure ends with a `# configure` comment.
 
 # Hello World Task
