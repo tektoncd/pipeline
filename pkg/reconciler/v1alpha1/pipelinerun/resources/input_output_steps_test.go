@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -184,10 +185,10 @@ func Test_WrapSteps(t *testing.T) {
 		Paths:       []string{"/pvc/test-task/test-output"},
 	}}
 
-	if d := cmp.Diff(taskRunSpec.Inputs.Resources, expectedtaskInputResources); d != "" {
+	if d := cmp.Diff(taskRunSpec.Inputs.Resources, expectedtaskInputResources, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("error comparing input resources: %s", d)
 	}
-	if d := cmp.Diff(taskRunSpec.Outputs.Resources, expectedtaskOuputResources); d != "" {
+	if d := cmp.Diff(taskRunSpec.Outputs.Resources, expectedtaskOuputResources, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("error comparing output resources: %s", d)
 	}
 }
