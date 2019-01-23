@@ -1,6 +1,26 @@
-### Want to run this on your laptop? Skip to the section below for the pre-requisites. ###
+# Tutorial for using Knative build pipelines
 
-Each line of code you'll want to configure ends with a `# configure` comment.
+**[Want to modify this tutorial? See the experimentation section](#experimentation)**<br>
+
+**[Want to develop on your own workstation?](#local-development)**<br>
+
+## Local development
+
+### Known good configuration
+
+Knative (as of version 0.3) is known to work with:
+- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed
+- The following [pre-requisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
+- A local Docker registry: this can be run with
+
+`docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
+
+### Images
+- Any hardcoded image locations should be replaced with `localhost:5000/myregistry/<image name>` equivalents: look for `PipelineResource` definitions which define an `image` specification
+- The `KO_DOCKER_REPO` variable should be set to `localhost:5000/myregistry` before using `ko`
+
+### Logging
+- Logs can remain in-memory only as opposed to sent to a service such as [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results` specification
 
 # Hello World Task
 
@@ -131,7 +151,7 @@ spec:
     - name: revision
       value: master
     - name: url
-      value: https://github.com/GoogleContainerTools/skaffold # configure: change if you want to build something else, perhaps from your own local GitLab
+      value: https://github.com/GoogleContainerTools/skaffold #configure: change if you want to build something else, perhaps from your own local GitLab
 ```
 
 and the `image` resource represents the Docker image to be built by the task:
@@ -145,7 +165,7 @@ spec:
   type: image
   params:
     - name: url
-      value: gcr.io/<use your project>/leeroy-web # configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
+      value: gcr.io/<use your project>/leeroy-web #configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
 ```
 
 The following is a Task with inputs and outputs. The input resource is a GitHub
@@ -210,7 +230,7 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/gitspace/examples/microservices/leeroy-web # configure: this may change according to what you'd like to build
+        value: /workspace/gitspace/examples/microservices/leeroy-web #configure: this may change according to what you'd like to build
   outputs:
     resources:
       - name: builtImage
@@ -275,7 +295,7 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/git-source/examples/microservices/leeroy-web # configure: may change depending on your source
+        value: /workspace/git-source/examples/microservices/leeroy-web #configure: may change depending on your source
     resources:
       - name: git-source
         paths: null
@@ -344,7 +364,7 @@ spec:
         - name: pathToDockerFile
           value: Dockerfile
         - name: pathToContext
-          value: /workspace/examples/microservices/leeroy-web # configure: may change according to your source
+          value: /workspace/examples/microservices/leeroy-web #configure: may change according to your source
     - name: deploy-web
       taskRef:
         name: demo-deploy-kubectl
@@ -354,7 +374,7 @@ spec:
             - build-skaffold-web
       params:
         - name: path
-          value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml # configure: may change according to your source
+          value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml #configure: may change according to your source
         - name: yqArg
           value: "-d1"
         - name: yamlPathToImage
@@ -564,28 +584,6 @@ status:
 The status of type `Succeeded = True` shows the pipeline ran successfully, also
 the status of individual Task runs are shown.
 
-## Running this on your laptop
-(todo actually refer to this section, make it look pretty, add decent info)
-
-There are a few changes we'll need to make. Follow the tutorial as outlined above but before applying any of the yaml to actually create our resources, do the following.
-
-1) Set up a local Docker registry
-
-Why?
-
-2) Modify the following files
-
-Why?
-
-3) export KO_DOCKER_REPO=
-ko apply
-
-Why?
-
-For more information on Ko please see and our Slack channel.
-
-Remember <gopath gotcha>
-  
-Verification
-  
+## Experimentation
+Lines of code you may want to configure have the #changeme annotation. This annotation applies to subjects such as Docker registries, log output locations and other nuances that may be specific to particular cloud providers or services.
 
