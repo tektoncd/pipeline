@@ -1,4 +1,5 @@
 ## Want to run this on your laptop? Skip to the section below.
+Each line of code you'll want to configure ends with a `# configure` comment.
 
 # Hello World Task
 
@@ -129,7 +130,7 @@ spec:
     - name: revision
       value: master
     - name: url
-      value: https://github.com/GoogleContainerTools/skaffold
+      value: https://github.com/GoogleContainerTools/skaffold # configure: change if you want to build something else, perhaps from your own local GitLab
 ```
 
 and the `image` resource represents the Docker image to be built by the task:
@@ -143,7 +144,7 @@ spec:
   type: image
   params:
     - name: url
-      value: gcr.io/<use your project>/leeroy-web
+      value: gcr.io/<use your project>/leeroy-web # configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
 ```
 
 The following is a Task with inputs and outputs. The input resource is a GitHub
@@ -208,7 +209,7 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/gitspace/examples/microservices/leeroy-web
+        value: /workspace/gitspace/examples/microservices/leeroy-web # configure: this may change according to what you'd like to build
   outputs:
     resources:
       - name: builtImage
@@ -273,7 +274,7 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/git-source/examples/microservices/leeroy-web
+        value: /workspace/git-source/examples/microservices/leeroy-web # configure: may change depending on your source
     resources:
       - name: git-source
         paths: null
@@ -342,7 +343,7 @@ spec:
         - name: pathToDockerFile
           value: Dockerfile
         - name: pathToContext
-          value: /workspace/examples/microservices/leeroy-web
+          value: /workspace/examples/microservices/leeroy-web # configure: may change according to your source
     - name: deploy-web
       taskRef:
         name: demo-deploy-kubectl
@@ -352,7 +353,7 @@ spec:
             - build-skaffold-web
       params:
         - name: path
-          value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml
+          value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml # configure: may change according to your source
         - name: yqArg
           value: "-d1"
         - name: yamlPathToImage
