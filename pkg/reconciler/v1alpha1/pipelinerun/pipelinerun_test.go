@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
@@ -203,7 +204,7 @@ func TestReconcile(t *testing.T) {
 	)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
+	if d := cmp.Diff(actual, expectedTaskRun, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
