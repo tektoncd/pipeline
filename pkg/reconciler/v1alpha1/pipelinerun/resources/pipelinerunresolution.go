@@ -271,11 +271,7 @@ func ValidateProvidedBy(state []*ResolvedPipelineRunTask) error {
 	for _, rprt := range state {
 		if rprt.PipelineTask.Resources != nil {
 			for _, dep := range rprt.PipelineTask.Resources.Inputs {
-				inputBinding, ok := rprt.ResolvedTaskResources.Inputs[dep.Name]
-				if !ok {
-					return fmt.Errorf("PipelineTask %s is trying to declare dependency for Resource %s which is not an input of PipelineTask %q", rprt.PipelineTask.Name, dep.Name, rprt.PipelineTask.Name)
-				}
-
+				inputBinding := rprt.ResolvedTaskResources.Inputs[dep.Name]
 				for _, pb := range dep.ProvidedBy {
 					if pb == rprt.PipelineTask.Name {
 						return fmt.Errorf("PipelineTask %s is trying to depend on a PipelineResource from itself", pb)
