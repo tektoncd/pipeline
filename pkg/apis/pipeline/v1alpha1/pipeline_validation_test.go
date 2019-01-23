@@ -114,6 +114,16 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 			)),
 		},
 		{
+			// Adding this case because `task.Resources` is a pointer, explicitly making sure this is handled
+			name: "task without resources",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("wonderful-resource", v1alpha1.PipelineResourceTypeImage),
+				tb.PipelineTask("bar", "bar-task"),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("wow-image", "wonderful-resource")),
+			)),
+		},
+		{
 			name: "valid resource declarations and usage",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
