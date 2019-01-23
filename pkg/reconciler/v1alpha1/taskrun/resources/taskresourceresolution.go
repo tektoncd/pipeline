@@ -50,17 +50,21 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, inputs []v1alp
 	}
 
 	for _, r := range inputs {
-		rr, err := gr(r.ResourceRef.Name)
+		rr, err := getResource(&r, gr)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't retrieve referenced input PipelineResource %q: %s", r.ResourceRef.Name, err)
 		}
+
 		rtr.Inputs[r.Name] = rr
 	}
+
 	for _, r := range outputs {
-		rr, err := gr(r.ResourceRef.Name)
+		rr, err := getResource(&r, gr)
+
 		if err != nil {
 			return nil, fmt.Errorf("couldn't retrieve referenced output PipelineResource %q: %s", r.ResourceRef.Name, err)
 		}
+
 		rtr.Outputs[r.Name] = rr
 	}
 	return &rtr, nil

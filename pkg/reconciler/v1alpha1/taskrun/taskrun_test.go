@@ -193,9 +193,11 @@ func TestReconcile(t *testing.T) {
 			tb.TaskRunTaskRef(outputTask.Name),
 			tb.TaskRunInputs(
 				tb.TaskRunInputsResource(gitResource.Name,
+					tb.TaskResourceBindingRef(gitResource.Name),
 					tb.TaskResourceBindingPaths("source-folder"),
 				),
 				tb.TaskRunInputsResource(anotherGitResource.Name,
+					tb.TaskResourceBindingRef(anotherGitResource.Name),
 					tb.TaskResourceBindingPaths("source-folder"),
 				),
 			),
@@ -221,12 +223,34 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	))
+
+	taskRunWithResourceSpecAndTaskSpec := tb.TaskRun("test-taskrun-with-resource-spec", "foo", tb.TaskRunSpec(
+		tb.TaskRunInputs(
+			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingResourceSpec(&v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeGit,
+				Params: []v1alpha1.Param{{
+					Name:  "URL",
+					Value: "github.com/build-pipeline.git",
+				}, {
+					Name:  "revision",
+					Value: "rel-can",
+				}},
+			})),
+		),
+		tb.TaskRunTaskSpec(
+			tb.TaskInputs(
+				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+			tb.Step("mystep", "ubuntu", tb.Command("mycmd")),
+		),
+	))
+
 	taskRunWithClusterTask := tb.TaskRun("test-taskrun-with-cluster-task", "foo",
 		tb.TaskRunSpec(tb.TaskRunTaskRef(clustertask.Name, tb.TaskRefKind(v1alpha1.ClusterTaskKind))),
 	)
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
-		taskRunTemplating, taskRunInputOutput, taskRunWithTaskSpec, taskRunWithClusterTask,
+		taskRunTemplating, taskRunInputOutput,
+		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
 	}
 
 	d := test.Data{
@@ -323,6 +347,18 @@ func TestReconcile(t *testing.T) {
 				entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
 			),
 			tb.BuildVolume(getToolsVolume(taskRunWithClusterTask.Name)),
+		),
+	}, {
+		name:    "taskrun-with-resource-spec",
+		taskRun: taskRunWithResourceSpecAndTaskSpec,
+		wantBuildSpec: tb.BuildSpec(
+			tb.BuildSource("workspace", tb.BuildSourceGit("github.com/build-pipeline.git", "rel-can")),
+			entrypointCopyStep,
+			tb.BuildStep("mystep", "ubuntu", tb.Command(entrypointLocation),
+				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
+				tb.VolumeMount(toolsMount),
+			),
+			tb.BuildVolume(getToolsVolume(taskRunWithResourceSpecAndTaskSpec.Name)),
 		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

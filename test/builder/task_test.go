@@ -130,6 +130,7 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 				),
 				tb.TaskRunInputsResource(anotherGitResource.Name,
 					tb.TaskResourceBindingPaths("source-folder"),
+					tb.TaskResourceBindingResourceSpec(&v1alpha1.PipelineResourceSpec{Type: v1alpha1.PipelineResourceTypeCluster}),
 				),
 				tb.TaskRunInputsParam("iparam", "ivalue"),
 			),
@@ -167,11 +168,9 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 					},
 					Paths: []string{"source-folder"},
 				}, {
-					Name: "another-git-resource",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "another-git-resource",
-					},
-					Paths: []string{"source-folder"},
+					Name:         "another-git-resource",
+					ResourceSpec: &v1alpha1.PipelineResourceSpec{Type: v1alpha1.PipelineResourceType("cluster")},
+					Paths:        []string{"source-folder"},
 				}},
 				Params: []v1alpha1.Param{{Name: "iparam", Value: "ivalue"}},
 			},

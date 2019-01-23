@@ -946,6 +946,15 @@ func (in *TaskResource) DeepCopy() *TaskResource {
 func (in *TaskResourceBinding) DeepCopyInto(out *TaskResourceBinding) {
 	*out = *in
 	out.ResourceRef = in.ResourceRef
+	if in.ResourceSpec != nil {
+		in, out := &in.ResourceSpec, &out.ResourceSpec
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(PipelineResourceSpec)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	if in.Paths != nil {
 		in, out := &in.Paths, &out.Paths
 		*out = make([]string, len(*in))

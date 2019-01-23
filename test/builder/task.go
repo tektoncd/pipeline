@@ -459,10 +459,6 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 	return func(i *v1alpha1.TaskRunInputs) {
 		binding := &v1alpha1.TaskResourceBinding{
 			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				// TODO: this seems like an odd default?
-				Name: name,
-			},
 		}
 		for _, op := range ops {
 			op(binding)
@@ -475,6 +471,13 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 func TaskResourceBindingRef(name string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
 		b.ResourceRef.Name = name
+	}
+}
+
+// TaskResourceBindingResourceSpec set the PipelineResourceResourceSpec to the TaskResourceBinding.
+func TaskResourceBindingResourceSpec(spec *v1alpha1.PipelineResourceSpec) TaskResourceBindingOp {
+	return func(b *v1alpha1.TaskResourceBinding) {
+		b.ResourceSpec = spec
 	}
 }
 

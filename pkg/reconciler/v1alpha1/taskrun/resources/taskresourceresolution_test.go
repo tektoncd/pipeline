@@ -36,6 +36,11 @@ func TestResolveTaskRun(t *testing.T) {
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "k8s-cluster",
 		},
+	}, {
+		Name: "clusterspecToUse",
+		ResourceSpec: &v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeCluster,
+		},
 	}}
 
 	outputs := []v1alpha1.TaskResourceBinding{{
@@ -47,6 +52,11 @@ func TestResolveTaskRun(t *testing.T) {
 		Name: "gitRepoToUpdate",
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "another-git-repo",
+		},
+	}, {
+		Name: "gitspecToUse",
+		ResourceSpec: &v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
 		},
 	}}
 
@@ -92,7 +102,7 @@ func TestResolveTaskRun(t *testing.T) {
 		t.Errorf("Task not resolved, expected task's spec to be used but spec was: %v", rtr.TaskSpec)
 	}
 
-	if len(rtr.Inputs) == 2 {
+	if len(rtr.Inputs) == 3 {
 		r, ok := rtr.Inputs["repoToBuildFrom"]
 		if !ok {
 			t.Errorf("Expected value present in map for `repoToBuildFrom' but it was missing")
@@ -109,11 +119,20 @@ func TestResolveTaskRun(t *testing.T) {
 				t.Errorf("Expected to use resource `k8s-cluster` for `clusterToUse` but used %s", r.Name)
 			}
 		}
+		r, ok = rtr.Inputs["clusterspecToUse"]
+		if !ok {
+			t.Errorf("Expected value present in map for `clusterspecToUse' but it was missing")
+		} else {
+			if r.Spec.Type != v1alpha1.PipelineResourceTypeCluster {
+				t.Errorf("Expected to use resource to be of type `cluster` for `clusterspecToUse` but got %s", r.Spec.Type)
+			}
+		}
+
 	} else {
 		t.Errorf("Expected 2 resolved inputs but instead had: %v", rtr.Inputs)
 	}
 
-	if len(rtr.Outputs) == 2 {
+	if len(rtr.Outputs) == 3 {
 		r, ok := rtr.Outputs["imageToBuild"]
 		if !ok {
 			t.Errorf("Expected value present in map for `imageToBuild' but it was missing")
@@ -130,6 +149,14 @@ func TestResolveTaskRun(t *testing.T) {
 				t.Errorf("Expected to use resource `another-git-repo` for `gitRepoToUpdate` but used %s", r.Name)
 			}
 		}
+		r, ok = rtr.Outputs["gitspecToUse"]
+		if !ok {
+			t.Errorf("Expected value present in map for `gitspecToUse' but it was missing")
+		} else {
+			if r.Spec.Type != v1alpha1.PipelineResourceTypeGit {
+				t.Errorf("Expected to use resource type `git` for but got %s", r.Spec.Type)
+			}
+		}
 	} else {
 		t.Errorf("Expected 2 resolved outputs but instead had: %v", rtr.Outputs)
 	}
@@ -143,7 +170,6 @@ func TestResolveTaskRun_missingOutput(t *testing.T) {
 		}}}
 
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("nope") }
-
 	_, err := ResolveTaskResources(&v1alpha1.TaskSpec{}, "orchestrate", []v1alpha1.TaskResourceBinding{}, outputs, gr)
 	if err == nil {
 		t.Fatalf("Expected to get error because output resource couldn't be resolved")
@@ -156,7 +182,6 @@ func TestResolveTaskRun_missingInput(t *testing.T) {
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "git-repo",
 		}}}
-
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("nope") }
 
 	_, err := ResolveTaskResources(&v1alpha1.TaskSpec{}, "orchestrate", inputs, []v1alpha1.TaskResourceBinding{}, gr)

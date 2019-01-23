@@ -175,17 +175,15 @@ func (rg *rg) With(name string, pr *v1alpha1.PipelineResource) *rg {
 	return rg
 }
 
-func mockGetter() *rg {
-	return &rg{
-		resources: map[string]*v1alpha1.PipelineResource{},
-	}
-}
+var mockGetter = func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
+var gitResourceGetter = func(n string) (*v1alpha1.PipelineResource, error) { return gitResource, nil }
+var imageResourceGetter = func(n string) (*v1alpha1.PipelineResource, error) { return imageResource, nil }
 
 func TestApplyResources(t *testing.T) {
 	type args struct {
 		b      *buildv1alpha1.Build
 		r      []v1alpha1.TaskResourceBinding
-		getter ResourceGetter
+		getter GetResource
 		rStr   string
 	}
 	tests := []struct {
@@ -199,7 +197,7 @@ func TestApplyResources(t *testing.T) {
 			args: args{
 				b:      simpleBuild,
 				r:      []v1alpha1.TaskResourceBinding{},
-				getter: mockGetter(),
+				getter: mockGetter,
 				rStr:   "inputs",
 			},
 			want: simpleBuild,
@@ -209,7 +207,7 @@ func TestApplyResources(t *testing.T) {
 			args: args{
 				b:      simpleBuild,
 				r:      inputs,
-				getter: mockGetter().With("git-resource", gitResource),
+				getter: gitResourceGetter,
 				rStr:   "inputs",
 			},
 			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
@@ -221,7 +219,7 @@ func TestApplyResources(t *testing.T) {
 			args: args{
 				b:      simpleBuild,
 				r:      outputs,
-				getter: mockGetter().With("image-resource", imageResource),
+				getter: imageResourceGetter,
 				rStr:   "outputs",
 			},
 			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
@@ -233,7 +231,7 @@ func TestApplyResources(t *testing.T) {
 			args: args{
 				b:      simpleBuild,
 				r:      inputs,
-				getter: mockGetter(),
+				getter: mockGetter,
 				rStr:   "inputs",
 			},
 			wantErr: true,
