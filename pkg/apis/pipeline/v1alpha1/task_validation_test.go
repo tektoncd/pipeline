@@ -19,6 +19,9 @@ package v1alpha1
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -124,16 +127,25 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 		BuildSteps []corev1.Container
 	}
 	tests := []struct {
-		name   string
-		fields fields
+		name          string
+		fields        fields
+		expectedError apis.FieldError
 	}{{
 		name: "nil",
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{""},
+		},
 	}, {
 		name: "no build",
 		fields: fields{
 			Inputs: &Inputs{
 				Resources: []TaskResource{validResource},
 			},
+		},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"b.spec.template"},
 		},
 	}, {
 		name: "one invalid input",
@@ -154,6 +166,10 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			},
 			BuildSteps: validBuildSteps,
 		},
+		expectedError: apis.FieldError{
+			Message: `invalid value "what"`,
+			Paths:   []string{"taskspec.Inputs.Resources.source.Type"},
+		},
 	}, {
 		name: "one invalid output",
 		fields: fields{
@@ -173,6 +189,10 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			},
 			BuildSteps: validBuildSteps,
 		},
+		expectedError: apis.FieldError{
+			Message: `invalid value "what"`,
+			Paths:   []string{"taskspec.Outputs.Resources.who.Type"},
+		},
 	}, {
 		name: "duplicated inputs",
 		fields: fields{
@@ -188,6 +208,10 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				},
 			},
 			BuildSteps: validBuildSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: "expected exactly one, got both",
+			Paths:   []string{"taskspec.Inputs.Resources.Name"},
 		},
 	}, {
 		name: "duplicated outputs",
@@ -205,6 +229,10 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			},
 			BuildSteps: validBuildSteps,
 		},
+		expectedError: apis.FieldError{
+			Message: "expected exactly one, got both",
+			Paths:   []string{"taskspec.Outputs.Resources.Name"},
+		},
 	}, {
 		name: "invalid build",
 		fields: fields{
@@ -213,6 +241,10 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			},
 			BuildSteps: []corev1.Container{},
 		},
+		expectedError: apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"b.spec.template"},
+		},
 	}, {
 		name: "invalid build step name",
 		fields: fields{
@@ -220,6 +252,11 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Resources: []TaskResource{validResource},
 			},
 			BuildSteps: invalidBuildSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value "replaceImage"`,
+			Paths:   []string{"taskspec.steps.name"},
+			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}, {
 		name: "inexistent input param variable",
@@ -230,6 +267,10 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Args:  []string{"--flag=${inputs.params.inexistent}"},
 			}},
 		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "--flag=${inputs.params.inexistent}" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
 	}, {
 		name: "inexistent input resource variable",
 		fields: fields{
@@ -237,6 +278,10 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Name:  "mystep",
 				Image: "myimage:${inputs.resources.inputs}",
 			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "myimage:${inputs.resources.inputs}" for step image`,
+			Paths:   []string{"taskspec.steps.image"},
 		},
 	}, {
 		name: "inexistent output param variable",
@@ -247,6 +292,10 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				WorkingDir: "/foo/bar/${outputs.resources.inexistent}",
 			}},
 		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "/foo/bar/${outputs.resources.inexistent}" for step workingDir`,
+			Paths:   []string{"taskspec.steps.workingDir"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -255,8 +304,9 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Outputs: tt.fields.Outputs,
 				Steps:   tt.fields.BuildSteps,
 			}
-			if err := ts.Validate(); err == nil {
-				t.Errorf("TaskSpec.Validate() did not return error.")
+			err := ts.Validate()
+			if d := cmp.Diff(tt.expectedError, *err, cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff -want, +got: %v", d)
 			}
 		})
 	}
