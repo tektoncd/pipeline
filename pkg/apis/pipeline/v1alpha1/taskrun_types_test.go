@@ -41,7 +41,7 @@ func TestTaskRun_GetBuildPodRef(t *testing.T) {
 	}
 }
 
-func TestTasRun_GetPipelineRunPVCName(t *testing.T) {
+func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
 	tests := []struct {
 		name            string
 		tr              *TaskRun
@@ -80,6 +80,47 @@ func TestTasRun_GetPipelineRunPVCName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.tr.GetPipelineRunPVCName() != tt.expectedPVCName {
 				t.Fatalf("taskrun pipeline run pvc name mismatch: got %s ; expected %s", tt.tr.GetPipelineRunPVCName(), tt.expectedPVCName)
+			}
+		})
+	}
+}
+
+func TestTaskRun_HasPipelineRun(t *testing.T) {
+	tests := []struct {
+		name string
+		tr   *TaskRun
+		want bool
+	}{{
+		name: "invalid owner reference",
+		tr: &TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrunname",
+				Namespace: "testns",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "SomeOtherOwner",
+					Name: "testpr",
+				}},
+			},
+		},
+		want: false,
+	}, {
+		name: "valid pipelinerun owner",
+		tr: &TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrunname",
+				Namespace: "testns",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "testpr",
+				}},
+			},
+		},
+		want: true,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.tr.HasPipelineRunOwnerReference() != tt.want {
+				t.Fatalf("taskrun pipeline run pvc name mismatch: got %s ; expected %t", tt.tr.GetPipelineRunPVCName(), tt.want)
 			}
 		})
 	}

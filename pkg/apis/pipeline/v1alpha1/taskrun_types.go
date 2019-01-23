@@ -207,3 +207,14 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 	}
 	return ""
 }
+
+// HasPipeluneRunOwnerReference returns true of TaskRun has
+// owner reference of type PipelineRun
+func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
+	for _, ref := range tr.GetOwnerReferences() {
+		if ref.Kind == pipelineRunControllerName {
+			return true
+		}
+	}
+	return false
+}

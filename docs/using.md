@@ -189,9 +189,19 @@ configure that by edit the `image`'s value in a configmap named
 ### Resource sharing between tasks
 
 Pipeline `Tasks` are allowed to pass resources from previous `Tasks` via the
-[`from`](#from) field. This feature is implemented using Persistent Volume
-Claims under the hood but however has an implication that tasks cannot have any
-volume mounted under path `/pvc`.
+[`from`](#from) field. This feature is implemented using the two
+following alternatives:
+
+- Persistent Volume Claims under the hood but however has an implication
+  that tasks cannot have any volume mounted under path `/pvc`.
+
+- [GCS storage bucket](https://cloud.google.com/storage/docs/json_api/v1/buckets)
+  A storage bucket can be configured using a ConfigMap with the name `config-artifact-bucket` with the following attributes:
+- location: the address of the bucket (for example gs://mybucket)
+- bucket.service.account.secret.name: the name of the secret that will contain the credentials for the service account
+  with access to the bucket
+- bucket.service.account.secret.key: the key in the secret with the required service account json
+The bucket is configured with a retention policy of 24 hours after which files will be deleted
 
 ### Outputs
 

@@ -24,12 +24,15 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	artifacts "github.com/knative/build-pipeline/pkg/artifacts"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/config"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
@@ -37,7 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -67,6 +69,11 @@ const (
 	eventReasonSucceeded = "PipelineRunSucceeded"
 )
 
+type configStore interface {
+	ToContext(ctx context.Context) context.Context
+	WatchConfigs(w configmap.Watcher)
+}
+
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	*reconciler.Base
@@ -79,6 +86,7 @@ type Reconciler struct {
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    listers.PipelineResourceLister
 	tracker           tracker.Interface
+	configStore       configStore
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -118,6 +126,10 @@ func NewController(
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: controller.PassNew(r.tracker.OnChanged),
 	})
+
+	r.Logger.Info("Setting up ConfigMap receivers")
+	r.configStore = config.NewStore(r.Logger.Named("config-store"))
+	r.configStore.WatchConfigs(opt.ConfigMapWatcher)
 	return impl
 }
 
@@ -131,6 +143,8 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Errorf("invalid resource key: %s", key)
 		return nil
 	}
+
+	ctx = c.configStore.ToContext(ctx)
 
 	// Get the Pipeline Run resource with this namespace/name
 	original, err := c.pipelineRunLister.PipelineRuns(namespace).Get(name)
@@ -287,14 +301,15 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	serviceAccount := pr.Spec.ServiceAccount
 	rprt := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
 
-	if err := getOrCreatePVC(pr, c.KubeClientSet); err != nil {
-		c.Logger.Infof("PipelineRun failed to create/get volume %s", pr.Name)
-		return fmt.Errorf("Failed to create/get persistent volume claim %s for task %q: %v", pr.Name, err, pr.Name)
+	var as artifacts.ArtifactStorageInterface
+	if as, err = artifacts.InitializeArtifactStorage(pr, c.KubeClientSet); err != nil {
+		c.Logger.Infof("PipelineRun failed to initialize artifact storage %s", pr.Name)
+		return err
 	}
 
 	if rprt != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount, p.Spec.Timeout)
+		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount, as.StorageBasePath(pr), p.Spec.Timeout)
 		if err != nil {
 			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
@@ -322,7 +337,7 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 	}
 }
 
-func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa string, pipelineTimeout *metav1.Duration) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa, storageBasePath string, pipelineTimeout *metav1.Duration) (*v1alpha1.TaskRun, error) {
 	ts := rprt.ResolvedTaskResources.TaskSpec.DeepCopy()
 	if pipelineTimeout != nil {
 		pTimeoutTime := pr.Status.StartTime.Add(pipelineTimeout.Duration)
@@ -353,9 +368,9 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 				Params: rprt.PipelineTask.Params,
 			},
 			ServiceAccount: sa,
-		}}
-
-	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs)
+		},
+	}
+	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(pr.Namespace).Create(tr)
 }
@@ -370,20 +385,6 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		return c.PipelineClientSet.PipelineV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
-}
-
-func getOrCreatePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
-	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(pr.GetPVCName(), metav1.GetOptions{}); err != nil {
-		if errors.IsNotFound(err) {
-			pvc := pr.GetPVC()
-			if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvc); err != nil {
-				return fmt.Errorf("failed to claim Persistent Volume %q due to error: %s", pr.Name, err)
-			}
-			return nil
-		}
-		return fmt.Errorf("failed to get claim Persistent Volume %q due to error: %s", pr.Name, err)
-	}
-	return nil
 }
 
 // isDone returns true if the PipelineRun's status indicates the build is done.

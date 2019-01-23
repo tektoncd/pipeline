@@ -26,9 +26,11 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	taskrunresources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/knative/build-pipeline/pkg/system"
 	"github.com/knative/build-pipeline/test"
 	tb "github.com/knative/build-pipeline/test/builder"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/configmap"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
@@ -47,6 +49,7 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.TestAssets {
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
+	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
@@ -54,6 +57,7 @@ func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.T
 				KubeClientSet:     c.Kube,
 				PipelineClientSet: c.Pipeline,
 				Recorder:          recorder,
+				ConfigMapWatcher:  configMapWatcher,
 			},
 			i.PipelineRun,
 			i.Pipeline,

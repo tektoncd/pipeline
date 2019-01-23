@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
 
 var (
@@ -868,7 +869,8 @@ func TestAddResourceToBuild(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
-			got, err := AddInputResource(c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
+			fakekubeclient := fakek8s.NewSimpleClientset()
+			got, err := AddInputResource(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
@@ -1111,7 +1113,180 @@ func Test_StorageInputResource(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
-			got, err := AddInputResource(c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
+			fakekubeclient := fakek8s.NewSimpleClientset()
+			got, err := AddInputResource(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
+			if (err != nil) != c.wantErr {
+				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
+			}
+			if d := cmp.Diff(got, c.want); d != "" {
+				t.Errorf("Diff:\n%s", d)
+			}
+		})
+	}
+}
+
+func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
+	boolTrue := true
+	task := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "build-from-repo",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "gitspace",
+					Type: "git",
+				}},
+			},
+		},
+	}
+	taskWithTargetPath := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "task-with-targetpath",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name:       "workspace",
+					Type:       "gcs",
+					TargetPath: "gcs-dir",
+				}},
+			},
+		},
+	}
+
+	for _, c := range []struct {
+		desc    string
+		task    *v1alpha1.Task
+		taskRun *v1alpha1.TaskRun
+		build   *buildv1alpha1.Build
+		wantErr bool
+		want    *buildv1alpha1.Build
+	}{{
+		desc: "git resource as input from previous task - copy to bucket",
+		task: task,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-git",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "the-git",
+						},
+						Name:  "gitspace",
+						Paths: []string{"prev-task-path"},
+					}},
+				},
+			},
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:  "artifact-dest-mkdir-gitspace-0",
+					Image: "override-with-bash-noop:latest",
+					Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
+				},
+					{
+						Name:  "artifact-copy-from-gitspace-0",
+						Image: "override-with-gsutil-image:latest",
+						Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gitspace"},
+					}},
+			},
+		},
+	}, {
+		desc: "storage resource as input from previous task - copy from bucket",
+		task: taskWithTargetPath,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-gcs",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "storage1",
+						},
+						Name:  "workspace",
+						Paths: []string{"prev-task-path"},
+					}},
+				},
+			},
+		},
+		build:   build(),
+		wantErr: false,
+		want: &buildv1alpha1.Build{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Build",
+				APIVersion: "build.knative.dev/v1alpha1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					Kind:               "TaskRun",
+					Name:               "build-from-repo-run",
+					Controller:         &boolTrue,
+					BlockOwnerDeletion: &boolTrue,
+				}},
+			},
+			Spec: buildv1alpha1.BuildSpec{
+				Steps: []corev1.Container{{
+					Name:  "artifact-dest-mkdir-workspace-0",
+					Image: "override-with-bash-noop:latest",
+					Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
+				},
+					{
+						Name:  "artifact-copy-from-workspace-0",
+						Image: "override-with-gsutil-image:latest",
+						Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gcs-dir"},
+					}},
+			},
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			setUp()
+			fakekubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "knative-build-pipeline",
+						Name:      v1alpha1.BucketConfigName,
+					},
+					Data: map[string]string{
+						v1alpha1.BucketLocationKey: "gs://fake-bucket",
+					},
+				},
+			)
+			got, err := AddInputResource(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
