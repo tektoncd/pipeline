@@ -1,3 +1,5 @@
+## Want to run this on your laptop? Skip to the section below.
+
 # Hello World Task
 
 The main objective of the Pipeline CRDs is to run your Task individually or as a
@@ -559,3 +561,29 @@ status:
 
 The status of type `Succeeded = True` shows the pipeline ran successfully, also
 the status of individual Task runs are shown.
+
+## Running this on your laptop
+(todo actually refer to this section, make it look pretty, add decent info)
+
+There are a few changes we'll need to make. Follow the tutorial as outlined above but before applying any of the yaml to actually create our resources, do the following.
+
+1) Set up a local Docker registry
+
+Why?
+
+2) Modify the following files
+
+Why?
+
+3) export KO_DOCKER_REPO=
+ko apply
+
+Why?
+
+For more information on Ko please see and our Slack channel.
+
+Remember <gopath gotcha>
+  
+Verification
+  
+
