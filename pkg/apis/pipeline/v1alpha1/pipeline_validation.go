@@ -33,15 +33,6 @@ func (p *Pipeline) Validate() *apis.FieldError {
 	return nil
 }
 
-func isOutput(task PipelineTask, resource string) bool {
-	for _, output := range task.Resources.Outputs {
-		if output.Resource == resource {
-			return true
-		}
-	}
-	return false
-}
-
 func validateDeclaredResources(ps *PipelineSpec) error {
 	needed := []string{}
 	for _, t := range ps.Tasks {
@@ -62,6 +53,47 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 	err := list.IsSame(needed, provided)
 	if err != nil {
 		return fmt.Errorf("Pipeline declared resources didn't match usage in Tasks: %s", err)
+	}
+	return nil
+}
+
+func isOutput(task PipelineTask, resource string) bool {
+	for _, output := range task.Resources.Outputs {
+		if output.Resource == resource {
+			return true
+		}
+	}
+	return false
+}
+
+// validateProvidedBy ensures that the `providedBy` values make sense: that they rely on values from Tasks
+// that ran previously, and that the PipelineResource is actually an output of the Task it should come from.
+// TODO(#168) when pipelines don't just execute linearly this will need to be more sophisticated
+func validateProvidedBy(tasks []PipelineTask) error {
+	for i, t := range tasks {
+		if t.Resources != nil {
+			for _, rd := range t.Resources.Inputs {
+				for _, pb := range rd.ProvidedBy {
+					if i == 0 {
+						return fmt.Errorf("first Task in Pipeline can't depend on anything before it (b/c there is nothing)")
+					}
+					found := false
+					// Look for previous Task that satisfies constraint
+					for j := i - 1; j >= 0; j-- {
+						if tasks[j].Name == pb {
+							// The input resource must actually be an output of the providedBy tasks
+							if !isOutput(tasks[j], rd.Resource) {
+								return fmt.Errorf("the resource %s provided by %s must be an output but is an input", rd.Resource, pb)
+							}
+							found = true
+						}
+					}
+					if !found {
+						return fmt.Errorf("expected resource %s to be provided by task %s, but task %s doesn't exist", rd.Resource, pb, pb)
+					}
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -88,33 +120,9 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 		return apis.ErrInvalidValue(err.Error(), "spec.resources")
 	}
 
-	// providedBy should match future tasks
-	// TODO(#168) when pipelines don't just execute linearly this will need to be more sophisticated
-	for i, t := range ps.Tasks {
-		if t.Resources != nil {
-			for _, rd := range t.Resources.Inputs {
-				for _, pb := range rd.ProvidedBy {
-					if i == 0 {
-						// First Task can't depend on anything before it (b/c there is nothing)
-						return apis.ErrInvalidValue(pb, "spec.tasks.resources.inputs.providedBy")
-					}
-					found := false
-					// Look for previous Task that satisfies constraint
-					for j := i - 1; j >= 0; j-- {
-						if ps.Tasks[j].Name == pb {
-							// The input resource must actually be an output of the providedBy tasks
-							if !isOutput(ps.Tasks[j], rd.Resource) {
-								return apis.ErrInvalidKeyName(pb, "spec.tasks.resources.inputs.providedBy")
-							}
-							found = true
-						}
-					}
-					if !found {
-						return apis.ErrInvalidKeyName(pb, "spec.tasks.resources.inputs.providedBy")
-					}
-				}
-			}
-		}
+	// The providedBy values should make sense
+	if err := validateProvidedBy(ps.Tasks); err != nil {
+		return apis.ErrInvalidValue(err.Error(), "spec.tasks.resources.inputs.providedBy")
 	}
 	return nil
 }
