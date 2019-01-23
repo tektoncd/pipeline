@@ -449,15 +449,17 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
 
 	_, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, pts, providedResources)
-	if err == nil {
+	switch err := err.(type) {
+	case nil:
 		t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
-	}
-	if !errors.IsNotFound(err) {
-		t.Fatalf("Expected same error type returned by func for non-existent Task for Pipeline %s but got %s", p.Name, err)
+	case *TaskNotFoundError:
+		// expected error
+	default:
+		t.Fatalf("Expected specific error type returned by func for non-existent Task for Pipeline %s but got %s", p.Name, err)
 	}
 }
 
-func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
+func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 	tests := []struct {
 		name string
 		p    *v1alpha1.Pipeline
@@ -483,17 +485,65 @@ func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("shouldnt be called") }
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
 			if err == nil {
-				t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
+				t.Fatalf("Expected error when bindings are in incorrect state for Pipeline %s but got none", p.Name)
 			}
 		})
 	}
+}
 
+func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
+	tests := []struct {
+		name string
+		p    *v1alpha1.Pipeline
+	}{
+		{
+			name: "input doesnt exist",
+			p: tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("mytask1", "task",
+					tb.PipelineTaskInputResource("input1", "git-resource"),
+				),
+			)),
+		},
+		{
+			name: "output doesnt exist",
+			p: tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("mytask1", "task",
+					tb.PipelineTaskOutputResource("input1", "git-resource"),
+				),
+			)),
+		},
+	}
+	providedResources := map[string]v1alpha1.PipelineResourceRef{
+		"git-resource": v1alpha1.PipelineResourceRef{
+			Name: "doesnt-exist",
+		},
+	}
+
+	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		return nil, errors.NewNotFound(v1alpha1.Resource("pipelineresource"), name)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
+			switch err := err.(type) {
+			case nil:
+				t.Fatalf("Expected error getting non-existent Resources for Pipeline %s but got none", p.Name)
+			case *ResourceNotFoundError:
+				// expected error
+			default:
+				t.Fatalf("Expected specific error type returned by func for non-existent Resource for Pipeline %s but got %s", p.Name, err)
+			}
+		})
+	}
 }
 
 func TestResolveTaskRuns_AllStarted(t *testing.T) {
