@@ -197,10 +197,3 @@ func addStoreUploadStep(build *buildv1alpha1.Build,
 	build.Spec.Steps = append(build.Spec.Steps, buildSteps...)
 	return nil
 }
-
-// allowedOutputResource checks if an output resource type produces
-// an output that should be copied to the PVC
-func allowedOutputResource(resourceType v1alpha1.PipelineResourceType) bool {
-
-	return allowedOutputResources[resourceType]
-}

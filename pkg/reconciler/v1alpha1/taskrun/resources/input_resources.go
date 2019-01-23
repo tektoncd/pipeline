@@ -76,20 +76,22 @@ func AddInputResource(
 		}
 
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
-		// to the desired destination directory
+		// to the desired destination directory, as long as the resource exports output to be copied
 		var copyStepsFromPrevTasks []corev1.Container
 
-		for i, path := range boundResource.Paths {
-			var dPath string
-			if input.TargetPath == "" {
-				dPath = filepath.Join(workspaceDir, input.Name)
-			} else {
-				dPath = filepath.Join(workspaceDir, input.TargetPath)
+		if allowedOutputResources[resource.Spec.Type] {
+			for i, path := range boundResource.Paths {
+				var dPath string
+				if input.TargetPath == "" {
+					dPath = filepath.Join(workspaceDir, input.Name)
+				} else {
+					dPath = filepath.Join(workspaceDir, input.TargetPath)
+				}
+				cpContainer := copyContainer(fmt.Sprintf("%s-%d", boundResource.Name, i), path, dPath)
+				cpContainer.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}
+				copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpContainer)
+				mountPVC = true
 			}
-			cpContainer := copyContainer(fmt.Sprintf("%s-%d", boundResource.Name, i), path, dPath)
-			cpContainer.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}
-			copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpContainer)
-			mountPVC = true
 		}
 
 		// source is copied from previous task so skip fetching cluster , storage types
