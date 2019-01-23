@@ -87,15 +87,15 @@ type GetTaskRun func(name string) (*v1alpha1.TaskRun, error)
 func GetResourcesFromBindings(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) (map[string]v1alpha1.PipelineResourceRef, error) {
 	resources := map[string]v1alpha1.PipelineResourceRef{}
 
-	needed := make([]string, 0, len(p.Spec.Resources))
+	required := make([]string, 0, len(p.Spec.Resources))
 	for _, resource := range p.Spec.Resources {
-		needed = append(needed, resource.Name)
+		required = append(required, resource.Name)
 	}
 	provided := make([]string, 0, len(pr.Spec.Resources))
 	for _, resource := range pr.Spec.Resources {
 		provided = append(provided, resource.Name)
 	}
-	err := list.IsSame(needed, provided)
+	err := list.IsSame(required, provided)
 	if err != nil {
 		return resources, fmt.Errorf("PipelineRun bound resources didn't match Pipeline: %s", err)
 	}

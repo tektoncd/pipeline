@@ -19,14 +19,14 @@ package list
 import "fmt"
 
 // IsSame will return an error indicating if there are extra or missing strings
-// between the needed and provided strings, or will return no error if the two
+// between the required and provided strings, or will return no error if the two
 // contain the same values.
-func IsSame(needed, provided []string) error {
-	missing := DiffLeft(needed, provided)
+func IsSame(required, provided []string) error {
+	missing := DiffLeft(required, provided)
 	if len(missing) > 0 {
-		return fmt.Errorf("Didn't provide needed values: %s", missing)
+		return fmt.Errorf("Didn't provide required values: %s", missing)
 	}
-	extra := DiffLeft(provided, needed)
+	extra := DiffLeft(provided, required)
 	if len(extra) > 0 {
 		return fmt.Errorf("Provided extra values: %s", extra)
 	}
