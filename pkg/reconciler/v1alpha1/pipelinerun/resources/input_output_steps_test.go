@@ -26,6 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var pvcDir = "/pvc"
+
 func TestGetOutputSteps(t *testing.T) {
 	r1 := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
@@ -70,7 +72,7 @@ func TestGetOutputSteps(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			postTasks := resources.GetOutputSteps(tc.outputs, tc.pipelineTaskName)
+			postTasks := resources.GetOutputSteps(tc.outputs, tc.pipelineTaskName, pvcDir)
 			sort.SliceStable(postTasks, func(i, j int) bool { return postTasks[i].Name < postTasks[j].Name })
 			if d := cmp.Diff(postTasks, tc.expectedtaskOuputResources); d != "" {
 				t.Errorf("error comparing post steps: %s", d)
@@ -137,7 +139,7 @@ func TestGetInputSteps(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask)
+			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask, pvcDir)
 			sort.SliceStable(taskInputResources, func(i, j int) bool { return taskInputResources[i].Name < taskInputResources[j].Name })
 			if d := cmp.Diff(tc.expectedtaskInputResources, taskInputResources); d != "" {
 				t.Errorf("error comparing task resource inputs: %s", d)
@@ -172,7 +174,7 @@ func TestWrapSteps(t *testing.T) {
 	}
 
 	taskRunSpec := &v1alpha1.TaskRunSpec{}
-	resources.WrapSteps(taskRunSpec, pt, inputs, outputs)
+	resources.WrapSteps(taskRunSpec, pt, inputs, outputs, pvcDir)
 
 	expectedtaskInputResources := []v1alpha1.TaskResourceBinding{{
 		ResourceRef: v1alpha1.PipelineResourceRef{Name: "resource1"},

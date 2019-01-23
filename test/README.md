@@ -115,6 +115,8 @@ permissions inside the TaskRun to run the Kaniko e2e test and GCS taskrun test.
   `KANIKO_SECRET_CONFIG_FILE` is used to generate Kubernetes secret to access
   GCS bucket. This e2e test requires valid service account configuration json
   but it does not require any role binding.
+- In Storage artifact bucket, GCP service account JSON key file at path
+  `KANIKO_SECRET_CONFIG_FILE` is used to create/delete a bucket.
 
 To reduce e2e test setup developers can use the same environment variable for
 both Kaniko e2e test and GCS taskrun test. To create a service account usable in
