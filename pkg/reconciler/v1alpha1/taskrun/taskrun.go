@@ -222,7 +222,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	getTaskFunc := c.getTaskFunc(tr)
 	spec, taskName, err := resources.GetTaskSpec(&tr.Spec, tr.Name, getTaskFunc)
 	if err != nil {
-		c.Logger.Error("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
+		c.Logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
@@ -233,7 +233,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 	rtr, err := resources.ResolveTaskResources(spec, taskName, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
-		c.Logger.Error("Failed to resolve references for taskrun %s: %v", tr.Name, err)
+		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
@@ -244,7 +244,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.Params, rtr); err != nil {
-		c.Logger.Error("Failed to validate taskrun %q: %v", tr.Name, err)
+		c.Logger.Errorf("Failed to validate taskrun %q: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
@@ -259,7 +259,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	if tr.Status.PodName != "" {
 		pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err != nil {
-			c.Logger.Error("Error getting pod %q: %v", tr.Status.PodName, err)
+			c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
 			return err
 		}
 	} else {

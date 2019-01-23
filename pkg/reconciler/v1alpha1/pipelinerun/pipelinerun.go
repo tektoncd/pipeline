@@ -226,7 +226,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	for _, rprt := range pipelineState {
 		err := taskrun.ValidateResolvedTaskResources(rprt.PipelineTask.Params, rprt.ResolvedTaskResources)
 		if err != nil {
-			c.Logger.Error("Failed to validate pipelinerun %q with error %v", pr.Name, err)
+			c.Logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
 			pr.Status.SetCondition(&duckv1alpha1.Condition{
 				Type:    duckv1alpha1.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
