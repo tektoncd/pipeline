@@ -36,9 +36,18 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 			)),
 		},
 		{
+			name: "providedby is on first task",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.ProvidedBy("bar"))),
+			)),
+		},
+		{
 			name: "providedby task doesnt exist",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineTask("baz", "baz-task"),
 				tb.PipelineTask("foo", "foo-task",
 					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.ProvidedBy("bar"))),
 			)),
