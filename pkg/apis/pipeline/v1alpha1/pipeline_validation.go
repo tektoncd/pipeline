@@ -34,14 +34,14 @@ func (p *Pipeline) Validate() *apis.FieldError {
 }
 
 func validateDeclaredResources(ps *PipelineSpec) error {
-	needed := []string{}
+	required := []string{}
 	for _, t := range ps.Tasks {
 		if t.Resources != nil {
 			for _, input := range t.Resources.Inputs {
-				needed = append(needed, input.Resource)
+				required = append(required, input.Resource)
 			}
 			for _, output := range t.Resources.Outputs {
-				needed = append(needed, output.Resource)
+				required = append(required, output.Resource)
 			}
 		}
 	}
@@ -50,7 +50,7 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 	for _, resource := range ps.Resources {
 		provided = append(provided, resource.Name)
 	}
-	err := list.IsSame(needed, provided)
+	err := list.IsSame(required, provided)
 	if err != nil {
 		return fmt.Errorf("Pipeline declared resources didn't match usage in Tasks: %s", err)
 	}
