@@ -66,15 +66,15 @@ The [run](./run/) directory contains an example
 ### Pipeline with outputs
 
 [The Pipeline with outputs](output-pipeline.yaml) contains a Pipeline that
-demonstrates how the outputs of a `Task` can be provided as inputs to the next
+demonstrates how the outputs of a `Task` can be given as inputs to the next
 `Task`. It does this by:
 
 1. Running a `Task` that writes to a `PipelineResource`
 2. Running a `Task` that reads the written value from the `PipelineResource`
 
-The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is provided as
+The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is given as
 an [`Input`](../docs/Concepts.md#inputs) to the next `Task` thanks to the
-[`providedBy`](../docs/using.md#providedby) clause.
+[`from`](../docs/using.md#from) clause.
 
 #### Output Tasks
 

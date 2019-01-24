@@ -32,7 +32,7 @@ func TestPipeline(t *testing.T) {
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
-			tb.PipelineTaskInputResource("some-repo", "my-only-git-resource", tb.ProvidedBy("foo")),
+			tb.PipelineTaskInputResource("some-repo", "my-only-git-resource", tb.From("foo")),
 			tb.PipelineTaskOutputResource("some-image", "my-only-image-resource"),
 		),
 	))
@@ -55,9 +55,9 @@ func TestPipeline(t *testing.T) {
 				TaskRef: v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},
 				Resources: &v1alpha1.PipelineTaskResources{
 					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name:       "some-repo",
-						Resource:   "my-only-git-resource",
-						ProvidedBy: []string{"foo"},
+						Name:     "some-repo",
+						Resource: "my-only-git-resource",
+						From:     []string{"foo"},
 					}},
 					Outputs: []v1alpha1.PipelineTaskOutputResource{{
 						Name:     "some-image",

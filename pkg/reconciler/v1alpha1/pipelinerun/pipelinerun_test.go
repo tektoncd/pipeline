@@ -93,7 +93,7 @@ func TestReconcile(t *testing.T) {
 					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
 				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
-					tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("unit-test-1")),
+					tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("unit-test-1")),
 				),
 				tb.PipelineTask("unit-test-cluster-task", "unit-test-cluster-task",
 					tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),

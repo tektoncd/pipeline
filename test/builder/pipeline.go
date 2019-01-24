@@ -131,11 +131,11 @@ func PipelineTaskParam(name, value string) PipelineTaskOp {
 	}
 }
 
-// ProvidedBy will update the provided PipelineTaskInputResource to indicate that it
+// From will update the provided PipelineTaskInputResource to indicate that it
 // should come from tasks.
-func ProvidedBy(tasks ...string) PipelineTaskInputResourceOp {
+func From(tasks ...string) PipelineTaskInputResourceOp {
 	return func(r *v1alpha1.PipelineTaskInputResource) {
-		r.ProvidedBy = tasks
+		r.From = tasks
 	}
 }
 

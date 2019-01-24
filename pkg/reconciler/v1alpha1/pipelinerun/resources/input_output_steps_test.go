@@ -97,8 +97,8 @@ func TestGetInputSteps(t *testing.T) {
 			pipelineTask: &v1alpha1.PipelineTask{
 				Resources: &v1alpha1.PipelineTaskResources{
 					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name:       "test-input",
-						ProvidedBy: []string{"prev-task-1"},
+						Name: "test-input",
+						From: []string{"prev-task-1"},
 					}},
 				},
 			},
@@ -123,8 +123,8 @@ func TestGetInputSteps(t *testing.T) {
 			pipelineTask: &v1alpha1.PipelineTask{
 				Resources: &v1alpha1.PipelineTaskResources{
 					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name:       "test-input",
-						ProvidedBy: []string{"prev-task-1", "prev-task-2"},
+						Name: "test-input",
+						From: []string{"prev-task-1", "prev-task-2"},
 					}},
 				},
 			},
@@ -165,8 +165,8 @@ func TestWrapSteps(t *testing.T) {
 		Name: "test-task",
 		Resources: &v1alpha1.PipelineTaskResources{
 			Inputs: []v1alpha1.PipelineTaskInputResource{{
-				Name:       "test-input",
-				ProvidedBy: []string{"prev-task"},
+				Name: "test-input",
+				From: []string{"prev-task"},
 			}},
 		},
 	}

@@ -43,8 +43,8 @@ func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName stri
 	return taskOutputResources
 }
 
-// GetInputSteps will add the correct `path` to the input resources for pt. If the resources are provided by
-// a previous task, the correct `path` will be used so that the resource provided by that task will be used.
+// GetInputSteps will add the correct `path` to the input resources for pt. If the resources are from
+// a previous task, the correct `path` will be used so that the resource from that task will be used.
 func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.PipelineTask) []v1alpha1.TaskResourceBinding {
 	var taskInputResources []v1alpha1.TaskResourceBinding
 
@@ -61,7 +61,7 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 		if pt.Resources != nil {
 			for _, pipelineTaskInput := range pt.Resources.Inputs {
 				if pipelineTaskInput.Name == name {
-					for _, constr := range pipelineTaskInput.ProvidedBy {
+					for _, constr := range pipelineTaskInput.From {
 						stepSourceNames = append(stepSourceNames, filepath.Join(pvcDir, constr, name))
 					}
 				}

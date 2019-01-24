@@ -50,7 +50,7 @@ spec:
         resource: source-repo
       - name: image
         resource: app-image
-        providedBy:
+        from:
         - build-skaffold-app
     params:
     - name: path
@@ -68,7 +68,7 @@ spec:
         resource: source-repo
       - name: image
         resource: web-image
-        providedBy:
+        from:
         - build-skaffold-web
     params:
     - name: path

@@ -331,9 +331,9 @@ resource definition.
 # Pipeline
 
 A [`Pipeline`](concepts.md#pipelines) defines a list of tasks to execute in
-order, while also indicating if any outputs should be used as inputs of a
-following task by using [the `providedBy` field](using.md#providedby). The same
-templating you used in tasks is also available in pipeline.
+order, while also indicating if any outputs should be used as inputs
+of a following task by using [the `from` field](using.md#from).
+The same templating you used in tasks is also available in pipeline.
 
 For example:
 
@@ -369,12 +369,12 @@ spec:
         name: demo-deploy-kubectl
       resources:
         inputs:
-          - name: workspace
-            resource: source-repo
-          - name: image
-            resource: web-image
-            providedBy:
-              - build-skaffold-web
+        - name: workspace
+          resource: source-repo
+        - name: image
+          resource: web-image
+          from:
+          - build-skaffold-web
       params:
         - name: path
           value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml

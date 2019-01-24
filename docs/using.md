@@ -16,7 +16,7 @@
    specific to your project (e.g. running your particular set of unit tests).
 2. Create a `Pipeline` which expresses the Tasks you would like to run and what
    [PipelineResources](#resources-in-a-pipeline) the Tasks need. Use
-   [`providedBy`](#providedBy) to express when the input of a `Task` should come
+   [`from`](#from) to express when the input of a `Task` should come
    from the output of a previous `Task`.
 
 See [the example Pipeline](../examples/pipeline.yaml).
@@ -24,7 +24,7 @@ See [the example Pipeline](../examples/pipeline.yaml).
 ### PipelineResources in a Pipeline
 
 In order for a `Pipeline` to execute, it will probably need
-[`PipelineResources`](#creating-pipelineresources) which will be provided to
+[`PipelineResources`](#creating-pipelineresources) which will be given to
 `Tasks` as inputs and outputs.
 
 Your `Pipeline` must declare the `PipelineResources` it needs in a `resources`
@@ -42,7 +42,7 @@ spec:
       type: image
 ```
 
-These `PipelineResources` can then be provided to `Task`s in the `Pipeline` as
+These `PipelineResources` can then be given to `Task`s in the `Pipeline` as
 inputs and outputs, for example:
 
 ```yaml
@@ -61,21 +61,21 @@ spec:
             resource: my-image
 ```
 
-### ProvidedBy
+### From
 
 Sometimes you will have `Tasks` that need to take as input the output of a
 previous `Task`, for example, an image built by a previous `Task`.
 
-Express this dependency by adding `providedBy` on `Resources` that your `Tasks`
+Express this dependency by adding `from` on `Resources` that your `Tasks`
 need.
 
-- The (optional) `providedBy` key on an `input source` defines a set of previous
+- The (optional) `from` key on an `input source` defines a set of previous
   `PipelineTasks` (i.e. the named instance of a `Task`) in the `Pipeline`
-- When the `providedBy` key is specified on an input source, the version of the
-  resource that is provided by the defined list of tasks is used
-- The `providedBy` can support fan in and fan out
+- When the `from` key is specified on an input source, the version of
+  the resource that is from the defined list of tasks is used
+- `from` can support fan in and fan out
 - The name of the `PipelineResource` must correspond to a `PipelineResource`
-  from the `Task` that the referenced `PipelineTask` provides as an output
+  from the `Task` that the referenced `PipelineTask` gives as an output
 
 For example see this `Pipeline` spec:
 
@@ -93,13 +93,13 @@ For example see this `Pipeline` spec:
   resources:
     inputs:
       - name: my-image
-        providedBy:
+        from:
           - build-app
 ```
 
-The resource `my-image` is expected to be provided to the `deploy-app` `Task`
-from the `build-app` `Task`. This means that the `PipelineResource` `my-image`
-must also be declared as an output of `build-app`.
+The resource `my-image` is expected to be given to the `deploy-app` `Task` from
+the `build-app` `Task`. This means that the `PipelineResource` `my-image` must also
+be declared as an output of `build-app`.
 
 For implementation details, see [the developer docs](docs/developers/README.md).
 
@@ -184,9 +184,9 @@ configure that by edit the `image`'s value in a configmap named
 ### Resource sharing between tasks
 
 Pipeline `Tasks` are allowed to pass resources from previous `Tasks` via the
-[`providedBy`](#providedby) field. This feature is implemented using Persistent
-Volume Claims under the hood but however has an implication that tasks cannot
-have any volume mounted under path `/pvc`.
+[`from`](#from) field. This feature is implemented using
+Persistent Volume Claims under the hood but however has an implication
+that tasks cannot have any volume mounted under path `/pvc`.
 
 ### Outputs
 
@@ -338,10 +338,9 @@ In order to run a Pipeline, you will need to provide:
 2. The `PipelineResources` to use with this Pipeline.
 
 On its own, a `Pipeline` declares what `Tasks` to run, and dependencies between
-`Task` inputs and outputs via [`providedBy`](#providedby). When running a
-`Pipeline`, you will need to specify the `PipelineResources` to use with it. One
-`Pipeline` may need to be run with different `PipelineResources` in cases such
-as:
+`Task` inputs and outputs via [`from`](#from). When running a `Pipeline`, you
+will need to specify the `PipelineResources` to use with it. One `Pipeline` may
+need to be run with different `PipelineResources` in cases such as:
 
 - When triggering the run of a `Pipeline` against a pull request, the triggering
   system must specify the commitish of a git `PipelineResource` to use

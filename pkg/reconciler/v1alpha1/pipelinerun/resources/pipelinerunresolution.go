@@ -282,17 +282,17 @@ func findReferencedTask(pb string, state []*ResolvedPipelineRunTask) *ResolvedPi
 	return nil
 }
 
-// ValidateProvidedBy will look at any `providedBy` clauses in the resolved PipelineRun state
-// and validate it: the `providedBy` must specify an input of the current `Task`. The `PipelineTask`
-// it is provided by must actually exist in the `Pipeline`. The `PipelineResource` that is bound to the input
+// ValidateFrom will look at any `from` clauses in the resolved PipelineRun state
+// and validate it: the `from` must specify an input of the current `Task`. The `PipelineTask`
+// it corresponds to must actually exist in the `Pipeline`. The `PipelineResource` that is bound to the input
 // must be the same `PipelineResource` that was bound to the output of the previous `Task`. If the state is
 // not valid, it will return an error.
-func ValidateProvidedBy(state []*ResolvedPipelineRunTask) error {
+func ValidateFrom(state []*ResolvedPipelineRunTask) error {
 	for _, rprt := range state {
 		if rprt.PipelineTask.Resources != nil {
 			for _, dep := range rprt.PipelineTask.Resources.Inputs {
 				inputBinding := rprt.ResolvedTaskResources.Inputs[dep.Name]
-				for _, pb := range dep.ProvidedBy {
+				for _, pb := range dep.From {
 					if pb == rprt.PipelineTask.Name {
 						return fmt.Errorf("PipelineTask %s is trying to depend on a PipelineResource from itself", pb)
 					}
@@ -308,7 +308,7 @@ func ValidateProvidedBy(state []*ResolvedPipelineRunTask) error {
 						}
 					}
 					if !sameBindingExists {
-						return fmt.Errorf("providedBy is ambiguous: input %q for PipelineTask %q is bound to %q but no outputs in PipelineTask %q are bound to same resource",
+						return fmt.Errorf("from is ambiguous: input %q for PipelineTask %q is bound to %q but no outputs in PipelineTask %q are bound to same resource",
 							dep.Name, rprt.PipelineTask.Name, inputBinding.Name, depTask.PipelineTask.Name)
 					}
 				}

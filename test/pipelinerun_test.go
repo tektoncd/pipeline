@@ -244,15 +244,15 @@ func getFanInFanOutPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
 			tb.PipelineTaskOutputResource("workspace", "git-repo"),
 		),
 		tb.PipelineTask("create-fan-out-1", "check-create-files-exists",
-			tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("create-file-kritis")),
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-file-kritis")),
 			tb.PipelineTaskOutputResource("workspace", "git-repo"),
 		),
 		tb.PipelineTask("create-fan-out-2", "check-create-files-exists-2",
-			tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("create-file-kritis")),
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-file-kritis")),
 			tb.PipelineTaskOutputResource("workspace", "git-repo"),
 		),
 		tb.PipelineTask("check-fan-in", "read-files",
-			tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("create-fan-out-2", "create-fan-out-1")),
+			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-fan-out-2", "create-fan-out-1")),
 		),
 	))
 }
