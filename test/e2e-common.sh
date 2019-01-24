@@ -61,27 +61,12 @@ function validate_run() {
   # Check that tests passed.
   local failed=0
   echo ">> Checking test results"
-  for expected_status in succeeded failed; do
-    results="$(kubectl get $1.pipeline.knative.dev -l expect=${expected_status} \
-	--output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
-    case $expected_status in
-      succeeded)
-	want=succeededtrue
-	;;
-      failed)
-	want=succeededfalse
-	;;
-      *)
-	echo "ERROR: Invalid expected status '${expected_status}'"
-	failed=1
-	;;
-    esac
-    for result in ${results}; do
-      if [[ ! "${result,,}" == *"=${want}" ]]; then
-	echo "ERROR: test ${result} but should be ${want}"
-	failed=1
-      fi
-    done
+  results="$(kubectl get $1.pipeline.knative.dev --output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
+  for result in ${results}; do
+    if [[ ! "${result,,}" == *"=succeededtrue" ]]; then
+      echo "ERROR: test ${result} but should be succeededtrue"
+      failed=1
+    fi
   done
   return ${failed}
 }
