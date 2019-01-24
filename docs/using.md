@@ -36,10 +36,10 @@ For example:
 ```yaml
 spec:
   resources:
-  - name: my-repo
-    type: git
-  - name: my-image
-    type: image
+    - name: my-repo
+      type: git
+    - name: my-image
+      type: image
 ```
 
 These `PipelineResources` can then be provided to `Task`s in the `Pipeline` as
@@ -49,30 +49,30 @@ inputs and outputs, for example:
 spec:
   #...
   tasks:
-  - name: build-the-image
-    taskRef:
-      name: build-push
-    resources:
-      inputs:
-      - name: workspace
-        resource: my-repo
-      outputs:
-      - name: image
-        resource: my-image
+    - name: build-the-image
+      taskRef:
+        name: build-push
+      resources:
+        inputs:
+          - name: workspace
+            resource: my-repo
+        outputs:
+          - name: image
+            resource: my-image
 ```
 
 ### ProvidedBy
 
-Sometimes you will have `Tasks` that need to take as input the output of a previous
-`Task`, for example, an image built by a previous `Task`.
+Sometimes you will have `Tasks` that need to take as input the output of a
+previous `Task`, for example, an image built by a previous `Task`.
 
 Express this dependency by adding `providedBy` on `Resources` that your `Tasks`
 need.
 
 - The (optional) `providedBy` key on an `input source` defines a set of previous
   `PipelineTasks` (i.e. the named instance of a `Task`) in the `Pipeline`
-- When the `providedBy` key is specified on an input source, the version of
-  the resource that is provided by the defined list of tasks is used
+- When the `providedBy` key is specified on an input source, the version of the
+  resource that is provided by the defined list of tasks is used
 - The `providedBy` can support fan in and fan out
 - The name of the `PipelineResource` must correspond to a `PipelineResource`
   from the `Task` that the referenced `PipelineTask` provides as an output
@@ -85,8 +85,8 @@ For example see this `Pipeline` spec:
     name: build-push
   resources:
     outputs:
-    - name: image
-      resource: my-image
+      - name: image
+        resource: my-image
 - name: deploy-app
   taskRef:
     name: deploy-kubectl
@@ -97,9 +97,9 @@ For example see this `Pipeline` spec:
           - build-app
 ```
 
-The resource `my-image` is expected to be provided to the `deploy-app` `Task` from
-the `build-app` `Task`. This means that the `PipelineResource` `my-image` must also
-be declared as an output of `build-app`.
+The resource `my-image` is expected to be provided to the `deploy-app` `Task`
+from the `build-app` `Task`. This means that the `PipelineResource` `my-image`
+must also be declared as an output of `build-app`.
 
 For implementation details, see [the developer docs](docs/developers/README.md).
 
@@ -184,9 +184,9 @@ configure that by edit the `image`'s value in a configmap named
 ### Resource sharing between tasks
 
 Pipeline `Tasks` are allowed to pass resources from previous `Tasks` via the
-[`providedBy`](#providedby) field. This feature is implemented using
-Persistent Volume Claims under the hood but however has an implication
-that tasks cannot have any volume mounted under path `/pvc`.
+[`providedBy`](#providedby) field. This feature is implemented using Persistent
+Volume Claims under the hood but however has an implication that tasks cannot
+have any volume mounted under path `/pvc`.
 
 ### Outputs
 
@@ -252,8 +252,8 @@ steps:
 
 Tasks can opitionally provide `targetPath` to initialize resource in specific
 directory. If `targetPath` is set then resource will be initialized under
-`/workspace/targetPath`. If `targetPath` is not specified then resource will
-be initialized under `/workspace`. Following example demonstrates how git input
+`/workspace/targetPath`. If `targetPath` is not specified then resource will be
+initialized under `/workspace`. Following example demonstrates how git input
 repository could be initialized in `$GOPATH` to run tests:
 
 ```yaml
@@ -338,9 +338,10 @@ In order to run a Pipeline, you will need to provide:
 2. The `PipelineResources` to use with this Pipeline.
 
 On its own, a `Pipeline` declares what `Tasks` to run, and dependencies between
-`Task` inputs and outputs via [`providedBy`](#providedby). When running a `Pipeline`, you
-will need to specify the `PipelineResources` to use with it. One `Pipeline` may
-need to be run with different `PipelineResources` in cases such as:
+`Task` inputs and outputs via [`providedBy`](#providedby). When running a
+`Pipeline`, you will need to specify the `PipelineResources` to use with it. One
+`Pipeline` may need to be run with different `PipelineResources` in cases such
+as:
 
 - When triggering the run of a `Pipeline` against a pull request, the triggering
   system must specify the commitish of a git `PipelineResource` to use
@@ -355,15 +356,15 @@ in the `PipelineRun` spec, for example:
 ```yaml
 spec:
   resources:
-  - name: source-repo
-    resourceRef:
-      name: skaffold-git
-  - name: web-image
-    resourceRef:
-      name: skaffold-image-leeroy-web
-  - name: app-image
-    resourceRef:
-      name: skaffold-image-leeroy-app
+    - name: source-repo
+      resourceRef:
+        name: skaffold-git
+    - name: web-image
+      resourceRef:
+        name: skaffold-image-leeroy-web
+    - name: app-image
+      resourceRef:
+        name: skaffold-image-leeroy-app
 ```
 
 Creation of a `PipelineRun` will trigger the creation of
@@ -521,11 +522,11 @@ spec:
 ### Using custom paths
 
 When specifying input and output `PipelineResources`, you can optionally specify
-`paths` for each resource. `paths` will be used by `TaskRun` as the resource's new source paths
-i.e., copy the resource from specified list of paths. `TaskRun` expects the
-folder and contents to be already present in specified paths. `paths` feature
-could be used to provide extra files or altered version of existing resource
-before execution of steps.
+`paths` for each resource. `paths` will be used by `TaskRun` as the resource's
+new source paths i.e., copy the resource from specified list of paths. `TaskRun`
+expects the folder and contents to be already present in specified paths.
+`paths` feature could be used to provide extra files or altered version of
+existing resource before execution of steps.
 
 Output resource includes name and reference to pipeline resource and optionally
 `paths`. `paths` will be used by `TaskRun` as the resource's new destination
