@@ -47,7 +47,7 @@ func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	vols := map[string]struct{}{}
 	for _, v := range volumes {
 		if _, ok := vols[v.Name]; ok {
-			return apis.ErrMultipleOneOf("volumeName")
+			return apis.ErrMultipleOneOf("name")
 		}
 		vols[v.Name] = struct{}{}
 	}
@@ -66,7 +66,7 @@ func validateSteps(steps []corev1.Container) *apis.FieldError {
 			continue
 		}
 		if _, ok := names[s.Name]; ok {
-			return apis.ErrMultipleOneOf("stepName")
+			return apis.ErrMultipleOneOf("name")
 		}
 		names[s.Name] = struct{}{}
 	}

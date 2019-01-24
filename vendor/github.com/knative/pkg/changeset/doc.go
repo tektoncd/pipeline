@@ -14,22 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
-
-// Describes how to match a given string in HTTP headers. Match is
-// case-sensitive.
-type StringMatch struct {
-	// Specified exactly one of the fields below.
-
-	// exact string match
-	Exact string `json:"exact,omitempty"`
-
-	// prefix-based match
-	Prefix string `json:"prefix,omitempty"`
-
-	// suffix-based match.
-	Suffix string `json:"prefix,omitempty"`
-
-	// ECMAscript style regex-based match
-	Regex string `json:"regex,omitempty"`
-}
+// Package changeset provides Knative utilities for fetching GitHub Commit ID
+// from kodata directory. It requires GitHub HEAD file to be linked into
+// Knative component source code via the following command:
+//   ln -s -r .git/HEAD ./cmd/<knative-component-name>/kodata/
+// Then ko will build this file into $KO_DATA_PATH when building the container
+// for a Knative component.
+package changeset

@@ -33,7 +33,7 @@ import (
 
 const (
 	interval   = 1 * time.Second
-	podTimeout = 5 * time.Minute
+	podTimeout = 8 * time.Minute
 )
 
 // WaitForDeploymentState polls the status of the Deployment called name

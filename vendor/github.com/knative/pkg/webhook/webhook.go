@@ -204,12 +204,17 @@ func getOrGenerateKeyCertsFromSecret(ctx context.Context, client kubernetes.Inte
 // it then delegates validation to apis.Validatable on "new".
 func Validate(ctx context.Context) ResourceCallback {
 	return func(patches *[]jsonpatch.JsonPatchOperation, old GenericCRD, new GenericCRD) error {
-		if hifNew, ok := new.(apis.Immutable); ok && old != nil {
-			hifOld, ok := old.(apis.Immutable)
+		if immutableNew, ok := new.(apis.Immutable); ok && old != nil {
+			// Copy the old object and set defaults so that we don't reject our own
+			// defaulting done earlier in the webhook.
+			old = old.DeepCopyObject().(GenericCRD)
+			old.SetDefaults()
+
+			immutableOld, ok := old.(apis.Immutable)
 			if !ok {
 				return fmt.Errorf("unexpected type mismatch %T vs. %T", old, new)
 			}
-			if err := hifNew.CheckImmutableFields(hifOld); err != nil {
+			if err := immutableNew.CheckImmutableFields(immutableOld); err != nil {
 				return err
 			}
 		}
@@ -231,6 +236,7 @@ func SetDefaults(ctx context.Context) ResourceDefaulter {
 		if err != nil {
 			return err
 		}
+
 		*patches = append(*patches, patch...)
 		return nil
 	}

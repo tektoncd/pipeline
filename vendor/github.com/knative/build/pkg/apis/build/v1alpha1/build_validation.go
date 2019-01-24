@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/knative/pkg/apis"
@@ -31,44 +30,33 @@ func (b *Build) Validate() *apis.FieldError {
 // Validate for build spec
 func (bs *BuildSpec) Validate() *apis.FieldError {
 	if bs.Template == nil && len(bs.Steps) == 0 {
-		return apis.ErrMissingField("b.spec.template").Also(apis.ErrMissingField("b.spec.steps"))
+		return apis.ErrMissingOneOf("template", "steps")
 	}
 	if bs.Template != nil && len(bs.Steps) > 0 {
-		return apis.ErrMissingField("b.spec.template").Also(apis.ErrMissingField("b.spec.steps"))
+		return apis.ErrMultipleOneOf("template", "steps")
 	}
 
-	if bs.Template != nil && bs.Template.Name == "" {
-		apis.ErrMissingField("build.spec.template.name")
-	}
-
-	if err := bs.validateSources(); err != nil {
-		return err
-	}
 	// If a build specifies a template, all the template's parameters without
 	// defaults must be satisfied by the build's parameters.
 	if bs.Template != nil {
-		return bs.Template.Validate()
-	}
-	if err := ValidateVolumes(bs.Volumes); err != nil {
-		return err
-	}
-	if err := bs.validateTimeout(); err != nil {
-		return err
+		return bs.Template.Validate().ViaField("template")
 	}
 
-	if err := validateSteps(bs.Steps); err != nil {
-		return err
-	}
-	return nil
+	// Below method potentially has a bug:
+	// It does not Validate if only a "Source" has been set, it only validates if multiple sources have been set
+	return bs.validateSources().
+		Also(ValidateVolumes(bs.Volumes).ViaField("volumes")).
+		Also(bs.validateTimeout()).
+		Also(validateSteps(bs.Steps).ViaField("steps"))
 }
 
-// Validate templateKind
+// Validate template
 func (b *TemplateInstantiationSpec) Validate() *apis.FieldError {
 	if b == nil {
 		return nil
 	}
 	if b.Name == "" {
-		return apis.ErrMissingField("build.spec.template.name")
+		return apis.ErrMissingField("name")
 	}
 	if b.Kind != "" {
 		switch b.Kind {
@@ -76,23 +64,21 @@ func (b *TemplateInstantiationSpec) Validate() *apis.FieldError {
 			BuildTemplateKind:
 			return nil
 		default:
-			return apis.ErrInvalidValue(string(b.Kind), apis.CurrentField)
+			return apis.ErrInvalidValue(string(b.Kind), "kind")
 		}
 	}
 	return nil
 }
 
 // Validate build timeout
-func (bt *BuildSpec) validateTimeout() *apis.FieldError {
-	if bt.Timeout == nil {
+func (bs *BuildSpec) validateTimeout() *apis.FieldError {
+	if bs.Timeout == nil {
 		return nil
 	}
 	maxTimeout := time.Duration(24 * time.Hour)
 
-	if bt.Timeout.Duration > maxTimeout {
-		return apis.ErrInvalidValue(fmt.Sprintf("%s should be < 24h", bt.Timeout), "b.spec.timeout")
-	} else if bt.Timeout.Duration < 0 {
-		return apis.ErrInvalidValue(fmt.Sprintf("%s should be > 0", bt.Timeout), "b.spec.timeout")
+	if bs.Timeout.Duration > maxTimeout || bs.Timeout.Duration < 0 {
+		return apis.ErrOutOfBoundsValue(bs.Timeout.Duration.String(), "0", "24", "timeout")
 	}
 	return nil
 }
@@ -106,20 +92,19 @@ func (bs BuildSpec) validateSources() *apis.FieldError {
 		nodeMap: map[string]map[string]string{},
 	}
 
-	// both source and sources cannot be defined in build
+	// Both source and sources cannot be defined in build
 	if len(bs.Sources) > 0 && bs.Source != nil {
-		return apis.ErrMultipleOneOf("b.spec.source", "b.spec.sources")
+		return apis.ErrMultipleOneOf("source", "sources")
 	}
-
 	for _, source := range bs.Sources {
-		// check all source have unique names
+		// Check all source have unique names
 		if _, ok := names[source.Name]; ok {
-			return apis.ErrMultipleOneOf("b.spec.sources.names")
+			return apis.ErrMultipleOneOf("name").ViaField("sources")
 		}
-		// multiple sources cannot have subpath defined
+		// Multiple sources cannot have subpath defined
 		if source.SubPath != "" {
 			if subPathExists {
-				return apis.ErrInvalidValue("b.spec.sources.subpath", source.SubPath)
+				return apis.ErrMultipleOneOf("subpath").ViaField("sources")
 			}
 			subPathExists = true
 		}
@@ -130,14 +115,14 @@ func (bs BuildSpec) validateSources() *apis.FieldError {
 				continue
 			}
 			if emptyTargetPath {
-				return apis.ErrInvalidValue("empty target path", "b.spec.sources.targetPath")
+				return apis.ErrInvalidValue("Empty Target Path", "targetPath").ViaField("sources")
 			}
 			emptyTargetPath = true
 		} else {
 			if source.Custom != nil {
-				return apis.ErrInvalidValue(source.TargetPath, "b.spec.sources.targetPath")
+				return apis.ErrInvalidValue(source.TargetPath, "targetPath").ViaField("sources")
 			}
-			if err := insertNode(source.TargetPath, pathtree); err != nil {
+			if err := insertNode(source.TargetPath, pathtree).ViaField("sources"); err != nil {
 				return err
 			}
 		}

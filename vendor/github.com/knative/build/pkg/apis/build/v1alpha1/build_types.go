@@ -27,7 +27,6 @@ import (
 )
 
 // +genclient
-// +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Build represents a build of a container image. A Build is made up of a
@@ -50,12 +49,11 @@ var _ apis.Defaultable = (*Build)(nil)
 
 // BuildSpec is the spec for a Build resource.
 type BuildSpec struct {
-	// TODO: Generation does not work correctly with CRD. They are scrubbed
-	// by the APIserver (https://github.com/kubernetes/kubernetes/issues/58778)
-	// So, we add Generation here. Once that gets fixed, remove this and use
-	// ObjectMeta.Generation instead.
+	// TODO(dprotaso) Metadata.Generation should increment so we
+	// can drop this property when conversion webhooks enable us
+	// to migrate
 	// +optional
-	Generation int64 `json:"generation,omitempty"`
+	DeprecatedGeneration int64 `json:"generation,omitempty"`
 
 	// Source specifies the input to the build.
 	// +optional
