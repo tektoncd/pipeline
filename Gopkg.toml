@@ -47,8 +47,8 @@ required = [
 
 [[override]]
   name = "github.com/knative/pkg"
-  # HEAD as of 2018-10-30
-  revision = "02b354e3a4fc52a1df245b4069671f082ce321d1"
+  # HEAD as of 2019-01-18
+  revision = "076ebf4e56758e76cd87fa402e9478da25ed942e"
 
 [[override]]
   name = "go.uber.org/zap"
@@ -56,8 +56,7 @@ required = [
 
 [[constraint]]
   name = "github.com/knative/build"
-  # HEAD as of 2018-11-29
-  revision = "12475f79ab0326da57b2a9ba3851efe9e7b6dbd2"
+  revision = "v0.3.0"
 
 [prune]
   go-tests = true

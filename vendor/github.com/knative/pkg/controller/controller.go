@@ -22,14 +22,13 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/knative/pkg/kmeta"
 	"github.com/knative/pkg/logging"
 	"github.com/knative/pkg/logging/logkey"
 )
@@ -123,7 +122,7 @@ func (c *Impl) Enqueue(obj interface{}) {
 // EnqueueControllerOf takes a resource, identifies its controller resource,
 // converts it into a namespace/name string, and passes that to EnqueueKey.
 func (c *Impl) EnqueueControllerOf(obj interface{}) {
-	object, err := getObject(obj)
+	object, err := kmeta.DeletionHandlingAccessor(obj)
 	if err != nil {
 		c.logger.Error(err)
 		return
@@ -136,14 +135,13 @@ func (c *Impl) EnqueueControllerOf(obj interface{}) {
 	}
 }
 
-// EnqueueLabelOf returns with an Enqueue func that takes a resource,
-// identifies its controller resource through given namespace and name labels,
-// converts it into a namespace/name string, and passes that to EnqueueKey.
-// Callers should pass in an empty string as namespace label key for obj
-// whose controller is of cluster-scoped resource.
-func (c *Impl) EnqueueLabelOf(namespaceLabel, nameLabel string) func(obj interface{}) {
+// EnqueueLabelOfNamespaceScopedResource returns with an Enqueue func that
+// takes a resource, identifies its controller resource through given namespace
+// and name labels, converts it into a namespace/name string, and passes that
+// to EnqueueKey. The controller resource must be of namespace-scoped.
+func (c *Impl) EnqueueLabelOfNamespaceScopedResource(namespaceLabel, nameLabel string) func(obj interface{}) {
 	return func(obj interface{}) {
-		object, err := getObject(obj)
+		object, err := kmeta.DeletionHandlingAccessor(obj)
 		if err != nil {
 			c.logger.Error(err)
 			return
@@ -152,7 +150,7 @@ func (c *Impl) EnqueueLabelOf(namespaceLabel, nameLabel string) func(obj interfa
 		labels := object.GetLabels()
 		controllerKey, ok := labels[nameLabel]
 		if !ok {
-			c.logger.Infof("Object %s/%s does not have a referring name label %s",
+			c.logger.Debugf("Object %s/%s does not have a referring name label %s",
 				object.GetNamespace(), object.GetName(), nameLabel)
 			return
 		}
@@ -160,35 +158,44 @@ func (c *Impl) EnqueueLabelOf(namespaceLabel, nameLabel string) func(obj interfa
 		if namespaceLabel != "" {
 			controllerNamespace, ok := labels[namespaceLabel]
 			if !ok {
-				c.logger.Infof("Object %s/%s does not have a referring namespace label %s",
+				c.logger.Debugf("Object %s/%s does not have a referring namespace label %s",
 					object.GetNamespace(), object.GetName(), namespaceLabel)
 				return
 			}
 
-			controllerKey = fmt.Sprintf("%s/%s", controllerNamespace, controllerKey)
+			c.EnqueueKey(fmt.Sprintf("%s/%s", controllerNamespace, controllerKey))
+			return
+		}
+
+		// Pass through namespace of the object itself if no namespace label specified.
+		// This is for the scenario that object and the parent resource are of same namespace,
+		// e.g. to enqueue the revision of an endpoint.
+		c.EnqueueKey(fmt.Sprintf("%s/%s", object.GetNamespace(), controllerKey))
+	}
+}
+
+// EnqueueLabelOfClusterScopedResource returns with an Enqueue func
+// that takes a resource, identifies its controller resource through
+// given name label, and passes it to EnqueueKey.
+// The controller resource must be of cluster-scoped.
+func (c *Impl) EnqueueLabelOfClusterScopedResource(nameLabel string) func(obj interface{}) {
+	return func(obj interface{}) {
+		object, err := kmeta.DeletionHandlingAccessor(obj)
+		if err != nil {
+			c.logger.Error(err)
+			return
+		}
+
+		labels := object.GetLabels()
+		controllerKey, ok := labels[nameLabel]
+		if !ok {
+			c.logger.Debugf("Object %s/%s does not have a referring name label %s",
+				object.GetNamespace(), object.GetName(), nameLabel)
+			return
 		}
 
 		c.EnqueueKey(controllerKey)
 	}
-}
-
-// getObject tries to get runtime Object from given interface in the way of Accessor first;
-// and to handle deletion, it try to fetch info from DeletedFinalStateUnknown on failure.
-func getObject(obj interface{}) (metav1.Object, error) {
-	object, err := meta.Accessor(obj)
-	if err != nil {
-		// To handle obj deletion, try to fetch info from DeletedFinalStateUnknown.
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			return nil, fmt.Errorf("Couldn't get object from tombstone %#v", obj)
-		}
-		object, ok = tombstone.Obj.(metav1.Object)
-		if !ok {
-			return nil, fmt.Errorf("The object that Tombstone contained is not of metav1.Object %#v", obj)
-		}
-	}
-
-	return object, nil
 }
 
 // EnqueueKey takes a namespace/name string and puts it onto the work queue.
@@ -207,10 +214,10 @@ func (c *Impl) Run(threadiness int, stopCh <-chan struct{}) error {
 	logger := c.logger
 	logger.Info("Starting controller and workers")
 	for i := 0; i < threadiness; i++ {
-		go wait.Until(func() {
+		go func() {
 			for c.processNextWorkItem() {
 			}
-		}, time.Second, stopCh)
+		}()
 	}
 
 	logger.Info("Started workers")
@@ -227,70 +234,59 @@ func (c *Impl) processNextWorkItem() bool {
 	if shutdown {
 		return false
 	}
+	key := obj.(string)
 
-	// We wrap this block in a func so we can defer c.base.WorkQueue.Done.
-	err := func(obj interface{}) error {
-		startTime := time.Now()
-		// Send the metrics for the current queue depth
-		c.statsReporter.ReportQueueDepth(int64(c.WorkQueue.Len()))
+	startTime := time.Now()
+	// Send the metrics for the current queue depth
+	c.statsReporter.ReportQueueDepth(int64(c.WorkQueue.Len()))
 
-		// We call Done here so the workqueue knows we have finished
-		// processing this item. We also must remember to call Forget if we
-		// do not want this work item being re-queued. For example, we do
-		// not call Forget if a transient error occurs, instead the item is
-		// put back on the workqueue and attempted again after a back-off
-		// period.
-		defer c.WorkQueue.Done(obj)
+	// We call Done here so the workqueue knows we have finished
+	// processing this item. We also must remember to call Forget if
+	// reconcile succeeds. If a transient error occurs, we do not call
+	// Forget and put the item back to the queue with an increased
+	// delay.
+	defer c.WorkQueue.Done(key)
 
-		// We expect strings to come off the workqueue. These are of the
-		// form namespace/name. We do this as the delayed nature of the
-		// workqueue means the items in the informer cache may actually be
-		// more up to date that when the item was initially put onto the
-		// workqueue.
-		key, ok := obj.(string)
-		if !ok {
-			// As the item in the workqueue is actually invalid, we call
-			// Forget here else we'd go into a loop of attempting to
-			// process a work item that is invalid.
-			c.WorkQueue.Forget(obj)
-			c.logger.Errorf("expected string in workqueue but got %#v", obj)
-			c.statsReporter.ReportReconcile(time.Now().Sub(startTime), "[InvalidKeyType]", falseString)
-			return nil
+	var err error
+	defer func() {
+		status := trueString
+		if err != nil {
+			status = falseString
 		}
+		c.statsReporter.ReportReconcile(time.Now().Sub(startTime), key, status)
+	}()
 
-		var err error
-		defer func() {
-			status := trueString
-			if err != nil {
-				status = falseString
-			}
-			c.statsReporter.ReportReconcile(time.Now().Sub(startTime), key, status)
-		}()
+	// Embed the key into the logger and attach that to the context we pass
+	// to the Reconciler.
+	logger := c.logger.With(zap.String(logkey.Key, key))
+	ctx := logging.WithLogger(context.TODO(), logger)
 
-		// Embed the key into the logger and attach that to the context we pass
-		// to the Reconciler.
-		logger := c.logger.With(zap.String(logkey.Key, key))
-		ctx := logging.WithLogger(context.TODO(), logger)
-
-		// Run Reconcile, passing it the namespace/name string of the
-		// resource to be synced.
-		if err = c.Reconciler.Reconcile(ctx, key); err != nil {
-			return fmt.Errorf("error syncing %q: %v", key, err)
-		}
-
-		// Finally, if no error occurs we Forget this item so it does not
-		// get queued again until another change happens.
-		c.WorkQueue.Forget(obj)
-		c.logger.Infof("Successfully synced %q", key)
-		return nil
-	}(obj)
-
-	if err != nil {
-		c.logger.Error(zap.Error(err))
+	// Run Reconcile, passing it the namespace/name string of the
+	// resource to be synced.
+	if err = c.Reconciler.Reconcile(ctx, key); err != nil {
+		c.handleErr(err, key)
+		logger.Errorf("Reconcile failed. Time taken: %v.", time.Now().Sub(startTime))
 		return true
 	}
 
+	// Finally, if no error occurs we Forget this item so it does not
+	// have any delay when another change happens.
+	c.WorkQueue.Forget(key)
+	logger.Infof("Reconcile succeeded. Time taken: %v.", time.Now().Sub(startTime))
+
 	return true
+}
+
+func (c *Impl) handleErr(err error, key string) {
+	c.logger.Error(zap.Error(err))
+
+	// Re-queue the key if it's an transient error.
+	if !IsPermanentError(err) {
+		c.WorkQueue.AddRateLimited(key)
+		return
+	}
+
+	c.WorkQueue.Forget(key)
 }
 
 // GlobalResync enqueues all objects from the passed SharedInformer
@@ -298,4 +294,36 @@ func (c *Impl) GlobalResync(si cache.SharedInformer) {
 	for _, key := range si.GetStore().ListKeys() {
 		c.EnqueueKey(key)
 	}
+}
+
+// NewPermanentError returns a new instance of permanentError.
+// Users can wrap an error as permanentError with this in reconcile,
+// when he does not expect the key to get re-queued.
+func NewPermanentError(err error) error {
+	return permanentError{e: err}
+}
+
+// permanentError is an error that is considered not transient.
+// We should not re-queue keys when it returns with thus error in reconcile.
+type permanentError struct {
+	e error
+}
+
+// IsPermanentError returns true if given error is permanentError
+func IsPermanentError(err error) bool {
+	switch err.(type) {
+	case permanentError:
+		return true
+	default:
+		return false
+	}
+}
+
+// Error implements the Error() interface of error.
+func (err permanentError) Error() string {
+	if err.e == nil {
+		return ""
+	}
+
+	return err.e.Error()
 }

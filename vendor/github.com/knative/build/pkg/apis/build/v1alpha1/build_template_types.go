@@ -54,12 +54,11 @@ var _ apis.Defaultable = (*BuildTemplate)(nil)
 
 // BuildTemplateSpec is the spec for a BuildTemplate.
 type BuildTemplateSpec struct {
-	// TODO: Generation does not work correctly with CRD. They are scrubbed
-	// by the APIserver (https://github.com/kubernetes/kubernetes/issues/58778)
-	// So, we add Generation here. Once that gets fixed, remove this and use
-	// ObjectMeta.Generation instead.
+	// TODO(dprotaso) Metadata.Generation should increment so we
+	// can drop this property when conversion webhooks enable us
+	// to migrate
 	// +optional
-	Generation int64 `json:"generation,omitempty"`
+	DeprecatedGeneration int64 `json:"generation,omitempty"`
 
 	// Parameters defines the parameters that can be populated in a template.
 	Parameters []ParameterSpec `json:"parameters,omitempty"`

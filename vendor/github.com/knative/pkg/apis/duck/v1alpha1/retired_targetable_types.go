@@ -24,15 +24,18 @@ import (
 	"github.com/knative/pkg/apis/duck"
 )
 
-// Targetable is very similar concept as Sinkable. However, at the
-// transport level they have different contracts and hence Sinkable
-// and Targetable are two distinct resources.
+// Targetable is an earlier version of the Callable interface.
+// Callable is a higher-level interface which implements Addressable
+// but further promises that the destination may synchronously return
+// response messages in reply to a message.
+//
+// Targetable implementations should instead implement Addressable and
+// include an `eventing.knative.dev/returns=any` annotation.
 
-// Targetable is the schema for the targetable portion of the payload
+// Targetable is retired; implement Addressable for now.
 type Targetable struct {
 	DomainInternal string `json:"domainInternal,omitempty"`
 }
-
 
 // Targetable is an Implementable "duck type".
 var _ duck.Implementable = (*Targetable)(nil)
