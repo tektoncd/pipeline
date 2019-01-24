@@ -73,7 +73,8 @@ function validate_run() {
 
 function run_yaml_tests() {
   echo ">> Starting tests"
-
+  echo ">>> KO_DOCKER_REPO=${KO_DOCKER_REPO}"
+  
   for file in $(find ${REPO_ROOT_DIR}/examples/ -name *.yaml); do
     sed 's/christiewilson-catfactory/${KO_DOCKER_REPO}/' ${file} | ko apply -f - || return 1
   done
