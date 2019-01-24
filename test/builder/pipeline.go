@@ -141,7 +141,7 @@ func ProvidedBy(tasks ...string) PipelineTaskInputResourceOp {
 
 // PipelineTaskInputResource adds an input resource to the PipelineTask with the specified
 // name, pointing at the declared resource.
-// Any number of PipelineTaskInputResource modifies can be passed to tranform it.
+// Any number of PipelineTaskInputResource modifies can be passed to transform it.
 func PipelineTaskInputResource(name, resource string, ops ...PipelineTaskInputResourceOp) PipelineTaskOp {
 	return func(pt *v1alpha1.PipelineTask) {
 		r := v1alpha1.PipelineTaskInputResource{
