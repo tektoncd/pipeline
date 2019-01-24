@@ -12,17 +12,6 @@ spec:
     type: 'gcs'
     url: 'gcs://somebucket/results/logs'
   resources:
-  - name: first-create-file
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: skaffold-git
-    outputs:
-    - name: workspace
-      resourceRef:
-        name: skaffold-git
-  - name: then-check
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: skaffold-git
+  - name: source-repo
+    resourceRef:
+      name: skaffold-git
