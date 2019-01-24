@@ -567,13 +567,14 @@ the status of individual Task runs are shown.
 Knative (as of version 0.3) is known to work with:
 - [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed
 - The following [prerequisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
+- Setting `host.docker.local:5000` as an insecure registry with Docker for Desktop
 - A local Docker registry: this can be run with
 
 `docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
 
 ### Images
-- Any hardcoded image locations should be replaced with `localhost:5000/myregistry/<image name>` equivalents: look for `PipelineResource` definitions which define an `image` specification
-- The `KO_DOCKER_REPO` variable should be set to `localhost:5000/myregistry` before using `ko`
+- Any hardcoded image locations should be replaced with `host.docker.internal:5000/myregistry/<image name>` equivalents: look for `PipelineResource` definitions which define an `image` specification
+- The `KO_DOCKER_REPO` variable should be set to `host.docker.internal:5000/myregistry` before using `ko`
 
 ### Logging
 - Logs can remain in-memory only as opposed to sent to a service such as [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results` specification.
