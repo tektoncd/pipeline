@@ -278,7 +278,7 @@ func TestGetResourcesFromBindings(t *testing.T) {
 		t.Fatalf("didn't expect error getting resources from bindings but got: %v", err)
 	}
 	expectedResources := map[string]v1alpha1.PipelineResourceRef{
-		"git-resource": v1alpha1.PipelineResourceRef{
+		"git-resource": {
 			Name: "sweet-resource",
 		},
 	}
@@ -328,7 +328,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		),
 	))
 	providedResources := map[string]v1alpha1.PipelineResourceRef{
-		"git-resource": v1alpha1.PipelineResourceRef{
+		"git-resource": {
 			Name: "someresource",
 		},
 	}
@@ -520,7 +520,7 @@ func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
 		},
 	}
 	providedResources := map[string]v1alpha1.PipelineResourceRef{
-		"git-resource": v1alpha1.PipelineResourceRef{
+		"git-resource": {
 			Name: "doesnt-exist",
 		},
 	}
