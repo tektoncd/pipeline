@@ -28,10 +28,10 @@ kubectl apply -f examples/run/output-pipeline-run.yaml
 from [the Skaffold repo](https://github.com/GoogleContainerTools/skaffold) and
 deploys them to the repo currently running the Pipeline CRD.
 
-It does this using the k8s `Deployment` in the skaffold repos's existing yaml files,
-so at the moment there is no guarantee that the image that are built and pushed are the ones that
-are deployed (that would require using the digest of the built image, see
-https://github.com/knative/build-pipeline/issues/216).
+It does this using the k8s `Deployment` in the skaffold repos's existing yaml
+files, so at the moment there is no guarantee that the image that are built and
+pushed are the ones that are deployed (that would require using the digest of
+the built image, see https://github.com/knative/build-pipeline/issues/216).
 
 To run this yourself, you will need to change the values of
 `gcr.io/christiewilson-catfactory` to a registry you can push to from inside
