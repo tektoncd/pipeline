@@ -8,8 +8,6 @@ The main objective of the Pipeline CRDs is to run your Task individually or as a
 part of a Pipeline. Every task runs as a Pod on your Kubernetes cluster with
 each step as its own container.
 
-todo mention pod lifecycles and how one should kick off multiple pipeline runs that do the same thing: do you just delete one and apply another?
-
 ## Tasks
 
 A `Task` defines the work that needs to be executed, for example the following
@@ -573,7 +571,7 @@ the status of individual Task runs are shown.
 
 Knative (as of version 0.3) is known to work with:
 - [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed
-- The following [pre-requisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
+- The following [prerequisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
 - A local Docker registry: this can be run with
 
 `docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
@@ -585,7 +583,7 @@ Knative (as of version 0.3) is known to work with:
 ### Logging
 - Logs can remain in-memory only as opposed to sent to a service such as [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results` specification.
 
-todo mention elasticsearch tutorial
+Elasticsearch can be deployed locally as a means to view logs "after the fact": an example is provided at https://github.com/mgreau/knative-elastic-tutorials.
 
 ## Experimentation
 Lines of code you may want to configure have the #configure annotation. This annotation applies to subjects such as Docker registries, log output locations and other nuances that may be specific to particular cloud providers or services.
