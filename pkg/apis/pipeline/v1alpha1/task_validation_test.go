@@ -144,8 +144,8 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			},
 		},
 		expectedError: apis.FieldError{
-			Message: `missing field(s)`,
-			Paths:   []string{"b.spec.template"},
+			Message: `expected exactly one, got neither`,
+			Paths:   []string{"template", "steps"},
 		},
 	}, {
 		name: "one invalid input",
@@ -242,8 +242,8 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			BuildSteps: []corev1.Container{},
 		},
 		expectedError: apis.FieldError{
-			Message: "missing field(s)",
-			Paths:   []string{"b.spec.template"},
+			Message: "expected exactly one, got neither",
+			Paths:   []string{"template", "steps"},
 		},
 	}, {
 		name: "invalid build step name",
