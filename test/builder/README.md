@@ -86,7 +86,7 @@ func MyTest(t *testing.T) {
 	myTaskRunWithSpec := tb.TaskRun("my-taskrun-with-spec", "namespace", tb.TaskRunSpec(
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
-			tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef("git-resource", "a1")),
+			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("git-resource")),
 		),
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(

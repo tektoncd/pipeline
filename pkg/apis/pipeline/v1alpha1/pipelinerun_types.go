@@ -41,9 +41,12 @@ var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
-	PipelineRef           PipelineRef            `json:"pipelineRef"`
-	Trigger               PipelineTrigger        `json:"trigger"`
-	PipelineTaskResources []PipelineTaskResource `json:"resources"`
+	PipelineRef PipelineRef     `json:"pipelineRef"`
+	Trigger     PipelineTrigger `json:"trigger"`
+	// Resources is a list of bindings specifying which actual instances of
+	// PipelineResources to use for the resources the Pipeline has declared
+	// it needs.
+	Resources []PipelineResourceBinding `json:"resources"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
@@ -62,20 +65,6 @@ const (
 	// if not already cancelled or terminated
 	PipelineRunSpecStatusCancelled = "PipelineRunCancelled"
 )
-
-// PipelineTaskResource maps Task inputs and outputs to existing PipelineResources by their names.
-type PipelineTaskResource struct {
-	// Name is the name of the `PipelineTask` for which these PipelineResources are being provided.
-	Name string `json:"name"`
-
-	// Inputs is a list containing mapping from the input Resources which the Task has declared it needs
-	// and the corresponding Resource instance in the system which should be used.
-	Inputs []TaskResourceBinding `json:"inputs"`
-
-	// Outputs is a list containing mapping from the output Resources which the Task has declared it needs
-	// and the corresponding Resource instance in the system which should be used.
-	Outputs []TaskResourceBinding `json:"outputs"`
-}
 
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
 type PipelineResourceRef struct {

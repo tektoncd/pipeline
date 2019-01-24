@@ -105,16 +105,18 @@ func Build(p *v1alpha1.Pipeline) (*DAG, error) {
 	}
 	// Process all providedBy constraints to add task dependency
 	for _, pt := range p.Spec.Tasks {
-		for _, rd := range pt.ResourceDependencies {
-			for _, constraint := range rd.ProvidedBy {
-				// We need to add dependency from constraint to node n
-				prev, ok := d.Nodes[constraint]
-				if !ok {
-					return nil, errors.NewPipelineTaskNotFound(p, constraint)
-				}
-				next, _ := d.Nodes[pt.Name]
-				if err := d.addPrevPipelineTask(prev, next); err != nil {
-					return nil, errors.NewInvalidPipeline(p, err.Error())
+		if pt.Resources != nil {
+			for _, rd := range pt.Resources.Inputs {
+				for _, constraint := range rd.ProvidedBy {
+					// We need to add dependency from constraint to node n
+					prev, ok := d.Nodes[constraint]
+					if !ok {
+						return nil, errors.NewPipelineTaskNotFound(p, constraint)
+					}
+					next, _ := d.Nodes[pt.Name]
+					if err := d.addPrevPipelineTask(prev, next); err != nil {
+						return nil, errors.NewInvalidPipeline(p, err.Error())
+					}
 				}
 			}
 		}

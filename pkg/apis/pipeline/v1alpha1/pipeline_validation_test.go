@@ -14,50 +14,96 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha1_test
 
 import (
 	"testing"
+
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/knative/build-pipeline/test/builder"
 )
 
 func TestPipelineSpec_Validate_Error(t *testing.T) {
-	type fields struct {
-		Tasks      []PipelineTask
-		Generation int64
-	}
 	tests := []struct {
-		name   string
-		fields fields
+		name string
+		p    *v1alpha1.Pipeline
 	}{
 		{
 			name: "duplicate tasks",
-			fields: fields{
-				Tasks: []PipelineTask{{
-					Name: "foo",
-				}, {
-					Name: "foo",
-				}},
-			},
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+				tb.PipelineTask("foo", "foo-task"),
+			)),
 		},
 		{
-			name: "invalid constraint tasks",
-			fields: fields{
-				Tasks: []PipelineTask{{
-					Name: "foo",
-					ResourceDependencies: []ResourceDependency{{
-						ProvidedBy: []string{"bar"},
-					}},
-				}},
-			},
+			name: "providedby is on first task",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.ProvidedBy("bar"))),
+			)),
+		},
+		{
+			name: "providedby task doesnt exist",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineTask("baz", "baz-task"),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.ProvidedBy("bar"))),
+			)),
+		},
+		{
+			name: "providedby task is afterward",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.ProvidedBy("bar"))),
+				tb.PipelineTask("bar", "bar-task",
+					tb.PipelineTaskOutputResource("the-resource", "great-resource")),
+			)),
+		},
+		{
+			name: "unused resources declared",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineDeclaredResource("extra-resource", v1alpha1.PipelineResourceTypeImage),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("the-resource", "great-resource")),
+			)),
+		},
+		{
+			name: "output resources missing from declaration",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("the-resource", "great-resource"),
+					tb.PipelineTaskOutputResource("the-magic-resource", "missing-resource")),
+			)),
+		},
+		{
+			name: "input resources missing from declaration",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("the-resource", "missing-resource"),
+					tb.PipelineTaskOutputResource("the-magic-resource", "great-resource")),
+			)),
+		},
+		{
+			name: "providedBy resource isn't output by task",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineDeclaredResource("wonderful-resource", v1alpha1.PipelineResourceTypeImage),
+				tb.PipelineTask("bar", "bar-task",
+					tb.PipelineTaskInputResource("some-workspace", "great-resource")),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.ProvidedBy("bar"))),
+			)),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ps := &PipelineSpec{
-				Tasks:      tt.fields.Tasks,
-				Generation: tt.fields.Generation,
-			}
-			if err := ps.Validate(); err == nil {
+			if err := tt.p.Spec.Validate(); err == nil {
 				t.Error("PipelineSpec.Validate() did not return error, wanted error")
 			}
 		})
@@ -65,45 +111,43 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 }
 
 func TestPipelineSpec_Validate_Valid(t *testing.T) {
-	type fields struct {
-		Tasks      []PipelineTask
-		Generation int64
-	}
 	tests := []struct {
-		name   string
-		fields fields
+		name string
+		p    *v1alpha1.Pipeline
 	}{
 		{
 			name: "no duplicate tasks",
-			fields: fields{
-				Tasks: []PipelineTask{{
-					Name: "foo",
-				}, {
-					Name: "baz",
-				}},
-			},
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+				tb.PipelineTask("bar", "bar-task"),
+			)),
 		},
 		{
-			name: "valid constraint tasks",
-			fields: fields{
-				Tasks: []PipelineTask{{
-					Name: "foo",
-					ResourceDependencies: []ResourceDependency{{
-						ProvidedBy: []string{"bar"},
-					}},
-				}, {
-					Name: "bar",
-				}},
-			},
+			// Adding this case because `task.Resources` is a pointer, explicitly making sure this is handled
+			name: "task without resources",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("wonderful-resource", v1alpha1.PipelineResourceTypeImage),
+				tb.PipelineTask("bar", "bar-task"),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("wow-image", "wonderful-resource")),
+			)),
+		},
+		{
+			name: "valid resource declarations and usage",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineDeclaredResource("wonderful-resource", v1alpha1.PipelineResourceTypeImage),
+				tb.PipelineTask("bar", "bar-task",
+					tb.PipelineTaskInputResource("some-workspace", "great-resource"),
+					tb.PipelineTaskOutputResource("some-image", "wonderful-resource")),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.ProvidedBy("bar"))),
+			)),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ps := &PipelineSpec{
-				Tasks:      tt.fields.Tasks,
-				Generation: tt.fields.Generation,
-			}
-			if err := ps.Validate(); err != nil {
+			if err := tt.p.Spec.Validate(); err != nil {
 				t.Errorf("PipelineSpec.Validate() returned error: %v", err)
 			}
 		})

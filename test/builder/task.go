@@ -50,7 +50,7 @@ type TaskRunSpecOp func(*v1alpha1.TaskRunSpec)
 // TaskResourceOp is an operation which modify a TaskResource struct.
 type TaskResourceOp func(*v1alpha1.TaskResource)
 
-// TaskResourceBindingOp is an operation which modify a TaskResourceBindingOp struct.
+// TaskResourceBindingOp is an operation which modify a TaskResourceBinding struct.
 type TaskResourceBindingOp func(*v1alpha1.TaskResourceBinding)
 
 // TaskRunStatusOp is an operation which modify a TaskRunStatus struct.
@@ -460,6 +460,7 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 		binding := &v1alpha1.TaskResourceBinding{
 			Name: name,
 			ResourceRef: v1alpha1.PipelineResourceRef{
+				// TODO: this seems like an odd default?
 				Name: name,
 			},
 		}
@@ -470,22 +471,22 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 	}
 }
 
-// ResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
-func ResourceBindingRef(name string) TaskResourceBindingOp {
+// TaskResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
+func TaskResourceBindingRef(name string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
 		b.ResourceRef.Name = name
 	}
 }
 
-// ResourceBindingRefAPIVersion set the PipelineResourceRef APIVersion to the TaskResourceBinding.
-func ResourceBindingRefAPIVersion(version string) TaskResourceBindingOp {
+// TaskResourceBindingRefAPIVersion set the PipelineResourceRef APIVersion to the TaskResourceBinding.
+func TaskResourceBindingRefAPIVersion(version string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
 		b.ResourceRef.APIVersion = version
 	}
 }
 
-// ResourceBindingPaths add any number of path to the TaskResourceBinding.
-func ResourceBindingPaths(paths ...string) TaskResourceBindingOp {
+// TaskResourceBindingPaths add any number of path to the TaskResourceBinding.
+func TaskResourceBindingPaths(paths ...string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
 		b.Paths = paths
 	}

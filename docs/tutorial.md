@@ -1,17 +1,26 @@
-# Tutorial for using Knative build pipelines
+# Hello World Tutorial
+
+Welcome to the Pipeline tutorial!
+
+This tutorial will walk you through creating and running some simple
+[`Tasks`](concepts.md#task), [`Pipelines`](concepts.md#pipeline) and running them
+by creating [`TaskRuns`](concepts.md#taskruns) and [`PipelineRuns`](concepts.md#pipelineruns).
+
+* [Creating a hello world `Task`](#tasks)
+* [Creating a hello world `Pipeline`](#pipelines)
+
+For more details on using `Pipelines`, see [our usage docs](usage.md).
 
 **[This tutorial can be run on a local workstation](#local-development)**<br>
 
-# Hello World Task
+## Tasks
 
 The main objective of the Pipeline CRDs is to run your Task individually or as a
 part of a Pipeline. Every task runs as a Pod on your Kubernetes cluster with
 each step as its own container.
 
-## Tasks
-
-A `Task` defines the work that needs to be executed, for example the following
-is a simple task that will echo hello world,
+A [`Task`](concepts.md#task) defines the work that needs to be executed, for
+example the following is a simple task that will echo hello world:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -30,8 +39,8 @@ spec:
 
 The `steps` are a series of commands to be sequentially executed by the task.
 
-A `TaskRun` runs the `task` you defined. Here is a simple example of a `TaskRun`
-you can use to execute your task:
+A [`TaskRun`](concepts.md#taskruns) runs the `Task` you defined. Here is a
+simple example of a `TaskRun` you can use to execute your task:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -63,9 +72,6 @@ You will get an output similar to the following:
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: TaskRun
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"TaskRun","metadata":{"annotations":{},"name":"echo-hello-world-task-run","namespace":"default"},"spec":{"taskRef":{"name":"echo-hello-world"},"trigger":{"type":"manual"}}}
   creationTimestamp: 2018-12-11T15:49:13Z
   generation: 1
   name: echo-hello-world-task-run
@@ -108,17 +114,18 @@ status:
 
 The status of type `Succeeded = True` shows the task ran successfully.
 
-# Task Inputs and Outputs
+### Task Inputs and Outputs
 
 In more common scenarios, a Task needs multiple steps with input and output
 resources to process. For example a Task could fetch source code from a GitHub
 repository and build a Docker image from it.
 
-`PipelinesResources` are used to define the artifacts that can be passed in and
-out of a task. There are a few system defined resource types ready to use, and
-the following are two examples of the resources commonly needed.
+[`PipelinesResources`](concepts.md#pipelineresources) are used to define the
+artifacts that can be passed in and out of a task. There are a few system
+defined resource types ready to use, and the following are two examples of
+the resources commonly needed.
 
-`git` resource represents a git repository with a specific revision:
+The [`git` resource](using.md#git-resource) represents a git repository with a specific revision:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -134,7 +141,7 @@ spec:
       value: https://github.com/GoogleContainerTools/skaffold #configure: change if you want to build something else, perhaps from your own local GitLab
 ```
 
-and the `image` resource represents the Docker image to be built by the task:
+The [`image` resource](using.md#image-resource) represents theimage to be built by the task:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -148,9 +155,9 @@ spec:
       value: gcr.io/<use your project>/leeroy-web #configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
 ```
 
-The following is a Task with inputs and outputs. The input resource is a GitHub
-repository and the output is the Docker image produced from that source. The
-args of the Task command support templating so that the definition of Task is
+The following is a `Task` with inputs and outputs. The input resource is a GitHub
+repository and the output is the image produced from that source. The
+args of the task command support templating so that the definition of task is
 constant and the value of parameters can change in runtime.
 
 ```yaml
@@ -258,9 +265,6 @@ You will get an output similar to the following:
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: TaskRun
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"TaskRun","metadata":{"annotations":{},"name":"build-docker-image-from-git-source-task-run","namespace":"default"},"spec":{"inputs":{"params":[{"name":"pathToDockerFile","value":"Dockerfile"},{"name":"pathToContext","value":"/workspace/examples/microservices/leeroy-web"}],"resources":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}}]},"outputs":{"resources":[{"name":"builtImage","resourceRef":{"name":"skaffold-image-leeroy-web"}}]},"results":{"type":"gcs","url":"gcs://somebucket/results/logs"},"taskRef":{"name":"build-docker-image-from-git-source"},"trigger":{"type":"manual"}}}
   creationTimestamp: 2018-12-11T18:14:29Z
   generation: 1
   name: build-docker-image-from-git-source-task-run
@@ -325,10 +329,12 @@ resource definition.
 
 # Pipeline
 
-Pipeline defines a graph of tasks to execute in a specific order, while also
-indicating if any outputs should be used as inputs of a following Task by using
-the `providedBy` field. The same templating you used in tasks is also available
-in pipeline:
+A [`Pipeline`](concepts.md#pipelines) defines a list of tasks to execute in
+order, while also indicating if any outputs should be used as inputs
+of a following task by using [the `providedBy` field](using.md#providedby).
+The same templating you used in tasks is also available in pipeline.
+
+For example:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -336,6 +342,11 @@ kind: Pipeline
 metadata:
   name: tutorial-pipeline
 spec:
+  resources:
+  - name: source-repo
+    type: git
+  - name: web-image
+    type: image
   tasks:
     - name: build-skaffold-web
       taskRef:
@@ -345,13 +356,24 @@ spec:
           value: Dockerfile
         - name: pathToContext
           value: /workspace/examples/microservices/leeroy-web #configure: may change according to your source
+      resources:
+        inputs:
+        - name: workspace
+          resource: source-repo
+        outputs:
+        - name: image
+          resource: web-image
     - name: deploy-web
       taskRef:
         name: demo-deploy-kubectl
       resources:
+        inputs:
+        - name: workspace
+          resource: source-repo
         - name: image
+          resource: web-image
           providedBy:
-            - build-skaffold-web
+          - build-skaffold-web
       params:
         - name: path
           value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml #configure: may change according to your source
@@ -361,8 +383,8 @@ spec:
           value: "spec.template.spec.containers[0].image"
 ```
 
-The above Pipeline is referencing a task to `deploy-using-kubectl` which can be
-found here:
+The above `Pipeline` is referencing a `Task` called `deploy-using-kubectl` which can be found
+here:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -406,7 +428,7 @@ spec:
         - "${inputs.params.path}"
 ```
 
-To run the Pipeline, create a PipelineRun as follows:
+To run the `Pipeline`, create a [`PipelineRun`](concepts.md#pipelinerun) as follows:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -419,26 +441,15 @@ spec:
   trigger:
     type: manual
   resources:
-    - name: build-skaffold-web
-      inputs:
-        - name: workspace
-          resourceRef:
-            name: skaffold-git
-      outputs:
-        - name: builtImage
-          resourceRef:
-            name: skaffold-image-leeroy-web
-    - name: deploy-web
-      inputs:
-        - name: workspace
-          resourceRef:
-            name: skaffold-git
-        - name: image
-          resourceRef:
-            name: skaffold-image-leeroy-web
+  - name: source-repo
+    resourceRef:
+      name: skaffold-git
+  - name: web-image
+    resourceRef:
+      name: skaffold-image-leeroy-web
 ```
 
-The PipelineRun will create the TaskRuns corresponding to each Task and collect
+The `PipelineRun` will create the `TaskRuns` corresponding to each `Task` and collect
 the results.
 
 To apply the yaml files use the following command, you will need to apply the
@@ -448,7 +459,7 @@ To apply the yaml files use the following command, you will need to apply the
 kubectl apply -f <name-of-file.yaml>
 ```
 
-To see the output of the PipelineRun, use the following command:
+To see the output of the `PipelineRun`, use the following command:
 
 ```bash
 kubectl get pipelineruns/tutorial-pipeline-run-1 -o yaml
@@ -461,8 +472,6 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineRun
 metadata:
   annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"pipeline.knative.dev/v1alpha1","kind":"PipelineRun","metadata":{"annotations":{},"name":"tutorial-pipeline-run-1","namespace":"default"},"spec":{"pipelineRef":{"name":"tutorial-pipeline"},"resources":[{"inputs":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}}],"name":"build-skaffold-web","outputs":[{"name":"builtImage","resourceRef":{"name":"skaffold-image-leeroy-web"}}]},{"inputs":[{"name":"workspace","resourceRef":{"name":"skaffold-git"}},{"name":"image","resourceRef":{"name":"skaffold-image-leeroy-web"}}],"name":"deploy-web"}],"trigger":{"type":"manual"}}}
   creationTimestamp: 2018-12-11T20:30:19Z
   generation: 1
   name: tutorial-pipeline-run-1
@@ -475,28 +484,14 @@ spec:
   pipelineRef:
     name: tutorial-pipeline
   resources:
-    - inputs:
-        - name: workspace
-          paths: null
-          resourceRef:
-            name: skaffold-git
-      name: build-skaffold-web
-      outputs:
-        - name: builtImage
-          paths: null
-          resourceRef:
-            name: skaffold-image-leeroy-web
-    - inputs:
-        - name: workspace
-          paths: null
-          resourceRef:
-            name: skaffold-git
-        - name: image
-          paths: null
-          resourceRef:
-            name: skaffold-image-leeroy-web
-      name: deploy-web
-      outputs: null
+  - name: source-repo
+    paths: null
+    resourceRef:
+      name: skaffold-git
+  - name: web-image
+    paths: null
+    resourceRef:
+      name: skaffold-image-leeroy-web
   serviceAccount: ""
   trigger:
     type: manual

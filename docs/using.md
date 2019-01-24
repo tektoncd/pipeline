@@ -15,85 +15,93 @@
    [Kaniko](https://github.com/GoogleContainerTools/kaniko)) and others will be
    specific to your project (e.g. running your particular set of unit tests).
 2. Create a `Pipeline` which expresses the Tasks you would like to run and what
-   [Resources](#creating-resources) the Tasks need. Use
-   [`providedBy`](#providedBy) to express the order the `Tasks` should run in.
+   [PipelineResources](#resources-in-a-pipeline) the Tasks need. Use
+   [`providedBy`](#providedBy) to express when the input of a `Task` should come
+   from the output of a previous `Task`.
 
 See [the example Pipeline](../examples/pipeline.yaml).
 
+### PipelineResources in a Pipeline
+
+In order for a `Pipeline` to execute, it will probably need
+[`PipelineResources`](#creating-pipelineresources) which will be provided to
+`Tasks` as inputs and outputs.
+
+Your `Pipeline` must declare the `PipelineResources` it needs in a `resources`
+section in the `spec`, giving each a name which will be used to refer to these
+`PipelineResources` in the `Tasks`.
+
+For example:
+
+```yaml
+spec:
+  resources:
+  - name: my-repo
+    type: git
+  - name: my-image
+    type: image
+```
+
+These `PipelineResources` can then be provided to `Task`s in the `Pipeline` as
+inputs and outputs, for example:
+
+```yaml
+spec:
+  #...
+  tasks:
+  - name: build-the-image
+    taskRef:
+      name: build-push
+    resources:
+      inputs:
+      - name: workspace
+        resource: my-repo
+      outputs:
+      - name: image
+        resource: my-image
+```
+
 ### ProvidedBy
 
-When you need to execute `Tasks` in a particular order, it will likely be
-because they are operating over the same `Resources` (e.g. your unit test Task
-must run first against your git repo, then you build an image from that repo,
-then you run integration tests against that image).
+Sometimes you will have `Tasks` that need to take as input the output of a previous
+`Task`, for example, an image built by a previous `Task`.
 
-We express this ordering by adding `providedBy` on `Resources` that our `Tasks`
+Express this dependency by adding `providedBy` on `Resources` that your `Tasks`
 need.
 
 - The (optional) `providedBy` key on an `input source` defines a set of previous
-  Task names.
-- When the `providedBy` key is specified on an input source, only the version of
-  the resource that is provided by the defined list of tasks is used.
-- The `providedBy` allows for `Task`s to fan in and fan out, and ordering can be
-  expressed explicitly using this key since a Task needing a resource from a
-  another Task would have to run after.
-- The name used in the `providedBy` is the name of `PipelineTask`.
+  `PipelineTasks` (i.e. the named instance of a `Task`) in the `Pipeline`
+- When the `providedBy` key is specified on an input source, the version of
+  the resource that is provided by the defined list of tasks is used
+- The `providedBy` can support fan in and fan out
 - The name of the `PipelineResource` must correspond to a `PipelineResource`
   from the `Task` that the referenced `PipelineTask` provides as an output
 
 For example see this `Pipeline` spec:
 
 ```yaml
-- name: build-skaffold-app
+- name: build-app
   taskRef:
     name: build-push
-  params:
-    - name: pathToDockerFile
-      value: Dockerfile
-    - name: pathToContext
-      value: /workspace/examples/microservices/leeroy-app
+  resources:
+    outputs:
+    - name: image
+      resource: my-image
 - name: deploy-app
   taskRef:
-    name: demo-deploy-kubectl
+    name: deploy-kubectl
   resources:
-    - name: image
-      providedBy:
-        - build-skaffold-app
-```
-
-The `image` resource is expected to be provided to the `deploy-app` `Task` from
-the `build-skaffold-app` `Task`. This means that the `PipelineResource` bound to
-the `image` input for `deploy-app` must be bound to the same `PipelineResource`
-as an output from `build-skaffold-app`.
-
-This is the corresponding `PipelineRun` spec:
-
-```yaml
-  - name: build-skaffold-app
-    ...
-    outputs:
-    - name: builtImage
-      resourceRef:
-        name: skaffold-image-leeroy-app
-  - name: deploy-app
-    ...
     inputs:
-    - name: image
-      resourceRef:
-        name: skaffold-image-leeroy-app
+      - name: my-image
+        providedBy:
+          - build-app
 ```
 
-You can see that the `builtImage` output from `build-skaffold-app` is bound to
-the `skaffold-image-leeroy-app` `PipelineResource`, and the same
-`PipelineResource` is bound to `image` for `deploy-app`.
+The resource `my-image` is expected to be provided to the `deploy-app` `Task` from
+the `build-app` `Task`. This means that the `PipelineResource` `my-image` must also
+be declared as an output of `build-app`.
 
-This controls two things:
-
-1. The order the `Task`s are executed in: `deploy-app` must come after
-   `build-skaffold-app`
-2. The state of the `PipelineResources`: the image provided to `deploy-app` may
-   be changed by `build-skaffold-app` (WIP, see
-   [#216](https://github.com/knative/build-pipeline/issues/216))
+For implementation details, see [the developer docs](docs/developers/README.md).
 
 ## Creating a Task
 
@@ -112,7 +120,9 @@ To create a Task, you must:
 Each container image used as a step in a [`Task`](#task) must comply with a
 specific contract.
 
-When containers are run in a `Task`, the `entrypoint` of the container is
+#### Entrypoint
+
+When containers are run in a `Task`, the `entrypoint` of the container will be
 overwritten with a custom binary that redirects the logs to a separate location
 for aggregating the log output. As such, it is always recommended to explicitly
 specify a command.
@@ -164,16 +174,23 @@ steps:
         value: "world"
 ```
 
-### Resource shared between tasks
+##### Configure Entrypoint image
 
-Pipeline Tasks are allowed to pass resources from previous tasks via
-`providedBy` field. This feature is implemented using Persistent Volume Claim
-under the hood but however has an implication that tasks cannot have any volume
-mounted under path `/pvc`.
+To run a step, the `pod` will need to pull an `Entrypoint` image. Maybe the
+image is hard to pull in your environment, so we provide a way for you to
+configure that by edit the `image`'s value in a configmap named
+[`config-entrypoint`](./../config/config-entrypoint.yaml).
+
+### Resource sharing between tasks
+
+Pipeline `Tasks` are allowed to pass resources from previous `Tasks` via the
+[`providedBy`](#providedby) field. This feature is implemented using
+Persistent Volume Claims under the hood but however has an implication
+that tasks cannot have any volume mounted under path `/pvc`.
 
 ### Outputs
 
-`Task` definition can include inputs and outputs resource declaration. If
+`Task` definitions can include inputs and outputs resource declaration. If
 specific set of resources are only declared in output then a copy of resource to
 be uploaded or shared for next Task is expected to be present under the path
 `/workspace/output/resource_name/`.
@@ -182,6 +199,7 @@ be uploaded or shared for next Task is expected to be present under the path
 resources:
   outputs:
     name: storage-gcs
+    type: gcs
 steps:
   - image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
     command: [jar]
@@ -201,7 +219,7 @@ destination path of input resource is used instead of
 
 In the following example Task `tar-artifact` resource is used both as input and
 output so input resource is downloaded into directory `customworkspace`(as
-specified in `targetPath`). Step `untar` extracts tar file into
+specified in [`targetPath`](#targetpath)). Step `untar` extracts tar file into
 `tar-scratch-space` directory , `edit-tar` adds a new file and last step
 `tar-it-up` creates new tar file and places in `/workspace/customworkspace/`
 directory. After execution of the Task steps, (new) tar file in directory
@@ -228,6 +246,39 @@ steps:
    image: ubuntu
    command: ["/bin/bash"]
    args: ['-c', 'cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master']
+```
+
+#### targetPath
+
+Tasks can opitionally provide `targetPath` to initialize resource in specific
+directory. If `targetPath` is set then resource will be initialized under
+`/workspace/targetPath`. If `targetPath` is not specified then resource will
+be initialized under `/workspace`. Following example demonstrates how git input
+repository could be initialized in `$GOPATH` to run tests:
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: task-with-input
+  namespace: default
+spec:
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+        targetPath: go/src/github.com/knative/build-pipeline
+  steps:
+    - name: unit-tests
+      image: golang
+      command: ["go"]
+      args:
+        - "test"
+        - "./..."
+      workingDir: "/workspace/go/src/github.com/knative/build-pipeline"
+      env:
+        - name: GOPATH
+          value: /workspace/go
 ```
 
 ### Conventions
@@ -286,8 +337,8 @@ In order to run a Pipeline, you will need to provide:
 1. A Pipeline to run (see [creating a Pipeline](#creating-a-pipeline))
 2. The `PipelineResources` to use with this Pipeline.
 
-On its own, a `Pipeline` declares what `Tasks` to run, and what order to run
-them in (implied by [`providedBy`](#providedby)). When running a `Pipeline`, you
+On its own, a `Pipeline` declares what `Tasks` to run, and dependencies between
+`Task` inputs and outputs via [`providedBy`](#providedby). When running a `Pipeline`, you
 will need to specify the `PipelineResources` to use with it. One `Pipeline` may
 need to be run with different `PipelineResources` in cases such as:
 
@@ -298,29 +349,22 @@ need to be run with different `PipelineResources` in cases such as:
   registry (via the image `PipelineResource`) and Kubernetes cluster (via the
   cluster `PipelineResource`).
 
-Specify the `PipelineResources` in the PipelineRun using the `resources`
-section, for example:
+Specify the `PipelineResources` in the PipelineRun using the `resources` section
+in the `PipelineRun` spec, for example:
 
 ```yaml
-resources:
-  - name: push-kritis
-    inputs:
-      - key: workspace
-        resourceRef:
-          name: kritis-resources-git
-    outputs:
-      - key: builtImage
-        resourceRef:
-          name: kritis-resources-image
+spec:
+  resources:
+  - name: source-repo
+    resourceRef:
+      name: skaffold-git
+  - name: web-image
+    resourceRef:
+      name: skaffold-image-leeroy-web
+  - name: app-image
+    resourceRef:
+      name: skaffold-image-leeroy-app
 ```
-
-This example section says:
-
-- For the `Task` in the `Pipeline` called `push-kritis`
-- For the input called `workspace`, use the existing resource called
-  `kritis-resources-git`
-- For the output called `builtImage`, use the existing resource called
-  `kritis-resources-image`
 
 Creation of a `PipelineRun` will trigger the creation of
 [`TaskRuns`](#running-a-task) for each `Task` in your pipeline.
@@ -474,7 +518,80 @@ spec:
   status: "TaskRunCancelled"
 ```
 
-## Creating Resources
+### Using custom paths
+
+When specifying input and output `PipelineResources`, you can optionally specify
+`paths` for each resource. `paths` will be used by `TaskRun` as the resource's new source paths
+i.e., copy the resource from specified list of paths. `TaskRun` expects the
+folder and contents to be already present in specified paths. `paths` feature
+could be used to provide extra files or altered version of existing resource
+before execution of steps.
+
+Output resource includes name and reference to pipeline resource and optionally
+`paths`. `paths` will be used by `TaskRun` as the resource's new destination
+paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
+responsible for creating required directories and copying contents over. `paths`
+feature could be used to inspect the results of taskrun after execution of
+steps.
+
+`paths` feature for input and output resource is heavily used to pass same
+version of resources across tasks in context of pipelinerun.
+
+In the following example, task and taskrun are defined with input resource,
+output resource and step which builds war artifact. After execution of
+taskrun(`volume-taskrun`), `custom` volume will have entire resource
+`java-git-resource` (including the war artifact) copied to the destination path
+`/custom/workspace/`.
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: volume-task
+  namespace: default
+spec:
+  generation: 1
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: build-war
+      image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
+      command: jar
+      args: ["-cvf", "projectname.war", "*"]
+      volumeMounts:
+        - name: custom-volume
+          mountPath: /custom
+```
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: volume-taskrun
+  namespace: default
+spec:
+  taskRef:
+    name: volume-task
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name: java-git-resource
+  outputs:
+    resources:
+      - name: workspace
+        paths:
+          - /custom/workspace/
+        resourceRef:
+          name: java-git-resource
+  volumes:
+    - name: custom-volume
+      emptyDir: {}
+```
+
+## Creating PipelineResources
 
 The following `PipelineResources` are currently supported:
 

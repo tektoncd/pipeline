@@ -45,9 +45,15 @@ const (
 	// ReasonCouldntGetPipeline indicates that the reason for the failure status is that the
 	// associated Pipeline couldn't be retrieved
 	ReasonCouldntGetPipeline = "CouldntGetPipeline"
+	// ReasonInvalidBindings indicates that the reason for the failure status is that the
+	// PipelineResources bound in the PipelineRun didn't match those declared in the Pipeline
+	ReasonInvalidBindings = "InvalidPipelineResourceBindings"
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
 	ReasonCouldntGetTask = "CouldntGetTask"
+	// ReasonCouldntGetResource indicates that the reason for the failure status is that the
+	// associated PipelineRun's bound PipelineResources couldn't all be retrieved
+	ReasonCouldntGetResource = "CouldntGetResource"
 	// ReasonFailedValidation indicated that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	ReasonFailedValidation = "PipelineValidationFailed"
@@ -186,7 +192,22 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		})
 		return nil
 	}
+
+	providedResources, err := resources.GetResourcesFromBindings(p, pr)
+	if err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonInvalidBindings,
+			Message: fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's PipelineResources correctly: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
+		})
+		return nil
+	}
+
 	pipelineState, err := resources.ResolvePipelineRun(
+		pr.Name,
 		func(name string) (v1alpha1.TaskInterface, error) {
 			return c.taskLister.Tasks(pr.Namespace).Get(name)
 		},
@@ -194,21 +215,38 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			return c.clusterTaskLister.Get(name)
 		},
 		c.resourceLister.PipelineResources(pr.Namespace).Get,
-		p, pr,
+		p.Spec.Tasks, providedResources,
 	)
+
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// This Run has failed, so we need to mark it as failed and stop reconciling it
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		switch err := err.(type) {
+		case *resources.TaskNotFoundError:
 			pr.Status.SetCondition(&duckv1alpha1.Condition{
 				Type:   duckv1alpha1.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
 				Reason: ReasonCouldntGetTask,
 				Message: fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
+					fmt.Sprintf("%s/%s", p.Namespace, p.Name), err),
+			})
+		case *resources.ResourceNotFoundError:
+			pr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:   duckv1alpha1.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: ReasonCouldntGetResource,
+				Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
 					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
 			})
-			return nil
+		default:
+			pr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:   duckv1alpha1.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: ReasonFailedValidation,
+				Message: fmt.Sprintf("PipelineRun %s can't be Run; couldn't resolve all references: %s",
+					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
+			})
 		}
-		return fmt.Errorf("error getting Tasks for Pipeline %s: %s", p.Name, err)
+		return nil
 	}
 
 	if err := resources.ValidateProvidedBy(pipelineState); err != nil {
@@ -256,7 +294,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	if rprt != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt.ResolvedTaskResources.TaskName, rprt.TaskRunName, pr, rprt.PipelineTask, serviceAccount)
+		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount)
 		if err != nil {
 			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
@@ -283,10 +321,10 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 	}
 }
 
-func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, taskName, taskRunName string, pr *v1alpha1.PipelineRun, pt *v1alpha1.PipelineTask, sa string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa string) (*v1alpha1.TaskRun, error) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            taskRunName,
+			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
 			OwnerReferences: pr.GetOwnerReference(),
 			Labels: map[string]string{
@@ -296,15 +334,15 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, taskName, taskRunN
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskRef: &v1alpha1.TaskRef{
-				Name: taskName,
+				Name: rprt.ResolvedTaskResources.TaskName,
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Params: pt.Params,
+				Params: rprt.PipelineTask.Params,
 			},
 			ServiceAccount: sa,
 		},
 	}
-	resources.WrapSteps(&tr.Spec, pr.Spec.PipelineTaskResources, pt)
+	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs)
 
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(pr.Namespace).Create(tr)
 }

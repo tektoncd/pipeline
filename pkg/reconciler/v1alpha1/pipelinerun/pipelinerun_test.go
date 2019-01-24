@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
@@ -68,22 +69,12 @@ func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.T
 }
 
 func TestReconcile(t *testing.T) {
-	workspaceInput := tb.PipelineTaskResourceInputs("workspace", tb.ResourceBindingRef("some-repo"))
-	imageOutput := tb.PipelineTaskResourceOutputs("image-to-use", tb.ResourceBindingRef("some-image"))
-	workspaceOutput := tb.PipelineTaskResourceOutputs("workspace", tb.ResourceBindingRef("some-repo"))
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("test-pipeline-run-success", "foo",
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunServiceAccount("test-sa"),
-				tb.PipelineRunTaskResource("unit-test-1",
-					workspaceInput, imageOutput, workspaceOutput,
-				),
-				tb.PipelineRunTaskResource("unit-test-2",
-					workspaceInput,
-				),
-				tb.PipelineRunTaskResource("unit-test-cluster-task",
-					workspaceInput, imageOutput, workspaceOutput,
-				),
+				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
+				tb.PipelineRunResourceBinding("best-image", tb.PipelineResourceBindingRef("some-image")),
 			),
 		),
 	}
@@ -93,15 +84,23 @@ func TestReconcile(t *testing.T) {
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
+				tb.PipelineDeclaredResource("git-repo", "git"),
+				tb.PipelineDeclaredResource("best-image", "image"),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
 				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
-					tb.PipelineTaskResourceDependency("workspace", tb.ProvidedBy("unit-test-1")),
+					tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("unit-test-1")),
 				),
 				tb.PipelineTask("unit-test-cluster-task", "unit-test-cluster-task",
 					tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
 					funParam, moreFunParam, templatedParam,
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
 			),
 		),
@@ -191,21 +190,21 @@ func TestReconcile(t *testing.T) {
 				tb.TaskRunInputsParam("foo", "somethingfun"),
 				tb.TaskRunInputsParam("bar", "somethingmorefun"),
 				tb.TaskRunInputsParam("templatedparam", "${inputs.workspace.revision}"),
-				tb.TaskRunInputsResource("workspace", tb.ResourceBindingRef("some-repo")),
+				tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("some-repo")),
 			),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource("image-to-use", tb.ResourceBindingRef("some-image"),
-					tb.ResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
+				tb.TaskRunOutputsResource("image-to-use", tb.TaskResourceBindingRef("some-image"),
+					tb.TaskResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
 				),
-				tb.TaskRunOutputsResource("workspace", tb.ResourceBindingRef("some-repo"),
-					tb.ResourceBindingPaths("/pvc/unit-test-1/workspace"),
+				tb.TaskRunOutputsResource("workspace", tb.TaskResourceBindingRef("some-repo"),
+					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
 				),
 			),
 		),
 	)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
+	if d := cmp.Diff(actual, expectedTaskRun, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
@@ -231,19 +230,33 @@ func TestReconcile(t *testing.T) {
 }
 
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
-	ts := []*v1alpha1.Task{tb.Task("a-task-that-exists", "foo")}
+	ts := []*v1alpha1.Task{
+		tb.Task("a-task-that-exists", "foo"),
+		tb.Task("a-task-that-needs-params", "foo", tb.TaskSpec(
+			tb.TaskInputs(tb.InputsParam("some-param")))),
+	}
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("pipeline-missing-tasks", "foo", tb.PipelineSpec(
 			tb.PipelineTask("myspecialtask", "sometask"),
 		)),
+		tb.Pipeline("a-pipeline-without-params", "foo", tb.PipelineSpec(
+			tb.PipelineTask("some-task", "a-task-that-needs-params"))),
 		tb.Pipeline("a-fine-pipeline", "foo", tb.PipelineSpec(
-			tb.PipelineTask("some-task", "a-task-that-exists"),
-		)),
+			tb.PipelineDeclaredResource("a-resource", v1alpha1.PipelineResourceTypeGit),
+			tb.PipelineTask("some-task", "a-task-that-exists",
+				tb.PipelineTaskInputResource("needed-resource", "a-resource")))),
+		tb.Pipeline("a-pipeline-that-should-be-caught-by-admission-control", "foo", tb.PipelineSpec(
+			tb.PipelineTask("some-task", "a-task-that-exists",
+				tb.PipelineTaskInputResource("needed-resource", "a-resource")))),
 	}
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("invalid-pipeline", "foo", tb.PipelineRunSpec("pipeline-not-exist")),
 		tb.PipelineRun("pipelinerun-missing-tasks", "foo", tb.PipelineRunSpec("pipeline-missing-tasks")),
-		tb.PipelineRun("pipeline-params-dont-exist", "foo", tb.PipelineRunSpec("a-fine-pipeline")),
+		tb.PipelineRun("pipeline-params-dont-exist", "foo", tb.PipelineRunSpec("a-pipeline-without-params")),
+		tb.PipelineRun("pipeline-resources-not-bound", "foo", tb.PipelineRunSpec("a-fine-pipeline")),
+		tb.PipelineRun("pipeline-resources-dont-exist", "foo", tb.PipelineRunSpec("a-fine-pipeline",
+			tb.PipelineRunResourceBinding("a-resource", tb.PipelineResourceBindingRef("missing-resource")))),
+		tb.PipelineRun("pipeline-resources-not-declared", "foo", tb.PipelineRunSpec("a-pipeline-that-should-be-caught-by-admission-control")),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -263,6 +276,22 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
 			pipelineRun: prs[1],
 			reason:      ReasonCouldntGetTask,
+		}, {
+			name:        "invalid-pipeline-run-params-dont-exist-shd-stop-reconciling",
+			pipelineRun: prs[2],
+			reason:      ReasonFailedValidation,
+		}, {
+			name:        "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
+			pipelineRun: prs[3],
+			reason:      ReasonInvalidBindings,
+		}, {
+			name:        "invalid-pipeline-run-missing-resource-shd-stop-reconciling",
+			pipelineRun: prs[4],
+			reason:      ReasonCouldntGetResource,
+		}, {
+			name:        "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
+			pipelineRun: prs[5],
+			reason:      ReasonFailedValidation,
 		},
 	}
 

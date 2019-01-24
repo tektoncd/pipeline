@@ -38,24 +38,20 @@ func validateOutputResources(outputs *v1alpha1.Outputs, providedResources map[st
 	return validateResources([]v1alpha1.TaskResource{}, providedResources)
 }
 
-func validateResources(neededResources []v1alpha1.TaskResource, providedResources map[string]*v1alpha1.PipelineResource) error {
-	needed := make([]string, 0, len(neededResources))
-	for _, resource := range neededResources {
-		needed = append(needed, resource.Name)
+func validateResources(requiredResources []v1alpha1.TaskResource, providedResources map[string]*v1alpha1.PipelineResource) error {
+	required := make([]string, 0, len(requiredResources))
+	for _, resource := range requiredResources {
+		required = append(required, resource.Name)
 	}
 	provided := make([]string, 0, len(providedResources))
 	for resource := range providedResources {
 		provided = append(provided, resource)
 	}
-	missing := list.DiffLeft(needed, provided)
-	if len(missing) > 0 {
-		return fmt.Errorf("missing resources: %s", missing)
+	err := list.IsSame(required, provided)
+	if err != nil {
+		return fmt.Errorf("TaskRun's declared resources didn't match usage in Task: %s", err)
 	}
-	extra := list.DiffLeft(provided, needed)
-	if len(extra) > 0 {
-		return fmt.Errorf("didn't need these resources but they were provided anyway: %s", extra)
-	}
-	for _, resource := range neededResources {
+	for _, resource := range requiredResources {
 		r := providedResources[resource.Name]
 		if r == nil {
 			// This case should never be hit due to the check for missing resources at the beginning of the function

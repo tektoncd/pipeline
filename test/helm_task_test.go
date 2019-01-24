@@ -65,7 +65,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	logger.Infof("Creating Task %s", createImageTaskName)
-	if _, err := c.TaskClient.Create(getCreateImageTask(namespace, t)); err != nil {
+	if _, err := c.TaskClient.Create(getCreateImageTask(namespace, t, logger)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", createImageTaskName, err)
 	}
 
@@ -96,6 +96,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 				CollectBuildLogs(c, tr.Status.PodName, namespace, logger)
 			}
 		}
+		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
 	}
 
 	logger.Info("Waiting for service to get external IP")
@@ -145,7 +146,7 @@ func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 	))
 }
 
-func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
+func getCreateImageTask(namespace string, t *testing.T, logger *logging.BaseLogger) *v1alpha1.Task {
 	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)
 	// the KO_DOCKER_REPO will be set with according to the project where the cluster is created
 	// it is used here to dynamically get the docker registry to push the image to
@@ -155,7 +156,7 @@ func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 	}
 
 	imageName = fmt.Sprintf("%s/%s", dockerRepo, AppendRandomString(sourceImageName))
-	t.Logf("Image to be pusblished: %s", imageName)
+	logger.Infof("Image to be pusblished: %s", imageName)
 
 	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
@@ -188,9 +189,12 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 
 func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(helmDeployPipelineName, namespace, tb.PipelineSpec(
-		tb.PipelineTask("push-image", createImageTaskName),
+		tb.PipelineDeclaredResource("git-repo", "git"),
+		tb.PipelineTask("push-image", createImageTaskName,
+			tb.PipelineTaskInputResource("gitsource", "git-repo"),
+		),
 		tb.PipelineTask("helm-deploy", helmDeployTaskName,
-			tb.PipelineTaskResourceDependency("gitsource"), // tb.ProvidedBy(createImageTaskName), //TODO: https://github.com/knative/build-pipeline/issues/148
+			tb.PipelineTaskInputResource("gitsource", "git-repo"),
 			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
 			tb.PipelineTaskParam("chartname", "gohelloworld"),
 			tb.PipelineTaskParam("image", imageName),
@@ -201,12 +205,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	return tb.PipelineRun(helmDeployPipelineRunName, namespace, tb.PipelineRunSpec(
 		helmDeployPipelineName,
-		tb.PipelineRunTaskResource("helm-deploy",
-			tb.PipelineTaskResourceInputs("gitsource", tb.ResourceBindingRef(sourceResourceName)),
-		),
-		tb.PipelineRunTaskResource("push-image",
-			tb.PipelineTaskResourceInputs("gitsource", tb.ResourceBindingRef(sourceResourceName)),
-		),
+		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef(sourceResourceName)),
 	))
 }
 
