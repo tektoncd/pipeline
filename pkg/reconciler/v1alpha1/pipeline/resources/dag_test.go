@@ -31,37 +31,37 @@ func TestBuild(t *testing.T) {
 	xDependsOnA := v1alpha1.PipelineTask{
 		Name: "x",
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"a"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
 		},
 	}
 	yDependsOnAB := v1alpha1.PipelineTask{
 		Name: "y",
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"b", "a"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"b", "a"}}},
 		},
 	}
 	zDependsOnX := v1alpha1.PipelineTask{
 		Name: "z",
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"x"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"x"}}},
 		},
 	}
 	aDependsOnZ := v1alpha1.PipelineTask{
 		Name: "a",
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"z"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"z"}}},
 		},
 	}
 	selfLink := v1alpha1.PipelineTask{
 		Name: "a",
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"a"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
 		},
 	}
 	invalidTask := v1alpha1.PipelineTask{
 		Name: "a",
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"none"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"none"}}},
 		},
 	}
 	nodeX := &Node{Task: xDependsOnA, Prev: []*Node{{Task: a}}}
@@ -149,13 +149,13 @@ func TestGetPrevTasks(t *testing.T) {
 	x := v1alpha1.PipelineTask{
 		Name: "x",
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"a"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
 		},
 	}
 	y := v1alpha1.PipelineTask{
 		Name: "y",
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{ProvidedBy: []string{"x", "a"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"x", "a"}}},
 		},
 	}
 	p := v1alpha1.Pipeline{

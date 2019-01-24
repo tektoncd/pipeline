@@ -116,9 +116,9 @@ type PipelineTaskInputResource struct {
 	Name string `json:"name"`
 	// Resource is the name of the DeclaredPipelineResource to use.
 	Resource string `json:"resource"`
-	// ProvidedBy is the list of PipelineTask names that the resource has to come from.
+	// From is the list of PipelineTask names that the resource has to come from.
 	// +optional
-	ProvidedBy []string `json:"providedBy,omitempty"`
+	From []string `json:"from,omitempty"`
 }
 
 // PipelineTaskOutputResource maps the name of a declared PipelineResource output

@@ -12,7 +12,7 @@ on path `/pvc` by PipelineRun.
   adds a step to copy each output resource to the directory path
   `/pvc/task_name/resource_name`.
 
-- If an input resource includes `providedBy` condition then the `TaskRun`
+- If an input resource includes `from` condition then the `TaskRun`
   controller adds a step to copy from PVC to directory path
   `/pvc/previous_task/resource_name`.
 
