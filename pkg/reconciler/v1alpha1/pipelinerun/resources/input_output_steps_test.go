@@ -16,6 +16,7 @@ limitations under the License.
 package resources_test
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -25,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_GetOutputSteps(t *testing.T) {
+func TestGetOutputSteps(t *testing.T) {
 	r1 := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "resource1",
@@ -70,6 +71,7 @@ func Test_GetOutputSteps(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			postTasks := resources.GetOutputSteps(tc.outputs, tc.pipelineTaskName)
+			sort.SliceStable(postTasks, func(i, j int) bool { return postTasks[i].Name < postTasks[j].Name })
 			if d := cmp.Diff(postTasks, tc.expectedtaskOuputResources); d != "" {
 				t.Errorf("error comparing post steps: %s", d)
 			}
@@ -77,7 +79,7 @@ func Test_GetOutputSteps(t *testing.T) {
 	}
 }
 
-func Test_GetInputSteps(t *testing.T) {
+func TestGetInputSteps(t *testing.T) {
 	r1 := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "resource1",
@@ -136,6 +138,7 @@ func Test_GetInputSteps(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask)
+			sort.SliceStable(taskInputResources, func(i, j int) bool { return taskInputResources[i].Name < taskInputResources[j].Name })
 			if d := cmp.Diff(tc.expectedtaskInputResources, taskInputResources); d != "" {
 				t.Errorf("error comparing task resource inputs: %s", d)
 			}
@@ -144,7 +147,7 @@ func Test_GetInputSteps(t *testing.T) {
 	}
 }
 
-func Test_WrapSteps(t *testing.T) {
+func TestWrapSteps(t *testing.T) {
 	r1 := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "resource1",
@@ -184,6 +187,9 @@ func Test_WrapSteps(t *testing.T) {
 		Name:        "test-output",
 		Paths:       []string{"/pvc/test-task/test-output"},
 	}}
+
+	sort.SliceStable(expectedtaskInputResources, func(i, j int) bool { return expectedtaskInputResources[i].Name < expectedtaskInputResources[j].Name })
+	sort.SliceStable(expectedtaskOuputResources, func(i, j int) bool { return expectedtaskOuputResources[i].Name < expectedtaskOuputResources[j].Name })
 
 	if d := cmp.Diff(taskRunSpec.Inputs.Resources, expectedtaskInputResources, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("error comparing input resources: %s", d)
