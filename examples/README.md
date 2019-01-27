@@ -72,8 +72,8 @@ demonstrates how the outputs of a `Task` can be given as inputs to the next
 1. Running a `Task` that writes to a `PipelineResource`
 2. Running a `Task` that reads the written value from the `PipelineResource`
 
-The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is given as
-an [`Input`](../docs/Concepts.md#inputs) to the next `Task` thanks to the
+The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is given as an
+[`Input`](../docs/Concepts.md#inputs) to the next `Task` thanks to the
 [`from`](../docs/using.md#from) clause.
 
 #### Output Tasks
