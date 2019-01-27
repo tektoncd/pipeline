@@ -16,8 +16,8 @@
    specific to your project (e.g. running your particular set of unit tests).
 2. Create a `Pipeline` which expresses the Tasks you would like to run and what
    [PipelineResources](#resources-in-a-pipeline) the Tasks need. Use
-   [`from`](#from) to express when the input of a `Task` should come
-   from the output of a previous `Task`.
+   [`from`](#from) to express when the input of a `Task` should come from the
+   output of a previous `Task`.
 
 See [the example Pipeline](../examples/pipeline.yaml).
 
@@ -66,13 +66,12 @@ spec:
 Sometimes you will have `Tasks` that need to take as input the output of a
 previous `Task`, for example, an image built by a previous `Task`.
 
-Express this dependency by adding `from` on `Resources` that your `Tasks`
-need.
+Express this dependency by adding `from` on `Resources` that your `Tasks` need.
 
 - The (optional) `from` key on an `input source` defines a set of previous
   `PipelineTasks` (i.e. the named instance of a `Task`) in the `Pipeline`
-- When the `from` key is specified on an input source, the version of
-  the resource that is from the defined list of tasks is used
+- When the `from` key is specified on an input source, the version of the
+  resource that is from the defined list of tasks is used
 - `from` can support fan in and fan out
 - The name of the `PipelineResource` must correspond to a `PipelineResource`
   from the `Task` that the referenced `PipelineTask` gives as an output
@@ -98,8 +97,8 @@ For example see this `Pipeline` spec:
 ```
 
 The resource `my-image` is expected to be given to the `deploy-app` `Task` from
-the `build-app` `Task`. This means that the `PipelineResource` `my-image` must also
-be declared as an output of `build-app`.
+the `build-app` `Task`. This means that the `PipelineResource` `my-image` must
+also be declared as an output of `build-app`.
 
 For implementation details, see [the developer docs](docs/developers/README.md).
 
@@ -184,9 +183,9 @@ configure that by edit the `image`'s value in a configmap named
 ### Resource sharing between tasks
 
 Pipeline `Tasks` are allowed to pass resources from previous `Tasks` via the
-[`from`](#from) field. This feature is implemented using
-Persistent Volume Claims under the hood but however has an implication
-that tasks cannot have any volume mounted under path `/pvc`.
+[`from`](#from) field. This feature is implemented using Persistent Volume
+Claims under the hood but however has an implication that tasks cannot have any
+volume mounted under path `/pvc`.
 
 ### Outputs
 
