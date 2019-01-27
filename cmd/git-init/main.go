@@ -20,7 +20,6 @@ import (
 	"flag"
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/knative/pkg/logging"
 	"go.uber.org/zap"
@@ -67,20 +66,19 @@ func main() {
 	if err != nil {
 		logger.Fatalf("Unexpected error creating symlink: %v", err)
 	}
-
-	dir, err := os.Getwd()
-	if err != nil {
-		logger.Errorf("Failed to get current dir", err)
+	if *revision == "" {
+		*revision = "master"
 	}
-
 	if *path != "" {
 		runOrFail(logger, "git", "init", *path)
-		path := filepath.Join(dir, *path)
-		if err := os.Chdir(path); err != nil {
+		if _, err := os.Stat(*path); os.IsNotExist(err) {
+			if err := os.Mkdir(*path, os.ModePerm); err != nil {
+				logger.Debugf("Creating directory at path %s", *path)
+			}
+		}
+		if err := os.Chdir(*path); err != nil {
 			logger.Fatalf("Failed to change directory with path %s; err %v", path, err)
 		}
-		// update dir variable with new path
-		dir = path
 	} else {
 		run(logger, "git", "init")
 	}
@@ -89,5 +87,5 @@ func main() {
 	runOrFail(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision)
 	runOrFail(logger, "git", "reset", "--hard", "FETCH_HEAD")
 
-	logger.Infof("Successfully cloned %q @ %q in path %q", *url, *revision, dir)
+	logger.Infof("Successfully cloned %q @ %q in path %q", *url, *revision, *path)
 }

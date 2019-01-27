@@ -17,10 +17,8 @@ limitations under the License.
 package resources
 
 import (
-	"flag"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -31,10 +29,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-)
-
-var (
-	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
 )
 
 func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourceBinding) (*v1alpha1.TaskResourceBinding, error) {
@@ -87,74 +81,64 @@ func AddInputResource(
 		if err != nil {
 			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %v: error: %s", taskName, boundResource, err.Error())
 		}
-
+		var (
+			resourceContainers     []corev1.Container
+			resourceVolumes        []corev1.Volume
+			copyStepsFromPrevTasks []corev1.Container
+			dPath                  = destinationPath(input.Name, input.TargetPath)
+		)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
-		var copyStepsFromPrevTasks []corev1.Container
-		if allowedOutputResources[resource.Spec.Type] {
+		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
 			for i, path := range boundResource.Paths {
-				var dPath string
-				if input.TargetPath == "" {
-					dPath = filepath.Join(workspaceDir, input.Name)
-				} else {
-					dPath = filepath.Join(workspaceDir, input.TargetPath)
-				}
-
 				cpContainers := as.GetCopyFromContainerSpec(fmt.Sprintf("%s-%d", boundResource.Name, i), path, dPath)
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+
 					mountPVC = true
 					for _, ct := range cpContainers {
 						ct.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}
-						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, ct)
+						createAndCopyContainers := []corev1.Container{v1alpha1.CreateDirContainer(boundResource.Name, dPath), ct}
+						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, createAndCopyContainers...)
 					}
 				} else {
+					// bucket
 					copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpContainers...)
 				}
 			}
 		}
-
-		// source is copied from previous task so skip fetching cluster , storage types
+		// source is copied from previous task so skip fetching download container definition
 		if len(copyStepsFromPrevTasks) > 0 {
 			build.Spec.Steps = append(copyStepsFromPrevTasks, build.Spec.Steps...)
 			build.Spec.Volumes = append(build.Spec.Volumes, as.GetSecretsVolumes()...)
 		} else {
 			switch resource.Spec.Type {
-			case v1alpha1.PipelineResourceTypeGit:
-				{
-					gitResource, err := v1alpha1.NewGitResource(resource)
-					if err != nil {
-						return nil, fmt.Errorf("task %q invalid git Pipeline Resource: %q; error %s", taskName, boundResource.ResourceRef.Name, err.Error())
-					}
-					gitSourceSpec := &buildv1alpha1.GitSourceSpec{
-						Url:      gitResource.URL,
-						Revision: gitResource.Revision,
-					}
-					build.Spec.Sources = append(build.Spec.Sources, buildv1alpha1.SourceSpec{
-						Git:        gitSourceSpec,
-						TargetPath: input.TargetPath,
-						Name:       input.Name,
-					})
-				}
-			case v1alpha1.PipelineResourceTypeCluster:
-				{
-					clusterResource, err := v1alpha1.NewClusterResource(resource)
-					if err != nil {
-						return nil, fmt.Errorf("task %q invalid cluster Pipeline Resource: %q: error %s", taskName, boundResource.ResourceRef.Name, err.Error())
-					}
-					addClusterBuildStep(build, clusterResource)
-				}
 			case v1alpha1.PipelineResourceTypeStorage:
 				{
 					storageResource, err := v1alpha1.NewStorageResource(resource)
 					if err != nil {
 						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource: %q: %s", taskName, boundResource.ResourceRef.Name, err.Error())
 					}
-					fetchErr := addStorageFetchStep(build, storageResource, input.TargetPath)
+					resourceContainers, resourceVolumes, err = addStorageFetchStep(build, storageResource, dPath)
 					if err != nil {
-						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource download steps: %q: %s", taskName, boundResource.ResourceRef.Name, fetchErr.Error())
+						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource download steps: %q: %s", taskName, boundResource.ResourceRef.Name, err.Error())
+					}
+				}
+			default:
+				{
+					resSpec, err := v1alpha1.ResourceFromType(resource)
+					if err != nil {
+						return nil, err
+					}
+					resSpec.SetDestinationDirectory(dPath)
+					resourceContainers, err = resSpec.GetDownloadContainerSpec()
+					if err != nil {
+						return nil, fmt.Errorf("task %q invalid resource download spec: %q; error %s", taskName, boundResource.ResourceRef.Name, err.Error())
 					}
 				}
 			}
+
+			build.Spec.Steps = append(resourceContainers, build.Spec.Steps...)
+			build.Spec.Volumes = append(build.Spec.Volumes, resourceVolumes...)
 		}
 	}
 
@@ -164,81 +148,39 @@ func AddInputResource(
 	return build, nil
 }
 
-func addClusterBuildStep(build *buildv1alpha1.Build, clusterResource *v1alpha1.ClusterResource) {
-	var envVars []corev1.EnvVar
-	for _, sec := range clusterResource.Secrets {
-		ev := corev1.EnvVar{
-			Name: strings.ToUpper(sec.FieldName),
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: sec.SecretName,
-					},
-					Key: sec.SecretKey,
-				},
-			},
-		}
-		envVars = append(envVars, ev)
-	}
-
-	clusterContainer := corev1.Container{
-		Name:  "kubeconfig",
-		Image: *kubeconfigWriterImage,
-		Args: []string{
-			"-clusterConfig", clusterResource.String(),
-		},
-		Env: envVars,
-	}
-
-	buildSteps := append([]corev1.Container{clusterContainer}, build.Spec.Steps...)
-	build.Spec.Steps = buildSteps
-}
-
-func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.PipelineStorageResourceInterface, destPath string) error {
-	var destDirectory = filepath.Join(workspaceDir, storageResource.GetName())
-	if destPath != "" {
-		destDirectory = filepath.Join(workspaceDir, destPath)
-	}
-
-	storageResource.SetDestinationDirectory(destDirectory)
-	gcsCreateDirContainer := v1alpha1.CreateDirContainer(storageResource.GetName(), destDirectory)
-	gcsDownloadContainers, err := storageResource.GetDownloadContainerSpec()
+func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.PipelineStorageResourceInterface, destPath string) ([]corev1.Container, []corev1.Volume, error) {
+	storageResource.SetDestinationDirectory(destPath)
+	gcsContainers, err := storageResource.GetDownloadContainerSpec()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+
+	var buildVol, storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 	for _, volume := range build.Spec.Volumes {
 		mountedSecrets[volume.Name] = ""
+		buildVol = append(buildVol, volume)
 	}
-	var buildSteps []corev1.Container
-	gcsContainers := append([]corev1.Container{gcsCreateDirContainer}, gcsDownloadContainers...)
-	for _, gcsContainer := range gcsContainers {
 
-		gcsContainer.VolumeMounts = append(gcsContainer.VolumeMounts, corev1.VolumeMount{
-			Name:      "workspace",
-			MountPath: workspaceDir,
-		})
-		for _, secretParam := range storageResource.GetSecretParams() {
-			volName := fmt.Sprintf("volume-%s-%s", storageResource.GetName(), secretParam.SecretName)
+	for _, secretParam := range storageResource.GetSecretParams() {
+		volName := fmt.Sprintf("volume-%s-%s", storageResource.GetName(), secretParam.SecretName)
 
-			gcsSecretVolume := corev1.Volume{
-				Name: volName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: secretParam.SecretName,
-					},
+		gcsSecretVolume := corev1.Volume{
+			Name: volName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretParam.SecretName,
 				},
-			}
-
-			if _, ok := mountedSecrets[volName]; !ok {
-				build.Spec.Volumes = append(build.Spec.Volumes, gcsSecretVolume)
-				mountedSecrets[volName] = ""
-			}
+			},
 		}
-		buildSteps = append(buildSteps, gcsContainer)
+
+		if _, ok := mountedSecrets[volName]; !ok {
+			buildVol = append(buildVol, gcsSecretVolume)
+			storageVol = append(storageVol, gcsSecretVolume)
+			mountedSecrets[volName] = ""
+		}
 	}
-	build.Spec.Steps = append(buildSteps, build.Spec.Steps...)
-	return nil
+	return gcsContainers, storageVol, nil
 }
 
 func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {
@@ -259,4 +201,11 @@ func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1
 		}, nil
 	}
 	return nil, fmt.Errorf("Neither ResourseRef not ResourceSpec is defined")
+}
+
+func destinationPath(name, path string) string {
+	if path == "" {
+		return filepath.Join(workspaceDir, name)
+	}
+	return filepath.Join(workspaceDir, path)
 }

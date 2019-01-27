@@ -19,6 +19,8 @@ package v1alpha1
 import (
 	"fmt"
 	"strings"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 // NewImageResource creates a new ImageResource from a PipelineResource.
@@ -72,4 +74,13 @@ func (s *ImageResource) Replacements() map[string]string {
 		"url":    s.URL,
 		"digest": s.Digest,
 	}
+}
+
+func (s *ImageResource) GetUploadContainerSpec() ([]corev1.Container, error) {
+	return nil, nil
+}
+func (s *ImageResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
+	return nil, nil
+}
+func (s *ImageResource) SetDestinationDirectory(path string) {
 }
