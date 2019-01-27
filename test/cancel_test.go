@@ -45,7 +45,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		tb.Step("foo", "ubuntu", tb.Command("/bin/bash"), tb.Args("-c", "sleep 500")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
+		t.Fatalf("Failed to create Task `banana`: %s", err)
 	}
 
 	pipeline := tb.Pipeline("tomatoes", namespace,
@@ -64,7 +64,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("pipelineRun %s already finished!", "pear")
+				return true, fmt.Errorf("pipelineRun %s already finished", "pear")
 			} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
 				return true, nil
 			}
@@ -114,10 +114,10 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		}
 		return false, nil
 	}, "PipelineRunCancelled"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
+		t.Errorf("Error waiting for PipelineRun `pear` to finish: %s", err)
 	}
 
-	logger.Infof("Waiting for TaskRun %s in namespace %s to be cancelled", hwTaskRunName, namespace)
+	logger.Infof("Waiting for TaskRun `pear-foo` in namespace %s to be cancelled", namespace)
 	if err := WaitForTaskRunState(c, "pear-foo", func(tr *v1alpha1.TaskRun) (bool, error) {
 		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
