@@ -139,11 +139,12 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
-	return []corev1.Container{{
-		Name:         fmt.Sprintf("storage-fetch-%s", s.Name),
-		Image:        *gsutilImage,
-		Args:         args,
-		Env:          envVars,
-		VolumeMounts: secretVolumeMount,
-	}}, nil
+	return []corev1.Container{
+		CreateDirContainer(s.Name, s.DestinationDir), {
+			Name:         fmt.Sprintf("storage-fetch-%s", s.Name),
+			Image:        *gsutilImage,
+			Args:         args,
+			Env:          envVars,
+			VolumeMounts: secretVolumeMount,
+		}}, nil
 }

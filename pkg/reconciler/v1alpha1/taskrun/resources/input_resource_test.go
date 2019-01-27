@@ -185,7 +185,6 @@ func build() *buildv1alpha1.Build {
 	}
 }
 func TestAddResourceToBuild(t *testing.T) {
-	boolTrue := true
 	task := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-from-repo",
@@ -259,37 +258,20 @@ func TestAddResourceToBuild(t *testing.T) {
 		taskRun *v1alpha1.TaskRun
 		build   *buildv1alpha1.Build
 		wantErr bool
-		want    *buildv1alpha1.Build
+		want    buildv1alpha1.BuildSpec
 	}{{
 		desc:    "simple with default revision",
 		task:    task,
 		taskRun: taskRun,
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Sources: []buildv1alpha1.SourceSpec{{
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://github.com/grafeas/kritis",
-						Revision: "master",
-					},
-					Name: "gitspace",
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:       "git-source-the-git",
+				Image:      "override-with-git:latest",
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "master", "-path", "/workspace/gitspace"},
+				WorkingDir: "/workspace",
+			}},
 		},
 	}, {
 		desc: "simple with branch",
@@ -315,32 +297,13 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Sources: []buildv1alpha1.SourceSpec{{
-					Name: "gitspace",
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://github.com/grafeas/kritis",
-						Revision: "branch",
-					},
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:       "git-source-the-git-with-branch",
+				Image:      "override-with-git:latest",
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
+				WorkingDir: "/workspace",
+			}},
 		},
 	}, {
 		desc: "same git input resource for task with diff resource name",
@@ -371,41 +334,21 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Sources: []buildv1alpha1.SourceSpec{{
-					Name: "gitspace",
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://github.com/grafeas/kritis",
-						Revision: "branch",
-					},
-				}, {
-					Name: "git-duplicate-space",
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://github.com/grafeas/kritis",
-						Revision: "branch",
-					},
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:       "git-source-the-git-with-branch",
+				Image:      "override-with-git:latest",
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/git-duplicate-space"},
+				WorkingDir: "/workspace",
+			}, {
+				Name:       "git-source-the-git-with-branch",
+				Image:      "override-with-git:latest",
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
+				WorkingDir: "/workspace",
+			}},
 		},
 	}, {
-		desc: "set revision to default value",
+		desc: "set revision to default value 1",
 		task: task,
 		taskRun: &v1alpha1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -428,33 +371,16 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Sources: []buildv1alpha1.SourceSpec{{
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://github.com/grafeas/kritis",
-						Revision: "master",
-					},
-					Name: "gitspace",
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:       "git-source-the-git",
+				Image:      "override-with-git:latest",
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "master", "-path", "/workspace/gitspace"},
+				WorkingDir: "/workspace",
+			}},
 		},
 	}, {
-		desc: "set revision to default value",
+		desc: "set revision to provdided branch",
 		task: task,
 		taskRun: &v1alpha1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -477,31 +403,13 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "pipeline.knative.dev/v1alpha1",
-						Kind:               "TaskRun",
-						Name:               "build-from-repo-run",
-						Controller:         &boolTrue,
-						BlockOwnerDeletion: &boolTrue,
-					},
-				}},
-			Spec: buildv1alpha1.BuildSpec{
-				Sources: []buildv1alpha1.SourceSpec{{
-					Git: &buildv1alpha1.GitSourceSpec{
-						Url:      "https://github.com/grafeas/kritis",
-						Revision: "branch",
-					},
-					Name: "gitspace",
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:       "git-source-the-git-with-branch",
+				Image:      "override-with-git:latest",
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
+				WorkingDir: "/workspace",
+			}},
 		},
 	}, {
 		desc: "git resource as input from previous task",
@@ -529,38 +437,26 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:         "source-copy-gitspace-0",
-					Image:        "override-with-bash-noop:latest",
-					Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gitspace"},
-					VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-				}},
-				Volumes: []corev1.Volume{{
-					Name: "pipelinerun-pvc",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
-					},
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:  "create-dir-gitspace",
+				Image: "override-with-bash-noop:latest",
+				Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
+			}, {
+				Name:         "source-copy-gitspace-0",
+				Image:        "override-with-bash-noop:latest",
+				Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gitspace"},
+				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "pipelinerun-pvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
+				},
+			}},
 		},
 	}, {
-		desc: "storage resource as input",
+		desc: "storage resource as input with target path",
 		task: taskWithTargetPath,
 		taskRun: &v1alpha1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -580,36 +476,16 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:  "create-dir-storage1",
-					Image: "override-with-bash-noop:latest",
-					Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name: "workspace", MountPath: "/workspace",
-					}},
-				}, {
-					Name:         "storage-fetch-storage1",
-					Image:        "override-with-gsutil-image:latest",
-					Args:         []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-dir"},
-					VolumeMounts: []corev1.VolumeMount{{Name: "workspace", MountPath: "/workspace"}},
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:  "create-dir-storage1",
+				Image: "override-with-bash-noop:latest",
+				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
+			}, {
+				Name:  "storage-fetch-storage1",
+				Image: "override-with-gsutil-image:latest",
+				Args:  []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-dir"},
+			}},
 		},
 	}, {
 		desc: "storage resource as input from previous task",
@@ -637,35 +513,23 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:         "source-copy-workspace-0",
-					Image:        "override-with-bash-noop:latest",
-					Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gcs-dir"},
-					VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-				}},
-				Volumes: []corev1.Volume{{
-					Name: "pipelinerun-pvc",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
-					},
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:  "create-dir-workspace",
+				Image: "override-with-bash-noop:latest",
+				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
+			}, {
+				Name:         "source-copy-workspace-0",
+				Image:        "override-with-bash-noop:latest",
+				Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gcs-dir"},
+				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "pipelinerun-pvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
+				},
+			}},
 		},
 	}, {
 		desc: "invalid gcs resource type name",
@@ -688,7 +552,6 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: true,
-		want:    nil,
 	}, {
 		desc: "invalid gcs resource type name",
 		task: task,
@@ -710,7 +573,6 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: true,
-		want:    nil,
 	}, {
 		desc: "invalid resource name",
 		task: &v1alpha1.Task{
@@ -730,7 +592,6 @@ func TestAddResourceToBuild(t *testing.T) {
 		taskRun: taskRun,
 		build:   build(),
 		wantErr: true,
-		want:    nil,
 	}, {
 		desc: "cluster resource with plain text",
 		task: &v1alpha1.Task{
@@ -768,30 +629,14 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:  "kubeconfig",
-					Image: "override-with-kubeconfig-writer:latest",
-					Args: []string{
-						"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
-					},
-				}},
-			},
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:  "kubeconfig",
+				Image: "override-with-kubeconfig-writer:latest",
+				Args: []string{
+					"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
+				},
+			}},
 		},
 	}, {
 		desc: "cluster resource with secrets",
@@ -830,41 +675,25 @@ func TestAddResourceToBuild(t *testing.T) {
 		},
 		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:  "kubeconfig",
-					Image: "override-with-kubeconfig-writer:latest",
-					Args: []string{
-						"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
-					},
-					Env: []corev1.EnvVar{{
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "secret1",
-								},
-								Key: "cadatakey",
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:  "kubeconfig",
+				Image: "override-with-kubeconfig-writer:latest",
+				Args: []string{
+					"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
+				},
+				Env: []corev1.EnvVar{{
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "secret1",
 							},
+							Key: "cadatakey",
 						},
-						Name: "CADATA",
-					}},
+					},
+					Name: "CADATA",
 				}},
-			},
+			}},
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -874,8 +703,10 @@ func TestAddResourceToBuild(t *testing.T) {
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
-			if d := cmp.Diff(got, c.want); d != "" {
-				t.Errorf("Diff:\n%s", d)
+			if got != nil {
+				if d := cmp.Diff(got.Spec, c.want); d != "" {
+					t.Errorf("Diff:\n%s", d)
+				}
 			}
 		})
 	}
@@ -1004,15 +835,13 @@ func Test_StorageInputResource(t *testing.T) {
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
-					Name:         "create-dir-gcs-input-resource",
-					Image:        "override-with-bash-noop:latest",
-					Args:         []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
-					VolumeMounts: []corev1.VolumeMount{{Name: "workspace", MountPath: "/workspace"}},
+					Name:  "create-dir-gcs-input-resource",
+					Image: "override-with-bash-noop:latest",
+					Args:  []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
 				}, {
-					Name:         "storage-fetch-gcs-input-resource",
-					Image:        "override-with-gsutil-image:latest",
-					Args:         []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource"},
-					VolumeMounts: []corev1.VolumeMount{{Name: "workspace", MountPath: "/workspace"}},
+					Name:  "storage-fetch-gcs-input-resource",
+					Image: "override-with-gsutil-image:latest",
+					Args:  []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource"},
 				}},
 			},
 		},
@@ -1085,17 +914,13 @@ func Test_StorageInputResource(t *testing.T) {
 				Steps: []corev1.Container{{
 					Name:  "create-dir-storage-gcs-keys",
 					Image: "override-with-bash-noop:latest",
-					Args:  []string{"-args", "mkdir -p /workspace/storage-gcs-keys"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name: "workspace", MountPath: "/workspace",
-					}},
+					Args:  []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
 				}, {
 					Name:  "storage-fetch-storage-gcs-keys",
 					Image: "override-with-gsutil-image:latest",
-					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/** /workspace/storage-gcs-keys"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"}, {
-						Name: "workspace", MountPath: "/workspace"},
+					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/** /workspace/gcs-input-resource"},
+					VolumeMounts: []corev1.VolumeMount{
+						{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
 					},
 					Env: []corev1.EnvVar{
 						{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},

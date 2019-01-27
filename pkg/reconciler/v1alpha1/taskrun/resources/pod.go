@@ -93,54 +93,12 @@ var (
 	// The container used to initialize credentials before the build runs.
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
-	// The container with Git that we use to implement the Git source step.
-	gitImage = flag.String("git-image", "override-with-git:latest",
-		"The container image containing our Git binary.")
 	// The container that just prints build successful.
 	nopImage = flag.String("nop-image", "override-with-nop:latest",
 		"The container image run at the end of the build to log build success")
 	gcsFetcherImage = flag.String("gcs-fetcher-image", "gcr.io/cloud-builders/gcs-fetcher:latest",
 		"The container image containing our GCS fetcher binary.")
 )
-
-// TODO(mattmoor): Should we move this somewhere common, because of the flag?
-func gitToContainer(source v1alpha1.SourceSpec, index int) (*corev1.Container, error) {
-	git := source.Git
-	if git.Url == "" {
-		return nil, apis.ErrMissingField("b.spec.source.git.url")
-	}
-	if git.Revision == "" {
-		return nil, apis.ErrMissingField("b.spec.source.git.revision")
-	}
-
-	args := []string{"-url", git.Url,
-		"-revision", git.Revision,
-	}
-
-	if source.TargetPath != "" {
-		args = append(args, []string{"-path", source.TargetPath}...)
-	} else {
-		args = append(args, []string{"-path", source.Name}...)
-	}
-
-	containerName := initContainerPrefix + gitSource + "-"
-
-	// update container name to suffix source name
-	if source.Name != "" {
-		containerName = containerName + source.Name
-	} else {
-		containerName = containerName + strconv.Itoa(index)
-	}
-
-	return &corev1.Container{
-		Name:         containerName,
-		Image:        *gitImage,
-		Args:         args,
-		VolumeMounts: implicitVolumeMounts,
-		WorkingDir:   workspaceDir,
-		Env:          implicitEnvVars,
-	}, nil
-}
 
 func gcsToContainer(source v1alpha1.SourceSpec, index int) (*corev1.Container, error) {
 	gcs := source.GCS
@@ -276,32 +234,16 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 	for _, source := range build.Spec.Sources {
 		sources = append(sources, source)
 	}
-	workspaceSubPath := ""
 
 	for i, source := range sources {
 		switch {
-		case source.Git != nil:
-			git, err := gitToContainer(source, i)
-			if err != nil {
-				return nil, err
-			}
-			initContainers = append(initContainers, *git)
 		case source.GCS != nil:
 			gcs, err := gcsToContainer(source, i)
 			if err != nil {
 				return nil, err
 			}
 			initContainers = append(initContainers, *gcs)
-		case source.Custom != nil:
-			cust, err := customToContainer(source.Custom, source.Name)
-			if err != nil {
-				return nil, err
-			}
-			// Prepend the custom container to the steps, to be augmented later with env, volume mounts, etc.
-			build.Spec.Steps = append([]corev1.Container{*cust}, build.Spec.Steps...)
 		}
-		// webhook validation checks that only one source has subPath defined
-		workspaceSubPath = source.SubPath
 	}
 
 	for i, step := range build.Spec.Steps {
@@ -316,12 +258,6 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 		}
 		for _, imp := range implicitVolumeMounts {
 			if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
-				// If the build's source specifies a subpath,
-				// use that in the implicit workspace volume
-				// mount.
-				if workspaceSubPath != "" && imp.Name == "workspace" {
-					imp.SubPath = workspaceSubPath
-				}
 				step.VolumeMounts = append(step.VolumeMounts, imp)
 			}
 		}

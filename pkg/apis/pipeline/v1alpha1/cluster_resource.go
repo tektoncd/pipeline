@@ -19,9 +19,16 @@ package v1alpha1
 import (
 	b64 "encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"strconv"
 	"strings"
+
+	corev1 "k8s.io/api/core/v1"
+)
+
+var (
+	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
 )
 
 // ClusterResource represents a cluster configuration (kubeconfig)
@@ -133,4 +140,39 @@ func (s *ClusterResource) Replacements() map[string]string {
 func (s ClusterResource) String() string {
 	json, _ := json.Marshal(s)
 	return string(json)
+}
+
+func (s *ClusterResource) GetUploadContainerSpec() ([]corev1.Container, error) {
+	return nil, nil
+}
+
+func (s *ClusterResource) SetDestinationDirectory(path string) {
+}
+func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
+	var envVars []corev1.EnvVar
+	for _, sec := range s.Secrets {
+		ev := corev1.EnvVar{
+			Name: strings.ToUpper(sec.FieldName),
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: sec.SecretName,
+					},
+					Key: sec.SecretKey,
+				},
+			},
+		}
+		envVars = append(envVars, ev)
+	}
+
+	clusterContainer := corev1.Container{
+		Name:  "kubeconfig",
+		Image: *kubeconfigWriterImage,
+		Args: []string{
+			"-clusterConfig", s.String(),
+		},
+		Env: envVars,
+	}
+
+	return []corev1.Container{clusterContainer}, nil
 }

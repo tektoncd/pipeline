@@ -21,6 +21,7 @@ import (
 
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/webhook"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -52,6 +53,9 @@ type PipelineResourceInterface interface {
 	GetType() PipelineResourceType
 	GetParams() []Param
 	Replacements() map[string]string
+	GetDownloadContainerSpec() ([]corev1.Container, error)
+	GetUploadContainerSpec() ([]corev1.Container, error)
+	SetDestinationDirectory(string)
 }
 
 // SecretParam indicates which secret can be used to populate a field of the resource

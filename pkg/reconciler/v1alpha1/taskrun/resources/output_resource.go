@@ -77,11 +77,7 @@ func AddOutputResources(
 
 	if taskSpec.Inputs != nil {
 		for _, input := range taskSpec.Inputs.Resources {
-			var targetPath = filepath.Join(workspaceDir, input.Name)
-			if input.TargetPath != "" {
-				targetPath = filepath.Join(workspaceDir, input.TargetPath)
-			}
-			inputResourceMap[input.Name] = targetPath
+			inputResourceMap[input.Name] = destinationPath(input.Name, input.TargetPath)
 		}
 	}
 
@@ -95,56 +91,72 @@ func AddOutputResources(
 		if err != nil {
 			return fmt.Errorf("Failed to get output pipeline Resource for task %q resource %v; error: %s", taskName, boundResource, err.Error())
 		}
-
+		var (
+			resourceContainers []corev1.Container
+			resourceVolumes    []corev1.Volume
+		)
 		// if resource is declared in input then copy outputs to pvc
 		// To build copy step it needs source path(which is targetpath of input resourcemap) from task input source
 		sourcePath := inputResourceMap[boundResource.Name]
 		if sourcePath == "" {
 			sourcePath = filepath.Join(outputDir, boundResource.Name)
 		}
+
 		switch resource.Spec.Type {
 		case v1alpha1.PipelineResourceTypeStorage:
-			storageResource, err := v1alpha1.NewStorageResource(resource)
-			if err != nil {
-				return fmt.Errorf("task %q invalid storage Pipeline Resource: %q",
-					taskName,
-					boundResource.ResourceRef.Name,
-				)
+			{
+				storageResource, err := v1alpha1.NewStorageResource(resource)
+				if err != nil {
+					return fmt.Errorf("task %q invalid storage Pipeline Resource: %q",
+						taskName,
+						boundResource.ResourceRef.Name,
+					)
+				}
+				resourceContainers, resourceVolumes, err = addStoreUploadStep(b, storageResource, sourcePath)
+				if err != nil {
+					return fmt.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %v",
+						taskName, boundResource.ResourceRef.Name, err)
+				}
 			}
-			err = addStoreUploadStep(b, storageResource, sourcePath)
-			if err != nil {
-				return fmt.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %v",
-					taskName, boundResource.ResourceRef.Name, err)
+		default:
+			{
+				resSpec, err := v1alpha1.ResourceFromType(resource)
+				if err != nil {
+					return err
+				}
+				resourceContainers, err = resSpec.GetUploadContainerSpec()
+				if err != nil {
+					return fmt.Errorf("task %q invalid download spec: %q; error %s", taskName, boundResource.ResourceRef.Name, err.Error())
+				}
 			}
 		}
 
-		// Workaround for issue #401. Unless all resource types are implemented as
-		// outputs, or until we have metadata on the resource that declares whether
-		// the output should be copied to the PVC, only copy git and storage output
-		// resources.
-		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
+		if taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []corev1.Container
 			for _, dPath := range boundResource.Paths {
 				containers := as.GetCopyToContainerSpec(resource.GetName(), sourcePath, dPath)
 				newSteps = append(newSteps, containers...)
 			}
-			b.Spec.Steps = append(b.Spec.Steps, newSteps...)
-			b.Spec.Volumes = append(b.Spec.Volumes, as.GetSecretsVolumes()...)
-		}
-	}
-
-	if as.GetType() == v1alpha1.ArtifactStoragePVCType {
-		if pvcName == "" {
-			return nil
+			resourceContainers = append(resourceContainers, newSteps...)
+			resourceVolumes = append(resourceVolumes, as.GetSecretsVolumes()...)
 		}
 
-		// attach pvc volume only if it is not already attached
-		for _, buildVol := range b.Spec.Volumes {
-			if buildVol.Name == pvcName {
+		b.Spec.Steps = append(b.Spec.Steps, resourceContainers...)
+		b.Spec.Volumes = append(b.Spec.Volumes, resourceVolumes...)
+
+		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+			if pvcName == "" {
 				return nil
 			}
+
+			// attach pvc volume only if it is not already attached
+			for _, buildVol := range b.Spec.Volumes {
+				if buildVol.Name == pvcName {
+					return nil
+				}
+			}
+			b.Spec.Volumes = append(b.Spec.Volumes, GetPVCVolume(pvcName))
 		}
-		b.Spec.Volumes = append(b.Spec.Volumes, GetPVCVolume(pvcName))
 	}
 	return nil
 }
@@ -152,43 +164,39 @@ func AddOutputResources(
 func addStoreUploadStep(build *buildv1alpha1.Build,
 	storageResource v1alpha1.PipelineStorageResourceInterface,
 	sourcePath string,
-) error {
+) ([]corev1.Container, []corev1.Volume, error) {
+
 	storageResource.SetDestinationDirectory(sourcePath)
 	gcsContainers, err := storageResource.GetUploadContainerSpec()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+	var totalBuildVol, storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 
 	for _, volume := range build.Spec.Volumes {
 		mountedSecrets[volume.Name] = ""
+		totalBuildVol = append(totalBuildVol, volume)
 	}
-	var buildSteps []corev1.Container
-	for _, gcsContainer := range gcsContainers {
-		gcsContainer.VolumeMounts = append(gcsContainer.VolumeMounts, corev1.VolumeMount{
-			Name:      "workspace",
-			MountPath: workspaceDir,
-		})
-		// Map holds list of secrets that are mounted as volumes
-		for _, secretParam := range storageResource.GetSecretParams() {
-			volName := fmt.Sprintf("volume-%s-%s", storageResource.GetName(), secretParam.SecretName)
 
-			gcsSecretVolume := corev1.Volume{
-				Name: volName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: secretParam.SecretName,
-					},
+	// Map holds list of secrets that are mounted as volumes
+	for _, secretParam := range storageResource.GetSecretParams() {
+		volName := fmt.Sprintf("volume-%s-%s", storageResource.GetName(), secretParam.SecretName)
+
+		gcsSecretVolume := corev1.Volume{
+			Name: volName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: secretParam.SecretName,
 				},
-			}
-
-			if _, ok := mountedSecrets[volName]; !ok {
-				build.Spec.Volumes = append(build.Spec.Volumes, gcsSecretVolume)
-				mountedSecrets[volName] = ""
-			}
+			},
 		}
-		buildSteps = append(buildSteps, gcsContainer)
+
+		if _, ok := mountedSecrets[volName]; !ok {
+			totalBuildVol = append(totalBuildVol, gcsSecretVolume)
+			storageVol = append(storageVol, gcsSecretVolume)
+			mountedSecrets[volName] = ""
+		}
 	}
-	build.Spec.Steps = append(build.Spec.Steps, buildSteps...)
-	return nil
+	return gcsContainers, storageVol, nil
 }
