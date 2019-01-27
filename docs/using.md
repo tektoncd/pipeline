@@ -123,9 +123,14 @@ specific contract.
 #### Entrypoint
 
 When containers are run in a `Task`, the `entrypoint` of the container will be
-overwritten with a custom binary that redirects the logs to a separate location
-for aggregating the log output. As such, it is always recommended to explicitly
-specify a command.
+overwritten with a custom binary. The plan is to use this custom binary for
+controlling the execution of step containers ([#224](https://github.com/knative/build-pipeline/issues/224)) and log streaming
+[#107](https://github.com/knative/build-pipeline/issues/107), though currently
+it will write logs only to an [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
+(which cannot be read from after the pod has finished executing, so logs must be obtained
+[via k8s logs](https://kubernetes.io/docs/concepts/cluster-administration/logging/),
+using a tool such as [test/logs/README.md](../test/logs/README.md),
+or setting up an external system to consume logs).
 
 When `command` is not explicitly set, the controller will attempt to lookup the
 entrypoint from the remote registry.

@@ -35,7 +35,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
@@ -108,36 +107,11 @@ var (
 	))
 )
 
-func getExpectedPVC(tr *v1alpha1.TaskRun) *corev1.PersistentVolumeClaim {
-	return &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: tr.Namespace,
-			// This pvc is specific to this TaskRun, so we'll use the same name
-			Name: tr.Name,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tr, groupVersionKind),
-			},
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
-			},
-			Resources: corev1.ResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceStorage: *resource.NewQuantity(pvcSizeBytes, resource.BinarySI),
-				},
-			},
-		},
-	}
-}
-
 func getToolsVolume(claimName string) corev1.Volume {
 	return corev1.Volume{
 		Name: toolsMountName,
 		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: claimName,
-			},
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
 }
@@ -421,27 +395,6 @@ func TestReconcile(t *testing.T) {
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
-			}
-
-			pvc, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
-			if err != nil {
-				t.Errorf("Failed to fetch build: %v", err)
-			}
-
-			expectedVolume := getExpectedPVC(tr)
-			if d := cmp.Diff(pvc.Name, expectedVolume.Name); d != "" {
-				t.Errorf("pvc doesn't match, diff: %s", d)
-			}
-			if d := cmp.Diff(pvc.OwnerReferences, expectedVolume.OwnerReferences); d != "" {
-				t.Errorf("pvc doesn't match, diff: %s", d)
-			}
-			if d := cmp.Diff(pvc.Spec.AccessModes, expectedVolume.Spec.AccessModes); d != "" {
-				t.Errorf("pvc doesn't match, diff: %s", d)
-			}
-			if pvc.Spec.Resources.Requests["storage"] != expectedVolume.Spec.Resources.Requests["storage"] {
-				t.Errorf("pvc doesn't match, got: %v, expected: %v",
-					pvc.Spec.Resources.Requests["storage"],
-					expectedVolume.Spec.Resources.Requests["storage"])
 			}
 		})
 	}
@@ -787,7 +740,7 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	expectedSteps := len(bs.Steps) + 1
 	expectedVolumes := len(bs.Volumes) + 1
 
-	b, err := createRedirectedBuild(ctx, &bs, "pvc", tr)
+	b, err := createRedirectedBuild(ctx, &bs, tr)
 	if err != nil {
 		t.Errorf("expected createRedirectedBuild to pass: %v", err)
 	}
