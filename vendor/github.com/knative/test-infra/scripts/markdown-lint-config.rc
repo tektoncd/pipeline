@@ -1,0 +1,5 @@
+# For help, see
+# https://github.com/markdownlint/markdownlint/blob/master/docs/configuration.md 
+
+# Ignore long lines
+rules "~MD013"
