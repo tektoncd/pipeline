@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -671,7 +672,8 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c := GetPipelineConditionStatus("somepipelinerun", tc.state, zap.NewNop().Sugar())
+			c := GetPipelineConditionStatus("somepipelinerun", tc.state, zap.NewNop().Sugar(), &metav1.Time{time.Now()},
+				nil)
 			if c.Status != tc.expectedStatus {
 				t.Fatalf("Expected to get status %s but got %s for state %v", tc.expectedStatus, c.Status, tc.state)
 			}

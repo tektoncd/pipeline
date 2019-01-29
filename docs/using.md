@@ -5,6 +5,7 @@
 - [How do I make Resources?](#creating-resources)
 - [How do I run a Pipeline?](#running-a-pipeline)
 - [How do I run a Task on its own?](#running-a-task)
+- [How do I ensure a Pipeline or Task stops if it runs for too long?](#timing-out-pipelines-and-tasks)
 - [How do I troubleshoot a PipelineRun?](#troubleshooting)
 - [How do I follow logs?](../test/logs/README.md)
 
@@ -991,6 +992,17 @@ Below is an example on how to create a storage resource with service account.
          secretName: bucket-sa
          secretKey: service_account.json
    ```
+
+## Timing Out Pipelines and Tasks
+
+If you want to ensure that your `Pipeline` or `Task` will be stopped if it runs
+past a certain duration, you can use the `Timeout` field on either `Pipeline`
+or `Task`. In both cases, add the following to the `spec`:
+
+```yaml
+spec:
+  timeout: 5m
+```
 
 ## Troubleshooting
 

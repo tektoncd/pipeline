@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -62,6 +63,9 @@ const (
 	// reasonRunning indicates that the reason for the inprogress status is that the TaskRun
 	// is just starting to be reconciled
 	reasonRunning = "Running"
+
+	// reasonTimedOut indicates that the TaskRun has taken longer than its configured timeout
+	reasonTimedOut = "TaskRunTimeout"
 
 	// taskRunAgentName defines logging agent name for TaskRun Controller
 	taskRunAgentName = "taskrun-controller"
@@ -231,6 +235,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		})
 		return nil
 	}
+
+	// Check if the TaskRun has timed out; if it is, this will set its status
+	// accordingly.
+	if timedOut, err := c.checkTimeout(tr, spec, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete); err != nil {
+		return err
+	} else if timedOut {
+		return nil
+	}
+
 	rtr, err := resources.ResolveTaskResources(spec, taskName, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
@@ -308,6 +321,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	updateStatusFromBuildStatus(tr, buildStatus)
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
@@ -527,4 +541,40 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 // isDone returns true if the TaskRun's status indicates that it is done.
 func isDone(status *v1alpha1.TaskRunStatus) bool {
 	return !status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+}
+
+type DeletePod func(podName string, options *metav1.DeleteOptions) error
+
+func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, dp DeletePod) (bool, error) {
+	// If tr has not started, startTime should be zero.
+	if tr.Status.StartTime.IsZero() {
+		return false, nil
+	}
+
+	bs := ts.GetBuildSpec()
+
+	if bs.Timeout != nil {
+		timeout := bs.Timeout.Duration
+		runtime := time.Since(tr.Status.StartTime.Time)
+		if runtime > timeout {
+			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
+			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+				c.Logger.Errorf("Failed to terminate pod: %v", err)
+				return true, err
+			}
+
+			timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
+			tr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  reasonTimedOut,
+				Message: timeoutMsg,
+			})
+			// update tr completed time
+			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+			return true, nil
+		}
+	}
+	return false, nil
 }

@@ -575,6 +575,24 @@ func (in *PipelineRunStatus) DeepCopyInto(out *PipelineRunStatus) {
 			**out = **in
 		}
 	}
+	if in.StartTime != nil {
+		in, out := &in.StartTime, &out.StartTime
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(v1.Time)
+			(*in).DeepCopyInto(*out)
+		}
+	}
+	if in.CompletionTime != nil {
+		in, out := &in.CompletionTime, &out.CompletionTime
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(v1.Time)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	if in.TaskRuns != nil {
 		in, out := &in.TaskRuns, &out.TaskRuns
 		*out = make(map[string]TaskRunStatus, len(*in))
@@ -610,6 +628,15 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 		*out = make([]PipelineTask, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(v1.Duration)
+			**out = **in
 		}
 	}
 	return

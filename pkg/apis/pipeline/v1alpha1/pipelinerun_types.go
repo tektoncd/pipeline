@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/webhook"
@@ -107,6 +108,12 @@ type PipelineRunStatus struct {
 	// In #107 should be updated to hold the location logs have been uploaded to
 	// +optional
 	Results *Results `json:"results,omitempty"`
+	// StartTime is the time the PipelineRun is actually started.
+	// +optional
+	StartTime *metav1.Time `json:"startTime,omitempty"`
+	// CompletionTime is the time the PipelineRun completed.
+	// +optional
+	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 	// map of TaskRun Status with the taskRun name as the key
 	//+optional
 	TaskRuns map[string]TaskRunStatus `json:"taskRuns,omitempty"`
@@ -123,6 +130,9 @@ func (pr *PipelineRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1a
 func (pr *PipelineRunStatus) InitializeConditions() {
 	if pr.TaskRuns == nil {
 		pr.TaskRuns = make(map[string]TaskRunStatus)
+	}
+	if pr.StartTime.IsZero() {
+		pr.StartTime = &metav1.Time{time.Now()}
 	}
 	pipelineRunCondSet.Manage(pr).InitializeConditions()
 }

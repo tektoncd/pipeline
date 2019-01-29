@@ -312,6 +312,13 @@ func StepState(ops ...StepStateOp) TaskRunStatusOp {
 	}
 }
 
+// TaskRunStartTime sets the start time to the TaskRunStatus.
+func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.StartTime = &metav1.Time{Time: startTime}
+	}
+}
+
 // StateTerminated set Terminated to the StepState.
 func StateTerminated(exitcode int) StepStateOp {
 	return func(s *v1alpha1.StepState) {
