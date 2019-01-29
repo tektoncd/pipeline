@@ -129,7 +129,9 @@ Examples of more complex `Pipelines` are [in our examples dir](../examples/).
 #### PipelineResources
 
 `PipelinesResources` in a pipeline are the set of objects that are going to be
-used as inputs to a [`Task`](#Task) and can be output of [`Task`](#Task) .
+used as inputs to a [`Task`](#Task) and can be output by a [`Task`](#Task).
+
+A [`Task`] can have multiple inputs and outputs.
 
 For example:
 
