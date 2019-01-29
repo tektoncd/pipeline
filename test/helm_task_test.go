@@ -55,6 +55,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 	setupClusterBindingForHelm(c, t, namespace, logger)
+	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
 	defer tearDown(t, logger, c, namespace)
@@ -173,7 +174,7 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 		tb.TaskInputs(
 			tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit),
 			tb.InputsParam("pathToHelmCharts", tb.ParamDescription("Path to the helm charts")),
-			tb.InputsParam("image"), tb.InputsParam("chartname"),
+			tb.InputsParam("image"), tb.InputsParam("chartname", tb.ParamDefault("")),
 		),
 		tb.Step("helm-init", "alpine/helm", tb.Args("init", "--wait")),
 		tb.Step("helm-deploy", "alpine/helm", tb.Args(

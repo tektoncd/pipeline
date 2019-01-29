@@ -40,6 +40,7 @@ var (
 )
 
 func TestPipelineRun(t *testing.T) {
+	t.Parallel()
 	type tests struct {
 		name                   string
 		testSetup              func(c *clients, namespace string, index int)
