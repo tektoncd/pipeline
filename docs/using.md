@@ -423,7 +423,10 @@ spec:
 
 ### TaskRun with references
 
-To run a `Task`, create a new `TaskRun` which defines all inputs, outputs that the `Task` needs to run. Below is an example where Task `read-task` is run by creating `read-repo-run`. Task `read-task` has git input resource and TaskRun `read-repo-run` includes reference to `go-example-git`.
+To run a `Task`, create a new `TaskRun` which defines all inputs, outputs that
+the `Task` needs to run. Below is an example where Task `read-task` is run by
+creating `read-repo-run`. Task `read-task` has git input resource and TaskRun
+`read-repo-run` includes reference to `go-example-git`.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -448,8 +451,8 @@ metadata:
 spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/pivotal-nader-ziada/gohelloworld
+    - name: url
+      value: https://github.com/pivotal-nader-ziada/gohelloworld
 ---
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: Task
@@ -458,20 +461,23 @@ metadata:
 spec:
   inputs:
     resources:
-    - name: workspace
-      type: git
+      - name: workspace
+        type: git
   steps:
-  - name: readme
-    image: ubuntu
-    command:
-    - /bin/bash
-    args:
-    - "cat README.md"
+    - name: readme
+      image: ubuntu
+      command:
+        - /bin/bash
+      args:
+        - "cat README.md"
 ```
 
 ### Taskrun with embedded definitions
 
-Another way of running a Task is embedding the TaskSpec in the taskRun yaml. TaskRun resource can include either Task reference or TaskSpec but not both. Below is an example where `build-push-task-run-2` includes `TaskSpec` and no reference to Task.
+Another way of running a Task is embedding the TaskSpec in the taskRun yaml.
+TaskRun resource can include either Task reference or TaskSpec but not both.
+Below is an example where `build-push-task-run-2` includes `TaskSpec` and no
+reference to Task.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -510,7 +516,10 @@ spec:
           - --destination=gcr.io/my-project/gohelloworld
 ```
 
-Input and output resources can also be embedded without creating Pipeline Resources. TaskRun resource can include either Pipeline Resource reference or Pipeline Resource Spec but not both. Below is an example where Git Pipeline Resource Spec is provided as input for TaskRun `read-repo`.
+Input and output resources can also be embedded without creating Pipeline
+Resources. TaskRun resource can include either Pipeline Resource reference or
+Pipeline Resource Spec but not both. Below is an example where Git Pipeline
+Resource Spec is provided as input for TaskRun `read-repo`.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -532,7 +541,10 @@ spec:
               value: https://github.com/pivotal-nader-ziada/gohelloworld
 ```
 
-**Note**: TaskRun can embed both TaskSpec and resource spec at the same time. See [example](../examples/run/task-run-resource-spec.yaml) TaskRun. The `TaskRun` will also serve as a record of the history of the invocations of the `Task`.
+**Note**: TaskRun can embed both TaskSpec and resource spec at the same time.
+See [example](../examples/run/task-run-resource-spec.yaml) TaskRun. The
+`TaskRun` will also serve as a record of the history of the invocations of the
+`Task`.
 
 For more sample taskruns check out [example folder](../examples/run/).
 
