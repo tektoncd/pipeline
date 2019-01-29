@@ -19,7 +19,7 @@ package main
 import (
 	"flag"
 
-	"github.com/knative/build/pkg/entrypoint"
+	"github.com/knative/build-pipeline/pkg/entrypoint"
 )
 
 var (
