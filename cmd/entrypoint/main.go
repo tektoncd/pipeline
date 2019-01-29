@@ -18,6 +18,11 @@ package main
 
 import (
 	"flag"
+	"log"
+	"os"
+	"os/exec"
+	"syscall"
+	"time"
 
 	"github.com/knative/build-pipeline/pkg/entrypoint"
 )
@@ -36,10 +41,75 @@ func main() {
 		WaitFile:   *waitFile,
 		PostFile:   *postFile,
 		Args:       flag.Args(),
-		Waiter:     &entrypoint.RealWaiter{},
-		Runner:     &entrypoint.RealRunner{},
-		PostWriter: &entrypoint.RealPostWriter{},
+		Waiter:     &RealWaiter{},
+		Runner:     &RealRunner{},
+		PostWriter: &RealPostWriter{},
 	}.Go()
 }
 
-// TODO(jasonhall): Test that original exit code is propagated and that stdout/stderr are collected -- needs e2e tests.
+// TODO(jasonhall): Test that original exit code is propagated and that
+// stdout/stderr are collected -- needs e2e tests.
+
+// RealWaiter actually waits for files, by polling.
+type RealWaiter struct{ waitFile string }
+
+var _ entrypoint.Waiter = (*RealWaiter)(nil)
+
+func (*RealWaiter) Wait(file string) {
+	if file == "" {
+		return
+	}
+	for ; ; time.Sleep(time.Second) {
+		if _, err := os.Stat(file); err == nil {
+			return
+		} else if !os.IsNotExist(err) {
+			log.Fatalf("Waiting for %q: %v", file, err)
+		}
+	}
+}
+
+// RealRunner actually runs commands.
+type RealRunner struct{}
+
+var _ entrypoint.Runner = (*RealRunner)(nil)
+
+func (*RealRunner) Run(args ...string) {
+	if len(args) == 0 {
+		return
+	}
+	name, args := args[0], args[1:]
+
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			// Copied from https://stackoverflow.com/questions/10385551/get-exit-code-go
+			// This works on both Unix and Windows. Although
+			// package syscall is generally platform dependent,
+			// WaitStatus is defined for both Unix and Windows and
+			// in both cases has an ExitStatus() method with the
+			// same signature.
+			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				os.Exit(status.ExitStatus())
+			}
+			log.Fatalf("Error executing command (ExitError): %v", err)
+		}
+		log.Fatalf("Error executing command: %v", err)
+	}
+}
+
+// RealPostWriter actually writes files.
+type RealPostWriter struct{}
+
+var _ entrypoint.PostWriter = (*RealPostWriter)(nil)
+
+func (*RealPostWriter) Write(file string) {
+	if file == "" {
+		return
+	}
+	if _, err := os.Create(file); err != nil {
+		log.Fatalf("Creating %q: %v", file, err)
+	}
+}

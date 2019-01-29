@@ -38,6 +38,23 @@ type Entrypointer struct {
 	PostWriter PostWriter
 }
 
+// Waiter encapsulates waiting for files to exist.
+type Waiter interface {
+	// Wait blocks until the specified file exists.
+	Wait(file string)
+}
+
+// Runner encapsulates running commands.
+type Runner interface {
+	Run(args ...string)
+}
+
+// PostWriter encapsulates writing a file when complete.
+type PostWriter interface {
+	// Write writes to the path when complete.
+	Write(file string)
+}
+
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
 func (e Entrypointer) Go() {
