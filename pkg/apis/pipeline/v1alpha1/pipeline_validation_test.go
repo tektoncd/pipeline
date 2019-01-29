@@ -18,9 +18,11 @@ package v1alpha1_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/knative/build-pipeline/test/builder"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPipelineSpec_Validate_Error(t *testing.T) {
@@ -100,6 +102,14 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
 			)),
 		},
+		{
+			name: "negative pipeline timeout",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+				tb.PipelineTask("bar", "bar-task"),
+				tb.PipelineTimeout(&metav1.Duration{Duration: -48 * time.Hour}),
+			)),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -142,6 +152,14 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 					tb.PipelineTaskOutputResource("some-image", "wonderful-resource")),
 				tb.PipelineTask("foo", "foo-task",
 					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
+			)),
+		},
+		{
+			name: "valid timeout",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+				tb.PipelineTask("bar", "bar-task"),
+				tb.PipelineTimeout(&metav1.Duration{Duration: 24 * time.Hour}),
 			)),
 		},
 	}

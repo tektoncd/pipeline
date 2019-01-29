@@ -17,6 +17,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 )
 
 // PipelineOp is an operation which modify a Pipeline struct.
@@ -111,6 +112,13 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 			op(pTask)
 		}
 		ps.Tasks = append(ps.Tasks, *pTask)
+	}
+}
+
+// PipelineTimeout sets the timeout to the PipelineSpec.
+func PipelineTimeout(duration *metav1.Duration) PipelineSpecOp {
+	return func(ps *v1alpha1.PipelineSpec) {
+		ps.Timeout = duration
 	}
 }
 
@@ -257,6 +265,13 @@ func PipelineRunStatus(ops ...PipelineRunStatusOp) PipelineRunOp {
 func PipelineRunStatusCondition(condition duckv1alpha1.Condition) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
 		s.Conditions = append(s.Conditions, condition)
+	}
+}
+
+// PipelineRunStartTime sets the start time to the PipelineRunStatus.
+func PipelineRunStartTime(startTime time.Time) PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		s.StartTime = &metav1.Time{Time: startTime}
 	}
 }
 

@@ -66,6 +66,7 @@ var (
 
 	simpleStep  = tb.Step("simple-step", "foo", tb.Command("/mycmd"))
 	simpleTask  = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
+	timeoutTask = tb.Task("timeout-task", "foo", tb.TaskSpec(simpleStep, tb.TaskTimeout(10*time.Second)))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
 
 	outputTask = tb.Task("test-output-task", "foo", tb.TaskSpec(
@@ -861,11 +862,50 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
+
 	expectedStatus := &duckv1alpha1.Condition{
 		Type:    duckv1alpha1.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunCancelled",
 		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
+	}
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+}
+
+func TestReconcileOnTimedOutTaskRun(t *testing.T) {
+	taskRun := tb.TaskRun("test-taskrun-timeout", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(timeoutTask.Name),
+		),
+		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown}),
+			tb.TaskRunStartTime(time.Now().Add(-15*time.Second))))
+
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{timeoutTask},
+	}
+
+	testAssets := getTaskRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	expectedStatus := &duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  "TaskRunTimeout",
+		Message: `TaskRun "test-taskrun-timeout" failed to finish within "10s"`,
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)

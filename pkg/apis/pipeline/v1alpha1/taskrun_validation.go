@@ -69,6 +69,7 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 			return err
 		}
 	}
+
 	return nil
 }
 

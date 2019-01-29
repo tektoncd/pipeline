@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -136,6 +137,9 @@ func (tr *TaskRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha
 	return taskRunCondSet.Manage(tr).GetCondition(t)
 }
 func (tr *TaskRunStatus) InitializeConditions() {
+	if tr.StartTime.IsZero() {
+		tr.StartTime = &metav1.Time{time.Now()}
+	}
 	taskRunCondSet.Manage(tr).InitializeConditions()
 }
 

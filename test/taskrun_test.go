@@ -19,9 +19,14 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	tb "github.com/knative/build-pipeline/test/builder"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // TestTaskRun is an integration test that will verify a very simple "hello world" TaskRun can be
@@ -51,5 +56,43 @@ func TestTaskRun(t *testing.T) {
 	output := getBuildOutputFromVolume(t, logger, c, namespace, taskOutput)
 	if !strings.Contains(output, taskOutput) {
 		t.Fatalf("Expected output %s from pod %s but got %s", buildOutput, hwValidationPodName, output)
+	}
+}
+
+// TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
+func TestTaskRunTimeout(t *testing.T) {
+	logger := logging.GetContextLogger(t.Name())
+	c, namespace := setup(t, logger)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+	defer tearDown(t, logger, c, namespace)
+
+	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
+	if _, err := c.TaskClient.Create(tb.Task(hwTaskName, namespace,
+		tb.TaskSpec(tb.Step(hwContainerName, "busybox", tb.Command("/bin/bash"), tb.Args("-c", "sleep 300")),
+			tb.TaskTimeout(10 * time.Second)))); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
+	}
+	if _, err := c.TaskRunClient.Create(tb.TaskRun(hwTaskRunName, namespace, tb.TaskRunSpec(tb.TaskRunTaskRef(hwTaskName)))); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", hwTaskRunName, err)
+	}
+
+	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", hwTaskRunName, namespace)
+	if err := WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
+		cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if cond != nil {
+			if cond.Status == corev1.ConditionFalse {
+				if cond.Reason == "TaskRunTimeout" {
+					return true, nil
+				}
+				return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", hwTaskRunName, cond.Reason)
+			} else if cond.Status == corev1.ConditionTrue {
+				return true, fmt.Errorf("taskRun %s completed successfully, should have been timed out", hwTaskRunName)
+			}
+		}
+
+		return false, nil
+	}, "TaskRunTimeout"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
 	}
 }

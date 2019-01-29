@@ -294,7 +294,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	if rprt != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount)
+		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount, p.Spec.Timeout)
 		if err != nil {
 			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
@@ -302,7 +302,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger)
+	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, p.Spec.Timeout)
+
 	pr.Status.SetCondition(after)
 
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
@@ -321,7 +322,21 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 	}
 }
 
-func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa string, pipelineTimeout *metav1.Duration) (*v1alpha1.TaskRun, error) {
+	ts := rprt.ResolvedTaskResources.TaskSpec.DeepCopy()
+	if pipelineTimeout != nil {
+		pTimeoutTime := pr.Status.StartTime.Add(pipelineTimeout.Duration)
+		if ts.Timeout == nil || time.Now().Add(ts.Timeout.Duration).After(pTimeoutTime) {
+			// Just in case something goes awry and we're creating the TaskRun after it should have already timed out,
+			// set a timeout of 0.
+			taskRunTimeout := pTimeoutTime.Sub(time.Now())
+			if taskRunTimeout < 0 {
+				taskRunTimeout = 0
+			}
+			ts.Timeout = &metav1.Duration{Duration: taskRunTimeout}
+		}
+	}
+
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
@@ -333,15 +348,13 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			},
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: rprt.ResolvedTaskResources.TaskName,
-			},
+			TaskSpec: ts,
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: rprt.PipelineTask.Params,
 			},
 			ServiceAccount: sa,
-		},
-	}
+		}}
+
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs)
 
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(pr.Namespace).Create(tr)

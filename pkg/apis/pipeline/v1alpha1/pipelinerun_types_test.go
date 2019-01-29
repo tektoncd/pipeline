@@ -76,6 +76,10 @@ func TestInitializeConditions(t *testing.T) {
 		t.Fatalf("PipelineRun status not initialized correctly")
 	}
 
+	if p.Status.StartTime.IsZero() {
+		t.Fatalf("PipelineRun StartTime not initialized correctly")
+	}
+
 	p.Status.TaskRuns["fooTask"] = TaskRunStatus{}
 
 	p.Status.InitializeConditions()
