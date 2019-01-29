@@ -33,7 +33,12 @@ install_pipeline_crd
 
 # Run the tests
 failed=0
-for test in taskrun pipelinerun; do
+# FIXME(vdemeester) add pipelinerun to the test…
+# They are currently block by
+# - https://github.com/knative/build-pipeline/issues/375
+# - https://github.com/knative/build-pipeline/pull/443
+# for test in taskrun pipelinerun; do
+for test in taskrun; do
   header "Running YAML e2e tests for ${test}s"
   if ! run_yaml_tests ${test}; then
     echo "ERROR: one or more YAML tests failed"
