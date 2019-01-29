@@ -40,6 +40,7 @@ func TestStorageTaskRun(t *testing.T) {
 		t.Skip("KANIKO_SECRET_CONFIG_FILE variable is not set.")
 	}
 	logger := logging.GetContextLogger(t.Name())
+	t.Parallel()
 
 	c, namespace := setup(t, logger)
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)

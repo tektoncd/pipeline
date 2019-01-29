@@ -126,6 +126,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 func TestKanikoTaskRun(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
+	t.Parallel()
 
 	repo, err := getDockerRepo()
 	if err != nil {
