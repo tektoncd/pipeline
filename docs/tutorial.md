@@ -141,7 +141,7 @@ spec:
       value: https://github.com/GoogleContainerTools/skaffold
 ```
 
-The [`image` resource](using.md#image-resource) represents theimage to be built
+The [`image` resource](using.md#image-resource) represents the image to be built
 by the task:
 
 ```yaml
@@ -218,7 +218,7 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/gitspace/examples/microservices/leeroy-web
+        value: /workspace/docker-source/examples/microservices/leeroy-web
   outputs:
     resources:
       - name: builtImage

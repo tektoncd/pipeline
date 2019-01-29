@@ -23,7 +23,7 @@ See [the example Pipeline](../examples/pipeline.yaml).
 
 ### PipelineResources in a Pipeline
 
-In order for a `Pipeline` to execute, it will probably need
+In order for a `Pipeline` to do anything useful, it will probably need
 [`PipelineResources`](#creating-pipelineresources) which will be given to
 `Tasks` as inputs and outputs.
 
@@ -209,8 +209,8 @@ steps:
         value: "world"
 ```
 
-**Note**: If the Task is relying on output resource functionality then they
-cannot mount anything in file path `/workspace/output`.
+**Note**: If the Task is relying on output resource functionality then the containers
+in the Task `steps` field cannot mount anything in the path `/workspace/output`.
 
 If resource is declared in both input and output then input resource, then
 destination path of input resource is used instead of
@@ -405,9 +405,9 @@ secrets:
 
 ### Cancelling a PipelineRun
 
-In order to cancel a running pipeline (`PipelineRun`), you need to updated its
-spec to mark it as cancelled. Related `TaskRun` will be marked as cancelled and
-building Pods deleted.
+In order to cancel a running pipeline (`PipelineRun`), you need to update its
+spec to mark it as cancelled. Related `TaskRun` instances will be marked as
+cancelled and running Pods will be deleted.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -475,6 +475,7 @@ spec:
 ### Taskrun with embedded definitions
 
 Another way of running a Task is embedding the TaskSpec in the taskRun yaml.
+This can be useful for "one-shot" style runs, or debugging.
 TaskRun resource can include either Task reference or TaskSpec but not both.
 Below is an example where `build-push-task-run-2` includes `TaskSpec` and no
 reference to Task.
@@ -517,8 +518,8 @@ spec:
 ```
 
 Input and output resources can also be embedded without creating Pipeline
-Resources. TaskRun resource can include either Pipeline Resource reference or
-Pipeline Resource Spec but not both. Below is an example where Git Pipeline
+Resources. TaskRun resource can include either a Pipeline Resource reference or
+a Pipeline Resource Spec but not both. Below is an example where Git Pipeline
 Resource Spec is provided as input for TaskRun `read-repo`.
 
 ```yaml
@@ -583,8 +584,8 @@ secrets:
 
 ### Cancelling a TaskRun
 
-In order to cancel a running task (`TaskRun`), you need to updated its spec to
-mark it as cancelle, building Pods deleted.
+In order to cancel a running task (`TaskRun`), you need to update its spec to
+mark it as cancelled. Running Pods will be deleted.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -951,7 +952,8 @@ Params that can be added are the following:
 
 Private buckets can also be configured as storage resources. To access GCS
 private buckets, service accounts are required with correct permissions.
-`secrets` field on storage resource is used for configuring this information.
+The `secrets` field on the storage resource is used for configuring this
+information.
 Below is an example on how to create a storage resource with service account.
 
 1. Refer to
