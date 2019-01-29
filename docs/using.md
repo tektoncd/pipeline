@@ -23,7 +23,7 @@ See [the example Pipeline](../examples/pipeline.yaml).
 
 ### PipelineResources in a Pipeline
 
-In order for a `Pipeline` to do anything useful, it will probably need
+In order for a `Pipeline` to interact with the outside world, it will probably need
 [`PipelineResources`](#creating-pipelineresources) which will be given to
 `Tasks` as inputs and outputs.
 
