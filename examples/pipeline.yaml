@@ -24,7 +24,7 @@ spec:
       - name: workspace
         resource: source-repo
       outputs:
-      - name: image
+      - name: builtImage
         resource: web-image
   - name: build-skaffold-app
     taskRef:
@@ -39,7 +39,7 @@ spec:
       - name: workspace
         resource: source-repo
       outputs:
-      - name: image
+      - name: builtImage
         resource: app-image
   - name: deploy-app
     taskRef:

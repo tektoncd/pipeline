@@ -6,7 +6,7 @@ spec:
   taskSpec:
    inputs:
     resources:
-    - name: skaffold
+    - name: workspace
       type: git
       targetPath: skaffold
     steps:

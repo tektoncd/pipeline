@@ -33,6 +33,27 @@ function output_yaml_test_results() {
     kubectl get $1.pipeline.knative.dev -oyaml
 }
 
+function output_pods_logs() {
+    echo ">>> $1"
+    kubectl get $1.pipeline.knative.dev -o yaml
+    local runs=$(kubectl get $1.pipeline.knative.dev --output=jsonpath="{.items[*].metadata.name}")
+    set +e
+    for run in ${runs}; do
+	echo ">>>> $1 ${run}"
+	case "$1" in
+	    "taskrun")
+		go run ./test/logs/main.go -tr ${run}
+		;;
+	    "pipelinerun")
+		go run ./test/logs/main.go -pr ${run}
+		;;
+	esac
+    done
+    set -e
+    echo ">>>> Pods"
+    kubectl get pods -o yaml
+}
+
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
 function dump_extra_cluster_state() {
   echo ">>> Pipeline controller log:"
@@ -51,7 +72,7 @@ function validate_run() {
       tests_finished=1
       break
     fi
-    sleep 5
+    sleep 6
   done
   if (( ! tests_finished )); then
     echo "ERROR: tests timed out"
@@ -68,15 +89,21 @@ function validate_run() {
       failed=1
     fi
   done
+  
   return ${failed}
 }
 
 function run_yaml_tests() {
   echo ">> Starting tests"
-  echo ">>> KO_DOCKER_REPO=${KO_DOCKER_REPO}"
-  
-  for file in $(find ${REPO_ROOT_DIR}/examples/ -name *.yaml); do
-    sed 's/christiewilson-catfactory/${KO_DOCKER_REPO}/' ${file} | ko apply -f - || return 1
+
+  # Applying resources, task and pipeline
+  for file in $(find ${REPO_ROOT_DIR}/examples -maxdepth 1 -name *.yaml | sort); do
+    perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
+  done
+
+  # Applying *runs (from $1)
+  for file in $(find ${REPO_ROOT_DIR}/examples/run/ -name *$1.yaml | sort); do
+    perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
   done
 
   if validate_run $1; then

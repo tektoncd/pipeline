@@ -22,7 +22,6 @@ import (
 
 	pipelinev1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	trlogs "github.com/knative/build-pipeline/test/logs/taskrun"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
@@ -43,12 +42,6 @@ func TailLogs(ctx context.Context, cfg *rest.Config, out io.Writer, name, namesp
 	pipelineRun, err := pclient.PipelineRuns(namespace).Get(name, metav1.GetOptions{IncludeUninitialized: true})
 	if err != nil {
 		return err
-	}
-
-	if pipelineRun != nil {
-		if prCond := pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded); prCond.IsFalse() {
-			return fmt.Errorf("Pipeline failed with msg %v", prCond.Message)
-		}
 	}
 
 	pipelineName := pipelineRun.Spec.PipelineRef.Name

@@ -39,6 +39,7 @@ for test in taskrun pipelinerun; do
     echo "ERROR: one or more YAML tests failed"
     failed=1
     output_yaml_test_results ${test}
+    output_pods_logs ${test}
   fi
 done
 
