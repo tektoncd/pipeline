@@ -115,7 +115,7 @@ func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(s.DestinationDir, "*"), s.Location)}
 	}
 
-	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, s.Secrets)
+	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
 	return []corev1.Container{{
 		Name:         fmt.Sprintf("storage-upload-%s", s.Name),
@@ -138,7 +138,7 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, s.DestinationDir)}
 	}
 
-	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, s.Secrets)
+	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 	return []corev1.Container{{
 		Name:         fmt.Sprintf("storage-fetch-%s", s.Name),
 		Image:        *gsutilImage,
@@ -146,34 +146,4 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
 	}}, nil
-}
-
-func getSecretEnvVarsAndVolumeMounts(resourceName string, s []SecretParam) ([]corev1.EnvVar, []corev1.VolumeMount) {
-	mountPaths := make(map[string]struct{})
-	var (
-		envVars           []corev1.EnvVar
-		secretVolumeMount []corev1.VolumeMount
-		authVar           bool
-	)
-
-	for _, secretParam := range s {
-		if secretParam.FieldName == "GOOGLE_APPLICATION_CREDENTIALS" && !authVar {
-			authVar = true
-			mountPath := filepath.Join(gcsSecretVolumeMountPath, secretParam.SecretName)
-
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  strings.ToUpper(secretParam.FieldName),
-				Value: filepath.Join(mountPath, secretParam.SecretKey),
-			})
-
-			if _, ok := mountPaths[mountPath]; !ok {
-				secretVolumeMount = append(secretVolumeMount, corev1.VolumeMount{
-					Name:      fmt.Sprintf("volume-%s-%s", resourceName, secretParam.SecretName),
-					MountPath: mountPath,
-				})
-				mountPaths[mountPath] = struct{}{}
-			}
-		}
-	}
-	return envVars, secretVolumeMount
 }

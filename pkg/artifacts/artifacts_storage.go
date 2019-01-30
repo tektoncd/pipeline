@@ -18,6 +18,7 @@ package artifacts
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/system"
@@ -34,7 +35,7 @@ type ArtifactStorageInterface interface {
 	GetCopyToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
 	GetCopyFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
 	GetSecretsVolumes() []corev1.Volume
-	IsPVC() bool
+	GetType() string
 	StorageBasePath(pr *v1alpha1.PipelineRun) string
 }
 
@@ -47,8 +48,11 @@ func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface)
 		needPVC = true
 	}
 	if configMap != nil && configMap.Data != nil {
-		if location, ok := configMap.Data[v1alpha1.BucketLocationKey]; !ok {
-			if location == "" {
+		if _, ok := configMap.Data[v1alpha1.BucketLocationKey]; !ok {
+			needPVC = true
+		} else {
+			location, _ := configMap.Data[v1alpha1.BucketLocationKey]
+			if strings.TrimSpace(location) == "" {
 				needPVC = true
 			}
 		}
@@ -64,7 +68,7 @@ func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface)
 	return NewArtifactBucketConfigFromConfigMap(configMap)
 }
 
-// GetArtifactStorage returnes the storgae interface to enable
+// GetArtifactStorage returns the storage interface to enable
 // consumer code to get a container step for copy to/from storage
 func GetArtifactStorage(prName string, c kubernetes.Interface) (ArtifactStorageInterface, error) {
 	configMap, err := c.CoreV1().ConfigMaps(system.Namespace).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
@@ -87,12 +91,8 @@ func NewArtifactBucketConfigFromConfigMap(configMap *corev1.ConfigMap) (*v1alpha
 		c.Location = location
 	}
 	sp := v1alpha1.SecretParam{}
-	if secretName, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretName]; !ok {
-		c.Secrets = nil
-	} else {
-		if secretKey, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretKey]; !ok {
-			c.Secrets = nil
-		} else {
+	if secretName, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretName]; ok {
+		if secretKey, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretKey]; ok {
 			sp.FieldName = "GOOGLE_APPLICATION_CREDENTIALS"
 			sp.SecretName = secretName
 			sp.SecretKey = secretKey
@@ -127,7 +127,6 @@ func getPVCSpec(pr *v1alpha1.PipelineRun) *corev1.PersistentVolumeClaim {
 			OwnerReferences: pr.GetOwnerReference(),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			// Multiple tasks should be allowed to read
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
