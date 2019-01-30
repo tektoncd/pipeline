@@ -22,8 +22,13 @@ be configured using a ConfigMap with the name `config-artifact-bucket` with the 
 - location: the address of the bucket (for example gs://mybucket)
 - bucket.service.account.secret.name: the name of the secret that will contain the credentials for the service account
   with access to the bucket
-- bucket.service.account.secret.key: the key in the secret with the required service account json
-  The bucket is configured with a retention policy of 24 hours after which files will be deleted
+- bucket.service.account.secret.key: the key in the secret with the required service account json.
+  The bucket is recommended to be configured with a retention policy after which files will be deleted.
+
+Both options provide the same functionality to the pipeline. The choice is based on the infrastructure used,
+for example in some Kubernetes platforms, the creation of a persistent volume could be slower than 
+uploading/downloading files to a bucket, or if the the cluster is running in multiple zones, the access to
+the persistent volume can fail.
 
 ### How are inputs handled?
 

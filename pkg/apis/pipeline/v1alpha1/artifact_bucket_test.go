@@ -41,7 +41,7 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 		Image:        "override-with-gsutil-image:latest",
 		Args:         []string{"-args", "cp -r gs://fake-bucket/src-path/** /workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
-		VolumeMounts: []corev1.VolumeMount{{Name: "bucket-secret-volume-secret1", MountPath: "/var/bucketsecret/secret1"}},
+		VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-secret1", MountPath: "/var/bucketsecret/secret1"}},
 	}}
 
 	got := bucket.GetCopyFromContainerSpec("workspace", "src-path", "/workspace/destination")
@@ -64,7 +64,7 @@ func TestBucketGetCopyToContainerSpec(t *testing.T) {
 		Image:        "override-with-gsutil-image:latest",
 		Args:         []string{"-args", "cp -r src-path gs://fake-bucket/workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
-		VolumeMounts: []corev1.VolumeMount{{Name: "bucket-secret-volume-secret1", MountPath: "/var/bucketsecret/secret1"}},
+		VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-secret1", MountPath: "/var/bucketsecret/secret1"}},
 	}}
 
 	got := bucket.GetCopyToContainerSpec("workspace", "src-path", "workspace/destination")

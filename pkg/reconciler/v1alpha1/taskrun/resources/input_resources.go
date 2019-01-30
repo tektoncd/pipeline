@@ -101,7 +101,7 @@ func AddInputResource(
 				}
 
 				cpContainers := as.GetCopyFromContainerSpec(fmt.Sprintf("%s-%d", boundResource.Name, i), path, dPath)
-				if as.IsPVC() {
+				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 					mountPVC = true
 					for _, ct := range cpContainers {
 						ct.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}

@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -45,6 +44,14 @@ const (
 	BucketServiceAccountSecretKey = "bucket.service.account.secret.key"
 )
 
+const (
+	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
+	ArtifactStorageBucketType = "bucket"
+
+	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
+	ArtifactStoragePVCType = "pvc"
+)
+
 var (
 	secretVolumeMountPath = "/var/bucketsecret"
 )
@@ -57,9 +64,9 @@ type ArtifactBucket struct {
 	Secrets  []SecretParam
 }
 
-// IsPVC indicates if the temporary storage used for artifacts in a pipelinerun is a PVC
-func (b *ArtifactBucket) IsPVC() bool {
-	return false
+// GetType returns the type of the artifact storage
+func (b *ArtifactBucket) GetType() string {
+	return ArtifactStorageBucketType
 }
 
 // StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage
@@ -71,7 +78,7 @@ func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
 func (b *ArtifactBucket) GetCopyFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
 	args := []string{"-args", fmt.Sprintf("cp -r %s %s", fmt.Sprintf("%s/%s/**", b.Location, sourcePath), destinationPath)}
 
-	envVars, secretVolumeMount := getBucketSecretEnvVarsAndVolumeMounts(b.Secrets)
+	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []corev1.Container{{
 		Name:  fmt.Sprintf("artifact-dest-mkdir-%s", name),
@@ -92,7 +99,7 @@ func (b *ArtifactBucket) GetCopyFromContainerSpec(name, sourcePath, destinationP
 func (b *ArtifactBucket) GetCopyToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
 	args := []string{"-args", fmt.Sprintf("cp -r %s %s", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath))}
 
-	envVars, secretVolumeMount := getBucketSecretEnvVarsAndVolumeMounts(b.Secrets)
+	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []corev1.Container{{
 		Name:         fmt.Sprintf("artifact-copy-to-%s", name),
@@ -103,45 +110,19 @@ func (b *ArtifactBucket) GetCopyToContainerSpec(name, sourcePath, destinationPat
 	}}
 }
 
-// GetSecretsVolumes retunrs the list of volumes for secrets to be mounted
+// GetSecretsVolumes returns the list of volumes for secrets to be mounted
 // on pod
 func (b *ArtifactBucket) GetSecretsVolumes() []corev1.Volume {
 	volumes := []corev1.Volume{}
 	for _, sec := range b.Secrets {
-		v := corev1.Volume{
+		volumes = append(volumes, corev1.Volume{
 			Name: fmt.Sprintf("bucket-secret-volume-%s", sec.SecretName),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: sec.SecretName,
 				},
 			},
-		}
-		volumes = append(volumes, v)
+		})
 	}
 	return volumes
-}
-
-func getBucketSecretEnvVarsAndVolumeMounts(secrets []SecretParam) ([]corev1.EnvVar, []corev1.VolumeMount) {
-	mountPaths := make(map[string]struct{})
-	var (
-		envVars           []corev1.EnvVar
-		secretVolumeMount []corev1.VolumeMount
-	)
-	for _, sec := range secrets {
-		if sec.FieldName != "" {
-			mountPath := filepath.Join(secretVolumeMountPath, sec.SecretName)
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  strings.ToUpper(sec.FieldName),
-				Value: filepath.Join(mountPath, sec.SecretKey),
-			})
-			if _, ok := mountPaths[mountPath]; !ok {
-				secretVolumeMount = append(secretVolumeMount, corev1.VolumeMount{
-					Name:      fmt.Sprintf("bucket-secret-volume-%s", sec.SecretName),
-					MountPath: mountPath,
-				})
-				mountPaths[mountPath] = struct{}{}
-			}
-		}
-	}
-	return envVars, secretVolumeMount
 }

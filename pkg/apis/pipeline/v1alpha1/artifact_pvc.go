@@ -35,9 +35,9 @@ type ArtifactPVC struct {
 	Name string
 }
 
-// IsPVC indicates if the temporary storage used for artifacts in a pipelinerun is a PVC
-func (p *ArtifactPVC) IsPVC() bool {
-	return true
+// GetType returns the type of the artifact storage
+func (p *ArtifactPVC) GetType() string {
+	return ArtifactStoragePVCType
 }
 
 // StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage
@@ -80,6 +80,7 @@ func getPvcMount(name string) corev1.VolumeMount {
 	}
 }
 
+// CreateDirContainer returns a container step to create a dir
 func CreateDirContainer(name, destinationPath string) corev1.Container {
 	return corev1.Container{
 		Name:  fmt.Sprintf("create-dir-%s", name),
@@ -88,8 +89,8 @@ func CreateDirContainer(name, destinationPath string) corev1.Container {
 	}
 }
 
-// GetSecretsVolumes retunrs the list of volumes for secrets to be mounted
+// GetSecretsVolumes returns the list of volumes for secrets to be mounted
 // on pod
 func (p *ArtifactPVC) GetSecretsVolumes() []corev1.Volume {
-	return []corev1.Volume{}
+	return nil
 }

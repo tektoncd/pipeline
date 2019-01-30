@@ -133,7 +133,7 @@ func AddOutputResources(
 		}
 	}
 
-	if as.IsPVC() {
+	if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 		if pvcName == "" {
 			return nil
 		}
