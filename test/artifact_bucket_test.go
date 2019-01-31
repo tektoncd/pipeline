@@ -44,9 +44,9 @@ const (
 // TestStorageBucketPipelineRun is an integration test that will verify a pipeline
 // can use a bucket for temporary storage of artifacts shared between tasks
 func TestStorageBucketPipelineRun(t *testing.T) {
-	configFilePath := os.Getenv("KANIKO_SECRET_CONFIG_FILE")
+	configFilePath := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")
 	if configFilePath == "" {
-		t.Skip("KANIKO_SECRET_CONFIG_FILE variable is not set.")
+		t.Skip("GCP_SERVICE_ACCOUNT_KEY_PATH variable is not set.")
 	}
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
@@ -100,6 +100,12 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 
 	defer runTaskToDeleteBucket(c, t, logger, namespace, bucketName, bucketSecretName, bucketSecretKey)
 
+	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", v1alpha1.BucketConfigName, err)
+	}
+	originalConfigMapData := originalConfigMap.Data
+
 	logger.Infof("Creating ConfigMap %s", v1alpha1.BucketConfigName)
 	configMapData := map[string]string{
 		v1alpha1.BucketLocationKey:              fmt.Sprintf("gs://%s", bucketName),
@@ -107,6 +113,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		v1alpha1.BucketServiceAccountSecretKey:  bucketSecretKey,
 	}
 	c.KubeClient.UpdateConfigMap(systemNamespace, v1alpha1.BucketConfigName, configMapData)
+	defer resetConfigMap(c, systemNamespace, v1alpha1.BucketConfigName, originalConfigMapData)
 
 	logger.Infof("Creating Git PipelineResource %s", helloworldResourceName)
 	helloworldResource := tb.PipelineResource(helloworldResourceName, namespace, tb.PipelineResourceSpec(
@@ -203,6 +210,10 @@ func deleteBucketSecret(c *clients, t *testing.T, logger *logging.BaseLogger, na
 	if err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Delete(bucketSecretName, &metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete Secret `%s`: %s", bucketSecretName, err)
 	}
+}
+
+func resetConfigMap(c *clients, namespace, configName string, values map[string]string) error {
+	return c.KubeClient.UpdateConfigMap(namespace, configName, values)
 }
 
 func runTaskToDeleteBucket(c *clients, t *testing.T, logger *logging.BaseLogger, namespace, bucketName, bucketSecretName, bucketSecretKey string) {

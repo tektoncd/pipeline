@@ -196,11 +196,12 @@ following alternatives:
   that tasks cannot have any volume mounted under path `/pvc`.
 
 - [GCS storage bucket](https://cloud.google.com/storage/docs/json_api/v1/buckets)
-  A storage bucket can be configured using a ConfigMap with the name `config-artifact-bucket` with the following attributes:
-- location: the address of the bucket (for example gs://mybucket)
-- bucket.service.account.secret.name: the name of the secret that will contain the credentials for the service account
+  A storage bucket can be configured using a ConfigMap named [`config-artifact-bucket`](./../config/config-artifact-bucket.yaml). 
+  with the following attributes:
+- `location`: the address of the bucket (for example gs://mybucket)
+- `bucket.service.account.secret.name`: the name of the secret that will contain the credentials for the service account
   with access to the bucket
-- bucket.service.account.secret.key: the key in the secret with the required service account json
+- `bucket.service.account.secret.key`: the key in the secret with the required service account json
 The bucket is configured with a retention policy of 24 hours after which files will be deleted
 
 ### Outputs
