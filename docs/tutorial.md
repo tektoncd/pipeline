@@ -565,16 +565,21 @@ the status of individual Task runs are shown.
 ### Known good configuration
 
 Knative (as of version 0.3) is known to work with:
-- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed
+- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed. A known good configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space
 - The following [prerequisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
-- Setting `host.docker.local:5000` as an insecure registry with Docker for Desktop
+- Setting `host.docker.local:5000` as an insecure registry with Docker for Desktop (set via preferences or configuration, see the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/) for details) 
 - A local Docker registry: this can be run with
 
 `docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
 
+- Optionally, a Docker registry viewer so we can check our pushed images are present:
+
+`docker run -it -p 8080:8080 --name registry-web --link registry-srv -e REGISTRY_URL=http://registry-srv:5000/v2 -e REGISTRY_NAME=localhost:5000 hyper/docker-registry-web`
+
 ### Images
-- Any hardcoded image locations should be replaced with `host.docker.internal:5000/myregistry/<image name>` equivalents: look for `PipelineResource` definitions which define an `image` specification
+- Any PipelineResource definitions of image type should be updated to use the local registry by setting the url to `host.docker.internal:5000/myregistry/<image name>` equivalents
 - The `KO_DOCKER_REPO` variable should be set to `host.docker.internal:5000/myregistry` before using `ko`
+- You are able to push to `host.docker.internal:5000/myregistry/<image name>` but your applications (e.g any deployment definitions) should reference `localhost:5000/myregistry/<image name>`
 
 ### Logging
 - Logs can remain in-memory only as opposed to sent to a service such as [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results` specification.
