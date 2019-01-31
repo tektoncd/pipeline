@@ -1126,7 +1126,6 @@ func Test_StorageInputResource(t *testing.T) {
 }
 
 func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
-	boolTrue := true
 	task := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-from-repo",
@@ -1162,8 +1161,7 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 		task    *v1alpha1.Task
 		taskRun *v1alpha1.TaskRun
 		build   *buildv1alpha1.Build
-		wantErr bool
-		want    *buildv1alpha1.Build
+		want    buildv1alpha1.BuildSpec
 	}{{
 		desc: "git resource as input from previous task - copy to bucket",
 		task: task,
@@ -1188,35 +1186,18 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
-		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
+		build: build(),
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:  "artifact-dest-mkdir-gitspace-0",
+				Image: "override-with-bash-noop:latest",
+				Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
+			},
+				{
+					Name:  "artifact-copy-from-gitspace-0",
+					Image: "override-with-gsutil-image:latest",
+					Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gitspace"},
 				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:  "artifact-dest-mkdir-gitspace-0",
-					Image: "override-with-bash-noop:latest",
-					Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
-				},
-					{
-						Name:  "artifact-copy-from-gitspace-0",
-						Image: "override-with-gsutil-image:latest",
-						Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gitspace"},
-					}},
-			},
 		},
 	}, {
 		desc: "storage resource as input from previous task - copy from bucket",
@@ -1242,35 +1223,18 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
-		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
+		build: build(),
+		want: buildv1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:  "artifact-dest-mkdir-workspace-0",
+				Image: "override-with-bash-noop:latest",
+				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
+			},
+				{
+					Name:  "artifact-copy-from-workspace-0",
+					Image: "override-with-gsutil-image:latest",
+					Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gcs-dir"},
 				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:  "artifact-dest-mkdir-workspace-0",
-					Image: "override-with-bash-noop:latest",
-					Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
-				},
-					{
-						Name:  "artifact-copy-from-workspace-0",
-						Image: "override-with-gsutil-image:latest",
-						Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gcs-dir"},
-					}},
-			},
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -1287,10 +1251,10 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 				},
 			)
 			got, err := AddInputResource(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
-			if (err != nil) != c.wantErr {
-				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
+			if err != nil {
+				t.Errorf("Test: %q; AddInputResource() error = %v", c.desc, err)
 			}
-			if d := cmp.Diff(got, c.want); d != "" {
+			if d := cmp.Diff(got.Spec, c.want); d != "" {
 				t.Errorf("Diff:\n%s", d)
 			}
 		})

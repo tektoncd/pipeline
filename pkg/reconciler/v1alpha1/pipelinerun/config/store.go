@@ -45,7 +45,7 @@ type Store struct {
 }
 
 func NewStore(logger configmap.Logger) *Store {
-	store := &Store{
+	return &Store{
 		UntypedStore: configmap.NewUntypedStore(
 			"pipelinerun",
 			logger,
@@ -54,8 +54,6 @@ func NewStore(logger configmap.Logger) *Store {
 			},
 		),
 	}
-
-	return store
 }
 
 func (s *Store) ToContext(ctx context.Context) context.Context {
