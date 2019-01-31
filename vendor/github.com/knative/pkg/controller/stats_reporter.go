@@ -123,7 +123,7 @@ func (r *reporter) ReportReconcile(duration time.Duration, key, success string) 
 	}
 
 	stats.Record(ctx, reconcileCountStat.M(1))
-	stats.Record(ctx, reconcileLatencyStat.M(int64(duration)))
+	stats.Record(ctx, reconcileLatencyStat.M(int64(duration/time.Millisecond)))
 	return nil
 }
 

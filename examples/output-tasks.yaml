@@ -16,7 +16,7 @@ spec:
   - name: read-docs-old
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'ls -la /workspace/damnworkspace/docs/index.adoc'] # tests that targetpath works
+    args: ['-c', 'ls -la /workspace/damnworkspace/docs/README.md'] # tests that targetpath works
   - name: write-new-stuff
     image: ubuntu
     command: ['bash']

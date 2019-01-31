@@ -27,13 +27,14 @@ import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
 
 var (
 	outputpipelineResourceLister listers.PipelineResourceLister
 )
 
-func outputResourcesetUp() {
+func outputResourceSetup() {
 	fakeClient := fakeclientset.NewSimpleClientset()
 	sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
 	pipelineResourceInformer := sharedInfomer.Pipeline().V1alpha1().PipelineResources()
@@ -598,8 +599,9 @@ func Test_Valid_OutputResources(t *testing.T) {
 		build:     build(),
 	}} {
 		t.Run(c.name, func(t *testing.T) {
-			outputResourcesetUp()
-			err := AddOutputResources(c.build, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			outputResourceSetup()
+			fakekubeclient := fakek8s.NewSimpleClientset()
+			err := AddOutputResources(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
@@ -628,6 +630,177 @@ func Test_Valid_OutputResources(t *testing.T) {
 	}
 }
 
+func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
+	for _, c := range []struct {
+		name        string
+		desc        string
+		task        *v1alpha1.Task
+		build       *buildv1alpha1.Build
+		taskRun     *v1alpha1.TaskRun
+		wantSteps   []corev1.Container
+		wantVolumes []corev1.Volume
+	}{{
+		name: "git resource in input and output with bucket storage",
+		desc: "git resource declared as both input and output with pipelinerun owner reference",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git",
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git",
+						},
+						Paths: []string{"pipeline-task-name"},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		wantSteps: []corev1.Container{{
+			Name:  "artifact-copy-to-source-git",
+			Image: "override-with-gsutil-image:latest",
+			Args:  []string{"-args", "cp -r /workspace/source-workspace gs://fake-bucket/pipeline-task-name"},
+		}},
+		build: build(),
+	}, {
+		name: "git resource in output only with bucket storage",
+		desc: "git resource declared as output with pipelinerun owner reference",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git",
+						},
+						Paths: []string{"pipeline-task-name"},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		wantSteps: []corev1.Container{{
+			Name:  "artifact-copy-to-source-git",
+			Image: "override-with-gsutil-image:latest",
+			Args:  []string{"-args", "cp -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},
+		}},
+		build: build(),
+	}, {
+		name: "git resource in output",
+		desc: "git resource declared in output without pipelinerun owner reference",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git",
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		build: build(),
+	}} {
+		t.Run(c.name, func(t *testing.T) {
+			outputResourceSetup()
+			fakekubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "knative-build-pipeline",
+						Name:      v1alpha1.BucketConfigName,
+					},
+					Data: map[string]string{
+						v1alpha1.BucketLocationKey: "gs://fake-bucket",
+					},
+				},
+			)
+			err := AddOutputResources(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			if err != nil {
+				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
+			}
+
+			if d := cmp.Diff(c.build.Spec.Steps, c.wantSteps); d != "" {
+				t.Fatalf("post build steps mismatch: %s", d)
+			}
+		})
+	}
+}
+
 func Test_InValid_OutputResources(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
@@ -636,6 +809,108 @@ func Test_InValid_OutputResources(t *testing.T) {
 		wantSteps []corev1.Container
 		wantErr   bool
 	}{{
+		desc: "git declared in both resource spec and resource ref",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git",
+						},
+						ResourceSpec: &v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeGit,
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		wantErr: true,
+	}, {
+		desc: "git declared in output both in resource ref and spec",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git",
+						},
+						ResourceSpec: &v1alpha1.PipelineResourceSpec{
+							Type: v1alpha1.PipelineResourceTypeGit,
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		wantErr: true,
+	}, {
+		desc: "git declared in neither resource ref and spec",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		wantErr: true,
+	}, {
 		desc: "no outputs defined",
 		task: &v1alpha1.Task{
 			ObjectMeta: metav1.ObjectMeta{
@@ -755,10 +1030,11 @@ func Test_InValid_OutputResources(t *testing.T) {
 		wantErr: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			outputResourcesetUp()
-			err := AddOutputResources(build(), c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			outputResourceSetup()
+			fakekubeclient := fakek8s.NewSimpleClientset()
+			err := AddOutputResources(fakekubeclient, build(), c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
-				t.Fatalf("Test AddOutputResourceSteps error %v ", c.desc)
+				t.Fatalf("Test AddOutputResourceSteps %v ; error: %s", c.desc, err)
 			}
 		})
 	}
@@ -784,7 +1060,7 @@ func Test_AllowedOutputResource(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			if c.expectedAllowed != allowedOutputResources[c.resourceType] {
-				t.Fatalf("Test AllowedOutputResource %s expected %t but got %t", c.desc, c.expectedAllowed, allowedOutputResources[c.resourceType])
+				t.Fatalf("Test allowedOutputResource %s expected %t but got %t", c.desc, c.expectedAllowed, allowedOutputResources[c.resourceType])
 			}
 		})
 	}

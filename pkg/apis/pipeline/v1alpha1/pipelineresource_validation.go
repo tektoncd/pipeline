@@ -28,9 +28,16 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 		return err.ViaField("metadata")
 	}
 
-	if r.Spec.Type == PipelineResourceTypeCluster {
+	return r.Spec.Validate()
+}
+
+func (rs *PipelineResourceSpec) Validate() *apis.FieldError {
+	if equality.Semantic.DeepEqual(rs, &PipelineResourceSpec{}) {
+		return apis.ErrMissingField(apis.CurrentField)
+	}
+	if rs.Type == PipelineResourceTypeCluster {
 		var usernameFound, cadataFound bool
-		for _, param := range r.Spec.Params {
+		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "URL"):
 				if err := validateURL(param.Value, "URL"); err != nil {
@@ -43,7 +50,7 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 			}
 		}
 
-		for _, secret := range r.Spec.SecretParams {
+		for _, secret := range rs.SecretParams {
 			switch {
 			case strings.EqualFold(secret.FieldName, "Username"):
 				usernameFound = true
@@ -59,10 +66,10 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 			return apis.ErrMissingField("CAData param")
 		}
 	}
-	if r.Spec.Type == PipelineResourceTypeStorage {
+	if rs.Type == PipelineResourceTypeStorage {
 		foundTypeParam := false
 		var location string
-		for _, param := range r.Spec.Params {
+		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "type"):
 				if !allowedStorageType(param.Value) {
@@ -81,15 +88,14 @@ func (r *PipelineResource) Validate() *apis.FieldError {
 			return apis.ErrMissingField("spec.params.location")
 		}
 	}
-	return nil
-}
 
-func (rs *PipelineResourceSpec) Validate() *apis.FieldError {
-	if equality.Semantic.DeepEqual(rs, &PipelineResourceSpec{}) {
-		return apis.ErrMissingField(apis.CurrentField)
+	for _, allowedType := range AllResourceTypes {
+		if allowedType == rs.Type {
+			return nil
+		}
 	}
 
-	return nil
+	return apis.ErrInvalidValue("spec.type", string(rs.Type))
 }
 
 func allowedStorageType(gotType string) bool {

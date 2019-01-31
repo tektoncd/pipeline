@@ -25,11 +25,7 @@ initialize $@
 
 header "Setting up environment"
 
-# Handle failures ourselves, so we can dump useful info.
-set +o errexit
-set +o pipefail
-
-install_pipeline_crd 
+install_pipeline_crd
 
 failed=0
 

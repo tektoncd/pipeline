@@ -277,6 +277,39 @@ func TestInput_Invalidate(t *testing.T) {
 				}},
 			},
 			wantErr: apis.ErrMultipleOneOf("spec.inputs.params"),
+		}, {
+			name: "duplicate resource ref and resource spec",
+			inputs: TaskRunInputs{
+				Resources: []TaskResourceBinding{{
+					ResourceRef: PipelineResourceRef{
+						Name: "testresource",
+					},
+					ResourceSpec: &PipelineResourceSpec{
+						Type: PipelineResourceTypeGit,
+					},
+					Name: "resource-dup",
+				}},
+			},
+			wantErr: apis.ErrDisallowedFields("spec.Inputs.Resources.Name.ResourceRef", "spec.Inputs.Resources.Name.ResourceSpec"),
+		}, {
+			name: "invalid resource spec",
+			inputs: TaskRunInputs{
+				Resources: []TaskResourceBinding{{
+					ResourceSpec: &PipelineResourceSpec{
+						Type: "non-existent",
+					},
+					Name: "resource-inv",
+				}},
+			},
+			wantErr: apis.ErrInvalidValue("spec.type", "non-existent"),
+		}, {
+			name: "no resource ref and resource spec",
+			inputs: TaskRunInputs{
+				Resources: []TaskResourceBinding{{
+					Name: "resource",
+				}},
+			},
+			wantErr: apis.ErrMissingField("spec.Inputs.Resources.Name.ResourceRef", "spec.Inputs.Resources.Name.ResourceSpec"),
 		},
 	}
 	for _, ts := range tests {
@@ -324,6 +357,14 @@ func TestOutput_Invalidate(t *testing.T) {
 				}},
 			},
 			wantErr: apis.ErrMultipleOneOf("spec.Outputs.Resources.Name"),
+		}, {
+			name: "no output resource with resource spec nor resource ref",
+			outputs: TaskRunOutputs{
+				Resources: []TaskResourceBinding{{
+					Name: "workspace",
+				}},
+			},
+			wantErr: apis.ErrMissingField("spec.Outputs.Resources.Name.ResourceSpec", "spec.Outputs.Resources.Name.ResourceRef"),
 		},
 	}
 	for _, ts := range tests {

@@ -26,9 +26,11 @@ import (
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	taskrunresources "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/knative/build-pipeline/pkg/system"
 	"github.com/knative/build-pipeline/test"
 	tb "github.com/knative/build-pipeline/test/builder"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/configmap"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
@@ -47,6 +49,7 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.TestAssets {
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
+	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
@@ -54,6 +57,7 @@ func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.T
 				KubeClientSet:     c.Kube,
 				PipelineClientSet: c.Pipeline,
 				Recorder:          recorder,
+				ConfigMapWatcher:  configMapWatcher,
 			},
 			i.PipelineRun,
 			i.Pipeline,
@@ -93,7 +97,7 @@ func TestReconcile(t *testing.T) {
 					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
 				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
-					tb.PipelineTaskInputResource("workspace", "git-repo", tb.ProvidedBy("unit-test-1")),
+					tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("unit-test-1")),
 				),
 				tb.PipelineTask("unit-test-cluster-task", "unit-test-cluster-task",
 					tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
@@ -184,7 +188,15 @@ func TestReconcile(t *testing.T) {
 		),
 		tb.TaskRunLabel("pipeline.knative.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("pipeline.knative.dev/pipelineRun", "test-pipeline-run-success"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef("unit-test-task"),
+		tb.TaskRunSpec(tb.TaskRunTaskSpec(
+			tb.TaskInputs(
+				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+				tb.InputsParam("foo"), tb.InputsParam("bar"), tb.InputsParam("templatedparam"),
+			),
+			tb.TaskOutputs(
+				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
+				tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+			)),
 			tb.TaskRunServiceAccount("test-sa"),
 			tb.TaskRunInputs(
 				tb.TaskRunInputsParam("foo", "somethingfun"),
@@ -425,8 +437,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		})),
 	)}
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
-		tb.PipelineTask("hello-world-1", "hellow-world"),
-	))}
+		tb.PipelineTask("hello-world-1", "hellow-world")))}
 	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
 	d := test.Data{
 		PipelineRuns: prs,
@@ -496,6 +507,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 			),
 		),
 	}
+
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -517,12 +529,69 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 
 	// Check that the PipelineRun was reconciled correctly
 	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-cancelled", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
-	}
 
 	// This PipelineRun should still be complete and false, and the status should reflect that
 	if !reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsFalse() {
 		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+}
+
+func TestReconcileWithTimeout(t *testing.T) {
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world"),
+		tb.PipelineTimeout(&metav1.Duration{Duration: 12 * time.Hour}),
+	))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-timeout", "foo",
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccount("test-sa"),
+		),
+		tb.PipelineRunStatus(
+			tb.PipelineRunStartTime(time.Now().AddDate(0, 0, -1))),
+	)}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	// create fake recorder for testing
+	fr := record.NewFakeRecorder(2)
+
+	testAssets := getPipelineRunController(d, fr)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-timeout")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// The PipelineRun should be timed out.
+	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Reason != resources.ReasonTimedOut {
+		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+
+	// Check that the expected TaskRun was created
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
+	if actual == nil {
+		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
+	}
+
+	// There should be a time out for the TaskRun
+	if actual.Spec.TaskSpec.Timeout == nil {
+		t.Fatalf("TaskSpec.Timeout shouldn't be nil")
+	}
+
+	// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
+	if actual.Spec.TaskSpec.Timeout.Duration > ps[0].Spec.Timeout.Duration {
+		t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.TaskSpec.Timeout.Duration.String(), ps[0].Spec.Timeout.Duration.String())
 	}
 }

@@ -42,6 +42,21 @@ const (
 	ConditionSucceeded ConditionType = "Succeeded"
 )
 
+// ConditionSeverity expresses the severity of a Condition Type failing.
+type ConditionSeverity string
+
+const (
+	// ConditionSeverityError specifies that a failure of a condition type
+	// should be viewed as an error.
+	ConditionSeverityError ConditionSeverity = "Error"
+	// ConditionSeverityWarning specifies that a failure of a condition type
+	// should be viewed as a warning, but that things could still work.
+	ConditionSeverityWarning ConditionSeverity = "Warning"
+	// ConditionSeverityInfo specifies that a failure of a condition type
+	// should be viewed as purely informational, and that things could still work.
+	ConditionSeverityInfo ConditionSeverity = "Info"
+)
+
 // Conditions defines a readiness condition for a Knative resource.
 // See: https://github.com/kubernetes/community/blob/master/contributors/devel/api-conventions.md#typical-status-properties
 // +k8s:deepcopy-gen=true
@@ -53,6 +68,11 @@ type Condition struct {
 	// Status of the condition, one of True, False, Unknown.
 	// +required
 	Status corev1.ConditionStatus `json:"status" description:"status of the condition, one of True, False, Unknown"`
+
+	// Severity with which to treat failures of this type of condition.
+	// When this is not specified, it defaults to Error.
+	// +optional
+	Severity ConditionSeverity `json:"severity,omitempty" description:"how to interpret failures of this condition, one of Error, Warning, Info"`
 
 	// LastTransitionTime is the last time the condition transitioned from one status to another.
 	// We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
@@ -92,7 +112,6 @@ func (c *Condition) IsUnknown() bool {
 	}
 	return c.Status == corev1.ConditionUnknown
 }
-
 
 // Conditions is an Implementable "duck type".
 var _ duck.Implementable = (*Conditions)(nil)

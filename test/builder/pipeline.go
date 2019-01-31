@@ -17,6 +17,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 )
 
 // PipelineOp is an operation which modify a Pipeline struct.
@@ -114,6 +115,13 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 	}
 }
 
+// PipelineTimeout sets the timeout to the PipelineSpec.
+func PipelineTimeout(duration *metav1.Duration) PipelineSpecOp {
+	return func(ps *v1alpha1.PipelineSpec) {
+		ps.Timeout = duration
+	}
+}
+
 // PipelineTaskRefKind sets the TaskKind to the PipelineTaskRef.
 func PipelineTaskRefKind(kind v1alpha1.TaskKind) PipelineTaskOp {
 	return func(pt *v1alpha1.PipelineTask) {
@@ -131,17 +139,17 @@ func PipelineTaskParam(name, value string) PipelineTaskOp {
 	}
 }
 
-// ProvidedBy will update the provided PipelineTaskInputResource to indicate that it
+// From will update the provided PipelineTaskInputResource to indicate that it
 // should come from tasks.
-func ProvidedBy(tasks ...string) PipelineTaskInputResourceOp {
+func From(tasks ...string) PipelineTaskInputResourceOp {
 	return func(r *v1alpha1.PipelineTaskInputResource) {
-		r.ProvidedBy = tasks
+		r.From = tasks
 	}
 }
 
 // PipelineTaskInputResource adds an input resource to the PipelineTask with the specified
 // name, pointing at the declared resource.
-// Any number of PipelineTaskInputResource modifies can be passed to tranform it.
+// Any number of PipelineTaskInputResource modifies can be passed to transform it.
 func PipelineTaskInputResource(name, resource string, ops ...PipelineTaskInputResourceOp) PipelineTaskOp {
 	return func(pt *v1alpha1.PipelineTask) {
 		r := v1alpha1.PipelineTaskInputResource{
@@ -257,6 +265,13 @@ func PipelineRunStatus(ops ...PipelineRunStatusOp) PipelineRunOp {
 func PipelineRunStatusCondition(condition duckv1alpha1.Condition) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
 		s.Conditions = append(s.Conditions, condition)
+	}
+}
+
+// PipelineRunStartTime sets the start time to the PipelineRunStatus.
+func PipelineRunStartTime(startTime time.Time) PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		s.StartTime = &metav1.Time{Time: startTime}
 	}
 }
 

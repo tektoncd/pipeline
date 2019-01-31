@@ -66,14 +66,14 @@ func isOutput(task PipelineTask, resource string) bool {
 	return false
 }
 
-// validateProvidedBy ensures that the `providedBy` values make sense: that they rely on values from Tasks
+// validateFrom ensures that the `from` values make sense: that they rely on values from Tasks
 // that ran previously, and that the PipelineResource is actually an output of the Task it should come from.
 // TODO(#168) when pipelines don't just execute linearly this will need to be more sophisticated
-func validateProvidedBy(tasks []PipelineTask) error {
+func validateFrom(tasks []PipelineTask) error {
 	for i, t := range tasks {
 		if t.Resources != nil {
 			for _, rd := range t.Resources.Inputs {
-				for _, pb := range rd.ProvidedBy {
+				for _, pb := range rd.From {
 					if i == 0 {
 						return fmt.Errorf("first Task in Pipeline can't depend on anything before it (b/c there is nothing)")
 					}
@@ -81,15 +81,15 @@ func validateProvidedBy(tasks []PipelineTask) error {
 					// Look for previous Task that satisfies constraint
 					for j := i - 1; j >= 0; j-- {
 						if tasks[j].Name == pb {
-							// The input resource must actually be an output of the providedBy tasks
+							// The input resource must actually be an output of the from tasks
 							if !isOutput(tasks[j], rd.Resource) {
-								return fmt.Errorf("the resource %s provided by %s must be an output but is an input", rd.Resource, pb)
+								return fmt.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pb)
 							}
 							found = true
 						}
 					}
 					if !found {
-						return fmt.Errorf("expected resource %s to be provided by task %s, but task %s doesn't exist", rd.Resource, pb, pb)
+						return fmt.Errorf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pb, pb)
 					}
 				}
 			}
@@ -120,9 +120,17 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 		return apis.ErrInvalidValue(err.Error(), "spec.resources")
 	}
 
-	// The providedBy values should make sense
-	if err := validateProvidedBy(ps.Tasks); err != nil {
-		return apis.ErrInvalidValue(err.Error(), "spec.tasks.resources.inputs.providedBy")
+	// The from values should make sense
+	if err := validateFrom(ps.Tasks); err != nil {
+		return apis.ErrInvalidValue(err.Error(), "spec.tasks.resources.inputs.from")
 	}
+
+	if ps.Timeout != nil {
+		// timeout should be a valid duration of at least 0.
+		if ps.Timeout.Duration <= 0 {
+			return apis.ErrInvalidValue(fmt.Sprintf("%s should be > 0", ps.Timeout.Duration.String()), "spec.timeout")
+		}
+	}
+
 	return nil
 }

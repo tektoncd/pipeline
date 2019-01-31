@@ -1,0 +1,28 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: read-file
+spec:
+  taskSpec:
+   inputs:
+    resources:
+    - name: workspace
+      type: git
+      targetPath: skaffold
+    steps:
+    - name: read
+      image: ubuntu
+      command: ["/bin/bash"]
+      args: ['-c', 'cat /workspace/skaffold/README.md'] # tests that resource spec and task spec can be defined in taskrun
+  trigger:
+    type: manual
+  inputs:
+    resources:
+    - name: workspace
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: master
+          - name: url
+            value: https://github.com/GoogleContainerTools/skaffold

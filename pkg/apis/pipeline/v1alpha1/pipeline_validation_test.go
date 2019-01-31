@@ -18,9 +18,11 @@ package v1alpha1_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/knative/build-pipeline/test/builder"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPipelineSpec_Validate_Error(t *testing.T) {
@@ -36,28 +38,28 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 			)),
 		},
 		{
-			name: "providedby is on first task",
+			name: "from is on first task",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
 				tb.PipelineTask("foo", "foo-task",
-					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.ProvidedBy("bar"))),
+					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.From("bar"))),
 			)),
 		},
 		{
-			name: "providedby task doesnt exist",
+			name: "from task doesnt exist",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
 				tb.PipelineTask("baz", "baz-task"),
 				tb.PipelineTask("foo", "foo-task",
-					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.ProvidedBy("bar"))),
+					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.From("bar"))),
 			)),
 		},
 		{
-			name: "providedby task is afterward",
+			name: "from task is afterward",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
 				tb.PipelineTask("foo", "foo-task",
-					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.ProvidedBy("bar"))),
+					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.From("bar"))),
 				tb.PipelineTask("bar", "bar-task",
 					tb.PipelineTaskOutputResource("the-resource", "great-resource")),
 			)),
@@ -90,14 +92,22 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 			)),
 		},
 		{
-			name: "providedBy resource isn't output by task",
+			name: "from resource isn't output by task",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
 				tb.PipelineDeclaredResource("wonderful-resource", v1alpha1.PipelineResourceTypeImage),
 				tb.PipelineTask("bar", "bar-task",
 					tb.PipelineTaskInputResource("some-workspace", "great-resource")),
 				tb.PipelineTask("foo", "foo-task",
-					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.ProvidedBy("bar"))),
+					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
+			)),
+		},
+		{
+			name: "negative pipeline timeout",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+				tb.PipelineTask("bar", "bar-task"),
+				tb.PipelineTimeout(&metav1.Duration{Duration: -48 * time.Hour}),
 			)),
 		},
 	}
@@ -141,7 +151,15 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 					tb.PipelineTaskInputResource("some-workspace", "great-resource"),
 					tb.PipelineTaskOutputResource("some-image", "wonderful-resource")),
 				tb.PipelineTask("foo", "foo-task",
-					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.ProvidedBy("bar"))),
+					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
+			)),
+		},
+		{
+			name: "valid timeout",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+				tb.PipelineTask("bar", "bar-task"),
+				tb.PipelineTimeout(&metav1.Duration{Duration: 24 * time.Hour}),
 			)),
 		},
 	}

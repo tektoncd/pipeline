@@ -132,8 +132,12 @@ type PipelineResourceBinding struct {
 // corresponds to a path on disk at which the Resource can be found (used when providing
 // the resource via mounted volume, overriding the default logic to fetch the Resource).
 type TaskResourceBinding struct {
-	Name        string              `json:"name"`
+	Name string `json:"name"`
+	// no more than one of the ResourceRef and ResourceSpec may be specified.
+	// +optional
 	ResourceRef PipelineResourceRef `json:"resourceRef"`
+	// +optional
+	ResourceSpec *PipelineResourceSpec `json:"resourceSpec"`
 	// +optional
 	Paths []string `json:"paths"`
 }

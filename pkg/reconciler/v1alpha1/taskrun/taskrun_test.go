@@ -35,7 +35,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
@@ -66,6 +65,7 @@ var (
 
 	simpleStep  = tb.Step("simple-step", "foo", tb.Command("/mycmd"))
 	simpleTask  = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
+	timeoutTask = tb.Task("timeout-task", "foo", tb.TaskSpec(simpleStep, tb.TaskTimeout(10*time.Second)))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
 
 	outputTask = tb.Task("test-output-task", "foo", tb.TaskSpec(
@@ -107,36 +107,11 @@ var (
 	))
 )
 
-func getExpectedPVC(tr *v1alpha1.TaskRun) *corev1.PersistentVolumeClaim {
-	return &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: tr.Namespace,
-			// This pvc is specific to this TaskRun, so we'll use the same name
-			Name: tr.Name,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tr, groupVersionKind),
-			},
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				corev1.ReadWriteOnce,
-			},
-			Resources: corev1.ResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceStorage: *resource.NewQuantity(pvcSizeBytes, resource.BinarySI),
-				},
-			},
-		},
-	}
-}
-
 func getToolsVolume(claimName string) corev1.Volume {
 	return corev1.Volume{
 		Name: toolsMountName,
 		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: claimName,
-			},
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
 }
@@ -193,9 +168,11 @@ func TestReconcile(t *testing.T) {
 			tb.TaskRunTaskRef(outputTask.Name),
 			tb.TaskRunInputs(
 				tb.TaskRunInputsResource(gitResource.Name,
+					tb.TaskResourceBindingRef(gitResource.Name),
 					tb.TaskResourceBindingPaths("source-folder"),
 				),
 				tb.TaskRunInputsResource(anotherGitResource.Name,
+					tb.TaskResourceBindingRef(anotherGitResource.Name),
 					tb.TaskResourceBindingPaths("source-folder"),
 				),
 			),
@@ -206,7 +183,7 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	)
-	taskRunWithTaskSpec := tb.TaskRun("test-taskrun-with-taskSpec", "foo", tb.TaskRunSpec(
+	taskRunWithTaskSpec := tb.TaskRun("test-taskrun-with-taskspec", "foo", tb.TaskRunSpec(
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
 			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
@@ -221,12 +198,34 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	))
+
+	taskRunWithResourceSpecAndTaskSpec := tb.TaskRun("test-taskrun-with-resource-spec", "foo", tb.TaskRunSpec(
+		tb.TaskRunInputs(
+			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingResourceSpec(&v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeGit,
+				Params: []v1alpha1.Param{{
+					Name:  "URL",
+					Value: "github.com/build-pipeline.git",
+				}, {
+					Name:  "revision",
+					Value: "rel-can",
+				}},
+			})),
+		),
+		tb.TaskRunTaskSpec(
+			tb.TaskInputs(
+				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+			tb.Step("mystep", "ubuntu", tb.Command("mycmd")),
+		),
+	))
+
 	taskRunWithClusterTask := tb.TaskRun("test-taskrun-with-cluster-task", "foo",
 		tb.TaskRunSpec(tb.TaskRunTaskRef(clustertask.Name, tb.TaskRefKind(v1alpha1.ClusterTaskKind))),
 	)
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
-		taskRunTemplating, taskRunInputOutput, taskRunWithTaskSpec, taskRunWithClusterTask,
+		taskRunTemplating, taskRunInputOutput,
+		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
 	}
 
 	d := test.Data{
@@ -324,6 +323,18 @@ func TestReconcile(t *testing.T) {
 			),
 			tb.BuildVolume(getToolsVolume(taskRunWithClusterTask.Name)),
 		),
+	}, {
+		name:    "taskrun-with-resource-spec",
+		taskRun: taskRunWithResourceSpecAndTaskSpec,
+		wantBuildSpec: tb.BuildSpec(
+			tb.BuildSource("workspace", tb.BuildSourceGit("github.com/build-pipeline.git", "rel-can")),
+			entrypointCopyStep,
+			tb.BuildStep("mystep", "ubuntu", tb.Command(entrypointLocation),
+				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
+				tb.VolumeMount(toolsMount),
+			),
+			tb.BuildVolume(getToolsVolume(taskRunWithResourceSpecAndTaskSpec.Name)),
+		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets := getTaskRunController(d)
@@ -384,27 +395,6 @@ func TestReconcile(t *testing.T) {
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
-			}
-
-			pvc, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
-			if err != nil {
-				t.Errorf("Failed to fetch build: %v", err)
-			}
-
-			expectedVolume := getExpectedPVC(tr)
-			if d := cmp.Diff(pvc.Name, expectedVolume.Name); d != "" {
-				t.Errorf("pvc doesn't match, diff: %s", d)
-			}
-			if d := cmp.Diff(pvc.OwnerReferences, expectedVolume.OwnerReferences); d != "" {
-				t.Errorf("pvc doesn't match, diff: %s", d)
-			}
-			if d := cmp.Diff(pvc.Spec.AccessModes, expectedVolume.Spec.AccessModes); d != "" {
-				t.Errorf("pvc doesn't match, diff: %s", d)
-			}
-			if pvc.Spec.Resources.Requests["storage"] != expectedVolume.Spec.Resources.Requests["storage"] {
-				t.Errorf("pvc doesn't match, got: %v, expected: %v",
-					pvc.Spec.Resources.Requests["storage"],
-					expectedVolume.Spec.Resources.Requests["storage"])
 			}
 		})
 	}
@@ -750,7 +740,7 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	expectedSteps := len(bs.Steps) + 1
 	expectedVolumes := len(bs.Volumes) + 1
 
-	b, err := createRedirectedBuild(ctx, &bs, "pvc", tr)
+	b, err := createRedirectedBuild(ctx, &bs, tr)
 	if err != nil {
 		t.Errorf("expected createRedirectedBuild to pass: %v", err)
 	}
@@ -825,11 +815,50 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
+
 	expectedStatus := &duckv1alpha1.Condition{
 		Type:    duckv1alpha1.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunCancelled",
 		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
+	}
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+}
+
+func TestReconcileOnTimedOutTaskRun(t *testing.T) {
+	taskRun := tb.TaskRun("test-taskrun-timeout", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(timeoutTask.Name),
+		),
+		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown}),
+			tb.TaskRunStartTime(time.Now().Add(-15*time.Second))))
+
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{timeoutTask},
+	}
+
+	testAssets := getTaskRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	expectedStatus := &duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  "TaskRunTimeout",
+		Message: `TaskRun "test-taskrun-timeout" failed to finish within "10s"`,
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)

@@ -194,7 +194,7 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:9aec242a2d26c70ec7366a5fc01e0b05685b194f35601a8cb0feeb9909c7157c"
+  digest = "1:109397c6089086e57a6c5c25b641f8d667c43035b3d5d65bcaee83d7700a38b5"
   name = "github.com/knative/build"
   packages = [
     "pkg/apis/build",
@@ -202,7 +202,7 @@
     "pkg/system",
   ]
   pruneopts = "NUT"
-  revision = "12475f79ab0326da57b2a9ba3851efe9e7b6dbd2"
+  revision = "v0.3.0"
 
 [[projects]]
   branch = "master"
@@ -219,7 +219,7 @@
   revision = "f0d7bb60956f88d4743f5fea66b5607b96d262c9"
 
 [[projects]]
-  digest = "1:55f1b02082a27a4ed7d40277a4ffc6f0e3554fc544bd8017ca20d490e8d73aca"
+  digest = "1:f8800585f2a46c07a4fa252153ce39660786527436cddcc83190d60339fb85ea"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
@@ -230,6 +230,7 @@
     "apis/istio/authentication/v1alpha1",
     "apis/istio/common/v1alpha1",
     "apis/istio/v1alpha3",
+    "changeset",
     "client/clientset/versioned",
     "client/clientset/versioned/scheme",
     "client/clientset/versioned/typed/authentication/v1alpha1",
@@ -237,6 +238,7 @@
     "configmap",
     "controller",
     "kmeta",
+    "kmp",
     "logging",
     "logging/logkey",
     "logging/testing",
@@ -244,22 +246,23 @@
     "test",
     "test/logging",
     "test/spoof",
+    "test/zipkin",
     "tracker",
     "webhook",
   ]
   pruneopts = "NUT"
-  revision = "02b354e3a4fc52a1df245b4069671f082ce321d1"
+  revision = "076ebf4e56758e76cd87fa402e9478da25ed942e"
 
 [[projects]]
   branch = "master"
-  digest = "1:7d3a6c9620766b7759f19f0a2c4e6b0fd15a338c1b48a7f0a666ee9f711488b0"
+  digest = "1:931264d7e74ae52180ebef57bd559704aabbdaa0d07710de8ce035f09f867836"
   name = "github.com/knative/test-infra"
   packages = [
     "scripts",
     "tools/dep-collector",
   ]
   pruneopts = "UT"
-  revision = "2c930fb3c82934602617d9fb231fdc21c2d3cbe0"
+  revision = "377982906607a014bbf70df9265b76aff1429495"
 
 [[projects]]
   digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
@@ -326,19 +329,22 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:c19ca00bbecdc0bf0b91659830b6e37d1028a344d2da5d82d641e5851c762a77"
+  digest = "1:fe16cada1d1885b0092d869e39bdd96195d2c65c6f79830a291978f027db1fc6"
   name = "go.opencensus.io"
   packages = [
     ".",
     "exemplar",
     "internal",
     "internal/tagencoding",
+    "plugin/ochttp",
+    "plugin/ochttp/propagation/b3",
     "stats",
     "stats/internal",
     "stats/view",
     "tag",
     "trace",
     "trace/internal",
+    "trace/propagation",
     "trace/tracestate",
   ]
   pruneopts = "NUT"

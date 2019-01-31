@@ -69,21 +69,26 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 			return err
 		}
 	}
+
 	return nil
 }
 
 func (i TaskRunInputs) Validate(path string) *apis.FieldError {
-	if err := checkForPipelineResourceDuplicates(i.Resources, fmt.Sprintf("%s.Resources.Name", path)); err != nil {
+	if err := validatePipelineResources(i.Resources, fmt.Sprintf("%s.Resources.Name", path)); err != nil {
 		return err
 	}
 	return validateParameters(i.Params)
 }
 
 func (o TaskRunOutputs) Validate(path string) *apis.FieldError {
-	return checkForPipelineResourceDuplicates(o.Resources, fmt.Sprintf("%s.Resources.Name", path))
+	return validatePipelineResources(o.Resources, fmt.Sprintf("%s.Resources.Name", path))
 }
 
-func checkForPipelineResourceDuplicates(resources []TaskResourceBinding, path string) *apis.FieldError {
+// validatePipelineResources validates that
+//	1. resource is not declared more than once
+//	2. if both resource reference and resource spec is defined at the same time
+//	3. at least resource ref or resource spec is defined
+func validatePipelineResources(resources []TaskResourceBinding, path string) *apis.FieldError {
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
 		// We should provide only one binding for each resource required by the Task.
@@ -92,7 +97,19 @@ func checkForPipelineResourceDuplicates(resources []TaskResourceBinding, path st
 			return apis.ErrMultipleOneOf(path)
 		}
 		encountered[name] = struct{}{}
+		// Check that both resource ref and resource Spec are not present
+		if r.ResourceRef.Name != "" && r.ResourceSpec != nil {
+			return apis.ErrDisallowedFields(fmt.Sprintf("%s.ResourceRef", path), fmt.Sprintf("%s.ResourceSpec", path))
+		}
+		// Check that one of resource ref and resource Spec is present
+		if r.ResourceRef.Name == "" && r.ResourceSpec == nil {
+			return apis.ErrMissingField(fmt.Sprintf("%s.ResourceRef", path), fmt.Sprintf("%s.ResourceSpec", path))
+		}
+		if r.ResourceSpec != nil && r.ResourceSpec.Validate() != nil {
+			return r.ResourceSpec.Validate()
+		}
 	}
+
 	return nil
 }
 

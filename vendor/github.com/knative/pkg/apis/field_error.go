@@ -133,34 +133,36 @@ func (fe *FieldError) isEmpty() bool {
 	return fe.Message == "" && fe.Details == "" && len(fe.errors) == 0 && len(fe.Paths) == 0
 }
 
-func (fe *FieldError) getNormalizedErrors() []FieldError {
-	// in case we call getNormalizedErrors on a nil object, return just an empty
+// normalized returns a flattened copy of all the errors.
+func (fe *FieldError) normalized() []*FieldError {
+	// In case we call normalized on a nil object, return just an empty
 	// list. This can happen when .Error() is called on a nil object.
 	if fe == nil {
-		return []FieldError(nil)
+		return []*FieldError(nil)
 	}
-	var errors []FieldError
-	// if this FieldError is a leaf,
+
+	// Allocate errors with at least as many objects as we'll get on the first pass.
+	errors := make([]*FieldError, 0, len(fe.errors)+1)
+	// If this FieldError is a leaf, add it.
 	if fe.Message != "" {
-		err := FieldError{
+		errors = append(errors, &FieldError{
 			Message: fe.Message,
 			Paths:   fe.Paths,
 			Details: fe.Details,
-		}
-		errors = append(errors, err)
+		})
 	}
-	// and then collect all other errors recursively.
+	// And then collect all other errors recursively.
 	for _, e := range fe.errors {
-		errors = append(errors, e.getNormalizedErrors()...)
+		errors = append(errors, e.normalized()...)
 	}
 	return errors
 }
 
 // Error implements error
 func (fe *FieldError) Error() string {
-	var errs []string
 	// Get the list of errors as a flat merged list.
-	normedErrors := merge(fe.getNormalizedErrors())
+	normedErrors := merge(fe.normalized())
+	errs := make([]string, 0, len(normedErrors))
 	for _, e := range normedErrors {
 		if e.Details == "" {
 			errs = append(errs, fmt.Sprintf("%v: %v", e.Message, strings.Join(e.Paths, ", ")))
@@ -198,7 +200,7 @@ func flatten(path []string) string {
 			if p == CurrentField {
 				continue
 			} else if len(newPath) > 0 && isIndex(p) {
-				newPath[len(newPath)-1] = fmt.Sprintf("%s%s", newPath[len(newPath)-1], p)
+				newPath[len(newPath)-1] += p
 			} else {
 				newPath = append(newPath, p)
 			}
@@ -232,22 +234,21 @@ func containsString(slice []string, s string) bool {
 }
 
 // merge takes in a flat list of FieldErrors and returns back a merged list of
-// FiledErrors. FieldErrors have their Paths combined (and de-duped) if their
+// FieldErrors. FieldErrors have their Paths combined (and de-duped) if their
 // Message and Details are the same. Merge will not inspect FieldError.errors.
 // Merge will also sort the .Path slice, and the errors slice before returning.
-func merge(errs []FieldError) []FieldError {
+func merge(errs []*FieldError) []*FieldError {
 	// make a map big enough for all the errors.
-	m := make(map[string]FieldError, len(errs))
+	m := make(map[string]*FieldError, len(errs))
 
 	// Convert errs to a map where the key is <message>-<details> and the value
 	// is the error. If an error already exists in the map with the same key,
 	// then the paths will be merged.
 	for _, e := range errs {
-		k := key(&e)
+		k := key(e)
 		if v, ok := m[k]; ok {
 			// Found a match, merge the keys.
 			v.Paths = mergePaths(v.Paths, e.Paths)
-			m[k] = v
 		} else {
 			// Does not exist in the map, save the error.
 			m[k] = e
@@ -255,7 +256,7 @@ func merge(errs []FieldError) []FieldError {
 	}
 
 	// Take the map made previously and flatten it back out again.
-	newErrs := make([]FieldError, 0, len(m))
+	newErrs := make([]*FieldError, 0, len(m))
 	for _, v := range m {
 		// While we have access to the merged paths, sort them too.
 		sort.Slice(v.Paths, func(i, j int) bool { return v.Paths[i] < v.Paths[j] })
@@ -333,5 +334,14 @@ func ErrInvalidKeyName(value, fieldPath string, details ...string) *FieldError {
 		Message: fmt.Sprintf("invalid key name %q", value),
 		Paths:   []string{fieldPath},
 		Details: strings.Join(details, ", "),
+	}
+}
+
+// ErrOutOfBoundsValue constructs a FieldError for a field that has received an
+// out of bound value.
+func ErrOutOfBoundsValue(value, lower, upper, fieldPath string) *FieldError {
+	return &FieldError{
+		Message: fmt.Sprintf("expected %s <= %s <= %s", lower, value, upper),
+		Paths:   []string{fieldPath},
 	}
 }

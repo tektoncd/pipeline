@@ -28,7 +28,10 @@ type pathTree struct {
 // insertNode functions checks the path does not have overlap with existing
 // paths in path.nodeMap. If not it creates a key for path and adds
 func insertNode(path string, pathtree pathTree) *apis.FieldError {
-	err := apis.ErrMultipleOneOf("b.spec.sources.targetPath")
+	err := &apis.FieldError{
+		Message: "Overlapping Target Paths",
+		Paths:   []string{"targetPath"},
+	}
 	path = strings.Trim(path, "/")
 	parts := strings.Split(path, "/")
 

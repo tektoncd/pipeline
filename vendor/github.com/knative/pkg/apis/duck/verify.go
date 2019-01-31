@@ -20,10 +20,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/google/go-cmp/cmp"
+	"github.com/knative/pkg/kmp"
 )
 
-// Implementable in implemented by the Fooable duck type that consumers
+// Implementable is implemented by the Fooable duck type that consumers
 // are expected to embed as a `.status.fooable` field.
 type Implementable interface {
 	// GetFullType returns an instance of a full resource wrapping
@@ -56,30 +56,55 @@ func VerifyType(instance interface{}, iface Implementable) error {
 	// that we will compare at the end.
 	input, output := iface.GetFullType(), iface.GetFullType()
 
+	if err := roundTrip(instance, input, output); err != nil {
+		return err
+	}
+
+	// Now verify that we were able to roundtrip all of our fields through the type
+	// we are checking.
+	if diff, err := kmp.SafeDiff(input, output); err != nil {
+		return err
+	} else if diff != "" {
+		return fmt.Errorf("%T does not implement the duck type %T, the following fields were lost: %s",
+			instance, iface, diff)
+	}
+	return nil
+}
+
+// ConformsToType will return true or false depending on whether a
+// concrete resource properly implements the provided Implementable
+// duck type.
+//
+// It will return an error if marshal/unmarshalling fails
+func ConformsToType(instance interface{}, iface Implementable) (bool, error) {
+	input, output := iface.GetFullType(), iface.GetFullType()
+
+	if err := roundTrip(instance, input, output); err != nil {
+		return false, err
+	}
+
+	return kmp.SafeEqual(input, output)
+}
+
+func roundTrip(instance interface{}, input, output Populatable) error {
 	// Populate our input resource with values we will roundtrip.
 	input.Populate()
 
 	// Serialize the input to JSON and deserialize that into the provided instance
 	// of the type that we are checking.
 	if before, err := json.Marshal(input); err != nil {
-		return fmt.Errorf("error serializing duck type %T", input)
+		return fmt.Errorf("error serializing duck type %T error: %s", input, err)
 	} else if err := json.Unmarshal(before, instance); err != nil {
-		return fmt.Errorf("error deserializing duck type %T into %T", input, instance)
+		return fmt.Errorf("error deserializing duck type %T into %T error: %s", input, instance, err)
 	}
 
 	// Serialize the instance we are checking to JSON and deserialize that into the
 	// output resource.
 	if after, err := json.Marshal(instance); err != nil {
-		return fmt.Errorf("error serializing %T", instance)
+		return fmt.Errorf("error serializing %T error: %s", instance, err)
 	} else if err := json.Unmarshal(after, output); err != nil {
-		return fmt.Errorf("error deserializing %T into dock type %T", instance, output)
+		return fmt.Errorf("error deserializing %T into duck type %T error: %s", instance, output, err)
 	}
 
-	// Now verify that we were able to roundtrip all of our fields through the type
-	// we are checking.
-	if diff := cmp.Diff(input, output); diff != "" {
-		return fmt.Errorf("%T does not implement the duck type %T, the following fields were lost: %s",
-			instance, iface, diff)
-	}
 	return nil
 }

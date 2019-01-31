@@ -35,11 +35,12 @@ import (
 // - places files in expected place
 
 func TestStorageTaskRun(t *testing.T) {
-	configFile := os.Getenv("KANIKO_SECRET_CONFIG_FILE")
+	configFile := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")
 	if configFile == "" {
-		t.Skip("KANIKO_SECRET_CONFIG_FILE variable is not set.")
+		t.Skip("GCP_SERVICE_ACCOUNT_KEY_PATH variable is not set.")
 	}
 	logger := logging.GetContextLogger(t.Name())
+	t.Parallel()
 
 	c, namespace := setup(t, logger)
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)

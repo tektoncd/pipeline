@@ -22,16 +22,19 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	artifacts "github.com/knative/build-pipeline/pkg/artifacts"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 var (
 	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
-	bashNoopImage         = flag.String("bash-noop-image", "override-with-bash-noop:latest", "The container image containing bash shell")
 )
 
 func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourceBinding) (*v1alpha1.TaskResourceBinding, error) {
@@ -40,7 +43,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 			return &br, nil
 		}
 	}
-	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %s", resourceName, boundResources)
+	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
 }
 
 // AddInputResource reads the inputs resources and adds the corresponding container steps
@@ -50,6 +53,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 // from  previous task
 // 3. If resource has paths declared then fresh copy of resource is not fetched
 func AddInputResource(
+	kubeclient kubernetes.Interface,
 	build *buildv1alpha1.Build,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
@@ -64,37 +68,55 @@ func AddInputResource(
 	pvcName := taskRun.GetPipelineRunPVCName()
 	mountPVC := false
 
+	prNameFromLabel := taskRun.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey]
+	if prNameFromLabel == "" {
+		prNameFromLabel = pvcName
+	}
+	as, err := artifacts.GetArtifactStorage(prNameFromLabel, kubeclient)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, input := range taskSpec.Inputs.Resources {
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to get bound resource: %s", err)
 		}
 
-		resource, err := pipelineResourceLister.PipelineResources(taskRun.Namespace).Get(boundResource.ResourceRef.Name)
+		resource, err := getResource(boundResource, pipelineResourceLister.PipelineResources(taskRun.Namespace).Get)
 		if err != nil {
-			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q", taskName, boundResource)
+			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %q: error: %s", taskName, boundResource, err.Error())
 		}
 
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
-		// to the desired destination directory
+		// to the desired destination directory, as long as the resource exports output to be copied
 		var copyStepsFromPrevTasks []corev1.Container
+		if allowedOutputResources[resource.Spec.Type] {
+			for i, path := range boundResource.Paths {
+				var dPath string
+				if input.TargetPath == "" {
+					dPath = filepath.Join(workspaceDir, input.Name)
+				} else {
+					dPath = filepath.Join(workspaceDir, input.TargetPath)
+				}
 
-		for i, path := range boundResource.Paths {
-			var dPath string
-			if input.TargetPath == "" {
-				dPath = filepath.Join(workspaceDir, input.Name)
-			} else {
-				dPath = filepath.Join(workspaceDir, input.TargetPath)
+				cpContainers := as.GetCopyFromContainerSpec(fmt.Sprintf("%s-%d", boundResource.Name, i), path, dPath)
+				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+					mountPVC = true
+					for _, ct := range cpContainers {
+						ct.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}
+						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, ct)
+					}
+				} else {
+					copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpContainers...)
+				}
 			}
-			cpContainer := copyContainer(fmt.Sprintf("%s-%d", boundResource.Name, i), path, dPath)
-			cpContainer.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}
-			copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpContainer)
-			mountPVC = true
 		}
 
 		// source is copied from previous task so skip fetching cluster , storage types
 		if len(copyStepsFromPrevTasks) > 0 {
 			build.Spec.Steps = append(copyStepsFromPrevTasks, build.Spec.Steps...)
+			build.Spec.Volumes = append(build.Spec.Volumes, as.GetSecretsVolumes()...)
 		} else {
 			switch resource.Spec.Type {
 			case v1alpha1.PipelineResourceTypeGit:
@@ -179,7 +201,7 @@ func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.Pi
 	}
 
 	storageResource.SetDestinationDirectory(destDirectory)
-	gcsCreateDirContainer := createDirContainer(storageResource.GetName(), destDirectory)
+	gcsCreateDirContainer := v1alpha1.CreateDirContainer(storageResource.GetName(), destDirectory)
 	gcsDownloadContainers, err := storageResource.GetDownloadContainerSpec()
 	if err != nil {
 		return err
@@ -219,18 +241,22 @@ func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.Pi
 	return nil
 }
 
-func createDirContainer(name, destinationPath string) corev1.Container {
-	return corev1.Container{
-		Name:  fmt.Sprintf("create-dir-%s", name),
-		Image: *bashNoopImage,
-		Args:  []string{"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " ")},
+func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {
+	// Check both resource ref or resource Spec are not present. Taskrun webhook should catch this in validation error.
+	if r.ResourceRef.Name != "" && r.ResourceSpec != nil {
+		return nil, fmt.Errorf("Both ResourseRef and ResourceSpec are defined. Expected only one")
 	}
-}
 
-func copyContainer(name, sourcePath, destinationPath string) corev1.Container {
-	return corev1.Container{
-		Name:  fmt.Sprintf("source-copy-%s", name),
-		Image: *bashNoopImage,
-		Args:  []string{"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath}, " ")},
+	if r.ResourceRef.Name != "" {
+		return getter(r.ResourceRef.Name)
 	}
+	if r.ResourceSpec != nil {
+		return &v1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: r.Name,
+			},
+			Spec: *r.ResourceSpec,
+		}, nil
+	}
+	return nil, fmt.Errorf("Neither ResourseRef not ResourceSpec is defined")
 }

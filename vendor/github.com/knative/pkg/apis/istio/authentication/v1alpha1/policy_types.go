@@ -17,8 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/knative/pkg/apis/istio/common/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
@@ -127,7 +127,7 @@ type PolicySpec struct {
 	// List rules to select destinations that the policy should be applied on.
 	// If empty, policy will be used on all destinations in the same namespace.
 	Targets []TargetSelector `json:"targets,omitempty"`
-	
+
 	// List of authentication methods that can be used for peer authentication.
 	// They will be evaluated in order; the first validate one will be used to
 	// set peer identity (source.user) and other peer attributes. If none of
@@ -135,14 +135,14 @@ type PolicySpec struct {
 	// request will be rejected with authentication failed error (401).
 	// Leave the list empty if peer authentication is not required
 	Peers []PeerAuthenticationMethod `json:"peers,omitempty"`
-	
+
 	// Set this flag to true to accept request (for peer authentication perspective),
 	// even when none of the peer authentication methods defined above satisfied.
 	// Typically, this is used to delay the rejection decision to next layer (e.g
 	// authorization).
 	// This flag is ignored if no authentication defined for peer (peers field is empty).
 	PeerIsOptional bool `json:"peerIsOptional,omitempty"`
-	
+
 	// List of authentication methods that can be used for origin authentication.
 	// Similar to peers, these will be evaluated in order; the first validate one
 	// will be used to set origin identity and attributes (i.e request.auth.user,
@@ -151,17 +151,17 @@ type PolicySpec struct {
 	// error (401).
 	// Leave the list empty if origin authentication is not required.
 	Origins []OriginAuthenticationMethod `json:"origins,omitempty"`
-	
+
 	// Set this flag to true to accept request (for origin authentication perspective),
 	// even when none of the origin authentication methods defined above satisfied.
 	// Typically, this is used to delay the rejection decision to next layer (e.g
 	// authorization).
 	// This flag is ignored if no authentication defined for origin (origins field is empty).
 	OriginIsOptional bool `json:"originIsOptional,omitempty"`
-	
+
 	// Define whether peer or origin identity should be use for principal. Default
 	// value is USE_PEER.
-	// If peer (or orgin) identity is not available, either because of peer/origin
+	// If peer (or origin) identity is not available, either because of peer/origin
 	// authentication is not defined, or failed, principal will be left unset.
 	// In other words, binding rule does not affect the decision to accept or
 	// reject request.
@@ -173,7 +173,7 @@ type TargetSelector struct {
 	// REQUIRED. The name must be a short name from the service registry. The
 	// fully qualified domain name will be resolved in a platform specific manner.
 	Name string `json:"name"`
-	
+
 	// Specifies the ports on the destination. Leave empty to match all ports
 	// that are exposed.
 	Ports []PortSelector `json:"ports,omitempty"`
@@ -183,12 +183,12 @@ type TargetSelector struct {
 // matching targets for authenticationn policy. This is copied from
 // networking API to avoid dependency.
 type PortSelector struct {
-	// It is requred to specify exactly one of the fields:
+	// It is required to specify exactly one of the fields:
 	// Number or Name
 
 	// Valid port number
 	Number uint32 `json:"number,omitempty"`
-	
+
 	// Port name
 	Name string `json:"name,omitempty"`
 }
@@ -199,11 +199,11 @@ type PortSelector struct {
 // The type can be progammatically determine by checking the type of the
 // "params" field.
 type PeerAuthenticationMethod struct {
-	// It is requred to specify exactly one of the fields:
+	// It is required to specify exactly one of the fields:
 	// Mtls or Jwt
 	// Set if mTLS is used.
 	Mtls *MutualTls `json:"mtls,omitempty"`
-	
+
 	// Set if JWT is used. This option is not yet available.
 	Jwt *Jwt `json:"jwt,omitempty"`
 }
@@ -214,7 +214,7 @@ type Mode string
 const (
 	// Client cert must be presented, connection is in TLS.
 	ModeStrict Mode = "STRICT"
-	
+
 	// Connection can be either plaintext or TLS, and client cert can be omitted.
 	ModePermissive Mode = "PERMISSIVE"
 )
@@ -229,7 +229,7 @@ type MutualTls struct {
 	// be left unset.
 	// When the flag is false (default), request must have client certificate.
 	AllowTls bool `json:"allowTls,omitempty"`
-	
+
 	// Defines the mode of mTLS authentication.
 	Mode Mode `json:"mode,omitempty"`
 }
@@ -256,7 +256,7 @@ type Jwt struct {
 	// Example: https://securetoken.google.com
 	// Example: 1234567-compute@developer.gserviceaccount.com
 	Issuer string `json:"issuer,omitempty"`
-	
+
 	// The list of JWT
 	// [audiences](https://tools.ietf.org/html/rfc7519#section-4.1.3).
 	// that are allowed to access. A JWT containing any of these
@@ -272,7 +272,7 @@ type Jwt struct {
 	//   bookstore_web.apps.googleusercontent.com
 	// ```
 	Audiences []string `json:"audiences,omitempty"`
-	
+
 	// URL of the provider's public key set to validate signature of the
 	// JWT. See [OpenID
 	// Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata).
@@ -285,7 +285,7 @@ type Jwt struct {
 	//
 	// Example: https://www.googleapis.com/oauth2/v1/certs
 	JwksUri string `json:"jwksUri,omitempty"`
-	
+
 	// Two fields below define where to extract the JWT from an HTTP request.
 	//
 	// If no explicit location is specified the following default
@@ -304,7 +304,7 @@ type Jwt struct {
 	// For example, if `header=x-goog-iap-jwt-assertion`, the header
 	// format will be x-goog-iap-jwt-assertion: <JWT>.
 	JwtHeaders []string `json:"jwtHeaders,omitempty"`
-	
+
 	// JWT is sent in a query parameter. `query` represents the
 	// query parameter name.
 	//
@@ -312,9 +312,9 @@ type Jwt struct {
 	JwtParams []string `json:"jwtParams,omitempty"`
 
 	// URL paths that should be excluded from the JWT validation. If the request path is matched,
-  	// the JWT validation will be skipped and the request will proceed regardless.
-  	// This is useful to keep a couple of URLs public for external health checks.
-  	// Example: "/health_check", "/status/cpu_usage".
+	// the JWT validation will be skipped and the request will proceed regardless.
+	// This is useful to keep a couple of URLs public for external health checks.
+	// Example: "/health_check", "/status/cpu_usage".
 	ExcludedPaths []v1alpha1.StringMatch `json:"excludedPaths,omitempty"`
 }
 

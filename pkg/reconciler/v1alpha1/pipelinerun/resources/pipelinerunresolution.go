@@ -18,15 +18,16 @@ package resources
 
 import (
 	"fmt"
-
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -40,6 +41,10 @@ const (
 	// ReasonSucceeded indicates that the reason for the finished status is that all of the TaskRuns
 	// completed successfully
 	ReasonSucceeded = "Succeeded"
+
+	// ReasonTimedOut indicates that the PipelineRun has taken longer than its configured
+	// timeout
+	ReasonTimedOut = "PipelineRunTimeout"
 )
 
 // GetNextTask returns the next Task for which a TaskRun should be created,
@@ -226,8 +231,24 @@ func getTaskRunName(prName string, pt *v1alpha1.PipelineTask) string {
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
-func GetPipelineConditionStatus(prName string, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger) *duckv1alpha1.Condition {
+func GetPipelineConditionStatus(prName string, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger, startTime *metav1.Time,
+	pipelineTimeout *metav1.Duration) *duckv1alpha1.Condition {
 	allFinished := true
+	if !startTime.IsZero() && pipelineTimeout != nil {
+		timeout := pipelineTimeout.Duration
+		runtime := time.Since(startTime.Time)
+		if runtime > timeout {
+			logger.Infof("PipelineRun %q has timed out(runtime %s over %s)", prName, runtime, timeout)
+
+			timeoutMsg := fmt.Sprintf("PipelineRun %q failed to finish within %q", prName, timeout.String())
+			return &duckv1alpha1.Condition{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  ReasonTimedOut,
+				Message: timeoutMsg,
+			}
+		}
+	}
 	for _, rprt := range state {
 		if rprt.TaskRun == nil {
 			logger.Infof("TaskRun %s doesn't have a Status, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
@@ -236,7 +257,7 @@ func GetPipelineConditionStatus(prName string, state []*ResolvedPipelineRunTask,
 		}
 		c := rprt.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c == nil {
-			logger.Infof("TaskRun %s doens't have a condition, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
+			logger.Infof("TaskRun %s doesn't have a condition, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
 			allFinished = false
 			break
 		}
@@ -282,17 +303,17 @@ func findReferencedTask(pb string, state []*ResolvedPipelineRunTask) *ResolvedPi
 	return nil
 }
 
-// ValidateProvidedBy will look at any `providedBy` clauses in the resolved PipelineRun state
-// and validate it: the `providedBy` must specify an input of the current `Task`. The `PipelineTask`
-// it is provided by must actually exist in the `Pipeline`. The `PipelineResource` that is bound to the input
+// ValidateFrom will look at any `from` clauses in the resolved PipelineRun state
+// and validate it: the `from` must specify an input of the current `Task`. The `PipelineTask`
+// it corresponds to must actually exist in the `Pipeline`. The `PipelineResource` that is bound to the input
 // must be the same `PipelineResource` that was bound to the output of the previous `Task`. If the state is
 // not valid, it will return an error.
-func ValidateProvidedBy(state []*ResolvedPipelineRunTask) error {
+func ValidateFrom(state []*ResolvedPipelineRunTask) error {
 	for _, rprt := range state {
 		if rprt.PipelineTask.Resources != nil {
 			for _, dep := range rprt.PipelineTask.Resources.Inputs {
 				inputBinding := rprt.ResolvedTaskResources.Inputs[dep.Name]
-				for _, pb := range dep.ProvidedBy {
+				for _, pb := range dep.From {
 					if pb == rprt.PipelineTask.Name {
 						return fmt.Errorf("PipelineTask %s is trying to depend on a PipelineResource from itself", pb)
 					}
@@ -308,7 +329,7 @@ func ValidateProvidedBy(state []*ResolvedPipelineRunTask) error {
 						}
 					}
 					if !sameBindingExists {
-						return fmt.Errorf("providedBy is ambiguous: input %q for PipelineTask %q is bound to %q but no outputs in PipelineTask %q are bound to same resource",
+						return fmt.Errorf("from is ambiguous: input %q for PipelineTask %q is bound to %q but no outputs in PipelineTask %q are bound to same resource",
 							dep.Name, rprt.PipelineTask.Name, inputBinding.Name, depTask.PipelineTask.Name)
 					}
 				}

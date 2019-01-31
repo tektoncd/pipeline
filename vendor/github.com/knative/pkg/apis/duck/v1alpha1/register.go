@@ -45,20 +45,16 @@ var (
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(
 		SchemeGroupVersion,
-		&Channel{},
-		(&Channel{}).GetListType(),
 		&KResource{},
 		(&KResource{}).GetListType(),
 		&Generational{},
 		(&Generational{}).GetListType(),
+		&AddressableType{},
+		(&AddressableType{}).GetListType(),
 		&Target{},
 		(&Target{}).GetListType(),
 		&LegacyTarget{},
 		(&LegacyTarget{}).GetListType(),
-		&Sink{},
-		(&Sink{}).GetListType(),
-		&Subscription{},
-		(&Subscription{}).GetListType(),
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

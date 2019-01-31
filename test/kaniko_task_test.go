@@ -65,7 +65,7 @@ func getDockerRepo() (string, error) {
 
 func createSecret(c *knativetest.KubeClient, namespace string) (bool, error) {
 	// when running e2e in cluster, this will not be set so just hop out early
-	file := os.Getenv("KANIKO_SECRET_CONFIG_FILE")
+	file := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")
 	if file == "" {
 		return false, nil
 	}
@@ -126,6 +126,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 func TestKanikoTaskRun(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
+	t.Parallel()
 
 	repo, err := getDockerRepo()
 	if err != nil {

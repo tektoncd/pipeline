@@ -24,4 +24,4 @@ spec:
       inputs:
       - name: workspace
         resource: source-repo
-        providedBy: [first-create-file]
+        from: [first-create-file]

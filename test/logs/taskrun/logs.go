@@ -24,7 +24,6 @@ import (
 	pipelinev1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/test/logs/color"
 	"github.com/knative/build-pipeline/test/logs/pod"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -47,12 +46,6 @@ func TailLogs(ctx context.Context, cfg *rest.Config, name, namespace string, out
 	tr, err := pclient.TaskRuns(namespace).Get(name, metav1.GetOptions{IncludeUninitialized: true})
 	if err != nil {
 		return err
-	}
-	if tr != nil {
-		trCond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if trCond.IsFalse() {
-			return fmt.Errorf("taskrun failed with msg: %v", trCond.Message)
-		}
 	}
 
 	client, err := corev1.NewForConfig(cfg)

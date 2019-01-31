@@ -76,31 +76,14 @@ func TestInitializeConditions(t *testing.T) {
 		t.Fatalf("PipelineRun status not initialized correctly")
 	}
 
+	if p.Status.StartTime.IsZero() {
+		t.Fatalf("PipelineRun StartTime not initialized correctly")
+	}
+
 	p.Status.TaskRuns["fooTask"] = TaskRunStatus{}
 
 	p.Status.InitializeConditions()
 	if len(p.Status.TaskRuns) != 1 {
 		t.Fatalf("PipelineRun status getting reset")
-	}
-}
-
-func Test_GetPVC(t *testing.T) {
-	p := &PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-name",
-			Namespace: "test-ns",
-		},
-	}
-	expectedPVC := corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "test-ns",
-			Name:      "test-name-pvc", // prname-pvc
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(p, groupVersionKind),
-			},
-		},
-	}
-	if d := cmp.Diff(p.GetPVC().ObjectMeta, expectedPVC.ObjectMeta); d != "" {
-		t.Fatalf("GetPVC mismatch; want %v got %v; diff %s", expectedPVC.ObjectMeta, p.GetPVC().ObjectMeta, d)
 	}
 }

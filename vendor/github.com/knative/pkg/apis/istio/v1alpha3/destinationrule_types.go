@@ -117,11 +117,11 @@ type DestinationRuleSpec struct {
 	//
 	// Note that the host field applies to both HTTP and TCP services.
 	Host string `json:"host"`
-	
+
 	// Traffic policies to apply (load balancing policy, connection pool
 	// sizes, outlier detection).
 	TrafficPolicy *TrafficPolicy `json:"trafficPolicy,omitempty"`
-	
+
 	// One or more named sets that represent individual versions of a
 	// service. Traffic policies can be overridden at subset level.
 	Subsets []Subset `json:"subsets,omitempty"`
@@ -133,16 +133,16 @@ type TrafficPolicy struct {
 
 	// Settings controlling the load balancer algorithms.
 	LoadBalancer *LoadBalancerSettings `json:"loadBalancer,omitempty"`
-	
+
 	// Settings controlling the volume of connections to an upstream service
 	ConnectionPool *ConnectionPoolSettings `json:"connectionPool,omitempty"`
-	
+
 	// Settings controlling eviction of unhealthy hosts from the load balancing pool
 	OutlierDetection *OutlierDetection `json:"outlierDetection,omitempty"`
-	
+
 	// TLS related settings for connections to the upstream service.
 	Tls *TLSSettings `json:"tls,omitempty"`
-	
+
 	// Traffic policies specific to individual ports. Note that port level
 	// settings will override the destination-level settings. Traffic
 	// settings specified at the destination-level will not be inherited when
@@ -161,13 +161,13 @@ type PortTrafficPolicy struct {
 	// the same protocol the names should be of the form <protocol-name>-<DNS
 	// label>.
 	Port PortSelector `json:"port"`
-	
+
 	// Settings controlling the load balancer algorithms.
 	LoadBalancer *LoadBalancerSettings `json:"loadBalancer,omitempty"`
-	
+
 	// Settings controlling the volume of connections to an upstream service
 	ConnectionPool *ConnectionPoolSettings `json:"connectionPool,omitempty"`
-	
+
 	// Settings controlling eviction of unhealthy hosts from the load balancing pool
 	OutlierDetection *OutlierDetection `json:"outlierDetection,omitempty"`
 
@@ -207,11 +207,11 @@ type Subset struct {
 	// REQUIRED. Name of the subset. The service name and the subset name can
 	// be used for traffic splitting in a route rule.
 	Name string `json:"port"`
-	
+
 	// REQUIRED. Labels apply a filter over the endpoints of a service in the
 	// service registry. See route rules for examples of usage.
 	Labels map[string]string `json:"labels"`
-	
+
 	// Traffic policies that apply to this subset. Subsets inherit the
 	// traffic policies specified at the DestinationRule level. Settings
 	// specified at the subset level will override the corresponding settings
@@ -254,7 +254,7 @@ type Subset struct {
 //            name: user
 //            ttl: 0s
 type LoadBalancerSettings struct {
-	// It is requred to specify exactly one of the fields:
+	// It is required to specify exactly one of the fields:
 	// Simple or ConsistentHash
 	Simple         SimpleLB          `json:"simple,omitempty"`
 	ConsistentHash *ConsistentHashLB `json:"consistentHash,omitempty"`
@@ -266,17 +266,17 @@ type SimpleLB string
 const (
 	// Round Robin policy. Default
 	SimpleLBRoundRobin SimpleLB = "ROUND_ROBIN"
-	
+
 	// The least request load balancer uses an O(1) algorithm which selects
 	// two random healthy hosts and picks the host which has fewer active
 	// requests.
 	SimpleLBLeastConn SimpleLB = "LEAST_CONN"
-	
+
 	// The random load balancer selects a random healthy host. The random
 	// load balancer generally performs better than round robin if no health
 	// checking policy is configured.
 	SimpleLBRandom SimpleLB = "RANDOM"
-	
+
 	// This option will forward the connection to the original IP address
 	// requested by the caller without doing any form of load
 	// balancing. This option must be used with care. It is meant for
@@ -293,17 +293,17 @@ const (
 // service.
 type ConsistentHashLB struct {
 
-	// It is requred to specify exactly one of the fields as hash key:
+	// It is required to specify exactly one of the fields as hash key:
 	// HttpHeaderName, HttpCookie, or UseSourceIP.
 	// Hash based on a specific HTTP header.
 	HttpHeaderName string `json:"httpHeaderName,omitempty"`
-	
+
 	// Hash based on HTTP cookie.
 	HttpCookie *HTTPCookie `json:"httpCookie,omitempty"`
-	
+
 	// Hash based on the source IP address.
 	UseSourceIp bool `json:"useSourceIp,omitempty"`
-	
+
 	// The minimum number of virtual nodes to use for the hash
 	// ring. Defaults to 1024. Larger ring sizes result in more granular
 	// load distributions. If the number of hosts in the load balancing
@@ -359,7 +359,7 @@ type ConnectionPoolSettings struct {
 type TCPSettings struct {
 	// Maximum number of HTTP1 /TCP connections to a destination host.
 	MaxConnections int32 `json:"maxConnections,omitempty"`
-	
+
 	// TCP connection timeout.
 	ConnectTimeout string `json:"connectTimeout,omitempty"`
 }
@@ -368,14 +368,14 @@ type TCPSettings struct {
 type HTTPSettings struct {
 	// Maximum number of pending HTTP requests to a destination. Default 1024.
 	Http1MaxPendingRequests int32 `json:"http1MaxPendingRequests,omitempty"`
-	
+
 	// Maximum number of requests to a backend. Default 1024.
 	Http2MaxRequests int32 `json:"http2MaxRequests,omitempty"`
-	
+
 	// Maximum number of requests per connection to a backend. Setting this
 	// parameter to 1 disables keep alive.
 	MaxRequestsPerConnection int32 `json:"maxRequestsPerConnection,omitempty"`
-	
+
 	// Maximum number of retries that can be outstanding to all hosts in a
 	// cluster at a given time. Defaults to 3.
 	MaxRetries int32 `json:"maxRetries,omitempty"`
@@ -421,18 +421,18 @@ type OutlierDetection struct {
 	// accessed over an opaque TCP connection, connect timeouts and
 	// connection error/failure events qualify as an error.
 	ConsecutiveErrors int32 `json:"consecutiveErrors,omitempty"`
-	
+
 	// Time interval between ejection sweep analysis. format:
 	// 1h/1m/1s/1ms. MUST BE >=1ms. Default is 10s.
 	Interval string `json:"interval,omitempty"`
-	
+
 	// Minimum ejection duration. A host will remain ejected for a period
 	// equal to the product of minimum ejection duration and the number of
 	// times the host has been ejected. This technique allows the system to
 	// automatically increase the ejection period for unhealthy upstream
 	// servers. format: 1h/1m/1s/1ms. MUST BE >=1ms. Default is 30s.
 	BaseEjectionTime string `json:"baseEjectionTime,omitempty"`
-	
+
 	// Maximum % of hosts in the load balancing pool for the upstream
 	// service that can be ejected. Defaults to 10%.
 	MaxEjectionPercent int32 `json:"maxEjectionPercent,omitempty"`
@@ -488,29 +488,29 @@ type TLSSettings struct {
 	// REQUIRED: Indicates whether connections to this port should be secured
 	// using TLS. The value of this field determines how TLS is enforced.
 	Mode TLSmode `json:"mode"`
-	
+
 	// REQUIRED if mode is `MUTUAL`. The path to the file holding the
 	// client-side TLS certificate to use.
 	// Should be empty if mode is `ISTIO_MUTUAL`.
 	ClientCertificate string `json:"clientCertificate,omitempty"`
-	
+
 	// REQUIRED if mode is `MUTUAL`. The path to the file holding the
 	// client's private key.
 	// Should be empty if mode is `ISTIO_MUTUAL`.
 	PrivateKey string `json:"privateKey,omitempty"`
-	
+
 	// OPTIONAL: The path to the file containing certificate authority
 	// certificates to use in verifying a presented server certificate. If
 	// omitted, the proxy will not verify the server's certificate.
 	// Should be empty if mode is `ISTIO_MUTUAL`.
 	CaCertificates string `json:"caCertificates,omitempty"`
-	
+
 	// A list of alternate names to verify the subject identity in the
 	// certificate. If specified, the proxy will verify that the server
 	// certificate's subject alt name matches one of the specified values.
 	// Should be empty if mode is `ISTIO_MUTUAL`.
 	SubjectAltNames []string `json:"subjectAltNames,omitempty"`
-	
+
 	// SNI string to present to the server during TLS handshake.
 	// Should be empty if mode is `ISTIO_MUTUAL`.
 	Sni string `json:"sni,omitempty"`
@@ -525,11 +525,11 @@ const (
 
 	// Originate a TLS connection to the upstream endpoint.
 	TLSmodeSimple TLSmode = "SIMPLE"
-	
+
 	// Secure connections to the upstream using mutual TLS by presenting
 	// client certificates for authentication.
 	TLSmodeMutual TLSmode = "MUTUAL"
-	
+
 	// Secure connections to the upstream using mutual TLS by presenting
 	// client certificates for authentication.
 	// Compared to Mutual mode, this mode uses certificates generated

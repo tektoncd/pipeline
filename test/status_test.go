@@ -30,6 +30,7 @@ import (
 func TestTaskRunPipelineRunStatus(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
+	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
 	defer tearDown(t, logger, c, namespace)
@@ -39,18 +40,18 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		tb.Step("foo", "busybox", tb.Command("ls", "-la")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", hwTaskName, err)
+		t.Fatalf("Failed to create Task: %s", err)
 	}
 	taskRun := tb.TaskRun("apple", namespace, tb.TaskRunSpec(
 		tb.TaskRunTaskRef("banana"), tb.TaskRunServiceAccount("inexistent"),
 	))
 	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", hwTaskRunName, err)
+		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
-	logger.Infof("Waiting for TaskRun %s in namespace %s to fail", hwTaskRunName, namespace)
+	logger.Infof("Waiting for TaskRun in namespace %s to fail", namespace)
 	if err := WaitForTaskRunState(c, "apple", TaskRunFailed("apple"), "BuildValidationFailed"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
+		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
 	pipeline := tb.Pipeline("tomatoes", namespace,
@@ -66,8 +67,8 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
 	}
 
-	logger.Infof("Waiting for PipelineRun %s in namespace %s to fail", hwTaskRunName, namespace)
+	logger.Infof("Waiting for PipelineRun in namespace %s to fail", namespace)
 	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, PipelineRunFailed("pear"), "BuildValidationFailed"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", hwTaskRunName, err)
+		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 }

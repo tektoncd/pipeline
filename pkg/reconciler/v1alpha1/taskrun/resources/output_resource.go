@@ -19,13 +19,14 @@ package resources
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	artifacts "github.com/knative/build-pipeline/pkg/artifacts"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 var (
@@ -52,6 +53,7 @@ var (
 // 1. If resource is declared in inputs then target path from input resource is used to identify source path
 // 2. If resource is declared in outputs only then the default is /output/resource_name
 func AddOutputResources(
+	kubeclient kubernetes.Interface,
 	b *buildv1alpha1.Build,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
@@ -64,7 +66,11 @@ func AddOutputResources(
 		return nil
 	}
 
-	pipelineRunpvcName := taskRun.GetPipelineRunPVCName()
+	pvcName := taskRun.GetPipelineRunPVCName()
+	as, err := artifacts.GetArtifactStorage(pvcName, kubeclient)
+	if err != nil {
+		return err
+	}
 
 	// track resources that are present in input of task cuz these resources will be copied onto PVC
 	inputResourceMap := map[string]string{}
@@ -85,9 +91,9 @@ func AddOutputResources(
 			return fmt.Errorf("Failed to get bound resource: %s", err)
 		}
 
-		resource, err := pipelineResourceLister.PipelineResources(taskRun.Namespace).Get(boundResource.ResourceRef.Name)
+		resource, err := getResource(boundResource, pipelineResourceLister.PipelineResources(taskRun.Namespace).Get)
 		if err != nil {
-			return fmt.Errorf("Failed to get output pipeline Resource for task %q: %q", boundResource.ResourceRef.Name, taskName)
+			return fmt.Errorf("Failed to get output pipeline Resource for task %q resource %q; error: %s", taskName, boundResource, err.Error())
 		}
 
 		// if resource is declared in input then copy outputs to pvc
@@ -116,41 +122,30 @@ func AddOutputResources(
 		// outputs, or until we have metadata on the resource that declares whether
 		// the output should be copied to the PVC, only copy git and storage output
 		// resources.
-		// copy to pvc if pvc is present
-		if allowedOutputResources[resource.Spec.Type] && pipelineRunpvcName != "" {
+		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []corev1.Container
 			for _, dPath := range boundResource.Paths {
-				newSteps = append(newSteps, []corev1.Container{{
-					Name:  fmt.Sprintf("source-mkdir-%s", resource.GetName()),
-					Image: *bashNoopImage,
-					Args: []string{
-						"-args", strings.Join([]string{"mkdir", "-p", dPath}, " "),
-					},
-					VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
-				}, {
-					Name:  fmt.Sprintf("source-copy-%s", resource.GetName()),
-					Image: *bashNoopImage,
-					Args: []string{
-						"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), dPath}, " "),
-					},
-					VolumeMounts: []corev1.VolumeMount{getPvcMount(pipelineRunpvcName)},
-				}}...)
+				containers := as.GetCopyToContainerSpec(resource.GetName(), sourcePath, dPath)
+				newSteps = append(newSteps, containers...)
 			}
 			b.Spec.Steps = append(b.Spec.Steps, newSteps...)
+			b.Spec.Volumes = append(b.Spec.Volumes, as.GetSecretsVolumes()...)
 		}
 	}
 
-	if pipelineRunpvcName == "" {
-		return nil
-	}
-
-	// attach pvc volume only if it is not already attached
-	for _, buildVol := range b.Spec.Volumes {
-		if buildVol.Name == pipelineRunpvcName {
+	if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+		if pvcName == "" {
 			return nil
 		}
+
+		// attach pvc volume only if it is not already attached
+		for _, buildVol := range b.Spec.Volumes {
+			if buildVol.Name == pvcName {
+				return nil
+			}
+		}
+		b.Spec.Volumes = append(b.Spec.Volumes, GetPVCVolume(pvcName))
 	}
-	b.Spec.Volumes = append(b.Spec.Volumes, GetPVCVolume(pipelineRunpvcName))
 	return nil
 }
 
@@ -196,11 +191,4 @@ func addStoreUploadStep(build *buildv1alpha1.Build,
 	}
 	build.Spec.Steps = append(build.Spec.Steps, buildSteps...)
 	return nil
-}
-
-// allowedOutputResource checks if an output resource type produces
-// an output that should be copied to the PVC
-func allowedOutputResource(resourceType v1alpha1.PipelineResourceType) bool {
-
-	return allowedOutputResources[resourceType]
 }

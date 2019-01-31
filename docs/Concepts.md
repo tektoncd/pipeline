@@ -22,8 +22,8 @@ High level details of this design:
   [Pipelines](#pipeline); they are highly cohesive and loosely coupled
 - [Tasks](#task) can depend on artifacts, output and parameters created by other
   tasks.
-- [PipelineResources](#pipelineresources) are the artifacts used as inputs and outputs
-  of Tasks.
+- [PipelineResources](#pipelineresources) are the artifacts used as inputs and
+  outputs of Tasks.
 
 ## Building Blocks of Pipeline CRDs
 
@@ -41,8 +41,9 @@ Below diagram lists the main custom resources created by Pipeline CRDs:
 
 ### Task
 
-A `Task` is a collection of sequential steps you would want to run as part of your
-continuous integration flow. A task will run inside a container on your cluster.
+A `Task` is a collection of sequential steps you would want to run as part of
+your continuous integration flow. A task will run inside a container on your
+cluster.
 
 A `Task` declares:
 
@@ -52,8 +53,8 @@ A `Task` declares:
 
 #### Inputs
 
-Declare the inputs the `Task` needs. Every `Task` input resource should provide name
-and type (like git, image).
+Declare the inputs the `Task` needs. Every `Task` input resource should provide
+name and type (like git, image).
 
 #### Outputs
 
@@ -128,7 +129,9 @@ Examples of more complex `Pipelines` are [in our examples dir](../examples/).
 #### PipelineResources
 
 `PipelinesResources` in a pipeline are the set of objects that are going to be
-used as inputs to a [`Task`](#Task) and can be output of [`Task`](#Task) .
+used as inputs to a [`Task`](#Task) and can be output by a [`Task`](#Task).
+
+A [`Task`] can have multiple inputs and outputs.
 
 For example:
 
@@ -137,7 +140,8 @@ For example:
   deployed in a cluster.
 - A Task's output can be a jar file to be uploaded to a storage bucket.
 
-Read more on PipelineResources and their types [here](./using.md#creating-pipelineresources).
+Read more on PipelineResources and their types
+[here](./using.md#creating-pipelineresources).
 
 `PipelineResources` in a Pipeline are the set of objects that are going to be
 used as inputs and outputs of a `Task`.

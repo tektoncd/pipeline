@@ -42,18 +42,13 @@ func ApplyParameters(b *buildv1alpha1.Build, tr *v1alpha1.TaskRun, defaults ...v
 	return ApplyReplacements(b, replacements)
 }
 
-// ResourceGetter is the interface used to retrieve resources which are references via a TaskRunResource.
-type ResourceGetter interface {
-	Get(string) (*v1alpha1.PipelineResource, error)
-}
-
 // ApplyResources applies the templating from values in resources which are referenced in b as subitems
 // of the replacementStr. It retrieves the referenced resources via the getter.
-func ApplyResources(b *buildv1alpha1.Build, resources []v1alpha1.TaskResourceBinding, getter ResourceGetter, replacementStr string) (*buildv1alpha1.Build, error) {
+func ApplyResources(b *buildv1alpha1.Build, resources []v1alpha1.TaskResourceBinding, getter GetResource, replacementStr string) (*buildv1alpha1.Build, error) {
 	replacements := map[string]string{}
 
 	for _, r := range resources {
-		pr, err := getter.Get(r.ResourceRef.Name)
+		pr, err := getResource(&r, getter)
 		if err != nil {
 			return nil, err
 		}

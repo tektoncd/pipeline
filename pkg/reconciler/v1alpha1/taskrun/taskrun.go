@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -38,11 +39,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	coreinformers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -63,12 +62,13 @@ const (
 	// is just starting to be reconciled
 	reasonRunning = "Running"
 
+	// reasonTimedOut indicates that the TaskRun has taken longer than its configured timeout
+	reasonTimedOut = "TaskRunTimeout"
+
 	// taskRunAgentName defines logging agent name for TaskRun Controller
 	taskRunAgentName = "taskrun-controller"
 	// taskRunControllerName defines name for TaskRun Controller
 	taskRunControllerName = "TaskRun"
-
-	pvcSizeBytes = 5 * 1024 * 1024 * 1024 // 5 GBs
 )
 
 var (
@@ -231,6 +231,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		})
 		return nil
 	}
+
+	// Check if the TaskRun has timed out; if it is, this will set its status
+	// accordingly.
+	if timedOut, err := c.checkTimeout(tr, spec, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete); err != nil {
+		return err
+	} else if timedOut {
+		return nil
+	}
+
 	rtr, err := resources.ResolveTaskResources(spec, taskName, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
@@ -263,19 +272,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			return err
 		}
 	} else {
-		pvc, err := c.KubeClientSet.CoreV1().PersistentVolumeClaims(tr.Namespace).Get(tr.Name, metav1.GetOptions{})
-		if errors.IsNotFound(err) {
-			// Create a persistent volume claim to hold Build logs
-			pvc, err = createPVC(c.KubeClientSet, tr)
-			if err != nil {
-				return fmt.Errorf("Failed to create persistent volume claim %s for task %q: %v", tr.Name, err, tr.Name)
-			}
-		} else if err != nil {
-			c.Logger.Errorf("Failed to reconcile taskrun: %q, failed to get pvc %q: %v", tr.Name, tr.Name, err)
-			return err
-		}
 		// Build pod is not present, create build pod.
-		pod, err = c.createBuildPod(ctx, tr, rtr.TaskSpec, rtr.TaskName, pvc.Name)
+		pod, err = c.createBuildPod(ctx, tr, rtr.TaskSpec, rtr.TaskName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			var msg string
@@ -308,6 +306,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	updateStatusFromBuildStatus(tr, buildStatus)
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
@@ -354,40 +353,9 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 	return newtaskrun, nil
 }
 
-// createPVC will create a persistent volume mount for tr which
-// will be used to gather logs using the entrypoint wrapper
-func createPVC(kc kubernetes.Interface, tr *v1alpha1.TaskRun) (*corev1.PersistentVolumeClaim, error) {
-	v, err := kc.CoreV1().PersistentVolumeClaims(tr.Namespace).Create(
-		&corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: tr.Namespace,
-				// This pvc is specific to this TaskRun, so we'll use the same name
-				Name: tr.Name,
-				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(tr, groupVersionKind),
-				},
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{
-					corev1.ReadWriteOnce,
-				},
-				Resources: corev1.ResourceRequirements{
-					Requests: map[corev1.ResourceName]resource.Quantity{
-						corev1.ResourceStorage: *resource.NewQuantity(pvcSizeBytes, resource.BinarySI),
-					},
-				},
-			},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to claim Persistent Volume %q due to error: %s", tr.Name, err)
-	}
-	return v, nil
-}
-
 // createPod creates a Pod based on the Task's configuration, with pvcName as a
 // volumeMount
-func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName, pvcName string) (*corev1.Pod, error) {
+func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
 	// TODO: Preferably use Validate on task.spec to catch validation error
 	bs := ts.GetBuildSpec()
 	if bs == nil {
@@ -420,18 +388,18 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 		}
 	}
 
-	build, err := createRedirectedBuild(ctx, bSpec, pvcName, tr)
+	build, err := createRedirectedBuild(ctx, bSpec, tr)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
 
-	build, err = resources.AddInputResource(build, taskName, ts, tr, c.resourceLister, c.Logger)
+	build, err = resources.AddInputResource(c.KubeClientSet, build, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	err = resources.AddOutputResources(build, taskName, ts, tr, c.resourceLister, c.Logger)
+	err = resources.AddOutputResources(c.KubeClientSet, build, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
@@ -445,11 +413,11 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 	build = resources.ApplyParameters(build, tr, defaults...)
 
 	// Apply bound resource templating from the taskrun.
-	build, err = resources.ApplyResources(build, tr.Spec.Inputs.Resources, c.resourceLister.PipelineResources(tr.Namespace), "inputs")
+	build, err = resources.ApplyResources(build, tr.Spec.Inputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get, "inputs")
 	if err != nil {
 		return nil, fmt.Errorf("couldnt apply input resource templating: %s", err)
 	}
-	build, err = resources.ApplyResources(build, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace), "outputs")
+	build, err = resources.ApplyResources(build, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get, "outputs")
 	if err != nil {
 		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
 	}
@@ -474,7 +442,7 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the BuildSpec and modifies it freely
-func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvcName string, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
+func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
 	// Pass service account name from taskrun to build
 	bs.ServiceAccountName = tr.Spec.ServiceAccount
 
@@ -505,9 +473,9 @@ func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, pvc
 	b.Spec.Volumes = append(b.Spec.Volumes, corev1.Volume{
 		Name: entrypoint.MountName,
 		VolumeSource: corev1.VolumeSource{
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-				ClaimName: pvcName,
-			},
+			// TODO(#107) we need to actually stream these logs somewhere, probably via sidecar.
+			// Currently these logs will be lost when the pod is unscheduled.
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	})
 
@@ -527,4 +495,40 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 // isDone returns true if the TaskRun's status indicates that it is done.
 func isDone(status *v1alpha1.TaskRunStatus) bool {
 	return !status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+}
+
+type DeletePod func(podName string, options *metav1.DeleteOptions) error
+
+func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, dp DeletePod) (bool, error) {
+	// If tr has not started, startTime should be zero.
+	if tr.Status.StartTime.IsZero() {
+		return false, nil
+	}
+
+	bs := ts.GetBuildSpec()
+
+	if bs.Timeout != nil {
+		timeout := bs.Timeout.Duration
+		runtime := time.Since(tr.Status.StartTime.Time)
+		if runtime > timeout {
+			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
+			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+				c.Logger.Errorf("Failed to terminate pod: %v", err)
+				return true, err
+			}
+
+			timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
+			tr.Status.SetCondition(&duckv1alpha1.Condition{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  reasonTimedOut,
+				Message: timeoutMsg,
+			})
+			// update tr completed time
+			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+			return true, nil
+		}
+	}
+	return false, nil
 }

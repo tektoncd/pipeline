@@ -17,6 +17,9 @@ kubectl apply -f examples/run/pipeline-run.yaml
 
 # To invoke the Pipeline that links outputs
 kubectl apply -f examples/run/output-pipeline-run.yaml
+
+# To invoke the TaskRun with embedded Resource spec and task Spec
+kubectl apply -f examples/run/task-run-resource-spec.yaml
 ```
 
 ## Example Pipelines
@@ -28,10 +31,10 @@ kubectl apply -f examples/run/output-pipeline-run.yaml
 from [the Skaffold repo](https://github.com/GoogleContainerTools/skaffold) and
 deploys them to the repo currently running the Pipeline CRD.
 
-It does this using the k8s `Deployment` in the skaffold repos's existing yaml files,
-so at the moment there is no guarantee that the image that are built and pushed are the ones that
-are deployed (that would require using the digest of the built image, see
-https://github.com/knative/build-pipeline/issues/216).
+It does this using the k8s `Deployment` in the skaffold repos's existing yaml
+files, so at the moment there is no guarantee that the image that are built and
+pushed are the ones that are deployed (that would require using the digest of
+the built image, see https://github.com/knative/build-pipeline/issues/216).
 
 To run this yourself, you will need to change the values of
 `gcr.io/christiewilson-catfactory` to a registry you can push to from inside
@@ -62,19 +65,21 @@ The [run](./run/) directory contains an example
   the `build-push` task
 - [pipeline-run.yaml](./run/pipeline-run.yaml) invokes
   [the example pipeline](#example-pipeline)
+- [embed-resource-spec.yaml](./run/task-run-resource-spec.yaml) shows an example
+  how to create TaskRun with embedded Task spec and resource spec.
 
 ### Pipeline with outputs
 
 [The Pipeline with outputs](output-pipeline.yaml) contains a Pipeline that
-demonstrates how the outputs of a `Task` can be provided as inputs to the next
+demonstrates how the outputs of a `Task` can be given as inputs to the next
 `Task`. It does this by:
 
 1. Running a `Task` that writes to a `PipelineResource`
 2. Running a `Task` that reads the written value from the `PipelineResource`
 
-The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is provided as
-an [`Input`](../docs/Concepts.md#inputs) to the next `Task` thanks to the
-[`providedBy`](../docs/using.md#providedby) clause.
+The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is given as an
+[`Input`](../docs/Concepts.md#inputs) to the next `Task` thanks to the
+[`from`](../docs/using.md#from) clause.
 
 #### Output Tasks
 

@@ -15,6 +15,7 @@ package builder_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -32,9 +33,10 @@ func TestPipeline(t *testing.T) {
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
-			tb.PipelineTaskInputResource("some-repo", "my-only-git-resource", tb.ProvidedBy("foo")),
+			tb.PipelineTaskInputResource("some-repo", "my-only-git-resource", tb.From("foo")),
 			tb.PipelineTaskOutputResource("some-image", "my-only-image-resource"),
 		),
+		tb.PipelineTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
 	))
 	expectedPipeline := &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: "foo"},
@@ -55,9 +57,9 @@ func TestPipeline(t *testing.T) {
 				TaskRef: v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},
 				Resources: &v1alpha1.PipelineTaskResources{
 					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name:       "some-repo",
-						Resource:   "my-only-git-resource",
-						ProvidedBy: []string{"foo"},
+						Name:     "some-repo",
+						Resource: "my-only-git-resource",
+						From:     []string{"foo"},
 					}},
 					Outputs: []v1alpha1.PipelineTaskOutputResource{{
 						Name:     "some-image",
@@ -65,6 +67,7 @@ func TestPipeline(t *testing.T) {
 					}},
 				},
 			}},
+			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
 		},
 	}
 	if d := cmp.Diff(expectedPipeline, pipeline); d != "" {
@@ -73,12 +76,13 @@ func TestPipeline(t *testing.T) {
 }
 
 func TestPipelineRun(t *testing.T) {
+	startTime := time.Now()
 	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccount("sa"),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
 		Type: duckv1alpha1.ConditionSucceeded,
-	})))
+	}), tb.PipelineRunStartTime(startTime)))
 	expectedPipelineRun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "pear", Namespace: "foo"},
 		Spec: v1alpha1.PipelineRunSpec{
@@ -94,6 +98,7 @@ func TestPipelineRun(t *testing.T) {
 		},
 		Status: v1alpha1.PipelineRunStatus{
 			Conditions: []duckv1alpha1.Condition{{Type: duckv1alpha1.ConditionSucceeded}},
+			StartTime: &metav1.Time{Time: startTime},
 		},
 	}
 	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {

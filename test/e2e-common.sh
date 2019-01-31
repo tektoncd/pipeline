@@ -33,6 +33,27 @@ function output_yaml_test_results() {
     kubectl get $1.pipeline.knative.dev -oyaml
 }
 
+function output_pods_logs() {
+    echo ">>> $1"
+    kubectl get $1.pipeline.knative.dev -o yaml
+    local runs=$(kubectl get $1.pipeline.knative.dev --output=jsonpath="{.items[*].metadata.name}")
+    set +e
+    for run in ${runs}; do
+	echo ">>>> $1 ${run}"
+	case "$1" in
+	    "taskrun")
+		go run ./test/logs/main.go -tr ${run}
+		;;
+	    "pipelinerun")
+		go run ./test/logs/main.go -pr ${run}
+		;;
+	esac
+    done
+    set -e
+    echo ">>>> Pods"
+    kubectl get pods -o yaml
+}
+
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
 function dump_extra_cluster_state() {
   echo ">>> Pipeline controller log:"
@@ -51,7 +72,7 @@ function validate_run() {
       tests_finished=1
       break
     fi
-    sleep 5
+    sleep 6
   done
   if (( ! tests_finished )); then
     echo "ERROR: tests timed out"
@@ -61,36 +82,28 @@ function validate_run() {
   # Check that tests passed.
   local failed=0
   echo ">> Checking test results"
-  for expected_status in succeeded failed; do
-    results="$(kubectl get $1.pipeline.knative.dev -l expect=${expected_status} \
-	--output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
-    case $expected_status in
-      succeeded)
-	want=succeededtrue
-	;;
-      failed)
-	want=succeededfalse
-	;;
-      *)
-	echo "ERROR: Invalid expected status '${expected_status}'"
-	failed=1
-	;;
-    esac
-    for result in ${results}; do
-      if [[ ! "${result,,}" == *"=${want}" ]]; then
-	echo "ERROR: test ${result} but should be ${want}"
-	failed=1
-      fi
-    done
+  results="$(kubectl get $1.pipeline.knative.dev --output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
+  for result in ${results}; do
+    if [[ ! "${result,,}" == *"=succeededtrue" ]]; then
+      echo "ERROR: test ${result} but should be succeededtrue"
+      failed=1
+    fi
   done
+  
   return ${failed}
 }
 
 function run_yaml_tests() {
   echo ">> Starting tests"
 
-  for file in $(find ${REPO_ROOT_DIR}/examples/ -name *.yaml); do
-    sed 's/christiewilson-catfactory/${KO_DOCKER_REPO}/' ${file} | ko apply -f - || return 1
+  # Applying resources, task and pipeline
+  for file in $(find ${REPO_ROOT_DIR}/examples -maxdepth 1 -name *.yaml | sort); do
+    perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
+  done
+
+  # Applying *runs (from $1)
+  for file in $(find ${REPO_ROOT_DIR}/examples/run/ -name *$1.yaml | sort); do
+    perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
   done
 
   if validate_run $1; then

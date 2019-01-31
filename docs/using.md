@@ -5,6 +5,7 @@
 - [How do I make Resources?](#creating-resources)
 - [How do I run a Pipeline?](#running-a-pipeline)
 - [How do I run a Task on its own?](#running-a-task)
+- [How do I ensure a Pipeline or Task stops if it runs for too long?](#timing-out-pipelines-and-tasks)
 - [How do I troubleshoot a PipelineRun?](#troubleshooting)
 - [How do I follow logs?](../test/logs/README.md)
 
@@ -16,15 +17,15 @@
    specific to your project (e.g. running your particular set of unit tests).
 2. Create a `Pipeline` which expresses the Tasks you would like to run and what
    [PipelineResources](#resources-in-a-pipeline) the Tasks need. Use
-   [`providedBy`](#providedBy) to express when the input of a `Task` should come
-   from the output of a previous `Task`.
+   [`from`](#from) to express when the input of a `Task` should come from the
+   output of a previous `Task`.
 
 See [the example Pipeline](../examples/pipeline.yaml).
 
 ### PipelineResources in a Pipeline
 
-In order for a `Pipeline` to execute, it will probably need
-[`PipelineResources`](#creating-pipelineresources) which will be provided to
+In order for a `Pipeline` to interact with the outside world, it will probably need
+[`PipelineResources`](#creating-pipelineresources) which will be given to
 `Tasks` as inputs and outputs.
 
 Your `Pipeline` must declare the `PipelineResources` it needs in a `resources`
@@ -36,46 +37,45 @@ For example:
 ```yaml
 spec:
   resources:
-  - name: my-repo
-    type: git
-  - name: my-image
-    type: image
+    - name: my-repo
+      type: git
+    - name: my-image
+      type: image
 ```
 
-These `PipelineResources` can then be provided to `Task`s in the `Pipeline` as
+These `PipelineResources` can then be given to `Task`s in the `Pipeline` as
 inputs and outputs, for example:
 
 ```yaml
 spec:
   #...
   tasks:
-  - name: build-the-image
-    taskRef:
-      name: build-push
-    resources:
-      inputs:
-      - name: workspace
-        resource: my-repo
-      outputs:
-      - name: image
-        resource: my-image
+    - name: build-the-image
+      taskRef:
+        name: build-push
+      resources:
+        inputs:
+          - name: workspace
+            resource: my-repo
+        outputs:
+          - name: image
+            resource: my-image
 ```
 
-### ProvidedBy
+### From
 
-Sometimes you will have `Tasks` that need to take as input the output of a previous
-`Task`, for example, an image built by a previous `Task`.
+Sometimes you will have `Tasks` that need to take as input the output of a
+previous `Task`, for example, an image built by a previous `Task`.
 
-Express this dependency by adding `providedBy` on `Resources` that your `Tasks`
-need.
+Express this dependency by adding `from` on `Resources` that your `Tasks` need.
 
-- The (optional) `providedBy` key on an `input source` defines a set of previous
+- The (optional) `from` key on an `input source` defines a set of previous
   `PipelineTasks` (i.e. the named instance of a `Task`) in the `Pipeline`
-- When the `providedBy` key is specified on an input source, the version of
-  the resource that is provided by the defined list of tasks is used
-- The `providedBy` can support fan in and fan out
+- When the `from` key is specified on an input source, the version of the
+  resource that is from the defined list of tasks is used
+- `from` can support fan in and fan out
 - The name of the `PipelineResource` must correspond to a `PipelineResource`
-  from the `Task` that the referenced `PipelineTask` provides as an output
+  from the `Task` that the referenced `PipelineTask` gives as an output
 
 For example see this `Pipeline` spec:
 
@@ -85,21 +85,21 @@ For example see this `Pipeline` spec:
     name: build-push
   resources:
     outputs:
-    - name: image
-      resource: my-image
+      - name: image
+        resource: my-image
 - name: deploy-app
   taskRef:
     name: deploy-kubectl
   resources:
     inputs:
       - name: my-image
-        providedBy:
+        from:
           - build-app
 ```
 
-The resource `my-image` is expected to be provided to the `deploy-app` `Task` from
-the `build-app` `Task`. This means that the `PipelineResource` `my-image` must also
-be declared as an output of `build-app`.
+The resource `my-image` is expected to be given to the `deploy-app` `Task` from
+the `build-app` `Task`. This means that the `PipelineResource` `my-image` must
+also be declared as an output of `build-app`.
 
 For implementation details, see [the developer docs](docs/developers/README.md).
 
@@ -123,9 +123,14 @@ specific contract.
 #### Entrypoint
 
 When containers are run in a `Task`, the `entrypoint` of the container will be
-overwritten with a custom binary that redirects the logs to a separate location
-for aggregating the log output. As such, it is always recommended to explicitly
-specify a command.
+overwritten with a custom binary. The plan is to use this custom binary for
+controlling the execution of step containers ([#224](https://github.com/knative/build-pipeline/issues/224)) and log streaming
+[#107](https://github.com/knative/build-pipeline/issues/107), though currently
+it will write logs only to an [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
+(which cannot be read from after the pod has finished executing, so logs must be obtained
+[via k8s logs](https://kubernetes.io/docs/concepts/cluster-administration/logging/),
+using a tool such as [test/logs/README.md](../test/logs/README.md),
+or setting up an external system to consume logs).
 
 When `command` is not explicitly set, the controller will attempt to lookup the
 entrypoint from the remote registry.
@@ -184,9 +189,20 @@ configure that by edit the `image`'s value in a configmap named
 ### Resource sharing between tasks
 
 Pipeline `Tasks` are allowed to pass resources from previous `Tasks` via the
-[`providedBy`](#providedby) field. This feature is implemented using
-Persistent Volume Claims under the hood but however has an implication
-that tasks cannot have any volume mounted under path `/pvc`.
+[`from`](#from) field. This feature is implemented using the two
+following alternatives:
+
+- Persistent Volume Claims under the hood but however has an implication
+  that tasks cannot have any volume mounted under path `/pvc`.
+
+- [GCS storage bucket](https://cloud.google.com/storage/docs/json_api/v1/buckets)
+  A storage bucket can be configured using a ConfigMap named [`config-artifact-bucket`](./../config/config-artifact-bucket.yaml). 
+  with the following attributes:
+- `location`: the address of the bucket (for example gs://mybucket)
+- `bucket.service.account.secret.name`: the name of the secret that will contain the credentials for the service account
+  with access to the bucket
+- `bucket.service.account.secret.key`: the key in the secret with the required service account json
+The bucket is configured with a retention policy of 24 hours after which files will be deleted
 
 ### Outputs
 
@@ -210,8 +226,8 @@ steps:
         value: "world"
 ```
 
-**Note**: If the Task is relying on output resource functionality then they
-cannot mount anything in file path `/workspace/output`.
+**Note**: If the Task is relying on output resource functionality then the containers
+in the Task `steps` field cannot mount anything in the path `/workspace/output`.
 
 If resource is declared in both input and output then input resource, then
 destination path of input resource is used instead of
@@ -252,8 +268,8 @@ steps:
 
 Tasks can opitionally provide `targetPath` to initialize resource in specific
 directory. If `targetPath` is set then resource will be initialized under
-`/workspace/targetPath`. If `targetPath` is not specified then resource will
-be initialized under `/workspace`. Following example demonstrates how git input
+`/workspace/targetPath`. If `targetPath` is not specified then resource will be
+initialized under `/workspace`. Following example demonstrates how git input
 repository could be initialized in `$GOPATH` to run tests:
 
 ```yaml
@@ -338,7 +354,7 @@ In order to run a Pipeline, you will need to provide:
 2. The `PipelineResources` to use with this Pipeline.
 
 On its own, a `Pipeline` declares what `Tasks` to run, and dependencies between
-`Task` inputs and outputs via [`providedBy`](#providedby). When running a `Pipeline`, you
+`Task` inputs and outputs via [`from`](#from). When running a `Pipeline`, you
 will need to specify the `PipelineResources` to use with it. One `Pipeline` may
 need to be run with different `PipelineResources` in cases such as:
 
@@ -355,15 +371,15 @@ in the `PipelineRun` spec, for example:
 ```yaml
 spec:
   resources:
-  - name: source-repo
-    resourceRef:
-      name: skaffold-git
-  - name: web-image
-    resourceRef:
-      name: skaffold-image-leeroy-web
-  - name: app-image
-    resourceRef:
-      name: skaffold-image-leeroy-app
+    - name: source-repo
+      resourceRef:
+        name: skaffold-git
+    - name: web-image
+      resourceRef:
+        name: skaffold-image-leeroy-web
+    - name: app-image
+      resourceRef:
+        name: skaffold-image-leeroy-app
 ```
 
 Creation of a `PipelineRun` will trigger the creation of
@@ -406,9 +422,9 @@ secrets:
 
 ### Cancelling a PipelineRun
 
-In order to cancel a running pipeline (`PipelineRun`), you need to updated its
-spec to mark it as cancelled. Related `TaskRun` will be marked as cancelled and
-building Pods deleted.
+In order to cancel a running pipeline (`PipelineRun`), you need to update its
+spec to mark it as cancelled. Related `TaskRun` instances will be marked as
+cancelled and running Pods will be deleted.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -422,12 +438,64 @@ spec:
 
 ## Running a Task
 
-1. To run a `Task`, create a new `TaskRun` which defines all inputs, outputs
-   that the `Task` needs to run.
-2. The `TaskRun` will also serve as a record of the history of the invocations
-   of the `Task`.
-3. Another way of running a Task is embedding the TaskSpec in the taskRun yaml
-   as shown in the following example
+### TaskRun with references
+
+To run a `Task`, create a new `TaskRun` which defines all inputs, outputs that
+the `Task` needs to run. Below is an example where Task `read-task` is run by
+creating `read-repo-run`. Task `read-task` has git input resource and TaskRun
+`read-repo-run` includes reference to `go-example-git`.
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: read-repo-run
+spec:
+  taskRef:
+    name: read-task
+  trigger:
+    type: manual
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name: go-example-git
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: go-example-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/pivotal-nader-ziada/gohelloworld
+---
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Task
+metadata:
+  name: read-task
+spec:
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: readme
+      image: ubuntu
+      command:
+        - /bin/bash
+      args:
+        - "cat README.md"
+```
+
+### Taskrun with embedded definitions
+
+Another way of running a Task is embedding the TaskSpec in the taskRun yaml.
+This can be useful for "one-shot" style runs, or debugging.
+TaskRun resource can include either Task reference or TaskSpec but not both.
+Below is an example where `build-push-task-run-2` includes `TaskSpec` and no
+reference to Task.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -466,9 +534,37 @@ spec:
           - --destination=gcr.io/my-project/gohelloworld
 ```
 
-If the TaskSpec is provided, TaskRef is not allowed.
+Input and output resources can also be embedded without creating Pipeline
+Resources. TaskRun resource can include either a Pipeline Resource reference or
+a Pipeline Resource Spec but not both. Below is an example where Git Pipeline
+Resource Spec is provided as input for TaskRun `read-repo`.
 
-See [the example TaskRun](../examples/runs/task-run.yaml).
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: read-repo
+spec:
+  taskRef:
+    name: read-task
+  trigger:
+    type: manual
+  inputs:
+    resources:
+      - name: workspace
+        resourceSpec:
+          type: git
+          params:
+            - name: url
+              value: https://github.com/pivotal-nader-ziada/gohelloworld
+```
+
+**Note**: TaskRun can embed both TaskSpec and resource spec at the same time.
+See [example](../examples/run/task-run-resource-spec.yaml) TaskRun. The
+`TaskRun` will also serve as a record of the history of the invocations of the
+`Task`.
+
+For more sample taskruns check out [example folder](../examples/run/).
 
 ### Using a ServiceAccount
 
@@ -505,8 +601,8 @@ secrets:
 
 ### Cancelling a TaskRun
 
-In order to cancel a running task (`TaskRun`), you need to updated its spec to
-mark it as cancelle, building Pods deleted.
+In order to cancel a running task (`TaskRun`), you need to update its spec to
+mark it as cancelled. Running Pods will be deleted.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -521,11 +617,11 @@ spec:
 ### Using custom paths
 
 When specifying input and output `PipelineResources`, you can optionally specify
-`paths` for each resource. `paths` will be used by `TaskRun` as the resource's new source paths
-i.e., copy the resource from specified list of paths. `TaskRun` expects the
-folder and contents to be already present in specified paths. `paths` feature
-could be used to provide extra files or altered version of existing resource
-before execution of steps.
+`paths` for each resource. `paths` will be used by `TaskRun` as the resource's
+new source paths i.e., copy the resource from specified list of paths. `TaskRun`
+expects the folder and contents to be already present in specified paths.
+`paths` feature could be used to provide extra files or altered version of
+existing resource before execution of steps.
 
 Output resource includes name and reference to pipeline resource and optionally
 `paths`. `paths` will be used by `TaskRun` as the resource's new destination
@@ -873,7 +969,8 @@ Params that can be added are the following:
 
 Private buckets can also be configured as storage resources. To access GCS
 private buckets, service accounts are required with correct permissions.
-`secrets` field on storage resource is used for configuring this information.
+The `secrets` field on the storage resource is used for configuring this
+information.
 Below is an example on how to create a storage resource with service account.
 
 1. Refer to
@@ -911,6 +1008,17 @@ Below is an example on how to create a storage resource with service account.
          secretName: bucket-sa
          secretKey: service_account.json
    ```
+
+## Timing Out Pipelines and Tasks
+
+If you want to ensure that your `Pipeline` or `Task` will be stopped if it runs
+past a certain duration, you can use the `Timeout` field on either `Pipeline`
+or `Task`. In both cases, add the following to the `spec`:
+
+```yaml
+spec:
+  timeout: 5m
+```
 
 ## Troubleshooting
 
