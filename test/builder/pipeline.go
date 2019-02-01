@@ -14,10 +14,12 @@ limitations under the License.
 package builder
 
 import (
+	"time"
+
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
 )
 
 // PipelineOp is an operation which modify a Pipeline struct.
@@ -112,13 +114,6 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 			op(pTask)
 		}
 		ps.Tasks = append(ps.Tasks, *pTask)
-	}
-}
-
-// PipelineTimeout sets the timeout to the PipelineSpec.
-func PipelineTimeout(duration *metav1.Duration) PipelineSpecOp {
-	return func(ps *v1alpha1.PipelineSpec) {
-		ps.Timeout = duration
 	}
 }
 
@@ -246,6 +241,27 @@ func PipelineResourceBindingRef(name string) PipelineResourceBindingOp {
 func PipelineRunServiceAccount(sa string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
 		prs.ServiceAccount = sa
+	}
+}
+
+// PipelineRunTimeout sets the timeout to the PipelineSpec.
+func PipelineRunTimeout(duration *metav1.Duration) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.Timeout = duration
+	}
+}
+
+// PipelineRunNodeSelector sets the Node selector to the PipelineSpec.
+func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.NodeSelector = values
+	}
+}
+
+// PipelineRunAffinity sets the affinity to the PipelineSpec.
+func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.Affinity = affinity
 	}
 }
 

@@ -17,6 +17,7 @@ package v1alpha1
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
@@ -78,6 +79,23 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 				},
 			},
 			want: apis.ErrInvalidValue("badtype", "pipelinerun.spec.trigger.type"),
+		}, {
+			name: "negative pipeline timeout",
+			pr: PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: PipelineRunSpec{
+					PipelineRef: PipelineRef{
+						Name: "prname",
+					},
+					Trigger: PipelineTrigger{
+						Type: PipelineTriggerTypeManual,
+					},
+					Timeout: &metav1.Duration{Duration: -48 * time.Hour},
+				},
+			},
+			want: apis.ErrInvalidValue("-48h0m0s should be > 0", "spec.timeout"),
 		},
 	}
 

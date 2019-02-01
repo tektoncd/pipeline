@@ -580,6 +580,31 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 			**out = **in
 		}
 	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(v1.Duration)
+			**out = **in
+		}
+	}
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(core_v1.Affinity)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	return
 }
 
@@ -665,15 +690,6 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 		*out = make([]PipelineTask, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
-	if in.Timeout != nil {
-		in, out := &in.Timeout, &out.Timeout
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(v1.Duration)
-			**out = **in
 		}
 	}
 	return
@@ -1187,6 +1203,31 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
+	if in.Timeout != nil {
+		in, out := &in.Timeout, &out.Timeout
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(v1.Duration)
+			**out = **in
+		}
+	}
+	if in.NodeSelector != nil {
+		in, out := &in.NodeSelector, &out.NodeSelector
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Affinity != nil {
+		in, out := &in.Affinity, &out.Affinity
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(core_v1.Affinity)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	return
 }
 
@@ -1290,31 +1331,6 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 		*out = make([]core_v1.Volume, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
-		}
-	}
-	if in.NodeSelector != nil {
-		in, out := &in.NodeSelector, &out.NodeSelector
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.Timeout != nil {
-		in, out := &in.Timeout, &out.Timeout
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(v1.Duration)
-			**out = **in
-		}
-	}
-	if in.Affinity != nil {
-		in, out := &in.Affinity, &out.Affinity
-		if *in == nil {
-			*out = nil
-		} else {
-			*out = new(core_v1.Affinity)
-			(*in).DeepCopyInto(*out)
 		}
 	}
 	return

@@ -53,22 +53,6 @@ type TaskSpec struct {
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
-
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
-	// Time after which the build times out. Defaults to 10 minutes.
-	// Specified build timeout should be less than 24h.
-	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
-	// +optional
-	Timeout *metav1.Duration `json:"timeout,omitempty"`
-
-	// If specified, the pod's scheduling constraints
-	// +optional
-	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // Check that Task may be validated and defaulted.
@@ -148,10 +132,7 @@ type TaskList struct {
 
 func (ts *TaskSpec) GetBuildSpec() *buildv1alpha1.BuildSpec {
 	return &buildv1alpha1.BuildSpec{
-		Steps:        ts.Steps,
-		Volumes:      ts.Volumes,
-		NodeSelector: ts.NodeSelector,
-		Timeout:      ts.Timeout,
-		Affinity:     ts.Affinity,
+		Steps:   ts.Steps,
+		Volumes: ts.Volumes,
 	}
 }

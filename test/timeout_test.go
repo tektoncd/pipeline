@@ -43,17 +43,17 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 	logger.Infof("Creating Task in namespace %s", namespace)
 	task := tb.Task("banana", namespace, tb.TaskSpec(
-		tb.Step("foo", "busybox", tb.Command("sleep"), tb.Args("10"))))
+		tb.Step("foo", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 10"))))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
 	}
 
 	pipeline := tb.Pipeline("tomatoes", namespace,
-		tb.PipelineSpec(tb.PipelineTask("foo", "banana"),
-			tb.PipelineTimeout(&metav1.Duration{Duration: 5 * time.Second}),
-		),
+		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
-	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
+	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name,
+		tb.PipelineRunTimeout(&metav1.Duration{Duration: 5 * time.Second}),
+	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
@@ -62,7 +62,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 
 	logger.Infof("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
+	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
 		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
@@ -98,7 +98,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 
 	logger.Infof("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, pipelineRun.Name, pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
+	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
 		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionFalse {
@@ -112,7 +112,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		}
 		return false, nil
 	}, "PipelineRunTimedOut"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", trName, err)
+		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
 	logger.Infof("Waiting for TaskRun %s in namespace %s to be cancelled", trName, namespace)
@@ -146,7 +146,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 
 	logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", secondPipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(c, secondPipelineRun.Name, pipelineRunTimeout, PipelineRunSucceed(secondPipelineRun.Name), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(c, secondPipelineRun.Name, timeout, PipelineRunSucceed(secondPipelineRun.Name), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", secondPipelineRun.Name, err)
 	}
 }
@@ -162,11 +162,11 @@ func TestTaskRunTimeout(t *testing.T) {
 
 	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(tb.Task("giraffe", namespace,
-		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/bash"), tb.Args("-c", "sleep 300")),
-			tb.TaskTimeout(10*time.Second)))); err != nil {
+		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 300"))))); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
 	}
-	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe")))); err != nil {
+	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
+		tb.TaskRunTimeout(10*time.Second)))); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", "run-giraffe", err)
 	}
 

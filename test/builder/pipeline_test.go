@@ -36,7 +36,6 @@ func TestPipeline(t *testing.T) {
 			tb.PipelineTaskInputResource("some-repo", "my-only-git-resource", tb.From("foo")),
 			tb.PipelineTaskOutputResource("some-image", "my-only-image-resource"),
 		),
-		tb.PipelineTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
 	))
 	expectedPipeline := &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: "foo"},
@@ -67,7 +66,6 @@ func TestPipeline(t *testing.T) {
 					}},
 				},
 			}},
-			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
 		},
 	}
 	if d := cmp.Diff(expectedPipeline, pipeline); d != "" {
@@ -79,16 +77,19 @@ func TestPipelineRun(t *testing.T) {
 	startTime := time.Now()
 	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccount("sa"),
+		tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
 		Type: duckv1alpha1.ConditionSucceeded,
-	}), tb.PipelineRunStartTime(startTime)))
+	}), tb.PipelineRunStartTime(startTime),
+	))
 	expectedPipelineRun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "pear", Namespace: "foo"},
 		Spec: v1alpha1.PipelineRunSpec{
 			PipelineRef:    v1alpha1.PipelineRef{Name: "tomatoes"},
 			Trigger:        v1alpha1.PipelineTrigger{Type: v1alpha1.PipelineTriggerTypeManual},
 			ServiceAccount: "sa",
+			Timeout:        &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1alpha1.PipelineResourceBinding{{
 				Name: "some-resource",
 				ResourceRef: v1alpha1.PipelineResourceRef{
@@ -98,7 +99,7 @@ func TestPipelineRun(t *testing.T) {
 		},
 		Status: v1alpha1.PipelineRunStatus{
 			Conditions: []duckv1alpha1.Condition{{Type: duckv1alpha1.ConditionSucceeded}},
-			StartTime: &metav1.Time{Time: startTime},
+			StartTime:  &metav1.Time{Time: startTime},
 		},
 	}
 	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {

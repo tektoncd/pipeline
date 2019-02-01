@@ -125,12 +125,5 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 		return apis.ErrInvalidValue(err.Error(), "spec.tasks.resources.inputs.from")
 	}
 
-	if ps.Timeout != nil {
-		// timeout should be a valid duration of at least 0.
-		if ps.Timeout.Duration <= 0 {
-			return apis.ErrInvalidValue(fmt.Sprintf("%s should be > 0", ps.Timeout.Duration.String()), "spec.timeout")
-		}
-	}
-
 	return nil
 }
