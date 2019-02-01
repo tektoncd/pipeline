@@ -25,11 +25,8 @@ import (
 type PipelineSpec struct {
 	Resources []PipelineDeclaredResource `json:"resources"`
 	Tasks     []PipelineTask             `json:"tasks"`
-	// Time after which the Pipeline times out. Defaults to never.
-	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
-	// +optional
-	Timeout    *metav1.Duration `json:"timeout,omitempty"`
-	Generation int64            `json:"generation,omitempty"`
+
+	Generation int64 `json:"generation,omitempty"`
 }
 
 // PipelineStatus does not contain anything because Pipelines on their own

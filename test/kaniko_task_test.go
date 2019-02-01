@@ -89,7 +89,6 @@ func createSecret(c *knativetest.KubeClient, namespace string) (bool, error) {
 func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	taskSpecOps := []tb.TaskSpecOp{
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
-		tb.TaskTimeout(2 * time.Minute),
 	}
 	stepOps := []tb.ContainerOp{
 		tb.Args(
@@ -118,6 +117,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 func getTaskRun(namespace string) *v1alpha1.TaskRun {
 	return tb.TaskRun(kanikoTaskRunName, namespace, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(kanikoTaskName),
+		tb.TaskRunTimeout(2*time.Minute),
 		tb.TaskRunInputs(tb.TaskRunInputsResource("gitsource", tb.TaskResourceBindingRef(kanikoResourceName))),
 	))
 }

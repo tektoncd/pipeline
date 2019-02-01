@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
+
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -45,6 +47,13 @@ func (ps *PipelineRunSpec) Validate() *apis.FieldError {
 	if ps.Results != nil {
 		if err := ps.Results.Validate("spec.results"); err != nil {
 			return err
+		}
+	}
+
+	if ps.Timeout != nil {
+		// timeout should be a valid duration of at least 0.
+		if ps.Timeout.Duration <= 0 {
+			return apis.ErrInvalidValue(fmt.Sprintf("%s should be > 0", ps.Timeout.Duration.String()), "spec.timeout")
 		}
 	}
 

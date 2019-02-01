@@ -48,7 +48,6 @@ func TestTask(t *testing.T) {
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 		})),
-		tb.TaskTimeout(2*time.Minute),
 	))
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
@@ -73,7 +72,6 @@ func TestTask(t *testing.T) {
 					Type: v1alpha1.PipelineResourceTypeImage,
 				}},
 			},
-			Timeout: &metav1.Duration{Duration: 2 * time.Minute},
 			Volumes: []corev1.Volume{{
 				Name: "foo",
 				VolumeSource: corev1.VolumeSource{
@@ -209,6 +207,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		),
 		tb.TaskTrigger("mytrigger", v1alpha1.TaskTriggerTypeManual),
 		tb.TaskRunServiceAccount("sa"),
+		tb.TaskRunTimeout(2*time.Minute),
 	))
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -227,6 +226,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 				Type: v1alpha1.TaskTriggerTypeManual,
 			},
 			ServiceAccount: "sa",
+			Timeout:        &metav1.Duration{Duration: 2 * time.Minute},
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {

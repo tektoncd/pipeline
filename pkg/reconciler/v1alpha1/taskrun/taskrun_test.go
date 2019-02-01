@@ -65,7 +65,6 @@ var (
 
 	simpleStep  = tb.Step("simple-step", "foo", tb.Command("/mycmd"))
 	simpleTask  = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
-	timeoutTask = tb.Task("timeout-task", "foo", tb.TaskSpec(simpleStep, tb.TaskTimeout(10*time.Second)))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
 
 	outputTask = tb.Task("test-output-task", "foo", tb.TaskSpec(
@@ -830,7 +829,8 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-timeout", "foo",
 		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(timeoutTask.Name),
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunTimeout(10*time.Second),
 		),
 		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
@@ -839,7 +839,7 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{timeoutTask},
+		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
 
 	testAssets := getTaskRunController(d)

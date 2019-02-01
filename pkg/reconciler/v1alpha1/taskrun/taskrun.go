@@ -387,6 +387,9 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 			step.Command = ep
 		}
 	}
+	bSpec.Timeout = tr.Spec.Timeout
+	bSpec.Affinity = tr.Spec.Affinity
+	bSpec.NodeSelector = tr.Spec.NodeSelector
 
 	build, err := createRedirectedBuild(ctx, bSpec, tr)
 	if err != nil {
@@ -505,10 +508,8 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 		return false, nil
 	}
 
-	bs := ts.GetBuildSpec()
-
-	if bs.Timeout != nil {
-		timeout := bs.Timeout.Duration
+	if tr.Spec.Timeout != nil {
+		timeout := tr.Spec.Timeout.Duration
 		runtime := time.Since(tr.Status.StartTime.Time)
 		if runtime > timeout {
 			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
