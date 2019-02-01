@@ -101,3 +101,22 @@ an [`Input`](../docs/Concepts.md#inputs) of the `check-stuff-file-exists`
 The [run](./run/) directory contains an example
 [PipelineRun](../docs/Concepts.md#pipelinerun) that invokes this `Pipeline` in
 [`run/output-pipeline-run.yaml`](./run/output-pipeline-run.yaml).
+
+### Accessing private docker image
+
+The [run](./run/) directory contains an example
+[TaskRun](../docs/Concepts.md#taskrun) with an embedded taskSpec, that
+pull a private image from `gcr.io`, see
+[`run/private-taskrun.yaml`](./run/private-taskrun.yaml). 
+
+This *run* requires the secrets from
+[`0-secrets.yaml`](`0-secrets.yaml`) and service accounts from
+[`1-bots.yaml`](`1-bots.yaml`) to be able to pull the private
+image. 
+
+It uses `kubernetes.io/dockercfg` secret type but,
+`kubernetes.io/dockerconfigjson` and [Knative flavored
+credentials](https://github.com/knative/docs/blob/master/build/auth.md#guiding-credential-selection)
+are supported too.
+
+

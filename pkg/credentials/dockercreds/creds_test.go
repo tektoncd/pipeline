@@ -241,11 +241,20 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("ioutil.WriteFile(username) = %v", err)
 	}
 
+	bazDir := credentials.VolumeName("baz")
+	if err := os.MkdirAll(bazDir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", bazDir, err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(bazDir, corev1.DockerConfigKey), []byte(`{"https://my.registry/v1":{"auth":"fooisbaz"}}`), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	}
+
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	flags(fs)
 	err := fs.Parse([]string{
 		"-basic-docker=foo=https://us.gcr.io",
 		"-docker-config=bar",
+		"-docker-cfg=baz",
 	})
 	if err != nil {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
@@ -262,7 +271,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 	}
 
 	// Note: "auth" is base64(username + ":" + password)
-	expected := `{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"},"https://us.gcr.io":{"username":"bar","password":"baz","auth":"YmFyOmJheg==","email":"not@val.id"}}}`
+	expected := `{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"},"https://my.registry/v1":{"auth":"fooisbaz"},"https://us.gcr.io":{"username":"bar","password":"baz","auth":"YmFyOmJheg==","email":"not@val.id"}}}`
 	if string(b) != expected {
 		t.Errorf("got: %v, wanted: %v", string(b), expected)
 	}

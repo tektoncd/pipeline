@@ -35,11 +35,13 @@ const annotationPrefix = "build.knative.dev/docker-"
 
 var config basicDocker
 var dockerConfig string
+var dockerCfg string
 
 func flags(fs *flag.FlagSet) {
 	config = basicDocker{make(map[string]entry)}
 	fs.Var(&config, "basic-docker", "List of secret=url pairs.")
-	fs.StringVar(&dockerConfig, "docker-config", "", "Config.json secret file.")
+	fs.StringVar(&dockerConfig, "docker-config", "", "Docker config.json secret file.")
+	fs.StringVar(&dockerCfg, "docker-cfg", "", "Docker .dockercfg secret file.")
 }
 
 func init() {
@@ -137,6 +139,8 @@ func (*basicDockerBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 		}
 	case corev1.SecretTypeDockerConfigJson:
 		flags = append(flags, fmt.Sprintf("-docker-config=%s", secret.Name))
+	case corev1.SecretTypeDockercfg:
+		flags = append(flags, fmt.Sprintf("-docker-cfg=%s", secret.Name))
 	default:
 		return flags
 	}
@@ -152,21 +156,45 @@ func (*basicDockerBuilder) Write() error {
 	}
 
 	cf := configFile{Auth: config.Entries}
+	auth := map[string]entry{}
+	if dockerCfg != "" {
+		dockerConfigAuthMap, err := authsFromDockerCfg(dockerCfg)
+		if err != nil {
+			return err
+		}
+		for k, v := range dockerConfigAuthMap {
+			auth[k] = v
+		}
+	}
 	if dockerConfig != "" {
 		dockerConfigAuthMap, err := authsFromDockerConfig(dockerConfig)
 		if err != nil {
 			return err
 		}
-		for k, v := range config.Entries {
-			dockerConfigAuthMap[k] = v
+		for k, v := range dockerConfigAuthMap {
+			auth[k] = v
 		}
-		cf.Auth = dockerConfigAuthMap
 	}
+	for k, v := range config.Entries {
+		auth[k] = v
+	}
+	cf.Auth = auth
 	content, err := json.Marshal(cf)
 	if err != nil {
 		return err
 	}
 	return ioutil.WriteFile(basicDocker, content, 0600)
+}
+
+func authsFromDockerCfg(secret string) (map[string]entry, error) {
+	secretPath := credentials.VolumeName(secret)
+	m := make(map[string]entry)
+	data, err := ioutil.ReadFile(filepath.Join(secretPath, corev1.DockerConfigKey))
+	if err != nil {
+		return m, err
+	}
+	err = json.Unmarshal(data, &m)
+	return m, err
 }
 
 func authsFromDockerConfig(secret string) (map[string]entry, error) {
