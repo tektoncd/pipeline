@@ -206,6 +206,7 @@ function get_app_pods() {
 #             $3 - cluster region
 #             $4 - cluster zone, optional
 function acquire_cluster_admin_role() {
+  echo "Acquiring cluster-admin role for user '$1'"
   local geoflag="--region=$3"
   [[ -n $4 ]] && geoflag="--zone=$3-$4"
   # Get the password of the admin and use it, as the service account (or the user)
