@@ -1,8 +1,8 @@
-# ![pipe](./docs/images/pipe.png) Pipeline CRD
+# ![pipe](./pipe.png) Pipelines
 
 [![Go Report Card](https://goreportcard.com/badge/knative/build-pipeline)](https://goreportcard.com/report/knative/build-pipeline)
 
-The Pipeline CRD provides k8s-style resources for declaring CI/CD-style
+The Pipeline project provides k8s-style resources for declaring CI/CD-style
 pipelines.
 
 Pipelines are **Cloud Native**:
@@ -27,8 +27,7 @@ Pipelines are **Typed**:
 ## Want to start using Pipelines?
 
 - Jump in with [the tutorial!](docs/tutorial.md)
-- [Learn about the Concepts](/docs/Concepts.md)
-- [Read about how to use it](/docs/using.md)
+- [Read about it](/docs/README.md)
 - Look at [some examples](/examples)
 
 ## Want to contribute?

@@ -10,7 +10,7 @@ them by creating [`TaskRuns`](concepts.md#taskruns) and
 - [Creating a hello world `Task`](#tasks)
 - [Creating a hello world `Pipeline`](#pipelines)
 
-For more details on using `Pipelines`, see [our usage docs](usage.md).
+For more details on using `Pipelines`, see [our usage docs](docs/README.md).
 
 ## Tasks
 
@@ -119,12 +119,12 @@ In more common scenarios, a Task needs multiple steps with input and output
 resources to process. For example a Task could fetch source code from a GitHub
 repository and build a Docker image from it.
 
-[`PipelinesResources`](concepts.md#pipelineresources) are used to define the
+[`PipelinesResources`](resources.md) are used to define the
 artifacts that can be passed in and out of a task. There are a few system
 defined resource types ready to use, and the following are two examples of the
 resources commonly needed.
 
-The [`git` resource](using.md#git-resource) represents a git repository with a
+The [`git` resource](resources.md#git-resource) represents a git repository with a
 specific revision:
 
 ```yaml
@@ -141,7 +141,7 @@ spec:
       value: https://github.com/GoogleContainerTools/skaffold
 ```
 
-The [`image` resource](using.md#image-resource) represents the image to be built
+The [`image` resource](resources.md#image-resource) represents the image to be built
 by the task:
 
 ```yaml
@@ -332,7 +332,7 @@ resource definition.
 
 A [`Pipeline`](concepts.md#pipelines) defines a list of tasks to execute in
 order, while also indicating if any outputs should be used as inputs of a
-following task by using [the `from` field](using.md#from). The same templating
+following task by using [the `from` field](pipelines.md#from). The same templating
 you used in tasks is also available in pipeline.
 
 For example:
@@ -560,3 +560,10 @@ status:
 
 The status of type `Succeeded = True` shows the pipeline ran successfully, also
 the status of individual Task runs are shown.
+
+---
+
+Except as otherwise noted, the content of this page is licensed under the
+[Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
+and code samples are licensed under the
+[Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
