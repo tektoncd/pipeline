@@ -136,6 +136,42 @@ function setup_branch() {
   git fetch ${KNATIVE_UPSTREAM} ${RELEASE_BRANCH}:upstream/${RELEASE_BRANCH}
 }
 
+# Setup version, branch and release notes for a auto release.
+function prepare_auto_release() {
+  echo "Auto release requested"
+  TAG_RELEASE=1
+  PUBLISH_RELEASE=1
+
+  local tags="$(git tag | cut -d 'v' -f2 | cut -d '.' -f1-2 | sort | uniq)"
+  local branches="$( { (git branch -r | grep origin/release-) ; (git branch  | grep release-); } | cut -d '-' -f2 | sort | uniq)"
+  RELEASE_VERSION=""
+
+  [[ -n "${tags}" ]] || abort "cannot obtain release tags for the repository"
+  [[ -n "${branches}" ]] || abort "cannot obtain release branches for the repository"
+
+  for i in $branches; do
+    RELEASE_VERSION=$i
+    for j in $tags; do
+      if [[ "$i" == "$j" ]]; then
+        RELEASE_VERSION=""
+      fi
+    done
+  done
+
+  if [ -z "$RELEASE_VERSION" ]; then
+    echo "*** No new release will be generated, as no new branches exist"
+    exit  0
+  fi
+
+  RELEASE_BRANCH="release-${RELEASE_VERSION}"
+  echo "Will create release ${RELEASE_VERSION} from branch ${RELEASE_BRANCH}"
+  # If --release-notes not used, add a placeholder
+  if [[ -z "${RELEASE_NOTES}" ]]; then
+    RELEASE_NOTES="$(mktemp)"
+    echo "[add release notes here]" > ${RELEASE_NOTES}
+  fi
+}
+
 # Setup version, branch and release notes for a "dot" release.
 function prepare_dot_release() {
   echo "Dot release requested"
@@ -197,6 +233,7 @@ function parse_flags() {
   local has_gcr_flag=0
   local has_gcs_flag=0
   local is_dot_release=0
+  local is_auto_release=0
 
   cd ${REPO_ROOT_DIR}
   while [[ $# -ne 0 ]]; do
@@ -208,6 +245,7 @@ function parse_flags() {
       --publish) PUBLISH_RELEASE=1 ;;
       --nopublish) PUBLISH_RELEASE=0 ;;
       --dot-release) is_dot_release=1 ;;
+      --auto-release) is_auto_release=1 ;;
       *)
         [[ $# -ge 2 ]] || abort "missing parameter after $1"
         shift
@@ -243,6 +281,18 @@ function parse_flags() {
     esac
     shift
   done
+
+  # Do auto release unless release is forced
+  if (( is_auto_release )); then
+
+    (( is_dot_release )) && abort "cannot have both --dot-release and --auto-release set simultaneously"
+    [[ -n "${RELEASE_VERSION}" ]] &&  abort "cannot have both --version and --auto-release set simultaneously"
+    [[ -n "${RELEASE_BRANCH}" ]] &&  abort "cannot have both --branch and --auto-release set simultaneously"
+
+    setup_upstream
+    prepare_auto_release
+
+  fi
 
   # Setup dot releases
   if (( is_dot_release )); then
@@ -341,6 +391,7 @@ function main() {
   echo "New release built successfully"
   if (( PUBLISH_RELEASE )); then
     tag_images_in_yamls ${YAMLS_TO_PUBLISH}
+    publish_yamls ${YAMLS_TO_PUBLISH}
     publish_to_github ${YAMLS_TO_PUBLISH}
     echo "New release published successfully"
   fi
@@ -350,7 +401,7 @@ function main() {
 # Parameters: $1..$n - YAML files to add to the release.
 function publish_to_github() {
   (( PUBLISH_TO_GITHUB )) || return 0
-  local title="Knative $(capitalize ${REPO_NAME//-/ /}) release ${TAG}"
+  local title="Knative $(capitalize ${REPO_NAME//-/ }) release ${TAG}"
   local attachments=()
   local description="$(mktemp)"
   local attachments_dir="$(mktemp -d)"
