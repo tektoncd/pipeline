@@ -93,7 +93,7 @@ func AddOutputResources(
 
 		resource, err := getResource(boundResource, pipelineResourceLister.PipelineResources(taskRun.Namespace).Get)
 		if err != nil {
-			return fmt.Errorf("Failed to get output pipeline Resource for task %q resource %q; error: %s", taskName, boundResource, err.Error())
+			return fmt.Errorf("Failed to get output pipeline Resource for task %q resource %v; error: %s", taskName, boundResource, err.Error())
 		}
 
 		// if resource is declared in input then copy outputs to pvc
