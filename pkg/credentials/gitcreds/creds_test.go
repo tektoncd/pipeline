@@ -218,6 +218,7 @@ func TestSSHFlagHandling(t *testing.T) {
 	expectedSSHConfig := fmt.Sprintf(`Host github.com
     HostName github.com
     IdentityFile %s
+    Port 22
 `, filepath.Join(os.Getenv("HOME"), ".ssh", "id_foo"))
 	if string(b) != expectedSSHConfig {
 		t.Errorf("got: %v, wanted: %v", string(b), expectedSSHConfig)
@@ -243,7 +244,7 @@ func TestSSHFlagHandling(t *testing.T) {
 	}
 }
 
-func TestSSHFlagHandlingTwice(t *testing.T) {
+func TestSSHFlagHandlingThrice(t *testing.T) {
 	credentials.VolumePath, _ = ioutil.TempDir("", "")
 	fooDir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
@@ -265,12 +266,23 @@ func TestSSHFlagHandlingTwice(t *testing.T) {
 	if err := ioutil.WriteFile(filepath.Join(barDir, "known_hosts"), []byte("ssh-rsa bbbb"), 0777); err != nil {
 		t.Fatalf("ioutil.WriteFile(known_hosts) = %v", err)
 	}
+	bazDir := credentials.VolumeName("baz")
+	if err := os.MkdirAll(bazDir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", bazDir, err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(bazDir, corev1.SSHAuthPrivateKey), []byte("derp"), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(ssh-privatekey) = %v", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(bazDir, "known_hosts"), []byte("ssh-rsa cccc"), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(known_hosts) = %v", err)
+	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	flags(fs)
 	err := fs.Parse([]string{
 		"-ssh-git=foo=github.com",
 		"-ssh-git=bar=gitlab.com",
+		"-ssh-git=baz=gitlab.example.com:2222",
 	})
 	if err != nil {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
@@ -289,11 +301,18 @@ func TestSSHFlagHandlingTwice(t *testing.T) {
 	expectedSSHConfig := fmt.Sprintf(`Host github.com
     HostName github.com
     IdentityFile %s
+    Port 22
 Host gitlab.com
     HostName gitlab.com
     IdentityFile %s
+    Port 22
+Host gitlab.example.com
+    HostName gitlab.example.com
+    IdentityFile %s
+    Port 2222
 `, filepath.Join(os.Getenv("HOME"), ".ssh", "id_foo"),
-		filepath.Join(os.Getenv("HOME"), ".ssh", "id_bar"))
+		filepath.Join(os.Getenv("HOME"), ".ssh", "id_bar"),
+		filepath.Join(os.Getenv("HOME"), ".ssh", "id_baz"))
 	if string(b) != expectedSSHConfig {
 		t.Errorf("got: %v, wanted: %v", string(b), expectedSSHConfig)
 	}
@@ -303,7 +322,8 @@ Host gitlab.com
 		t.Fatalf("ioutil.ReadFile(.ssh/known_hosts) = %v", err)
 	}
 	expectedSSHKnownHosts := `ssh-rsa aaaa
-ssh-rsa bbbb`
+ssh-rsa bbbb
+ssh-rsa cccc`
 	if string(b) != expectedSSHKnownHosts {
 		t.Errorf("got: %v, wanted: %v", string(b), expectedSSHKnownHosts)
 	}
@@ -326,6 +346,16 @@ ssh-rsa bbbb`
 	expectedIDBar := `bleh`
 	if string(b) != expectedIDBar {
 		t.Errorf("got: %v, wanted: %v", string(b), expectedIDBar)
+	}
+
+	b, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".ssh", "id_baz"))
+	if err != nil {
+		t.Fatalf("ioutil.ReadFile(.ssh/id_baz) = %v", err)
+	}
+
+	expectedIDBaz := `derp`
+	if string(b) != expectedIDBaz {
+		t.Errorf("got: %v, wanted: %v", string(b), expectedIDBaz)
 	}
 }
 
