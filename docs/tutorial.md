@@ -10,7 +10,7 @@ them by creating [`TaskRuns`](concepts.md#taskruns) and
 - [Creating a hello world `Task`](#tasks)
 - [Creating a hello world `Pipeline`](#pipelines)
 
-For more details on using `Pipelines`, see [our usage docs](docs/README.md).
+For more details on using `Pipelines`, see [our usage docs](README.md).
 
 ## Tasks
 
