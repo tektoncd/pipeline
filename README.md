@@ -31,6 +31,9 @@ Pipelines are **Typed**:
 - [Read about how to use it](/docs/using.md)
 - Look at [some examples](/examples)
 
+_See [our API compatibility policy](api_compatibility_policy.md) for info on
+the stability level of the API._
+
 ## Want to contribute?
 
 We are so excited to have you!

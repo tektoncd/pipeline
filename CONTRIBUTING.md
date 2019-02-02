@@ -17,6 +17,7 @@ In this file you'll find info on:
   [code](#coding-standards)
 - [Finding something to work on](#finding-something-to-work-on)
 - [The roadmap](#roadmap)
+- [API compatibility policy](#api-compatibility-policy)
 - [Contacting other contributors](#contact)
 
 _See also
@@ -163,6 +164,11 @@ like to work on it** and we will consider it assigned to you.
 ## Roadmap
 
 The project's roadmap for 2019 is published [here](./roadmap-2019.md).
+
+## API compatibility policy
+
+The API compatibility policy (i.e. the policy for making backwards incompatible API changes)
+can be found [here](api_compatibility_policy.md).
 
 ## Contact
 
