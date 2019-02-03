@@ -79,17 +79,20 @@ func TestReconcile(t *testing.T) {
 				tb.PipelineRunServiceAccount("test-sa"),
 				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
 				tb.PipelineRunResourceBinding("best-image", tb.PipelineResourceBindingRef("some-image")),
+				tb.PipelineRunParam("bar", "somethingmorefun"),
 			),
 		),
 	}
 	funParam := tb.PipelineTaskParam("foo", "somethingfun")
-	moreFunParam := tb.PipelineTaskParam("bar", "somethingmorefun")
-	templatedParam := tb.PipelineTaskParam("templatedparam", "${inputs.workspace.revision}")
+	moreFunParam := tb.PipelineTaskParam("bar", "${params.bar}")
+	templatedParam := tb.PipelineTaskParam("templatedparam", "${inputs.workspace.${params.rev-param}}")
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("best-image", "image"),
+				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
+				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
 					tb.PipelineTaskInputResource("workspace", "git-repo"),

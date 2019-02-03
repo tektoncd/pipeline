@@ -191,13 +191,14 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(helmDeployPipelineName, namespace, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-repo", "git"),
+		tb.PipelineParam("chartname"),
 		tb.PipelineTask("push-image", createImageTaskName,
 			tb.PipelineTaskInputResource("gitsource", "git-repo"),
 		),
 		tb.PipelineTask("helm-deploy", helmDeployTaskName,
 			tb.PipelineTaskInputResource("gitsource", "git-repo"),
 			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
-			tb.PipelineTaskParam("chartname", "gohelloworld"),
+			tb.PipelineTaskParam("chartname", "${params.chartname}"),
 			tb.PipelineTaskParam("image", imageName),
 		),
 	))
@@ -206,6 +207,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	return tb.PipelineRun(helmDeployPipelineRunName, namespace, tb.PipelineRunSpec(
 		helmDeployPipelineName,
+		tb.PipelineRunParam("chartname", "gohelloworld"),
 		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef(sourceResourceName)),
 	))
 }

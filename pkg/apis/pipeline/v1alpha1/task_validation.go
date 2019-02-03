@@ -18,16 +18,14 @@ package v1alpha1
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/templating"
 	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
-
-const substitution = "[_a-zA-Z][_a-zA-Z0-9.-]*"
 
 func (t *Task) Validate() *apis.FieldError {
 	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
@@ -117,38 +115,38 @@ func validateResourceVariables(steps []corev1.Container, inputs *Inputs, outputs
 
 func validateVariables(steps []corev1.Container, prefix string, vars map[string]struct{}) *apis.FieldError {
 	for _, step := range steps {
-		if err := validateVariable("name", step.Name, prefix, vars); err != nil {
+		if err := validateTaskVariable("name", step.Name, prefix, vars); err != nil {
 			return err
 		}
-		if err := validateVariable("image", step.Image, prefix, vars); err != nil {
+		if err := validateTaskVariable("image", step.Image, prefix, vars); err != nil {
 			return err
 		}
-		if err := validateVariable("workingDir", step.WorkingDir, prefix, vars); err != nil {
+		if err := validateTaskVariable("workingDir", step.WorkingDir, prefix, vars); err != nil {
 			return err
 		}
 		for i, cmd := range step.Command {
-			if err := validateVariable(fmt.Sprintf("command[%d]", i), cmd, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("command[%d]", i), cmd, prefix, vars); err != nil {
 				return err
 			}
 		}
 		for i, arg := range step.Args {
-			if err := validateVariable(fmt.Sprintf("arg[%d]", i), arg, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("arg[%d]", i), arg, prefix, vars); err != nil {
 				return err
 			}
 		}
 		for _, env := range step.Env {
-			if err := validateVariable(fmt.Sprintf("env[%s]", env.Name), env.Value, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("env[%s]", env.Name), env.Value, prefix, vars); err != nil {
 				return err
 			}
 		}
 		for i, v := range step.VolumeMounts {
-			if err := validateVariable(fmt.Sprintf("volumeMount[%d].Name", i), v.Name, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].Name", i), v.Name, prefix, vars); err != nil {
 				return err
 			}
-			if err := validateVariable(fmt.Sprintf("volumeMount[%d].MountPath", i), v.MountPath, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].MountPath", i), v.MountPath, prefix, vars); err != nil {
 				return err
 			}
-			if err := validateVariable(fmt.Sprintf("volumeMount[%d].SubPath", i), v.SubPath, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].SubPath", i), v.SubPath, prefix, vars); err != nil {
 				return err
 			}
 		}
@@ -156,44 +154,8 @@ func validateVariables(steps []corev1.Container, prefix string, vars map[string]
 	return nil
 }
 
-func validateVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, prefix); present {
-		for _, v := range vs {
-			if _, ok := vars[v]; !ok {
-				return &apis.FieldError{
-					Message: fmt.Sprintf("non-existent variable in %q for step %s", value, name),
-					Paths:   []string{"taskspec.steps." + name},
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func extractVariablesFromString(s, prefix string) ([]string, bool) {
-	pattern := fmt.Sprintf("\\$({(?:inputs|outputs).%s.(?P<var>%s)})", prefix, substitution)
-	re := regexp.MustCompile(pattern)
-	matches := re.FindAllStringSubmatch(s, -1)
-	if len(matches) == 0 {
-		return []string{}, false
-	}
-	vars := make([]string, len(matches))
-	for i, match := range matches {
-		groups := matchGroups(match, re)
-		// foo -> foo
-		// foo.bar -> foo
-		// foo.bar.baz -> foo
-		vars[i] = strings.SplitN(groups["var"], ".", 2)[0]
-	}
-	return vars, true
-}
-
-func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
-	groups := make(map[string]string)
-	for i, name := range pattern.SubexpNames()[1:] {
-		groups[name] = matches[i+1]
-	}
-	return groups
+func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
+	return templating.ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {

@@ -46,6 +46,8 @@ type PipelineRunSpec struct {
 	// PipelineResources to use for the resources the Pipeline has declared
 	// it needs.
 	Resources []PipelineResourceBinding `json:"resources"`
+	// Params is a list of parameter names and values.
+	Params []Param `json:"params"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional

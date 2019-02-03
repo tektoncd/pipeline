@@ -207,6 +207,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
+	p = p.DeepCopy()
+
 	providedResources, err := resources.GetResourcesFromBindings(p, pr)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
@@ -219,6 +221,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		})
 		return nil
 	}
+
+	// Apply parameter templating from the PipelineRun
+	p = resources.ApplyParameters(p, pr)
 
 	pipelineState, err := resources.ResolvePipelineRun(
 		pr.Name,

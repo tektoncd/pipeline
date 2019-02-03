@@ -28,6 +28,7 @@ func TestPipeline(t *testing.T) {
 	pipeline := tb.Pipeline("tomatoes", "foo", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
 		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
+		tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value"), tb.PipelineParamDescription("default description")),
 		tb.PipelineTask("foo", "banana",
 			tb.PipelineTaskParam("name", "value"),
 		),
@@ -46,6 +47,11 @@ func TestPipeline(t *testing.T) {
 			}, {
 				Name: "my-only-image-resource",
 				Type: "image",
+			}},
+			Params: []v1alpha1.PipelineParam{{
+				Name:        "first-param",
+				Default:     "default-value",
+				Description: "default description",
 			}},
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "foo",
@@ -77,6 +83,7 @@ func TestPipelineRun(t *testing.T) {
 	startTime := time.Now()
 	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccount("sa"),
+		tb.PipelineRunParam("first-param", "first-value"),
 		tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
@@ -89,7 +96,11 @@ func TestPipelineRun(t *testing.T) {
 			PipelineRef:    v1alpha1.PipelineRef{Name: "tomatoes"},
 			Trigger:        v1alpha1.PipelineTrigger{Type: v1alpha1.PipelineTriggerTypeManual},
 			ServiceAccount: "sa",
-			Timeout:        &metav1.Duration{Duration: 1 * time.Hour},
+			Params: []v1alpha1.Param{{
+				Name:  "first-param",
+				Value: "first-value",
+			}},
+			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1alpha1.PipelineResourceBinding{{
 				Name: "some-resource",
 				ResourceRef: v1alpha1.PipelineResourceRef{
