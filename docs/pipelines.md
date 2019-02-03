@@ -28,7 +28,6 @@ following fields:
 - Optional:
   - [`resources`](#declared-resources) - Specifies which [`PipelineResources`](resources.md)
     of which types the `Pipeline` will be using in its [Tasks](#pipeline-tasks)
-  - `timeout` - Specifies timeout after which the `Pipeline` will fail.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields

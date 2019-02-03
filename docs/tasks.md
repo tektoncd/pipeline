@@ -70,11 +70,6 @@ following fields:
   - [`outputs`](#outputs) - Specifies [`PipelineResources`](resources.md) needed by your `Task`
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your build.
-  - `timeout` - Specifies timeout after which the `Task` will fail.
-  - [`nodeSelector`] - a selector which must be true for the pod to fit on a node.
-     The selector which must match a node's labels for the pod to be scheduled on that node.
-     More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-  - [`affinity`] - the pod's scheduling constraints. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields

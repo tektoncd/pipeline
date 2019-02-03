@@ -1009,7 +1009,7 @@ Below is an example on how to create a storage resource with service account.
          secretKey: service_account.json
    ```
 
-## Timing Out Pipelines and Tasks
+## Timing Out PipelinesRun and TasksRuns
 
 If you want to ensure that your `PipelineRun` or `TaskRun` will be stopped if it runs
 past a certain duration, you can use the `Timeout` field on either `PipelineRun`
