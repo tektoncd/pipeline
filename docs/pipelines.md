@@ -6,6 +6,7 @@ This document defines `Pipelines` and their capabilities.
 
 - [Syntax](#syntax)
   - [Declared resources](#declared-resources)
+  - [Parameters](#parameters)
   - [Pipeline Tasks](#pipeline-tasks)
     - [From](#from)
 - [Examples](#examples)
@@ -51,6 +52,68 @@ spec:
       type: git
     - name: my-image
       type: image
+```
+
+### Parameters
+
+`Pipeline`s can declare input parameters that must be supplied to the `Pipeline`
+during a `PipelineRun`. Pipeline parameters can be used to replace template 
+values in [`PipelineTask` parameters' values](#pipeline-tasks).
+
+Parameters name are limited to alpha-numeric characters, `-` and `_`
+and can only start with alpha characters and `_`. For example,
+`fooIs-Bar_` is a valid parameter name, `barIsBa$` or `0banana` are
+not.
+
+#### Usage
+
+The following example shows how `Pipeline`s can be parameterized, and these 
+parameters can be passed to the `Pipeline` from a `PipelineRun`.
+
+Input parameters in the form of `${params.foo}` are replaced inside of
+the [`PipelineTask` parameters' values](#pipeline-tasks) 
+(see also [templating](tasks.md#templating)).
+
+The following `Pipeline` declares an input parameter called 'context', and uses
+it in the `PipelineTask`'s parameter. The `description` and `default` fields
+for a parameter are optional, and if the `default` field is specified and this
+`Pipeline` is used by a `PipelineRun` without specifying a value for 'context',
+the `default` value will be used.
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: pipeline-with-parameters
+spec:
+  params:
+    - name: context
+      description: Path to context
+      default: /some/where/or/other
+  tasks:
+    - name: build-skaffold-web
+      taskRef:
+        name: build-push
+      params:
+      - name: pathToDockerFile
+        value: Dockerfile
+      - name: pathToContext
+        value: "${params.context}"
+```
+
+The following `PipelineRun` supplies a value for `context`:
+
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-with-parameters
+spec:
+  pipelineRef:
+    name: pipeline-with-parameters
+  params:
+    - name: "context"
+      value: "/workspace/examples/microservices/leeroy-web"
 ```
 
 ### Pipeline Tasks

@@ -100,6 +100,19 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
 			)),
 		},
+		{
+			name: "not defined parameter variable",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskParam("a-param", "${params.does-not-exist}")))),
+		},
+		{
+			name: "not defined parameter variable with defined",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineParam("foo", tb.PipelineParamDefault("something")),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskParam("a-param", "${params.foo} and ${params.does-not-exist}")))),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -142,6 +155,23 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 					tb.PipelineTaskOutputResource("some-image", "wonderful-resource")),
 				tb.PipelineTask("foo", "foo-task",
 					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
+			)),
+		},
+		{
+			name: "valid parameter variables",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineParam("baz"),
+				tb.PipelineParam("foo-is-baz"),
+				tb.PipelineTask("bar", "bar-task",
+					tb.PipelineTaskParam("a-param", "${baz} and ${foo-is-baz}")),
+			)),
+		},
+		{
+			name: "pipeline parameter nested in task parameter",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineParam("baz"),
+				tb.PipelineTask("bar", "bar-task",
+					tb.PipelineTaskParam("a-param", "${input.workspace.${baz}}")),
 			)),
 		},
 	}

@@ -18,8 +18,8 @@ package v1alpha1
 
 import (
 	"fmt"
-
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/templating"
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -125,5 +125,33 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 		return apis.ErrInvalidValue(err.Error(), "spec.tasks.resources.inputs.from")
 	}
 
+	// The parameter variables should be valid
+	if err := validatePipelineParameterVariables(ps.Tasks, ps.Params); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func validatePipelineParameterVariables(tasks []PipelineTask, params []PipelineParam) *apis.FieldError {
+	parameterNames := map[string]struct{}{}
+	for _, p := range params {
+		parameterNames[p.Name] = struct{}{}
+	}
+	return validatePipelineVariables(tasks, "params", parameterNames)
+}
+
+func validatePipelineVariables(tasks []PipelineTask, prefix string, vars map[string]struct{}) *apis.FieldError {
+	for _, task := range tasks {
+		for _, param := range task.Params {
+			if err := validatePipelineVariable(fmt.Sprintf("param[%s]", param.Name), param.Value, prefix, vars); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validatePipelineVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
+	return templating.ValidateVariable(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
 }

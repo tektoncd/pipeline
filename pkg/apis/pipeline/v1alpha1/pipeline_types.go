@@ -23,10 +23,10 @@ import (
 
 // PipelineSpec defines the desired state of PipeLine.
 type PipelineSpec struct {
-	Resources []PipelineDeclaredResource `json:"resources"`
-	Tasks     []PipelineTask             `json:"tasks"`
-
-	Generation int64 `json:"generation,omitempty"`
+	Resources  []PipelineDeclaredResource `json:"resources"`
+	Tasks      []PipelineTask             `json:"tasks"`
+	Params     []PipelineParam            `json:"params"`
+	Generation int64                      `json:"generation,omitempty"`
 }
 
 // PipelineStatus does not contain anything because Pipelines on their own
@@ -83,6 +83,16 @@ type PipelineTask struct {
 type PipelineTaskParam struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+// PipelineParam defines arbitrary parameters needed by a pipeline beyond typed inputs
+// such as resources.
+type PipelineParam struct {
+	Name string `json:"name"`
+	// +optional
+	Description string `json:"description,omitempty"`
+	// +optional
+	Default string `json:"default,omitempty"`
 }
 
 // PipelineDeclaredResource is used by a Pipeline to declare the types of the
