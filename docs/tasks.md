@@ -151,6 +151,11 @@ TaskRun. Some example use-cases of this include:
 - A Task that supports several different strategies, and leaves the choice up to
   the other.
 
+Parameters name are limited to alpha-numeric characters, `-` and `_`
+and can only start with alpha characters and `_`. For example,
+`fooIs-Bar_` is a valid parameter name, `barIsBa$` or `0banana` are
+not.
+
 ##### Usage
 
 The following example shows how Tasks can be parameterized, and these parameters

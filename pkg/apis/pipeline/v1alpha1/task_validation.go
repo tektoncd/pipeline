@@ -27,6 +27,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
+const substitution = "[_a-zA-Z][_a-zA-Z0-9.-]*"
+
 func (t *Task) Validate() *apis.FieldError {
 	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
@@ -155,29 +157,43 @@ func validateVariables(steps []corev1.Container, prefix string, vars map[string]
 }
 
 func validateVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	if v, present := extractVariable(value, prefix); present {
-		if _, ok := vars[v]; !ok {
-			return &apis.FieldError{
-				Message: fmt.Sprintf("non-existent variable in %q for step %s", value, name),
-				Paths:   []string{"taskspec.steps." + name},
+	if vs, present := extractVariablesFromString(value, prefix); present {
+		for _, v := range vs {
+			if _, ok := vars[v]; !ok {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("non-existent variable in %q for step %s", value, name),
+					Paths:   []string{"taskspec.steps." + name},
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func extractVariable(s, prefix string) (string, bool) {
-	re := regexp.MustCompile("\\${(?:inputs|outputs)\\." + prefix + "\\.(.*)}")
-	if re.MatchString(s) {
-		// ${inputs.resources.foo} with prefix=resources -> [${inputs.resources.foo foo}]
-		// ${inputs.resources.foo.bar} with prefix=resources -> [${inputs.resources.foo foo.bar}]
-		v := re.FindStringSubmatch(s)[1]
+func extractVariablesFromString(s, prefix string) ([]string, bool) {
+	pattern := fmt.Sprintf("\\$({(?:inputs|outputs).%s.(?P<var>%s)})", prefix, substitution)
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(s, -1)
+	if len(matches) == 0 {
+		return []string{}, false
+	}
+	vars := make([]string, len(matches))
+	for i, match := range matches {
+		groups := matchGroups(match, re)
 		// foo -> foo
 		// foo.bar -> foo
 		// foo.bar.baz -> foo
-		return strings.SplitN(v, ".", 2)[0], true
+		vars[i] = strings.SplitN(groups["var"], ".", 2)[0]
 	}
-	return "", false
+	return vars, true
+}
+
+func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
+	groups := make(map[string]string)
+	for i, name := range pattern.SubexpNames()[1:] {
+		groups[name] = matches[i+1]
+	}
+	return groups
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {
