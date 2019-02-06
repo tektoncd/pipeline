@@ -10,16 +10,16 @@ To deploy them to your cluster (after
 kubectl apply -f examples/
 
 # To invoke the build-push Task only
-kubectl apply -f examples/run/task-run.yaml
+kubectl apply -f examples/run/taskrun.yaml
 
 # To invoke the simple Pipeline
-kubectl apply -f examples/run/pipeline-run.yaml
+kubectl apply -f examples/run/pipelinerun.yaml
 
 # To invoke the Pipeline that links outputs
-kubectl apply -f examples/run/output-pipeline-run.yaml
+kubectl apply -f examples/run/output-pipelinerun.yaml
 
 # To invoke the TaskRun with embedded Resource spec and task Spec
-kubectl apply -f examples/run/task-run-resource-spec.yaml
+kubectl apply -f examples/run/resource-spec-taskrun.yaml
 ```
 
 ## Example Pipelines
