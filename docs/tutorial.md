@@ -8,7 +8,7 @@ them by creating [`TaskRuns`](taskruns.md) and
 [`PipelineRuns`](pipelineruns.md).
 
 - [Creating a hello world `Task`](#tasks)
-- [Creating a hello world `Pipeline`](#pipelines)
+- [Creating a hello world `Pipeline`](#pipeline)
 
 For more details on using `Pipelines`, see [our usage docs](README.md).
 
