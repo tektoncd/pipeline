@@ -66,7 +66,7 @@ func AddInputResource(
 	if prNameFromLabel == "" {
 		prNameFromLabel = pvcName
 	}
-	as, err := artifacts.GetArtifactStorage(prNameFromLabel, kubeclient)
+	as, err := artifacts.GetArtifactStorage(prNameFromLabel, kubeclient, logger)
 	if err != nil {
 		return nil, err
 	}

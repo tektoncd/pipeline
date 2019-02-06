@@ -67,7 +67,7 @@ func AddOutputResources(
 	}
 
 	pvcName := taskRun.GetPipelineRunPVCName()
-	as, err := artifacts.GetArtifactStorage(pvcName, kubeclient)
+	as, err := artifacts.GetArtifactStorage(pvcName, kubeclient, logger)
 	if err != nil {
 		return err
 	}
