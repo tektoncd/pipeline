@@ -237,6 +237,47 @@ func Test_Valid_OutputResources(t *testing.T) {
 		}},
 		build: build(),
 	}, {
+		name: "image resource in output with pipelinerun with owner",
+		desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image",
+						},
+						Paths: []string{"pipeline-task-name"},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "image",
+					}},
+				},
+			},
+		},
+		wantSteps:   nil,
+		wantVolumes: nil,
+		build:       build(),
+	}, {
 		name: "git resource in output",
 		desc: "git resource declared in output without pipelinerun owner reference",
 		taskRun: &v1alpha1.TaskRun{
@@ -279,7 +320,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 				OwnerReferences: []metav1.OwnerReference{{
 					Kind: "PipelineRun",
-					Name: "pipelinerun",
+					Name: "pipelinerun-parent",
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
@@ -329,9 +370,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-source-gcs-sname",
 				MountPath: "/var/secret/sname",
-			}, {
-				Name:      "workspace",
-				MountPath: "/workspace",
 			}},
 			Args: []string{"-args", "cp -r /workspace/faraway-disk/* gs://some-bucket"},
 			Env: []corev1.EnvVar{{
@@ -341,12 +379,12 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Name:         "source-mkdir-source-gcs",
 			Image:        "override-with-bash-noop:latest",
 			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
+			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 		}, {
 			Name:         "source-copy-source-gcs",
 			Image:        "override-with-bash-noop:latest",
 			Args:         []string{"-args", "cp -r /workspace/faraway-disk/. pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
+			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 		}},
 		build: build(),
 		wantVolumes: []corev1.Volume{{
@@ -398,8 +436,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-			}, {
-				Name: "workspace", MountPath: "/workspace",
 			}},
 			Env: []corev1.EnvVar{{
 				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
@@ -462,8 +498,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-			}, {
-				Name: "workspace", MountPath: "/workspace",
 			}},
 			Env: []corev1.EnvVar{{
 				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
@@ -515,8 +549,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-			}, {
-				Name: "workspace", MountPath: "/workspace",
 			}},
 			Env: []corev1.EnvVar{{
 				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
@@ -569,6 +601,40 @@ func Test_Valid_OutputResources(t *testing.T) {
 					Kind: "PipelineRun",
 					Name: "pipelinerun",
 				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image",
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "image",
+					}},
+				},
+			},
+		},
+		wantSteps: nil,
+		build:     build(),
+	}, {
+		desc: "image output resource with no steps",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
@@ -1034,33 +1100,7 @@ func Test_InValid_OutputResources(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			err := AddOutputResources(fakekubeclient, build(), c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
-				t.Fatalf("Test AddOutputResourceSteps %v ; error: %s", c.desc, err)
-			}
-		})
-	}
-}
-
-func Test_AllowedOutputResource(t *testing.T) {
-	for _, c := range []struct {
-		desc            string
-		resourceType    v1alpha1.PipelineResourceType
-		expectedAllowed bool
-	}{{
-		desc:            "storage type is allowed",
-		resourceType:    v1alpha1.PipelineResourceTypeStorage,
-		expectedAllowed: true,
-	}, {
-		desc:            "git type is allowed",
-		resourceType:    v1alpha1.PipelineResourceTypeGit,
-		expectedAllowed: true,
-	}, {
-		desc:            "anything else is not allowed",
-		resourceType:    "fooType",
-		expectedAllowed: false,
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			if c.expectedAllowed != allowedOutputResources[c.resourceType] {
-				t.Fatalf("Test allowedOutputResource %s expected %t but got %t", c.desc, c.expectedAllowed, allowedOutputResources[c.resourceType])
+				t.Fatalf("Test AddOutputResourceSteps %v : error%v", c.desc, err)
 			}
 		})
 	}

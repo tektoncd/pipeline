@@ -182,3 +182,5 @@ If you need to add a new CRD type, you will need to add:
 1. A yaml definition in [config/](./config)
 1. Add the type to the cluster roles in
    [200-clusterrole.yaml](./config/200-clusterrole.yaml)
+
+_See [the API compatibility policy](api_compatibility_policy.md)._

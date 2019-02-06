@@ -54,7 +54,11 @@ var (
 		Name:      toolsMountName,
 		MountPath: "/tools",
 	}
-
+	workspaceDir                = "/workspace"
+	implicitBuilderVolumeMounts = corev1.VolumeMount{
+		Name:      "home",
+		MountPath: "/builder/home",
+	}
 	entrypointCopyStep = tb.BuildStep("place-tools", config.DefaultEntrypointImage,
 		tb.Command("/bin/cp"),
 		tb.Args("/entrypoint", entrypointLocation),
@@ -65,7 +69,6 @@ var (
 
 	simpleStep  = tb.Step("simple-step", "foo", tb.Command("/mycmd"))
 	simpleTask  = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
-	timeoutTask = tb.Task("timeout-task", "foo", tb.TaskSpec(simpleStep, tb.TaskTimeout(10*time.Second)))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
 
 	outputTask = tb.Task("test-output-task", "foo", tb.TaskSpec(
@@ -263,7 +266,14 @@ func TestReconcile(t *testing.T) {
 		name:    "params",
 		taskRun: taskRunTemplating,
 		wantBuildSpec: tb.BuildSpec(
-			tb.BuildSource("workspace", tb.BuildSourceGit("https://foo.git", "master")),
+			tb.BuildStep("git-source-git-resource", "override-with-git:latest",
+				tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
+				tb.VolumeMount(corev1.VolumeMount{
+					Name:      "workspace",
+					MountPath: workspaceDir,
+				}),
+				tb.VolumeMount(implicitBuilderVolumeMounts),
+			),
 			entrypointCopyStep,
 			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
 				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo","--my-arg-with-default=bar","--my-arg-with-default2=thedefault","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
@@ -279,9 +289,15 @@ func TestReconcile(t *testing.T) {
 		name:    "wrap-steps",
 		taskRun: taskRunInputOutput,
 		wantBuildSpec: tb.BuildSpec(
+			tb.BuildStep("create-dir-another-git-resource", "override-with-bash-noop:latest",
+				tb.Args("-args", "mkdir -p /workspace/another-git-resource"),
+			),
 			tb.BuildStep("source-copy-another-git-resource-0", "override-with-bash-noop:latest",
 				tb.Args("-args", "cp -r source-folder/. /workspace/another-git-resource"),
 				tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
+			),
+			tb.BuildStep("create-dir-git-resource", "override-with-bash-noop:latest",
+				tb.Args("-args", "mkdir -p /workspace/git-resource"),
 			),
 			tb.BuildStep("source-copy-git-resource-0", "override-with-bash-noop:latest",
 				tb.Args("-args", "cp -r source-folder/. /workspace/git-resource"),
@@ -306,7 +322,14 @@ func TestReconcile(t *testing.T) {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
 		wantBuildSpec: tb.BuildSpec(
-			tb.BuildSource("workspace", tb.BuildSourceGit("https://foo.git", "master")),
+			tb.BuildStep("git-source-git-resource", "override-with-git:latest",
+				tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
+				tb.VolumeMount(corev1.VolumeMount{
+					Name:      "workspace",
+					MountPath: workspaceDir,
+				}),
+				tb.VolumeMount(implicitBuilderVolumeMounts),
+			),
 			entrypointCopyStep,
 			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
 				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
@@ -324,10 +347,17 @@ func TestReconcile(t *testing.T) {
 			tb.BuildVolume(getToolsVolume(taskRunWithClusterTask.Name)),
 		),
 	}, {
-		name:    "taskrun-with-resource-spec",
+		name:    "taskrun-with-resource-spec-task-spec",
 		taskRun: taskRunWithResourceSpecAndTaskSpec,
 		wantBuildSpec: tb.BuildSpec(
-			tb.BuildSource("workspace", tb.BuildSourceGit("github.com/build-pipeline.git", "rel-can")),
+			tb.BuildStep("git-source-workspace", "override-with-git:latest",
+				tb.Args("-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path", "/workspace/workspace"),
+				tb.VolumeMount(corev1.VolumeMount{
+					Name:      "workspace",
+					MountPath: workspaceDir,
+				}),
+				tb.VolumeMount(implicitBuilderVolumeMounts),
+			),
 			entrypointCopyStep,
 			tb.BuildStep("mystep", "ubuntu", tb.Command(entrypointLocation),
 				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
@@ -830,7 +860,8 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-timeout", "foo",
 		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(timeoutTask.Name),
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunTimeout(10*time.Second),
 		),
 		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
@@ -839,7 +870,7 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{taskRun},
-		Tasks:    []*v1alpha1.Task{timeoutTask},
+		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
 
 	testAssets := getTaskRunController(d)

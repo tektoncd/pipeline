@@ -1009,11 +1009,11 @@ Below is an example on how to create a storage resource with service account.
          secretKey: service_account.json
    ```
 
-## Timing Out Pipelines and Tasks
+## Timing Out PipelinesRun and TasksRuns
 
-If you want to ensure that your `Pipeline` or `Task` will be stopped if it runs
-past a certain duration, you can use the `Timeout` field on either `Pipeline`
-or `Task`. In both cases, add the following to the `spec`:
+If you want to ensure that your `PipelineRun` or `TaskRun` will be stopped if it runs
+past a certain duration, you can use the `Timeout` field on either `PipelineRun`
+or `TaskRun`. In both cases, add the following to the `spec`:
 
 ```yaml
 spec:

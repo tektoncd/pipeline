@@ -79,17 +79,20 @@ func TestReconcile(t *testing.T) {
 				tb.PipelineRunServiceAccount("test-sa"),
 				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
 				tb.PipelineRunResourceBinding("best-image", tb.PipelineResourceBindingRef("some-image")),
+				tb.PipelineRunParam("bar", "somethingmorefun"),
 			),
 		),
 	}
 	funParam := tb.PipelineTaskParam("foo", "somethingfun")
-	moreFunParam := tb.PipelineTaskParam("bar", "somethingmorefun")
-	templatedParam := tb.PipelineTaskParam("templatedparam", "${inputs.workspace.revision}")
+	moreFunParam := tb.PipelineTaskParam("bar", "${params.bar}")
+	templatedParam := tb.PipelineTaskParam("templatedparam", "${inputs.workspace.${params.rev-param}}")
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("best-image", "image"),
+				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
+				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
@@ -188,15 +191,8 @@ func TestReconcile(t *testing.T) {
 		),
 		tb.TaskRunLabel("pipeline.knative.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("pipeline.knative.dev/pipelineRun", "test-pipeline-run-success"),
-		tb.TaskRunSpec(tb.TaskRunTaskSpec(
-			tb.TaskInputs(
-				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParam("foo"), tb.InputsParam("bar"), tb.InputsParam("templatedparam"),
-			),
-			tb.TaskOutputs(
-				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
-				tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-			)),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("unit-test-task"),
 			tb.TaskRunServiceAccount("test-sa"),
 			tb.TaskRunInputs(
 				tb.TaskRunInputsParam("foo", "somethingfun"),
@@ -539,11 +535,11 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 func TestReconcileWithTimeout(t *testing.T) {
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hello-world"),
-		tb.PipelineTimeout(&metav1.Duration{Duration: 12 * time.Hour}),
 	))}
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-timeout", "foo",
 		tb.PipelineRunSpec("test-pipeline",
 			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunTimeout(&metav1.Duration{Duration: 12 * time.Hour}),
 		),
 		tb.PipelineRunStatus(
 			tb.PipelineRunStartTime(time.Now().AddDate(0, 0, -1))),
@@ -585,13 +581,8 @@ func TestReconcileWithTimeout(t *testing.T) {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
 
-	// There should be a time out for the TaskRun
-	if actual.Spec.TaskSpec.Timeout == nil {
-		t.Fatalf("TaskSpec.Timeout shouldn't be nil")
-	}
-
 	// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
-	if actual.Spec.TaskSpec.Timeout.Duration > ps[0].Spec.Timeout.Duration {
-		t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.TaskSpec.Timeout.Duration.String(), ps[0].Spec.Timeout.Duration.String())
+	if actual.Spec.Timeout.Duration > prs[0].Spec.Timeout.Duration {
+		t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.Timeout.Duration.String(), prs[0].Spec.Timeout.Duration.String())
 	}
 }

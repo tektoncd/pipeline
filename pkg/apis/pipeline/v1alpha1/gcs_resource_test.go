@@ -220,19 +220,20 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 				SecretKey:  "key.json",
 			}},
 		},
-		wantContainers: []corev1.Container{{
-			Name:  "storage-fetch-gcs-valid",
-			Image: "override-with-gsutil-image:latest",
-			Args:  []string{"-args", "cp -r gs://some-bucket/** /workspace"},
-			Env: []corev1.EnvVar{{
-				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-				Value: "/var/secret/secretName/key.json",
+		wantContainers: []corev1.Container{
+			CreateDirContainer("gcs-valid", "/workspace"), {
+				Name:  "storage-fetch-gcs-valid",
+				Image: "override-with-gsutil-image:latest",
+				Args:  []string{"-args", "cp -r gs://some-bucket/** /workspace"},
+				Env: []corev1.EnvVar{{
+					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+					Value: "/var/secret/secretName/key.json",
+				}},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-gcs-valid-secretName",
+					MountPath: "/var/secret/secretName",
+				}},
 			}},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "volume-gcs-valid-secretName",
-				MountPath: "/var/secret/secretName",
-			}},
-		}},
 	}, {
 		name: "duplicate secret mount paths",
 		gcsResource: &GCSResource{
@@ -249,19 +250,20 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
-		wantContainers: []corev1.Container{{
-			Name:  "storage-fetch-gcs-valid",
-			Image: "override-with-gsutil-image:latest",
-			Args:  []string{"-args", "cp gs://some-bucket /workspace"},
-			Env: []corev1.EnvVar{{
-				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-				Value: "/var/secret/secretName/key.json",
+		wantContainers: []corev1.Container{
+			CreateDirContainer("gcs-valid", "/workspace"), {
+				Name:  "storage-fetch-gcs-valid",
+				Image: "override-with-gsutil-image:latest",
+				Args:  []string{"-args", "cp gs://some-bucket /workspace"},
+				Env: []corev1.EnvVar{{
+					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+					Value: "/var/secret/secretName/key.json",
+				}},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-gcs-valid-secretName",
+					MountPath: "/var/secret/secretName",
+				}},
 			}},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "volume-gcs-valid-secretName",
-				MountPath: "/var/secret/secretName",
-			}},
-		}},
 	}, {
 		name: "invalid no destination directory set",
 		gcsResource: &GCSResource{

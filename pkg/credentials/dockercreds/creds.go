@@ -33,11 +33,15 @@ import (
 
 const annotationPrefix = "build.knative.dev/docker-"
 
-var config dockerConfig
+var config basicDocker
+var dockerConfig string
+var dockerCfg string
 
 func flags(fs *flag.FlagSet) {
-	config = dockerConfig{make(map[string]entry)}
+	config = basicDocker{make(map[string]entry)}
 	fs.Var(&config, "basic-docker", "List of secret=url pairs.")
+	fs.StringVar(&dockerConfig, "docker-config", "", "Docker config.json secret file.")
+	fs.StringVar(&dockerCfg, "docker-cfg", "", "Docker .dockercfg secret file.")
 }
 
 func init() {
@@ -45,12 +49,12 @@ func init() {
 }
 
 // As the flag is read, this status is populated.
-// dockerConfig implements flag.Value
-type dockerConfig struct {
+// basicDocker implements flag.Value
+type basicDocker struct {
 	Entries map[string]entry `json:"auths"`
 }
 
-func (dc *dockerConfig) String() string {
+func (dc *basicDocker) String() string {
 	if dc == nil {
 		// According to flag.Value this can happen.
 		return ""
@@ -62,7 +66,7 @@ func (dc *dockerConfig) String() string {
 	return strings.Join(urls, ",")
 }
 
-func (dc *dockerConfig) Set(value string) error {
+func (dc *basicDocker) Set(value string) error {
 	parts := strings.Split(value, "=")
 	if len(parts) != 2 {
 		return fmt.Errorf("Expect entries of the form secret=url, got: %v", value)
@@ -82,12 +86,16 @@ func (dc *dockerConfig) Set(value string) error {
 	return nil
 }
 
+type configFile struct {
+	Auth map[string]entry `json:"auths"`
+}
+
 type entry struct {
 	Secret   string `json:"-"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 	Auth     string `json:"auth"`
-	Email    string `json:"email"`
+	Email    string `json:"email,omitempty"`
 }
 
 func newEntry(secret string) (*entry, error) {
@@ -114,39 +122,94 @@ func newEntry(secret string) (*entry, error) {
 	}, nil
 }
 
-type dockerConfigBuilder struct{}
+type basicDockerBuilder struct{}
 
 // NewBuilder returns a new builder for Docker credentials.
-func NewBuilder() credentials.Builder { return &dockerConfigBuilder{} }
+func NewBuilder() credentials.Builder { return &basicDockerBuilder{} }
 
 // MatchingAnnotations extracts flags for the credential helper
 // from the supplied secret and returns a slice (of length 0 or
 // greater) of applicable domains.
-func (*dockerConfigBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
+func (*basicDockerBuilder) MatchingAnnotations(secret *corev1.Secret) []string {
 	var flags []string
 	switch secret.Type {
 	case corev1.SecretTypeBasicAuth:
-		// OK.
+		for _, v := range credentials.SortAnnotations(secret.Annotations, annotationPrefix) {
+			flags = append(flags, fmt.Sprintf("-basic-docker=%s=%s", secret.Name, v))
+		}
+	case corev1.SecretTypeDockerConfigJson:
+		flags = append(flags, fmt.Sprintf("-docker-config=%s", secret.Name))
+	case corev1.SecretTypeDockercfg:
+		flags = append(flags, fmt.Sprintf("-docker-cfg=%s", secret.Name))
 	default:
 		return flags
 	}
 
-	for _, v := range credentials.SortAnnotations(secret.Annotations, annotationPrefix) {
-		flags = append(flags, fmt.Sprintf("-basic-docker=%s=%s", secret.Name, v))
-	}
 	return flags
 }
 
-func (*dockerConfigBuilder) Write() error {
+func (*basicDockerBuilder) Write() error {
 	dockerDir := filepath.Join(os.Getenv("HOME"), ".docker")
-	dockerConfig := filepath.Join(dockerDir, "config.json")
+	basicDocker := filepath.Join(dockerDir, "config.json")
 	if err := os.MkdirAll(dockerDir, os.ModePerm); err != nil {
 		return err
 	}
 
-	content, err := json.Marshal(config)
+	cf := configFile{Auth: config.Entries}
+	auth := map[string]entry{}
+	if dockerCfg != "" {
+		dockerConfigAuthMap, err := authsFromDockerCfg(dockerCfg)
+		if err != nil {
+			return err
+		}
+		for k, v := range dockerConfigAuthMap {
+			auth[k] = v
+		}
+	}
+	if dockerConfig != "" {
+		dockerConfigAuthMap, err := authsFromDockerConfig(dockerConfig)
+		if err != nil {
+			return err
+		}
+		for k, v := range dockerConfigAuthMap {
+			auth[k] = v
+		}
+	}
+	for k, v := range config.Entries {
+		auth[k] = v
+	}
+	cf.Auth = auth
+	content, err := json.Marshal(cf)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(dockerConfig, content, 0600)
+	return ioutil.WriteFile(basicDocker, content, 0600)
+}
+
+func authsFromDockerCfg(secret string) (map[string]entry, error) {
+	secretPath := credentials.VolumeName(secret)
+	m := make(map[string]entry)
+	data, err := ioutil.ReadFile(filepath.Join(secretPath, corev1.DockerConfigKey))
+	if err != nil {
+		return m, err
+	}
+	err = json.Unmarshal(data, &m)
+	return m, err
+}
+
+func authsFromDockerConfig(secret string) (map[string]entry, error) {
+	secretPath := credentials.VolumeName(secret)
+	m := make(map[string]entry)
+	c := configFile{}
+	data, err := ioutil.ReadFile(filepath.Join(secretPath, corev1.DockerConfigJsonKey))
+	if err != nil {
+		return m, err
+	}
+	if err := json.Unmarshal(data, &c); err != nil {
+		return m, err
+	}
+	for k, v := range c.Auth {
+		m[k] = v
+	}
+	return m, nil
 }

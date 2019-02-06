@@ -22,12 +22,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/system"
+	logtesting "github.com/knative/pkg/logging/testing"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestInitializeArtifactStorage_WithConfigMap(t *testing.T) {
+func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
+	logger := logtesting.TestLogger(t)
 	for _, c := range []struct {
 		desc                    string
 		configMap               *corev1.ConfigMap
@@ -108,6 +110,24 @@ func TestInitializeArtifactStorage_WithConfigMap(t *testing.T) {
 		},
 		storagetype: "pvc",
 	}, {
+		desc: "no config map data",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.Namespace,
+				Name:      v1alpha1.BucketConfigName,
+			},
+		},
+		pipelinerun: &v1alpha1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "pipelineruntest",
+			},
+		},
+		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+			Name: "pipelineruntest",
+		},
+		storagetype: "pvc",
+	}, {
 		desc: "no secret",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
@@ -131,7 +151,7 @@ func TestInitializeArtifactStorage_WithConfigMap(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
-			bucket, err := InitializeArtifactStorage(c.pipelinerun, fakekubeclient)
+			bucket, err := InitializeArtifactStorage(c.pipelinerun, fakekubeclient, logger)
 			if err != nil {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
@@ -145,7 +165,8 @@ func TestInitializeArtifactStorage_WithConfigMap(t *testing.T) {
 	}
 }
 
-func TestInitializeArtifactStorage_WithoutConfigMap(t *testing.T) {
+func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
+	logger := logtesting.TestLogger(t)
 	fakekubeclient := fakek8s.NewSimpleClientset()
 	pipelinerun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -154,7 +175,7 @@ func TestInitializeArtifactStorage_WithoutConfigMap(t *testing.T) {
 		},
 	}
 
-	pvc, err := InitializeArtifactStorage(pipelinerun, fakekubeclient)
+	pvc, err := InitializeArtifactStorage(pipelinerun, fakekubeclient, logger)
 	if err != nil {
 		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 	}
@@ -168,9 +189,16 @@ func TestInitializeArtifactStorage_WithoutConfigMap(t *testing.T) {
 	}
 }
 
-func TestGetArtifactStorage_WithConfigMap(t *testing.T) {
-	fakekubeclient := fakek8s.NewSimpleClientset(
-		&corev1.ConfigMap{
+func TestGetArtifactStorageWithConfigMap(t *testing.T) {
+	logger := logtesting.TestLogger(t)
+	prName := "pipelineruntest"
+	for _, c := range []struct {
+		desc                    string
+		configMap               *corev1.ConfigMap
+		expectedArtifactStorage ArtifactStorageInterface
+	}{{
+		desc: "valid bucket",
+		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.Namespace,
 				Name:      v1alpha1.BucketConfigName,
@@ -181,30 +209,70 @@ func TestGetArtifactStorage_WithConfigMap(t *testing.T) {
 				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-	)
+		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
+			Location: "gs://fake-bucket",
+			Secrets: []v1alpha1.SecretParam{{
+				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
+				SecretKey:  "sakey",
+				SecretName: "secret1",
+			}},
+		},
+	}, {
+		desc: "location empty",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.Namespace,
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketLocationKey:              "",
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+			},
+		},
+		expectedArtifactStorage: &v1alpha1.ArtifactPVC{Name: prName},
+	}, {
+		desc: "missing location",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.Namespace,
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+			},
+		},
+		expectedArtifactStorage: &v1alpha1.ArtifactPVC{Name: prName},
+	}, {
+		desc: "no config map data",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.Namespace,
+				Name:      v1alpha1.BucketConfigName,
+			},
+		},
+		expectedArtifactStorage: &v1alpha1.ArtifactPVC{Name: prName},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
 
-	bucket, err := GetArtifactStorage("pipelineruntest", fakekubeclient)
-	if err != nil {
-		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
-	}
+			bucket, err := GetArtifactStorage(prName, fakekubeclient, logger)
+			if err != nil {
+				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
+			}
 
-	expectedArtifactBucket := &v1alpha1.ArtifactBucket{
-		Location: "gs://fake-bucket",
-		Secrets: []v1alpha1.SecretParam{{
-			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-			SecretKey:  "sakey",
-			SecretName: "secret1",
-		}},
-	}
-
-	if diff := cmp.Diff(bucket, expectedArtifactBucket); diff != "" {
-		t.Fatalf("want %v, but got %v", expectedArtifactBucket, bucket)
+			if diff := cmp.Diff(bucket, c.expectedArtifactStorage); diff != "" {
+				t.Fatalf("want %v, but got %v", c.expectedArtifactStorage, bucket)
+			}
+		})
 	}
 }
 
-func TestGetArtifactStorage_WithoutConfigMap(t *testing.T) {
+func TestGetArtifactStorageWithoutConfigMap(t *testing.T) {
+	logger := logtesting.TestLogger(t)
 	fakekubeclient := fakek8s.NewSimpleClientset()
-	pvc, err := GetArtifactStorage("pipelineruntest", fakekubeclient)
+	pvc, err := GetArtifactStorage("pipelineruntest", fakekubeclient, logger)
 	if err != nil {
 		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 	}

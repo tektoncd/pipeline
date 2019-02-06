@@ -46,6 +46,8 @@ type PipelineRunSpec struct {
 	// PipelineResources to use for the resources the Pipeline has declared
 	// it needs.
 	Resources []PipelineResourceBinding `json:"resources"`
+	// Params is a list of parameter names and values.
+	Params []Param `json:"params"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
@@ -54,6 +56,18 @@ type PipelineRunSpec struct {
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus
+	// Time after which the Pipeline times out. Defaults to never.
+	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	// +optional
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
+	// NodeSelector is a selector which must be true for the pod to fit on a node.
+	// Selector which must match a node's labels for the pod to be scheduled on that node.
+	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// If specified, the pod's scheduling constraints
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide

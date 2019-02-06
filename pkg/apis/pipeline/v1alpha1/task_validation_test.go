@@ -93,6 +93,8 @@ func TestTaskSpec_Validate(t *testing.T) {
 				}},
 				Params: []TaskParam{{
 					Name: "baz",
+				}, {
+					Name: "foo-is-baz",
 				}},
 			},
 			Outputs: &Outputs{
@@ -101,7 +103,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 			BuildSteps: []corev1.Container{{
 				Name:       "mystep",
 				Image:      "${inputs.resources.foo.url}",
-				Args:       []string{"--flag=${inputs.params.baz}"},
+				Args:       []string{"--flag=${inputs.params.baz} && ${input.params.foo-is-baz}"},
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
 			}},
 		},
@@ -296,6 +298,28 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			Message: `non-existent variable in "/foo/bar/${outputs.resources.inexistent}" for step workingDir`,
 			Paths:   []string{"taskspec.steps.workingDir"},
 		},
+	}, {
+		name: "Inexistent param variable with existing",
+		fields: fields{
+			Inputs: &Inputs{
+				Params: []TaskParam{
+					{
+						Name:        "foo",
+						Description: "param",
+						Default:     "default",
+					},
+				},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"${inputs.params.foo} && ${inputs.params.inexistent}"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "${inputs.params.foo} && ${inputs.params.inexistent}" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -305,6 +329,9 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Steps:   tt.fields.BuildSteps,
 			}
 			err := ts.Validate()
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", ts)
+			}
 			if d := cmp.Diff(tt.expectedError, *err, cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskSpec.Validate() errors diff -want, +got: %v", d)
 			}

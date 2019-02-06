@@ -18,9 +18,9 @@ package v1alpha1
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/templating"
 	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -115,38 +115,38 @@ func validateResourceVariables(steps []corev1.Container, inputs *Inputs, outputs
 
 func validateVariables(steps []corev1.Container, prefix string, vars map[string]struct{}) *apis.FieldError {
 	for _, step := range steps {
-		if err := validateVariable("name", step.Name, prefix, vars); err != nil {
+		if err := validateTaskVariable("name", step.Name, prefix, vars); err != nil {
 			return err
 		}
-		if err := validateVariable("image", step.Image, prefix, vars); err != nil {
+		if err := validateTaskVariable("image", step.Image, prefix, vars); err != nil {
 			return err
 		}
-		if err := validateVariable("workingDir", step.WorkingDir, prefix, vars); err != nil {
+		if err := validateTaskVariable("workingDir", step.WorkingDir, prefix, vars); err != nil {
 			return err
 		}
 		for i, cmd := range step.Command {
-			if err := validateVariable(fmt.Sprintf("command[%d]", i), cmd, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("command[%d]", i), cmd, prefix, vars); err != nil {
 				return err
 			}
 		}
 		for i, arg := range step.Args {
-			if err := validateVariable(fmt.Sprintf("arg[%d]", i), arg, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("arg[%d]", i), arg, prefix, vars); err != nil {
 				return err
 			}
 		}
 		for _, env := range step.Env {
-			if err := validateVariable(fmt.Sprintf("env[%s]", env.Name), env.Value, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("env[%s]", env.Name), env.Value, prefix, vars); err != nil {
 				return err
 			}
 		}
 		for i, v := range step.VolumeMounts {
-			if err := validateVariable(fmt.Sprintf("volumeMount[%d].Name", i), v.Name, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].Name", i), v.Name, prefix, vars); err != nil {
 				return err
 			}
-			if err := validateVariable(fmt.Sprintf("volumeMount[%d].MountPath", i), v.MountPath, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].MountPath", i), v.MountPath, prefix, vars); err != nil {
 				return err
 			}
-			if err := validateVariable(fmt.Sprintf("volumeMount[%d].SubPath", i), v.SubPath, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].SubPath", i), v.SubPath, prefix, vars); err != nil {
 				return err
 			}
 		}
@@ -154,30 +154,8 @@ func validateVariables(steps []corev1.Container, prefix string, vars map[string]
 	return nil
 }
 
-func validateVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	if v, present := extractVariable(value, prefix); present {
-		if _, ok := vars[v]; !ok {
-			return &apis.FieldError{
-				Message: fmt.Sprintf("non-existent variable in %q for step %s", value, name),
-				Paths:   []string{"taskspec.steps." + name},
-			}
-		}
-	}
-	return nil
-}
-
-func extractVariable(s, prefix string) (string, bool) {
-	re := regexp.MustCompile("\\${(?:inputs|outputs)\\." + prefix + "\\.(.*)}")
-	if re.MatchString(s) {
-		// ${inputs.resources.foo} with prefix=resources -> [${inputs.resources.foo foo}]
-		// ${inputs.resources.foo.bar} with prefix=resources -> [${inputs.resources.foo foo.bar}]
-		v := re.FindStringSubmatch(s)[1]
-		// foo -> foo
-		// foo.bar -> foo
-		// foo.bar.baz -> foo
-		return strings.SplitN(v, ".", 2)[0], true
-	}
-	return "", false
+func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
+	return templating.ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {

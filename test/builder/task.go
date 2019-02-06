@@ -156,13 +156,6 @@ func Step(name, image string, ops ...ContainerOp) TaskSpecOp {
 	}
 }
 
-// TaskTimeout sets the timeout duration to the TaskSpec.
-func TaskTimeout(d time.Duration) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		spec.Timeout = &metav1.Duration{Duration: d}
-	}
-}
-
 // TaskVolume adds a volume with specified name to the TaskSpec.
 // Any number of Volume modifier can be passed to transform it.
 func TaskVolume(name string, ops ...VolumeOp) TaskSpecOp {
@@ -316,6 +309,27 @@ func StepState(ops ...StepStateOp) TaskRunStatusOp {
 func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
 		s.StartTime = &metav1.Time{Time: startTime}
+	}
+}
+
+// TaskRunTimeout sets the timeout duration to the TaskRunSpec.
+func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Timeout = &metav1.Duration{Duration: d}
+	}
+}
+
+// TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
+func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.NodeSelector = values
+	}
+}
+
+// TaskRunAffinity sets the Affinity to the PipelineSpec.
+func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Affinity = affinity
 	}
 }
 

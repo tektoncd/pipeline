@@ -207,6 +207,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
+	p = p.DeepCopy()
+
 	providedResources, err := resources.GetResourcesFromBindings(p, pr)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
@@ -219,6 +221,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		})
 		return nil
 	}
+
+	// Apply parameter templating from the PipelineRun
+	p = resources.ApplyParameters(p, pr)
 
 	pipelineState, err := resources.ResolvePipelineRun(
 		pr.Name,
@@ -302,14 +307,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	rprt := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
 
 	var as artifacts.ArtifactStorageInterface
-	if as, err = artifacts.InitializeArtifactStorage(pr, c.KubeClientSet); err != nil {
+	if as, err = artifacts.InitializeArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
 		c.Logger.Infof("PipelineRun failed to initialize artifact storage %s", pr.Name)
 		return err
 	}
 
 	if rprt != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount, as.StorageBasePath(pr), p.Spec.Timeout)
+		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount, as.StorageBasePath(pr))
 		if err != nil {
 			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
@@ -317,7 +322,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, p.Spec.Timeout)
+	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, pr.Spec.Timeout)
 
 	pr.Status.SetCondition(after)
 
@@ -337,19 +342,22 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 	}
 }
 
-func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa, storageBasePath string, pipelineTimeout *metav1.Duration) (*v1alpha1.TaskRun, error) {
-	ts := rprt.ResolvedTaskResources.TaskSpec.DeepCopy()
-	if pipelineTimeout != nil {
-		pTimeoutTime := pr.Status.StartTime.Add(pipelineTimeout.Duration)
-		if ts.Timeout == nil || time.Now().Add(ts.Timeout.Duration).After(pTimeoutTime) {
+func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa, storageBasePath string) (*v1alpha1.TaskRun, error) {
+	var taskRunTimeout = &metav1.Duration{Duration: 0 * time.Second}
+	if pr.Spec.Timeout != nil {
+		pTimeoutTime := pr.Status.StartTime.Add(pr.Spec.Timeout.Duration)
+		if time.Now().After(pTimeoutTime) {
 			// Just in case something goes awry and we're creating the TaskRun after it should have already timed out,
 			// set a timeout of 0.
 			taskRunTimeout := pTimeoutTime.Sub(time.Now())
 			if taskRunTimeout < 0 {
 				taskRunTimeout = 0
 			}
-			ts.Timeout = &metav1.Duration{Duration: taskRunTimeout}
+		} else {
+			taskRunTimeout = pr.Spec.Timeout
 		}
+	} else {
+		taskRunTimeout = nil
 	}
 
 	tr := &v1alpha1.TaskRun{
@@ -363,13 +371,18 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			},
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskSpec: ts,
+			TaskRef: &v1alpha1.TaskRef{
+				Name: rprt.ResolvedTaskResources.TaskName,
+			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: rprt.PipelineTask.Params,
 			},
 			ServiceAccount: sa,
-		},
-	}
+			Timeout:        taskRunTimeout,
+			NodeSelector:   pr.Spec.NodeSelector,
+			Affinity:       pr.Spec.Affinity,
+		}}
+
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 
 	return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(pr.Namespace).Create(tr)

@@ -18,11 +18,9 @@ package v1alpha1_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/knative/build-pipeline/test/builder"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPipelineSpec_Validate_Error(t *testing.T) {
@@ -103,12 +101,17 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 			)),
 		},
 		{
-			name: "negative pipeline timeout",
+			name: "not defined parameter variable",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-				tb.PipelineTask("foo", "foo-task"),
-				tb.PipelineTask("bar", "bar-task"),
-				tb.PipelineTimeout(&metav1.Duration{Duration: -48 * time.Hour}),
-			)),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskParam("a-param", "${params.does-not-exist}")))),
+		},
+		{
+			name: "not defined parameter variable with defined",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineParam("foo", tb.PipelineParamDefault("something")),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskParam("a-param", "${params.foo} and ${params.does-not-exist}")))),
 		},
 	}
 	for _, tt := range tests {
@@ -155,11 +158,20 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 			)),
 		},
 		{
-			name: "valid timeout",
+			name: "valid parameter variables",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-				tb.PipelineTask("foo", "foo-task"),
-				tb.PipelineTask("bar", "bar-task"),
-				tb.PipelineTimeout(&metav1.Duration{Duration: 24 * time.Hour}),
+				tb.PipelineParam("baz"),
+				tb.PipelineParam("foo-is-baz"),
+				tb.PipelineTask("bar", "bar-task",
+					tb.PipelineTaskParam("a-param", "${baz} and ${foo-is-baz}")),
+			)),
+		},
+		{
+			name: "pipeline parameter nested in task parameter",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineParam("baz"),
+				tb.PipelineTask("bar", "bar-task",
+					tb.PipelineTaskParam("a-param", "${input.workspace.${baz}}")),
 			)),
 		},
 	}

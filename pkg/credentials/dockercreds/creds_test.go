@@ -125,7 +125,7 @@ func TestFlagHandlingMissingFiles(t *testing.T) {
 	}
 	// No username / password files yields an error.
 
-	cfg := dockerConfig{make(map[string]entry)}
+	cfg := basicDocker{make(map[string]entry)}
 	if err := cfg.Set("not-found=https://us.gcr.io"); err == nil {
 		t.Error("Set(); got success, wanted error.")
 	}
@@ -144,7 +144,7 @@ func TestFlagHandlingURLCollision(t *testing.T) {
 		t.Fatalf("ioutil.WriteFile(password) = %v", err)
 	}
 
-	cfg := dockerConfig{make(map[string]entry)}
+	cfg := basicDocker{make(map[string]entry)}
 	if err := cfg.Set("foo=https://us.gcr.io"); err != nil {
 		t.Fatalf("First Set() = %v", err)
 	}
@@ -154,14 +154,14 @@ func TestFlagHandlingURLCollision(t *testing.T) {
 }
 
 func TestMalformedValueTooMany(t *testing.T) {
-	cfg := dockerConfig{make(map[string]entry)}
+	cfg := basicDocker{make(map[string]entry)}
 	if err := cfg.Set("bar=baz=blah"); err == nil {
 		t.Error("Second Set(); got success, wanted error.")
 	}
 }
 
 func TestMalformedValueTooFew(t *testing.T) {
-	cfg := dockerConfig{make(map[string]entry)}
+	cfg := basicDocker{make(map[string]entry)}
 	if err := cfg.Set("bar"); err == nil {
 		t.Error("Second Set(); got success, wanted error.")
 	}
@@ -217,5 +217,62 @@ func TestMatchingAnnotations(t *testing.T) {
 		if !cmp.Equal(ts.wantFlag, gotFlag) {
 			t.Errorf("MatchingAnnotations() Mismatch of flags; wanted: %v got: %v ", ts.wantFlag, gotFlag)
 		}
+	}
+}
+
+func TestMultipleFlagHandling(t *testing.T) {
+	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	fooDir := credentials.VolumeName("foo")
+	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(password) = %v", err)
+	}
+
+	barDir := credentials.VolumeName("bar")
+	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(barDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"}}}`), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	}
+
+	bazDir := credentials.VolumeName("baz")
+	if err := os.MkdirAll(bazDir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", bazDir, err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(bazDir, corev1.DockerConfigKey), []byte(`{"https://my.registry/v1":{"auth":"fooisbaz"}}`), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	}
+
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	flags(fs)
+	err := fs.Parse([]string{
+		"-basic-docker=foo=https://us.gcr.io",
+		"-docker-config=bar",
+		"-docker-cfg=baz",
+	})
+	if err != nil {
+		t.Fatalf("flag.CommandLine.Parse() = %v", err)
+	}
+
+	os.Setenv("HOME", credentials.VolumePath)
+	if err := NewBuilder().Write(); err != nil {
+		t.Fatalf("Write() = %v", err)
+	}
+
+	b, err := ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	if err != nil {
+		t.Fatalf("ioutil.ReadFile(.docker/config.json) = %v", err)
+	}
+
+	// Note: "auth" is base64(username + ":" + password)
+	expected := `{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"},"https://my.registry/v1":{"auth":"fooisbaz"},"https://us.gcr.io":{"username":"bar","password":"baz","auth":"YmFyOmJheg==","email":"not@val.id"}}}`
+	if string(b) != expected {
+		t.Errorf("got: %v, wanted: %v", string(b), expected)
 	}
 }

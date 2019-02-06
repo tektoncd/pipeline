@@ -22,6 +22,7 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/system"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -41,23 +42,13 @@ type ArtifactStorageInterface interface {
 
 // InitializeArtifactStorage will check if there is there is a
 // bucket configured or create a PVC
-func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (ArtifactStorageInterface, error) {
-	needPVC := false
+func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
 	configMap, err := c.CoreV1().ConfigMaps(system.Namespace).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	shouldCreatePVC, err := needsPVC(configMap, err, logger)
 	if err != nil {
-		needPVC = true
+		return nil, err
 	}
-	if configMap != nil && configMap.Data != nil {
-		if _, ok := configMap.Data[v1alpha1.BucketLocationKey]; !ok {
-			needPVC = true
-		} else {
-			location, _ := configMap.Data[v1alpha1.BucketLocationKey]
-			if strings.TrimSpace(location) == "" {
-				needPVC = true
-			}
-		}
-	}
-	if needPVC {
+	if shouldCreatePVC {
 		err = createPVC(pr, c)
 		if err != nil {
 			return nil, err
@@ -68,11 +59,40 @@ func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface)
 	return NewArtifactBucketConfigFromConfigMap(configMap)
 }
 
+func needsPVC(configMap *corev1.ConfigMap, err error, logger *zap.SugaredLogger) (bool, error) {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	if configMap == nil {
+		return true, nil
+	}
+	if configMap.Data == nil {
+		logger.Warn("the configmap has no data")
+		return true, nil
+	}
+	if location, ok := configMap.Data[v1alpha1.BucketLocationKey]; !ok {
+		return true, nil
+	} else {
+		logger.Warnf("the configmap key %q is empty", v1alpha1.BucketLocationKey)
+		if strings.TrimSpace(location) == "" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // GetArtifactStorage returns the storage interface to enable
 // consumer code to get a container step for copy to/from storage
-func GetArtifactStorage(prName string, c kubernetes.Interface) (ArtifactStorageInterface, error) {
+func GetArtifactStorage(prName string, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
 	configMap, err := c.CoreV1().ConfigMaps(system.Namespace).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	pvc, err := needsPVC(configMap, err, logger)
 	if err != nil {
+		return nil, err
+	}
+	if pvc {
 		return &v1alpha1.ArtifactPVC{Name: prName}, nil
 	}
 	return NewArtifactBucketConfigFromConfigMap(configMap)

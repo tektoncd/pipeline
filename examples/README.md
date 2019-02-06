@@ -10,16 +10,16 @@ To deploy them to your cluster (after
 kubectl apply -f examples/
 
 # To invoke the build-push Task only
-kubectl apply -f examples/run/task-run.yaml
+kubectl apply -f examples/run/taskrun.yaml
 
 # To invoke the simple Pipeline
-kubectl apply -f examples/run/pipeline-run.yaml
+kubectl apply -f examples/run/pipelinerun.yaml
 
 # To invoke the Pipeline that links outputs
-kubectl apply -f examples/run/output-pipeline-run.yaml
+kubectl apply -f examples/run/output-pipelinerun.yaml
 
 # To invoke the TaskRun with embedded Resource spec and task Spec
-kubectl apply -f examples/run/task-run-resource-spec.yaml
+kubectl apply -f examples/run/resource-spec-taskrun.yaml
 ```
 
 ## Example Pipelines
@@ -47,7 +47,7 @@ of the `default` namespace with
 
 #### Simple Tasks
 
-The [Tasks](../docs/Concepts.md#task) used by the simple examples are:
+The [Tasks](../docs/tasks.md) used by the simple examples are:
 
 - [build-task.yaml](build-task.yaml): Builds an image via
   [kaniko](https://github.com/GoogleContainerTools/kaniko) and pushes it to
@@ -58,8 +58,8 @@ The [Tasks](../docs/Concepts.md#task) used by the simple examples are:
 #### Simple Runs
 
 The [run](./run/) directory contains an example
-[TaskRun](../docs/Concepts.md#taskrun) and an example
-[PipelineRun](../docs/Concepts.md#pipelinerun):
+[TaskRun](../docs/taskruns.md) and an example
+[PipelineRun](../docs/pipelineruns.md):
 
 - [task-run.yaml](./run/task-run.yaml) shows an example of how to manually run
   the `build-push` task
@@ -77,13 +77,13 @@ demonstrates how the outputs of a `Task` can be given as inputs to the next
 1. Running a `Task` that writes to a `PipelineResource`
 2. Running a `Task` that reads the written value from the `PipelineResource`
 
-The [`Output`](../docs/Concepts.md#outputs) of the first `Task` is given as an
-[`Input`](../docs/Concepts.md#inputs) to the next `Task` thanks to the
-[`from`](../docs/using.md#from) clause.
+The [`Output`](../docs/tasks.md#outputs) of the first `Task` is given as an
+[`Input`](../docs/tasks.md#inputs) to the next `Task` thanks to the
+[`from`](../docs/pipelines.md#from) clause.
 
 #### Output Tasks
 
-The two [Tasks](../docs/Concepts.md#task) used by the output Pipeline are in
+The two [Tasks](../docs/tasks.md) used by the output Pipeline are in
 [output-tasks.yaml](output-tasks.yaml):
 
 - `create-file`: Writes "some stuff" to a predefined path in the `workspace`
@@ -92,12 +92,31 @@ The two [Tasks](../docs/Concepts.md#task) used by the output Pipeline are in
   `workspace` `git` `PipelineResource`
 
 These work together when combined in a `Pipeline` because the git resource used
-as an [`Output`](../docs/Concepts.md#outputs) of the `create-file` `Task` can be
-an [`Input`](../docs/Concepts.md#inputs) of the `check-stuff-file-exists`
+as an [`Output`](../docs/tasks.md#outputs) of the `create-file` `Task` can be
+an [`Input`](../docs/tasks.md#inputs) of the `check-stuff-file-exists`
 `Task`.
 
 #### Output Runs
 
 The [run](./run/) directory contains an example
-[PipelineRun](../docs/Concepts.md#pipelinerun) that invokes this `Pipeline` in
+[PipelineRun](../docs/pipelineruns.md) that invokes this `Pipeline` in
 [`run/output-pipeline-run.yaml`](./run/output-pipeline-run.yaml).
+
+### Accessing private docker image
+
+The [run](./run/) directory contains an example
+[TaskRun](../docs/Concepts.md#taskrun) with an embedded taskSpec, that
+pull a private image from `gcr.io`, see
+[`run/private-taskrun.yaml`](./run/private-taskrun.yaml). 
+
+This *run* requires the secrets from
+[`0-secrets.yaml`](`0-secrets.yaml`) and service accounts from
+[`1-bots.yaml`](`1-bots.yaml`) to be able to pull the private
+image. 
+
+It uses `kubernetes.io/dockercfg` secret type but,
+`kubernetes.io/dockerconfigjson` and [Knative flavored
+credentials](https://github.com/knative/docs/blob/master/build/auth.md#guiding-credential-selection)
+are supported too.
+
+

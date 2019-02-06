@@ -19,8 +19,6 @@ package v1alpha1
 import (
 	"fmt"
 	"strings"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 type PipelineResourceStorageType string
@@ -34,9 +32,6 @@ const (
 type PipelineStorageResourceInterface interface {
 	PipelineResourceInterface
 	GetSecretParams() []SecretParam
-	GetDownloadContainerSpec() ([]corev1.Container, error)
-	GetUploadContainerSpec() ([]corev1.Container, error)
-	SetDestinationDirectory(string)
 }
 
 func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, error) {

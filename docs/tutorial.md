@@ -3,24 +3,24 @@
 Welcome to the Pipeline tutorial!
 
 This tutorial will walk you through creating and running some simple
-[`Tasks`](concepts.md#task), [`Pipelines`](concepts.md#pipeline) and running
-them by creating [`TaskRuns`](concepts.md#taskruns) and
-[`PipelineRuns`](concepts.md#pipelineruns).
+[`Task`](tasks.md), [`Pipeline`](pipelines.md) and running
+them by creating [`TaskRuns`](taskruns.md) and
+[`PipelineRuns`](pipelineruns.md).
 
-- [Creating a hello world `Task`](#tasks)
-- [Creating a hello world `Pipeline`](#pipelines)
+- [Creating a hello world `Task`](#task)
+- [Creating a hello world `Pipeline`](#pipeline)
 
-For more details on using `Pipelines`, see [our usage docs](usage.md).
+For more details on using `Pipelines`, see [our usage docs](README.md).
 
 **[This tutorial can be run on a local workstation](#local-development)**<br>
 
-## Tasks
+## Task
 
 The main objective of the Pipeline CRDs is to run your Task individually or as a
 part of a Pipeline. Every task runs as a Pod on your Kubernetes cluster with
 each step as its own container.
 
-A [`Task`](concepts.md#task) defines the work that needs to be executed, for
+A [`Task`](tasks.md) defines the work that needs to be executed, for
 example the following is a simple task that will echo hello world:
 
 ```yaml
@@ -40,7 +40,7 @@ spec:
 
 The `steps` are a series of commands to be sequentially executed by the task.
 
-A [`TaskRun`](concepts.md#taskruns) runs the `Task` you defined. Here is a
+A [`TaskRun`](taskruns.md) runs the `Task` you defined. Here is a
 simple example of a `TaskRun` you can use to execute your task:
 
 ```yaml
@@ -121,12 +121,12 @@ In more common scenarios, a Task needs multiple steps with input and output
 resources to process. For example a Task could fetch source code from a GitHub
 repository and build a Docker image from it.
 
-[`PipelinesResources`](concepts.md#pipelineresources) are used to define the
+[`PipelinesResources`](resources.md) are used to define the
 artifacts that can be passed in and out of a task. There are a few system
 defined resource types ready to use, and the following are two examples of the
 resources commonly needed.
 
-The [`git` resource](using.md#git-resource) represents a git repository with a
+The [`git` resource](resources.md#git-resource) represents a git repository with a
 specific revision:
 
 ```yaml
@@ -143,7 +143,7 @@ spec:
       value: https://github.com/GoogleContainerTools/skaffold #configure: change if you want to build something else, perhaps from your own local GitLab
 ```
 
-The [`image` resource](using.md#image-resource) represents the image to be built
+The [`image` resource](resources.md#image-resource) represents the image to be built
 by the task:
 
 ```yaml
@@ -332,9 +332,9 @@ resource definition.
 
 # Pipeline
 
-A [`Pipeline`](concepts.md#pipelines) defines a list of tasks to execute in
+A [`Pipeline`](pipelines.md) defines a list of tasks to execute in
 order, while also indicating if any outputs should be used as inputs of a
-following task by using [the `from` field](using.md#from). The same templating
+following task by using [the `from` field](pipelines.md#from). The same templating
 you used in tasks is also available in pipeline.
 
 For example:
@@ -431,7 +431,7 @@ spec:
         - "${inputs.params.path}"
 ```
 
-To run the `Pipeline`, create a [`PipelineRun`](concepts.md#pipelinerun) as
+To run the `Pipeline`, create a [`PipelineRun`](pipelineruns.md) as
 follows:
 
 ```yaml
@@ -563,7 +563,6 @@ status:
 The status of type `Succeeded = True` shows the pipeline ran successfully, also
 the status of individual Task runs are shown.
 
-
 ## Local development
 
 ### Known good configuration
@@ -594,3 +593,9 @@ Elasticsearch can be deployed locally as a means to view logs "after the fact": 
 ## Experimentation
 Lines of code you may want to configure have the #configure annotation. This annotation applies to subjects such as Docker registries, log output locations and other nuances that may be specific to particular cloud providers or services.
 
+---
+
+Except as otherwise noted, the content of this page is licensed under the
+[Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
+and code samples are licensed under the
+[Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
