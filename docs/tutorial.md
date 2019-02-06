@@ -3,16 +3,16 @@
 Welcome to the Pipeline tutorial!
 
 This tutorial will walk you through creating and running some simple
-[`Tasks`](tasks.md), [`Pipelines`](pipelines.md) and running
+[`Task`](tasks.md), [`Pipeline`](pipelines.md) and running
 them by creating [`TaskRuns`](taskruns.md) and
 [`PipelineRuns`](pipelineruns.md).
 
-- [Creating a hello world `Task`](#tasks)
+- [Creating a hello world `Task`](#task)
 - [Creating a hello world `Pipeline`](#pipeline)
 
 For more details on using `Pipelines`, see [our usage docs](README.md).
 
-## Tasks
+## Task
 
 The main objective of the Pipeline CRDs is to run your Task individually or as a
 part of a Pipeline. Every task runs as a Pod on your Kubernetes cluster with
