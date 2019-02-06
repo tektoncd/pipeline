@@ -131,7 +131,7 @@ func AddOutputResources(
 			}
 		}
 
-		if taskRun.HasPipelineRunOwnerReference() {
+		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []corev1.Container
 			for _, dPath := range boundResource.Paths {
 				containers := as.GetCopyToContainerSpec(resource.GetName(), sourcePath, dPath)

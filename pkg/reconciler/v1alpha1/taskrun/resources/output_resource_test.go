@@ -237,6 +237,47 @@ func Test_Valid_OutputResources(t *testing.T) {
 		}},
 		build: build(),
 	}, {
+		name: "image resource in output with pipelinerun with owner",
+		desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image",
+						},
+						Paths: []string{"pipeline-task-name"},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "image",
+					}},
+				},
+			},
+		},
+		wantSteps:   nil,
+		wantVolumes: nil,
+		build:       build(),
+	}, {
 		name: "git resource in output",
 		desc: "git resource declared in output without pipelinerun owner reference",
 		taskRun: &v1alpha1.TaskRun{
