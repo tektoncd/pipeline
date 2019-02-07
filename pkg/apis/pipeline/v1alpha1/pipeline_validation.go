@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/templating"
 	"github.com/knative/pkg/apis"
