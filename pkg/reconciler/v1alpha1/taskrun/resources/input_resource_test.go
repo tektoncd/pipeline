@@ -446,7 +446,7 @@ func TestAddResourceToBuild(t *testing.T) {
 		wantErr: false,
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "create-dir-gitspace-mz4c7",
+				Name:  "create-dir-gitspace-0-0-mz4c7",
 				Image: "override-with-bash-noop:latest",
 				Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
 			}, {
@@ -522,7 +522,7 @@ func TestAddResourceToBuild(t *testing.T) {
 		wantErr: false,
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "create-dir-workspace-mz4c7",
+				Name:  "create-dir-workspace-0-0-mz4c7",
 				Image: "override-with-bash-noop:latest",
 				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
 			}, {

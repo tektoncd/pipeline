@@ -95,9 +95,10 @@ func AddInputResource(
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 
 					mountPVC = true
-					for _, ct := range cpContainers {
+					for j, ct := range cpContainers {
 						ct.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}
-						createAndCopyContainers := []corev1.Container{v1alpha1.CreateDirContainer(boundResource.Name, dPath), ct}
+						name := fmt.Sprintf("%s-%d-%d", boundResource.Name, i, j)
+						createAndCopyContainers := []corev1.Container{v1alpha1.CreateDirContainer(name, dPath), ct}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, createAndCopyContainers...)
 					}
 				} else {
