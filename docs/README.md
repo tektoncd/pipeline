@@ -20,8 +20,8 @@ High level details of this design:
   triggered by events or by manually creating [PipelineRuns](pipelineruns.md)
 - [Tasks](tasks.md) can exist and be invoked completely independently of
   [Pipelines](pipelines.md); they are highly cohesive and loosely coupled
-- [Tasks](tasks.md) can depend on artifacts, output and parameters created by other
-  tasks.
+- [Tasks](tasks.md) can depend on artifacts, output and parameters created by
+  other tasks.
 - [Tasks](tasks.md) can be invoked via [TaskRuns](taskruns.md)
 - [PipelineResources](#pipelineresources) are the artifacts used as inputs and
   outputs of Tasks.
@@ -48,8 +48,9 @@ components:
 
 ## Try it out
 
-* Follow along with [the tutorial](tutorial.md)
-* Look at [the examples](https://github.com/knative/build-pipeline/tree/master/examples)
+- Follow along with [the tutorial](tutorial.md)
+- Look at
+  [the examples](https://github.com/knative/build-pipeline/tree/master/examples)
 
 ## Related info
 

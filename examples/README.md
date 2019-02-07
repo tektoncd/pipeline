@@ -57,9 +57,8 @@ The [Tasks](../docs/tasks.md) used by the simple examples are:
 
 #### Simple Runs
 
-The [run](./run/) directory contains an example
-[TaskRun](../docs/taskruns.md) and an example
-[PipelineRun](../docs/pipelineruns.md):
+The [run](./run/) directory contains an example [TaskRun](../docs/taskruns.md)
+and an example [PipelineRun](../docs/pipelineruns.md):
 
 - [task-run.yaml](./run/task-run.yaml) shows an example of how to manually run
   the `build-push` task
@@ -92,9 +91,8 @@ The two [Tasks](../docs/tasks.md) used by the output Pipeline are in
   `workspace` `git` `PipelineResource`
 
 These work together when combined in a `Pipeline` because the git resource used
-as an [`Output`](../docs/tasks.md#outputs) of the `create-file` `Task` can be
-an [`Input`](../docs/tasks.md#inputs) of the `check-stuff-file-exists`
-`Task`.
+as an [`Output`](../docs/tasks.md#outputs) of the `create-file` `Task` can be an
+[`Input`](../docs/tasks.md#inputs) of the `check-stuff-file-exists` `Task`.
 
 #### Output Runs
 
@@ -105,18 +103,15 @@ The [run](./run/) directory contains an example
 ### Accessing private docker image
 
 The [run](./run/) directory contains an example
-[TaskRun](../docs/Concepts.md#taskrun) with an embedded taskSpec, that
-pull a private image from `gcr.io`, see
-[`run/private-taskrun.yaml`](./run/private-taskrun.yaml). 
+[TaskRun](../docs/Concepts.md#taskrun) with an embedded taskSpec, that pull a
+private image from `gcr.io`, see
+[`run/private-taskrun.yaml`](./run/private-taskrun.yaml).
 
-This *run* requires the secrets from
-[`0-secrets.yaml`](`0-secrets.yaml`) and service accounts from
-[`1-bots.yaml`](`1-bots.yaml`) to be able to pull the private
-image. 
+This _run_ requires the secrets from [`0-secrets.yaml`](`0-secrets.yaml`) and
+service accounts from [`1-bots.yaml`](`1-bots.yaml`) to be able to pull the
+private image.
 
 It uses `kubernetes.io/dockercfg` secret type but,
-`kubernetes.io/dockerconfigjson` and [Knative flavored
-credentials](https://github.com/knative/docs/blob/master/build/auth.md#guiding-credential-selection)
+`kubernetes.io/dockerconfigjson` and
+[Knative flavored credentials](https://github.com/knative/docs/blob/master/build/auth.md#guiding-credential-selection)
 are supported too.
-
-

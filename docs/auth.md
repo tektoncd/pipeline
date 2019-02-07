@@ -41,10 +41,11 @@ aggregates them into their respective files in `$HOME`.
       # This is non-standard, but its use is encouraged to make this more secure.
       known_hosts: <base64 encoded>
     ```
-    `pipeline.knative.dev/git-0` in the example above specifies which web address
-    these credentials belong to. See
-    [Guiding Credential Selection](#guiding-credential-selection) below for
-    more information.
+
+    `pipeline.knative.dev/git-0` in the example above specifies which web
+    address these credentials belong to. See
+    [Guiding Credential Selection](#guiding-credential-selection) below for more
+    information.
 
 1.  Generate the value of `ssh-privatekey` by copying the value of (for example)
     `cat ~/.ssh/id_rsa | base64`.
@@ -52,7 +53,8 @@ aggregates them into their respective files in `$HOME`.
 1.  Copy the value of `cat ~/.ssh/known_hosts | base64` to the `known_hosts`
     field.
 
-1.  Next, direct a `ServiceAccount` to use this `Secret` (in `serviceaccount.yaml`):
+1.  Next, direct a `ServiceAccount` to use this `Secret` (in
+    `serviceaccount.yaml`):
 
     ```yaml
     apiVersion: v1
@@ -65,16 +67,16 @@ aggregates them into their respective files in `$HOME`.
 
 1.  Then use that `ServiceAccount` in your `TaskRun` (in `run.yaml`):
 
-  ```yaml
-  apiVersion: pipeline.knative.dev/v1alpha1
-  kind: TaskRun
-  metadata:
-    name: build-push-task-run-2
-  spec:
-    serviceAccount: buid-bot
-    taskRef:
-      name: build-push
-  ```
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: build-push-task-run-2
+spec:
+  serviceAccount: buid-bot
+  taskRef:
+    name: build-push
+```
 
 1.  Or use that `ServiceAccount` in your `PipelineRun` (in `run.yaml`):
 
@@ -117,12 +119,14 @@ to authenticate when retrieving any `PipelineResources`.
       username: <username>
       password: <password>
     ```
-    `pipeline.knative.dev/git-0` in the example above specifies which web address
-    these credentials belong to. See
-    [Guiding Credential Selection](#guiding-credential-selection) below for
-    more information.
 
-1.  Next, direct a `ServiceAccount` to use this `Secret` (in `serviceaccount.yaml`):
+    `pipeline.knative.dev/git-0` in the example above specifies which web
+    address these credentials belong to. See
+    [Guiding Credential Selection](#guiding-credential-selection) below for more
+    information.
+
+1.  Next, direct a `ServiceAccount` to use this `Secret` (in
+    `serviceaccount.yaml`):
 
     ```yaml
     apiVersion: v1
@@ -135,16 +139,16 @@ to authenticate when retrieving any `PipelineResources`.
 
 1.  Then use that `ServiceAccount` in your `TaskRun` (in `run.yaml`):
 
-  ```yaml
-  apiVersion: pipeline.knative.dev/v1alpha1
-  kind: TaskRun
-  metadata:
-    name: build-push-task-run-2
-  spec:
-    serviceAccount: buid-bot
-    taskRef:
-      name: build-push
-  ```
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: build-push-task-run-2
+spec:
+  serviceAccount: buid-bot
+  taskRef:
+    name: build-push
+```
 
 1.  Or use that `ServiceAccount` in your `PipelineRun` (in `run.yaml`):
 
@@ -168,7 +172,8 @@ to authenticate when retrieving any `PipelineResources`.
 
 When this `Run` executes, before steps execute, a `~/.gitconfig` will be
 generated containing the credentials configured in the `Secret`, and these
-credentials are then used to authenticate when retrieving any `PipelineResources`.
+credentials are then used to authenticate when retrieving any
+`PipelineResources`.
 
 ## Basic authentication (Docker)
 
@@ -187,12 +192,14 @@ credentials are then used to authenticate when retrieving any `PipelineResources
       username: <username>
       password: <password>
     ```
+
     `pipeline.knative.dev/docker-0` in the example above specifies which web
     address these credentials belong to. See
-    [Guiding Credential Selection](#guiding-credential-selection) below for
-    more information.
+    [Guiding Credential Selection](#guiding-credential-selection) below for more
+    information.
 
-1.  Next, direct a `ServiceAccount` to use this `Secret` (in `serviceaccount.yaml`):
+1.  Next, direct a `ServiceAccount` to use this `Secret` (in
+    `serviceaccount.yaml`):
 
     ```yaml
     apiVersion: v1
@@ -205,16 +212,16 @@ credentials are then used to authenticate when retrieving any `PipelineResources
 
 1.  Then use that `ServiceAccount` in your `TaskRun` (in `run.yaml`):
 
-  ```yaml
-  apiVersion: pipeline.knative.dev/v1alpha1
-  kind: TaskRun
-  metadata:
-    name: build-push-task-run-2
-  spec:
-    serviceAccount: buid-bot
-    taskRef:
-      name: build-push
-  ```
+```yaml
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: build-push-task-run-2
+spec:
+  serviceAccount: buid-bot
+  taskRef:
+    name: build-push
+```
 
 1.  Or use that `ServiceAccount` in your `PipelineRun` (in `run.yaml`):
 
@@ -236,9 +243,10 @@ credentials are then used to authenticate when retrieving any `PipelineResources
     kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
     ```
 
-When the `Run` executes, before steps execute, a `~/.docker/config.json` will
-be generated containing the credentials configured in the `Secret`, and these
-credentials are then used to authenticate when retrieving any `PipelineResources`.
+When the `Run` executes, before steps execute, a `~/.docker/config.json` will be
+generated containing the credentials configured in the `Secret`, and these
+credentials are then used to authenticate when retrieving any
+`PipelineResources`.
 
 ### Guiding credential selection
 
@@ -285,8 +293,8 @@ This describes an SSH key secret that should be used to access Git repos at
 github.com only.
 
 Credential annotation keys must begin with `pipeline.knative.dev/docker-` or
-`pipeline.knative.dev/git-`, and the value describes the URL of the host with which
-to use the credential.
+`pipeline.knative.dev/git-`, and the value describes the URL of the host with
+which to use the credential.
 
 ## Implementation details
 
