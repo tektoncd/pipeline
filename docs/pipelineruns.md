@@ -4,8 +4,8 @@ This document defines `PipelineRuns` and their capabilities.
 
 On its own, a [`Pipeline`](pipelines.md) declares what [`Tasks`](tasks.md) to
 run, and dependencies between [`Task`](tasks.md) inputs and outputs via
-[`from`](pipelines.md#from). To execute the `Tasks` in the `Pipeline`, you
-must create a `PipelineRun`.
+[`from`](pipelines.md#from). To execute the `Tasks` in the `Pipeline`, you must
+create a `PipelineRun`.
 
 Creation of a `PipelineRun` will trigger the creation of
 [`TaskRuns`](taskruns.md) for each `Task` in your pipeline.
@@ -31,31 +31,33 @@ following fields:
     `PipelineRun` resource object, for example a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     your `PipelineRun` resource object.
-    - `pipelineRef` or `taskSpec`- Specifies the [`Pipeline`](pipelines.md) you want
-    to run.
-    - `trigger` - Provides data about what created this `PipelineRun`. The only type
-    at this time is `manual`.
+    - `pipelineRef` or `taskSpec`- Specifies the [`Pipeline`](pipelines.md) you
+      want to run.
+    - `trigger` - Provides data about what created this `PipelineRun`. The only
+      type at this time is `manual`.
 - Optional:
-  - [`resources`](#resources) - Specifies which [`PipelineResources`](resources.md)
-    to use for this `PipelineRun`.
-  - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount`
-    resource object that enables your build to run with the defined
-    authentication information.
+
+  - [`resources`](#resources) - Specifies which
+    [`PipelineResources`](resources.md) to use for this `PipelineRun`.
+  - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
+    object that enables your build to run with the defined authentication
+    information.
   - `timeout` - Specifies timeout after which the `PipelineRun` will fail.
-  - [`nodeSelector`] - a selector which must be true for the pod to fit on a node.
-     The selector which must match a node's labels for the pod to be scheduled on that node.
-     More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-  - [`affinity`] - the pod's scheduling constraints. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature
-  
+  - [`nodeSelector`] - a selector which must be true for the pod to fit on a
+    node. The selector which must match a node's labels for the pod to be
+    scheduled on that node. More info:
+    https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  - [`affinity`] - the pod's scheduling constraints. More info:
+    https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature
+
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
-
 
 ### Resources
 
 When running a [`Pipeline`](pipelines.md), you will need to specify the
-[`PipelineResources`](resources.md) to use with it. One `Pipeline` may
-need to be run with different `PipelineResources` in cases such as:
+[`PipelineResources`](resources.md) to use with it. One `Pipeline` may need to
+be run with different `PipelineResources` in cases such as:
 
 - When triggering the run of a `Pipeline` against a pull request, the triggering
   system must specify the commitish of a git `PipelineResource` to use

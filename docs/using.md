@@ -24,8 +24,8 @@ See [the example Pipeline](../examples/pipeline.yaml).
 
 ### PipelineResources in a Pipeline
 
-In order for a `Pipeline` to interact with the outside world, it will probably need
-[`PipelineResources`](#creating-pipelineresources) which will be given to
+In order for a `Pipeline` to interact with the outside world, it will probably
+need [`PipelineResources`](#creating-pipelineresources) which will be given to
 `Tasks` as inputs and outputs.
 
 Your `Pipeline` must declare the `PipelineResources` it needs in a `resources`
@@ -124,13 +124,16 @@ specific contract.
 
 When containers are run in a `Task`, the `entrypoint` of the container will be
 overwritten with a custom binary. The plan is to use this custom binary for
-controlling the execution of step containers ([#224](https://github.com/knative/build-pipeline/issues/224)) and log streaming
+controlling the execution of step containers
+([#224](https://github.com/knative/build-pipeline/issues/224)) and log streaming
 [#107](https://github.com/knative/build-pipeline/issues/107), though currently
-it will write logs only to an [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
-(which cannot be read from after the pod has finished executing, so logs must be obtained
+it will write logs only to an
+[`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
+(which cannot be read from after the pod has finished executing, so logs must be
+obtained
 [via k8s logs](https://kubernetes.io/docs/concepts/cluster-administration/logging/),
-using a tool such as [test/logs/README.md](../test/logs/README.md),
-or setting up an external system to consume logs).
+using a tool such as [test/logs/README.md](../test/logs/README.md), or setting
+up an external system to consume logs).
 
 When `command` is not explicitly set, the controller will attempt to lookup the
 entrypoint from the remote registry.
@@ -189,20 +192,22 @@ configure that by edit the `image`'s value in a configmap named
 ### Resource sharing between tasks
 
 Pipeline `Tasks` are allowed to pass resources from previous `Tasks` via the
-[`from`](#from) field. This feature is implemented using the two
-following alternatives:
+[`from`](#from) field. This feature is implemented using the two following
+alternatives:
 
-- Persistent Volume Claims under the hood but however has an implication
-  that tasks cannot have any volume mounted under path `/pvc`.
+- Persistent Volume Claims under the hood but however has an implication that
+  tasks cannot have any volume mounted under path `/pvc`.
 
 - [GCS storage bucket](https://cloud.google.com/storage/docs/json_api/v1/buckets)
-  A storage bucket can be configured using a ConfigMap named [`config-artifact-bucket`](./../config/config-artifact-bucket.yaml). 
-  with the following attributes:
+  A storage bucket can be configured using a ConfigMap named
+  [`config-artifact-bucket`](./../config/config-artifact-bucket.yaml). with the
+  following attributes:
 - `location`: the address of the bucket (for example gs://mybucket)
-- `bucket.service.account.secret.name`: the name of the secret that will contain the credentials for the service account
-  with access to the bucket
-- `bucket.service.account.secret.key`: the key in the secret with the required service account json
-The bucket is configured with a retention policy of 24 hours after which files will be deleted
+- `bucket.service.account.secret.name`: the name of the secret that will contain
+  the credentials for the service account with access to the bucket
+- `bucket.service.account.secret.key`: the key in the secret with the required
+  service account json The bucket is configured with a retention policy of 24
+  hours after which files will be deleted
 
 ### Outputs
 
@@ -226,8 +231,9 @@ steps:
         value: "world"
 ```
 
-**Note**: If the Task is relying on output resource functionality then the containers
-in the Task `steps` field cannot mount anything in the path `/workspace/output`.
+**Note**: If the Task is relying on output resource functionality then the
+containers in the Task `steps` field cannot mount anything in the path
+`/workspace/output`.
 
 If resource is declared in both input and output then input resource, then
 destination path of input resource is used instead of
@@ -492,10 +498,9 @@ spec:
 ### Taskrun with embedded definitions
 
 Another way of running a Task is embedding the TaskSpec in the taskRun yaml.
-This can be useful for "one-shot" style runs, or debugging.
-TaskRun resource can include either Task reference or TaskSpec but not both.
-Below is an example where `build-push-task-run-2` includes `TaskSpec` and no
-reference to Task.
+This can be useful for "one-shot" style runs, or debugging. TaskRun resource can
+include either Task reference or TaskSpec but not both. Below is an example
+where `build-push-task-run-2` includes `TaskSpec` and no reference to Task.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -968,10 +973,10 @@ Params that can be added are the following:
      source directory. Eg: `gsutil cp source.tar gs://some-bucket.tar`.
 
 Private buckets can also be configured as storage resources. To access GCS
-private buckets, service accounts are required with correct permissions.
-The `secrets` field on the storage resource is used for configuring this
-information.
-Below is an example on how to create a storage resource with service account.
+private buckets, service accounts are required with correct permissions. The
+`secrets` field on the storage resource is used for configuring this
+information. Below is an example on how to create a storage resource with
+service account.
 
 1. Refer to
    [official documentation](https://cloud.google.com/compute/docs/access/service-accounts)
@@ -1011,9 +1016,9 @@ Below is an example on how to create a storage resource with service account.
 
 ## Timing Out PipelinesRun and TasksRuns
 
-If you want to ensure that your `PipelineRun` or `TaskRun` will be stopped if it runs
-past a certain duration, you can use the `Timeout` field on either `PipelineRun`
-or `TaskRun`. In both cases, add the following to the `spec`:
+If you want to ensure that your `PipelineRun` or `TaskRun` will be stopped if it
+runs past a certain duration, you can use the `Timeout` field on either
+`PipelineRun` or `TaskRun`. In both cases, add the following to the `spec`:
 
 ```yaml
 spec:

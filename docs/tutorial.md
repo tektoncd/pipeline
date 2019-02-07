@@ -3,9 +3,8 @@
 Welcome to the Pipeline tutorial!
 
 This tutorial will walk you through creating and running some simple
-[`Task`](tasks.md), [`Pipeline`](pipelines.md) and running
-them by creating [`TaskRuns`](taskruns.md) and
-[`PipelineRuns`](pipelineruns.md).
+[`Task`](tasks.md), [`Pipeline`](pipelines.md) and running them by creating
+[`TaskRuns`](taskruns.md) and [`PipelineRuns`](pipelineruns.md).
 
 - [Creating a hello world `Task`](#task)
 - [Creating a hello world `Pipeline`](#pipeline)
@@ -18,8 +17,8 @@ The main objective of the Pipeline CRDs is to run your Task individually or as a
 part of a Pipeline. Every task runs as a Pod on your Kubernetes cluster with
 each step as its own container.
 
-A [`Task`](tasks.md) defines the work that needs to be executed, for
-example the following is a simple task that will echo hello world:
+A [`Task`](tasks.md) defines the work that needs to be executed, for example the
+following is a simple task that will echo hello world:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -38,8 +37,8 @@ spec:
 
 The `steps` are a series of commands to be sequentially executed by the task.
 
-A [`TaskRun`](taskruns.md) runs the `Task` you defined. Here is a
-simple example of a `TaskRun` you can use to execute your task:
+A [`TaskRun`](taskruns.md) runs the `Task` you defined. Here is a simple example
+of a `TaskRun` you can use to execute your task:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -119,13 +118,13 @@ In more common scenarios, a Task needs multiple steps with input and output
 resources to process. For example a Task could fetch source code from a GitHub
 repository and build a Docker image from it.
 
-[`PipelinesResources`](resources.md) are used to define the
-artifacts that can be passed in and out of a task. There are a few system
-defined resource types ready to use, and the following are two examples of the
-resources commonly needed.
+[`PipelinesResources`](resources.md) are used to define the artifacts that can
+be passed in and out of a task. There are a few system defined resource types
+ready to use, and the following are two examples of the resources commonly
+needed.
 
-The [`git` resource](resources.md#git-resource) represents a git repository with a
-specific revision:
+The [`git` resource](resources.md#git-resource) represents a git repository with
+a specific revision:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -141,8 +140,8 @@ spec:
       value: https://github.com/GoogleContainerTools/skaffold
 ```
 
-The [`image` resource](resources.md#image-resource) represents the image to be built
-by the task:
+The [`image` resource](resources.md#image-resource) represents the image to be
+built by the task:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -330,10 +329,10 @@ resource definition.
 
 # Pipeline
 
-A [`Pipeline`](pipelines.md) defines a list of tasks to execute in
-order, while also indicating if any outputs should be used as inputs of a
-following task by using [the `from` field](pipelines.md#from). The same templating
-you used in tasks is also available in pipeline.
+A [`Pipeline`](pipelines.md) defines a list of tasks to execute in order, while
+also indicating if any outputs should be used as inputs of a following task by
+using [the `from` field](pipelines.md#from). The same templating you used in
+tasks is also available in pipeline.
 
 For example:
 
@@ -429,8 +428,7 @@ spec:
         - "${inputs.params.path}"
 ```
 
-To run the `Pipeline`, create a [`PipelineRun`](pipelineruns.md) as
-follows:
+To run the `Pipeline`, create a [`PipelineRun`](pipelineruns.md) as follows:
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1

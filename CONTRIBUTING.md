@@ -46,8 +46,9 @@ This means that most PRs should include both:
 
 Our contributors are made up of:
 
-* A core group of OWNERS (defined in [OWNERS](OWNERS)) who can [approve PRs](#getting-sign-off)
-* Any and all other contributors!
+- A core group of OWNERS (defined in [OWNERS](OWNERS)) who can
+  [approve PRs](#getting-sign-off)
+- Any and all other contributors!
 
 If you are interested in becoming an OWNER, take a look at the
 [approver requirements](https://github.com/knative/docs/blob/master/community/ROLES.md#approver)
@@ -55,28 +56,32 @@ and follow up with an existing OWNER [on slack](https://knative.slack.com/)).
 
 ### OWNER review process
 
-Reviewers will be auto-assigned by [Prow](#pull-request-process) from the [OWNERS file](OWNERS),
-which acts as suggestions for which `OWNERS` should review the PR. Your review requests can
-be viewed at [https://github.com/pulls/review-requested](https://github.com/pulls/review-requested).
+Reviewers will be auto-assigned by [Prow](#pull-request-process) from the
+[OWNERS file](OWNERS), which acts as suggestions for which `OWNERS` should
+review the PR. Your review requests can be viewed at
+[https://github.com/pulls/review-requested](https://github.com/pulls/review-requested).
 
-`OWNERS` who prepared to give the final `/approve` and `/lgtm` for a PR should use the `assign`
-button to indicate they are willing to own the review of that PR.
+`OWNERS` who prepared to give the final `/approve` and `/lgtm` for a PR should
+use the `assign` button to indicate they are willing to own the review of that
+PR.
 
 ### Project stuff
 
-As the project progresses we define [milestones](https://help.github.com/articles/about-milestones/)
-to indicate what functionality the OWNERS are focusing on.
+As the project progresses we define
+[milestones](https://help.github.com/articles/about-milestones/) to indicate
+what functionality the OWNERS are focusing on.
 
-If you are interested in contributing but not an OWNER, feel free to take on something from the
-milestone but [be aware of the contributor SLO](#contributor-slo).
+If you are interested in contributing but not an OWNER, feel free to take on
+something from the milestone but
+[be aware of the contributor SLO](#contributor-slo).
 
 You can see more details (including a burndown, issues in epics, etc.) on our
 [zenhub board](https://app.zenhub.com/workspaces/pipelines-5bc61a054b5806bc2bed4fb2/boards?repos=146641150).
 To see this board, you must:
 
 - Ask [an OWNER](OWNER) via [slack](https://knative.slack.com) for an invitation
-- Add [the zenhub browser extension](https://www.zenhub.com/extension) to see new info via GitHub
-  (or just use zenhub.com directly)
+- Add [the zenhub browser extension](https://www.zenhub.com/extension) to see
+  new info via GitHub (or just use zenhub.com directly)
 
 ## Pull Request Process
 
@@ -202,12 +207,13 @@ like to work on it** and we will consider it assigned to you.
 
 If you declare your intention to work on an issue:
 
-- If it becomes urgent that the issue be resolved (e.g. critical bug or nearing the
-  end of [a milestone](#project-stuff)), someone else may take over (apologies if this happens!!)
-- If you do not respond to queries on an issue within about 3 days and someone else
-  wants to work on your issue, we will assume you are no longer interested in working
-  on it and it is fair game to assign to someone else (no worries at all if this
-  happens, we don't mind!)
+- If it becomes urgent that the issue be resolved (e.g. critical bug or nearing
+  the end of [a milestone](#project-stuff)), someone else may take over
+  (apologies if this happens!!)
+- If you do not respond to queries on an issue within about 3 days and someone
+  else wants to work on your issue, we will assume you are no longer interested
+  in working on it and it is fair game to assign to someone else (no worries at
+  all if this happens, we don't mind!)
 
 ## Roadmap
 
@@ -215,8 +221,8 @@ The project's roadmap for 2019 is published [here](./roadmap-2019.md).
 
 ## API compatibility policy
 
-The API compatibility policy (i.e. the policy for making backwards incompatible API changes)
-can be found [here](api_compatibility_policy.md).
+The API compatibility policy (i.e. the policy for making backwards incompatible
+API changes) can be found [here](api_compatibility_policy.md).
 
 ## Contact
 

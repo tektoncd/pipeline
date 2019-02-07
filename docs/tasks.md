@@ -1,8 +1,8 @@
 # Tasks
 
-A `Task` (or a [`ClusterTask`](#clustertask)) is a collection of sequential steps you would want to run as part of
-your continuous integration flow. A task will run inside a container on your
-cluster.
+A `Task` (or a [`ClusterTask`](#clustertask)) is a collection of sequential
+steps you would want to run as part of your continuous integration flow. A task
+will run inside a container on your cluster.
 
 A `Task` declares:
 
@@ -10,7 +10,8 @@ A `Task` declares:
 - [Outputs](#outputs)
 - [Steps](#steps)
 
-A `Task` is available within a namespace, and `ClusterTask` is available across entire Kubernetes cluster.
+A `Task` is available within a namespace, and `ClusterTask` is available across
+entire Kubernetes cluster.
 
 ---
 
@@ -46,7 +47,8 @@ spec:
       params: ....
 ```
 
-A `Task` functions exactly like a `ClusterTask`, and as such all references to `Task` below are also describing `ClusterTask`.
+A `Task` functions exactly like a `ClusterTask`, and as such all references to
+`Task` below are also describing `ClusterTask`.
 
 ## Syntax
 
@@ -65,9 +67,10 @@ following fields:
     - [`steps`](#steps) - Specifies one or more container images that you want
       to run in your `Task`.
 - Optional:
-  - [`inputs`](#inputs) - Specifies parameters and [`PipelineResources`](resources.md)
-    needed by your `Task`
-  - [`outputs`](#outputs) - Specifies [`PipelineResources`](resources.md) needed by your `Task`
+  - [`inputs`](#inputs) - Specifies parameters and
+    [`PipelineResources`](resources.md) needed by your `Task`
+  - [`outputs`](#outputs) - Specifies [`PipelineResources`](resources.md) needed
+    by your `Task`
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your build.
 
@@ -128,8 +131,8 @@ Each `steps` in a `Task` must specify a container image that adheres to the
 [container contract](./container-contract.md). For each of the `steps` fields,
 or container images that you define:
 
-- The container images are run and evaluated in order, starting
-  from the top of the configuration file.
+- The container images are run and evaluated in order, starting from the top of
+  the configuration file.
 - Each container image runs until completion or until the first failure is
   detected.
 
@@ -137,8 +140,8 @@ or container images that you define:
 
 A `Task` can declare the inputs it needs, which can be either or both of:
 
-* [`parameters`](#parameters)
-* [input resources](#input-resources)
+- [`parameters`](#parameters)
+- [input resources](#input-resources)
 
 #### Parameters
 
@@ -151,10 +154,9 @@ TaskRun. Some example use-cases of this include:
 - A Task that supports several different strategies, and leaves the choice up to
   the other.
 
-Parameters name are limited to alpha-numeric characters, `-` and `_`
-and can only start with alpha characters and `_`. For example,
-`fooIs-Bar_` is a valid parameter name, `barIsBa$` or `0banana` are
-not.
+Parameters name are limited to alpha-numeric characters, `-` and `_` and can
+only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
+parameter name, `barIsBa$` or `0banana` are not.
 
 ##### Usage
 
@@ -201,21 +203,22 @@ spec:
 
 #### Input resources
 
-Use input [`PipelineResources`](resources.md) field to provide your
-`Task` with data or context that is needed by your `Task`.
+Use input [`PipelineResources`](resources.md) field to provide your `Task` with
+data or context that is needed by your `Task`.
 
 Input resources, like source code (git) or artifacts, are dumped at path
 `/workspace/task_resource_name` within a mounted
-[volume](https://kubernetes.io/docs/concepts/storage/volumes/)
-and is available to all [`steps`](#steps) of your `Task`. The path that the
-resources are mounted at can be overridden with the `targetPath` value.
+[volume](https://kubernetes.io/docs/concepts/storage/volumes/) and is available
+to all [`steps`](#steps) of your `Task`. The path that the resources are mounted
+at can be overridden with the `targetPath` value.
 
 ### Outputs
 
-`Task` definitions can include inputs and outputs [`PipelineResource`](resources.md) 
-declarations. If specific set of resources are only declared in output then a copy
-of resource to be uploaded or shared for next Task is expected to be present under
-the path `/workspace/output/resource_name/`.
+`Task` definitions can include inputs and outputs
+[`PipelineResource`](resources.md) declarations. If specific set of resources
+are only declared in output then a copy of resource to be uploaded or shared for
+next Task is expected to be present under the path
+`/workspace/output/resource_name/`.
 
 ```yaml
 resources:
@@ -232,8 +235,9 @@ steps:
         value: "world"
 ```
 
-**note**: if the task is relying on output resource functionality then the containers
-in the task `steps` field cannot mount anything in the path `/workspace/output`.
+**note**: if the task is relying on output resource functionality then the
+containers in the task `steps` field cannot mount anything in the path
+`/workspace/output`.
 
 In the following example Task `tar-artifact` resource is used both as input and
 output so input resource is downloaded into directory `customworkspace`(as
@@ -303,9 +307,9 @@ spec:
 
 Specifies one or more
 [volumes](https://kubernetes.io/docs/concepts/storage/volumes/) that you want to
-make available to your `Task`, including all the [`steps`](#steps). Add volumes to
-complement the volumes that are implicitly created for [input resources](#input-resources)
-and [output resources](#outputs).
+make available to your `Task`, including all the [`steps`](#steps). Add volumes
+to complement the volumes that are implicitly created for
+[input resources](#input-resources) and [output resources](#outputs).
 
 For example, use volumes to accomplish one of the following common tasks:
 
@@ -319,10 +323,12 @@ For example, use volumes to accomplish one of the following common tasks:
 
 ### Templating
 
-`Tasks` support templating using values from all [`inputs`](#inputs) and [`outputs`](#outputs),
+`Tasks` support templating using values from all [`inputs`](#inputs) and
+[`outputs`](#outputs),
 
-[`PipelineResources`](resources.md) can be referenced in a `Task` spec like this, where `<name>` is the
-Resource Name and `<key>` is a one of the resource's `params`:
+[`PipelineResources`](resources.md) can be referenced in a `Task` spec like
+this, where `<name>` is the Resource Name and `<key>` is a one of the resource's
+`params`:
 
 ```shell
 ${inputs.resources.<name>.<key>}
@@ -348,13 +354,13 @@ Use these code snippets to help you understand how to define your `Tasks`.
 - [Mounting extra volumes](#using-an-extra-volume)
 
 _Tip: See the collection of simple
-[examples](https://github.com/knative/build-pipeline/tree/master/examples) for additional
-code samples._
+[examples](https://github.com/knative/build-pipeline/tree/master/examples) for
+additional code samples._
 
 ### Example Task
 
-For example, a `Task` to encapsulate a `Dockerfile` build might look
-something like this:
+For example, a `Task` to encapsulate a `Dockerfile` build might look something
+like this:
 
 **Note:** Building a container image using `docker build` on-cluster is _very
 unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
@@ -364,20 +370,20 @@ This is used only for the purposes of demonstration.
 spec:
   inputs:
     resources:
-    - name: workspace
-      type: git
+      - name: workspace
+        type: git
     params:
-    # These may be overridden, but provide sensible defaults.
-    - name: directory
-      description: The directory containing the build context.
-      default: /workspace
-    - name: dockerfileName
-      description: The name of the Dockerfile
-      default: Dockerfile
+      # These may be overridden, but provide sensible defaults.
+      - name: directory
+        description: The directory containing the build context.
+        default: /workspace
+      - name: dockerfileName
+        description: The name of the Dockerfile
+        default: Dockerfile
   outputs:
     resources:
-    - name: builtImage
-      type: image
+      - name: builtImage
+        type: image
   steps:
     - name: dockerfile-build
       image: gcr.io/cloud-builders/docker
@@ -435,6 +441,7 @@ spec:
     - name: my-volume
       emptyDir: {}
 ```
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the
