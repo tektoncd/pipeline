@@ -26,7 +26,7 @@ type PipelineResourceStorageType string
 const (
 	// PipelineResourceTypeGCS indicates that resource source is a GCS blob/directory.
 	PipelineResourceTypeGCS      PipelineResourceType = "gcs"
-	PipelineResourceTypeBuildGCS PipelineResourceType = "BuildGCS"
+	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
 )
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
