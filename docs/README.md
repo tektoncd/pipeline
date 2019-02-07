@@ -41,10 +41,10 @@ See the following reference topics for information about each of the build
 components:
 
 - [`Task`](tasks.md)
-- [`TaskRun`](taskrun.md)
-- [`Pipeline`](https://github.com/knative/docs/blob/master/pipeline/pipeline.md)
-- [`PipelineRun`](https://github.com/knative/docs/blob/master/pipeline/pipelinerun.md)
-- [`PipelineResource`](https://github.com/knative/docs/blob/master/pipeline/pipelineresource.md)
+- [`TaskRun`](taskruns.md)
+- [`Pipeline`](pipelines.md)
+- [`PipelineRun`](pipelineruns.md)
+- [`PipelineResource`](pipelineresources.md)
 
 ## Try it out
 
