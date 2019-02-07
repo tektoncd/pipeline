@@ -54,21 +54,21 @@ func (g *DAG) addPrevPipelineTask(prev *Node, next *Node) error {
 	// Check if we are adding cycles.
 	visited := map[string]bool{prev.Task.Name: true, next.Task.Name: true}
 	path := []string{next.Task.Name, prev.Task.Name}
-	if err := visit(prev.Prev, path, visited); err != nil {
+	if err := visit(next.Task.Name, prev.Prev, path, visited); err != nil {
 		return fmt.Errorf("cycle detected; %s ", err.Error())
 	}
 	next.Prev = append(next.Prev, prev)
 	return nil
 }
 
-func visit(nodes []*Node, path []string, visited map[string]bool) error {
+func visit(currentName string, nodes []*Node, path []string, visited map[string]bool) error {
 	for _, n := range nodes {
 		path = append(path, n.Task.Name)
 		if _, ok := visited[n.Task.Name]; ok {
 			return fmt.Errorf(getVisitedPath(path))
 		}
-		visited[n.Task.Name] = true
-		if err := visit(n.Prev, path, visited); err != nil {
+		visited[currentName+"."+n.Task.Name] = true
+		if err := visit(n.Task.Name, n.Prev, path, visited); err != nil {
 			return err
 		}
 	}
@@ -84,13 +84,56 @@ func getVisitedPath(path []string) string {
 	return strings.Join(path, " -> ")
 }
 
-//GetPreviousTasks return all the previous tasks for a PipelineTask in the DAG
-func (g *DAG) GetPreviousTasks(pt string) []v1alpha1.PipelineTask {
-	v, ok := g.Nodes[pt]
-	if !ok {
-		return nil
+// GetSchedulable returns a list of PipelineTask that can be scheduled,
+// given a list of successfully finished task.
+// If the list is empty, this returns all tasks in the DAG that nobody
+// depends on. Else, it returns task which have all dependecies marked
+// as done, and thus can be scheduled.
+func (g *DAG) GetSchedulable(tasks ...string) []v1alpha1.PipelineTask {
+	d := []v1alpha1.PipelineTask{}
+	if len(tasks) == 0 {
+		// return node that have no previous tasks
+		for _, node := range g.Nodes {
+			if len(node.getPrevTasks()) == 0 {
+				d = append(d, node.Task)
+			}
+		}
+	} else {
+		tm := toMap(tasks...)
+		for name, node := range g.Nodes {
+			if _, ok := tm[name]; ok {
+				// skip done element
+				continue
+			}
+			if !isSchedulable(tm, node.getPrevTasks()) {
+				// skip non-schedulable element
+				continue
+			}
+			d = append(d, node.Task)
+		}
 	}
-	return v.getPrevTasks()
+	return d
+}
+
+func isSchedulable(tm map[string]struct{}, prevs []v1alpha1.PipelineTask) bool {
+	if len(prevs) == 0 {
+		return false
+	}
+	collected := []string{}
+	for _, t := range prevs {
+		if _, ok := tm[t.Name]; ok {
+			collected = append(collected, t.Name)
+		}
+	}
+	return len(collected) == len(prevs)
+}
+
+func toMap(t ...string) map[string]struct{} {
+	m := make(map[string]struct{}, len(t))
+	for _, s := range t {
+		m[s] = struct{}{}
+	}
+	return m
 }
 
 // Build returns a valid pipeline DAG. Returns error if the pipeline is invalid

@@ -221,53 +221,6 @@ var allFinishedState = []*ResolvedPipelineRunTask{{
 	},
 }}
 
-func TestGetNextTask(t *testing.T) {
-	tcs := []struct {
-		name         string
-		state        []*ResolvedPipelineRunTask
-		expectedTask *ResolvedPipelineRunTask
-	}{
-		{
-			name:         "no-tasks-started",
-			state:        noneStartedState,
-			expectedTask: noneStartedState[0],
-		},
-		{
-			name:         "one-task-started",
-			state:        oneStartedState,
-			expectedTask: nil,
-		},
-		{
-			name:         "one-task-finished",
-			state:        oneFinishedState,
-			expectedTask: oneFinishedState[1],
-		},
-		{
-			name:         "one-task-failed",
-			state:        oneFailedState,
-			expectedTask: nil,
-		},
-		{
-			name:         "first-task-finished",
-			state:        firstFinishedState,
-			expectedTask: firstFinishedState[1],
-		},
-		{
-			name:         "all-finished",
-			state:        allFinishedState,
-			expectedTask: nil,
-		},
-	}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			nextTask := GetNextTask("somepipelinerun", tc.state, zap.NewNop().Sugar())
-			if d := cmp.Diff(nextTask, tc.expectedTask); d != "" {
-				t.Fatalf("Expected to indicate first task should be run, but different state returned: %s", d)
-			}
-		})
-	}
-}
-
 func TestGetResourcesFromBindings(t *testing.T) {
 	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),

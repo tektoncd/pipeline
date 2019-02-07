@@ -17,6 +17,7 @@ limitations under the License.
 package pipeline
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -52,6 +53,30 @@ func TestBuild(t *testing.T) {
 			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"z"}}},
 		},
 	}
+	dDependsOnA := v1alpha1.PipelineTask{
+		Name: "d",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+		},
+	}
+	eDependsOnA := v1alpha1.PipelineTask{
+		Name: "e",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+		},
+	}
+	fDependsOnDAndE := v1alpha1.PipelineTask{
+		Name: "f",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"d", "e"}}},
+		},
+	}
+	gDependOnF := v1alpha1.PipelineTask{
+		Name: "g",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"f"}}},
+		},
+	}
 	selfLink := v1alpha1.PipelineTask{
 		Name: "a",
 		Resources: &v1alpha1.PipelineTaskResources{
@@ -73,20 +98,22 @@ func TestBuild(t *testing.T) {
 		shdErr      bool
 		expectedErr string
 	}{
-		{"linear-pipeline",
-			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, b, c}},
-			&DAG{
+		{
+			name: "linear-pipeline",
+			spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, b, c}},
+			expectedDAG: &DAG{
 				Nodes: map[string]*Node{
 					"a": {Task: a},
 					"b": {Task: b},
 					"c": {Task: c},
 				},
 			},
-			false,
-			""},
-		{"complex-pipeline",
-			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnAB, zDependsOnX, b, c}},
-			&DAG{
+			shdErr:      false,
+			expectedErr: "",
+		}, {
+			name: "complex-pipeline",
+			spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnAB, zDependsOnX, b, c}},
+			expectedDAG: &DAG{
 				Nodes: map[string]*Node{
 					"a": {Task: a},
 					"b": {Task: b},
@@ -96,28 +123,57 @@ func TestBuild(t *testing.T) {
 					"z": {Task: zDependsOnX, Prev: []*Node{nodeX}},
 				},
 			},
-			false,
-			""},
-		{"self-link",
-			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{selfLink}},
-			nil,
-			true,
-			` "self-link" is invalid: : Internal error: cycle detected; task "a" depends on itself`},
-		{"cycle-2",
-			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xDependsOnA, zDependsOnX, aDependsOnZ}},
-			nil,
-			true,
-			` "cycle-2" is invalid: : Internal error: cycle detected; a -> x -> z -> a `},
-		{"duplicate-tasks",
-			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, a}},
-			nil,
-			true,
-			` "duplicate-tasks" is invalid: spec.tasks.name: Duplicate value: "a"`},
-		{"invalid-task-name",
-			v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTask}},
-			nil,
-			true,
-			` "invalid-task-name" is invalid: spec.tasks.name: Not found: "none"`},
+			shdErr:      false,
+			expectedErr: "",
+		}, {
+			name:        "self-link",
+			spec:        v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{selfLink}},
+			expectedDAG: nil,
+			shdErr:      true,
+			expectedErr: ` "self-link" is invalid: : Internal error: cycle detected; task "a" depends on itself`,
+		}, {
+			name:        "cycle-2",
+			spec:        v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xDependsOnA, zDependsOnX, aDependsOnZ}},
+			expectedDAG: nil,
+			shdErr:      true,
+			expectedErr: ` "cycle-2" is invalid: : Internal error: cycle detected; a -> x -> z -> a `,
+		}, {
+			name:        "duplicate-tasks",
+			spec:        v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, a}},
+			expectedDAG: nil,
+			shdErr:      true,
+			expectedErr: ` "duplicate-tasks" is invalid: spec.tasks.name: Duplicate value: "a"`,
+		}, {
+			name:        "invalid-task-name",
+			spec:        v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTask}},
+			expectedDAG: nil,
+			shdErr:      true,
+			expectedErr: ` "invalid-task-name" is invalid: spec.tasks.name: Not found: "none"`,
+		}, {
+			// This test make sure we don't detect cycle (A -> B -> B -> …) when there is not
+			// The graph looks like the following.
+			//   a
+			//  / \
+			// d   e
+			//  \ /
+			//   f
+			//   |
+			//   g
+			// This means we "visit" a twice, from two different path ; but there is no cycle.
+			name: "no-cycle",
+			spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, dDependsOnA, eDependsOnA, fDependsOnDAndE, gDependOnF}},
+			expectedDAG: &DAG{
+				Nodes: map[string]*Node{
+					"a": {Task: a},
+					"d": {Task: dDependsOnA, Prev: []*Node{{Task: a}}},
+					"e": {Task: eDependsOnA, Prev: []*Node{{Task: a}}},
+					"f": {Task: fDependsOnDAndE, Prev: []*Node{{Task: dDependsOnA, Prev: []*Node{{Task: a}}}, {Task: eDependsOnA, Prev: []*Node{{Task: a}}}}},
+					"g": {Task: gDependOnF, Prev: []*Node{{Task: fDependsOnDAndE, Prev: []*Node{{Task: dDependsOnA, Prev: []*Node{{Task: a}}}, {Task: eDependsOnA, Prev: []*Node{{Task: a}}}}}}},
+				},
+			},
+			shdErr:      false,
+			expectedErr: "",
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -144,8 +200,15 @@ func TestBuild(t *testing.T) {
 	}
 }
 
-func TestGetPrevTasks(t *testing.T) {
+func TestGetSchedulable(t *testing.T) {
 	a := v1alpha1.PipelineTask{Name: "a"}
+	b := v1alpha1.PipelineTask{Name: "b"}
+	w := v1alpha1.PipelineTask{
+		Name: "w",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"b", "y"}}},
+		},
+	}
 	x := v1alpha1.PipelineTask{
 		Name: "x",
 		Resources: &v1alpha1.PipelineTaskResources{
@@ -158,28 +221,56 @@ func TestGetPrevTasks(t *testing.T) {
 			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"x", "a"}}},
 		},
 	}
+	z := v1alpha1.PipelineTask{
+		Name: "z",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"x"}}},
+		},
+	}
 	p := v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "namespace",
 			Name:      "test",
 		},
 		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{a, x, y},
+			Tasks: []v1alpha1.PipelineTask{a, b, w, x, y, z},
 		},
 	}
 	g, err := Build(&p)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
-	if d := cmp.Diff(g.GetPreviousTasks("a"), []v1alpha1.PipelineTask{}); d != "" {
-		t.Errorf("incorrect prev tasks for PipelineTask a. diff %s", d)
+	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable()), []v1alpha1.PipelineTask{a, b}); d != "" {
+		t.Errorf("incorrect dependencees for no task. diff %s", d)
 	}
-	if d := cmp.Diff(g.GetPreviousTasks("x"), []v1alpha1.PipelineTask{a}); d != "" {
-		t.Errorf("incorrect prev tasks for PipelineTask x. diff %s", d)
+	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a")), []v1alpha1.PipelineTask{x}); d != "" {
+		t.Errorf("incorrect dependencees for no task. diff %s", d)
 	}
-	if d := cmp.Diff(g.GetPreviousTasks("y"), []v1alpha1.PipelineTask{x, a}); d != "" {
-		t.Errorf("incorrect prev tasks for PipelineTask y. diff %s", d)
+	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("b")), []v1alpha1.PipelineTask{}); d != "" {
+		t.Errorf("incorrect dependencees for no task. diff %s", d)
 	}
+	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a", "b")), []v1alpha1.PipelineTask{x}); d != "" {
+		t.Errorf("incorrect dependencees for no task. diff %s", d)
+	}
+	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("x")), []v1alpha1.PipelineTask{z}); d != "" {
+		t.Errorf("incorrect dependencees for no task. diff %s", d)
+	}
+	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a", "x")), []v1alpha1.PipelineTask{y, z}); d != "" {
+		t.Errorf("incorrect dependencees for no task. diff %s", d)
+	}
+	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a", "x", "b")), []v1alpha1.PipelineTask{y, z}); d != "" {
+		t.Errorf("incorrect dependencees for no task. diff %s", d)
+	}
+	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a", "x", "y")), []v1alpha1.PipelineTask{z}); d != "" {
+		t.Errorf("incorrect dependencees for no task. diff %s", d)
+	}
+}
+
+func sortPipelineTask(tasks []v1alpha1.PipelineTask) []v1alpha1.PipelineTask {
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].Name < tasks[j].Name
+	})
+	return tasks
 }
 
 // hasErr returns true if err is not nil

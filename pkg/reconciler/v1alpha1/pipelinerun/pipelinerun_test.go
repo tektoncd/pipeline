@@ -232,11 +232,14 @@ func TestReconcile(t *testing.T) {
 		t.Errorf("Expected reason %q but was %s", resources.ReasonRunning, condition.Reason)
 	}
 
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Errorf("Expected PipelineRun status to include only one TaskRun status item")
+	if len(reconciledRun.Status.TaskRuns) != 2 {
+		t.Errorf("Expected PipelineRun status to include only one TaskRun status item: %v", reconciledRun.Status.TaskRuns)
 	}
 	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1-9l9zj"]; exists == false {
-		t.Errorf("Expected PipelineRun status to include TaskRun status")
+		t.Error("Expected PipelineRun status to include TaskRun status")
+	}
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task-mssqb"]; exists == false {
+		t.Error("Expected PipelineRun status to include TaskRun status")
 	}
 }
 
