@@ -53,7 +53,7 @@ _Note: only Knative admins can create versioned releases._
 Creating and releasing a versioned release has two steps:
 
 1. [Update the published docs](#update-the-published-docs)
-2. [Cut the release](#cut-the-release) 
+2. [Cut the release](#cut-the-release)
 
 ### Update the published docs
 
@@ -61,13 +61,14 @@ The official docs for the latest release of `build-pipelines` live in
 [the knative docs repo](https://github.com/knative/docs) at
 [`knative/docs/pipeline`](https://github.com/knative/docs/tree/master/pipeline).
 
-These docs correspond to the most recent release of `build-pipeline`. There is
-a living version of these docs in this repo, which correspond to the functionality
-at `HEAD`. Part of creating a release involves copying the living version of these
-files to `knative/docs`.
+These docs correspond to the most recent release of `build-pipeline`. There is a
+living version of these docs in this repo, which correspond to the functionality
+at `HEAD`. Part of creating a release involves copying the living version of
+these files to `knative/docs`.
 
 Specifically copy all of the docs in the first level `docs/` folder (i.e. not a
-recursive copy) to [`knative/docs/pipeline`](https://github.com/knative/docs/tree/master/pipeline)
+recursive copy) to
+[`knative/docs/pipeline`](https://github.com/knative/docs/tree/master/pipeline)
 and open a PR for review there.
 
 ### Cut the release

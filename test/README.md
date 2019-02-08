@@ -107,17 +107,17 @@ pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 Besides the environment variable `KO_DOCKER_REPO`, you may also need the
 permissions inside the TaskRun to run the Kaniko e2e test and GCS taskrun test.
 
-- In Kaniko e2e test, setting `GCP_SERVICE_ACCOUNT_KEY_PATH` as the path of the GCP
-  service account JSON key which has permissions to push to the registry
+- In Kaniko e2e test, setting `GCP_SERVICE_ACCOUNT_KEY_PATH` as the path of the
+  GCP service account JSON key which has permissions to push to the registry
   specified in `KO_DOCKER_REPO` will enable Kaniko to use those credentials when
   pushing an image.
 - In GCS taskrun test, GCP service account JSON key file at path
   `GCP_SERVICE_ACCOUNT_KEY_PATH` is used to generate Kubernetes secret to access
   GCS bucket. This e2e test requires valid service account configuration json
   but it does not require any role binding.
-- In Storage artifact bucket, setting the `GCP_SERVICE_ACCOUNT_KEY_PATH` as the 
-  path of the GCP service account JSON key which has permissions to create/delete 
-  a bucket.
+- In Storage artifact bucket, setting the `GCP_SERVICE_ACCOUNT_KEY_PATH` as the
+  path of the GCP service account JSON key which has permissions to
+  create/delete a bucket.
 
 To reduce e2e test setup developers can use the same environment variable for
 both Kaniko e2e test and GCS taskrun test. To create a service account usable in

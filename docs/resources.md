@@ -7,7 +7,8 @@ A `Task` can have multiple inputs and outputs.
 
 For example:
 
-- A `Task`'s input could be a GitHub source which contains your application code.
+- A `Task`'s input could be a GitHub source which contains your application
+  code.
 - A `Task`'s output can be your application container image which can be then
   deployed in a cluster.
 - A `Task`'s output can be a jar file to be uploaded to a storage bucket.
@@ -28,14 +29,16 @@ following fields:
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
     `pipeline.knative.dev/v1alpha1`.
-  - [`kind`][kubernetes-overview] - Specify the `PipelineResource` resource object.
+  - [`kind`][kubernetes-overview] - Specify the `PipelineResource` resource
+    object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `PipelineResource` object, for example a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
-    your `PipelineResource` resource object. 
+    your `PipelineResource` resource object.
     - [`type`](#resource-types) - Specifies the `type` of the `PipelineResource`
 - Optional:
-    - [`params`](#resource-types) - Parameters which are specific to each type of `PipelineResource`
+  - [`params`](#resource-types) - Parameters which are specific to each type of
+    `PipelineResource`
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -318,10 +321,10 @@ Params that can be added are the following:
      source directory. Eg: `gsutil cp source.tar gs://some-bucket.tar`.
 
 Private buckets can also be configured as storage resources. To access GCS
-private buckets, service accounts are required with correct permissions.
-The `secrets` field on the storage resource is used for configuring this
-information.
-Below is an example on how to create a storage resource with service account.
+private buckets, service accounts are required with correct permissions. The
+`secrets` field on the storage resource is used for configuring this
+information. Below is an example on how to create a storage resource with
+service account.
 
 1. Refer to
    [official documentation](https://cloud.google.com/compute/docs/access/service-accounts)

@@ -3,9 +3,9 @@
 Use the `TaskRun` resource object to create and run on-cluster processes to
 completion.
 
-To create a `TaskRun` in Knative, you must first create a [`Task`](tasks.md)  which
-specifies one or more container images that you have implemented to perform and
-complete a task.
+To create a `TaskRun` in Knative, you must first create a [`Task`](tasks.md)
+which specifies one or more container images that you have implemented to
+perform and complete a task.
 
 A `TaskRun` runs until all `steps` have completed or until a failure occurs.
 
@@ -35,31 +35,35 @@ following fields:
     `TaskRun` resource object, for example a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     your `TaskRun` resource object.
-    - [`taskRef` or `taskSpec`](#specifying-a-task) - Specifies the details of the
-    [`Task`](tasks.md) you want to run
-    - `trigger` - Provides data about what created this `TaskRun`.  Can be `manual`
-    if you are creating this manually, or has a value of `PipelineRun` if it is
-    created as part of a [`PipelineRun`](pipelineruns.md)
+    - [`taskRef` or `taskSpec`](#specifying-a-task) - Specifies the details of
+      the [`Task`](tasks.md) you want to run
+    - `trigger` - Provides data about what created this `TaskRun`. Can be
+      `manual` if you are creating this manually, or has a value of
+      `PipelineRun` if it is created as part of a
+      [`PipelineRun`](pipelineruns.md)
 - Optional:
-  - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount`
-    resource object that enables your build to run with the defined
-    authentication information.
+
+  - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
+    object that enables your build to run with the defined authentication
+    information.
   - [`inputs`] - Specifies [input parameters](#input-parameters) and
     [input resources](#providing-resources)
   - [`outputs`] - Specifies [output resources](#providing-resources)
   - `timeout` - Specifies timeout after which the `TaskRun` will fail.
-  - [`nodeSelector`] - a selector which must be true for the pod to fit on a node.
-     The selector which must match a node's labels for the pod to be scheduled on that node.
-     More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-  - [`affinity`] - the pod's scheduling constraints. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature
-  
+  - [`nodeSelector`] - a selector which must be true for the pod to fit on a
+    node. The selector which must match a node's labels for the pod to be
+    scheduled on that node. More info:
+    https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+  - [`affinity`] - the pod's scheduling constraints. More info:
+    https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature
+
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
 ### Specifying a task
 
-Since a `TaskRun` is an invocation of a [`Task`](tasks.md), you must specify what
-`Task` to invoke.
+Since a `TaskRun` is an invocation of a [`Task`](tasks.md), you must specify
+what `Task` to invoke.
 
 You can do this by providing a reference to an existing `Task`:
 
@@ -89,8 +93,8 @@ spec:
 
 ### Input parameters
 
-If a `Task` has [`parameters`](tasks.md#parameters), you can specify values for them
-using the `input` section:
+If a `Task` has [`parameters`](tasks.md#parameters), you can specify values for
+them using the `input` section:
 
 ```yaml
 spec:
@@ -105,10 +109,11 @@ If a parameter does not have a default value, it must be specified.
 ### Providing resources
 
 If a `Task` requires [input resources](tasks.md#input-resources) or
-[output resources](tasks.md#output-resources), they must be provided
-to run the `Task`.
+[output resources](tasks.md#output-resources), they must be provided to run the
+`Task`.
 
-They can be provided via references to existing [`PipelineResources`](resources.md):
+They can be provided via references to existing
+[`PipelineResources`](resources.md):
 
 ```yaml
 spec:
@@ -136,9 +141,9 @@ spec:
 ### Service Account
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Task` with the privileges of the
-specified service account. If no `serviceAccount` field is specified, your
-`Task` runs using the
+`serviceAccount` field to run your `Task` with the privileges of the specified
+service account. If no `serviceAccount` field is specified, your `Task` runs
+using the
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the
 [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
@@ -295,10 +300,9 @@ spec:
 ### Example with embedded specs
 
 Another way of running a Task is embedding the TaskSpec in the taskRun yaml.
-This can be useful for "one-shot" style runs, or debugging.
-TaskRun resource can include either Task reference or TaskSpec but not both.
-Below is an example where `build-push-task-run-2` includes `TaskSpec` and no
-reference to Task.
+This can be useful for "one-shot" style runs, or debugging. TaskRun resource can
+include either Task reference or TaskSpec but not both. Below is an example
+where `build-push-task-run-2` includes `TaskSpec` and no reference to Task.
 
 ```yaml
 apiVersion: pipeline.knative.dev/v1alpha1
@@ -363,14 +367,15 @@ spec:
 ```
 
 **Note**: TaskRun can embed both TaskSpec and resource spec at the same time.
-The `TaskRun` will also serve as a record of the history of the invocations of the
-`Task`.
+The `TaskRun` will also serve as a record of the history of the invocations of
+the `Task`.
 
 ### Example Task Reuse
 
-For the sake of illustrating re-use, here are several example [`TaskRuns`](taskrun.md)
-(including referenced [`PipelineResources`](resource.md)) instantiating the [`Task`
-(`dockerfile-build-and-push`) in the `Task` example docs](tasks.md#example-task).
+For the sake of illustrating re-use, here are several example
+[`TaskRuns`](taskrun.md) (including referenced
+[`PipelineResources`](resource.md)) instantiating the
+[`Task` (`dockerfile-build-and-push`) in the `Task` example docs](tasks.md#example-task).
 
 Build `mchmarny/rester-tester`:
 
@@ -378,11 +383,11 @@ Build `mchmarny/rester-tester`:
 # The PipelineResource
 metadata:
   name: mchmarny-repo
-spec:        
+spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/mchmarny/rester-tester.git
+    - name: url
+      value: https://github.com/mchmarny/rester-tester.git
 ```
 
 ```yaml
@@ -396,8 +401,8 @@ spec:
         resourceRef:
           name: mchmarny-repo
     params:
-    - name: IMAGE
-      value: gcr.io/my-project/rester-tester
+      - name: IMAGE
+        value: gcr.io/my-project/rester-tester
 ```
 
 Build `googlecloudplatform/cloud-builder`'s `wget` builder:
@@ -406,11 +411,11 @@ Build `googlecloudplatform/cloud-builder`'s `wget` builder:
 # The PipelineResource
 metadata:
   name: cloud-builder-repo
-spec:        
+spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/googlecloudplatform/cloud-builders.git
+    - name: url
+      value: https://github.com/googlecloudplatform/cloud-builders.git
 ```
 
 ```yaml
@@ -437,11 +442,11 @@ Build `googlecloudplatform/cloud-builder`'s `docker` builder with `17.06.1`:
 # The PipelineResource
 metadata:
   name: cloud-builder-repo
-spec:        
+spec:
   type: git
   params:
-  - name: url
-    value: https://github.com/googlecloudplatform/cloud-builders.git
+    - name: url
+      value: https://github.com/googlecloudplatform/cloud-builders.git
 ```
 
 ```yaml
@@ -477,8 +482,8 @@ spec:
   serviceAccount: test-task-robot-git-ssh
   inputs:
     resources:
-    - name: workspace
-      type: git
+      - name: workspace
+        type: git
   steps:
     - name: config
       image: ubuntu
@@ -517,11 +522,10 @@ data:
   known_hosts: Z2l0aHViLmNvbSBzc2g.....[example]
 ```
 
-
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Task` with the privileges of the
-specified service account. If no `serviceAccount` field is specified, your
-`Task` runs using the
+`serviceAccount` field to run your `Task` with the privileges of the specified
+service account. If no `serviceAccount` field is specified, your `Task` runs
+using the
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the
 [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)

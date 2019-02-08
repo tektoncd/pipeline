@@ -14,8 +14,9 @@
 package templating_test
 
 import (
-	"github.com/knative/pkg/apis"
 	"testing"
+
+	"github.com/knative/pkg/apis"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/templating"
