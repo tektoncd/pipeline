@@ -43,12 +43,20 @@ import (
 )
 
 const (
-	entrypointLocation = "/tools/entrypoint"
-	toolsMountName     = "tools"
+	entrypointLocation  = "/tools/entrypoint"
+	toolsMountName      = "tools"
+	buildNameLabelKey   = "build.knative.dev/buildName"
+	taskRunNameLabelKey = "pipeline.knative.dev/taskRun"
 )
 
 var (
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
+	// Pods are created with a random 3-byte (6 hex character) suffix that we want to ignore in our diffs.
+	ignoreRandomPodNameSuffix = cmp.FilterPath(func(path cmp.Path) bool {
+		return path.GoString() == "{*v1.Pod}.ObjectMeta.Name"
+	}, cmp.Comparer(func(name1, name2 string) bool {
+		return name1[:len(name1)-6] == name2[:len(name2)-6]
+	}))
 
 	toolsMount = corev1.VolumeMount{
 		Name:      toolsMountName,
@@ -225,10 +233,21 @@ func TestReconcile(t *testing.T) {
 	taskRunWithClusterTask := tb.TaskRun("test-taskrun-with-cluster-task", "foo",
 		tb.TaskRunSpec(tb.TaskRunTaskRef(clustertask.Name, tb.TaskRefKind(v1alpha1.ClusterTaskKind))),
 	)
+
+	taskRunWithLabels := tb.TaskRun("test-taskrun-with-labels", "foo",
+		tb.TaskRunLabel("TaskRunLabel", "TaskRunValue"),
+		tb.TaskRunLabel(buildNameLabelKey, "WillNotBeUsed"),
+		tb.TaskRunLabel(taskRunNameLabelKey, "WillNotBeUsed"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+		),
+	)
+
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunTemplating, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
+		taskRunWithLabels,
 	}
 
 	d := test.Data{
@@ -238,132 +257,191 @@ func TestReconcile(t *testing.T) {
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
 	for _, tc := range []struct {
-		name          string
-		taskRun       *v1alpha1.TaskRun
-		wantBuildSpec buildv1alpha1.BuildSpec
+		name      string
+		taskRun   *v1alpha1.TaskRun
+		wantBuild *buildv1alpha1.Build
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantBuildSpec: tb.BuildSpec(
-			entrypointCopyStep,
-			tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
-				entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
+		wantBuild: tb.Build("test-taskrun-run-success", "foo",
+			tb.BuildLabel(buildNameLabelKey, "test-taskrun-run-success"),
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-run-success",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				entrypointCopyStep,
+				tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
+					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunSuccess.Name)),
 			),
-			tb.BuildVolume(getToolsVolume(taskRunSuccess.Name)),
 		),
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
-		wantBuildSpec: tb.BuildSpec(
-			tb.BuildServiceAccountName("test-sa"),
-			entrypointCopyStep,
-			tb.BuildStep("sa-step", "foo", tb.Command(entrypointLocation),
-				entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
+		wantBuild: tb.Build("test-taskrun-with-sa-run-success", "foo",
+			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-sa-run-success"),
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				tb.BuildServiceAccountName("test-sa"),
+				entrypointCopyStep,
+				tb.BuildStep("sa-step", "foo", tb.Command(entrypointLocation),
+					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunWithSaSuccess.Name)),
 			),
-			tb.BuildVolume(getToolsVolume(taskRunWithSaSuccess.Name)),
 		),
 	}, {
 		name:    "params",
 		taskRun: taskRunTemplating,
-		wantBuildSpec: tb.BuildSpec(
-			tb.BuildStep("git-source-git-resource", "override-with-git:latest",
-				tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
-				tb.VolumeMount(corev1.VolumeMount{
-					Name:      "workspace",
-					MountPath: workspaceDir,
-				}),
-				tb.VolumeMount(implicitBuilderVolumeMounts),
+		wantBuild: tb.Build("test-taskrun-templating", "foo",
+			tb.BuildLabel(buildNameLabelKey, "test-taskrun-templating"),
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-templating"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-templating",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				tb.BuildStep("git-source-git-resource", "override-with-git:latest",
+					tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
+					tb.VolumeMount(corev1.VolumeMount{
+						Name:      "workspace",
+						MountPath: workspaceDir,
+					}),
+					tb.VolumeMount(implicitBuilderVolumeMounts),
+				),
+				entrypointCopyStep,
+				tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
+					tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo","--my-arg-with-default=bar","--my-arg-with-default2=thedefault","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
+					tb.VolumeMount(toolsMount),
+				),
+				tb.BuildStep("myothercontainer", "myotherimage", tb.Command(entrypointLocation),
+					tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
+					tb.VolumeMount(toolsMount),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunTemplating.Name)),
 			),
-			entrypointCopyStep,
-			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo","--my-arg-with-default=bar","--my-arg-with-default2=thedefault","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-				tb.VolumeMount(toolsMount),
-			),
-			tb.BuildStep("myothercontainer", "myotherimage", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-				tb.VolumeMount(toolsMount),
-			),
-			tb.BuildVolume(getToolsVolume(taskRunTemplating.Name)),
 		),
 	}, {
 		name:    "wrap-steps",
 		taskRun: taskRunInputOutput,
-		wantBuildSpec: tb.BuildSpec(
-			tb.BuildStep("create-dir-another-git-resource", "override-with-bash-noop:latest",
-				tb.Args("-args", "mkdir -p /workspace/another-git-resource"),
+		wantBuild: tb.Build("test-taskrun-input-output", "foo",
+			tb.BuildLabel(buildNameLabelKey, "test-taskrun-input-output"),
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-input-output"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-input-output",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				tb.BuildStep("create-dir-another-git-resource", "override-with-bash-noop:latest",
+					tb.Args("-args", "mkdir -p /workspace/another-git-resource"),
+				),
+				tb.BuildStep("source-copy-another-git-resource-0", "override-with-bash-noop:latest",
+					tb.Args("-args", "cp -r source-folder/. /workspace/another-git-resource"),
+					tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
+				),
+				tb.BuildStep("create-dir-git-resource", "override-with-bash-noop:latest",
+					tb.Args("-args", "mkdir -p /workspace/git-resource"),
+				),
+				tb.BuildStep("source-copy-git-resource-0", "override-with-bash-noop:latest",
+					tb.Args("-args", "cp -r source-folder/. /workspace/git-resource"),
+					tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
+				),
+				entrypointCopyStep,
+				tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
+					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
+				),
+				tb.BuildStep("source-mkdir-git-resource", "override-with-bash-noop:latest",
+					tb.Args("-args", "mkdir -p output-folder"),
+					tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
+				),
+				tb.BuildStep("source-copy-git-resource", "override-with-bash-noop:latest",
+					tb.Args("-args", "cp -r /workspace/git-resource/. output-folder"),
+					tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunInputOutput.Name)),
+				tb.BuildVolume(resources.GetPVCVolume(taskRunInputOutput.GetPipelineRunPVCName())),
 			),
-			tb.BuildStep("source-copy-another-git-resource-0", "override-with-bash-noop:latest",
-				tb.Args("-args", "cp -r source-folder/. /workspace/another-git-resource"),
-				tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
-			),
-			tb.BuildStep("create-dir-git-resource", "override-with-bash-noop:latest",
-				tb.Args("-args", "mkdir -p /workspace/git-resource"),
-			),
-			tb.BuildStep("source-copy-git-resource-0", "override-with-bash-noop:latest",
-				tb.Args("-args", "cp -r source-folder/. /workspace/git-resource"),
-				tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
-			),
-			entrypointCopyStep,
-			tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
-				entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
-			),
-			tb.BuildStep("source-mkdir-git-resource", "override-with-bash-noop:latest",
-				tb.Args("-args", "mkdir -p output-folder"),
-				tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
-			),
-			tb.BuildStep("source-copy-git-resource", "override-with-bash-noop:latest",
-				tb.Args("-args", "cp -r /workspace/git-resource/. output-folder"),
-				tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
-			),
-			tb.BuildVolume(getToolsVolume(taskRunInputOutput.Name)),
-			tb.BuildVolume(resources.GetPVCVolume(taskRunInputOutput.GetPipelineRunPVCName())),
 		),
 	}, {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
-		wantBuildSpec: tb.BuildSpec(
-			tb.BuildStep("git-source-git-resource", "override-with-git:latest",
-				tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
-				tb.VolumeMount(corev1.VolumeMount{
-					Name:      "workspace",
-					MountPath: workspaceDir,
-				}),
-				tb.VolumeMount(implicitBuilderVolumeMounts),
+		wantBuild: tb.Build("test-taskrun-with-taskspec", "foo",
+			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-taskspec"),
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-taskspec",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				tb.BuildStep("git-source-git-resource", "override-with-git:latest",
+					tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
+					tb.VolumeMount(corev1.VolumeMount{
+						Name:      "workspace",
+						MountPath: workspaceDir,
+					}),
+					tb.VolumeMount(implicitBuilderVolumeMounts),
+				),
+				entrypointCopyStep,
+				tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
+					tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
+					tb.VolumeMount(toolsMount),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunWithTaskSpec.Name)),
 			),
-			entrypointCopyStep,
-			tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-				tb.VolumeMount(toolsMount),
-			),
-			tb.BuildVolume(getToolsVolume(taskRunWithTaskSpec.Name)),
 		),
 	}, {
 		name:    "success-with-cluster-task",
 		taskRun: taskRunWithClusterTask,
-		wantBuildSpec: tb.BuildSpec(entrypointCopyStep,
-			tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
-				entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
+		wantBuild: tb.Build("test-taskrun-with-cluster-task", "foo",
+			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-cluster-task"),
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(entrypointCopyStep,
+				tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
+					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunWithClusterTask.Name)),
 			),
-			tb.BuildVolume(getToolsVolume(taskRunWithClusterTask.Name)),
 		),
 	}, {
 		name:    "taskrun-with-resource-spec-task-spec",
 		taskRun: taskRunWithResourceSpecAndTaskSpec,
-		wantBuildSpec: tb.BuildSpec(
-			tb.BuildStep("git-source-workspace", "override-with-git:latest",
-				tb.Args("-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path", "/workspace/workspace"),
-				tb.VolumeMount(corev1.VolumeMount{
-					Name:      "workspace",
-					MountPath: workspaceDir,
-				}),
-				tb.VolumeMount(implicitBuilderVolumeMounts),
+		wantBuild: tb.Build("test-taskrun-with-resource-spec", "foo",
+			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-resource-spec"),
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				tb.BuildStep("git-source-workspace", "override-with-git:latest",
+					tb.Args("-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path", "/workspace/workspace"),
+					tb.VolumeMount(corev1.VolumeMount{
+						Name:      "workspace",
+						MountPath: workspaceDir,
+					}),
+					tb.VolumeMount(implicitBuilderVolumeMounts),
+				),
+				entrypointCopyStep,
+				tb.BuildStep("mystep", "ubuntu", tb.Command(entrypointLocation),
+					tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
+					tb.VolumeMount(toolsMount),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunWithResourceSpecAndTaskSpec.Name)),
 			),
-			entrypointCopyStep,
-			tb.BuildStep("mystep", "ubuntu", tb.Command(entrypointLocation),
-				tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-				tb.VolumeMount(toolsMount),
+		),
+	}, {
+		name:    "taskrun-with-labels",
+		taskRun: taskRunWithLabels,
+		wantBuild: tb.Build("test-taskrun-with-labels", "foo",
+			tb.BuildLabel("TaskRunLabel", "TaskRunValue"),
+			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-labels"),
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-labels"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-labels",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				entrypointCopyStep,
+				tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
+					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunWithLabels.Name)),
 			),
-			tb.BuildVolume(getToolsVolume(taskRunWithResourceSpecAndTaskSpec.Name)),
 		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -413,15 +491,17 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
-			wantPod, err := resources.MakePod(&buildv1alpha1.Build{
-				Spec: tc.wantBuildSpec,
-			}, clients.Kube)
+			// TODO: Using MakePod means that a diff will not catch issues
+			// specific to the Build to Pod translation (e.g. if labels are
+			// not propagated in MakePod). To avoid this issue we should create
+			// a builder for Pods and use that intead.
+			wantPod, err := resources.MakePod(tc.wantBuild, clients.Kube)
 			if err != nil {
 				t.Fatalf("MakePod: %v", err)
 			}
 
-			if d := cmp.Diff(pod.Spec, wantPod.Spec); d != "" {
-				t.Errorf("pod spec doesn't match, diff: %s", d)
+			if d := cmp.Diff(pod, wantPod, ignoreRandomPodNameSuffix); d != "" {
+				t.Errorf("pod doesn't match, diff: %s", d)
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
@@ -761,11 +841,11 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	tr := tb.TaskRun("tr", "tr", tb.TaskRunSpec(
 		tb.TaskRunServiceAccount("sa"),
 	))
-	bs := tb.BuildSpec(
+	bs := tb.Build("tr", "tr", tb.BuildSpec(
 		tb.BuildStep("foo1", "bar1", tb.Command("abcd"), tb.Args("efgh")),
 		tb.BuildStep("foo2", "bar2", tb.Command("abcd"), tb.Args("efgh")),
 		tb.BuildVolume(corev1.Volume{Name: "v"}),
-	)
+	)).Spec
 
 	expectedSteps := len(bs.Steps) + 1
 	expectedVolumes := len(bs.Volumes) + 1

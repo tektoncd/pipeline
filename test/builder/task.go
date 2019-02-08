@@ -68,9 +68,6 @@ type TaskRunOutputsOp func(*v1alpha1.TaskRunOutputs)
 // ResolvedTaskResourcesOp is an operation which modify a ResolvedTaskResources struct.
 type ResolvedTaskResourcesOp func(*resources.ResolvedTaskResources)
 
-// OwnerReferenceOp is an operation which modify an OwnerReference struct.
-type OwnerReferenceOp func(*metav1.OwnerReference)
-
 // StepStateOp is an operation which modify a StepStep struct.
 type StepStateOp func(*v1alpha1.StepState)
 
@@ -353,13 +350,6 @@ func TaskRunOwnerReference(kind, name string, ops ...OwnerReferenceOp) TaskRunOp
 			op(o)
 		}
 		tr.ObjectMeta.OwnerReferences = append(tr.ObjectMeta.OwnerReferences, *o)
-	}
-}
-
-// OwnerReferenceAPIVersion sets the APIVersion to the OwnerReference.
-func OwnerReferenceAPIVersion(version string) OwnerReferenceOp {
-	return func(o *metav1.OwnerReference) {
-		o.APIVersion = version
 	}
 }
 

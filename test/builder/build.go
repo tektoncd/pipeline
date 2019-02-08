@@ -16,7 +16,11 @@ package builder
 import (
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// BuildOp is an operation which modifies a Build struct.
+type BuildOp func(*buildv1alpha1.Build)
 
 // BuildSpecOp is an operation which modify a BuildSpec struct.
 type BuildSpecOp func(*buildv1alpha1.BuildSpec)
@@ -27,14 +31,58 @@ type SourceSpecOp func(*buildv1alpha1.SourceSpec)
 // ContainerOp is an operation which modify a Container struct.
 type ContainerOp func(*corev1.Container)
 
+// Build creates a Build with default values.
+// Any number of Build modifier can be passed to transform it.
+func Build(name, namespace string, ops ...BuildOp) *buildv1alpha1.Build {
+	build := &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+	}
+	for _, op := range ops {
+		op(build)
+	}
+	return build
+}
+
+func BuildLabel(key, value string) BuildOp {
+	return func(build *buildv1alpha1.Build) {
+		if build.ObjectMeta.Labels == nil {
+			build.ObjectMeta.Labels = map[string]string{}
+		}
+		build.ObjectMeta.Labels[key] = value
+	}
+}
+
+// BuildOwnerReference sets the OwnerReference, with specified kind and name, to the Build.
+func BuildOwnerReference(kind, name string, ops ...OwnerReferenceOp) BuildOp {
+	controller := true
+	blockOwnerDeletion := true
+	return func(build *buildv1alpha1.Build) {
+		o := &metav1.OwnerReference{
+			Kind:               kind,
+			Name:               name,
+			Controller:         &controller,
+			BlockOwnerDeletion: &blockOwnerDeletion,
+		}
+		for _, op := range ops {
+			op(o)
+		}
+		build.ObjectMeta.OwnerReferences = append(build.ObjectMeta.OwnerReferences, *o)
+	}
+}
+
 // BuildSpec creates a BuildSpec with default values.
 // Any number of BuildSpec modifier can be passed to transform it.
-func BuildSpec(ops ...BuildSpecOp) buildv1alpha1.BuildSpec {
-	buildSpec := &buildv1alpha1.BuildSpec{}
-	for _, op := range ops {
-		op(buildSpec)
+func BuildSpec(ops ...BuildSpecOp) BuildOp {
+	return func(build *buildv1alpha1.Build) {
+		buildSpec := &build.Spec
+		for _, op := range ops {
+			op(buildSpec)
+		}
+		build.Spec = *buildSpec
 	}
-	return *buildSpec
 }
 
 // BuildServiceAccountName sets the service account to the BuildSpec.

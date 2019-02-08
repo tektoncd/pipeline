@@ -360,15 +360,19 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 		taskRunTimeout = nil
 	}
 
+	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+2)
+	for key, val := range pr.ObjectMeta.Labels {
+		labels[key] = val
+	}
+	labels[pipeline.GroupName+pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
+	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
+
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
 			OwnerReferences: pr.GetOwnerReference(),
-			Labels: map[string]string{
-				pipeline.GroupName + pipeline.PipelineLabelKey:    pr.Spec.PipelineRef.Name,
-				pipeline.GroupName + pipeline.PipelineRunLabelKey: pr.Name,
-			},
+			Labels:          labels,
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskRef: &v1alpha1.TaskRef{
