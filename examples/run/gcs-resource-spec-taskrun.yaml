@@ -1,0 +1,28 @@
+apiVersion: pipeline.knative.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: list-file
+spec:
+  taskSpec:
+   inputs:
+    resources:
+    - name: workspace
+      type: build-gcs
+      targetPath: rules
+    steps:
+    - name: list
+      image: ubuntu
+      command: ["/bin/bash"]
+      args: ['-c', 'ls -al /workspace/rules/rules_docker-master'] # tests build-gcs resource
+  trigger:
+    type: manual
+  inputs:
+    resources:
+    - name: workspace
+      resourceSpec:
+        type: build-gcs
+        params:
+          - name: location
+            value: gs://build-crd-tests/rules_docker-master.zip
+          - name: artifactType
+            value: archive

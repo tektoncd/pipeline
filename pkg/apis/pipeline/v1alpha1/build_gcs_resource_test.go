@@ -119,6 +119,31 @@ func Test_Invalid_BuildGCSResource(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "artifactType param with secrets value",
+		pipelineResource: &PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "gcs-resource-with-secrets",
+			},
+			Spec: PipelineResourceSpec{
+				Type: PipelineResourceTypeStorage,
+				Params: []Param{{
+					Name:  "Location",
+					Value: "gs://test",
+				}, {
+					Name:  "type",
+					Value: "build-gcs",
+				}, {
+					Name:  "ArtifactType",
+					Value: "invalid-type",
+				}},
+				SecretParams: []SecretParam{{
+					SecretKey:  "secretKey",
+					SecretName: "secretName",
+					FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
+				}},
+			},
+		},
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -149,11 +174,6 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 			}, {
 				Name:  "DestinationDir",
 				Value: "/var/home",
-			}},
-			SecretParams: []SecretParam{{
-				SecretKey:  "secretKey",
-				SecretName: "secretName",
-				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
 	}
@@ -208,11 +228,6 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace",
 			ArtifactType:   "archive",
-			Secrets: []SecretParam{{
-				SecretName: "secretName",
-				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-				SecretKey:  "key.json",
-			}},
 		},
 		wantContainers: []corev1.Container{
 			CreateDirContainer("gcs-valid", "/workspace"), {
@@ -220,46 +235,6 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 				Image: "gcr.io/cloud-builders/gcs-fetcher:latest",
 				Args: []string{"--type", "archive", "--location", "gs://some-bucket",
 					"--dest_dir", "/workspace"},
-				Env: []corev1.EnvVar{{
-					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-					Value: "/var/secret/secretName/key.json",
-				}},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "volume-gcs-valid-secretName",
-					MountPath: "/var/secret/secretName",
-				}},
-			}},
-	}, {
-		name: "duplicate secret mount paths",
-		resource: &BuildGCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket",
-			DestinationDir: "/workspace",
-			ArtifactType:   "archive",
-			Secrets: []SecretParam{{
-				SecretName: "secretName",
-				FieldName:  "fieldName",
-				SecretKey:  "key.json",
-			}, {
-				SecretKey:  "key.json",
-				SecretName: "secretName",
-				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-			}},
-		},
-		wantContainers: []corev1.Container{
-			CreateDirContainer("gcs-valid", "/workspace"), {
-				Name:  "storage-fetch-gcs-valid",
-				Image: "gcr.io/cloud-builders/gcs-fetcher:latest",
-				Args: []string{"--type", "archive", "--location", "gs://some-bucket",
-					"--dest_dir", "/workspace"},
-				Env: []corev1.EnvVar{{
-					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-					Value: "/var/secret/secretName/key.json",
-				}},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "volume-gcs-valid-secretName",
-					MountPath: "/var/secret/secretName",
-				}},
 			}},
 	}, {
 		name: "invalid no destination directory set",
@@ -296,50 +271,11 @@ func Test_BuildGCSGetUploadContainerSpec(t *testing.T) {
 			Location:       "gs://some-bucket/manifest.json",
 			DestinationDir: "/workspace",
 			ArtifactType:   "manifest",
-			Secrets: []SecretParam{{
-				SecretName: "secretName",
-				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-				SecretKey:  "key.json",
-			}},
 		},
 		wantContainers: []corev1.Container{{
 			Name:  "storage-upload-gcs-valid",
 			Image: "gcr.io/cloud-builders/gcs-uploader:latest",
 			Args:  []string{"--location", "gs://some-bucket/manifest.json", "--dir", "/workspace"},
-			Env:   []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"}},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "volume-gcs-valid-secretName",
-				MountPath: "/var/secret/secretName",
-			}},
-		}},
-	}, {
-		name: "duplicate secret mount paths",
-		resource: &BuildGCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket/manifest.json",
-			DestinationDir: "/workspace",
-			ArtifactType:   "manifest",
-			Secrets: []SecretParam{{
-				SecretName: "secretName",
-				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-				SecretKey:  "key.json",
-			}, {
-				SecretKey:  "key.json",
-				SecretName: "secretName",
-				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-			}},
-		},
-		wantContainers: []corev1.Container{{
-			Name:  "storage-upload-gcs-valid",
-			Image: "gcr.io/cloud-builders/gcs-uploader:latest",
-			Args:  []string{"--location", "gs://some-bucket/manifest.json", "--dir", "/workspace"},
-			Env: []corev1.EnvVar{
-				{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"},
-			},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "volume-gcs-valid-secretName",
-				MountPath: "/var/secret/secretName",
-			}},
 		}},
 	}, {
 		name: "invalid upload to protected buckets with single file",

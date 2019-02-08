@@ -67,6 +67,9 @@ func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
+	if r.Spec.SecretParams != nil {
+		return nil, fmt.Errorf("BuildGCSResource: %s cannot support artifacts on private bucket", r.Name)
+	}
 	var location, destDir string
 	var aType GCSArtifactType
 
@@ -114,7 +117,7 @@ func (s BuildGCSResource) GetType() PipelineResourceType {
 func (s *BuildGCSResource) GetParams() []Param { return []Param{} }
 
 // GetSecretParams returns the resource secret params
-func (s *BuildGCSResource) GetSecretParams() []SecretParam { return s.Secrets }
+func (s *BuildGCSResource) GetSecretParams() []SecretParam { return nil }
 
 // Replacements is used for template replacement on an GCSResource inside of a Taskrun.
 func (s *BuildGCSResource) Replacements() map[string]string {
@@ -139,14 +142,11 @@ func (s *BuildGCSResource) GetDownloadContainerSpec() ([]corev1.Container, error
 		args = append(args, "--dest_dir", s.DestinationDir)
 	}
 
-	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 	return []corev1.Container{
 		CreateDirContainer(s.Name, s.DestinationDir), {
-			Name:         fmt.Sprintf("storage-fetch-%s", s.Name),
-			Image:        *buildGCSFetcherImage,
-			Args:         args,
-			Env:          envVars,
-			VolumeMounts: secretVolumeMount,
+			Name:  fmt.Sprintf("storage-fetch-%s", s.Name),
+			Image: *buildGCSFetcherImage,
+			Args:  args,
 		}}, nil
 }
 
@@ -160,14 +160,11 @@ func (s *BuildGCSResource) GetUploadContainerSpec() ([]corev1.Container, error) 
 		return nil, fmt.Errorf("BuildGCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
 	args := []string{"--location", s.Location, "--dir", s.DestinationDir}
-	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
 	return []corev1.Container{{
-		Name:         fmt.Sprintf("storage-upload-%s", s.Name),
-		Image:        *buildGCSUploaderImage,
-		Args:         args,
-		VolumeMounts: secretVolumeMount,
-		Env:          envVars,
+		Name:  fmt.Sprintf("storage-upload-%s", s.Name),
+		Image: *buildGCSUploaderImage,
+		Args:  args,
 	}}, nil
 }
 
