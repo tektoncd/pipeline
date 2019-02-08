@@ -218,3 +218,36 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 		t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
 	}
 }
+
+func TestAllowedGCSStorageType(t *testing.T) {
+	tests := []struct {
+		name        string
+		storageType string
+		want        bool
+	}{
+		{name: "storage with gcs type",
+			storageType: "gcs",
+			want:        true,
+		},
+		{name: "storage with build-gcs type",
+			storageType: "build-gcs",
+			want:        true,
+		},
+		{name: "storage with incorrent type",
+			storageType: "t",
+			want:        false,
+		},
+		{name: "storage with empty type",
+			storageType: "",
+			want:        false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if allowedStorageType(tt.storageType) != tt.want {
+				t.Errorf("PipleineResource.allowedStorageType should return %t, got %t for %s", tt.want, !tt.want, tt.storageType)
+			}
+		})
+	}
+
+}
