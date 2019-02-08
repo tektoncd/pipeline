@@ -68,7 +68,7 @@ func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.SecretParams != nil {
 		return nil, fmt.Errorf("BuildGCSResource: %s cannot support artifacts on private bucket", r.Name)
 	}
-	var location, destDir string
+	var location string
 	var aType GCSArtifactType
 
 	for _, param := range r.Spec.Params {
@@ -90,11 +90,10 @@ func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 		return nil, fmt.Errorf("BuildGCSResource: Need ArtifactType to be specified in order to fetch BuildGCS resource %s", r.Name)
 	}
 	return &BuildGCSResource{
-		Name:           r.Name,
-		Type:           r.Spec.Type,
-		Location:       location,
-		DestinationDir: destDir,
-		ArtifactType:   aType,
+		Name:         r.Name,
+		Type:         r.Spec.Type,
+		Location:     location,
+		ArtifactType: aType,
 	}, nil
 }
 
