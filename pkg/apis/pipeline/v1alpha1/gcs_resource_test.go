@@ -80,6 +80,9 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 				Params: []Param{{
 					Name:  "NotLocation",
 					Value: "doesntmatter",
+				}, {
+					Name:  "type",
+					Value: "gcs",
 				}},
 			},
 		},
@@ -94,6 +97,9 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 				Params: []Param{{
 					Name:  "Location",
 					Value: "",
+				}, {
+					Name:  "type",
+					Value: "gcs",
 				}},
 			},
 		},
