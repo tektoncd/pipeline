@@ -7,7 +7,7 @@ spec:
    inputs:
     resources:
     - name: workspace
-      type: build-gcs
+      type: storage
       targetPath: rules
     steps:
     - name: list
@@ -20,9 +20,11 @@ spec:
     resources:
     - name: workspace
       resourceSpec:
-        type: build-gcs
+        type: storage
         params:
           - name: location
             value: gs://build-crd-tests/rules_docker-master.zip
           - name: artifactType
             value: archive
+          - name: type
+            value: build-gcs
