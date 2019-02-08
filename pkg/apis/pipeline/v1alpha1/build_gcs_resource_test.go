@@ -145,7 +145,7 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 				Value: "build-gcs",
 			}, {
 				Name:  "ArtifactType",
-				Value: "Manifest",
+				Value: "manifest",
 			}, {
 				Name:  "DestinationDir",
 				Value: "/var/home",
@@ -162,7 +162,7 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 		Location:       "gs://fake-bucket",
 		Type:           PipelineResourceTypeStorage,
 		DestinationDir: "/var/home",
-		ArtifactType:   "Manifest",
+		ArtifactType:   "manifest",
 		Secrets: []SecretParam{{
 			SecretName: "secretName",
 			SecretKey:  "secretKey",
