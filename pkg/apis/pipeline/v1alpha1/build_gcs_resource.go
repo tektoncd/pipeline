@@ -75,8 +75,6 @@ func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 		switch {
 		case strings.EqualFold(param.Name, "Location"):
 			location = param.Value
-		case strings.EqualFold(param.Name, "DestinationDir"):
-			destDir = param.Value
 		case strings.EqualFold(param.Name, "ArtifactType"):
 			var err error
 			aType, err = getArtifactType(param.Value)

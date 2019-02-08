@@ -171,18 +171,14 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 			}, {
 				Name:  "ArtifactType",
 				Value: "manifest",
-			}, {
-				Name:  "DestinationDir",
-				Value: "/var/home",
 			}},
 		},
 	}
 	expectedGCSResource := &BuildGCSResource{
-		Name:           "build-gcs-resource",
-		Location:       "gs://fake-bucket",
-		Type:           PipelineResourceTypeStorage,
-		DestinationDir: "/var/home",
-		ArtifactType:   "manifest",
+		Name:         "build-gcs-resource",
+		Location:     "gs://fake-bucket",
+		Type:         PipelineResourceTypeStorage,
+		ArtifactType: "manifest",
 	}
 
 	r, err := NewBuildGCSResource(pr)
