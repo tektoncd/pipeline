@@ -58,8 +58,6 @@ type BuildGCSResource struct {
 	Location       string
 	DestinationDir string
 	ArtifactType   GCSArtifactType
-	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
-	Secrets []SecretParam
 }
 
 // NewBuildGCSResource creates a new BuildGCS resource to pass to knative build
@@ -99,7 +97,6 @@ func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 		Location:       location,
 		DestinationDir: destDir,
 		ArtifactType:   aType,
-		Secrets:        r.Spec.SecretParams,
 	}, nil
 }
 

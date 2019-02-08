@@ -183,11 +183,6 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 		Type:           PipelineResourceTypeStorage,
 		DestinationDir: "/var/home",
 		ArtifactType:   "manifest",
-		Secrets: []SecretParam{{
-			SecretName: "secretName",
-			SecretKey:  "secretKey",
-			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-		}},
 	}
 
 	r, err := NewBuildGCSResource(pr)
