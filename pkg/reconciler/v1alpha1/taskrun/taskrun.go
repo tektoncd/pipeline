@@ -430,14 +430,6 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 		return nil, fmt.Errorf("translating Build to Pod: %v", err)
 	}
 
-	// Rewrite the pod's OwnerRef to point the TaskRun, instead of a
-	// non-existent build.
-	// TODO(jasonhall): Just set this directly when creating a Pod from a
-	// TaskRun.
-	pod.OwnerReferences = []metav1.OwnerReference{
-		*metav1.NewControllerRef(tr, groupVersionKind),
-	}
-
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
 }
 
@@ -488,10 +480,10 @@ func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, tr 
 // makeLabels constructs the labels we will apply to TaskRun resources.
 func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
-	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
 	for k, v := range s.ObjectMeta.Labels {
 		labels[k] = v
 	}
+	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
 	return labels
 }
 

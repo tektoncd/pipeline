@@ -243,6 +243,16 @@ func PipelineRunSpec(name string, ops ...PipelineRunSpecOp) PipelineRunOp {
 	}
 }
 
+// PipelineRunLabels adds a label to the PipelineRun.
+func PipelineRunLabel(key, value string) PipelineRunOp {
+	return func(pr *v1alpha1.PipelineRun) {
+		if pr.ObjectMeta.Labels == nil {
+			pr.ObjectMeta.Labels = map[string]string{}
+		}
+		pr.ObjectMeta.Labels[key] = value
+	}
+}
+
 // PipelineRunResourceBinding adds bindings from actual instances to a Pipeline's declared resources.
 func PipelineRunResourceBinding(name string, ops ...PipelineResourceBindingOp) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {

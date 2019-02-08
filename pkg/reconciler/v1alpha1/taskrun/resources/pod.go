@@ -30,7 +30,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/knative/build-pipeline/pkg/credentials"
@@ -220,6 +219,14 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 	}
 	annotations["sidecar.istio.io/inject"] = "false"
 
+	labels := map[string]string{}
+	for key, val := range build.ObjectMeta.Labels {
+		labels[key] = val
+	}
+	// TODO: Redundant with TaskRun label set in `taskrun.makeLabels`. Should
+	// probably be removed once we translate from TaskRun to Pod directly.
+	labels[buildNameLabelKey] = build.Name
+
 	cred, secrets, err := makeCredentialInitializer(build, kubeclient)
 	if err != nil {
 		return nil, err
@@ -298,18 +305,10 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 			// is deleted and re-created with the same name.
 			// We don't use GenerateName here because k8s fakes don't support it.
 			Name: fmt.Sprintf("%s-pod-%s", build.Name, gibberish),
-			// If our parent Build is deleted, then we should be as well.
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(build, schema.GroupVersionKind{
-					Group:   v1alpha1.SchemeGroupVersion.Group,
-					Version: v1alpha1.SchemeGroupVersion.Version,
-					Kind:    "Build",
-				}),
-			},
+			// If our parent TaskRun is deleted, then we should be as well.
+			OwnerReferences: build.OwnerReferences,
 			Annotations: annotations,
-			Labels: map[string]string{
-				buildNameLabelKey: build.Name,
-			},
+			Labels: labels,
 		},
 		Spec: corev1.PodSpec{
 			// If the build fails, don't restart it.

@@ -89,9 +89,15 @@ func TestPipelineRun(t *testing.T) {
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
 		Type: duckv1alpha1.ConditionSucceeded,
 	}), tb.PipelineRunStartTime(startTime),
-	))
+	), tb.PipelineRunLabel("label-key", "label-value"))
 	expectedPipelineRun := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "pear", Namespace: "foo"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pear",
+			Namespace: "foo",
+			Labels: map[string]string{
+				"label-key": "label-value",
+			},
+		},
 		Spec: v1alpha1.PipelineRunSpec{
 			PipelineRef:    v1alpha1.PipelineRef{Name: "tomatoes"},
 			Trigger:        v1alpha1.PipelineTrigger{Type: v1alpha1.PipelineTriggerTypeManual},

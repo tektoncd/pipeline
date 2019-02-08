@@ -20,9 +20,11 @@ import (
 	tb "github.com/knative/build-pipeline/test/builder"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestBuildSpec(t *testing.T) {
+func TestBuild(t *testing.T) {
+	trueB := true
 	toolsMount := corev1.VolumeMount{
 		Name:      "tools-volume",
 		MountPath: "/tools",
@@ -31,31 +33,52 @@ func TestBuildSpec(t *testing.T) {
 		Name:         "tools-volume",
 		VolumeSource: corev1.VolumeSource{},
 	}
-	buildSpec := tb.BuildSpec(
-		tb.BuildServiceAccountName("sa"),
-		tb.BuildStep("simple-step", "foo",
-			tb.Command("/mycmd"), tb.Args("my", "args"),
-			tb.VolumeMount(toolsMount),
+	build := tb.Build("build-foo", "foo",
+		tb.BuildLabel("label", "label-value"),
+		tb.BuildOwnerReference("TaskRun", "taskrun-foo",
+			tb.OwnerReferenceAPIVersion("a1")),
+		tb.BuildSpec(
+			tb.BuildServiceAccountName("sa"),
+			tb.BuildStep("simple-step", "foo",
+				tb.Command("/mycmd"), tb.Args("my", "args"),
+				tb.VolumeMount(toolsMount),
+			),
+			tb.BuildSource("foo", tb.BuildSourceGit("https://foo.git", "master")),
+			tb.BuildVolume(volume),
 		),
-		tb.BuildSource("foo", tb.BuildSourceGit("https://foo.git", "master")),
-		tb.BuildVolume(volume),
 	)
-	expectedBuildSpec := buildv1alpha1.BuildSpec{
-		ServiceAccountName: "sa",
-		Steps: []corev1.Container{{
-			Name:         "simple-step",
-			Image:        "foo",
-			Command:      []string{"/mycmd"},
-			Args:         []string{"my", "args"},
-			VolumeMounts: []corev1.VolumeMount{toolsMount},
-		}},
-		Sources: []buildv1alpha1.SourceSpec{{
-			Name: "foo",
-			Git:  &buildv1alpha1.GitSourceSpec{Url: "https://foo.git", Revision: "master"},
-		}},
-		Volumes: []corev1.Volume{volume},
+	expectedBuild := &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "build-foo",
+			Labels: map[string]string{
+				"label": "label-value",
+			},
+			OwnerReferences: []metav1.OwnerReference{{
+				Kind:               "TaskRun",
+				Name:               "taskrun-foo",
+				APIVersion:         "a1",
+				Controller:         &trueB,
+				BlockOwnerDeletion: &trueB,
+			}},
+		},
+		Spec: buildv1alpha1.BuildSpec{
+			ServiceAccountName: "sa",
+			Steps: []corev1.Container{{
+				Name:         "simple-step",
+				Image:        "foo",
+				Command:      []string{"/mycmd"},
+				Args:         []string{"my", "args"},
+				VolumeMounts: []corev1.VolumeMount{toolsMount},
+			}},
+			Sources: []buildv1alpha1.SourceSpec{{
+				Name: "foo",
+				Git:  &buildv1alpha1.GitSourceSpec{Url: "https://foo.git", Revision: "master"},
+			}},
+			Volumes: []corev1.Volume{volume},
+		},
 	}
-	if d := cmp.Diff(expectedBuildSpec, buildSpec); d != "" {
-		t.Fatalf("BuildSpec diff -want, +got: %v", d)
+	if d := cmp.Diff(expectedBuild, build); d != "" {
+		t.Fatalf("Build diff -want, +got: %v", d)
 	}
 }
