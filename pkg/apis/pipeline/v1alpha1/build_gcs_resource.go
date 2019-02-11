@@ -36,11 +36,11 @@ type GCSArtifactType string
 
 const (
 	// GCSArchive indicates that resource should be fetched from a typical archive file.
-	GCSArchive GCSArtifactType = "archive"
+	GCSArchive GCSArtifactType = "Archive"
 
 	// GCSManifest indicates that resource should be fetched using a
 	// manifest-based protocol which enables incremental source upload.
-	GCSManifest GCSArtifactType = "manifest"
+	GCSManifest GCSArtifactType = "Manifest"
 
 	// EmptyArtifactType indicates, no artifact type is specified.
 	EmptyArtifactType = ""
@@ -167,6 +167,7 @@ func getArtifactType(val string) (GCSArtifactType, error) {
 	valid := []string{string(GCSArchive), string(GCSManifest)}
 	switch aType {
 	case GCSArchive:
+		return aType, nil
 	case GCSManifest:
 		return aType, nil
 	case EmptyArtifactType:
