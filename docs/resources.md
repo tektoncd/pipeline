@@ -16,9 +16,7 @@ For example:
 ---
 
 - [Syntax](#syntax)
-  - [Declared resources](#declared-resources)
-  - [Pipeline Tasks](#pipeline-tasks)
-    - [From](#from)
+- [Resource types](#resource-types)
 - [Examples](#examples)
 
 ## Syntax
@@ -43,7 +41,7 @@ following fields:
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
-### Resource Types
+## Resource Types
 
 The following `PipelineResources` are currently supported:
 
@@ -52,7 +50,7 @@ The following `PipelineResources` are currently supported:
 - [Cluster resource](#cluster-resource)
 - [Storage resource](#storage-resource)
 
-#### Git Resource
+### Git Resource
 
 Git resource represents a [git](https://git-scm.com/) repository, that contains
 the source code to be built by the pipeline. Adding the git resource as an input
@@ -86,7 +84,7 @@ Params that can be added are the following:
    commit [or branch](#using-a-branch) is used. _If no revision is specified,
    the resource will default to `latest` from `master`._
 
-##### Using a fork
+#### Using a fork
 
 The `Url` parameter can be used to point at any git repository, for example to
 use a GitHub fork at master:
@@ -99,7 +97,7 @@ spec:
       value: https://github.com/bobcatfish/wizzbang.git
 ```
 
-##### Using a branch
+#### Using a branch
 
 The `revision` can be any
 [git commit-ish (revision)](https://git-scm.com/docs/gitrevisions#_specifying_revisions).
@@ -129,7 +127,7 @@ spec:
       value: refs/pull/52525/head
 ```
 
-#### Image Resource
+### Image Resource
 
 An Image resource represents an image that lives in a remote repository. It is
 usually used as [a `Task` `output`](concepts.md#task) for `Tasks` that build
@@ -160,7 +158,7 @@ spec:
       value: gcr.io/staging-images/kritis
 ```
 
-#### Cluster Resource
+### Cluster Resource
 
 Cluster Resource represents a Kubernetes cluster other than the current cluster
 the pipeline CRD is running on. A common use case for this resource is to deploy
@@ -275,7 +273,7 @@ spec:
           ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
 ```
 
-#### Storage Resource
+### Storage Resource
 
 Storage resource represents blob storage, that contains either an object or
 directory. Adding the storage resource as an input to a Task will download the
@@ -284,7 +282,7 @@ blob. Blob storage type
 [Google Cloud Storage](https://cloud.google.com/storage/)(gcs) is supported as
 of now.
 
-##### GCS Storage Resource
+#### GCS Storage Resource
 
 GCS Storage resource points to
 [Google Cloud Storage](https://cloud.google.com/storage/) blob.
@@ -333,7 +331,7 @@ service account.
 2. Create a Kubernetes secret from downloaded service account json key
 
    ```bash
-   $ kubectl create secret generic bucket-sa --from-file=./service_account.json
+   kubectl create secret generic bucket-sa --from-file=./service_account.json
    ```
 
 3. To access GCS private bucket environment variable
