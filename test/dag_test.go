@@ -113,6 +113,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	}
 	// FIXME(vdemeester) do the rest :)
 	/*
+		// TODO(christiewilson) can't actually get the logs reliably at this point, maybe write to a volume instead?
 		logger.Infof("Getting logs from results validation task")
 		// The volume created with the results will have the same name as the TaskRun
 		validationTaskRunName := "dag-pipeline-run-pipeline-task-4-validate-results"
