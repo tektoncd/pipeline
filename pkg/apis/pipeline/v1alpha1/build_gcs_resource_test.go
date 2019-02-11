@@ -170,7 +170,7 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 				Value: "build-gcs",
 			}, {
 				Name:  "ArtifactType",
-				Value: "manifest",
+				Value: "Manifest",
 			}},
 		},
 	}
@@ -178,7 +178,7 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 		Name:         "build-gcs-resource",
 		Location:     "gs://fake-bucket",
 		Type:         PipelineResourceTypeStorage,
-		ArtifactType: "manifest",
+		ArtifactType: "Manifest",
 	}
 
 	r, err := NewBuildGCSResource(pr)
@@ -218,13 +218,13 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 			Name:           "gcs-valid",
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace",
-			ArtifactType:   "archive",
+			ArtifactType:   "Archive",
 		},
 		wantContainers: []corev1.Container{
 			CreateDirContainer("gcs-valid", "/workspace"), {
 				Name:  "storage-fetch-gcs-valid",
 				Image: "gcr.io/cloud-builders/gcs-fetcher:latest",
-				Args: []string{"--type", "archive", "--location", "gs://some-bucket",
+				Args: []string{"--type", "Archive", "--location", "gs://some-bucket",
 					"--dest_dir", "/workspace"},
 			}},
 	}, {
@@ -232,7 +232,7 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 		resource: &BuildGCSResource{
 			Name:         "gcs-invalid",
 			Location:     "gs://some-bucket",
-			ArtifactType: "archive",
+			ArtifactType: "Archive",
 		},
 		wantErr: true,
 	}}
@@ -261,7 +261,7 @@ func Test_BuildGCSGetUploadContainerSpec(t *testing.T) {
 			Name:           "gcs-valid",
 			Location:       "gs://some-bucket/manifest.json",
 			DestinationDir: "/workspace",
-			ArtifactType:   "manifest",
+			ArtifactType:   "Manifest",
 		},
 		wantContainers: []corev1.Container{{
 			Name:  "storage-upload-gcs-valid",
@@ -272,7 +272,7 @@ func Test_BuildGCSGetUploadContainerSpec(t *testing.T) {
 		name: "invalid upload to protected buckets with single file",
 		resource: &BuildGCSResource{
 			Name:           "gcs-valid",
-			ArtifactType:   "archive",
+			ArtifactType:   "Archive",
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace/results.tar",
 		},

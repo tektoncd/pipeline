@@ -24,6 +24,6 @@ spec:
           - name: location
             value: gs://build-crd-tests/rules_docker-master.zip
           - name: artifactType
-            value: archive
+            value: Archive
           - name: type
             value: build-gcs
