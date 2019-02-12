@@ -36,7 +36,7 @@ func (rs *PipelineResourceSpec) Validate() *apis.FieldError {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 	if rs.Type == PipelineResourceTypeCluster {
-		var usernameFound, cadataFound bool
+		var usernameFound, cadataFound, nameFound bool
 		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "URL"):
@@ -47,6 +47,8 @@ func (rs *PipelineResourceSpec) Validate() *apis.FieldError {
 				usernameFound = true
 			case strings.EqualFold(param.Name, "CAData"):
 				cadataFound = true
+			case strings.EqualFold(param.Name, "name"):
+				nameFound = true
 			}
 		}
 
@@ -59,6 +61,9 @@ func (rs *PipelineResourceSpec) Validate() *apis.FieldError {
 			}
 		}
 
+		if !nameFound {
+			return apis.ErrMissingField("name param")
+		}
 		if !usernameFound {
 			return apis.ErrMissingField("username param")
 		}
