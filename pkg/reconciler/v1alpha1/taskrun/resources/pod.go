@@ -219,14 +219,6 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 	}
 	annotations["sidecar.istio.io/inject"] = "false"
 
-	labels := map[string]string{}
-	for key, val := range build.ObjectMeta.Labels {
-		labels[key] = val
-	}
-	// TODO: Redundant with TaskRun label set in `taskrun.makeLabels`. Should
-	// probably be removed once we translate from TaskRun to Pod directly.
-	labels[buildNameLabelKey] = build.Name
-
 	cred, secrets, err := makeCredentialInitializer(build, kubeclient)
 	if err != nil {
 		return nil, err
@@ -308,7 +300,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 			// If our parent TaskRun is deleted, then we should be as well.
 			OwnerReferences: build.OwnerReferences,
 			Annotations: annotations,
-			Labels: labels,
+			Labels: build.ObjectMeta.Labels,
 		},
 		Spec: corev1.PodSpec{
 			// If the build fails, don't restart it.
