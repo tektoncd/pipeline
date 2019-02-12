@@ -316,6 +316,7 @@ For example, use volumes to accomplish one of the following common tasks:
 - [Mount a Kubernetes secret](./auth.md).
 - Create an `emptyDir` volume to act as a cache for use across multiple build
   steps. Consider using a persistent volume for inter-build caching.
+- Mount [Kubernetes configmap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/) as volume source.
 - Mount a host's Docker socket to use a `Dockerfile` for container image builds.
   **Note:** Building a container image using `docker build` on-cluster is _very
   unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
@@ -324,7 +325,7 @@ For example, use volumes to accomplish one of the following common tasks:
 ### Templating
 
 `Tasks` support templating using values from all [`inputs`](#inputs) and
-[`outputs`](#outputs),
+[`outputs`](#outputs).
 
 [`PipelineResources`](resources.md) can be referenced in a `Task` spec like
 this, where `<name>` is the Resource Name and `<key>` is a one of the resource's
@@ -340,11 +341,12 @@ Or for an output resource:
 ${outputs.resources.<name>.<key>}
 ```
 
-To access an input parameter, replace `resources` with `params` as below:
+To access an input parameter, replace `resources` with `params`. 
 
 ```shell
 ${inputs.params.<name>}
 ```
+**Note**: Task volume names and volume source(current support includes only configmap) can also be parameterized as shown in [example](#using-kubernetes-configmap-as-volume-source)
 
 ## Examples
 
@@ -352,6 +354,7 @@ Use these code snippets to help you understand how to define your `Tasks`.
 
 - [Example of image building and pushing](#example-task)
 - [Mounting extra volumes](#using-an-extra-volume)
+- [Mounting configMap as volume source](#using-kubernetes-configmap-as-volume-source)
 
 _Tip: See the collection of simple
 [examples](https://github.com/knative/build-pipeline/tree/master/examples) for
@@ -442,7 +445,29 @@ spec:
       emptyDir: {}
 ```
 
----
+####  Using Kubernetes Configmap as Volume Source
+
+```yaml
+spec:
+  inputs:
+    params:
+    - name: CFGNAME
+      description: Name of config map
+    - name: volumeName
+      description: Name of volume
+  steps:
+    - image: ubuntu
+      entrypoint: ["bash"]
+      args: ["-c", "cat /var/configmap/test"]
+      volumeMounts:
+        - name: "${inputs.params.volumeName}"
+          mountPath: /var/configmap
+
+  volumes:
+  - name: "${inputs.params.volumeName}"
+    configMap:
+      name: "${inputs.params.CFGNAME}"
+```
 
 Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
