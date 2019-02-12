@@ -172,8 +172,8 @@ cluster. The kubeconfig will be placed in
 
 The Cluster resource has the following parameters:
 
-- Name: The name of the Resource is also given to cluster, will be used in the
-  kubeconfig and also as part of the path to the kubeconfig file
+- Name (required): The name to be given to the target cluster, will be used 
+  in the kubeconfig and also as part of the path to the kubeconfig file
 - URL (required): Host url of the master node
 - Username (required): the user with access to the cluster
 - Password: to be used for clusters with basic auth

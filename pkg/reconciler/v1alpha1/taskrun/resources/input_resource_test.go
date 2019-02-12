@@ -76,6 +76,9 @@ func setUp() {
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "cluster",
 			Params: []v1alpha1.Param{{
+				Name:  "Name",
+				Value: "cluster2",
+			}, {
 				Name:  "Url",
 				Value: "http://10.10.10.10",
 			}},
@@ -93,6 +96,9 @@ func setUp() {
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "cluster",
 			Params: []v1alpha1.Param{{
+				Name:  "name",
+				Value: "cluster3",
+			}, {
 				Name:  "Url",
 				Value: "http://10.10.10.10",
 			}, {
