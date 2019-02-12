@@ -61,11 +61,12 @@ func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
 		return nil, fmt.Errorf("ClusterResource: Cannot create a Cluster resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	clusterResource := ClusterResource{
-		Name: r.Name,
 		Type: r.Spec.Type,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
+		case strings.EqualFold(param.Name, "Name"):
+			clusterResource.Name = param.Value
 		case strings.EqualFold(param.Name, "URL"):
 			clusterResource.URL = param.Value
 		case strings.EqualFold(param.Name, "Revision"):

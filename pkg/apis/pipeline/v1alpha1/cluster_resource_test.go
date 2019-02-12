@@ -36,6 +36,9 @@ func TestNewClusterResource(t *testing.T) {
 			Spec: PipelineResourceSpec{
 				Type: PipelineResourceTypeCluster,
 				Params: []Param{{
+					Name:  "name",
+					Value: "test_cluster_resource",
+				}, {
 					Name:  "url",
 					Value: "http://10.10.10.10",
 				}, {
@@ -49,7 +52,7 @@ func TestNewClusterResource(t *testing.T) {
 			},
 		},
 		want: &ClusterResource{
-			Name:   "test-cluster-resource",
+			Name:   "test_cluster_resource",
 			Type:   PipelineResourceTypeCluster,
 			URL:    "http://10.10.10.10",
 			CAData: []byte("my-cluster-cert"),
@@ -65,6 +68,9 @@ func TestNewClusterResource(t *testing.T) {
 			Spec: PipelineResourceSpec{
 				Type: PipelineResourceTypeCluster,
 				Params: []Param{{
+					Name:  "name",
+					Value: "test_cluster_resource",
+				}, {
 					Name:  "url",
 					Value: "http://10.10.10.10",
 				}, {
@@ -81,7 +87,7 @@ func TestNewClusterResource(t *testing.T) {
 			},
 		},
 		want: &ClusterResource{
-			Name:     "test-cluster-resource",
+			Name:     "test_cluster_resource",
 			Type:     PipelineResourceTypeCluster,
 			URL:      "http://10.10.10.10",
 			CAData:   []byte("my-cluster-cert"),
@@ -98,6 +104,9 @@ func TestNewClusterResource(t *testing.T) {
 			Spec: PipelineResourceSpec{
 				Type: PipelineResourceTypeCluster,
 				Params: []Param{{
+					Name:  "Name",
+					Value: "test.cluster.resource",
+				}, {
 					Name:  "url",
 					Value: "http://10.10.10.10",
 				}, {
@@ -108,7 +117,7 @@ func TestNewClusterResource(t *testing.T) {
 			},
 		},
 		want: &ClusterResource{
-			Name:     "test-cluster-resource",
+			Name:     "test.cluster.resource",
 			Type:     PipelineResourceTypeCluster,
 			URL:      "http://10.10.10.10",
 			Token:    "my-token",
@@ -124,6 +133,9 @@ func TestNewClusterResource(t *testing.T) {
 			Spec: PipelineResourceSpec{
 				Type: PipelineResourceTypeCluster,
 				Params: []Param{{
+					Name:  "name",
+					Value: "test-cluster-resource",
+				}, {
 					Name:  "url",
 					Value: "http://10.10.10.10",
 				}},
