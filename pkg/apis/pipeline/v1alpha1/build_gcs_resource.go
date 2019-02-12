@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/knative/build-pipeline/pkg/names"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -138,7 +140,7 @@ func (s *BuildGCSResource) GetDownloadContainerSpec() ([]corev1.Container, error
 
 	return []corev1.Container{
 		CreateDirContainer(s.Name, s.DestinationDir), {
-			Name:  fmt.Sprintf("storage-fetch-%s", s.Name),
+			Name:  names.SimpleNameGenerator.GenerateName(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Image: *buildGCSFetcherImage,
 			Args:  args,
 		}}, nil
@@ -156,7 +158,7 @@ func (s *BuildGCSResource) GetUploadContainerSpec() ([]corev1.Container, error) 
 	args := []string{"--location", s.Location, "--dir", s.DestinationDir}
 
 	return []corev1.Container{{
-		Name:  fmt.Sprintf("storage-upload-%s", s.Name),
+		Name:  names.SimpleNameGenerator.GenerateName(fmt.Sprintf("storage-upload-%s", s.Name)),
 		Image: *buildGCSUploaderImage,
 		Args:  args,
 	}}, nil

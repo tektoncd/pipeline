@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/knative/build-pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -167,7 +168,7 @@ func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error)
 	}
 
 	clusterContainer := corev1.Container{
-		Name:  "kubeconfig",
+		Name:  names.SimpleNameGenerator.GenerateName("kubeconfig"),
 		Image: *kubeconfigWriterImage,
 		Args: []string{
 			"-clusterConfig", s.String(),

@@ -76,23 +76,6 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 	}
 
-	trName := fmt.Sprintf("%s-%s", pipelineRun.Name, task.Spec.Steps[0].Name)
-
-	logger.Infof("Waiting for TaskRun %s in namespace %s to be running", trName, namespace)
-	if err := WaitForTaskRunState(c, trName, func(tr *v1alpha1.TaskRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("taskRun %s already finished!", trName)
-			} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
-				return true, nil
-			}
-		}
-		return false, nil
-	}, "TaskRunRunning"); err != nil {
-		t.Fatalf("Error waiting for TaskRun %s to be running: %s", trName, err)
-	}
-
 	if _, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{}); err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
@@ -113,24 +96,6 @@ func TestPipelineRunTimeout(t *testing.T) {
 		return false, nil
 	}, "PipelineRunTimedOut"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
-	}
-
-	logger.Infof("Waiting for TaskRun %s in namespace %s to be cancelled", trName, namespace)
-	if err := WaitForTaskRunState(c, trName, func(tr *v1alpha1.TaskRun) (bool, error) {
-		cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if cond != nil {
-			if cond.Status == corev1.ConditionFalse {
-				if cond.Reason == "TaskRunTimeout" {
-					return true, nil
-				}
-				return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", trName, cond.Reason)
-			} else if cond.Status == corev1.ConditionTrue {
-				return true, fmt.Errorf("taskRun %s completed successfully, should have been timed out", trName)
-			}
-		}
-		return false, nil
-	}, "TaskRunTimeout"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", trName, err)
 	}
 
 	// Verify that we can create a second Pipeline using the same Task without a Pipeline-level timeout that will not

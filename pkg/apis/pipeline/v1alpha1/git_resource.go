@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/knative/build-pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -112,7 +113,7 @@ func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	args = append(args, []string{"-path", dPath}...)
 
 	return []corev1.Container{{
-		Name:       gitSource + "-" + s.Name,
+		Name:       names.SimpleNameGenerator.GenerateName(gitSource + "-" + s.Name),
 		Image:      *gitImage,
 		Args:       args,
 		WorkingDir: workspaceDir,

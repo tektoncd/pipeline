@@ -297,14 +297,14 @@ _See [clients.go](./clients.go)._
 
 #### Generate random names
 
-You can use the function `AppendRandomString` to create random names for `crd`s
+You can use the function `GenerateName()` to append a random string for `crd`s
 or anything else, so that your tests can use unique names each time they run.
 
 ```go
-namespace := test.AppendRandomString('arendelle')
-```
+import "github.com/knative/build-pipeline/pkg/names"
 
-_See [randstring.go](./randstring.go)._
+namespace := names.SimpleNameGenerator.GenerateName("arendelle")
+```
 
 #### Poll Pipeline resources
 

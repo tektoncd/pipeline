@@ -30,6 +30,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/system"
 	"github.com/knative/build-pipeline/test"
 	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/knative/build-pipeline/test/names"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/configmap"
@@ -158,6 +159,7 @@ func getTaskRunController(d test.Data) test.TestAssets {
 }
 
 func TestReconcile(t *testing.T) {
+	boolTrue := true
 	taskRunSuccess := tb.TaskRun("test-taskrun-run-success", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 	))
@@ -256,186 +258,902 @@ func TestReconcile(t *testing.T) {
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
 	for _, tc := range []struct {
-		name      string
-		taskRun   *v1alpha1.TaskRun
-		wantBuild *buildv1alpha1.Build
+		name                   string
+		taskRun                *v1alpha1.TaskRun
+		wantPodLabels          map[string]string
+		wantOwnerReferences    []metav1.OwnerReference
+		wantServiceAccountName string
+		wantPodVolume          []corev1.Volume
+		wantSteps              []corev1.Container
 	}{{
-		name:    "success",
-		taskRun: taskRunSuccess,
-		wantBuild: tb.Build("test-taskrun-run-success", "foo",
-			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
-			tb.BuildOwnerReference("TaskRun", "test-taskrun-run-success",
-				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
-			tb.BuildSpec(
-				entrypointCopyStep,
-				tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
-					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
-				),
-				tb.BuildVolume(getToolsVolume(taskRunSuccess.Name)),
-			),
-		),
+		name:          "success",
+		taskRun:       taskRunSuccess,
+		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-run-success"},
+		wantOwnerReferences: []metav1.OwnerReference{{
+			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			Kind:               "TaskRun",
+			Name:               "test-taskrun-run-success",
+			Controller:         &boolTrue,
+			BlockOwnerDeletion: &boolTrue,
+		}},
+		wantServiceAccountName: "",
+		wantPodVolume:          getVolumes(),
+		wantSteps: []corev1.Container{{
+			Name:       "build-step-credential-initializer-9l9zj",
+			Image:      "override-with-creds:latest",
+			Args:       []string{},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/builder/home",
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-place-tools",
+			Image:      "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f",
+			Command:    []string{"/bin/cp"},
+			Args:       []string{"/entrypoint", "/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-simple-step",
+			Image:      "foo",
+			Args:       []string{},
+			Command:    []string{"/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:      "HOME",
+				Value:     "/builder/home",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			}, {
+				Name:      "ENTRYPOINT_OPTIONS",
+				Value:     "{\"args\":[\"/mycmd\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}},
 	}, {
-		name:    "serviceaccount",
-		taskRun: taskRunWithSaSuccess,
-		wantBuild: tb.Build("test-taskrun-with-sa-run-success", "foo",
-			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
-				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
-			tb.BuildSpec(
-				tb.BuildServiceAccountName("test-sa"),
-				entrypointCopyStep,
-				tb.BuildStep("sa-step", "foo", tb.Command(entrypointLocation),
-					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
-				),
-				tb.BuildVolume(getToolsVolume(taskRunWithSaSuccess.Name)),
-			),
-		),
+		name:          "serviceaccount",
+		taskRun:       taskRunWithSaSuccess,
+		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-with-sa-run-success"},
+		wantOwnerReferences: []metav1.OwnerReference{{
+			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			Kind:               "TaskRun",
+			Name:               "test-taskrun-with-sa-run-success",
+			Controller:         &boolTrue,
+			BlockOwnerDeletion: &boolTrue,
+		}},
+		wantPodVolume:          getVolumes(),
+		wantServiceAccountName: "test-sa",
+		wantSteps: []corev1.Container{{
+			Name:       "build-step-credential-initializer-9l9zj",
+			Image:      "override-with-creds:latest",
+			Args:       []string{},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/builder/home",
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-place-tools",
+			Image:      "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f",
+			Command:    []string{"/bin/cp"},
+			Args:       []string{"/entrypoint", "/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-sa-step",
+			Image:      "foo",
+			Args:       []string{},
+			Command:    []string{"/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:      "HOME",
+				Value:     "/builder/home",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			}, {
+				Name:      "ENTRYPOINT_OPTIONS",
+				Value:     "{\"args\":[\"/mycmd\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}},
 	}, {
-		name:    "params",
-		taskRun: taskRunTemplating,
-		wantBuild: tb.Build("test-taskrun-templating", "foo",
-			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-templating"),
-			tb.BuildOwnerReference("TaskRun", "test-taskrun-templating",
-				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
-			tb.BuildSpec(
-				tb.BuildStep("git-source-git-resource", "override-with-git:latest",
-					tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
-					tb.VolumeMount(corev1.VolumeMount{
-						Name:      "workspace",
-						MountPath: workspaceDir,
-					}),
-					tb.VolumeMount(implicitBuilderVolumeMounts),
-				),
-				entrypointCopyStep,
-				tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
-					tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo","--my-arg-with-default=bar","--my-arg-with-default2=thedefault","--my-additional-arg=gcr.io/kristoff/sven"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-					tb.VolumeMount(toolsMount),
-				),
-				tb.BuildStep("myothercontainer", "myotherimage", tb.Command(entrypointLocation),
-					tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-other-arg=https://foo.git"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-					tb.VolumeMount(toolsMount),
-				),
-				tb.BuildVolume(getToolsVolume(taskRunTemplating.Name)),
-			),
-		),
+		name:          "params",
+		taskRun:       taskRunTemplating,
+		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-templating"},
+		wantOwnerReferences: []metav1.OwnerReference{{
+			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			Kind:               "TaskRun",
+			Name:               "test-taskrun-templating",
+			Controller:         &boolTrue,
+			BlockOwnerDeletion: &boolTrue,
+		}},
+		wantServiceAccountName: "",
+		wantPodVolume:          getVolumes(),
+		wantSteps: []corev1.Container{{
+			Name:       "build-step-credential-initializer-mz4c7",
+			Image:      "override-with-creds:latest",
+			Args:       []string{},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/builder/home",
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-git-source-git-resource-9l9zj",
+			Image:      "override-with-git:latest",
+			Args:       []string{"-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:      "HOME",
+				Value:     "/builder/home",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-place-tools",
+			Image:      "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f",
+			Command:    []string{"/bin/cp"},
+			Args:       []string{"/entrypoint", "/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-mycontainer",
+			Image:      "myimage",
+			Args:       []string{},
+			Command:    []string{"/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				}, {
+					Name:  "ENTRYPOINT_OPTIONS",
+					Value: "{\"args\":[\"/mycmd\",\"--my-arg=foo\",\"--my-arg-with-default=bar\",\"--my-arg-with-default2=thedefault\",\"--my-additional-arg=gcr.io/kristoff/sven\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-myothercontainer",
+			Image:      "myotherimage",
+			Args:       []string{},
+			Command:    []string{"/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				}, {
+					Name:  "ENTRYPOINT_OPTIONS",
+					Value: "{\"args\":[\"/mycmd\",\"--my-other-arg=https://foo.git\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}},
 	}, {
-		name:    "wrap-steps",
-		taskRun: taskRunInputOutput,
-		wantBuild: tb.Build("test-taskrun-input-output", "foo",
-			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-input-output"),
-			tb.BuildOwnerReference("TaskRun", "test-taskrun-input-output",
-				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
-			tb.BuildSpec(
-				tb.BuildStep("create-dir-another-git-resource", "override-with-bash-noop:latest",
-					tb.Args("-args", "mkdir -p /workspace/another-git-resource"),
-				),
-				tb.BuildStep("source-copy-another-git-resource-0", "override-with-bash-noop:latest",
-					tb.Args("-args", "cp -r source-folder/. /workspace/another-git-resource"),
-					tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
-				),
-				tb.BuildStep("create-dir-git-resource", "override-with-bash-noop:latest",
-					tb.Args("-args", "mkdir -p /workspace/git-resource"),
-				),
-				tb.BuildStep("source-copy-git-resource-0", "override-with-bash-noop:latest",
-					tb.Args("-args", "cp -r source-folder/. /workspace/git-resource"),
-					tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
-				),
-				entrypointCopyStep,
-				tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
-					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
-				),
-				tb.BuildStep("source-mkdir-git-resource", "override-with-bash-noop:latest",
-					tb.Args("-args", "mkdir -p output-folder"),
-					tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
-				),
-				tb.BuildStep("source-copy-git-resource", "override-with-bash-noop:latest",
-					tb.Args("-args", "cp -r /workspace/git-resource/. output-folder"),
-					tb.VolumeMount(corev1.VolumeMount{Name: "test-pvc", MountPath: "/pvc"}),
-				),
-				tb.BuildVolume(getToolsVolume(taskRunInputOutput.Name)),
-				tb.BuildVolume(resources.GetPVCVolume(taskRunInputOutput.GetPipelineRunPVCName())),
-			),
-		),
+		name:          "wrap-steps",
+		taskRun:       taskRunInputOutput,
+		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-input-output"},
+		wantOwnerReferences: []metav1.OwnerReference{{
+			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			Kind:               "TaskRun",
+			Name:               "test-taskrun-input-output",
+			Controller:         &boolTrue,
+			BlockOwnerDeletion: &boolTrue,
+		}},
+		wantServiceAccountName: "",
+		wantPodVolume: []corev1.Volume{{
+			Name: "tools",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}, {
+			Name: "test-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "test-pvc",
+					ReadOnly:  false,
+				},
+			},
+		}, {
+			Name: "workspace",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		}, {
+			Name: "home",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+		},
+		wantSteps: []corev1.Container{{
+			Name:       "build-step-credential-initializer-vr6ds",
+			Image:      "override-with-creds:latest",
+			Args:       []string{},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/builder/home",
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-create-dir-another-git-resource-78c5n",
+			Image:      "override-with-bash-noop:latest",
+			Args:       []string{"-args", "mkdir -p /workspace/another-git-resource"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/builder/home",
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-source-copy-another-git-resource-0-mssqb",
+			Image:      "override-with-bash-noop:latest",
+			Args:       []string{"-args", "cp -r source-folder/. /workspace/another-git-resource"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "test-pvc",
+				ReadOnly:  false,
+				MountPath: "/pvc",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-create-dir-git-resource-mz4c7",
+			Image:      "override-with-bash-noop:latest",
+			Args:       []string{"-args", "mkdir -p /workspace/git-resource"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-source-copy-git-resource-0-9l9zj",
+			Image:      "override-with-bash-noop:latest",
+			Args:       []string{"-args", "cp -r source-folder/. /workspace/git-resource"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "test-pvc",
+				ReadOnly:  false,
+				MountPath: "/pvc",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-place-tools",
+			Image:      "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f",
+			Command:    []string{"/bin/cp"},
+			Args:       []string{"/entrypoint", "/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-simple-step",
+			Image:      "foo",
+			Args:       []string{},
+			Command:    []string{"/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:      "HOME",
+				Value:     "/builder/home",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			}, {
+				Name:      "ENTRYPOINT_OPTIONS",
+				Value:     "{\"args\":[\"/mycmd\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-source-mkdir-git-resource-6nl7g",
+			Image:      "override-with-bash-noop:latest",
+			Args:       []string{"-args", "mkdir -p output-folder"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "test-pvc",
+				ReadOnly:  false,
+				MountPath: "/pvc",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-source-copy-git-resource-j2tds",
+			Image:      "override-with-bash-noop:latest",
+			Args:       []string{"-args", "cp -r /workspace/git-resource/. output-folder"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "test-pvc",
+				ReadOnly:  false,
+				MountPath: "/pvc",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}},
 	}, {
-		name:    "taskrun-with-taskspec",
-		taskRun: taskRunWithTaskSpec,
-		wantBuild: tb.Build("test-taskrun-with-taskspec", "foo",
-			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
-			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-taskspec",
-				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
-			tb.BuildSpec(
-				tb.BuildStep("git-source-git-resource", "override-with-git:latest",
-					tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
-					tb.VolumeMount(corev1.VolumeMount{
-						Name:      "workspace",
-						MountPath: workspaceDir,
-					}),
-					tb.VolumeMount(implicitBuilderVolumeMounts),
-				),
-				entrypointCopyStep,
-				tb.BuildStep("mycontainer", "myimage", tb.Command(entrypointLocation),
-					tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd","--my-arg=foo"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-					tb.VolumeMount(toolsMount),
-				),
-				tb.BuildVolume(getToolsVolume(taskRunWithTaskSpec.Name)),
-			),
-		),
+		name:          "taskrun-with-taskspec",
+		taskRun:       taskRunWithTaskSpec,
+		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-with-taskspec"},
+		wantOwnerReferences: []metav1.OwnerReference{{
+			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			Kind:               "TaskRun",
+			Name:               "test-taskrun-with-taskspec",
+			Controller:         &boolTrue,
+			BlockOwnerDeletion: &boolTrue,
+		}},
+		wantServiceAccountName: "",
+		wantPodVolume:          getVolumes(),
+		wantSteps: []corev1.Container{{
+			Name:       "build-step-credential-initializer-mz4c7",
+			Image:      "override-with-creds:latest",
+			Args:       []string{},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/builder/home",
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-git-source-git-resource-9l9zj",
+			Image:      "override-with-git:latest",
+			Args:       []string{"-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:      "HOME",
+				Value:     "/builder/home",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-place-tools",
+			Image:      "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f",
+			Command:    []string{"/bin/cp"},
+			Args:       []string{"/entrypoint", "/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-mycontainer",
+			Image:      "myimage",
+			Args:       []string{},
+			Command:    []string{"/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				}, {
+					Name:  "ENTRYPOINT_OPTIONS",
+					Value: "{\"args\":[\"/mycmd\",\"--my-arg=foo\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}},
 	}, {
-		name:    "success-with-cluster-task",
-		taskRun: taskRunWithClusterTask,
-		wantBuild: tb.Build("test-taskrun-with-cluster-task", "foo",
-			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
-			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
-				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
-			tb.BuildSpec(entrypointCopyStep,
-				tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
-					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
-				),
-				tb.BuildVolume(getToolsVolume(taskRunWithClusterTask.Name)),
-			),
-		),
+		name:          "success-with-cluster-task",
+		taskRun:       taskRunWithClusterTask,
+		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-with-cluster-task"},
+		wantOwnerReferences: []metav1.OwnerReference{{
+			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			Kind:               "TaskRun",
+			Name:               "test-taskrun-with-cluster-task",
+			Controller:         &boolTrue,
+			BlockOwnerDeletion: &boolTrue,
+		}},
+		wantServiceAccountName: "",
+		wantPodVolume:          getVolumes(),
+		wantSteps: []corev1.Container{{
+			Name:       "build-step-credential-initializer-9l9zj",
+			Image:      "override-with-creds:latest",
+			Args:       []string{},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/builder/home",
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-place-tools",
+			Image:      "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f",
+			Command:    []string{"/bin/cp"},
+			Args:       []string{"/entrypoint", "/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-simple-step",
+			Image:      "foo",
+			Args:       []string{},
+			Command:    []string{"/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:      "HOME",
+				Value:     "/builder/home",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			}, {
+				Name:      "ENTRYPOINT_OPTIONS",
+				Value:     "{\"args\":[\"/mycmd\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}},
 	}, {
-		name:    "taskrun-with-resource-spec-task-spec",
-		taskRun: taskRunWithResourceSpecAndTaskSpec,
-		wantBuild: tb.Build("test-taskrun-with-resource-spec", "foo",
-			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
-			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
-				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
-			tb.BuildSpec(
-				tb.BuildStep("git-source-workspace", "override-with-git:latest",
-					tb.Args("-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path", "/workspace/workspace"),
-					tb.VolumeMount(corev1.VolumeMount{
-						Name:      "workspace",
-						MountPath: workspaceDir,
-					}),
-					tb.VolumeMount(implicitBuilderVolumeMounts),
-				),
-				entrypointCopyStep,
-				tb.BuildStep("mystep", "ubuntu", tb.Command(entrypointLocation),
-					tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`),
-					tb.VolumeMount(toolsMount),
-				),
-				tb.BuildVolume(getToolsVolume(taskRunWithResourceSpecAndTaskSpec.Name)),
-			),
-		),
-	}, {
-		name:    "taskrun-with-labels",
-		taskRun: taskRunWithLabels,
-		wantBuild: tb.Build("test-taskrun-with-labels", "foo",
-			tb.BuildLabel("TaskRunLabel", "TaskRunValue"),
-			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-labels"),
-			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-labels",
-				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
-			tb.BuildSpec(
-				entrypointCopyStep,
-				tb.BuildStep("simple-step", "foo", tb.Command(entrypointLocation),
-					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
-				),
-				tb.BuildVolume(getToolsVolume(taskRunWithLabels.Name)),
-			),
-		),
-	}} {
+		name:          "taskrun-with-resource-spec-task-spec",
+		taskRun:       taskRunWithResourceSpecAndTaskSpec,
+		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-with-resource-spec"},
+		wantOwnerReferences: []metav1.OwnerReference{{
+			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			Kind:               "TaskRun",
+			Name:               "test-taskrun-with-resource-spec",
+			Controller:         &boolTrue,
+			BlockOwnerDeletion: &boolTrue,
+		}},
+		wantServiceAccountName: "",
+		wantPodVolume:          getVolumes(),
+		wantSteps: []corev1.Container{{
+			Name:       "build-step-credential-initializer-mz4c7",
+			Image:      "override-with-creds:latest",
+			Args:       []string{},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:  "HOME",
+				Value: "/builder/home",
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-git-source-workspace-9l9zj",
+			Image:      "override-with-git:latest",
+			Args:       []string{"-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path", "/workspace/workspace"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{{
+				Name:      "HOME",
+				Value:     "/builder/home",
+				ValueFrom: (*corev1.EnvVarSource)(nil),
+			},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-place-tools",
+			Image:      "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f",
+			Command:    []string{"/bin/cp"},
+			Args:       []string{"/entrypoint", "/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}, {
+			Name:       "build-step-mystep",
+			Image:      "ubuntu",
+			Args:       []string{},
+			Command:    []string{"/tools/entrypoint"},
+			WorkingDir: "/workspace",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "HOME",
+					Value: "/builder/home",
+				}, {
+					Name:  "ENTRYPOINT_OPTIONS",
+					Value: "{\"args\":[\"mycmd\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}",
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "tools",
+				ReadOnly:  false,
+				MountPath: "/tools",
+			}, {
+				Name:      "workspace",
+				ReadOnly:  false,
+				MountPath: "/workspace",
+			}, {
+				Name:      "home",
+				ReadOnly:  false,
+				MountPath: "/builder/home",
+			},
+			},
+		}},
+	},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
+
 			testAssets := getTaskRunController(d)
 			c := testAssets.Controller
 			clients := testAssets.Clients
@@ -482,17 +1200,31 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
-			// TODO: Using MakePod means that a diff will not catch issues
-			// specific to the Build to Pod translation (e.g. if labels are
-			// not propagated in MakePod). To avoid this issue we should create
-			// a builder for Pods and use that intead.
-			wantPod, err := resources.MakePod(tc.wantBuild, clients.Kube)
-			if err != nil {
-				t.Fatalf("MakePod: %v", err)
+
+			wantPodSpec := corev1.PodSpec{
+				InitContainers: []corev1.Container{},
+				Containers: []corev1.Container{{
+					Name:  "nop",
+					Image: "override-with-nop:latest",
+				},
+				},
+				RestartPolicy: "Never",
 			}
 
-			if d := cmp.Diff(pod, wantPod, ignoreRandomPodNameSuffix); d != "" {
-				t.Errorf("pod doesn't match, diff: %s", d)
+			wantPodSpec.InitContainers = append(wantPodSpec.InitContainers, tc.wantSteps...)
+			wantPodSpec.ServiceAccountName = tc.wantServiceAccountName
+			wantPodSpec.Volumes = tc.wantPodVolume
+
+			if d := cmp.Diff(pod.Spec, wantPodSpec); d != "" {
+				t.Errorf("pod spec doesn't match, diff: %s", d)
+			}
+
+			if d := cmp.Diff(pod.Labels, tc.wantPodLabels); d != "" {
+				t.Errorf("pod spec doesn't match, diff: %s", d)
+			}
+
+			if d := cmp.Diff(pod.OwnerReferences, tc.wantOwnerReferences); d != "" {
+				t.Errorf("pod spec doesn't match, diff: %s", d)
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
@@ -964,5 +1696,25 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
+	}
+}
+
+func getVolumes() []corev1.Volume {
+	return []corev1.Volume{{
+		Name: "tools",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}, {
+		Name: "workspace",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}, {
+		Name: "home",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	},
 	}
 }

@@ -20,17 +20,19 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/knative/build-pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPVCGetCopyFromContainerSpec(t *testing.T) {
+	names.TestingSeed()
 
 	pvc := ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
 	want := []corev1.Container{{
-		Name:  "source-copy-workspace",
+		Name:  "source-copy-workspace-9l9zj",
 		Image: "override-with-bash-noop:latest",
 		Args:  []string{"-args", "cp -r src-path/. /workspace/destination"},
 	}}
@@ -42,17 +44,18 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 }
 
 func TestPVCGetCopyToContainerSpec(t *testing.T) {
+	names.TestingSeed()
 
 	pvc := ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
 	want := []corev1.Container{{
-		Name:         "source-mkdir-workspace",
+		Name:         "source-mkdir-workspace-9l9zj",
 		Image:        "override-with-bash-noop:latest",
 		Args:         []string{"-args", "mkdir -p /workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 	}, {
-		Name:         "source-copy-workspace",
+		Name:         "source-copy-workspace-mz4c7",
 		Image:        "override-with-bash-noop:latest",
 		Args:         []string{"-args", "cp -r src-path/. /workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
@@ -65,8 +68,10 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 }
 
 func TestPVCGetMakeDirContainerSpec(t *testing.T) {
+	names.TestingSeed()
+
 	want := corev1.Container{
-		Name:  "create-dir-workspace",
+		Name:  "create-dir-workspace-9l9zj",
 		Image: "override-with-bash-noop:latest",
 		Args:  []string{"-args", "mkdir -p /workspace/destination"},
 	}

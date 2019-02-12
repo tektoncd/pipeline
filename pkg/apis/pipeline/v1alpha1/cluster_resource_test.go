@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/knative/build-pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -178,6 +179,7 @@ func TestNewClusterResource(t *testing.T) {
 }
 
 func Test_ClusterResource_GetDownloadContainerSpec(t *testing.T) {
+	names.TestingSeed()
 	testcases := []struct {
 		name            string
 		clusterResource *ClusterResource
@@ -196,7 +198,7 @@ func Test_ClusterResource_GetDownloadContainerSpec(t *testing.T) {
 			}},
 		},
 		wantContainers: []corev1.Container{{
-			Name:  "kubeconfig",
+			Name:  "kubeconfig-9l9zj",
 			Image: "override-with-kubeconfig-writer:latest",
 			Args:  []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
 			Env: []corev1.EnvVar{{

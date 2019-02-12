@@ -31,6 +31,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/knative/build-pipeline/test/names"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -316,6 +317,8 @@ func TestGetResourcesFromBindings_Extra(t *testing.T) {
 	}
 }
 func TestResolvePipelineRun(t *testing.T) {
+	names.TestingSeed()
+
 	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),
 		tb.PipelineTask("mytask1", "task",
@@ -355,7 +358,7 @@ func TestResolvePipelineRun(t *testing.T) {
 	}
 	expectedState := []*ResolvedPipelineRunTask{{
 		PipelineTask: &p.Spec.Tasks[0],
-		TaskRunName:  "pipelinerun-mytask1",
+		TaskRunName:  "pipelinerun-mytask1-9l9zj",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
@@ -367,7 +370,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		},
 	}, {
 		PipelineTask: &p.Spec.Tasks[1],
-		TaskRunName:  "pipelinerun-mytask2",
+		TaskRunName:  "pipelinerun-mytask2-mz4c7",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
@@ -379,7 +382,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		},
 	}, {
 		PipelineTask: &p.Spec.Tasks[2],
-		TaskRunName:  "pipelinerun-mytask3",
+		TaskRunName:  "pipelinerun-mytask3-mssqb",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
@@ -390,6 +393,7 @@ func TestResolvePipelineRun(t *testing.T) {
 			},
 		},
 	}}
+
 	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
 		t.Fatalf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
 	}

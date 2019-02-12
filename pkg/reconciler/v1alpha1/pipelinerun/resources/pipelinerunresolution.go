@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/names"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -226,7 +227,8 @@ func ResolveTaskRuns(getTaskRun GetTaskRun, state []*ResolvedPipelineRunTask) er
 
 // getTaskRunName should return a uniquie name for a `TaskRun`.
 func getTaskRunName(prName string, pt *v1alpha1.PipelineTask) string {
-	return fmt.Sprintf("%s-%s", prName, pt.Name)
+	base := fmt.Sprintf("%s-%s", prName, pt.Name)
+	return names.SimpleNameGenerator.GenerateName(base)
 }
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
