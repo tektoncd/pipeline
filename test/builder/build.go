@@ -46,6 +46,7 @@ func Build(name, namespace string, ops ...BuildOp) *buildv1alpha1.Build {
 	return build
 }
 
+// BuildLabel adds a label to the Build.
 func BuildLabel(key, value string) BuildOp {
 	return func(build *buildv1alpha1.Build) {
 		if build.ObjectMeta.Labels == nil {
