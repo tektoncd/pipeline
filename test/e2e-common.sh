@@ -72,7 +72,7 @@ function validate_run() {
       tests_finished=1
       break
     fi
-    sleep 6
+    sleep 10
   done
   if (( ! tests_finished )); then
     echo "ERROR: tests timed out"
@@ -96,13 +96,13 @@ function validate_run() {
 function run_yaml_tests() {
   echo ">> Starting tests"
 
-  # Applying resources, task and pipeline
-  for file in $(find ${REPO_ROOT_DIR}/examples -maxdepth 1 -name *.yaml | sort); do
+  # Applying *taskruns
+  for file in $(find ${REPO_ROOT_DIR}/examples/taskruns/ -name *.yaml | sort); do
     perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
   done
 
-  # Applying *runs (from $1)
-  for file in $(find ${REPO_ROOT_DIR}/examples/run/ -name *$1.yaml | sort); do
+  # Applying *pipelineruns
+  for file in $(find ${REPO_ROOT_DIR}/examples/pipelineruns/ -name *.yaml | sort); do
     perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
   done
 

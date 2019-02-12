@@ -1,3 +1,4 @@
+# an example how to create TaskRun with embedded Task spec and resource spec.
 apiVersion: pipeline.knative.dev/v1alpha1
 kind: TaskRun
 metadata:
