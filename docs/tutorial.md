@@ -11,6 +11,8 @@ This tutorial will walk you through creating and running some simple
 
 For more details on using `Pipelines`, see [our usage docs](README.md).
 
+**[This tutorial can be run on a local workstation](#local-development)**<br>
+
 ## Task
 
 The main objective of the Pipeline CRDs is to run your Task individually or as a
@@ -137,7 +139,7 @@ spec:
     - name: revision
       value: master
     - name: url
-      value: https://github.com/GoogleContainerTools/skaffold
+      value: https://github.com/GoogleContainerTools/skaffold #configure: change if you want to build something else, perhaps from your own local GitLab
 ```
 
 The [`image` resource](resources.md#image-resource) represents the image to be
@@ -152,7 +154,7 @@ spec:
   type: image
   params:
     - name: url
-      value: gcr.io/<use your project>/leeroy-web
+      value: gcr.io/<use your project>/leeroy-web #configure: replace with where the image should go: perhaps your local registry or Dockerhub with a secret and configured service account
 ```
 
 The following is a `Task` with inputs and outputs. The input resource is a
@@ -217,7 +219,7 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/docker-source/examples/microservices/leeroy-web
+        value: /workspace/docker-source/examples/microservices/leeroy-web #configure: may change according to your source
   outputs:
     resources:
       - name: builtImage
@@ -279,7 +281,7 @@ spec:
       - name: pathToDockerFile
         value: Dockerfile
       - name: pathToContext
-        value: /workspace/git-source/examples/microservices/leeroy-web
+        value: /workspace/git-source/examples/microservices/leeroy-web #configure: may change depending on your source
     resources:
       - name: git-source
         paths: null
@@ -293,7 +295,7 @@ spec:
           name: skaffold-image-leeroy-web
   results:
     type: gcs
-    url: gcs://somebucket/results/logs
+    url: gcs://somebucket/results/logs #configure: remove results entirely if you're happy to use stdout
   taskRef:
     name: build-docker-image-from-git-source
   taskSpec: null
@@ -355,7 +357,7 @@ spec:
         - name: pathToDockerFile
           value: Dockerfile
         - name: pathToContext
-          value: /workspace/examples/microservices/leeroy-web
+          value: /workspace/examples/microservices/leeroy-web #configure: may change according to your source
       resources:
         inputs:
           - name: workspace
@@ -376,7 +378,7 @@ spec:
               - build-skaffold-web
       params:
         - name: path
-          value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml
+          value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml #configure: may change according to your source
         - name: yqArg
           value: "-d1"
         - name: yamlPathToImage
@@ -558,6 +560,36 @@ status:
 
 The status of type `Succeeded = True` shows the pipeline ran successfully, also
 the status of individual Task runs are shown.
+
+## Local development
+
+### Known good configuration
+
+Knative (as of version 0.3) is known to work with:
+- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed. A known good configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space
+- The following [prerequisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
+- Setting `host.docker.local:5000` as an insecure registry with Docker for Desktop (set via preferences or configuration, see the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/) for details) 
+- Passing `--insecure` as an argument to Kaniko tasks lets us push to an insecure registry
+- Running a local (insecure) Docker registry: this can be run with
+
+`docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
+
+- Optionally, a Docker registry viewer so we can check our pushed images are present:
+
+`docker run -it -p 8080:8080 --name registry-web --link registry-srv -e REGISTRY_URL=http://registry-srv:5000/v2 -e REGISTRY_NAME=localhost:5000 hyper/docker-registry-web`
+
+### Images
+- Any PipelineResource definitions of image type should be updated to use the local registry by setting the url to `host.docker.internal:5000/myregistry/<image name>` equivalents
+- The `KO_DOCKER_REPO` variable should be set to `localhost:5000/myregistry` before using `ko`
+- You are able to push to `host.docker.internal:5000/myregistry/<image name>` but your applications (e.g any deployment definitions) should reference `localhost:5000/myregistry/<image name>`
+
+### Logging
+- Logs can remain in-memory only as opposed to sent to a service such as [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results` specification.
+
+Elasticsearch can be deployed locally as a means to view logs "after the fact": an example is provided at https://github.com/mgreau/knative-elastic-tutorials.
+
+## Experimentation
+Lines of code you may want to configure have the #configure annotation. This annotation applies to subjects such as Docker registries, log output locations and other nuances that may be specific to particular cloud providers or services.
 
 ---
 
