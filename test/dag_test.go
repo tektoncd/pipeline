@@ -16,8 +16,12 @@ limitations under the License.
 package test
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,8 +31,22 @@ import (
 	tb "github.com/knative/build-pipeline/test/builder"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// TestDAGPipelineRun creates a graph of Tasks which echo the time they
+// were run at into a file (named after the Pipeline Task) in an arbitrary resource,
+// then looks at the contents of the files and ensures they were run in the order
+// intended, which is:
+//                               |
+//                        pipeline-task-1
+//                       /               \
+//   pipeline-task-2-parallel-1    pipeline-task-2-parallel-2
+//                       \                /
+//                        pipeline-task-3
+//                               |
+//                  pipeline-task-4-validate-results
 func TestDAGPipelineRun(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
@@ -36,6 +54,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
 	defer tearDown(t, logger, c, namespace)
 
+	// Create the Task that echoes the current time to an output resource
 	echoTask := tb.Task("time-echo-task", namespace, tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("repo", v1alpha1.PipelineResourceTypeGit),
@@ -50,6 +69,8 @@ func TestDAGPipelineRun(t *testing.T) {
 	if _, err := c.TaskClient.Create(echoTask); err != nil {
 		t.Fatalf("Failed to create time echo Task: %s", err)
 	}
+
+	// Create the Task that reads from an input resource
 	readTask := tb.Task("folder-read", namespace, tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("repo", v1alpha1.PipelineResourceTypeGit),
@@ -57,10 +78,16 @@ func TestDAGPipelineRun(t *testing.T) {
 		tb.Step("read-all", "busybox", tb.Command("/bin/sh", "-c"),
 			tb.Args("cd /workspace/repo/folder && tail -n +1 -- *"),
 		),
+		// TODO(#107 or #224) Use a reliable mechanism to get the logs intead of a `sleep 5` hack
+		tb.Step("make-sure-logs-available", "busybox", tb.Command("/bin/sh", "-c"),
+			tb.Args("sleep 5"),
+		),
 	))
 	if _, err := c.TaskClient.Create(readTask); err != nil {
 		t.Fatalf("Failed to create folder reader Task: %s", err)
 	}
+
+	// Create the repo PipelineResource (doesn't really matter which repo we use)
 	repoResource := tb.PipelineResource("repo", namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/githubtraining/example-basic"),
@@ -68,6 +95,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	if _, err := c.PipelineResourceClient.Create(repoResource); err != nil {
 		t.Fatalf("Failed to create simple repo PipelineResource: %s", err)
 	}
+
 	pipeline := tb.Pipeline("dag-pipeline", namespace, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("repo", "repo"),
 		tb.PipelineTask("pipeline-task-3", "time-echo-task",
@@ -79,13 +107,13 @@ func TestDAGPipelineRun(t *testing.T) {
 		tb.PipelineTask("pipeline-task-2-parallel-2", "time-echo-task",
 			tb.PipelineTaskInputResource("repo", "repo", tb.From("pipeline-task-1")), tb.PipelineTaskOutputResource("repo", "repo"),
 			tb.PipelineTaskOutputResource("repo", "repo"),
-			tb.PipelineTaskParam("filename", "pipeline-task-2-paralell-2"),
+			tb.PipelineTaskParam("filename", "pipeline-task-2-parallel-2"),
 			tb.PipelineTaskParam("sleep-sec", "5"),
 		),
 		tb.PipelineTask("pipeline-task-2-parallel-1", "time-echo-task",
 			tb.PipelineTaskInputResource("repo", "repo", tb.From("pipeline-task-1")),
 			tb.PipelineTaskOutputResource("repo", "repo"),
-			tb.PipelineTaskParam("filename", "pipeline-task-2-paralell-1"),
+			tb.PipelineTaskParam("filename", "pipeline-task-2-parallel-1"),
 			tb.PipelineTaskParam("sleep-sec", "5"),
 		),
 		tb.PipelineTask("pipeline-task-1", "time-echo-task",
@@ -111,44 +139,71 @@ func TestDAGPipelineRun(t *testing.T) {
 	if err := WaitForPipelineRunState(c, "dag-pipeline-run", pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
-	// FIXME(vdemeester) do the rest :)
-	/*
-		// TODO(christiewilson) can't actually get the logs reliably at this point, maybe write to a volume instead?
-		logger.Infof("Getting logs from results validation task")
-		// The volume created with the results will have the same name as the TaskRun
-		validationTaskRunName := "dag-pipeline-run-pipeline-task-4-validate-results"
-		output, err := getBuildOutputFromVolume(logger, c, namespace, validationTaskRunName, "dag-validation-pod")
-		if err != nil {
-			t.Fatalf("Unable to get build output for taskrun %s: %s", validationTaskRunName, err)
-		}
-		fmt.Println(output)
 
-		// Check that the overall order is correct
-		times, err := getTimes(output)
-		if err != nil {
-			t.Fatalf("Unable to parse output %q: %v", output, err)
-		}
-		sort.Sort(times)
+	logger.Info("Reading logs from last Task")
+	r, err := c.PipelineRunClient.Get("dag-pipeline-run", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't retrieve info about finished piplinerun: %v", err)
+	}
 
-		if times[0].name != "pipeline-task-1" {
-			t.Errorf("Expected first task to execute first, but %q was first", times[0].name)
-		}
-		if !strings.HasPrefix(times[1].name, "pipeline-task-2") {
-			t.Errorf("Expected parallel tasks to run second & third, but %q was second", times[1].name)
-		}
-		if !strings.HasPrefix(times[2].name, "pipeline-task-2") {
-			t.Errorf("Expected parallel tasks to run second & third, but %q was third", times[2].name)
-		}
-		if times[3].name != "pipeline-task-3" {
-			t.Errorf("Expected third task to execute third, but %q was third", times[3].name)
-		}
+	// TODO(christiewilson): Nader is randomizing these names :O
+	output, err := readLogsFromPod(logger, c, namespace, r.Status.TaskRuns["dag-pipeline-run-pipeline-task-4-validate-results"].PodName, "build-step-read-all")
+	if err != nil {
+		t.Fatalf("Unable to get log output from volume: %s", err)
+	}
 
-		// Check that the two tasks that can run in parallel did
-		parallelDiff := times[2].t.Sub(times[1].t)
-		if parallelDiff > (time.Second * 5) {
-			t.Errorf("Expected parallel tasks to execute more or less at the ame time, but they were %v apart", parallelDiff)
-		}
-	*/
+	logger.Info("Verifying order of execution")
+	verifyOrderViaTimesInFiles(t, output)
+}
+
+func verifyOrderViaTimesInFiles(t *testing.T, output string) {
+	// TODO(#107 or #224) Use a reliable mechanism to get the logs intead of a `sleep 5` hack
+	if strings.HasPrefix("Unable to retrieve container logs for docker://", output) {
+		t.Fatalf("Since init container logs are unreliable, this test is sleeping for 5 seconds in the last task to try to keep the logs around. It didn't work this time, so we should revisit this test (see PR #473)")
+	}
+
+	fmt.Println(output)
+
+	// Check that the overall order is correct
+	times, err := getTimes(output)
+	if err != nil {
+		t.Fatalf("Unable to parse output %q: %v", output, err)
+	}
+	sort.Sort(times)
+
+	if times[0].name != "pipeline-task-1" {
+		t.Errorf("Expected first task to execute first, but %q was first", times[0].name)
+	}
+	if !strings.HasPrefix(times[1].name, "pipeline-task-2") {
+		t.Errorf("Expected parallel tasks to run second & third, but %q was second", times[1].name)
+	}
+	if !strings.HasPrefix(times[2].name, "pipeline-task-2") {
+		t.Errorf("Expected parallel tasks to run second & third, but %q was third", times[2].name)
+	}
+	if times[3].name != "pipeline-task-3" {
+		t.Errorf("Expected third task to execute third, but %q was third", times[3].name)
+	}
+
+	// Check that the two tasks that can run in parallel did
+	parallelDiff := times[2].t.Sub(times[1].t)
+	if parallelDiff > (time.Second * 5) {
+		t.Errorf("Expected parallel tasks to execute more or less at the ame time, but they were %v apart", parallelDiff)
+	}
+}
+
+func readLogsFromPod(logger *logging.BaseLogger, c *clients, namespace, podName, containerName string) (string, error) {
+	req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
+		Container: containerName,
+	})
+	readCloser, err := req.Stream()
+	if err != nil {
+		return "", fmt.Errorf("couldn't open stream to read logs: %v", err)
+	}
+	defer readCloser.Close()
+	var buf bytes.Buffer
+	out := bufio.NewWriter(&buf)
+	_, err = io.Copy(out, readCloser)
+	return buf.String(), nil
 }
 
 type fileTime struct {
@@ -176,17 +231,6 @@ func getTimes(output string) (fileTimes, error) {
 	if len(output) <= 1 {
 		return times, fmt.Errorf("output %q is too short to parse, this implies not all tasks wrote their files", output)
 	}
-	// ==> pipeline-task-1 <==
-	//1544055212
-	//
-	//==> pipeline-task-2-parallel-1 <==
-	//1544055304
-	//
-	//==> pipeline-task-2-parallel-2 <==
-	//1544055263
-	//
-	//==> pipeline-task-3 <==
-	//1544055368
 	r, err := regexp.Compile("==> (.*) <==")
 	if err != nil {
 		return times, fmt.Errorf("couldn't compile filename regex: %v", err)
@@ -194,7 +238,7 @@ func getTimes(output string) (fileTimes, error) {
 
 	lines := strings.Split(output, "\n")
 	for i := 0; i < len(lines); i += 3 {
-		// First line is the name of the file
+		// First line is the name of the file, e.g.: `==> pipeline-task-3 <==`
 		m := r.FindStringSubmatch(lines[i])
 		if len(m) != 2 {
 			return times, fmt.Errorf("didn't find expected filename in output line %d: %q", i, lines[i])
