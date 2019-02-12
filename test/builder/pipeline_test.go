@@ -21,6 +21,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/knative/build-pipeline/test/builder"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,6 +38,7 @@ func TestPipeline(t *testing.T) {
 			tb.PipelineTaskInputResource("some-repo", "my-only-git-resource", tb.From("foo")),
 			tb.PipelineTaskOutputResource("some-image", "my-only-image-resource"),
 		),
+		tb.PipelineEnvVar("FRUIT", "BANANA"),
 	))
 	expectedPipeline := &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: "foo"},
@@ -71,6 +73,10 @@ func TestPipeline(t *testing.T) {
 						Resource: "my-only-image-resource",
 					}},
 				},
+			}},
+			Env: []corev1.EnvVar{{
+				Name:  "FRUIT",
+				Value: "BANANA",
 			}},
 		},
 	}

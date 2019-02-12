@@ -53,6 +53,9 @@ type TaskSpec struct {
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// Environment variables to apply across all steps in the Task.
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // Check that Task may be validated and defaulted.

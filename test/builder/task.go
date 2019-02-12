@@ -153,6 +153,16 @@ func Step(name, image string, ops ...ContainerOp) TaskSpecOp {
 	}
 }
 
+// TaskEnvVar add an environment variable, with specified name and value, to the Task.
+func TaskEnvVar(name, value string) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		spec.Env = append(spec.Env, corev1.EnvVar{
+			Name:  name,
+			Value: value,
+		})
+	}
+}
+
 // TaskVolume adds a volume with specified name to the TaskSpec.
 // Any number of Volume modifier can be passed to transform it.
 func TaskVolume(name string, ops ...VolumeOp) TaskSpecOp {
@@ -313,6 +323,16 @@ func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.Timeout = &metav1.Duration{Duration: d}
+	}
+}
+
+// TaskRunAdditionalEnv add an environment variable, with specified name and value, to the TaskRun.
+func TaskRunAdditionalEnv(name, value string) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.AdditionalEnv = append(spec.AdditionalEnv, corev1.EnvVar{
+			Name:  name,
+			Value: value,
+		})
 	}
 }
 

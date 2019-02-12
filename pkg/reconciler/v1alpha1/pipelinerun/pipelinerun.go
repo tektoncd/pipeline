@@ -314,7 +314,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	if rprt != nil {
 		c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount, as.StorageBasePath(pr))
+		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, serviceAccount, as.StorageBasePath(pr), p.Spec.Env)
 		if err != nil {
 			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
@@ -342,7 +342,7 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 	}
 }
 
-func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa, storageBasePath string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, sa, storageBasePath string, env []corev1.EnvVar) (*v1alpha1.TaskRun, error) {
 	var taskRunTimeout = &metav1.Duration{Duration: 0 * time.Second}
 	if pr.Spec.Timeout != nil {
 		pTimeoutTime := pr.Status.StartTime.Add(pr.Spec.Timeout.Duration)
@@ -385,6 +385,7 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			Timeout:        taskRunTimeout,
 			NodeSelector:   pr.Spec.NodeSelector,
 			Affinity:       pr.Spec.Affinity,
+			AdditionalEnv:  env,
 		}}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)

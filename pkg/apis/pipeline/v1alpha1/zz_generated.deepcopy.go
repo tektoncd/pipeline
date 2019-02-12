@@ -734,6 +734,13 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 		*out = make([]PipelineParam, len(*in))
 		copy(*out, *in)
 	}
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]core_v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -1270,6 +1277,13 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
+	if in.AdditionalEnv != nil {
+		in, out := &in.AdditionalEnv, &out.AdditionalEnv
+		*out = make([]core_v1.EnvVar, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
@@ -1371,6 +1385,13 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]core_v1.Volume, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.Env != nil {
+		in, out := &in.Env, &out.Env
+		*out = make([]core_v1.EnvVar, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

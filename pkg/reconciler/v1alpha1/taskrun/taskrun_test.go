@@ -89,6 +89,13 @@ var (
 
 	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("sa-step", "foo", tb.Command("/mycmd"))))
 
+	taskEnvTask = tb.Task("test-task-env", "foo", tb.TaskSpec(
+		tb.TaskEnvVar("FRUIT", "APPLE"),
+		tb.Step("env-step", "foo",
+			tb.EnvVar("ANOTHER", "VARIABLE"),
+			tb.EnvVar("FRUIT", "LEMON"),
+			tb.Command("/mycmd"))))
+
 	templatedTask = tb.Task("test-task-with-templating", "foo", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
@@ -131,6 +138,18 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 	return strings.Join([]string{tr.Namespace, tr.Name}, "/")
 }
 
+func getEntrypointWithContainerOps(ops ...tb.ContainerOp) tb.BuildSpecOp {
+	actualOps := []tb.ContainerOp{
+		tb.Command("/bin/cp"),
+		tb.Args("/entrypoint", entrypointLocation),
+		tb.VolumeMount(toolsMount),
+	}
+
+	actualOps = append(actualOps, ops...)
+
+	return tb.BuildStep("place-tools", config.DefaultEntrypointImage, actualOps...)
+}
+
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(d test.Data) test.TestAssets {
@@ -163,6 +182,14 @@ func TestReconcile(t *testing.T) {
 	))
 	taskRunWithSaSuccess := tb.TaskRun("test-taskrun-with-sa-run-success", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")), tb.TaskRunServiceAccount("test-sa"),
+	))
+	taskRunTaskEnv := tb.TaskRun("test-taskrun-task-env", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskEnvTask.Name, tb.TaskRefAPIVersion("a1")),
+	))
+	taskRunTaskRunEnv := tb.TaskRun("test-taskrun-taskrun-env", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskEnvTask.Name, tb.TaskRefAPIVersion("a1")),
+		tb.TaskRunAdditionalEnv("FRUIT", "BANANA"),
+		tb.TaskRunAdditionalEnv("SOMETHING", "ELSE"),
 	))
 	taskRunTemplating := tb.TaskRun("test-taskrun-templating", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(templatedTask.Name, tb.TaskRefAPIVersion("a1")),
@@ -246,12 +273,12 @@ func TestReconcile(t *testing.T) {
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunTemplating, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
-		taskRunWithLabels,
+		taskRunWithLabels, taskRunTaskEnv, taskRunTaskRunEnv,
 	}
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, outputTask},
+		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, outputTask, taskEnvTask},
 		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
@@ -432,6 +459,43 @@ func TestReconcile(t *testing.T) {
 					entrypointOptionEnvVar, tb.VolumeMount(toolsMount),
 				),
 				tb.BuildVolume(getToolsVolume(taskRunWithLabels.Name)),
+			),
+		),
+	}, {
+		name:    "task-env",
+		taskRun: taskRunTaskEnv,
+		wantBuild: tb.Build("test-taskrun-task-env", "foo",
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-task-env"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-task-env",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				getEntrypointWithContainerOps(tb.EnvVar("FRUIT", "APPLE")),
+				tb.BuildStep("env-step", "foo", tb.Command(entrypointLocation),
+					tb.VolumeMount(toolsMount),
+					tb.EnvVar("ANOTHER", "VARIABLE"),
+					entrypointOptionEnvVar,
+					tb.EnvVar("FRUIT", "LEMON"),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunSuccess.Name)),
+			),
+		),
+	}, {
+		name:    "taskrun-env",
+		taskRun: taskRunTaskRunEnv,
+		wantBuild: tb.Build("test-taskrun-taskrun-env", "foo",
+			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-taskrun-env"),
+			tb.BuildOwnerReference("TaskRun", "test-taskrun-taskrun-env",
+				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
+			tb.BuildSpec(
+				getEntrypointWithContainerOps(tb.EnvVar("FRUIT", "APPLE"), tb.EnvVar("SOMETHING", "ELSE")),
+				tb.BuildStep("env-step", "foo", tb.Command(entrypointLocation),
+					tb.VolumeMount(toolsMount),
+					tb.EnvVar("ANOTHER", "VARIABLE"),
+					entrypointOptionEnvVar,
+					tb.EnvVar("FRUIT", "LEMON"),
+					tb.EnvVar("SOMETHING", "ELSE"),
+				),
+				tb.BuildVolume(getToolsVolume(taskRunSuccess.Name)),
 			),
 		),
 	}} {
@@ -841,7 +905,7 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	expectedSteps := len(bs.Steps) + 1
 	expectedVolumes := len(bs.Volumes) + 1
 
-	b, err := createRedirectedBuild(ctx, &bs, tr)
+	b, err := createRedirectedBuild(ctx, &bs, tr, []corev1.EnvVar{})
 	if err != nil {
 		t.Errorf("expected createRedirectedBuild to pass: %v", err)
 	}

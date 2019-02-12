@@ -48,6 +48,7 @@ func TestTask(t *testing.T) {
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 		})),
+		tb.TaskEnvVar("FRUIT", "BANANA"),
 	))
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
@@ -77,6 +78,10 @@ func TestTask(t *testing.T) {
 				VolumeSource: corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 				},
+			}},
+			Env: []corev1.EnvVar{{
+				Name:  "FRUIT",
+				Value: "BANANA",
 			}},
 		},
 	}
@@ -137,6 +142,7 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 					tb.TaskResourceBindingPaths("output-folder"),
 				),
 			),
+			tb.TaskRunAdditionalEnv("FRUIT", "BANANA"),
 		),
 		tb.TaskRunStatus(
 			tb.PodName("my-pod-name"),
@@ -186,6 +192,10 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 				Kind:       v1alpha1.ClusterTaskKind,
 				APIVersion: "a1",
 			},
+			AdditionalEnv: []corev1.EnvVar{{
+				Name:  "FRUIT",
+				Value: "BANANA",
+			}},
 		},
 		Status: v1alpha1.TaskRunStatus{
 			PodName:    "my-pod-name",
@@ -208,6 +218,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		tb.TaskTrigger("mytrigger", v1alpha1.TaskTriggerTypeManual),
 		tb.TaskRunServiceAccount("sa"),
 		tb.TaskRunTimeout(2*time.Minute),
+		tb.TaskRunAdditionalEnv("FRUIT", "BANANA"),
 	))
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -227,6 +238,10 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 			},
 			ServiceAccount: "sa",
 			Timeout:        &metav1.Duration{Duration: 2 * time.Minute},
+			AdditionalEnv: []corev1.EnvVar{{
+				Name:  "FRUIT",
+				Value: "BANANA",
+			}},
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {

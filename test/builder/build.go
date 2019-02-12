@@ -119,7 +119,7 @@ func BuildSourceGit(url, revision string) SourceSpecOp {
 
 // BuildStep adds a step, with the specified name and image, to the BuildSpec.
 // Any number of Container modifier can be passed to transform it.
-func BuildStep(name, image string, ops ...func(*corev1.Container)) BuildSpecOp {
+func BuildStep(name, image string, ops ...ContainerOp) BuildSpecOp {
 	return func(spec *buildv1alpha1.BuildSpec) {
 		c := &corev1.Container{
 			Name:  name,

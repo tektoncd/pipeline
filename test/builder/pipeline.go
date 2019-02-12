@@ -129,6 +129,16 @@ func PipelineParamDefault(value string) PipelineParamOp {
 	}
 }
 
+// PipelineEnvVar add an environment variable, with specified name and value, to the Pipeline.
+func PipelineEnvVar(name, value string) PipelineSpecOp {
+	return func(spec *v1alpha1.PipelineSpec) {
+		spec.Env = append(spec.Env, corev1.EnvVar{
+			Name:  name,
+			Value: value,
+		})
+	}
+}
+
 // PipelineTask adds a PipelineTask, with specified name and task name, to the PipelineSpec.
 // Any number of PipelineTask modifier can be passed to transform it.
 func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {

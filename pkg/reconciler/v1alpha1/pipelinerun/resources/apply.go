@@ -54,5 +54,11 @@ func ApplyReplacements(p *v1alpha1.Pipeline, replacements map[string]string) *v1
 		tasks[i].Params = params
 	}
 
+	env := p.Spec.Env
+
+	for i := range env {
+		env[i].Value = templating.ApplyReplacements(env[i].Value, replacements)
+	}
+
 	return p
 }

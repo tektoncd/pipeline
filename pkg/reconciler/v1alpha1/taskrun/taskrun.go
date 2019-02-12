@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
@@ -391,7 +392,9 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 	bSpec.Affinity = tr.Spec.Affinity
 	bSpec.NodeSelector = tr.Spec.NodeSelector
 
-	build, err := createRedirectedBuild(ctx, bSpec, tr)
+	taskRunEnvVars := combineEnvVars(tr.Spec.AdditionalEnv, ts.Env)
+
+	build, err := createRedirectedBuild(ctx, bSpec, tr, taskRunEnvVars)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
@@ -433,11 +436,43 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
 }
 
+// combineEnvVars takes a base slice of environment variables and a slice of environment
+// variables to overlay on top of the base slice, returning the result.
+func combineEnvVars(base []corev1.EnvVar, override []corev1.EnvVar) []corev1.EnvVar {
+	envMap := make(map[string]corev1.EnvVar)
+
+	// Start with the base list of env vars.
+	for _, e := range base {
+		envMap[e.Name] = e
+	}
+
+	// Add the override environment, overriding the base environment.
+	for _, e := range override {
+		envMap[e.Name] = e
+	}
+
+	var envVars []string
+	for k := range envMap {
+		envVars = append(envVars, k)
+	}
+
+	// Avoid nondeterministic results by sorting the keys and appending vars in that order.
+	sort.Strings(envVars)
+
+	env := make([]corev1.EnvVar, 0, len(envMap))
+
+	for _, envVar := range envVars {
+		env = append(env, envMap[envVar])
+	}
+
+	return env
+}
+
 // CreateRedirectedBuild takes a build, a persistent volume claim name, a taskrun and
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the BuildSpec and modifies it freely
-func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
+func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, tr *v1alpha1.TaskRun, additionalEnv []corev1.EnvVar) (*buildv1alpha1.Build, error) {
 	// Pass service account name from taskrun to build
 	bs.ServiceAccountName = tr.Spec.ServiceAccount
 
@@ -451,6 +486,12 @@ func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, tr 
 	// we are going to be using, so that all of the steps will have
 	// access to it.
 	entrypoint.AddCopyStep(ctx, bs)
+
+	if len(additionalEnv) > 0 {
+		// Add any additional environment variables to the steps
+		addAdditionalEnvToSteps(bs.Steps, additionalEnv)
+	}
+
 	b := &buildv1alpha1.Build{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tr.Name,
@@ -475,6 +516,17 @@ func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, tr 
 	})
 
 	return b, nil
+}
+
+// addAdditionalEnvToSteps will modify each of the steps/containers such that
+// the specified additional environment variables will be added to the step's
+// environment if the step does not already have an environment variable with
+// that name specified.
+func addAdditionalEnvToSteps(steps []corev1.Container, additionalEnv []corev1.EnvVar) {
+	for i := range steps {
+		step := &steps[i]
+		step.Env = combineEnvVars(additionalEnv, step.Env)
+	}
 }
 
 // makeLabels constructs the labels we will apply to TaskRun resources.

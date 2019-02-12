@@ -109,6 +109,8 @@ func TestReconcile(t *testing.T) {
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
 					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
+				tb.PipelineEnvVar("FRUIT", "BANANA"),
+				tb.PipelineEnvVar("PARAMETERIZED", "${params.bar}"),
 			),
 		),
 	}
@@ -208,6 +210,8 @@ func TestReconcile(t *testing.T) {
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
 				),
 			),
+			tb.TaskRunAdditionalEnv("FRUIT", "BANANA"),
+			tb.TaskRunAdditionalEnv("PARAMETERIZED", "somethingmorefun"),
 		),
 	)
 

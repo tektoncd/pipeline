@@ -68,6 +68,10 @@ type TaskRunSpec struct {
 	// If specified, the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Used to add environment variables configured on the Task or its steps. Will be overridden by Task and step
+	// environment variables if they have the same name.
+	// +optional
+	AdditionalEnv []corev1.EnvVar `json:"additionalEnv,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide

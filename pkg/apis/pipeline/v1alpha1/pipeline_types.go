@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"github.com/knative/pkg/apis"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,6 +27,7 @@ type PipelineSpec struct {
 	Resources  []PipelineDeclaredResource `json:"resources"`
 	Tasks      []PipelineTask             `json:"tasks"`
 	Params     []PipelineParam            `json:"params"`
+	Env        []corev1.EnvVar            `json:"env,omitempty"`
 	Generation int64                      `json:"generation,omitempty"`
 }
 
