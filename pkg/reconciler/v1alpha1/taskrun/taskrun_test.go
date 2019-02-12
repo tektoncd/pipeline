@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
@@ -45,8 +46,7 @@ import (
 const (
 	entrypointLocation  = "/tools/entrypoint"
 	toolsMountName      = "tools"
-	buildNameLabelKey   = "build.knative.dev/buildName"
-	taskRunNameLabelKey = "pipeline.knative.dev/taskRun"
+	taskRunNameLabelKey = pipeline.GroupName + pipeline.TaskRunLabelKey
 )
 
 var (
@@ -236,7 +236,6 @@ func TestReconcile(t *testing.T) {
 
 	taskRunWithLabels := tb.TaskRun("test-taskrun-with-labels", "foo",
 		tb.TaskRunLabel("TaskRunLabel", "TaskRunValue"),
-		tb.TaskRunLabel(buildNameLabelKey, "WillNotBeUsed"),
 		tb.TaskRunLabel(taskRunNameLabelKey, "WillNotBeUsed"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name),
@@ -264,7 +263,6 @@ func TestReconcile(t *testing.T) {
 		name:    "success",
 		taskRun: taskRunSuccess,
 		wantBuild: tb.Build("test-taskrun-run-success", "foo",
-			tb.BuildLabel(buildNameLabelKey, "test-taskrun-run-success"),
 			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
 			tb.BuildOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
@@ -280,7 +278,6 @@ func TestReconcile(t *testing.T) {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
 		wantBuild: tb.Build("test-taskrun-with-sa-run-success", "foo",
-			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-sa-run-success"),
 			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
 			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
@@ -297,7 +294,6 @@ func TestReconcile(t *testing.T) {
 		name:    "params",
 		taskRun: taskRunTemplating,
 		wantBuild: tb.Build("test-taskrun-templating", "foo",
-			tb.BuildLabel(buildNameLabelKey, "test-taskrun-templating"),
 			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-templating"),
 			tb.BuildOwnerReference("TaskRun", "test-taskrun-templating",
 				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
@@ -326,7 +322,6 @@ func TestReconcile(t *testing.T) {
 		name:    "wrap-steps",
 		taskRun: taskRunInputOutput,
 		wantBuild: tb.Build("test-taskrun-input-output", "foo",
-			tb.BuildLabel(buildNameLabelKey, "test-taskrun-input-output"),
 			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-input-output"),
 			tb.BuildOwnerReference("TaskRun", "test-taskrun-input-output",
 				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
@@ -365,7 +360,6 @@ func TestReconcile(t *testing.T) {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
 		wantBuild: tb.Build("test-taskrun-with-taskspec", "foo",
-			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-taskspec"),
 			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
 			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-taskspec",
 				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
@@ -390,7 +384,6 @@ func TestReconcile(t *testing.T) {
 		name:    "success-with-cluster-task",
 		taskRun: taskRunWithClusterTask,
 		wantBuild: tb.Build("test-taskrun-with-cluster-task", "foo",
-			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-cluster-task"),
 			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
 			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
@@ -405,7 +398,6 @@ func TestReconcile(t *testing.T) {
 		name:    "taskrun-with-resource-spec-task-spec",
 		taskRun: taskRunWithResourceSpecAndTaskSpec,
 		wantBuild: tb.Build("test-taskrun-with-resource-spec", "foo",
-			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-resource-spec"),
 			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
 			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
 				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
@@ -431,7 +423,6 @@ func TestReconcile(t *testing.T) {
 		taskRun: taskRunWithLabels,
 		wantBuild: tb.Build("test-taskrun-with-labels", "foo",
 			tb.BuildLabel("TaskRunLabel", "TaskRunValue"),
-			tb.BuildLabel(buildNameLabelKey, "test-taskrun-with-labels"),
 			tb.BuildLabel(taskRunNameLabelKey, "test-taskrun-with-labels"),
 			tb.BuildOwnerReference("TaskRun", "test-taskrun-with-labels",
 				tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1")),
