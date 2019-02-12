@@ -35,6 +35,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/credentials"
 	"github.com/knative/build-pipeline/pkg/credentials/dockercreds"
 	"github.com/knative/build-pipeline/pkg/credentials/gitcreds"
+	"github.com/knative/build-pipeline/pkg/names"
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -122,6 +123,8 @@ func gcsToContainer(source v1alpha1.SourceSpec, index int) (*corev1.Container, e
 		containerName = containerName + strconv.Itoa(index)
 	}
 
+	containerName = names.SimpleNameGenerator.GenerateName(containerName)
+
 	return &corev1.Container{
 		Name:         containerName,
 		Image:        *gcsFetcherImage,
@@ -180,7 +183,7 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 		}
 
 		if matched {
-			name := fmt.Sprintf("secret-volume-%s", secret.Name)
+			name := names.SimpleNameGenerator.GenerateName(fmt.Sprintf("secret-volume-%s", secret.Name))
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
 				Name:      name,
 				MountPath: credentials.VolumeName(secret.Name),
@@ -197,7 +200,7 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 	}
 
 	return &corev1.Container{
-		Name:         initContainerPrefix + credsInit,
+		Name:         names.SimpleNameGenerator.GenerateName(initContainerPrefix + credsInit),
 		Image:        *credsImage,
 		Args:         args,
 		VolumeMounts: volumeMounts,

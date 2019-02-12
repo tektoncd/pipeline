@@ -27,6 +27,7 @@ import (
 
 	"github.com/ghodss/yaml"
 
+	"github.com/knative/build-pipeline/pkg/names"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
@@ -52,7 +53,7 @@ func getContextLogger(n string) *logging.BaseLogger {
 
 func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
 	t.Helper()
-	namespace := AppendRandomString("arendelle")
+	namespace := names.SimpleNameGenerator.GenerateName("arendelle")
 
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	createNamespace(namespace, logger, c.KubeClient)

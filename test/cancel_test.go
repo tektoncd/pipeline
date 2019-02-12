@@ -74,21 +74,6 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", "pear", err)
 	}
 
-	logger.Infof("Waiting for TaskRun %s in namespace %s to be running", "pear-foo", namespace)
-	if err := WaitForTaskRunState(c, "pear-foo", func(tr *v1alpha1.TaskRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("taskRun %s already finished!", "pear-foo")
-			} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
-				return true, nil
-			}
-		}
-		return false, nil
-	}, "TarkRunRunning"); err != nil {
-		t.Fatalf("Error waiting for TaskRun %s to be running: %s", "pear-foo", err)
-	}
-
 	pr, err := c.PipelineRunClient.Get("pear", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", "pear", err)
@@ -115,23 +100,5 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		return false, nil
 	}, "PipelineRunCancelled"); err != nil {
 		t.Errorf("Error waiting for PipelineRun `pear` to finish: %s", err)
-	}
-
-	logger.Infof("Waiting for TaskRun `pear-foo` in namespace %s to be cancelled", namespace)
-	if err := WaitForTaskRunState(c, "pear-foo", func(tr *v1alpha1.TaskRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionFalse {
-				if c.Reason == "TaskRunCancelled" {
-					return true, nil
-				}
-				return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", "pear-foo", c.Reason)
-			} else if c.Status == corev1.ConditionTrue {
-				return true, fmt.Errorf("taskRun %s completed successfully, should have been cancelled", "pear-foo")
-			}
-		}
-		return false, nil
-	}, "TaskRunCancelled"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", "pear-foo", err)
 	}
 }

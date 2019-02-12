@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/knative/build-pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -81,13 +82,13 @@ func (b *ArtifactBucket) GetCopyFromContainerSpec(name, sourcePath, destinationP
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []corev1.Container{{
-		Name:  fmt.Sprintf("artifact-dest-mkdir-%s", name),
+		Name:  names.SimpleNameGenerator.GenerateName(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
 		Image: *bashNoopImage,
 		Args: []string{
 			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),
 		},
 	}, {
-		Name:         fmt.Sprintf("artifact-copy-from-%s", name),
+		Name:         names.SimpleNameGenerator.GenerateName(fmt.Sprintf("artifact-copy-from-%s", name)),
 		Image:        *gsutilImage,
 		Args:         args,
 		Env:          envVars,
@@ -102,7 +103,7 @@ func (b *ArtifactBucket) GetCopyToContainerSpec(name, sourcePath, destinationPat
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []corev1.Container{{
-		Name:         fmt.Sprintf("artifact-copy-to-%s", name),
+		Name:         names.SimpleNameGenerator.GenerateName(fmt.Sprintf("artifact-copy-to-%s", name)),
 		Image:        *gsutilImage,
 		Args:         args,
 		Env:          envVars,
@@ -116,7 +117,7 @@ func (b *ArtifactBucket) GetSecretsVolumes() []corev1.Volume {
 	volumes := []corev1.Volume{}
 	for _, sec := range b.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: fmt.Sprintf("bucket-secret-volume-%s", sec.SecretName),
+			Name: names.SimpleNameGenerator.GenerateName(fmt.Sprintf("bucket-secret-%s", sec.SecretName)),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: sec.SecretName,

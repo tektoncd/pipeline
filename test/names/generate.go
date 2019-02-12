@@ -11,16 +11,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package test
+package names
 
 import (
-	"testing"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
-func TestAppendRandomString(t *testing.T) {
-	s1 := AppendRandomString("same")
-	s2 := AppendRandomString("same")
-	if s1 == s2 {
-		t.Errorf("expected random string. However they are equal %s, %s", s1, s2)
-	}
+// TestingSeed used to set the random name generator to a fixed seed for testing
+func TestingSeed() {
+	utilrand.Seed(12345)
 }

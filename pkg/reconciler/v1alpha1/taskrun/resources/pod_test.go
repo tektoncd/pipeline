@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 
+	"github.com/knative/build-pipeline/test/names"
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/build/pkg/system"
 	"github.com/knative/pkg/apis"
@@ -60,11 +61,11 @@ func TestMakePod(t *testing.T) {
 	}
 
 	implicitVolumeMountsWithSecrets := append(implicitVolumeMounts, corev1.VolumeMount{
-		Name:      "secret-volume-multi-creds",
+		Name:      "secret-volume-multi-creds-9l9zj",
 		MountPath: "/var/build-secrets/multi-creds",
 	})
 	implicitVolumesWithSecrets := append(implicitVolumes, corev1.Volume{
-		Name:         "secret-volume-multi-creds",
+		Name:         "secret-volume-multi-creds-9l9zj",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
 	})
 
@@ -91,7 +92,7 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         initContainerPrefix + credsInit,
+				Name:         initContainerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -122,14 +123,14 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         initContainerPrefix + credsInit,
+				Name:         initContainerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
 			}, {
-				Name:         initContainerPrefix + gcsSource + "-gcs-foo-bar",
+				Name:         initContainerPrefix + gcsSource + "-gcs-foo-bar" + "-mz4c7",
 				Image:        *gcsFetcherImage,
 				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar", "--dest_dir", "/workspace/path/foo"},
 				Env:          implicitEnvVars,
@@ -152,7 +153,7 @@ func TestMakePod(t *testing.T) {
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:  initContainerPrefix + credsInit,
+				Name:  initContainerPrefix + credsInit + "-mz4c7",
 				Image: *credsImage,
 				Args: []string{
 					"-basic-docker=multi-creds=https://docker.io",
@@ -175,6 +176,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
+			names.TestingSeed()
 			cs := fakek8s.NewSimpleClientset(
 				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "service-account"},

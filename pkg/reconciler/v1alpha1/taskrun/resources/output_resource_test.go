@@ -24,6 +24,7 @@ import (
 	fakeclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/test/names"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -163,7 +164,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:  "source-mkdir-source-git",
+			Name:  "source-mkdir-source-git-9l9zj",
 			Image: "override-with-bash-noop:latest",
 			Args:  []string{"-args", "mkdir -p pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
@@ -171,7 +172,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}, {
-			Name:  "source-copy-source-git",
+			Name:  "source-copy-source-git-mz4c7",
 			Image: "override-with-bash-noop:latest",
 			Args:  []string{"-args", "cp -r /workspace/source-workspace/. pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
@@ -219,7 +220,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:  "source-mkdir-source-git",
+			Name:  "source-mkdir-source-git-9l9zj",
 			Image: "override-with-bash-noop:latest",
 			Args:  []string{"-args", "mkdir -p pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
@@ -227,7 +228,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}, {
-			Name:  "source-copy-source-git",
+			Name:  "source-copy-source-git-mz4c7",
 			Image: "override-with-bash-noop:latest",
 			Args:  []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
@@ -365,7 +366,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:  "storage-upload-source-gcs",
+			Name:  "upload-source-gcs-9l9zj",
 			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-source-gcs-sname",
@@ -376,12 +377,12 @@ func Test_Valid_OutputResources(t *testing.T) {
 				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
 		}, {
-			Name:         "source-mkdir-source-gcs",
+			Name:         "source-mkdir-source-gcs-mz4c7",
 			Image:        "override-with-bash-noop:latest",
 			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 		}, {
-			Name:         "source-copy-source-gcs",
+			Name:         "source-copy-source-gcs-mssqb",
 			Image:        "override-with-bash-noop:latest",
 			Args:         []string{"-args", "cp -r /workspace/faraway-disk/. pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
@@ -432,7 +433,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:  "storage-upload-source-gcs",
+			Name:  "upload-source-gcs-9l9zj",
 			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
@@ -442,12 +443,12 @@ func Test_Valid_OutputResources(t *testing.T) {
 			}},
 			Args: []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}, {
-			Name:         "source-mkdir-source-gcs",
+			Name:         "source-mkdir-source-gcs-mz4c7",
 			Image:        "override-with-bash-noop:latest",
 			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 		}, {
-			Name:         "source-copy-source-gcs",
+			Name:         "source-copy-source-gcs-mssqb",
 			Image:        "override-with-bash-noop:latest",
 			Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
@@ -494,7 +495,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:  "storage-upload-source-gcs",
+			Name:  "upload-source-gcs-9l9zj",
 			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
@@ -545,7 +546,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:  "storage-upload-source-gcs",
+			Name:  "upload-source-gcs-9l9zj",
 			Image: "override-with-gsutil-image:latest",
 			VolumeMounts: []corev1.VolumeMount{{
 				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
@@ -665,6 +666,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 		build:     build(),
 	}} {
 		t.Run(c.name, func(t *testing.T) {
+			names.TestingSeed()
 			outputResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			err := AddOutputResources(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
@@ -758,7 +760,7 @@ func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:  "artifact-copy-to-source-git",
+			Name:  "artifact-copy-to-source-git-9l9zj",
 			Image: "override-with-gsutil-image:latest",
 			Args:  []string{"-args", "cp -r /workspace/source-workspace gs://fake-bucket/pipeline-task-name"},
 		}},
@@ -802,7 +804,7 @@ func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
 			},
 		},
 		wantSteps: []corev1.Container{{
-			Name:  "artifact-copy-to-source-git",
+			Name:  "artifact-copy-to-source-git-9l9zj",
 			Image: "override-with-gsutil-image:latest",
 			Args:  []string{"-args", "cp -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},
 		}},
@@ -844,6 +846,7 @@ func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			outputResourceSetup()
+			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{

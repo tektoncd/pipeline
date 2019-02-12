@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/knative/build-pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -220,13 +221,16 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 			DestinationDir: "/workspace",
 			ArtifactType:   "Archive",
 		},
-		wantContainers: []corev1.Container{
-			CreateDirContainer("gcs-valid", "/workspace"), {
-				Name:  "storage-fetch-gcs-valid",
-				Image: "gcr.io/cloud-builders/gcs-fetcher:latest",
-				Args: []string{"--type", "Archive", "--location", "gs://some-bucket",
-					"--dest_dir", "/workspace"},
-			}},
+		wantContainers: []corev1.Container{{
+			Name:  "create-dir-gcs-valid-9l9zj",
+			Image: "override-with-bash-noop:latest",
+			Args:  []string{"-args", "mkdir -p /workspace"},
+		}, {
+			Name:  "storage-fetch-gcs-valid-mz4c7",
+			Image: "gcr.io/cloud-builders/gcs-fetcher:latest",
+			Args: []string{"--type", "Archive", "--location", "gs://some-bucket",
+				"--dest_dir", "/workspace"},
+		}},
 	}, {
 		name: "invalid no destination directory set",
 		resource: &BuildGCSResource{
@@ -238,6 +242,7 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
 			gotContainers, err := tc.resource.GetDownloadContainerSpec()
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
@@ -264,7 +269,7 @@ func Test_BuildGCSGetUploadContainerSpec(t *testing.T) {
 			ArtifactType:   "Manifest",
 		},
 		wantContainers: []corev1.Container{{
-			Name:  "storage-upload-gcs-valid",
+			Name:  "storage-upload-gcs-valid-9l9zj",
 			Image: "gcr.io/cloud-builders/gcs-uploader:latest",
 			Args:  []string{"--location", "gs://some-bucket/manifest.json", "--dir", "/workspace"},
 		}},

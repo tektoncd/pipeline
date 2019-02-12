@@ -20,10 +20,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/knative/build-pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestBucketGetCopyFromContainerSpec(t *testing.T) {
+	names.TestingSeed()
 	bucket := ArtifactBucket{
 		Location: "gs://fake-bucket",
 		Secrets: []SecretParam{{
@@ -33,11 +35,11 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 		}},
 	}
 	want := []corev1.Container{{
-		Name:  "artifact-dest-mkdir-workspace",
+		Name:  "artifact-dest-mkdir-workspace-9l9zj",
 		Image: "override-with-bash-noop:latest",
 		Args:  []string{"-args", "mkdir -p /workspace/destination"},
 	}, {
-		Name:         "artifact-copy-from-workspace",
+		Name:         "artifact-copy-from-workspace-mz4c7",
 		Image:        "override-with-gsutil-image:latest",
 		Args:         []string{"-args", "cp -r gs://fake-bucket/src-path/** /workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
@@ -51,6 +53,7 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 }
 
 func TestBucketGetCopyToContainerSpec(t *testing.T) {
+	names.TestingSeed()
 	bucket := ArtifactBucket{
 		Location: "gs://fake-bucket",
 		Secrets: []SecretParam{{
@@ -60,7 +63,7 @@ func TestBucketGetCopyToContainerSpec(t *testing.T) {
 		}},
 	}
 	want := []corev1.Container{{
-		Name:         "artifact-copy-to-workspace",
+		Name:         "artifact-copy-to-workspace-9l9zj",
 		Image:        "override-with-gsutil-image:latest",
 		Args:         []string{"-args", "cp -r src-path gs://fake-bucket/workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
@@ -74,6 +77,7 @@ func TestBucketGetCopyToContainerSpec(t *testing.T) {
 }
 
 func TestGetSecretsVolumes(t *testing.T) {
+	names.TestingSeed()
 	bucket := ArtifactBucket{
 		Location: "gs://fake-bucket",
 		Secrets: []SecretParam{{
@@ -83,7 +87,7 @@ func TestGetSecretsVolumes(t *testing.T) {
 		}},
 	}
 	want := []corev1.Volume{{
-		Name: "bucket-secret-volume-secret1",
+		Name: "bucket-secret-secret1-9l9zj",
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: "secret1",

@@ -29,6 +29,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/system"
 	"github.com/knative/build-pipeline/test"
 	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/knative/build-pipeline/test/names"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/configmap"
 	"go.uber.org/zap"
@@ -73,6 +74,8 @@ func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.T
 }
 
 func TestReconcile(t *testing.T) {
+	names.TestingSeed()
+
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("test-pipeline-run-success", "foo",
 			tb.PipelineRunSpec("test-pipeline",
@@ -184,7 +187,7 @@ func TestReconcile(t *testing.T) {
 
 	// Check that the expected TaskRun was created
 	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject()
-	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1", "foo",
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1-9l9zj", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
 			tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1"),
 			tb.Controller, tb.BlockOwnerDeletion,
@@ -232,7 +235,7 @@ func TestReconcile(t *testing.T) {
 	if len(reconciledRun.Status.TaskRuns) != 1 {
 		t.Errorf("Expected PipelineRun status to include only one TaskRun status item")
 	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1"]; exists == false {
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1-9l9zj"]; exists == false {
 		t.Errorf("Expected PipelineRun status to include TaskRun status")
 	}
 }
@@ -588,6 +591,8 @@ func TestReconcileWithTimeout(t *testing.T) {
 }
 
 func TestReconcilePropagateLabels(t *testing.T) {
+	names.TestingSeed()
+
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hello-world"),
 	))}
@@ -629,7 +634,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	if actual == nil {
 		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
 	}
-	expectedTaskRun := tb.TaskRun("test-pipeline-run-with-labels-hello-world-1", "foo",
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-with-labels-hello-world-1-9l9zj", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
 			tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1"),
 			tb.Controller, tb.BlockOwnerDeletion,

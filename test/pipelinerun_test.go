@@ -27,6 +27,7 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/knative/build-pipeline/test/names"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	corev1 "k8s.io/api/core/v1"
@@ -133,6 +134,9 @@ func TestPipelineRun(t *testing.T) {
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
 			defer tearDown(t, logger, c, namespace)
+
+			// to use fixed seed for testing name after the namespace is created
+			names.TestingSeed()
 
 			logger.Infof("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			td.testSetup(t, c, namespace, i)
