@@ -74,6 +74,7 @@ func TestClusterResource(t *testing.T) {
 func getClusterResource(namespace, name, sname string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(name, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeCluster,
+		tb.PipelineResourceSpecParam("Name", "helloworld-cluster"),
 		tb.PipelineResourceSpecParam("Url", "https://1.1.1.1"),
 		tb.PipelineResourceSpecParam("username", "test-user"),
 		tb.PipelineResourceSpecParam("password", "test-password"),

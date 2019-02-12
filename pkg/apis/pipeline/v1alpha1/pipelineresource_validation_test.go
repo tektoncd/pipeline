@@ -40,6 +40,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 				Spec: PipelineResourceSpec{
 					Type: PipelineResourceTypeCluster,
 					Params: []Param{{
+						Name:  "name",
+						Value: "test-cluster-resource",
+					}, {
 						Name:  "url",
 						Value: "10.10.10",
 					}, {
@@ -67,6 +70,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 				Spec: PipelineResourceSpec{
 					Type: PipelineResourceTypeCluster,
 					Params: []Param{{
+						Name:  "name",
+						Value: "test-cluster-resource",
+					}, {
 						Name:  "url",
 						Value: "http://10.10.10.10",
 					}, {
@@ -82,6 +88,30 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrMissingField("username param"),
 		},
 		{
+			name: "cluster with missing name",
+			res: PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-cluster-resource",
+					Namespace: "foo",
+				},
+				Spec: PipelineResourceSpec{
+					Type: PipelineResourceTypeCluster,
+					Params: []Param{{
+						Name:  "url",
+						Value: "http://10.10.10.10",
+					}, {
+						Name:  "cadata",
+						Value: "bXktY2x1c3Rlci1jZXJ0Cg",
+					}, {
+						Name:  "token",
+						Value: "my-token",
+					},
+					},
+				},
+			},
+			want: apis.ErrMissingField("name param"),
+		},
+		{
 			name: "cluster with missing cadata",
 			res: PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
@@ -91,6 +121,9 @@ func TestResourceValidation_Invalid(t *testing.T) {
 				Spec: PipelineResourceSpec{
 					Type: PipelineResourceTypeCluster,
 					Params: []Param{{
+						Name:  "Name",
+						Value: "test-cluster-resource",
+					}, {
 						Name:  "url",
 						Value: "http://10.10.10.10",
 					}, {
@@ -199,6 +232,9 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 		Spec: PipelineResourceSpec{
 			Type: PipelineResourceTypeCluster,
 			Params: []Param{{
+				Name:  "name",
+				Value: "test-cluster-resource",
+			}, {
 				Name:  "url",
 				Value: "http://10.10.10.10",
 			}, {
