@@ -97,6 +97,26 @@ of the `TaskRun` resource object.
 For examples and more information about specifying service accounts, see the
 [`ServiceAccount`](./auth.md) reference topic.
 
+## Labels
+
+Any labels specified in the metadata field of a `PipelineRun` will be
+propagated to the `TaskRuns` created automatically for each `Task` in the
+`Pipeline` and then to the `Pods` created for those `TaskRuns`. In addition,
+the following labels will be added automatically:
+
+* `pipeline.knative.dev/pipeline` will contain the name of the `Pipeline`
+* `pipeline.knative.dev/pipelineRun` will contain the name of the `PipelineRun`
+
+These labels make it easier to find the resources that are associated with a
+given pipeline.
+
+For example, to find all `Pods` created by a `Pipeline` named test-pipeline,
+you could use the following command:
+
+```shell
+kubectl get pods --all-namespaces -l pipeline.knative.dev/pipeline=test-pipeline
+```
+
 ## Cancelling a PipelineRun
 
 In order to cancel a running pipeline (`PipelineRun`), you need to update its
