@@ -95,6 +95,7 @@ var (
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
 			tb.InputsParam("myarg"), tb.InputsParam("myarghasdefault", tb.ParamDefault("dont see me")),
 			tb.InputsParam("myarghasdefault2", tb.ParamDefault("thedefault")),
+			tb.InputsParam("configmapname"),
 		),
 		tb.TaskOutputs(tb.OutputsResource("myimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
@@ -106,6 +107,10 @@ var (
 		tb.Step("myothercontainer", "myotherimage", tb.Command("/mycmd"), tb.Args(
 			"--my-other-arg=${inputs.resources.workspace.url}",
 		)),
+		tb.TaskVolume("volume-configmap", tb.VolumeSource(corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				corev1.LocalObjectReference{"${inputs.params.configmapname}"}, nil, nil, nil},
+		})),
 	))
 
 	gitResource = tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
@@ -171,6 +176,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
 			tb.TaskRunInputsParam("myarghasdefault", "bar"),
+			tb.TaskRunInputsParam("configmapname", "configbar"),
 			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
 		),
 		tb.TaskRunOutputs(tb.TaskRunOutputsResource("myimage", tb.TaskResourceBindingRef("image-resource"))),
@@ -457,7 +463,13 @@ func TestReconcile(t *testing.T) {
 			BlockOwnerDeletion: &boolTrue,
 		}},
 		wantServiceAccountName: "",
-		wantPodVolume:          getVolumes(),
+		wantPodVolume: append([]corev1.Volume{{
+			Name: "volume-configmap",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					corev1.LocalObjectReference{"configbar"}, nil, nil, nil},
+			},
+		}}, getVolumes()...),
 		wantSteps: []corev1.Container{{
 			Name:       "build-step-credential-initializer-mz4c7",
 			Image:      "override-with-creds:latest",
