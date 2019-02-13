@@ -45,7 +45,7 @@ Modifier (or Builder) and on what it operates.
 By convention, this package is import with the "tb" as alias. The examples make
 that assumption.
 
-# Example
+## Example
 
 Let's look at a non-exhaustive example.
 
