@@ -162,37 +162,21 @@ func TestPipelineRun(t *testing.T) {
 					t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, r.Status)
 				}
 
-				// Check label propagation to Tasks
+				// Check label propagation to Tasks. Presize map with len(pr.ObjectMeta.Labels)
+				// for custom labels, +2 for the labels added in the PipelineRun controller,
+				// and +1 for the label added in the TaskRun controller.
 				labels := make(map[string]string, len(pr.ObjectMeta.Labels)+3)
 				for key, val := range pr.ObjectMeta.Labels {
 					labels[key] = val
 				}
+				// These labels are added to every TaskRun by the PipelineRun controller
 				labels[pipeline.GroupName+pipeline.PipelineLabelKey] = getName(pipelineName, i)
 				labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = getName(pipelineRunName, i)
-				for key, pipelineRunVal := range labels {
-					if taskRunVal := r.ObjectMeta.Labels[key]; taskRunVal != pipelineRunVal {
-						t.Errorf("Expected label %s=%s but got %s", key, pipelineRunVal, taskRunVal)
-					}
-				}
+				assertLabelsMatch(t, labels, r.ObjectMeta.Labels)
 
-				// Check label propagation to Pods
-				taskRunLabelKey := pipeline.GroupName + pipeline.TaskRunLabelKey
-				labels[taskRunLabelKey] = taskRunName
-				pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{
-					LabelSelector: taskRunLabelKey + " = " + taskRunName,
-				})
-				if err != nil {
-					t.Fatalf("Couldn't get expected Pod for %s: %s", taskRunName, err)
-				}
-				if numPods := len(pods.Items); numPods != 1 {
-					t.Fatalf("Expected 1 Pod for %s, but got %d Pods", taskRunName, numPods)
-				}
-				pod := pods.Items[0]
-				for key, taskRunVal := range labels {
-					if podVal := pod.ObjectMeta.Labels[key]; podVal != taskRunVal {
-						t.Errorf("Expected label %s=%s but got %s", key, taskRunVal, podVal)
-					}
-				}
+				// Check label propagation to Pods. This label is added to every Pod by the TaskRun controller
+				labels[pipeline.GroupName + pipeline.TaskRunLabelKey] = taskRunName
+				assertLabelsMatch(t, labels, getPodForTaskRun(t, c.KubeClient, namespace, r).ObjectMeta.Labels)
 			}
 
 			matchKinds := map[string][]string{"PipelineRun": {prName}, "TaskRun": expectedTaskRunNames}
@@ -392,6 +376,28 @@ func collectMatchingEvents(kubeClient *knativetest.KubeClient, namespace string,
 			}
 		case <-timer.C:
 			return events, nil
+		}
+	}
+}
+
+func getPodForTaskRun(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1alpha1.TaskRun) *corev1.Pod {
+	// The Pod name has a random suffix, so we filter by label to find the one we care about.
+	pods, err := kubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		LabelSelector: pipeline.GroupName + pipeline.TaskRunLabelKey + " = " + tr.Name,
+	})
+	if err != nil {
+		t.Fatalf("Couldn't get expected Pod for %s: %s", tr.Name, err)
+	}
+	if numPods := len(pods.Items); numPods != 1 {
+		t.Fatalf("Expected 1 Pod for %s, but got %d Pods", tr.Name, numPods)
+	}
+	return &pods.Items[0]
+}
+
+func assertLabelsMatch(t *testing.T, expectedLabels, actualLabels map[string]string) {
+	for key, expectedVal := range expectedLabels {
+		if actualVal := actualLabels[key]; actualVal != expectedVal {
+			t.Errorf("Expected labels containing %s=%s but labels were %v", key, expectedVal, actualLabels)
 		}
 	}
 }
