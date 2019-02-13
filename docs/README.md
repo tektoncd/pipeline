@@ -23,7 +23,7 @@ High level details of this design:
 - [Tasks](tasks.md) can depend on artifacts, output and parameters created by
   other tasks.
 - [Tasks](tasks.md) can be invoked via [TaskRuns](taskruns.md)
-- [PipelineResources](#pipelineresources) are the artifacts used as inputs and
+- [PipelineResources](resources.md) are the artifacts used as inputs and
   outputs of Tasks.
 
 ## Usage
@@ -44,7 +44,7 @@ components:
 - [`TaskRun`](taskruns.md)
 - [`Pipeline`](pipelines.md)
 - [`PipelineRun`](pipelineruns.md)
-- [`PipelineResource`](pipelineresources.md)
+- [`PipelineResource`](resources.md)
 
 ## Try it out
 
