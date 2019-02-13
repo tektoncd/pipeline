@@ -250,3 +250,73 @@ func TestApplyResources(t *testing.T) {
 		})
 	}
 }
+
+func TestVolumeReplacement(t *testing.T) {
+	tests := []struct {
+		name string
+		b    *buildv1alpha1.Build
+		repl map[string]string
+		want *buildv1alpha1.Build
+	}{{
+		name: "volume replacement",
+		b: &buildv1alpha1.Build{
+			Spec: buildv1alpha1.BuildSpec{
+				Volumes: []corev1.Volume{{
+					Name: "${foo}",
+				}},
+			},
+		},
+		want: &buildv1alpha1.Build{
+			Spec: buildv1alpha1.BuildSpec{
+				Volumes: []corev1.Volume{{
+					Name: "bar",
+				}},
+			},
+		},
+		repl: map[string]string{"foo": "bar"},
+	}, {
+		name: "volume configmap",
+		b: &buildv1alpha1.Build{
+			Spec: buildv1alpha1.BuildSpec{
+				Volumes: []corev1.Volume{{
+					Name: "${name}",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							corev1.LocalObjectReference{"${configmapname}"},
+							nil,
+							nil,
+							nil,
+						},
+					}},
+				},
+			},
+		},
+		repl: map[string]string{
+			"name":          "myname",
+			"configmapname": "cfgmapname",
+		},
+		want: &buildv1alpha1.Build{
+			Spec: buildv1alpha1.BuildSpec{
+				Volumes: []corev1.Volume{{
+					Name: "myname",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							corev1.LocalObjectReference{"cfgmapname"},
+							nil,
+							nil,
+							nil,
+						},
+					}},
+				},
+			},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ApplyReplacements(tt.b, tt.repl)
+			if d := cmp.Diff(got, tt.want); d != "" {
+				t.Errorf("ApplyResources() diff %s", d)
+			}
+		})
+	}
+}

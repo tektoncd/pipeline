@@ -89,5 +89,14 @@ func ApplyReplacements(build *buildv1alpha1.Build, replacements map[string]strin
 			steps[i].VolumeMounts[iv].SubPath = templating.ApplyReplacements(v.SubPath, replacements)
 		}
 	}
+
+	// Apply variable expansion to the build's volumes
+	for i, v := range build.Spec.Volumes {
+		build.Spec.Volumes[i].Name = templating.ApplyReplacements(v.Name, replacements)
+		if v.VolumeSource.ConfigMap != nil {
+			build.Spec.Volumes[i].ConfigMap.Name = templating.ApplyReplacements(v.ConfigMap.Name, replacements)
+		}
+	}
+
 	return build
 }
