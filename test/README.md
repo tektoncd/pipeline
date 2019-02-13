@@ -3,6 +3,9 @@
 To run tests:
 
 ```shell
+# Land the latest codes
+ko apply -f ./config/
+
 # Unit tests
 go test ./...
 
