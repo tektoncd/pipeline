@@ -99,7 +99,10 @@ func TestBuild(t *testing.T) {
 		expectedErr string
 	}{
 		{
-			name: "linear-pipeline",
+			// This test make sure we can create a Pipeline with no links between any Tasks
+			// (all tasks run in parallel)
+			//    a   b   c
+			name: "parallel-pipeline",
 			spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, b, c}},
 			expectedDAG: &DAG{
 				Nodes: map[string]*Node{
@@ -111,6 +114,12 @@ func TestBuild(t *testing.T) {
 			shdErr:      false,
 			expectedErr: "",
 		}, {
+			// This test make sure we can create a more complex Pipeline:
+			//      a  b   c
+			//      |  |
+			//      x  |
+			//     /\ /
+			//    z  y
 			name: "complex-pipeline",
 			spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnAB, zDependsOnX, b, c}},
 			expectedDAG: &DAG{
@@ -201,68 +210,83 @@ func TestBuild(t *testing.T) {
 }
 
 func TestGetSchedulable(t *testing.T) {
-	a := v1alpha1.PipelineTask{Name: "a"}
-	b := v1alpha1.PipelineTask{Name: "b"}
-	w := v1alpha1.PipelineTask{
-		Name: "w",
-		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"b", "y"}}},
-		},
+	//  b     a
+	//  |    / \
+	//  |   |   x
+	//  |   | / |
+	//  |   y   |
+	//   \ /    z
+	//    w
+	g := new()
+	g.Nodes["a"] = &Node{
+		Task: v1alpha1.PipelineTask{Name: "a"},
 	}
-	x := v1alpha1.PipelineTask{
-		Name: "x",
-		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
-		},
+	g.Nodes["b"] = &Node{
+		Task: v1alpha1.PipelineTask{Name: "b"},
 	}
-	y := v1alpha1.PipelineTask{
-		Name: "y",
-		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"x", "a"}}},
-		},
+	g.Nodes["x"] = &Node{
+		Task: v1alpha1.PipelineTask{Name: "x"},
+		Prev: []*Node{g.Nodes["a"]},
 	}
-	z := v1alpha1.PipelineTask{
-		Name: "z",
-		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"x"}}},
-		},
+	g.Nodes["y"] = &Node{
+		Task: v1alpha1.PipelineTask{Name: "y"},
+		Prev: []*Node{g.Nodes["a"], g.Nodes["x"]},
 	}
-	p := v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "namespace",
-			Name:      "test",
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{a, b, w, x, y, z},
-		},
+	g.Nodes["z"] = &Node{
+		Task: v1alpha1.PipelineTask{Name: "z"},
+		Prev: []*Node{g.Nodes["x"]},
 	}
-	g, err := Build(&p)
-	if err != nil {
-		t.Fatalf("unexpected error %s", err)
+	g.Nodes["w"] = &Node{
+		Task: v1alpha1.PipelineTask{Name: "w"},
+		Prev: []*Node{g.Nodes["y"], g.Nodes["b"]},
 	}
-	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable()), []v1alpha1.PipelineTask{a, b}); d != "" {
-		t.Errorf("incorrect dependencees for no task. diff %s", d)
-	}
-	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a")), []v1alpha1.PipelineTask{x}); d != "" {
-		t.Errorf("incorrect dependencees for no task. diff %s", d)
-	}
-	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("b")), []v1alpha1.PipelineTask{}); d != "" {
-		t.Errorf("incorrect dependencees for no task. diff %s", d)
-	}
-	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a", "b")), []v1alpha1.PipelineTask{x}); d != "" {
-		t.Errorf("incorrect dependencees for no task. diff %s", d)
-	}
-	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("x")), []v1alpha1.PipelineTask{z}); d != "" {
-		t.Errorf("incorrect dependencees for no task. diff %s", d)
-	}
-	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a", "x")), []v1alpha1.PipelineTask{y, z}); d != "" {
-		t.Errorf("incorrect dependencees for no task. diff %s", d)
-	}
-	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a", "x", "b")), []v1alpha1.PipelineTask{y, z}); d != "" {
-		t.Errorf("incorrect dependencees for no task. diff %s", d)
-	}
-	if d := cmp.Diff(sortPipelineTask(g.GetSchedulable("a", "x", "y")), []v1alpha1.PipelineTask{z}); d != "" {
-		t.Errorf("incorrect dependencees for no task. diff %s", d)
+	tcs := []struct {
+		name          string
+		finished      []string
+		expectedTasks []v1alpha1.PipelineTask
+	}{{
+		name:          "nothing-done",
+		finished:      []string{},
+		expectedTasks: []v1alpha1.PipelineTask{{Name: "a"}, {Name: "b"}},
+	}, {
+		name:          "a-done",
+		finished:      []string{"a"},
+		expectedTasks: []v1alpha1.PipelineTask{{Name: "x"}},
+	}, {
+		name:          "b-done",
+		finished:      []string{"b"},
+		expectedTasks: []v1alpha1.PipelineTask{},
+	}, {
+		name:          "a-and-b-done",
+		finished:      []string{"a", "b"},
+		expectedTasks: []v1alpha1.PipelineTask{{Name: "x"}},
+	}, {
+		// TODO: should this return b also?
+		// try adding something between b and w maybe to be sure
+		name: "x-done",
+		// TODO: if ix is done, shouldnt a be done also?
+		finished:      []string{"x"},
+		expectedTasks: []v1alpha1.PipelineTask{{Name: "z"}},
+	}, {
+		// TODO: should this return b also?
+		name:          "a-x-done",
+		finished:      []string{"a", "x"},
+		expectedTasks: []v1alpha1.PipelineTask{{Name: "y"}, {Name: "z"}},
+	}, {
+		name:          "a-x-b-done",
+		finished:      []string{"a", "x", "b"},
+		expectedTasks: []v1alpha1.PipelineTask{{Name: "y"}, {Name: "z"}},
+	}, {
+		name:          "a-x-y-done",
+		finished:      []string{"a", "x", "y"},
+		expectedTasks: []v1alpha1.PipelineTask{{Name: "z"}},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if d := cmp.Diff(sortPipelineTask(g.GetSchedulable(tc.finished...)), tc.expectedTasks); d != "" {
+				t.Errorf("incorrect dependences for no task. diff %s", d)
+			}
+		})
 	}
 }
 
