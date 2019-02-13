@@ -53,19 +53,19 @@ Kubernetes objects and can interact with them using the
 
 ```go
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 obj := &v1alpha1.PipelineRun {
-	ObjectMeta: metav1.ObjectMeta {
+    ObjectMeta: metav1.ObjectMeta {
         Name:      "name",
         Namespace: "namespace",
     },
     Spec: v1alpha1.PipelineRunSpec {
-    	PipelineRef: v1alpha1.PipelineRef {
-    		Name:       "test-pipeline",
-    		APIVersion: "a1",
-    	},
+        PipelineRef: v1alpha1.PipelineRef {
+            Name:       "test-pipeline",
+            APIVersion: "a1",
+        },
     }
 }
 pipelineClient := fakepipelineclientset.NewSimpleClientset(obj)
@@ -89,16 +89,16 @@ sharedInfomer := informers.NewSharedInformerFactory(pipelineClient, 0)
 pipelineRunsInformer := sharedInfomer.Pipeline().V1alpha1().PipelineRuns()
 
 obj := &v1alpha1.PipelineRun {
-	ObjectMeta: metav1.ObjectMeta {
-		Name:      "name",
-		Namespace: "namespace",
-	},
-	Spec: v1alpha1.PipelineRunSpec {
-		PipelineRef: v1alpha1.PipelineRef {
-			Name:       "test-pipeline",
-			APIVersion: "a1",
-		},
-	}
+    ObjectMeta: metav1.ObjectMeta {
+        Name:      "name",
+        Namespace: "namespace",
+    },
+    Spec: v1alpha1.PipelineRunSpec {
+        PipelineRef: v1alpha1.PipelineRef {
+            Name:       "test-pipeline",
+            APIVersion: "a1",
+        },
+    }
 }
 pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 ```
@@ -237,22 +237,22 @@ To create `build-pipeline` objects (e.g. `Task`, `Pipeline`, …), you can use t
 
 ```go
 func MyTest(t *testing.T){
-	// Pipeline
-	pipeline := tb.Pipeline("tomatoes", "namespace",
-		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
-	)
- 	// … and PipelineRun
-	pipelineRun := tb.PipelineRun("pear", "namespace",
-		tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccount("inexistent")),
-	)
-	// And do something with them
-	// […]
-	if _, err := c.PipelineClient.Create(pipeline); err != nil {
-		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
-	}
-	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
-		t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
-	}
+    // Pipeline
+    pipeline := tb.Pipeline("tomatoes", "namespace",
+        tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
+    )
+    // … and PipelineRun
+    pipelineRun := tb.PipelineRun("pear", "namespace",
+        tb.PipelineRunSpec("tomatoes", tb.PipelineRunServiceAccount("inexistent")),
+    )
+    // And do something with them
+    // […]
+    if _, err := c.PipelineClient.Create(pipeline); err != nil {
+        t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
+    }
+    if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
+        t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
+    }
 }
 ```
 
