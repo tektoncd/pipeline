@@ -152,6 +152,30 @@ of the `TaskRun` resource object.
 For examples and more information about specifying service accounts, see the
 [`ServiceAccount`](./auth.md) reference topic.
 
+## Labels
+
+Any labels specified in the metadata field of a `TaskRun` will be
+propagated to the `Pod` created to execute the `Task`. In addition,
+the following label will be added automatically:
+
+* `pipeline.knative.dev/taskRun` will contain the name of the `TaskRun`
+
+If the `TaskRun` was created automatically by a `PipelineRun`, then the
+following two labels will also be added to the `TaskRun` and `Pod`:
+
+* `pipeline.knative.dev/pipeline` will contain the name of the `Pipeline`
+* `pipeline.knative.dev/pipelineRun` will contain the name of the `PipelineRun`
+
+These labels make it easier to find the resources that are associated with a
+given `TaskRun`.
+
+For example, to find all `Pods` created by a `TaskRun` named test-taskrun,
+you could use the following command:
+
+```shell
+kubectl get pods --all-namespaces -l pipeline.knative.dev/taskRun=test-taskrun
+```
+
 ## Cancelling a TaskRun
 
 In order to cancel a running task (`TaskRun`), you need to update its spec to

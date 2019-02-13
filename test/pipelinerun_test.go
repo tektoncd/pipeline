@@ -138,7 +138,8 @@ func TestPipelineRun(t *testing.T) {
 			td.testSetup(t, c, namespace, i)
 
 			prName := fmt.Sprintf("%s%d", pipelineRunName, i)
-			if _, err := c.PipelineRunClient.Create(td.pipelineRunFunc(i, namespace)); err != nil {
+			pr, err := c.PipelineRunClient.Create(td.pipelineRunFunc(i, namespace))
+			if err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
 
@@ -160,14 +161,36 @@ func TestPipelineRun(t *testing.T) {
 				if !r.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsTrue() {
 					t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, r.Status)
 				}
-				for name, key := range map[string]string{
-					pipelineRunName: pipeline.PipelineRunLabelKey,
-					pipelineName:    pipeline.PipelineLabelKey,
-				} {
-					expectedName := getName(name, i)
-					lbl := pipeline.GroupName + key
-					if val := r.Labels[lbl]; val != expectedName {
-						t.Errorf("Expected label %s=%s but got %s", lbl, expectedName, val)
+
+				// Check label propagation to Tasks
+				labels := make(map[string]string, len(pr.ObjectMeta.Labels)+3)
+				for key, val := range pr.ObjectMeta.Labels {
+					labels[key] = val
+				}
+				labels[pipeline.GroupName+pipeline.PipelineLabelKey] = getName(pipelineName, i)
+				labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = getName(pipelineRunName, i)
+				for key, pipelineRunVal := range labels {
+					if taskRunVal := r.ObjectMeta.Labels[key]; taskRunVal != pipelineRunVal {
+						t.Errorf("Expected label %s=%s but got %s", key, pipelineRunVal, taskRunVal)
+					}
+				}
+
+				// Check label propagation to Pods
+				taskRunLabelKey := pipeline.GroupName + pipeline.TaskRunLabelKey
+				labels[taskRunLabelKey] = taskRunName
+				pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{
+					LabelSelector: taskRunLabelKey + " = " + taskRunName,
+				})
+				if err != nil {
+					t.Fatalf("Couldn't get expected Pod for %s: %s", taskRunName, err)
+				}
+				if numPods := len(pods.Items); numPods != 1 {
+					t.Fatalf("Expected 1 Pod for %s, but got %d Pods", taskRunName, numPods)
+				}
+				pod := pods.Items[0]
+				for key, taskRunVal := range labels {
+					if podVal := pod.ObjectMeta.Labels[key]; podVal != taskRunVal {
+						t.Errorf("Expected label %s=%s but got %s", key, taskRunVal, podVal)
 					}
 				}
 			}
@@ -322,10 +345,12 @@ func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {
 }
 
 func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
-	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace, tb.PipelineRunSpec(
-		getName(pipelineName, suffix),
-		tb.PipelineRunServiceAccount(fmt.Sprintf("%s%d", saName, suffix)),
-	))
+	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
+		tb.PipelineRunLabel("hello-world-key", "hello-world-value"),
+		tb.PipelineRunSpec(getName(pipelineName, suffix),
+			tb.PipelineRunServiceAccount(fmt.Sprintf("%s%d", saName, suffix)),
+		),
+	)
 }
 
 func getName(namespace string, suffix int) string {
