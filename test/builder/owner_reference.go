@@ -14,7 +14,7 @@ limitations under the License.
 package builder
 
 import (
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // OwnerReferenceOp is an operation which modifies an OwnerReference struct.
@@ -22,7 +22,7 @@ type OwnerReferenceOp func(*metav1.OwnerReference)
 
 // OwnerReferenceAPIVersion sets the APIVersion to the OwnerReference.
 func OwnerReferenceAPIVersion(version string) OwnerReferenceOp {
-    return func(o *metav1.OwnerReference) {
-        o.APIVersion = version
-    }
+	return func(o *metav1.OwnerReference) {
+		o.APIVersion = version
+	}
 }

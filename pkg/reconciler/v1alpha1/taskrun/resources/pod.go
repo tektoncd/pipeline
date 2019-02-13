@@ -299,8 +299,8 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 			Name: fmt.Sprintf("%s-pod-%s", build.Name, gibberish),
 			// If our parent TaskRun is deleted, then we should be as well.
 			OwnerReferences: build.OwnerReferences,
-			Annotations: annotations,
-			Labels: build.ObjectMeta.Labels,
+			Annotations:     annotations,
+			Labels:          build.ObjectMeta.Labels,
 		},
 		Spec: corev1.PodSpec{
 			// If the build fails, don't restart it.
