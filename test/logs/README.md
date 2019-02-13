@@ -1,4 +1,4 @@
-## How to follow log outputs?
+# How to follow log outputs?
 
 - [How to follow PipelineRun logs?](#pipelinerun)
 - [How to follow TaskRun logs?](#taskrun)
@@ -16,7 +16,7 @@ logs will return error `Unable to retrieve container logs`.
 go run test/logs/main.go [-n NAMESPACE] [-pr PIPELINERUN-NAME] / [-tr TASKRUN_NAME] [-f FILE-NAME]
 ```
 
-### General flags
+## General flags
 
 ```shell
 -n string
@@ -29,7 +29,7 @@ Command provides option to change namespace with `-n` flag. If user wants to
 dump logs to a file then `-f` flag could be used. By default logs are dumped to
 `stdout`.
 
-### PipelineRun
+## PipelineRun
 
 The following command will tail logs for all `Taskruns` created by pipelinerun
 `my-pr` in namespace `default`.
@@ -38,7 +38,7 @@ The following command will tail logs for all `Taskruns` created by pipelinerun
 go run test/logs/main.go -pr my-pr
 ```
 
-### TaskRun
+## TaskRun
 
 The following command will tail logs for all specified `Taskrun` in namespace
 `default`.
