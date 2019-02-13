@@ -48,9 +48,12 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		t.Fatalf("Failed to create Task `banana`: %s", err)
 	}
 
+	logger.Infof("Creating Pipeline in namespace %s", namespace)
 	pipeline := tb.Pipeline("tomatoes", namespace,
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
+
+	logger.Infof("Creating PipelineRun in namespace %s", namespace)
 	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
@@ -72,6 +75,38 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		return false, nil
 	}, "PipelineRunRunning"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", "pear", err)
+	}
+
+	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: "pipeline.knative.dev/pipelineRun=pear"})
+	if err != nil {
+		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", "pear", err)
+	}
+
+	logger.Infof("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", "pear", namespace)
+	errChan := make(chan error, len(taskrunList.Items))
+	defer close(errChan)
+
+	for _, taskrunItem := range taskrunList.Items {
+		go func() {
+			err := WaitForTaskRunState(c, taskrunItem.Name, func(tr *v1alpha1.TaskRun) (bool, error) {
+				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+				if c != nil {
+					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
+						return true, fmt.Errorf("taskRun %s already finished!", taskrunItem.Name)
+					} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
+						return true, nil
+					}
+				}
+				return false, nil
+			}, "TaskRunRunning")
+			errChan <- err
+		}()
+
+	}
+	for i := 1; i <= len(taskrunList.Items); i++ {
+		if <-errChan != nil {
+			t.Errorf("Error waiting for TaskRun %s to be running: %s", taskrunList.Items[i-1].Name, err)
+		}
 	}
 
 	pr, err := c.PipelineRunClient.Get("pear", metav1.GetOptions{})
@@ -101,4 +136,34 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 	}, "PipelineRunCancelled"); err != nil {
 		t.Errorf("Error waiting for PipelineRun `pear` to finish: %s", err)
 	}
+
+	logger.Infof("Waiting for TaskRuns in PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
+	errChan2 := make(chan error, len(taskrunList.Items))
+	defer close(errChan2)
+	for _, taskrunItem := range taskrunList.Items {
+		go func() {
+			err := WaitForTaskRunState(c, taskrunItem.Name, func(tr *v1alpha1.TaskRun) (bool, error) {
+				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+				if c != nil {
+					if c.Status == corev1.ConditionFalse {
+						if c.Reason == "TaskRunCancelled" {
+							return true, nil
+						}
+						return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", taskrunItem.Name, c.Reason)
+					} else if c.Status == corev1.ConditionTrue {
+						return true, fmt.Errorf("taskRun %s completed successfully, should have been cancelled", taskrunItem.Name)
+					}
+				}
+				return false, nil
+			}, "TaskRunCancelled")
+			errChan2 <- err
+		}()
+
+	}
+	for i := 1; i <= len(taskrunList.Items); i++ {
+		if <-errChan2 != nil {
+			t.Errorf("Error waiting for TaskRun %s to be finish: %s", taskrunList.Items[i-1].Name, err)
+		}
+	}
+
 }

@@ -76,6 +76,38 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 	}
 
+	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("pipeline.knative.dev/pipelineRun=%s", pipelineRun.Name)})
+	if err != nil {
+		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
+	}
+
+	logger.Infof("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", pipelineRun.Name, namespace)
+	errChan := make(chan error, len(taskrunList.Items))
+	defer close(errChan)
+
+	for _, taskrunItem := range taskrunList.Items {
+		go func() {
+			err := WaitForTaskRunState(c, taskrunItem.Name, func(tr *v1alpha1.TaskRun) (bool, error) {
+				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+				if c != nil {
+					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
+						return true, fmt.Errorf("taskRun %s already finished!", taskrunItem.Name)
+					} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
+						return true, nil
+					}
+				}
+				return false, nil
+			}, "TaskRunRunning")
+			errChan <- err
+		}()
+
+	}
+	for i := 1; i <= len(taskrunList.Items); i++ {
+		if <-errChan != nil {
+			t.Errorf("Error waiting for TaskRun %s to be running: %s", taskrunList.Items[i-1].Name, err)
+		}
+	}
+
 	if _, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{}); err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
@@ -96,6 +128,40 @@ func TestPipelineRunTimeout(t *testing.T) {
 		return false, nil
 	}, "PipelineRunTimedOut"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
+	}
+
+	logger.Infof("Waiting for TaskRuns from PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
+	errChan2 := make(chan error, len(taskrunList.Items))
+	defer close(errChan2)
+
+	for _, taskrunItem := range taskrunList.Items {
+		go func() {
+			err := WaitForTaskRunState(c, taskrunItem.Name, func(tr *v1alpha1.TaskRun) (bool, error) {
+				cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+				if cond != nil {
+					if cond.Status == corev1.ConditionFalse {
+						if cond.Reason == "TaskRunTimeout" {
+							return true, nil
+						}
+						return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", taskrunItem.Name, cond.Reason)
+					} else if cond.Status == corev1.ConditionTrue {
+						return true, fmt.Errorf("taskRun %s completed successfully, should have been timed out", taskrunItem.Name)
+					}
+				}
+				return false, nil
+			}, "TaskRunTimeout")
+			errChan2 <- err
+		}()
+
+	}
+	for i := 1; i <= len(taskrunList.Items); i++ {
+		if <-errChan2 != nil {
+			t.Errorf("Error waiting for TaskRun %s to timeout: %s", taskrunList.Items[i-1].Name, err)
+		}
+	}
+
+	if _, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{}); err != nil {
+		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
 	// Verify that we can create a second Pipeline using the same Task without a Pipeline-level timeout that will not

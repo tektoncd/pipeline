@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
@@ -163,14 +164,22 @@ func (e *ResourceNotFoundError) Error() string {
 // will return an error, otherwise it returns a list of all of the Tasks retrieved.
 // It will retrieve the Resources needed for the TaskRun as well using getResource and the mapping
 // of providedResources.
-func ResolvePipelineRun(prName string, getTask resources.GetTask, getClusterTask resources.GetClusterTask, getResource resources.GetResource, tasks []v1alpha1.PipelineTask, providedResources map[string]v1alpha1.PipelineResourceRef) ([]*ResolvedPipelineRunTask, error) {
+func ResolvePipelineRun(
+	pipelineRun v1alpha1.PipelineRun,
+	getTask resources.GetTask,
+	getClusterTask resources.GetClusterTask,
+	getResource resources.GetResource,
+	tasks []v1alpha1.PipelineTask,
+	providedResources map[string]v1alpha1.PipelineResourceRef,
+) ([]*ResolvedPipelineRunTask, error) {
+
 	state := []*ResolvedPipelineRunTask{}
 	for i := range tasks {
 		pt := tasks[i]
 
 		rprt := ResolvedPipelineRunTask{
 			PipelineTask: &pt,
-			TaskRunName:  getTaskRunName(prName, &pt),
+			TaskRunName:  getTaskRunName(pipelineRun.Status.TaskRuns, pipelineRun.Name, &pt),
 		}
 
 		// Find the Task that this task in the Pipeline this PipelineTask is using
@@ -226,8 +235,15 @@ func ResolveTaskRuns(getTaskRun GetTaskRun, state []*ResolvedPipelineRunTask) er
 }
 
 // getTaskRunName should return a uniquie name for a `TaskRun`.
-func getTaskRunName(prName string, pt *v1alpha1.PipelineTask) string {
+func getTaskRunName(taskRunsStatus map[string]v1alpha1.TaskRunStatus, prName string, pt *v1alpha1.PipelineTask) string {
 	base := fmt.Sprintf("%s-%s", prName, pt.Name)
+
+	for k := range taskRunsStatus {
+		if strings.HasPrefix(k, base) {
+			return k
+		}
+	}
+
 	return names.SimpleNameGenerator.GenerateName(base)
 }
 
