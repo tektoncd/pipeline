@@ -18,11 +18,11 @@ go run test/logs/main.go [-n NAMESPACE] [-pr PIPELINERUN-NAME] / [-tr TASKRUN_NA
 
 ### General flags
 
-```
+```shell
 -n string
-  	The namespace scope for this CLI request (default "default")
+    The namespace scope for this CLI request (default "default")
 -f string
-   	Name of the file to write logs.
+    Name of the file to write logs.
 ```
 
 Command provides option to change namespace with `-n` flag. If user wants to
