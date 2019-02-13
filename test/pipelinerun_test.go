@@ -27,7 +27,6 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	tb "github.com/knative/build-pipeline/test/builder"
-	"github.com/knative/build-pipeline/test/names"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	corev1 "k8s.io/api/core/v1"
@@ -135,9 +134,6 @@ func TestPipelineRun(t *testing.T) {
 			knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
 			defer tearDown(t, logger, c, namespace)
 
-			// to use fixed seed for testing name after the namespace is created
-			names.TestingSeed()
-
 			logger.Infof("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			td.testSetup(t, c, namespace, i)
 
@@ -153,10 +149,19 @@ func TestPipelineRun(t *testing.T) {
 			}
 
 			logger.Infof("Making sure the expected TaskRuns %s were created", td.expectedTaskRuns)
-
+			actualTaskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("pipeline.knative.dev/pipelineRun=%s", prName)})
+			if err != nil {
+				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
+			}
 			expectedTaskRunNames := []string{}
 			for _, runName := range td.expectedTaskRuns {
 				taskRunName := strings.Join([]string{prName, runName}, "-")
+				// check the actual task name starting with prName+runName with a random suffix
+				for _, actualTaskRunItem := range actualTaskrunList.Items {
+					if strings.HasPrefix(actualTaskRunItem.Name, taskRunName) {
+						taskRunName = actualTaskRunItem.Name
+					}
+				}
 				expectedTaskRunNames = append(expectedTaskRunNames, taskRunName)
 				r, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
 				if err != nil {

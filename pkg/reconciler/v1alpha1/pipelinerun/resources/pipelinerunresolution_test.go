@@ -345,14 +345,18 @@ func TestResolvePipelineRun(t *testing.T) {
 			Type: v1alpha1.PipelineResourceTypeGit,
 		},
 	}
-
+	pr := v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
 	// The Task "task" doesn't actually take any inputs or outputs, but validating
 	// that is not done as part of Run resolution
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, nil }
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return r, nil }
 
-	pipelineState, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, p.Spec.Tasks, providedResources)
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, p.Spec.Tasks, providedResources)
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}
@@ -415,8 +419,12 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
-
-	pipelineState, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, pts, providedResources)
+	pr := v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, pts, providedResources)
 	if err != nil {
 		t.Fatalf("Did not expect error when resolving PipelineRun without Resources: %v", err)
 	}
@@ -452,8 +460,12 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("clustertask"), name)
 	}
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
-
-	_, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, pts, providedResources)
+	pr := v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+	_, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, pts, providedResources)
 	switch err := err.(type) {
 	case nil:
 		t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
@@ -494,7 +506,12 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
+			pr := v1alpha1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinerun",
+				},
+			}
+			_, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
 			if err == nil {
 				t.Fatalf("Expected error when bindings are in incorrect state for Pipeline %s but got none", p.Name)
 			}
@@ -538,7 +555,12 @@ func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ResolvePipelineRun("pipelinerun", getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
+			pr := v1alpha1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinerun",
+				},
+			}
+			_, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, tt.p.Spec.Tasks, providedResources)
 			switch err := err.(type) {
 			case nil:
 				t.Fatalf("Expected error getting non-existent Resources for Pipeline %s but got none", p.Name)
@@ -857,5 +879,69 @@ func TestValidateFrom_Invalid(t *testing.T) {
 				t.Errorf("Expected error to contain %q but was: %v", tc.errContains, err)
 			}
 		})
+	}
+}
+
+func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
+	names.TestingSeed()
+
+	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+		tb.PipelineDeclaredResource("git-resource", "git"),
+		tb.PipelineTask("mytask1", "task",
+			tb.PipelineTaskInputResource("input1", "git-resource"),
+		),
+	))
+	providedResources := map[string]v1alpha1.PipelineResourceRef{
+		"git-resource": {
+			Name: "someresource",
+		},
+	}
+
+	r := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "someresource",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+		},
+	}
+	taskrunStatus := map[string]v1alpha1.TaskRunStatus{}
+	taskrunStatus["pipelinerun-mytask1-9l9zj"] = v1alpha1.TaskRunStatus{}
+
+	pr := v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+		Status: v1alpha1.PipelineRunStatus{
+			TaskRuns: taskrunStatus,
+		},
+	}
+
+	// The Task "task" doesn't actually take any inputs or outputs, but validating
+	// that is not done as part of Run resolution
+	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, nil }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return r, nil }
+
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getClusterTask, getResource, p.Spec.Tasks, providedResources)
+	if err != nil {
+		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
+	}
+	expectedState := []*ResolvedPipelineRunTask{{
+		PipelineTask: &p.Spec.Tasks[0],
+		TaskRunName:  "pipelinerun-mytask1-9l9zj",
+		TaskRun:      nil,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskName: task.Name,
+			TaskSpec: &task.Spec,
+			Inputs: map[string]*v1alpha1.PipelineResource{
+				"input1": r,
+			},
+			Outputs: map[string]*v1alpha1.PipelineResource{},
+		},
+	}}
+
+	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
+		t.Fatalf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
 	}
 }
