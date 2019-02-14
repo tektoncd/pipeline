@@ -105,23 +105,48 @@ type Config struct {
 	LoggingLevel  map[string]zapcore.Level
 }
 
+const defaultZLC = `{
+  "level": "info",
+  "development": false,
+  "outputPaths": ["stdout"],
+  "errorOutputPaths": ["stderr"],
+  "encoding": "json",
+  "encoderConfig": {
+    "timeKey": "ts",
+    "levelKey": "level",
+    "nameKey": "logger",
+    "callerKey": "caller",
+    "messageKey": "msg",
+    "stacktraceKey": "stacktrace",
+    "lineEnding": "",
+    "levelEncoder": "",
+    "timeEncoder": "iso8601",
+    "durationEncoder": "",
+    "callerEncoder": ""
+  }
+}`
+
 // NewConfigFromMap creates a LoggingConfig from the supplied map,
 // expecting the given list of components.
 func NewConfigFromMap(data map[string]string, components ...string) (*Config, error) {
 	lc := &Config{}
 	if zlc, ok := data["zap-logger-config"]; ok {
 		lc.LoggingConfig = zlc
+	} else {
+		lc.LoggingConfig = defaultZLC
 	}
+
 	lc.LoggingLevel = make(map[string]zapcore.Level)
 	for _, component := range components {
-		if ll, ok := data["loglevel."+component]; ok {
-			if len(ll) > 0 {
-				level, err := levelFromString(ll)
-				if err != nil {
-					return nil, err
-				}
-				lc.LoggingLevel[component] = *level
+		if ll := data["loglevel."+component]; len(ll) > 0 {
+			level, err := levelFromString(ll)
+			if err != nil {
+				return nil, err
 			}
+			lc.LoggingLevel[component] = *level
+		} else {
+			// We default components to INFO
+			lc.LoggingLevel[component] = zapcore.InfoLevel
 		}
 	}
 	return lc, nil

@@ -50,8 +50,10 @@ const (
 
 var zipkinPortForwardPID int
 
-// SetupZipkinTracing sets up zipkin tracing which involves a) Setting up port-forwarding from localhost to zipkin pod on the cluster (pid of the process doing Port-Forward is stored in a global variable).
-// b) enable AlwaysSample config for tracing.
+// SetupZipkinTracing sets up zipkin tracing which involves:
+// 1. Setting up port-forwarding from localhost to zipkin pod on the cluster
+//    (pid of the process doing Port-Forward is stored in a global variable).
+// 2. Enable AlwaysSample config for tracing.
 func SetupZipkinTracing(kubeClientset *kubernetes.Clientset) error {
 	logger := logging.GetContextLogger("SpoofUtil")
 
@@ -61,7 +63,7 @@ func SetupZipkinTracing(kubeClientset *kubernetes.Clientset) error {
 
 	zipkinPods, err := kubeClientset.CoreV1().Pods(ZipkinNamespace).List(metav1.ListOptions{LabelSelector: "app=zipkin"})
 	if err != nil {
-		return fmt.Errorf("Error retrieving Zipkin pod details : %v", err)
+		return fmt.Errorf("Error retrieving Zipkin pod details: %v", err)
 	}
 
 	if len(zipkinPods.Items) == 0 {
@@ -70,8 +72,7 @@ func SetupZipkinTracing(kubeClientset *kubernetes.Clientset) error {
 
 	portForwardCmd := exec.Command("kubectl", "port-forward", "--namespace="+ZipkinNamespace, zipkinPods.Items[0].Name, fmt.Sprintf("%d:%d", ZipkinPort, ZipkinPort))
 	if err = portForwardCmd.Start(); err != nil {
-		return fmt.Errorf("Error starting kubectl port-forward command : %v", err)
-
+		return fmt.Errorf("Error starting kubectl port-forward command: %v", err)
 	}
 	zipkinPortForwardPID = portForwardCmd.Process.Pid
 	logger.Infof("Zipkin port-forward process started with PID: %d", zipkinPortForwardPID)
@@ -79,7 +80,7 @@ func SetupZipkinTracing(kubeClientset *kubernetes.Clientset) error {
 	// Applying AlwaysSample config to ensure we propagate zipkin header for every request made by this client.
 	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
 
-	logger.Infof("Successfully setup SpoofingClient for Zipkin Tracing")
+	logger.Info("Successfully setup SpoofingClient for Zipkin Tracing")
 
 	return nil
 }
@@ -93,7 +94,7 @@ func CleanupZipkinTracingSetup() error {
 		return fmt.Errorf("Encoutered error killing port-forward process in CleanupZipkingTracingSetup() : %v", err)
 	}
 
-	logger.Infof("Successfully killed Zipkin port-forward process")
+	logger.Info("Successfully killed Zipkin port-forward process")
 	return nil
 }
 

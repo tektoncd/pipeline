@@ -206,7 +206,7 @@ type PortTrafficPolicy struct {
 type Subset struct {
 	// REQUIRED. Name of the subset. The service name and the subset name can
 	// be used for traffic splitting in a route rule.
-	Name string `json:"port"`
+	Name string `json:"name"`
 
 	// REQUIRED. Labels apply a filter over the endpoints of a service in the
 	// service registry. See route rules for examples of usage.

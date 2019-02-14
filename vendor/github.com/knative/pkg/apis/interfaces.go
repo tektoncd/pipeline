@@ -17,6 +17,7 @@ limitations under the License.
 package apis
 
 import (
+	authenticationv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -46,4 +47,9 @@ type Listable interface {
 	runtime.Object
 
 	GetListType() runtime.Object
+}
+
+// Annotatable indicates that a particular type applies various annotations.
+type Annotatable interface {
+	AnnotateUserInfo(previous Annotatable, ui *authenticationv1.UserInfo)
 }

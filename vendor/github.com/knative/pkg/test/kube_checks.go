@@ -29,6 +29,7 @@ import (
 	apiv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	k8styped "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
 const (
@@ -72,4 +73,16 @@ func WaitForPodListState(client *KubeClient, inState func(p *corev1.PodList) (bo
 		}
 		return inState(p)
 	})
+}
+
+// GetConfigMap gets the configmaps for a given namespace
+func GetConfigMap(client *KubeClient, namespace string) k8styped.ConfigMapInterface {
+	return client.Kube.CoreV1().ConfigMaps(namespace)
+}
+
+// Returns a func that evaluates if a deployment has scaled to 0 pods
+func DeploymentScaledToZeroFunc() func(d *apiv1beta1.Deployment) (bool, error) {
+	return func(d *apiv1beta1.Deployment) (bool, error) {
+		return d.Status.ReadyReplicas == 0, nil
+	}
 }

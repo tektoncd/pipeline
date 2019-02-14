@@ -47,8 +47,10 @@ type ConditionSeverity string
 
 const (
 	// ConditionSeverityError specifies that a failure of a condition type
-	// should be viewed as an error.
-	ConditionSeverityError ConditionSeverity = "Error"
+	// should be viewed as an error.  As "Error" is the default for conditions
+	// we use the empty string (coupled with omitempty) to avoid confusion in
+	// the case where the condition is in state "True" (aka nothing is wrong).
+	ConditionSeverityError ConditionSeverity = ""
 	// ConditionSeverityWarning specifies that a failure of a condition type
 	// should be viewed as a warning, but that things could still work.
 	ConditionSeverityWarning ConditionSeverity = "Warning"

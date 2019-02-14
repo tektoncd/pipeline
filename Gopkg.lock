@@ -219,7 +219,7 @@
   revision = "f0d7bb60956f88d4743f5fea66b5607b96d262c9"
 
 [[projects]]
-  digest = "1:f8800585f2a46c07a4fa252153ce39660786527436cddcc83190d60339fb85ea"
+  digest = "1:0fa5d5d0a2848f6fae6bebecd8a33d1042535f6feaa5178a4943d622eb5169e7"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
@@ -251,7 +251,7 @@
     "webhook",
   ]
   pruneopts = "NUT"
-  revision = "076ebf4e56758e76cd87fa402e9478da25ed942e"
+  revision = "0183bf9cdc7349e3c76c26e51f84689b411fccea"
 
 [[projects]]
   branch = "master"
@@ -311,6 +311,14 @@
   pruneopts = "NUT"
   revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
   version = "v2.0.1"
+
+[[projects]]
+  digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [[projects]]
   digest = "1:d917313f309bda80d27274d53985bc65651f81a5b66b820749ac7f8ef061fd04"

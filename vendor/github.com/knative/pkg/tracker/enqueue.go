@@ -98,6 +98,20 @@ func (i *impl) Track(ref corev1.ObjectReference, obj interface{}) error {
 	if !ok {
 		l = set{}
 	}
+	if expiry, ok := l[key]; !ok || isExpired(expiry) {
+		// When covering an uncovered key, immediately call the
+		// registered callback to ensure that the following pattern
+		// doesn't create problems:
+		//    foo, err := lister.Get(key)
+		//    // Later...
+		//    err := tracker.Track(fooRef, parent)
+		// In this example, "Later" represents a window where "foo" may
+		// have changed or been created while the Track is not active.
+		// The simplest way of eliminating such a window is to call the
+		// callback to "catch up" immediately following new
+		// registrations.
+		i.cb(key)
+	}
 	// Overwrite the key with a new expiration.
 	l[key] = time.Now().Add(i.leaseDuration)
 
@@ -114,6 +128,10 @@ func objectReference(item kmeta.Accessor) corev1.ObjectReference {
 		Namespace:  item.GetNamespace(),
 		Name:       item.GetName(),
 	}
+}
+
+func isExpired(expiry time.Time) bool {
+	return time.Now().After(expiry)
 }
 
 // OnChanged implements Interface.
@@ -138,7 +156,7 @@ func (i *impl) OnChanged(obj interface{}) {
 
 	for key, expiry := range s {
 		// If the expiration has lapsed, then delete the key.
-		if time.Now().After(expiry) {
+		if isExpired(expiry) {
 			delete(s, key)
 			continue
 		}

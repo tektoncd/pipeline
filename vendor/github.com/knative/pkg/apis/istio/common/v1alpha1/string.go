@@ -28,7 +28,7 @@ type StringMatch struct {
 	Prefix string `json:"prefix,omitempty"`
 
 	// suffix-based match.
-	Suffix string `json:"prefix,omitempty"`
+	Suffix string `json:"suffix,omitempty"`
 
 	// ECMAscript style regex-based match
 	Regex string `json:"regex,omitempty"`

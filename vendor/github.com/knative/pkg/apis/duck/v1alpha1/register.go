@@ -47,8 +47,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		SchemeGroupVersion,
 		&KResource{},
 		(&KResource{}).GetListType(),
-		&Generational{},
-		(&Generational{}).GetListType(),
 		&AddressableType{},
 		(&AddressableType{}).GetListType(),
 		&Target{},
