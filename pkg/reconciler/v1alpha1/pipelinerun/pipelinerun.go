@@ -333,7 +333,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
 	}
 
-	rprts := resources.GetNextTasks(pr.Name, d, pipelineState, c.Logger)
+	rprts, err := resources.GetNextTasks(pr.Name, d, pipelineState, c.Logger)
+	if err != nil {
+		c.Logger.Error("Unable to get next tasks for valid pipelinerun, should not happen: %v", err)
+		return err
+	}
 
 	var as artifacts.ArtifactStorageInterface
 	if as, err = artifacts.InitializeArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
