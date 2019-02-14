@@ -566,30 +566,55 @@ the status of individual Task runs are shown.
 ### Known good configuration
 
 Knative (as of version 0.3) is known to work with:
-- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a version that uses Kubernetes 1.11 or higher. At the time of this document, this requires the *edge* version of Docker to be installed. A known good configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space
-- The following [prerequisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
-- Setting `host.docker.local:5000` as an insecure registry with Docker for Desktop (set via preferences or configuration, see the [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/) for details) 
-- Passing `--insecure` as an argument to Kaniko tasks lets us push to an insecure registry
+
+- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a
+  version that uses Kubernetes 1.11 or higher. At the time of this document,
+  this requires the _edge_ version of Docker to be installed. A known good
+  configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space
+- The following
+  [prerequisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
+- Setting `host.docker.local:5000` as an insecure registry with Docker for
+  Desktop (set via preferences or configuration, see the
+  [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/)
+  for details)
+- Passing `--insecure` as an argument to Kaniko tasks lets us push to an
+  insecure registry
 - Running a local (insecure) Docker registry: this can be run with
 
 `docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
 
-- Optionally, a Docker registry viewer so we can check our pushed images are present:
+- Optionally, a Docker registry viewer so we can check our pushed images are
+  present:
 
 `docker run -it -p 8080:8080 --name registry-web --link registry-srv -e REGISTRY_URL=http://registry-srv:5000/v2 -e REGISTRY_NAME=localhost:5000 hyper/docker-registry-web`
 
 ### Images
-- Any PipelineResource definitions of image type should be updated to use the local registry by setting the url to `host.docker.internal:5000/myregistry/<image name>` equivalents
-- The `KO_DOCKER_REPO` variable should be set to `localhost:5000/myregistry` before using `ko`
-- You are able to push to `host.docker.internal:5000/myregistry/<image name>` but your applications (e.g any deployment definitions) should reference `localhost:5000/myregistry/<image name>`
+
+- Any PipelineResource definitions of image type should be updated to use the
+  local registry by setting the url to
+  `host.docker.internal:5000/myregistry/<image name>` equivalents
+- The `KO_DOCKER_REPO` variable should be set to `localhost:5000/myregistry`
+  before using `ko`
+- You are able to push to `host.docker.internal:5000/myregistry/<image name>`
+  but your applications (e.g any deployment definitions) should reference
+  `localhost:5000/myregistry/<image name>`
 
 ### Logging
-- Logs can remain in-memory only as opposed to sent to a service such as [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results` specification.
 
-Elasticsearch can be deployed locally as a means to view logs "after the fact": an example is provided at https://github.com/mgreau/knative-elastic-tutorials.
+- Logs can remain in-memory only as opposed to sent to a service such as
+  [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or
+  deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results`
+  specification.
+
+Elasticsearch can be deployed locally as a means to view logs "after the fact":
+an example is provided at https://github.com/mgreau/knative-elastic-tutorials.
 
 ## Experimentation
-Lines of code you may want to configure have the #configure annotation. This annotation applies to subjects such as Docker registries, log output locations and other nuances that may be specific to particular cloud providers or services.
+
+Lines of code you may want to configure have the #configure annotation. This
+annotation applies to subjects such as Docker registries, log output locations
+and other nuances that may be specific to particular cloud providers or
+services.
 
 ---
 
