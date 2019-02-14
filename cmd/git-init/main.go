@@ -16,13 +16,12 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
 	"flag"
-	"os"
-	"os/exec"
-
+	"fmt"
+	"github.com/knative/build-pipeline/cmd/git-init/utils"
 	"github.com/knative/pkg/logging"
-	"go.uber.org/zap"
+	"os"
+	"strings"
 )
 
 var (
@@ -30,27 +29,6 @@ var (
 	revision = flag.String("revision", "", "The Git revision to make the repository HEAD")
 	path     = flag.String("path", "", "Path of directory under which git repository will be copied")
 )
-
-func run(logger *zap.SugaredLogger, cmd string, args ...string) {
-	c := exec.Command(cmd, args...)
-	var output bytes.Buffer
-	c.Stderr = &output
-	c.Stdout = &output
-	if err := c.Run(); err != nil {
-		logger.Errorf("Error running %v %v: %v\n%v", cmd, args, err, output.String())
-	}
-}
-
-func runOrFail(logger *zap.SugaredLogger, cmd string, args ...string) {
-	c := exec.Command(cmd, args...)
-	var output bytes.Buffer
-	c.Stderr = &output
-	c.Stdout = &output
-
-	if err := c.Run(); err != nil {
-		logger.Fatalf("Unexpected error running %v %v: %v\n%v", cmd, args, err, output.String())
-	}
-}
 
 func main() {
 	flag.Parse()
@@ -70,7 +48,7 @@ func main() {
 		*revision = "master"
 	}
 	if *path != "" {
-		runOrFail(logger, "git", "init", *path)
+		utils.RunOrFail(logger, "git", "init", *path)
 		if _, err := os.Stat(*path); os.IsNotExist(err) {
 			if err := os.Mkdir(*path, os.ModePerm); err != nil {
 				logger.Debugf("Creating directory at path %s", *path)
@@ -80,12 +58,33 @@ func main() {
 			logger.Fatalf("Failed to change directory with path %s; err %v", path, err)
 		}
 	} else {
-		run(logger, "git", "init")
+		utils.RunAndError(logger, "git", "init")
 	}
 
-	run(logger, "git", "remote", "add", "origin", *url)
-	runOrFail(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision)
-	runOrFail(logger, "git", "reset", "--hard", "FETCH_HEAD")
+	utils.RunAndError(logger, "git", "remote", "add", "origin", *url)
+	utils.RunOrFail(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision)
+	utils.RunOrFail(logger, "git", "reset", "--hard", "FETCH_HEAD")
 
 	logger.Infof("Successfully cloned %q @ %q in path %q", *url, *revision, *path)
+
+
+	if pullRefs := os.Getenv("PULL_REFS"); pullRefs != "" {
+		logger.Infof("Found PULL_REFS=%s", pullRefs)
+		branchSHAs, err := utils.ParsePullRefs(pullRefs)
+		if err != nil {
+			logger.Fatalf("Error %v parsing PULL_REFS=%s", err, pullRefs)
+		}
+		if len(branchSHAs.ToMerge) == 0 {
+			logger.Fatalf("No commits to merge")
+		}
+		mergeStrs := make([]string, 0)
+		for k, v := range branchSHAs.ToMerge {
+			mergeStrs = append(mergeStrs, fmt.Sprintf("%s (from %s) ", v, k))
+		}
+		logger.Infof("Merging %s to %s (at revision %s)", strings.Join(mergeStrs, ", "), branchSHAs.BaseBranch,
+			branchSHAs.BaseSha)
+		utils.FetchAndMergeSHAs(branchSHAs, "origin", "", logger)
+
+	}
+
 }
