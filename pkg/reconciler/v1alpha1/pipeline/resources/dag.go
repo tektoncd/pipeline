@@ -22,7 +22,18 @@ import (
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	errors "github.com/knative/build-pipeline/pkg/errors"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
 )
+
+// Node represents a Task in a pipeline.
+type Node struct {
+	// Task represent the PipelineTask in Pipeline
+	Task v1alpha1.PipelineTask
+	// Prev represent all the Previous task Nodes for the current Task
+	Prev []*Node
+	// Next represent all the Next task Nodes for the current Task
+	Next []*Node
+}
 
 // DAG represents the Pipeline DAG
 type DAG struct {
@@ -46,7 +57,7 @@ func (g *DAG) addPipelineTask(t v1alpha1.PipelineTask) (*Node, error) {
 	return newNode, nil
 }
 
-func (g *DAG) addPrevPipelineTask(prev *Node, next *Node) error {
+func (g *DAG) linkPipelineTasks(prev *Node, next *Node) error {
 	// Check for self cycle
 	if prev.Task.Name == next.Task.Name {
 		return fmt.Errorf("cycle detected; task %q depends on itself", next.Task.Name)
@@ -55,9 +66,10 @@ func (g *DAG) addPrevPipelineTask(prev *Node, next *Node) error {
 	visited := map[string]bool{prev.Task.Name: true, next.Task.Name: true}
 	path := []string{next.Task.Name, prev.Task.Name}
 	if err := visit(next.Task.Name, prev.Prev, path, visited); err != nil {
-		return fmt.Errorf("cycle detected; %s ", err.Error())
+		return fmt.Errorf("cycle detected: %v", err)
 	}
 	next.Prev = append(next.Prev, prev)
+	prev.Next = append(prev.Next, next)
 	return nil
 }
 
@@ -85,44 +97,75 @@ func getVisitedPath(path []string) string {
 }
 
 // GetSchedulable returns a list of PipelineTask that can be scheduled,
-// given a list of successfully finished task.
-// If the list is empty, this returns all tasks in the DAG that nobody
-// depends on. Else, it returns task which have all dependecies marked
-// as done, and thus can be scheduled.
-func (g *DAG) GetSchedulable(tasks ...string) []v1alpha1.PipelineTask {
+// given a list of successfully finished doneTasks. It returns task which have
+// all dependecies marked as done, and thus can be scheduled. If the
+// specified doneTasks are invalid (i.e. if it is indicated that a Task is
+// done, but the previous Tasks are not done), an error is returned.
+func (g *DAG) GetSchedulable(doneTasks ...string) ([]v1alpha1.PipelineTask, error) {
+	roots := g.getRoots()
+	tm := toMap(doneTasks...)
 	d := []v1alpha1.PipelineTask{}
-	if len(tasks) == 0 {
-		// return node that have no previous tasks
-		for _, node := range g.Nodes {
-			if len(node.getPrevTasks()) == 0 {
-				d = append(d, node.Task)
-			}
-		}
-	} else {
-		tm := toMap(tasks...)
-		for name, node := range g.Nodes {
-			if _, ok := tm[name]; ok {
-				// skip done element
-				continue
-			}
-			if !isSchedulable(tm, node.getPrevTasks()) {
-				// skip non-schedulable element
-				continue
-			}
-			d = append(d, node.Task)
-		}
+
+	visited := map[string]struct{}{}
+	for _, root := range roots {
+		schedulable := findSchedulable(root, visited, tm)
+		d = append(d, schedulable...)
 	}
-	return d
+
+	visitedNames := make([]string, len(visited))
+	for v := range visited {
+		visitedNames = append(visitedNames, v)
+	}
+
+	notVisited := list.DiffLeft(doneTasks, visitedNames)
+	if len(notVisited) > 0 {
+		return []v1alpha1.PipelineTask{}, fmt.Errorf("invalid list of done tasks; some tasks were indicated completed without ancestors being done: %v", notVisited)
+	}
+
+	return d, nil
 }
 
-func isSchedulable(tm map[string]struct{}, prevs []v1alpha1.PipelineTask) bool {
+func (g *DAG) getRoots() []*Node {
+	n := []*Node{}
+	for _, node := range g.Nodes {
+		if len(node.Prev) == 0 {
+			n = append(n, node)
+		}
+	}
+	return n
+}
+
+func findSchedulable(n *Node, visited map[string]struct{}, doneTasks map[string]struct{}) []v1alpha1.PipelineTask {
+	if _, ok := visited[n.Task.Name]; ok {
+		return []v1alpha1.PipelineTask{}
+	}
+	visited[n.Task.Name] = struct{}{}
+	if _, ok := doneTasks[n.Task.Name]; ok {
+		schedulable := []v1alpha1.PipelineTask{}
+		// This one is done! Take note of it and look at the next candidate
+		for _, next := range n.Next {
+			if _, ok := visited[next.Task.Name]; !ok {
+				schedulable = append(schedulable, findSchedulable(next, visited, doneTasks)...)
+			}
+		}
+		return schedulable
+	}
+	// This one isn't done! Return it if it's schedulable
+	if isSchedulable(doneTasks, n.Prev) {
+		return []v1alpha1.PipelineTask{n.Task}
+	}
+	// This one isn't done, but it also isn't ready to schedule
+	return []v1alpha1.PipelineTask{}
+}
+
+func isSchedulable(doneTasks map[string]struct{}, prevs []*Node) bool {
 	if len(prevs) == 0 {
-		return false
+		return true
 	}
 	collected := []string{}
-	for _, t := range prevs {
-		if _, ok := tm[t.Name]; ok {
-			collected = append(collected, t.Name)
+	for _, n := range prevs {
+		if _, ok := doneTasks[n.Task.Name]; ok {
+			collected = append(collected, n.Task.Name)
 		}
 	}
 	return len(collected) == len(prevs)
@@ -157,7 +200,7 @@ func Build(p *v1alpha1.Pipeline) (*DAG, error) {
 						return nil, errors.NewPipelineTaskNotFound(p, constraint)
 					}
 					next, _ := d.Nodes[pt.Name]
-					if err := d.addPrevPipelineTask(prev, next); err != nil {
+					if err := d.linkPipelineTasks(prev, next); err != nil {
 						return nil, errors.NewInvalidPipeline(p, err.Error())
 					}
 				}

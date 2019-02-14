@@ -51,7 +51,7 @@ const (
 	ReasonTimedOut = "PipelineRunTimeout"
 )
 
-func GetNextTasks(prName string, d *dag.DAG, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger) []*ResolvedPipelineRunTask {
+func GetNextTasks(prName string, d *dag.DAG, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger) ([]*ResolvedPipelineRunTask, error) {
 	tasks := []*ResolvedPipelineRunTask{}
 	done := []string{}
 	for _, t := range state {
@@ -62,7 +62,10 @@ func GetNextTasks(prName string, d *dag.DAG, state []*ResolvedPipelineRunTask, l
 			}
 		}
 	}
-	toSchedule := d.GetSchedulable(done...)
+	toSchedule, err := d.GetSchedulable(done...)
+	if err != nil {
+		return tasks, fmt.Errorf("somehow the list of done tasks %v is invalid: %v", done, err)
+	}
 	for _, t := range state {
 		for _, s := range toSchedule {
 			if t.PipelineTask.Name == s.Name {
@@ -72,7 +75,7 @@ func GetNextTasks(prName string, d *dag.DAG, state []*ResolvedPipelineRunTask, l
 			}
 		}
 	}
-	return tasks
+	return tasks, nil
 }
 
 // ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
