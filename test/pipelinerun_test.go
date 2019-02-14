@@ -175,7 +175,7 @@ func TestPipelineRun(t *testing.T) {
 				assertLabelsMatch(t, labels, r.ObjectMeta.Labels)
 
 				// Check label propagation to Pods. This label is added to every Pod by the TaskRun controller
-				labels[pipeline.GroupName + pipeline.TaskRunLabelKey] = taskRunName
+				labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = taskRunName
 				assertLabelsMatch(t, labels, getPodForTaskRun(t, c.KubeClient, namespace, r).ObjectMeta.Labels)
 			}
 
