@@ -280,7 +280,7 @@ func (r conditionsImpl) MarkUnknown(t ConditionType, reason, messageFormat strin
 			// Double check that the happy condition is also false.
 			happy := r.GetCondition(r.happy)
 			if !happy.IsFalse() {
-				r.MarkFalse(r.happy, reason, messageFormat, messageA)
+				r.MarkFalse(r.happy, reason, messageFormat, messageA...)
 			}
 			return
 		}

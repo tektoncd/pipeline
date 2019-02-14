@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -200,7 +201,7 @@ func (c *Impl) EnqueueLabelOfClusterScopedResource(nameLabel string) func(obj in
 
 // EnqueueKey takes a namespace/name string and puts it onto the work queue.
 func (c *Impl) EnqueueKey(key string) {
-	c.WorkQueue.AddRateLimited(key)
+	c.WorkQueue.Add(key)
 }
 
 // Run starts the controller's worker threads, the number of which is threadiness.
@@ -208,13 +209,17 @@ func (c *Impl) EnqueueKey(key string) {
 // work queue and waits for workers to finish processing their current work items.
 func (c *Impl) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
+	sg := sync.WaitGroup{}
+	defer sg.Wait()
 	defer c.WorkQueue.ShutDown()
 
 	// Launch workers to process resources that get enqueued to our workqueue.
 	logger := c.logger
 	logger.Info("Starting controller and workers")
 	for i := 0; i < threadiness; i++ {
+		sg.Add(1)
 		go func() {
+			defer sg.Done()
 			for c.processNextWorkItem() {
 			}
 		}()

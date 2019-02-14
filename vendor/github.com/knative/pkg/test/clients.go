@@ -35,7 +35,7 @@ type KubeClient struct {
 
 // NewSpoofingClient returns a spoofing client to make requests
 func NewSpoofingClient(client *KubeClient, logger *logging.BaseLogger, domain string, resolvable bool) (*spoof.SpoofingClient, error) {
-	return spoof.New(client.Kube, logger, domain, resolvable)
+	return spoof.New(client.Kube, logger, domain, resolvable, Flags.IngressEndpoint)
 }
 
 // NewKubeClient instantiates and returns several clientsets required for making request to the
