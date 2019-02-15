@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	errors "github.com/knative/build-pipeline/pkg/errors"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
 )
 
@@ -179,6 +178,18 @@ func toMap(t ...string) map[string]struct{} {
 	return m
 }
 
+func addLink(pt v1alpha1.PipelineTask, previousTask string, d *DAG) error {
+	prev, ok := d.Nodes[previousTask]
+	if !ok {
+		return fmt.Errorf("Task %s depends on %s but %s wasn't present in Pipeline", pt.Name, previousTask, previousTask)
+	}
+	next, _ := d.Nodes[pt.Name]
+	if err := d.linkPipelineTasks(prev, next); err != nil {
+		return fmt.Errorf("Couldn't create link from %s to %s: %v", prev.Task.Name, next.Task.Name, err)
+	}
+	return nil
+}
+
 // Build returns a valid pipeline DAG. Returns error if the pipeline is invalid
 func Build(p *v1alpha1.Pipeline) (*DAG, error) {
 	d := new()
@@ -186,22 +197,21 @@ func Build(p *v1alpha1.Pipeline) (*DAG, error) {
 	// Add all Tasks mentioned in the `PipelineSpec`
 	for _, pt := range p.Spec.Tasks {
 		if _, err := d.addPipelineTask(pt); err != nil {
-			return nil, errors.NewDuplicatePipelineTask(p, pt.Name)
+			return nil, fmt.Errorf("task %s is already present in graph, can't add it again: %v", pt.Name, err)
 		}
 	}
-	// Process all from constraints to add task dependency
+	// Process all from and runAfter constraints to add task dependency
 	for _, pt := range p.Spec.Tasks {
+		for _, previousTask := range pt.RunAfter {
+			if err := addLink(pt, previousTask, d); err != nil {
+				return nil, fmt.Errorf("couldn't add link between %s and %s: %v", pt.Name, previousTask, err)
+			}
+		}
 		if pt.Resources != nil {
 			for _, rd := range pt.Resources.Inputs {
-				for _, constraint := range rd.From {
-					// We need to add dependency from constraint to node n
-					prev, ok := d.Nodes[constraint]
-					if !ok {
-						return nil, errors.NewPipelineTaskNotFound(p, constraint)
-					}
-					next, _ := d.Nodes[pt.Name]
-					if err := d.linkPipelineTasks(prev, next); err != nil {
-						return nil, errors.NewInvalidPipeline(p, err.Error())
+				for _, previousTask := range rd.From {
+					if err := addLink(pt, previousTask, d); err != nil {
+						return nil, fmt.Errorf("couldn't add link between %s and %s: %v", pt.Name, previousTask, err)
 					}
 				}
 			}

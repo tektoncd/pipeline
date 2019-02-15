@@ -109,10 +109,11 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
 		},
 	}
-	yDependsOnAB := v1alpha1.PipelineTask{
-		Name: "y",
+	yDependsOnARunsAfterB := v1alpha1.PipelineTask{
+		Name:     "y",
+		RunAfter: []string{"b"},
 		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"b", "a"}}},
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
 		},
 	}
 	zDependsOnX := v1alpha1.PipelineTask{
@@ -132,7 +133,7 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 	nodeB := &Node{Task: b}
 	nodeC := &Node{Task: c}
 	nodeX := &Node{Task: xDependsOnA}
-	nodeY := &Node{Task: yDependsOnAB}
+	nodeY := &Node{Task: yDependsOnARunsAfterB}
 	nodeZ := &Node{Task: zDependsOnX}
 
 	nodeA.Next = []*Node{nodeX, nodeY}
@@ -154,7 +155,7 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 	p := &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnAB, zDependsOnX, b, c},
+			Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnARunsAfterB, zDependsOnX, b, c},
 		},
 	}
 	g, err := Build(p)
@@ -172,11 +173,9 @@ func TestBuild_FanInFanOut(t *testing.T) {
 			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
 		},
 	}
-	eDependsOnA := v1alpha1.PipelineTask{
-		Name: "e",
-		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
-		},
+	eRunsAfterA := v1alpha1.PipelineTask{
+		Name:     "e",
+		RunAfter: []string{"a"},
 	}
 	fDependsOnDAndE := v1alpha1.PipelineTask{
 		Name: "f",
@@ -184,11 +183,9 @@ func TestBuild_FanInFanOut(t *testing.T) {
 			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"d", "e"}}},
 		},
 	}
-	gDependOnF := v1alpha1.PipelineTask{
-		Name: "g",
-		Resources: &v1alpha1.PipelineTaskResources{
-			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"f"}}},
-		},
+	gRunsAfterF := v1alpha1.PipelineTask{
+		Name:     "g",
+		RunAfter: []string{"f"},
 	}
 
 	// This test make sure we don't detect cycle (A -> B -> B -> …) when there is not.
@@ -202,9 +199,9 @@ func TestBuild_FanInFanOut(t *testing.T) {
 	//   g
 	nodeA := &Node{Task: a}
 	nodeD := &Node{Task: dDependsOnA}
-	nodeE := &Node{Task: eDependsOnA}
+	nodeE := &Node{Task: eRunsAfterA}
 	nodeF := &Node{Task: fDependsOnDAndE}
-	nodeG := &Node{Task: gDependOnF}
+	nodeG := &Node{Task: gRunsAfterF}
 
 	nodeA.Next = []*Node{nodeD, nodeE}
 	nodeD.Prev = []*Node{nodeA}
@@ -227,7 +224,7 @@ func TestBuild_FanInFanOut(t *testing.T) {
 	p := &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{a, dDependsOnA, eDependsOnA, fDependsOnDAndE, gDependOnF},
+			Tasks: []v1alpha1.PipelineTask{a, dDependsOnA, eRunsAfterA, fDependsOnDAndE, gRunsAfterF},
 		},
 	}
 	g, err := Build(p)
@@ -257,34 +254,66 @@ func TestBuild_Invalid(t *testing.T) {
 			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"z"}}},
 		},
 	}
-	selfLink := v1alpha1.PipelineTask{
+	xAfterA := v1alpha1.PipelineTask{
+		Name:     "x",
+		RunAfter: []string{"a"},
+	}
+	zAfterX := v1alpha1.PipelineTask{
+		Name:     "z",
+		RunAfter: []string{"x"},
+	}
+	aAfterZ := v1alpha1.PipelineTask{
+		Name:     "a",
+		RunAfter: []string{"z"},
+	}
+	selfLinkFrom := v1alpha1.PipelineTask{
 		Name: "a",
 		Resources: &v1alpha1.PipelineTaskResources{
 			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
 		},
 	}
-	invalidTask := v1alpha1.PipelineTask{
+	selfLinkAfter := v1alpha1.PipelineTask{
+		Name:     "a",
+		RunAfter: []string{"a"},
+	}
+	invalidTaskFrom := v1alpha1.PipelineTask{
 		Name: "a",
 		Resources: &v1alpha1.PipelineTaskResources{
 			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"none"}}},
 		},
+	}
+	invalidTaskAfter := v1alpha1.PipelineTask{
+		Name:     "a",
+		RunAfter: []string{"none"},
 	}
 
 	tcs := []struct {
 		name string
 		spec v1alpha1.PipelineSpec
 	}{{
-		name: "self-link",
-		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{selfLink}},
+		name: "self-link-from",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{selfLinkFrom}},
 	}, {
-		name: "cycle-2",
+		name: "self-link-after",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{selfLinkAfter}},
+	}, {
+		name: "cycle-from",
 		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xDependsOnA, zDependsOnX, aDependsOnZ}},
+	}, {
+		name: "cycle-runAfter",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xAfterA, zAfterX, aAfterZ}},
+	}, {
+		name: "cycle-both",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xDependsOnA, zAfterX, aDependsOnZ}},
 	}, {
 		name: "duplicate-tasks",
 		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, a}},
 	}, {
-		name: "invalid-task-name",
-		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTask}},
+		name: "invalid-task-name-from",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTaskFrom}},
+	}, {
+		name: "invalid-task-name-after",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTaskAfter}},
 	},
 	}
 	for _, tc := range tcs {
