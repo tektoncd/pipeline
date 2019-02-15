@@ -6,7 +6,7 @@ metadata:
 data:
   test.data: tasks are my jam
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: task-volumes-args
@@ -28,7 +28,7 @@ spec:
     configMap:
       name: "${inputs.params.CFGNAME}"
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: test-configmap-volume

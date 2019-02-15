@@ -31,9 +31,9 @@ type FakePipelines struct {
 	ns   string
 }
 
-var pipelinesResource = schema.GroupVersionResource{Group: "pipeline.knative.dev", Version: "v1alpha1", Resource: "pipelines"}
+var pipelinesResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1alpha1", Resource: "pipelines"}
 
-var pipelinesKind = schema.GroupVersionKind{Group: "pipeline.knative.dev", Version: "v1alpha1", Kind: "Pipeline"}
+var pipelinesKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "Pipeline"}
 
 // Get takes name of the pipeline, and returns the corresponding pipeline object, and an error if there is any.
 func (c *FakePipelines) Get(name string, options v1.GetOptions) (result *v1alpha1.Pipeline, err error) {

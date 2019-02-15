@@ -31,9 +31,9 @@ type FakeTasks struct {
 	ns   string
 }
 
-var tasksResource = schema.GroupVersionResource{Group: "pipeline.knative.dev", Version: "v1alpha1", Resource: "tasks"}
+var tasksResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1alpha1", Resource: "tasks"}
 
-var tasksKind = schema.GroupVersionKind{Group: "pipeline.knative.dev", Version: "v1alpha1", Kind: "Task"}
+var tasksKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "Task"}
 
 // Get takes name of the task, and returns the corresponding task object, and an error if there is any.
 func (c *FakeTasks) Get(name string, options v1.GetOptions) (result *v1alpha1.Task, err error) {

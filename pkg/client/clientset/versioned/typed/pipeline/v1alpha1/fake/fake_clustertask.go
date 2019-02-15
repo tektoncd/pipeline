@@ -30,9 +30,9 @@ type FakeClusterTasks struct {
 	Fake *FakePipelineV1alpha1
 }
 
-var clustertasksResource = schema.GroupVersionResource{Group: "pipeline.knative.dev", Version: "v1alpha1", Resource: "clustertasks"}
+var clustertasksResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1alpha1", Resource: "clustertasks"}
 
-var clustertasksKind = schema.GroupVersionKind{Group: "pipeline.knative.dev", Version: "v1alpha1", Kind: "ClusterTask"}
+var clustertasksKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "ClusterTask"}
 
 // Get takes name of the clusterTask, and returns the corresponding clusterTask object, and an error if there is any.
 func (c *FakeClusterTasks) Get(name string, options v1.GetOptions) (result *v1alpha1.ClusterTask, err error) {

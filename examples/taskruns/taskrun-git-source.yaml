@@ -1,5 +1,5 @@
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: rules-branch
@@ -11,7 +11,7 @@ spec:
   - name: url
     value: https://github.com/bazelbuild/rules_docker
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: rules-ref
@@ -21,9 +21,9 @@ spec:
   - name: revision
     value: pull/100/head
   - name: url
-    value: https://github.com/bazelbuild/rules_docker 
+    value: https://github.com/bazelbuild/rules_docker
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: rules-tag
@@ -35,7 +35,7 @@ spec:
   - name: url
     value: https://github.com/bazelbuild/rules_docker
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: dump-workspace-task
@@ -49,7 +49,7 @@ spec:
     image: ubuntu
     args: ["cat", "/workspace/gitspace/WORKSPACE"]
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: test-git-tag
@@ -62,7 +62,7 @@ spec:
   taskRef:
     name: dump-workspace-task
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: test-git-ref
@@ -75,7 +75,7 @@ spec:
   taskRef:
     name: dump-workspace-task
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: test-git-branch

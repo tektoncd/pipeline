@@ -1,4 +1,4 @@
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-web
@@ -24,7 +24,7 @@ roleRef:
   name: cluster-admin
   apiGroup: rbac.authorization.k8s.io
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-git
@@ -37,7 +37,7 @@ spec:
     value: https://github.com/GoogleContainerTools/skaffold
 ---
 #Builds an image via kaniko and pushes it to registry.
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: build-push-kaniko
@@ -67,7 +67,7 @@ spec:
     - --destination=${outputs.resources.builtImage.url}
     - --context=${inputs.params.pathToContext}
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: build-push-run

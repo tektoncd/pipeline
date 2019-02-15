@@ -1,5 +1,5 @@
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: task-volume
@@ -24,7 +24,7 @@ spec:
   - name: custom
     emptyDir: {}
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: test-template-volume

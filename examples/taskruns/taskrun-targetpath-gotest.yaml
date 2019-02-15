@@ -1,4 +1,4 @@
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: pipeline-git
@@ -10,7 +10,7 @@ spec:
   - name: url
     value: https://github.com/knative/build-pipeline
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: gopath-test

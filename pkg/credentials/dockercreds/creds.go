@@ -31,7 +31,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/credentials"
 )
 
-const annotationPrefix = "pipeline.knative.dev/docker-"
+const annotationPrefix = "tekton.dev/docker-"
 
 var config basicDocker
 var dockerConfig string

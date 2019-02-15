@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	annotationPrefix = "pipeline.knative.dev/git-"
+	annotationPrefix = "tekton.dev/git-"
 	basicAuthFlag    = "basic-git"
 	sshFlag          = "ssh-git"
 )

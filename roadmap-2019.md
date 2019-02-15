@@ -1,4 +1,4 @@
-# Knative Pipelines 2019 Roadmap
+# Tekton Pipelines 2019 Roadmap
 
 This is an incomplete list of work we hope to accomplish in 2019.
 

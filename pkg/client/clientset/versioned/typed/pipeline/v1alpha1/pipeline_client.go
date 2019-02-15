@@ -32,7 +32,7 @@ type PipelineV1alpha1Interface interface {
 	TaskRunsGetter
 }
 
-// PipelineV1alpha1Client is used to interact with features provided by the pipeline.knative.dev group.
+// PipelineV1alpha1Client is used to interact with features provided by the tekton.dev group.
 type PipelineV1alpha1Client struct {
 	restClient rest.Interface
 }

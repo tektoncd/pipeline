@@ -76,7 +76,7 @@ func main() {
 		Namespace:      system.Namespace,
 		Port:           443,
 		SecretName:     "webhook-certs",
-		WebhookName:    "webhook.pipeline.knative.dev",
+		WebhookName:    "webhook.tekton.dev",
 	}
 	//TODO add validations here
 	controller := webhook.AdmissionController{

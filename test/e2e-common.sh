@@ -19,7 +19,7 @@
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/e2e-tests.sh
 
 function teardown() {
-    subheader "Tearing down Pipeline CRD"
+    subheader "Tearing down Tekton Pipelines"
     ko delete --ignore-not-found=true -f config/
     # teardown will be called when run against an existing cluster to cleanup before
     # continuing, so we must wait for the cleanup to complete or the subsequent attempt
@@ -29,14 +29,14 @@ function teardown() {
 
 function output_yaml_test_results() {
   # If formatting fails for any reason, use yaml as a fall back.
-  kubectl get $1.pipeline.knative.dev -o=custom-columns-file=${REPO_ROOT_DIR}/test/columns.txt || \
-    kubectl get $1.pipeline.knative.dev -oyaml
+  kubectl get $1.tekton.dev -o=custom-columns-file=${REPO_ROOT_DIR}/test/columns.txt || \
+    kubectl get $1.tekton.dev -oyaml
 }
 
 function output_pods_logs() {
     echo ">>> $1"
-    kubectl get $1.pipeline.knative.dev -o yaml
-    local runs=$(kubectl get $1.pipeline.knative.dev --output=jsonpath="{.items[*].metadata.name}")
+    kubectl get $1.tekton.dev -o yaml
+    local runs=$(kubectl get $1.tekton.dev --output=jsonpath="{.items[*].metadata.name}")
     set +e
     for run in ${runs}; do
 	echo ">>>> $1 ${run}"
@@ -65,7 +65,7 @@ function dump_extra_cluster_state() {
 function validate_run() {
   local tests_finished=0
   for i in {1..60}; do
-    local finished="$(kubectl get $1.pipeline.knative.dev --output=jsonpath='{.items[*].status.conditions[*].status}')"
+    local finished="$(kubectl get $1.tekton.dev --output=jsonpath='{.items[*].status.conditions[*].status}')"
     if [[ ! "$finished" == *"Unknown"* ]]; then
       tests_finished=1
       break
@@ -78,14 +78,14 @@ function validate_run() {
 
 function check_results() {
   local failed=0
-  results="$(kubectl get $1.pipeline.knative.dev --output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
+  results="$(kubectl get $1.tekton.dev --output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
   for result in ${results}; do
     if [[ ! "${result,,}" == *"=succeededtrue" ]]; then
       echo "ERROR: test ${result} but should be succeededtrue"
       failed=1
     fi
   done
-  
+
   return ${failed}
 }
 
@@ -123,14 +123,14 @@ function run_yaml_tests() {
 }
 
 function install_pipeline_crd() {
-  echo ">> Deploying Pipeline CRD"  
+  echo ">> Deploying Tekton Pipelines"
   ko apply -f config/ || fail_test "Build pipeline installation failed"
 
   # Make sure thateveything is cleaned up in the current namespace.
   for res in pipelineresources tasks pipelines taskruns pipelineruns; do
-    kubectl delete --ignore-not-found=true ${res}.pipeline.knative.dev --all
+    kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
   done
 
   # Wait for pods to be running in the namespaces we are deploying to
-  wait_until_pods_running knative-build-pipeline || fail_test "Pipeline CRD did not come up"
+  wait_until_pods_running knative-build-pipeline || fail_test "Tekton Pipeline did not come up"
 }
