@@ -68,6 +68,8 @@ func TestDAGPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create simple repo PipelineResource: %s", err)
 	}
 
+	// Intentionally delcaring Tasks in a mixed up order to ensure the order
+	// of execution isn't at all dependent on the order they are declared in
 	pipeline := tb.Pipeline("dag-pipeline", namespace, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("repo", "repo"),
 		tb.PipelineTask("pipeline-task-3", "echo-task",
@@ -80,6 +82,12 @@ func TestDAGPipelineRun(t *testing.T) {
 			tb.PipelineTaskOutputResource("repo", "repo"),
 			tb.PipelineTaskParam("text", "such parallel"),
 		),
+		tb.PipelineTask("pipeline-task-4", "echo-task",
+			tb.RunAfter("pipeline-task-3"),
+			tb.PipelineTaskInputResource("repo", "repo"),
+			tb.PipelineTaskOutputResource("repo", "repo"),
+			tb.PipelineTaskParam("text", "very cloud native"),
+		),
 		tb.PipelineTask("pipeline-task-2-parallel-1", "echo-task",
 			tb.PipelineTaskInputResource("repo", "repo", tb.From("pipeline-task-1")),
 			tb.PipelineTaskOutputResource("repo", "repo"),
@@ -89,11 +97,6 @@ func TestDAGPipelineRun(t *testing.T) {
 			tb.PipelineTaskInputResource("repo", "repo"),
 			tb.PipelineTaskOutputResource("repo", "repo"),
 			tb.PipelineTaskParam("text", "how to ci/cd?"),
-		),
-		tb.PipelineTask("pipeline-task-4", "echo-task",
-			tb.PipelineTaskInputResource("repo", "repo", tb.From("pipeline-task-3")),
-			tb.PipelineTaskOutputResource("repo", "repo"),
-			tb.PipelineTaskParam("text", "very cloud native"),
 		),
 	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {

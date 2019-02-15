@@ -146,6 +146,14 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 	}
 }
 
+// RunAfter will update the provided Pipeline Task to indicate that it
+// should be run after the provided list of Pipeline Task names.
+func RunAfter(tasks ...string) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.RunAfter = tasks
+	}
+}
+
 // PipelineTaskRefKind sets the TaskKind to the PipelineTaskRef.
 func PipelineTaskRefKind(kind v1alpha1.TaskKind) PipelineTaskOp {
 	return func(pt *v1alpha1.PipelineTask) {
