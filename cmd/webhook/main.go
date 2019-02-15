@@ -71,8 +71,8 @@ func main() {
 	}
 
 	options := webhook.ControllerOptions{
-		ServiceName:    "build-pipeline-webhook",
-		DeploymentName: "build-pipeline-webhook",
+		ServiceName:    "tekton-pipelines-webhook",
+		DeploymentName: "tekton-pipelines-webhook",
 		Namespace:      system.Namespace,
 		Port:           443,
 		SecretName:     "webhook-certs",

@@ -23,7 +23,7 @@ spec:
     categories:
     - all
     - knative
-    - build-pipeline
+    - tekton-pipelines
   scope: Namespaced
   # Opt into the status subresource so metadata.generation
   # starts to increment

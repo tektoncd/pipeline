@@ -14,18 +14,18 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: build-pipeline-controller
+  name: tekton-pipelines-controller
   namespace: tekton-pipelines
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: build-pipeline-controller
+        app: tekton-pipelines-controller
     spec:
-      serviceAccountName: build-pipeline-controller
+      serviceAccountName: tekton-pipelines-controller
       containers:
-      - name: build-pipeline-controller
+      - name: tekton-pipelines-controller
         image: github.com/knative/build-pipeline/cmd/controller
         args: [
           "-logtostderr",
