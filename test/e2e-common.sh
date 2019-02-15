@@ -57,9 +57,9 @@ function output_pods_logs() {
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
 function dump_extra_cluster_state() {
   echo ">>> Pipeline controller log:"
-  kubectl -n tekton-pipelines logs $(get_app_pod build-pipeline-controller tekton-pipelines)
+  kubectl -n tekton-pipelines logs $(get_app_pod tekton-pipelines-controller tekton-pipelines)
   echo ">>> Pipeline webhook log:"
-  kubectl -n tekton-pipelines logs $(get_app_pod build-pipeline-webhook tekton-pipelines)
+  kubectl -n tekton-pipelines logs $(get_app_pod tekton-pipelines-webhook tekton-pipelines)
 }
 
 function validate_run() {
