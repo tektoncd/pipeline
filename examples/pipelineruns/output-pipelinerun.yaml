@@ -1,4 +1,4 @@
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-git
@@ -11,7 +11,7 @@ spec:
     value: https://github.com/GoogleContainerTools/skaffold
 ---
 # Task writes "some stuff" to a predefined path in the workspace git PipelineResource
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: create-file
@@ -36,7 +36,7 @@ spec:
     args: ['-c', 'echo some stuff > /workspace/damnworkspace/stuff']
 ---
 # Reads a file from a predefined path in the workspace git PipelineResource
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: check-stuff-file-exists
@@ -52,10 +52,10 @@ spec:
     command: ["/bin/bash"]
     args: ['-c', 'cat /workspace/newworkspace/stuff'] # tests that new targetpath and previous task output is dumped
 ---
-#The Output of the first Task (git resource) create-file is given as an `Input` 
+#The Output of the first Task (git resource) create-file is given as an `Input`
 # to the next `Task` check-stuff-file-exists using`from` clause.
 
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: output-pipeline
@@ -83,7 +83,7 @@ spec:
         resource: source-repo
         from: [first-create-file]
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
   name: output-pipeline-run

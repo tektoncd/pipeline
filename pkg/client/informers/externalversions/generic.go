@@ -49,7 +49,7 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=pipeline.knative.dev, Version=v1alpha1
+	// Group=tekton.dev, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("clustertasks"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().ClusterTasks().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("pipelines"):

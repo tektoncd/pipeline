@@ -187,10 +187,10 @@ func TestMakePod(t *testing.T) {
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: "multi-creds",
 						Annotations: map[string]string{
-							"pipeline.knative.dev/docker-0": "https://us.gcr.io",
-							"pipeline.knative.dev/docker-1": "https://docker.io",
-							"pipeline.knative.dev/git-0":    "github.com",
-							"pipeline.knative.dev/git-1":    "gitlab.com",
+							"tekton.dev/docker-0": "https://us.gcr.io",
+							"tekton.dev/docker-1": "https://docker.io",
+							"tekton.dev/git-0":    "github.com",
+							"tekton.dev/git-1":    "gitlab.com",
 						}},
 					Type: "kubernetes.io/basic-auth",
 					Data: map[string][]byte{

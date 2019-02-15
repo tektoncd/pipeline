@@ -78,7 +78,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", "pear", err)
 	}
 
-	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: "pipeline.knative.dev/pipelineRun=pear"})
+	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=pear"})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", "pear", err)
 	}

@@ -1,6 +1,6 @@
 # Examples
 
-This directory contains examples of [the Pipeline CRDs](../README.md) in action.
+This directory contains examples of [Tekton Pipelines](../README.md) in action.
 
 To deploy them to your cluster (after
 [installing the CRDs and running the controller](../DEVELOPMENT.md#getting-started)):

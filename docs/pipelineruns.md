@@ -26,7 +26,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `pipeline.knative.dev/v1alpha1`.
+    `tekton.dev/v1alpha1`.
   - [`kind`][kubernetes-overview] - Specify the `PipelineRun` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `PipelineRun` resource object, for example a `name`.
@@ -105,8 +105,8 @@ to the `TaskRuns` created automatically for each `Task` in the `Pipeline` and
 then to the `Pods` created for those `TaskRuns`. In addition, the following
 labels will be added automatically:
 
-- `pipeline.knative.dev/pipeline` will contain the name of the `Pipeline`
-- `pipeline.knative.dev/pipelineRun` will contain the name of the `PipelineRun`
+- `tekton.dev/pipeline` will contain the name of the `Pipeline`
+- `tekton.dev/pipelineRun` will contain the name of the `PipelineRun`
 
 These labels make it easier to find the resources that are associated with a
 given pipeline.
@@ -115,7 +115,7 @@ For example, to find all `Pods` created by a `Pipeline` named test-pipeline, you
 could use the following command:
 
 ```shell
-kubectl get pods --all-namespaces -l pipeline.knative.dev/pipeline=test-pipeline
+kubectl get pods --all-namespaces -l tekton.dev/pipeline=test-pipeline
 ```
 
 ## Cancelling a PipelineRun
@@ -125,7 +125,7 @@ spec to mark it as cancelled. Related `TaskRun` instances will be marked as
 cancelled and running Pods will be deleted.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
   name: go-example-git

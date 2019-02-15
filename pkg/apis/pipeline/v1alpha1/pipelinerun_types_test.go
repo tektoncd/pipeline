@@ -52,7 +52,7 @@ func TestPipelineRun_TaskRunref(t *testing.T) {
 	}
 
 	expectTaskRunRef := corev1.ObjectReference{
-		APIVersion: "build-pipeline.knative.dev/v1alpha1",
+		APIVersion: "build-tekton.dev/v1alpha1",
 		Kind:       "TaskRun",
 		Namespace:  p.Namespace,
 		Name:       p.Name,

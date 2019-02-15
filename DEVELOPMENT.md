@@ -43,7 +43,7 @@ _Adding the `upstream` remote sets you up nicely for regularly
 
 You must install these tools:
 
-1. [`go`](https://golang.org/doc/install): The language `Pipeline CRD` is built
+1. [`go`](https://golang.org/doc/install): The language Tekton Pipelines is built
    in
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`dep`](https://github.com/golang/dep): For managing external Go
@@ -60,14 +60,14 @@ configuring Kubernetes resources.
 ## Kubernetes cluster
 
 Docker for Desktop using an edge version has been proven to work for both
-developing and running Knative. Your Kubernetes version must be 1.11 or later.
+developing and running Pipelines. Your Kubernetes version must be 1.11 or later.
 
 To setup a cluster with GKE:
 
 1. [Install required tools and setup GCP project](https://github.com/knative/docs/blob/master/install/Knative-with-GKE.md#before-you-begin)
    (You may find it useful to save the ID of the project in an environment
    variable (e.g. `PROJECT_ID`).
-1. [Create a GKE cluster for knative](https://github.com/knative/docs/blob/master/install/Knative-with-GKE.md#creating-a-kubernetes-cluster)
+1. [Create a GKE cluster](https://github.com/knative/docs/blob/master/install/Knative-with-GKE.md#creating-a-kubernetes-cluster)
 
 Note that
 [the `--scopes` argument to `gcloud container cluster create`](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create#--scopes)
@@ -87,7 +87,7 @@ environment variables (we recommend adding them to your `.bashrc`):
 1. `KO_DOCKER_REPO`: The docker repository to which developer images should be
    pushed (e.g. `gcr.io/[gcloud-project]`). You can also run a local registry
    and set `KO_DOCKER_REPO` to reference the registry (e.g. at
-   `localhost:5000/myknativeimages`).
+   `localhost:5000/mypipelineimages`).
 
 `.bashrc` example:
 

@@ -274,9 +274,9 @@ func TestReconcile(t *testing.T) {
 	}{{
 		name:          "success",
 		taskRun:       taskRunSuccess,
-		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-run-success"},
+		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-run-success"},
 		wantOwnerReferences: []metav1.OwnerReference{{
-			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
 			Name:               "test-taskrun-run-success",
 			Controller:         &boolTrue,
@@ -364,9 +364,9 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:          "serviceaccount",
 		taskRun:       taskRunWithSaSuccess,
-		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-with-sa-run-success"},
+		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-with-sa-run-success"},
 		wantOwnerReferences: []metav1.OwnerReference{{
-			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
 			Name:               "test-taskrun-with-sa-run-success",
 			Controller:         &boolTrue,
@@ -454,9 +454,9 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:          "params",
 		taskRun:       taskRunTemplating,
-		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-templating"},
+		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-templating"},
 		wantOwnerReferences: []metav1.OwnerReference{{
-			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
 			Name:               "test-taskrun-templating",
 			Controller:         &boolTrue,
@@ -599,9 +599,9 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:          "wrap-steps",
 		taskRun:       taskRunInputOutput,
-		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-input-output"},
+		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-input-output"},
 		wantOwnerReferences: []metav1.OwnerReference{{
-			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
 			Name:               "test-taskrun-input-output",
 			Controller:         &boolTrue,
@@ -854,9 +854,9 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:          "taskrun-with-taskspec",
 		taskRun:       taskRunWithTaskSpec,
-		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-with-taskspec"},
+		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-with-taskspec"},
 		wantOwnerReferences: []metav1.OwnerReference{{
-			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
 			Name:               "test-taskrun-with-taskspec",
 			Controller:         &boolTrue,
@@ -964,9 +964,9 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:          "success-with-cluster-task",
 		taskRun:       taskRunWithClusterTask,
-		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-with-cluster-task"},
+		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-with-cluster-task"},
 		wantOwnerReferences: []metav1.OwnerReference{{
-			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
 			Name:               "test-taskrun-with-cluster-task",
 			Controller:         &boolTrue,
@@ -1054,9 +1054,9 @@ func TestReconcile(t *testing.T) {
 	}, {
 		name:          "taskrun-with-resource-spec-task-spec",
 		taskRun:       taskRunWithResourceSpecAndTaskSpec,
-		wantPodLabels: map[string]string{"pipeline.knative.dev/taskRun": "test-taskrun-with-resource-spec"},
+		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-with-resource-spec"},
 		wantOwnerReferences: []metav1.OwnerReference{{
-			APIVersion:         "pipeline.knative.dev/v1alpha1",
+			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
 			Name:               "test-taskrun-with-resource-spec",
 			Controller:         &boolTrue,

@@ -1,7 +1,7 @@
-# Creating a new Knative Build Pipeline release
+# Creating a new Tekton Pipeline release
 
-The `release.sh` script automates the creation of Knative Build Pipeline
-releases, either nightly or versioned ones.
+The `release.sh` script automates the creation of Tekton Pipeline releases,
+either nightly or versioned ones.
 
 By default, the script creates a nightly release but does not publish it
 anywhere.
@@ -50,36 +50,13 @@ Examples:
 
 _Note: only Knative admins can create versioned releases._
 
-Creating and releasing a versioned release has two steps:
-
-1. [Update the published docs](#update-the-published-docs)
-2. [Cut the release](#cut-the-release)
-
-### Update the published docs
-
-The official docs for the latest release of `build-pipelines` live in
-[the knative docs repo](https://github.com/knative/docs) at
-[`knative/docs/pipeline`](https://github.com/knative/docs/tree/master/pipeline).
-
-These docs correspond to the most recent release of `build-pipeline`. There is a
-living version of these docs in this repo, which correspond to the functionality
-at `HEAD`. Part of creating a release involves copying the living version of
-these files to `knative/docs`.
-
-Specifically copy all of the docs in the first level `docs/` folder (i.e. not a
-recursive copy) to
-[`knative/docs/pipeline`](https://github.com/knative/docs/tree/master/pipeline)
-and open a PR for review there.
-
-### Cut the release
-
 To specify a versioned release to be cut, you must use the `--version` flag.
-Versioned releases are usually built against a branch in the Knative Build
-Pipeline repository, specified by the `--branch` flag.
+Versioned releases are usually built against a branch in the Tekton Pipeline
+repository, specified by the `--branch` flag.
 
 - `--version` Defines the version of the release, and must be in the form
   `X.Y.Z`, where X, Y and Z are numbers.
-- `--branch` Defines the branch in Knative Build Pipeline repository from which
+- `--branch` Defines the branch in Tekton Pipeline repository from which
   the release will be built. If not passed, the `master` branch at HEAD will be
   used. This branch must be created before the script is executed, and must be
   in the form `release-X.Y`, where X and Y must match the numbers used in the
@@ -93,10 +70,11 @@ If this is the first time you're cutting a versioned release, you'll be prompted
 for your GitHub username, password, and possibly 2-factor authentication
 challenge before the release is published.
 
-The release will be published in the _Releases_ page of the Knative Build
-Pipeline repository, with the title _Knative Build Pipeline release vX.Y.Z_ and
-the given release notes. It will also be tagged _vX.Y.Z_ (both on GitHub and as
-a git annotated tag).
+Since we are currently using
+[the knative release scripts](vendor/github.com/knative/test-infra/scripts/release.sh#L404)
+the title of the release will be _Knative Build Pipeline release vX.Y.Z_ and
+we will manually need to change this to _Tekton Pipeline release vX.Y.Z_.
+It will also be tagged _vX.Y.Z_ (both on GitHub and as a git annotated tag).
 
 #### Release notes
 

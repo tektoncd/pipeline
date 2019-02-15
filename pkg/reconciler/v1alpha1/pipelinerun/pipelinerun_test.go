@@ -189,11 +189,11 @@ func TestReconcile(t *testing.T) {
 	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject()
 	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1-9l9zj", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
-			tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1"),
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
 			tb.Controller, tb.BlockOwnerDeletion,
 		),
-		tb.TaskRunLabel("pipeline.knative.dev/pipeline", "test-pipeline"),
-		tb.TaskRunLabel("pipeline.knative.dev/pipelineRun", "test-pipeline-run-success"),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("unit-test-task"),
 			tb.TaskRunServiceAccount("test-sa"),
@@ -598,7 +598,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	))}
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-labels", "foo",
 		tb.PipelineRunLabel("PipelineRunLabel", "PipelineRunValue"),
-		tb.PipelineRunLabel("pipeline.knative.dev/pipeline", "WillNotBeUsed"),
+		tb.PipelineRunLabel("tekton.dev/pipeline", "WillNotBeUsed"),
 		tb.PipelineRunSpec("test-pipeline",
 			tb.PipelineRunServiceAccount("test-sa"),
 		),
@@ -636,11 +636,11 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	}
 	expectedTaskRun := tb.TaskRun("test-pipeline-run-with-labels-hello-world-1-9l9zj", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
-			tb.OwnerReferenceAPIVersion("pipeline.knative.dev/v1alpha1"),
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
 			tb.Controller, tb.BlockOwnerDeletion,
 		),
-		tb.TaskRunLabel("pipeline.knative.dev/pipeline", "test-pipeline"),
-		tb.TaskRunLabel("pipeline.knative.dev/pipelineRun", "test-pipeline-run-with-labels"),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
 		tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world"),

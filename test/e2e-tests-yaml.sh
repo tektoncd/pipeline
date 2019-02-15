@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # This script calls out to scripts in knative/test-infra to setup a cluster
-# and deploy the Pipeline CRD to it for running integration tests.
+# and deploy Tekton Pipelines to it for running integration tests.
 
 source $(dirname $0)/e2e-common.sh
 
@@ -29,7 +29,7 @@ header "Setting up environment"
 set +o errexit
 set +o pipefail
 
-install_pipeline_crd 
+install_pipeline_crd
 
 # Run the tests
 failed=0

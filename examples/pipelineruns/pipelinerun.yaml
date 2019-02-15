@@ -1,5 +1,5 @@
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-app
@@ -26,7 +26,7 @@ roleRef:
   name: cluster-admin
   apiGroup: rbac.authorization.k8s.io
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-web
@@ -36,7 +36,7 @@ spec:
   - name: url
     value: gcr.io/christiewilson-catfactory/leeroy-web
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-git
@@ -48,7 +48,7 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: build-push
@@ -79,7 +79,7 @@ spec:
     - --context=${inputs.params.pathToContext}
 ---
 #This task deploys with kubectl apply -f <filename>
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: demo-deploy-kubectl
@@ -120,14 +120,14 @@ spec:
     - '${inputs.params.path}'
 ---
 # This Pipeline Builds two microservice images(https://github.com/GoogleContainerTools/skaffold/tree/master/examples/microservices)
-# from the Skaffold repo (https://github.com/GoogleContainerTools/skaffold) and deploys them to the repo currently running the Pipeline CRD.
+# from the Skaffold repo (https://github.com/GoogleContainerTools/skaffold) and deploys them to the repo currently running Tekton Pipelines.
 
 # **Note** : It does this using the k8s `Deployment` in the skaffold repos's existing yaml
 # files, so at the moment there is no guarantee that the image that are built and
 # pushed are the ones that are deployed (that would require using the digest of
 # the built image, see https://github.com/knative/build-pipeline/issues/216).
 
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: demo-pipeline
@@ -207,7 +207,7 @@ spec:
     - name: yamlPathToImage
       value: "spec.template.spec.containers[0].image"
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
   name: demo-pipeline-run-1

@@ -34,7 +34,7 @@ secrets:
 ---
 #This example contains embedded taskSpec. This taskrun requires the secrets and service accounts to be able to pull the
 # private image. Required secret and service account for this run is configured in test-build-robot SA and test-readonly-credentials secret.
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: pull-private-image-run

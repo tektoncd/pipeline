@@ -149,7 +149,7 @@ func TestPipelineRun(t *testing.T) {
 			}
 
 			logger.Infof("Making sure the expected TaskRuns %s were created", td.expectedTaskRuns)
-			actualTaskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("pipeline.knative.dev/pipelineRun=%s", prName)})
+			actualTaskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", prName)})
 			if err != nil {
 				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
 			}
@@ -323,10 +323,10 @@ func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {
 			Namespace: namespace,
 			Name:      getName(secretName, suffix),
 			Annotations: map[string]string{
-				"pipeline.knative.dev/docker-0": "https://us.gcr.io",
-				"pipeline.knative.dev/docker-1": "https://eu.gcr.io",
-				"pipeline.knative.dev/docker-2": "https://asia.gcr.io",
-				"pipeline.knative.dev/docker-3": "https://gcr.io",
+				"tekton.dev/docker-0": "https://us.gcr.io",
+				"tekton.dev/docker-1": "https://eu.gcr.io",
+				"tekton.dev/docker-2": "https://asia.gcr.io",
+				"tekton.dev/docker-3": "https://gcr.io",
 			},
 		},
 		Type: "kubernetes.io/basic-auth",

@@ -26,7 +26,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `pipeline.knative.dev/v1alpha1`.
+    `tekton.dev/v1alpha1`.
   - [`kind`][kubernetes-overview] - Specify the `PipelineResource` resource
     object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
@@ -62,7 +62,7 @@ actions on the contents of the repo.
 To create a git resource using the `PipelineResource` CRD:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: wizzbang-git
@@ -150,7 +150,7 @@ Params that can be added are the following:
 For example:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: kritis-resources-image
@@ -165,7 +165,7 @@ spec:
 ### Cluster Resource
 
 Cluster Resource represents a Kubernetes cluster other than the current cluster
-the pipeline CRD is running on. A common use case for this resource is to deploy
+Tekton Pipelines is running on. A common use case for this resource is to deploy
 your application/function on different clusters.
 
 The resource will use the provided parameters to create a
@@ -195,7 +195,7 @@ will be ignored.
 The following example shows the syntax and structure of a Cluster Resource:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: test-cluster
@@ -229,7 +229,7 @@ data:
 and then apply secrets to the cluster resource
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: test-cluster
@@ -252,7 +252,7 @@ spec:
 Example usage of the cluster resource in a Task:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: deploy-image
@@ -297,7 +297,7 @@ GCS Storage resource points to
 To create a GCS type of storage resource using the `PipelineResource` CRD:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: wizzbang-storage
@@ -347,7 +347,7 @@ service account.
    `fieldName` key.
 
    ```yaml
-   apiVersion: pipeline.knative.dev/v1alpha1
+   apiVersion: tekton.dev/v1alpha1
    kind: PipelineResource
    metadata:
      name: wizzbang-storage
@@ -388,7 +388,7 @@ also do incremental uploads of sources via Source Manifest File.
 To create a BuildGCS type of storage resource using the `PipelineResource` CRD:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: build-gcs-storage

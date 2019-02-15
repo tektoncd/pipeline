@@ -1,7 +1,7 @@
 # Assorted scripts for development
 
 This directory contains several scripts useful in the development process of
-Knative Build Pipeline.
+Tekton Pipelines.
 
 - `release.sh` Creates a new [release](release.md) of Knative Build Pipeline.
 - `update-codegen.sh` Updates auto-generated client libraries.

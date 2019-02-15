@@ -76,7 +76,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 	}
 
-	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("pipeline.knative.dev/pipelineRun=%s", pipelineRun.Name)})
+	taskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}

@@ -1,6 +1,6 @@
-# Contributing to Pipeline CRD
+# Contributing to Tekton Pipelines
 
-Welcome to the Pipeline CRD project! Thanks for considering contributing to our
+Welcome to the Tekton Pipelines project! Thanks for considering contributing to our
 project and we hope you'll enjoy it :D
 
 **All contributors must comply with

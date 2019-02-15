@@ -62,7 +62,7 @@ type BuildGCSResource struct {
 	ArtifactType   GCSArtifactType
 }
 
-// NewBuildGCSResource creates a new BuildGCS resource to pass to knative build
+// NewBuildGCSResource creates a new BuildGCS resource to pass to a Task
 func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)

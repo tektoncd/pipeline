@@ -33,7 +33,7 @@ In case of using a ClusterTask, the `TaskRef` kind should be added. The default
 kind is Task which represents a namespaced Task
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: demo-pipeline
@@ -57,7 +57,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `pipeline.knative.dev/v1alpha1`.
+    `tekton.dev/v1alpha1`.
   - [`kind`][kubernetes-overview] - Specify the `Task` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `Task` resource object, for example a `name`.
@@ -162,7 +162,7 @@ The following `Task` declares an input parameter called 'flags', and uses it in
 the `steps.args` list.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: task-with-parameters
@@ -180,7 +180,7 @@ spec:
 The following `TaskRun` supplies a value for `flags`:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: run-with-parameters
@@ -271,7 +271,7 @@ initialized under `/workspace`. Following example demonstrates how git input
 repository could be initialized in `$GOPATH` to run tests:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: task-with-input
