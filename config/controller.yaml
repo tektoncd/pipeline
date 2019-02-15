@@ -15,7 +15,7 @@ apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: build-pipeline-controller
-  namespace: knative-build-pipeline
+  namespace: tekton-pipelines
 spec:
   replicas: 1
   template:

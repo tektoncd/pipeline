@@ -36,7 +36,7 @@ const (
 	readFileTaskName          = "read-new-file-task"
 	bucketTestPipelineName    = "bucket-test-pipeline"
 	bucketTestPipelineRunName = "bucket-test-pipeline-run"
-	systemNamespace           = "knative-build-pipeline"
+	systemNamespace           = "tekton-pipelines"
 	bucketSecretName          = "bucket-secret"
 	bucketSecretKey           = "bucket-secret-key"
 )

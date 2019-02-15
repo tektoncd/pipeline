@@ -18,7 +18,7 @@ metadata:
   labels:
     app: build-pipeline-webhook
   name: build-pipeline-webhook
-  namespace: knative-build-pipeline
+  namespace: tekton-pipelines
 spec:
   ports:
     - port: 443

@@ -16,7 +16,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: config-logging
-  namespace: knative-build-pipeline
+  namespace: tekton-pipelines
 data:
   # Common configuration for all knative codebase
   zap-logger-config: |

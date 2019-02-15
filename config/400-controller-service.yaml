@@ -18,7 +18,7 @@ metadata:
   labels:
     app: build-pipeline-controller
   name: build-pipeline-controller
-  namespace: knative-build-pipeline
+  namespace: tekton-pipelines
 spec:
   ports:
   - name: metrics
