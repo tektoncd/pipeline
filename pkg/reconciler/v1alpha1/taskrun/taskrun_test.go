@@ -1414,6 +1414,7 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 		name           string
 		buildStatus    buildv1alpha1.BuildStatus
 		expectedStatus v1alpha1.TaskRunStatus
+		tr             *v1alpha1.TaskRun
 	}{{
 		name:        "empty build status",
 		buildStatus: buildv1alpha1.BuildStatus{},
@@ -1426,6 +1427,7 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 			}},
 			Steps: []v1alpha1.StepState{},
 		},
+		tr: &v1alpha1.TaskRun{},
 	}, {
 		name: "build validate failed",
 		buildStatus: buildv1alpha1.BuildStatus{
@@ -1445,6 +1447,7 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 			}},
 			Steps: []v1alpha1.StepState{},
 		},
+		tr: &v1alpha1.TaskRun{},
 	}, {
 		name: "running build status",
 		buildStatus: buildv1alpha1.BuildStatus{
@@ -1474,6 +1477,7 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 			PodName:   "im-am-the-pod",
 			StartTime: &startTime,
 		},
+		tr: &v1alpha1.TaskRun{},
 	}, {
 		name: "completed build status (success)",
 		buildStatus: buildv1alpha1.BuildStatus{
@@ -1507,6 +1511,7 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 			StartTime:      &startTime,
 			CompletionTime: &completionTime,
 		},
+		tr: &v1alpha1.TaskRun{},
 	}, {
 		name: "completed build status (failure)",
 		buildStatus: buildv1alpha1.BuildStatus{
@@ -1542,14 +1547,70 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 			StartTime:      &startTime,
 			CompletionTime: &completionTime,
 		},
+		tr: &v1alpha1.TaskRun{},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			taskRun := &v1alpha1.TaskRun{}
-			updateStatusFromBuildStatus(taskRun, tc.buildStatus)
-			if d := cmp.Diff(taskRun.Status, tc.expectedStatus, ignoreLastTransitionTime); d != "" {
+			//taskRun := &v1alpha1.TaskRun{}
+			updateStatusFromBuildStatus(tc.tr, tc.buildStatus)
+			if d := cmp.Diff(tc.tr.Status, tc.expectedStatus, ignoreLastTransitionTime); d != "" {
 				t.Errorf("-want, +got: %v", d)
 			}
 		})
+	}
+}
+
+func TestRetryFailedTaskRun(t *testing.T) {
+
+	completed := corev1.ContainerState{
+		Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "success"},
+	}
+
+	failed := corev1.ContainerState{
+		Terminated: &corev1.ContainerStateTerminated{ExitCode: 127, Reason: "oh-my-lord"},
+	}
+	startTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 0, 0, 0, time.UTC))
+	completionTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 8, 0, 0, time.UTC))
+
+	taskRun := tb.TaskRun("test-taskrun-failed-with-retry", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunRetries(1),
+		),
+		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown}),
+		))
+
+	buildStatus := buildv1alpha1.BuildStatus{
+		StartTime:      &startTime,
+		CompletionTime: &completionTime,
+		StepStates: []corev1.ContainerState{
+			completed,
+			failed,
+		},
+		Conditions: []duckv1alpha1.Condition{{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "Build failed",
+			Message: "Build failed",
+		}},
+		Cluster: &buildv1alpha1.ClusterSpec{
+			Namespace: "default",
+			PodName:   "im-am-the-pod",
+		},
+	}
+
+	expectedStatus := v1alpha1.TaskRunStatus{
+		Conditions: []duckv1alpha1.Condition{{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}},
+		RetriesDone: 1,
+	}
+	updateStatusFromBuildStatus(taskRun, buildStatus)
+
+	if d := cmp.Diff(taskRun.Status, expectedStatus, ignoreLastTransitionTime); d != "" {
+		t.Errorf("-want, +got: %v", d)
 	}
 }
 
@@ -1669,7 +1730,7 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown}),
-			tb.TaskRunStartTime(time.Now().Add(-15*time.Second))))
+			tb.TaskRunStartTime(time.Now().Add(-15*time.Hour))))
 
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{taskRun},
@@ -1693,6 +1754,135 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunTimeout",
 		Message: `TaskRun "test-taskrun-timeout" failed to finish within "10s"`,
+	}
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+}
+func TestReconcileOnTimedOutTaskRunWithRetry(t *testing.T) {
+
+	taskRun := tb.TaskRun("test-taskrun-timeout-with-retry", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunTimeout(1*time.Microsecond),
+			tb.TaskRunRetries(1),
+		),
+		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown}),
+			tb.TaskRunStartTime(time.Now().Add(-15*time.Hour))))
+
+	build := &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      taskRun.Name,
+			Namespace: taskRun.Namespace,
+		},
+		Spec: *simpleTask.Spec.GetBuildSpec(),
+	}
+
+	pod, err := resources.MakePod(build, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: taskRun.Namespace,
+		},
+	}))
+
+	taskRun.Status.PodName = pod.Name
+
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{simpleTask},
+		Pods:     []*corev1.Pod{pod},
+	}
+
+	testAssets := getTaskRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	// First time out
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+	// Second time out
+	time.Sleep(10 * time.Millisecond)
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", newTr.Namespace, newTr.Name)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+
+	newTr, err = clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(newTr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	expectedStatus := &duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  "TaskRunTimeout",
+		Message: `TaskRun "test-taskrun-timeout-with-retry" failed to finish within "1µs"`,
+	}
+	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
+}
+func TestReconcileOnFailedTaskRunWithRetry(t *testing.T) {
+
+	taskRun := tb.TaskRun("test-taskrun-failed-with-retry", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+			tb.TaskRunTimeout(1*time.Microsecond),
+			tb.TaskRunRetries(1),
+		),
+		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown}),
+		))
+
+	build := &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      taskRun.Name,
+			Namespace: taskRun.Namespace,
+		},
+		Spec: *simpleTask.Spec.GetBuildSpec(),
+	}
+
+	pod, err := resources.MakePod(build, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: taskRun.Namespace,
+		},
+	}))
+
+	taskRun.Status.PodName = pod.Name
+
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{simpleTask},
+		Pods:     []*corev1.Pod{pod},
+	}
+
+	testAssets := getTaskRunController(d)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	expectedStatus := &duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  "Running",
+		Message: "Running",
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)

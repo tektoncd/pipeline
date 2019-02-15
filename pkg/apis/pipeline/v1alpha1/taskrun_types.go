@@ -66,6 +66,9 @@ type TaskRunSpec struct {
 	// If specified, the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Number of retries
+	// +optional
+	Retries int `json:"retries,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
@@ -141,6 +144,9 @@ type TaskRunStatus struct {
 	// Steps describes the state of each build step container.
 	// +optional
 	Steps []StepState `json:"steps,omitempty"`
+	// Number of retries done so far
+	// +optional
+	RetriesDone int `json:"retriesDone,omitempty"`
 }
 
 // GetCondition returns the Condition matching the given type.

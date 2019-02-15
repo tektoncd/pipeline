@@ -315,8 +315,16 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 }
 
 func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1alpha1.BuildStatus) {
-	if buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded) != nil {
+	if bs := buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded); bs != nil {
+		// Build Failure
+		if bs.IsFalse() {
+			// if Retray happnens, don't do anything else
+			if retry(taskRun) {
+				return
+			}
+		}
 		taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
+
 	} else {
 		// If the buildStatus doesn't exist yet, it's because we just started running
 		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
@@ -504,6 +512,11 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 		timeout := tr.Spec.Timeout.Duration
 		runtime := time.Since(tr.Status.StartTime.Time)
 		if runtime > timeout {
+
+			if retry(tr) {
+				return false, nil
+			}
+
 			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
 			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 				c.Logger.Errorf("Failed to terminate pod: %v", err)
@@ -524,4 +537,17 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 		}
 	}
 	return false, nil
+}
+
+func retry(tr *v1alpha1.TaskRun) bool {
+
+	if tr.Status.RetriesDone < tr.Spec.Retries {
+		tr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		})
+		tr.Status.RetriesDone = tr.Status.RetriesDone + 1
+		return true
+	}
+	return false
 }

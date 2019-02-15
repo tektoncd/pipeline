@@ -316,6 +316,12 @@ func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
 	}
 }
 
+func TaskRunRetries(retries int) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Retries = retries
+	}
+}
+
 // TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
