@@ -171,13 +171,13 @@ ko delete -f config/
 To look at the controller logs, run:
 
 ```shell
-kubectl -n knative-build-pipeline logs $(kubectl -n knative-build-pipeline get pods -l app=build-pipeline-controller -o name)
+kubectl -n tekton-pipelines logs $(kubectl -n tekton-pipelines get pods -l app=build-pipeline-controller -o name)
 ```
 
 To look at the webhook logs, run:
 
 ```shell
-kubectl -n knative-build-pipeline logs $(kubectl -n knative-build-pipeline get pods -l app=build-pipeline-webhook -o name)
+kubectl -n tekton-pipelines logs $(kubectl -n tekton-pipelines get pods -l app=build-pipeline-webhook -o name)
 ```
 
 ## Adding new types

@@ -1074,7 +1074,7 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "knative-build-pipeline",
+						Namespace: "tekton-pipelines",
 						Name:      v1alpha1.BucketConfigName,
 					},
 					Data: map[string]string{

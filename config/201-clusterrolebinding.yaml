@@ -18,8 +18,8 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: build-pipeline-controller
-    namespace: knative-build-pipeline
+    namespace: tekton-pipelines
 roleRef:
   kind: ClusterRole
-  name: knative-build-pipeline-admin
+  name: tekton-pipelines-admin
   apiGroup: rbac.authorization.k8s.io

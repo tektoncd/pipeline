@@ -14,4 +14,4 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: knative-build-pipeline
+  name: tekton-pipelines

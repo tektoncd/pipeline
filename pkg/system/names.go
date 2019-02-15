@@ -19,6 +19,6 @@ package system
 const (
 	// Namespace holds the K8s namespace where our build-pipeline system
 	// components run.
-	Namespace    = "knative-build-pipeline"
+	Namespace    = "tekton-pipelines"
 	PipelineKind = "Pipeline"
 )

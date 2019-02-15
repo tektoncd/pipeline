@@ -24,7 +24,7 @@ function teardown() {
     # teardown will be called when run against an existing cluster to cleanup before
     # continuing, so we must wait for the cleanup to complete or the subsequent attempt
     # to deploy to the same namespace will fail
-    wait_until_object_does_not_exist namespace knative-build-pipeline
+    wait_until_object_does_not_exist namespace tekton-pipelines
 }
 
 function output_yaml_test_results() {
@@ -57,9 +57,9 @@ function output_pods_logs() {
 # Called by `fail_test` (provided by `e2e-tests.sh`) to dump info on test failure
 function dump_extra_cluster_state() {
   echo ">>> Pipeline controller log:"
-  kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-controller knative-build-pipeline)
+  kubectl -n tekton-pipelines logs $(get_app_pod build-pipeline-controller tekton-pipelines)
   echo ">>> Pipeline webhook log:"
-  kubectl -n knative-build-pipeline logs $(get_app_pod build-pipeline-webhook knative-build-pipeline)
+  kubectl -n tekton-pipelines logs $(get_app_pod build-pipeline-webhook tekton-pipelines)
 }
 
 function validate_run() {
@@ -132,5 +132,5 @@ function install_pipeline_crd() {
   done
 
   # Wait for pods to be running in the namespaces we are deploying to
-  wait_until_pods_running knative-build-pipeline || fail_test "Tekton Pipeline did not come up"
+  wait_until_pods_running tekton-pipelines || fail_test "Tekton Pipeline did not come up"
 }
