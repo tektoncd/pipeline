@@ -15,3 +15,6 @@ package pkg
 
 // GetBuildSystemNamespace returns the build system's namespace.
 func GetBuildSystemNamespace() string { return "knative-build-pipeline" }
+
+
+func foo() {}
