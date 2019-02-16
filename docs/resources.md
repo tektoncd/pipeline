@@ -143,7 +143,9 @@ Params that can be added are the following:
 2. `digest`: The
    [image digest](https://success.docker.com/article/images-tagging-vs-digests)
    which uniquely identifies a particular build of an image with a particular
-   tag.
+   tag. _While this can be provided as a parameter, there is not yet a way to
+   update this value after an image is built, but this is planned in
+   [#216](https://github.com/knative/build-pipeline/issues/216)._
 
 For example:
 
@@ -174,20 +176,20 @@ cluster. The kubeconfig will be placed in
 
 The Cluster resource has the following parameters:
 
-- Name (required): The name to be given to the target cluster, will be used in
+- `name` (required): The name to be given to the target cluster, will be used in
   the kubeconfig and also as part of the path to the kubeconfig file
-- URL (required): Host url of the master node
-- Username (required): the user with access to the cluster
-- Password: to be used for clusters with basic auth
-- Token: to be used for authentication, if present will be used ahead of the
+- `url` (required): Host url of the master node
+- `username` (required): the user with access to the cluster
+- `password`: to be used for clusters with basic auth
+- `token`: to be used for authentication, if present will be used ahead of the
   password
-- Insecure: to indicate server should be accessed without verifying the TLS
+- `insecure`: to indicate server should be accessed without verifying the TLS
   certificate.
-- CAData (required): holds PEM-encoded bytes (typically read from a root
+- `cadata` (required): holds PEM-encoded bytes (typically read from a root
   certificates bundle).
 
 Note: Since only one authentication technique is allowed per user, either a
-token or a password should be provided, if both are provided, the password will
+`token` or a `password` should be provided, if both are provided, the `password` will
 be ignored.
 
 The following example shows the syntax and structure of a Cluster Resource:
@@ -280,9 +282,12 @@ spec:
 Storage resource represents blob storage, that contains either an object or
 directory. Adding the storage resource as an input to a Task will download the
 blob and allow the Task to perform the required actions on the contents of the
-blob. Blob storage type
+blob.
+
+Only blob storage type
 [Google Cloud Storage](https://cloud.google.com/storage/)(gcs) is supported as
-of now.
+of now via [GCS storage resource](#gcs-storage-resource) and
+[BuildGCS storage resource](#buildgcs-storage-resource).
 
 #### GCS Storage Resource
 

@@ -293,9 +293,6 @@ spec:
         paths: null
         resourceRef:
           name: skaffold-image-leeroy-web
-  results:
-    type: gcs
-    url: gcs://somebucket/results/logs #configure: remove results entirely if you're happy to use stdout
   taskRef:
     name: build-docker-image-from-git-source
   taskSpec: null
@@ -331,7 +328,7 @@ resource definition.
 
 # Pipeline
 
-A [`Pipeline`](pipelines.md) defines a list of tasks to execute in order, while
+A [`Pipeline`](pipelines.md) defines a list of tasks to execute, while
 also indicating if any outputs should be used as inputs of a following task by
 using [the `from` field](pipelines.md#from). The same templating you used in
 tasks is also available in pipeline.
@@ -602,9 +599,7 @@ Knative (as of version 0.3) is known to work with:
 ### Logging
 
 - Logs can remain in-memory only as opposed to sent to a service such as
-  [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or
-  deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results`
-  specification.
+  [Stackdriver](https://cloud.google.com/logging/).
 
 Elasticsearch can be deployed locally as a means to view logs "after the fact":
 an example is provided at https://github.com/mgreau/knative-elastic-tutorials.

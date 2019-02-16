@@ -87,10 +87,6 @@ metadata:
   name: example-task-name
 spec:
   serviceAccountName: task-auth-example
-  source:
-    git:
-      url: https://github.com/example/build-example.git
-      revision: master
   inputs:
     resources:
     - name: workspace
@@ -107,10 +103,8 @@ spec:
   - name: ubuntu-example
     image: ubuntu
     args: ["ubuntu-build-example", "SECRETS-example.md"]
-  steps:
   - image: gcr.io/example-builders/build-example
     args: ['echo', '${inputs.resources.params.pathToDockerFile}']
-  steps:
   - name: dockerfile-pushexample
     image: gcr.io/example-builders/push-example
     args: ["push", "${outputs.resources.builtImage.url}"]
@@ -151,8 +145,6 @@ TaskRun. Some example use-cases of this include:
 - A Task that needs to know what compilation flags to use when building an
   application.
 - A Task that needs to know what to name a built artifact.
-- A Task that supports several different strategies, and leaves the choice up to
-  the other.
 
 Parameters name are limited to alpha-numeric characters, `-` and `_` and can
 only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
@@ -341,7 +333,7 @@ Or for an output resource:
 ${outputs.resources.<name>.<key>}
 ```
 
-To access an input parameter, replace `resources` with `params`. 
+To access an input parameter, replace `resources` with `params`.
 
 ```shell
 ${inputs.params.<name>}
