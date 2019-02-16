@@ -97,3 +97,12 @@ The release will be published in the _Releases_ page of the Knative Build
 Pipeline repository, with the title _Knative Build Pipeline release vX.Y.Z_ and
 the given release notes. It will also be tagged _vX.Y.Z_ (both on GitHub and as
 a git annotated tag).
+
+#### Release notes
+
+Release notes will need to be manually collected for the release by looking at the
+`Release Notes` section of every PR which has been merged between the last release
+and the current one.
+
+Visiting [github.com/knative/build-pipeline/compare](https://github.com/knative/build-pipeline/compare)
+will allow you to compare changes between git tags.
