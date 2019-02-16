@@ -7,8 +7,9 @@ specific contract.
 
 When containers are run in a `Task`, the `entrypoint` of the container will be
 overwritten with a custom binary that redirects the logs to a separate location
-for aggregating the log output. As such, it is always recommended to explicitly
-specify a command.
+for aggregating the log output (this currently does nothing but is to support
+future work, see [#107](https://github.com/knative/build-pipeline/issues/107)).
+As such, it is always recommended to explicitly specify a command.
 
 When `command` is not explicitly set, the controller will attempt to lookup the
 entrypoint from the remote registry.

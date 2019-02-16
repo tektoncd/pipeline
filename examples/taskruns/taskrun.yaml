@@ -2,7 +2,7 @@ apiVersion: pipeline.knative.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-web
-spec:        
+spec:
   type: image
   params:
   - name: url
@@ -76,9 +76,6 @@ spec:
     name: build-push-kaniko
   trigger:
     type: manual
-  results:
-    type: 'gcs'
-    url: 'gcs://somebucket/results/logs'
   inputs:
     resources:
     - name: workspace

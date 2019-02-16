@@ -23,6 +23,7 @@ kubectl apply -f examples/taskruns/resource-spec-taskrun.yaml
 ```
 
 ## Results
+
 You can track the progress of your taskruns and pipelineruns with this command, which will also
 format the output nicely.
 

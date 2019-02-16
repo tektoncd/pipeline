@@ -174,7 +174,6 @@ Express this dependency by adding `from` on `Resources` that your `Tasks` need.
   `PipelineTasks` (i.e. the named instance of a `Task`) in the `Pipeline`
 - When the `from` key is specified on an input source, the version of the
   resource that is from the defined list of tasks is used
-- `from` can support fan in and fan out
 - The name of the `PipelineResource` must correspond to a `PipelineResource`
   from the `Task` that the referenced `PipelineTask` gives as an output
 
