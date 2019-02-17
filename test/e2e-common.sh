@@ -63,8 +63,6 @@ function dump_extra_cluster_state() {
 }
 
 function validate_run() {
-  # Wait for tests to finish.
-  echo ">> Waiting for tests to finish"
   local tests_finished=0
   for i in {1..60}; do
     local finished="$(kubectl get $1.pipeline.knative.dev --output=jsonpath='{.items[*].status.conditions[*].status}')"
@@ -74,14 +72,12 @@ function validate_run() {
     fi
     sleep 10
   done
-  if (( ! tests_finished )); then
-    echo "ERROR: tests timed out"
-    return 1
-  fi
 
-  # Check that tests passed.
+  return ${tests_finished}
+}
+
+function check_results() {
   local failed=0
-  echo ">> Checking test results"
   results="$(kubectl get $1.pipeline.knative.dev --output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
   for result in ${results}; do
     if [[ ! "${result,,}" == *"=succeededtrue" ]]; then
@@ -106,10 +102,22 @@ function run_yaml_tests() {
     perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
   done
 
-  if validate_run $1; then
-    echo ">> All YAML tests passed"
-    return 0
-  fi
+  # Wait for tests to finish.
+  echo ">> Waiting for tests to finish"
+  for test in taskrun pipelinerun; do
+     if validate_run ${test}; then
+      echo "ERROR: tests timed out"
+     fi
+  done
+
+  # Check that tests passed.
+  echo ">> Checking test results"
+  for test in taskrun pipelinerun; do
+    if check_results ${test}; then
+      echo ">> All YAML tests passed"
+      return 0
+    fi
+  done
 
   return 1
 }
