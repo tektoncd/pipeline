@@ -52,12 +52,13 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 	pipeline := tb.Pipeline("tomatoes", namespace,
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
-
-	logger.Infof("Creating PipelineRun in namespace %s", namespace)
-	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
 	}
+
+	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
+
+	logger.Infof("Creating PipelineRun in namespace %s", namespace)
 	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
 	}
@@ -87,25 +88,24 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 	defer close(errChan)
 
 	for _, taskrunItem := range taskrunList.Items {
-		go func() {
+		go func(chan error) {
 			err := WaitForTaskRunState(c, taskrunItem.Name, func(tr *v1alpha1.TaskRun) (bool, error) {
-				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-				if c != nil {
-					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
+				if c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
+					if c.IsTrue() || c.IsFalse() {
 						return true, fmt.Errorf("taskRun %s already finished!", taskrunItem.Name)
-					} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
+					} else if c.IsUnknown() && (c.Reason == "Running" || c.Reason == "Pending") {
 						return true, nil
 					}
 				}
 				return false, nil
 			}, "TaskRunRunning")
 			errChan <- err
-		}()
-
+		}(errChan)
 	}
+
 	for i := 1; i <= len(taskrunList.Items); i++ {
 		if <-errChan != nil {
-			t.Errorf("Error waiting for TaskRun %s to be running: %s", taskrunList.Items[i-1].Name, err)
+			t.Errorf("Error waiting for TaskRun %s to be running: %v", taskrunList.Items[i-1].Name, err)
 		}
 	}
 
@@ -121,49 +121,46 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 
 	logger.Infof("Waiting for PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
 	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
-		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-		if c != nil {
-			if c.Status == corev1.ConditionFalse {
+		if c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
+			if c.IsFalse() {
 				if c.Reason == "PipelineRunCancelled" {
 					return true, nil
 				}
 				return true, fmt.Errorf("pipelineRun %s completed with the wrong reason: %s", "pear", c.Reason)
-			} else if c.Status == corev1.ConditionTrue {
+			} else if c.IsTrue() {
 				return true, fmt.Errorf("pipelineRun %s completed successfully, should have been cancelled", "pear")
 			}
 		}
 		return false, nil
 	}, "PipelineRunCancelled"); err != nil {
-		t.Errorf("Error waiting for PipelineRun `pear` to finish: %s", err)
+		t.Errorf("Error waiting for PipelineRun `pear` to finished: %s", err)
 	}
 
 	logger.Infof("Waiting for TaskRuns in PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
 	errChan2 := make(chan error, len(taskrunList.Items))
 	defer close(errChan2)
 	for _, taskrunItem := range taskrunList.Items {
-		go func() {
+		go func(errChan2 chan error) {
 			err := WaitForTaskRunState(c, taskrunItem.Name, func(tr *v1alpha1.TaskRun) (bool, error) {
-				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-				if c != nil {
-					if c.Status == corev1.ConditionFalse {
+				if c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
+					if c.IsFalse() {
 						if c.Reason == "TaskRunCancelled" {
 							return true, nil
 						}
 						return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", taskrunItem.Name, c.Reason)
-					} else if c.Status == corev1.ConditionTrue {
+					} else if c.IsTrue() {
 						return true, fmt.Errorf("taskRun %s completed successfully, should have been cancelled", taskrunItem.Name)
 					}
 				}
 				return false, nil
 			}, "TaskRunCancelled")
 			errChan2 <- err
-		}()
+		}(errChan2)
 
 	}
 	for i := 1; i <= len(taskrunList.Items); i++ {
 		if <-errChan2 != nil {
-			t.Errorf("Error waiting for TaskRun %s to be finish: %s", taskrunList.Items[i-1].Name, err)
+			t.Errorf("Error waiting for TaskRun %s to be finished: %v", taskrunList.Items[i-1].Name, err)
 		}
 	}
-
 }
