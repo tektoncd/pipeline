@@ -144,9 +144,10 @@ type TaskRunStatus struct {
 	// Steps describes the state of each build step container.
 	// +optional
 	Steps []StepState `json:"steps,omitempty"`
-	// Number of retries done so far
+
+	// Failed Status History
 	// +optional
-	RetriesDone int `json:"retriesDone,omitempty"`
+	Retries []TaskRunStatus `json:"retries,omitempty"`
 }
 
 // GetCondition returns the Condition matching the given type.

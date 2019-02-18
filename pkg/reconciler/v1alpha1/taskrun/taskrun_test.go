@@ -1600,13 +1600,110 @@ func TestRetryFailedTaskRun(t *testing.T) {
 		},
 	}
 
+	retries := v1alpha1.TaskRunStatus{
+		Conditions: []duckv1alpha1.Condition{{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "Build failed",
+			Message: "Build failed",
+		}},
+		PodName:        "im-am-the-pod",
+		StartTime:      &startTime,
+		CompletionTime: &completionTime,
+		Steps: []v1alpha1.StepState{
+			{
+				ContainerState: *completed.DeepCopy(),
+			},
+			{
+				ContainerState: *failed.DeepCopy(),
+			},
+		},
+	}
+
 	expectedStatus := v1alpha1.TaskRunStatus{
 		Conditions: []duckv1alpha1.Condition{{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		}},
-		RetriesDone: 1,
+		PodName:        "im-am-the-pod",
+		StartTime:      &startTime,
+		CompletionTime: &completionTime,
+		Steps: []v1alpha1.StepState{
+			{
+				ContainerState: *completed.DeepCopy(),
+			},
+			{
+				ContainerState: *failed.DeepCopy(),
+			},
+		},
+		Retries: []v1alpha1.TaskRunStatus{retries},
 	}
+
+	updateStatusFromBuildStatus(taskRun, buildStatus)
+
+	if d := cmp.Diff(taskRun.Status, expectedStatus, ignoreLastTransitionTime); d != "" {
+		t.Errorf("-want, +got: %v", d)
+	}
+}
+func TestNoRetryFailedTaskRun(t *testing.T) {
+
+	completed := corev1.ContainerState{
+		Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "success"},
+	}
+
+	failed := corev1.ContainerState{
+		Terminated: &corev1.ContainerStateTerminated{ExitCode: 127, Reason: "oh-my-lord"},
+	}
+	startTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 0, 0, 0, time.UTC))
+	completionTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 8, 0, 0, time.UTC))
+
+	taskRun := tb.TaskRun("test-taskrun-failed-with-retry", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+		),
+		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown}),
+		))
+
+	buildStatus := buildv1alpha1.BuildStatus{
+		StartTime:      &startTime,
+		CompletionTime: &completionTime,
+		StepStates: []corev1.ContainerState{
+			completed,
+			failed,
+		},
+		Conditions: []duckv1alpha1.Condition{{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "Build failed",
+			Message: "Build failed",
+		}},
+		Cluster: &buildv1alpha1.ClusterSpec{
+			Namespace: "default",
+			PodName:   "im-am-the-pod",
+		},
+	}
+	expectedStatus := v1alpha1.TaskRunStatus{
+		Conditions: []duckv1alpha1.Condition{{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "Build failed",
+			Message: "Build failed",
+		}},
+		PodName:        "im-am-the-pod",
+		StartTime:      &startTime,
+		CompletionTime: &completionTime,
+		Steps: []v1alpha1.StepState{
+			{
+				ContainerState: *completed.DeepCopy(),
+			},
+			{
+				ContainerState: *failed.DeepCopy(),
+			},
+		},
+	}
+
 	updateStatusFromBuildStatus(taskRun, buildStatus)
 
 	if d := cmp.Diff(taskRun.Status, expectedStatus, ignoreLastTransitionTime); d != "" {
@@ -1887,6 +1984,21 @@ func TestReconcileOnFailedTaskRunWithRetry(t *testing.T) {
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
+	if d := len(newTr.Status.Retries); d != 1 {
+		t.Fatalf("Status retries unexpected %v", d)
+	}
+
+	if d := cmp.Diff(newTr.Status.Retries[0].GetCondition(duckv1alpha1.ConditionSucceeded).Status, corev1.ConditionFalse, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+	if d := cmp.Diff(newTr.Status.Retries[0].GetCondition(duckv1alpha1.ConditionSucceeded).Reason, reasonTimedOut, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
+	if d := cmp.Diff(newTr.Status.Retries[0].GetCondition(duckv1alpha1.ConditionSucceeded).Message, `TaskRun "test-taskrun-failed-with-retry" failed to finish within "1µs"`, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
 }
 
 func getVolumes() []corev1.Volume {

@@ -315,25 +315,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 }
 
 func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1alpha1.BuildStatus) {
-	if bs := buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded); bs != nil {
-		// Build Failure
-		if bs.IsFalse() {
-			// if Retray happnens, don't do anything else
-			if retry(taskRun) {
-				return
-			}
-		}
-		taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
 
-	} else {
-		// If the buildStatus doesn't exist yet, it's because we just started running
-		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  reasonRunning,
-			Message: reasonRunning,
-		})
-	}
 	taskRun.Status.StartTime = buildStatus.StartTime
 	if buildStatus.Cluster != nil {
 		taskRun.Status.PodName = buildStatus.Cluster.PodName
@@ -347,6 +329,30 @@ func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1a
 			ContainerState: *state.DeepCopy(),
 		})
 	}
+
+	if bs := buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded); bs != nil {
+		// Build Failure
+		if bs.IsFalse() {
+			// if Retry happnens, don't do anything else
+			taskRunStatus := taskRun.Status.DeepCopy()
+			taskRunStatus.Conditions = buildStatus.Conditions
+			if retry(taskRun, taskRunStatus) {
+				//return
+			}
+		} else {
+			taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
+		}
+
+	} else {
+		// If the buildStatus doesn't exist yet, it's because we just started running
+		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  reasonRunning,
+			Message: reasonRunning,
+		})
+	}
+
 }
 
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
@@ -513,7 +519,18 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 		runtime := time.Since(tr.Status.StartTime.Time)
 		if runtime > timeout {
 
-			if retry(tr) {
+			status := tr.Status.DeepCopy()
+			timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
+			status.SetCondition(&duckv1alpha1.Condition{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  reasonTimedOut,
+				Message: timeoutMsg,
+			})
+			// update tr completed time
+			status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+			if retry(tr, status) {
 				return false, nil
 			}
 
@@ -523,31 +540,26 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 				return true, err
 			}
 
-			timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
-			tr.Status.SetCondition(&duckv1alpha1.Condition{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Reason:  reasonTimedOut,
-				Message: timeoutMsg,
-			})
-			// update tr completed time
-			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-
 			return true, nil
 		}
 	}
 	return false, nil
 }
 
-func retry(tr *v1alpha1.TaskRun) bool {
+func retry(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus) bool {
 
-	if tr.Status.RetriesDone < tr.Spec.Retries {
+	if len(tr.Status.Retries) < tr.Spec.Retries {
+		tr.Status.StartTime = nil
+		tr.Status.CompletionTime = nil
+
+		tr.Status.Retries = append(tr.Status.Retries, *status)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		})
-		tr.Status.RetriesDone = tr.Status.RetriesDone + 1
+
 		return true
 	}
+	tr.Status = *status
 	return false
 }
