@@ -46,6 +46,10 @@ components:
 - [`PipelineRun`](pipelineruns.md)
 - [`PipelineResource`](resources.md)
 
+Additional reference topics not related to a specific component:
+
+- [Labels](labels.md)
+
 ## Try it out
 
 - Follow along with [the tutorial](tutorial.md)
