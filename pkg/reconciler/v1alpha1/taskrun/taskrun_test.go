@@ -1625,9 +1625,7 @@ func TestRetryFailedTaskRun(t *testing.T) {
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		}},
-		PodName:        "im-am-the-pod",
-		StartTime:      &startTime,
-		CompletionTime: &completionTime,
+		PodName: "im-am-the-pod",
 		Steps: []v1alpha1.StepState{
 			{
 				ContainerState: *completed.DeepCopy(),
