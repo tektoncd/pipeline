@@ -16,7 +16,6 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Providing resources](#providing-resources)
   - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
   - [Service Account](#service-account)
-- [Labels](#labels)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
 - [Examples](#examples)
 
@@ -222,30 +221,6 @@ spec:
   volumes:
     - name: custom-volume
       emptyDir: {}
-```
-
-## Labels
-
-Any labels specified in the metadata field of a `TaskRun` will be propagated to
-the `Pod` created to execute the `Task`. In addition, the following label will
-be added automatically:
-
-- `tekton.dev/taskRun` will contain the name of the `TaskRun`
-
-If the `TaskRun` was created automatically by a `PipelineRun`, then the
-following two labels will also be added to the `TaskRun` and `Pod`:
-
-- `tekton.dev/pipeline` will contain the name of the `Pipeline`
-- `tekton.dev/pipelineRun` will contain the name of the `PipelineRun`
-
-These labels make it easier to find the resources that are associated with a
-given `TaskRun`.
-
-For example, to find all `Pods` created by a `TaskRun` named test-taskrun, you
-could use the following command:
-
-```shell
-kubectl get pods --all-namespaces -l tekton.dev/taskRun=test-taskrun
 ```
 
 ## Cancelling a TaskRun

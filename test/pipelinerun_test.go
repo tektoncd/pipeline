@@ -138,7 +138,7 @@ func TestPipelineRun(t *testing.T) {
 			td.testSetup(t, c, namespace, i)
 
 			prName := fmt.Sprintf("%s%d", pipelineRunName, i)
-			pr, err := c.PipelineRunClient.Create(td.pipelineRunFunc(i, namespace))
+			_, err := c.PipelineRunClient.Create(td.pipelineRunFunc(i, namespace))
 			if err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
@@ -171,21 +171,8 @@ func TestPipelineRun(t *testing.T) {
 					t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, r.Status)
 				}
 
-				// Check label propagation to Tasks. Presize map with len(pr.ObjectMeta.Labels)
-				// for custom labels, +2 for the labels added in the PipelineRun controller,
-				// and +1 for the label added in the TaskRun controller.
-				labels := make(map[string]string, len(pr.ObjectMeta.Labels)+3)
-				for key, val := range pr.ObjectMeta.Labels {
-					labels[key] = val
-				}
-				// These labels are added to every TaskRun by the PipelineRun controller
-				labels[pipeline.GroupName+pipeline.PipelineLabelKey] = getName(pipelineName, i)
-				labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = getName(pipelineRunName, i)
-				assertLabelsMatch(t, labels, r.ObjectMeta.Labels)
-
-				// Check label propagation to Pods. This label is added to every Pod by the TaskRun controller
-				labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = taskRunName
-				assertLabelsMatch(t, labels, getPodForTaskRun(t, c.KubeClient, namespace, r).ObjectMeta.Labels)
+				logger.Infof("Checking that labels were propagated correctly for TaskRun %s", r.Name)
+				checkLabelPropagation(t, c, namespace, prName, r)
 			}
 
 			matchKinds := map[string][]string{"PipelineRun": {prName}, "TaskRun": expectedTaskRunNames}
@@ -387,6 +374,55 @@ func collectMatchingEvents(kubeClient *knativetest.KubeClient, namespace string,
 			return events, nil
 		}
 	}
+}
+
+// checkLabelPropagation checks that labels are correctly propagating from
+// Pipelines, PipelineRuns, and Tasks to TaskRuns and Pods.
+func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1alpha1.TaskRun) {
+	// Our controllers add 4 labels automatically. If custom labels are set on
+	// the Pipeline, PipelineRun, or Task then the map will have to be resized.
+	labels := make(map[string]string, 4)
+
+	// Check label propagation to PipelineRuns.
+	pr, err := c.PipelineRunClient.Get(pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected PipelineRun for %s: %s", tr.Name, err)
+	}
+	p, err := c.PipelineClient.Get(pr.Spec.PipelineRef.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected Pipeline for %s: %s", pr.Name, err)
+	}
+	for key, val := range p.ObjectMeta.Labels {
+		labels[key] = val
+	}
+	// This label is added to every PipelineRun by the PipelineRun controller
+	labels[pipeline.GroupName+pipeline.PipelineLabelKey] = p.Name
+	assertLabelsMatch(t, labels, pr.ObjectMeta.Labels)
+
+	// Check label propagation to TaskRuns.
+	for key, val := range pr.ObjectMeta.Labels {
+		labels[key] = val
+	}
+	// This label is added to every TaskRun by the PipelineRun controller
+	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
+	if tr.Spec.TaskRef != nil {
+		task, err := c.TaskClient.Get(tr.Spec.TaskRef.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Couldn't get expected Task for %s: %s", tr.Name, err)
+		}
+		for key, val := range task.ObjectMeta.Labels {
+			labels[key] = val
+		}
+		// This label is added to TaskRuns that reference a Task by the TaskRun controller
+		labels[pipeline.GroupName+pipeline.TaskLabelKey] = task.Name
+	}
+	assertLabelsMatch(t, labels, tr.ObjectMeta.Labels)
+
+	// Check label propagation to Pods.
+	pod := getPodForTaskRun(t, c.KubeClient, namespace, tr)
+	// This label is added to every Pod by the TaskRun controller
+	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = tr.Name
+	assertLabelsMatch(t, labels, pod.ObjectMeta.Labels)
 }
 
 func getPodForTaskRun(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1alpha1.TaskRun) *corev1.Pod {

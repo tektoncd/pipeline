@@ -171,7 +171,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return err
 	}
 
-	// Reconcile this copy of the task run and then write back any status
+	// Reconcile this copy of the task run and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
 	err = c.reconcile(ctx, pr)
 	if equality.Semantic.DeepEqual(original.Status, pr.Status) {
@@ -183,6 +183,15 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Warn("Failed to update PipelineRun status", zap.Error(err))
 		c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update")
 		return err
+	}
+	// Since we are using the status subresource, it is not possible to update
+	// the status and labels simultaneously.
+	if !reflect.DeepEqual(original.ObjectMeta.Labels, pr.ObjectMeta.Labels) {
+		if _, err := c.updateLabels(pr); err != nil {
+			c.Logger.Warn("Failed to update PipelineRun labels", zap.Error(err))
+			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update labels")
+			return err
+		}
 	}
 
 	if err == nil {
@@ -224,6 +233,15 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	// Apply parameter templating from the PipelineRun
 	p = resources.ApplyParameters(p, pr)
+
+	// Propagate labels from Pipeline to PipelineRun.
+	if pr.ObjectMeta.Labels == nil {
+		pr.ObjectMeta.Labels = make(map[string]string, len(p.ObjectMeta.Labels)+1)
+	}
+	for key, value := range p.ObjectMeta.Labels {
+		pr.ObjectMeta.Labels[key] = value
+	}
+	pr.ObjectMeta.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = p.Name
 
 	pipelineState, err := resources.ResolvePipelineRun(
 		*pr,
@@ -360,11 +378,11 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 		taskRunTimeout = nil
 	}
 
-	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+2)
+	// Propagate labels from PipelineRun to TaskRun.
+	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
 	for key, val := range pr.ObjectMeta.Labels {
 		labels[key] = val
 	}
-	labels[pipeline.GroupName+pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
 	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
 
 	tr := &v1alpha1.TaskRun{
@@ -400,6 +418,18 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	if !reflect.DeepEqual(pr.Status, newPr.Status) {
 		newPr.Status = pr.Status
 		return c.PipelineClientSet.TektonV1alpha1().PipelineRuns(pr.Namespace).UpdateStatus(newPr)
+	}
+	return newPr, nil
+}
+
+func (c *Reconciler) updateLabels(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
+	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting PipelineRun %s when updating labels: %s", pr.Name, err)
+	}
+	if !reflect.DeepEqual(pr.ObjectMeta.Labels, newPr.ObjectMeta.Labels) {
+		newPr.ObjectMeta.Labels = pr.ObjectMeta.Labels
+		return c.PipelineClientSet.TektonV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
 }

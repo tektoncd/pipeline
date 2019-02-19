@@ -272,9 +272,12 @@ func TestReconcile(t *testing.T) {
 		wantPodVolume          []corev1.Volume
 		wantSteps              []corev1.Container
 	}{{
-		name:          "success",
-		taskRun:       taskRunSuccess,
-		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-run-success"},
+		name:    "success",
+		taskRun: taskRunSuccess,
+		wantPodLabels: map[string]string{
+			"tekton.dev/task":    "test-task",
+			"tekton.dev/taskRun": "test-taskrun-run-success",
+		},
 		wantOwnerReferences: []metav1.OwnerReference{{
 			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
@@ -362,9 +365,12 @@ func TestReconcile(t *testing.T) {
 			},
 		}},
 	}, {
-		name:          "serviceaccount",
-		taskRun:       taskRunWithSaSuccess,
-		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-with-sa-run-success"},
+		name:    "serviceaccount",
+		taskRun: taskRunWithSaSuccess,
+		wantPodLabels: map[string]string{
+			"tekton.dev/task":    "test-with-sa",
+			"tekton.dev/taskRun": "test-taskrun-with-sa-run-success",
+		},
 		wantOwnerReferences: []metav1.OwnerReference{{
 			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
@@ -452,9 +458,12 @@ func TestReconcile(t *testing.T) {
 			},
 		}},
 	}, {
-		name:          "params",
-		taskRun:       taskRunTemplating,
-		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-templating"},
+		name:    "params",
+		taskRun: taskRunTemplating,
+		wantPodLabels: map[string]string{
+			"tekton.dev/task":    "test-task-with-templating",
+			"tekton.dev/taskRun": "test-taskrun-templating",
+		},
 		wantOwnerReferences: []metav1.OwnerReference{{
 			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
@@ -597,9 +606,12 @@ func TestReconcile(t *testing.T) {
 			},
 		}},
 	}, {
-		name:          "wrap-steps",
-		taskRun:       taskRunInputOutput,
-		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-input-output"},
+		name:    "wrap-steps",
+		taskRun: taskRunInputOutput,
+		wantPodLabels: map[string]string{
+			"tekton.dev/task":    "test-output-task",
+			"tekton.dev/taskRun": "test-taskrun-input-output",
+		},
 		wantOwnerReferences: []metav1.OwnerReference{{
 			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",
@@ -962,9 +974,12 @@ func TestReconcile(t *testing.T) {
 			},
 		}},
 	}, {
-		name:          "success-with-cluster-task",
-		taskRun:       taskRunWithClusterTask,
-		wantPodLabels: map[string]string{"tekton.dev/taskRun": "test-taskrun-with-cluster-task"},
+		name:    "success-with-cluster-task",
+		taskRun: taskRunWithClusterTask,
+		wantPodLabels: map[string]string{
+			"tekton.dev/task":    "test-cluster-task",
+			"tekton.dev/taskRun": "test-taskrun-with-cluster-task",
+		},
 		wantOwnerReferences: []metav1.OwnerReference{{
 			APIVersion:         "tekton.dev/v1alpha1",
 			Kind:               "TaskRun",

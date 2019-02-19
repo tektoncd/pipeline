@@ -184,6 +184,15 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Warn("Failed to update taskRun status", zap.Error(err))
 		return err
 	}
+	// Since we are using the status subresource, it is not possible to update
+	// the status and labels simultaneously.
+	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) {
+		if _, err := c.updateLabels(tr); err != nil {
+			c.Logger.Warn("Failed to update TaskRun labels", zap.Error(err))
+			return err
+		}
+	}
+
 	return err
 }
 
@@ -220,7 +229,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	getTaskFunc := c.getTaskFunc(tr)
-	spec, taskName, err := resources.GetTaskSpec(&tr.Spec, tr.Name, getTaskFunc)
+	taskMeta, taskSpec, err := resources.GetTaskData(tr, getTaskFunc)
 	if err != nil {
 		c.Logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -232,15 +241,26 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
+	// Propagate labels from Task to TaskRun.
+	if tr.ObjectMeta.Labels == nil {
+		tr.ObjectMeta.Labels = make(map[string]string, len(taskMeta.Labels)+1)
+	}
+	for key, value := range taskMeta.Labels {
+		tr.ObjectMeta.Labels[key] = value
+	}
+	if tr.Spec.TaskRef != nil {
+		tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
+	}
+
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
-	if timedOut, err := c.checkTimeout(tr, spec, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete); err != nil {
+	if timedOut, err := c.checkTimeout(tr, taskSpec, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete); err != nil {
 		return err
 	} else if timedOut {
 		return nil
 	}
 
-	rtr, err := resources.ResolveTaskResources(spec, taskName, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -344,13 +364,25 @@ func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1a
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
 	newtaskrun, err := c.taskRunLister.TaskRuns(taskrun.Namespace).Get(taskrun.Name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error getting TaskRun %s when updating status: %s", taskrun.Name, err)
 	}
 	if !reflect.DeepEqual(taskrun.Status, newtaskrun.Status) {
 		newtaskrun.Status = taskrun.Status
 		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(taskrun.Namespace).UpdateStatus(newtaskrun)
 	}
 	return newtaskrun, nil
+}
+
+func (c *Reconciler) updateLabels(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
+	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting TaskRun %s when updating labels: %s", tr.Name, err)
+	}
+	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) {
+		newTr.ObjectMeta.Labels = tr.ObjectMeta.Labels
+		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(tr.Namespace).Update(newTr)
+	}
+	return newTr, nil
 }
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a
@@ -477,7 +509,7 @@ func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, tr 
 	return b, nil
 }
 
-// makeLabels constructs the labels we will apply to TaskRun resources.
+// makeLabels constructs the labels we will propagate from TaskRuns to Pods.
 func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
 	for k, v := range s.ObjectMeta.Labels {
