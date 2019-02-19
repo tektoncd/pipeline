@@ -328,10 +328,10 @@ resource definition.
 
 # Pipeline
 
-A [`Pipeline`](pipelines.md) defines a list of tasks to execute, while
-also indicating if any outputs should be used as inputs of a following task by
-using [the `from` field](pipelines.md#from). The same templating you used in
-tasks is also available in pipeline.
+A [`Pipeline`](pipelines.md) defines a list of tasks to execute, while also
+indicating if any outputs should be used as inputs of a following task by using
+[the `from` field](pipelines.md#from). The same templating you used in tasks is
+also available in pipeline.
 
 For example:
 

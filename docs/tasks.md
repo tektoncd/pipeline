@@ -89,31 +89,31 @@ spec:
   serviceAccountName: task-auth-example
   inputs:
     resources:
-    - name: workspace
-      type: git
+      - name: workspace
+        type: git
     params:
-    - name: pathToDockerFile
-      description: The path to the dockerfile to build
-      default: /workspace/workspace/Dockerfile
+      - name: pathToDockerFile
+        description: The path to the dockerfile to build
+        default: /workspace/workspace/Dockerfile
   outputs:
     resources:
-    - name: builtImage
-      type: image
+      - name: builtImage
+        type: image
   steps:
-  - name: ubuntu-example
-    image: ubuntu
-    args: ["ubuntu-build-example", "SECRETS-example.md"]
-  - image: gcr.io/example-builders/build-example
-    args: ['echo', '${inputs.resources.params.pathToDockerFile}']
-  - name: dockerfile-pushexample
-    image: gcr.io/example-builders/push-example
-    args: ["push", "${outputs.resources.builtImage.url}"]
-    volumeMounts:
-    - name: docker-socket-example
-      mountPath: /var/run/docker.sock
+    - name: ubuntu-example
+      image: ubuntu
+      args: ["ubuntu-build-example", "SECRETS-example.md"]
+    - image: gcr.io/example-builders/build-example
+      args: ["echo", "${inputs.resources.params.pathToDockerFile}"]
+    - name: dockerfile-pushexample
+      image: gcr.io/example-builders/push-example
+      args: ["push", "${outputs.resources.builtImage.url}"]
+      volumeMounts:
+        - name: docker-socket-example
+          mountPath: /var/run/docker.sock
   volumes:
-  - name: example-volume
-    emptyDir: {}
+    - name: example-volume
+      emptyDir: {}
 ```
 
 ### Steps
@@ -308,7 +308,9 @@ For example, use volumes to accomplish one of the following common tasks:
 - [Mount a Kubernetes secret](./auth.md).
 - Create an `emptyDir` volume to act as a cache for use across multiple build
   steps. Consider using a persistent volume for inter-build caching.
-- Mount [Kubernetes configmap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/) as volume source.
+- Mount
+  [Kubernetes configmap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)
+  as volume source.
 - Mount a host's Docker socket to use a `Dockerfile` for container image builds.
   **Note:** Building a container image using `docker build` on-cluster is _very
   unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
@@ -338,7 +340,10 @@ To access an input parameter, replace `resources` with `params`.
 ```shell
 ${inputs.params.<name>}
 ```
-**Note**: Task volume names and volume source(current support includes only configmap) can also be parameterized as shown in [example](#using-kubernetes-configmap-as-volume-source)
+
+**Note**: Task volume names and volume source(current support includes only
+configmap) can also be parameterized as shown in
+[example](#using-kubernetes-configmap-as-volume-source)
 
 ## Examples
 
@@ -437,16 +442,16 @@ spec:
       emptyDir: {}
 ```
 
-####  Using Kubernetes Configmap as Volume Source
+#### Using Kubernetes Configmap as Volume Source
 
 ```yaml
 spec:
   inputs:
     params:
-    - name: CFGNAME
-      description: Name of config map
-    - name: volumeName
-      description: Name of volume
+      - name: CFGNAME
+        description: Name of config map
+      - name: volumeName
+        description: Name of volume
   steps:
     - image: ubuntu
       entrypoint: ["bash"]
@@ -456,9 +461,9 @@ spec:
           mountPath: /var/configmap
 
   volumes:
-  - name: "${inputs.params.volumeName}"
-    configMap:
-      name: "${inputs.params.CFGNAME}"
+    - name: "${inputs.params.volumeName}"
+      configMap:
+        name: "${inputs.params.CFGNAME}"
 ```
 
 Except as otherwise noted, the content of this page is licensed under the

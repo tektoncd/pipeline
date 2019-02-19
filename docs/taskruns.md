@@ -153,7 +153,6 @@ of the `TaskRun` resource object.
 For examples and more information about specifying service accounts, see the
 [`ServiceAccount`](./auth.md) reference topic.
 
-
 ### Overriding where resources are copied from
 
 When specifying input and output `PipelineResources`, you can optionally specify

@@ -189,8 +189,8 @@ The Cluster resource has the following parameters:
   certificates bundle).
 
 Note: Since only one authentication technique is allowed per user, either a
-`token` or a `password` should be provided, if both are provided, the `password` will
-be ignored.
+`token` or a `password` should be provided, if both are provided, the `password`
+will be ignored.
 
 The following example shows the syntax and structure of a Cluster Resource:
 

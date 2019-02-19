@@ -5,8 +5,12 @@ This directory contains examples of [the Pipeline CRDs](../README.md) in action.
 To deploy them to your cluster (after
 [installing the CRDs and running the controller](../DEVELOPMENT.md#getting-started)):
 
-In few examples to demonstrate tasks that push image to registry, sample URL `gcr.io/christiewilson-catfactory` is used. To run these examples yourself, you will need to change the values of this sample registry URL to a registry you can push to from inside
-your cluster. If you are following instructions [here](../DEVELOPMENT.md#getting-started) to setup then use the value of `${KO_DOCKER_REPO}` instead of `gcr.io/christiewilson-catfactory`.
+In few examples to demonstrate tasks that push image to registry, sample URL
+`gcr.io/christiewilson-catfactory` is used. To run these examples yourself, you
+will need to change the values of this sample registry URL to a registry you can
+push to from inside your cluster. If you are following instructions
+[here](../DEVELOPMENT.md#getting-started) to setup then use the value of
+`${KO_DOCKER_REPO}` instead of `gcr.io/christiewilson-catfactory`.
 
 ```bash
 # To invoke the build-push Task only
@@ -24,8 +28,8 @@ kubectl apply -f examples/taskruns/resource-spec-taskrun.yaml
 
 ## Results
 
-You can track the progress of your taskruns and pipelineruns with this command, which will also
-format the output nicely.
+You can track the progress of your taskruns and pipelineruns with this command,
+which will also format the output nicely.
 
 ```shell
 $ kubectl get taskruns -o=custom-columns-file=./test/columns.txt

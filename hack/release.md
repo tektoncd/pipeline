@@ -100,9 +100,10 @@ a git annotated tag).
 
 #### Release notes
 
-Release notes will need to be manually collected for the release by looking at the
-`Release Notes` section of every PR which has been merged between the last release
-and the current one.
+Release notes will need to be manually collected for the release by looking at
+the `Release Notes` section of every PR which has been merged between the last
+release and the current one.
 
-Visiting [github.com/knative/build-pipeline/compare](https://github.com/knative/build-pipeline/compare)
+Visiting
+[github.com/knative/build-pipeline/compare](https://github.com/knative/build-pipeline/compare)
 will allow you to compare changes between git tags.
