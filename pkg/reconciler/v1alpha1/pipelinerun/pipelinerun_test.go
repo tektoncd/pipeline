@@ -180,7 +180,7 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// Check that the PipelineRun was reconciled correctly
-	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
+	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 	}
@@ -461,7 +461,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	}
 
 	// Check that the PipelineRun was reconciled correctly
-	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-completed", metav1.GetOptions{})
+	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-completed", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
 	}
@@ -527,7 +527,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	}
 
 	// Check that the PipelineRun was reconciled correctly
-	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-cancelled", metav1.GetOptions{})
+	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-cancelled", metav1.GetOptions{})
 
 	// This PipelineRun should still be complete and false, and the status should reflect that
 	if !reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsFalse() {
@@ -568,7 +568,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 	}
 
 	// Check that the PipelineRun was reconciled correctly
-	reconciledRun, err := clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
+	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
 	}
@@ -624,7 +624,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	}
 
 	// Check that the PipelineRun was reconciled correctly
-	_, err = clients.Pipeline.Pipeline().PipelineRuns("foo").Get("test-pipeline-run-with-labels", metav1.GetOptions{})
+	_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-labels", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
 	}

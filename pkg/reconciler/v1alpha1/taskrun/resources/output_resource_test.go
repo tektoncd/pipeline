@@ -38,7 +38,7 @@ var (
 func outputResourceSetup() {
 	fakeClient := fakeclientset.NewSimpleClientset()
 	sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
-	pipelineResourceInformer := sharedInfomer.Pipeline().V1alpha1().PipelineResources()
+	pipelineResourceInformer := sharedInfomer.Tekton().V1alpha1().PipelineResources()
 	outputpipelineResourceLister = pipelineResourceInformer.Lister()
 
 	rs := []*v1alpha1.PipelineResource{{
