@@ -49,7 +49,7 @@ type clusterTasks struct {
 }
 
 // newClusterTasks returns a ClusterTasks
-func newClusterTasks(c *PipelineV1alpha1Client) *clusterTasks {
+func newClusterTasks(c *TektonV1alpha1Client) *clusterTasks {
 	return &clusterTasks{
 		client: c.RESTClient(),
 	}

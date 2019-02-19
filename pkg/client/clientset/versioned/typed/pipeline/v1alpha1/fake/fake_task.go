@@ -27,7 +27,7 @@ import (
 
 // FakeTasks implements TaskInterface
 type FakeTasks struct {
-	Fake *FakePipelineV1alpha1
+	Fake *FakeTektonV1alpha1
 	ns   string
 }
 

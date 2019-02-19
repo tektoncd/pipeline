@@ -51,7 +51,7 @@ type taskRuns struct {
 }
 
 // newTaskRuns returns a TaskRuns
-func newTaskRuns(c *PipelineV1alpha1Client, namespace string) *taskRuns {
+func newTaskRuns(c *TektonV1alpha1Client, namespace string) *taskRuns {
 	return &taskRuns{
 		client: c.RESTClient(),
 		ns:     namespace,

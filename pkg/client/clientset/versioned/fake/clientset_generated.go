@@ -17,8 +17,8 @@ package fake
 
 import (
 	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
-	pipelinev1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
-	fakepipelinev1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1/fake"
+	tektonv1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	faketektonv1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -68,12 +68,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// PipelineV1alpha1 retrieves the PipelineV1alpha1Client
-func (c *Clientset) PipelineV1alpha1() pipelinev1alpha1.PipelineV1alpha1Interface {
-	return &fakepipelinev1alpha1.FakePipelineV1alpha1{Fake: &c.Fake}
+// TektonV1alpha1 retrieves the TektonV1alpha1Client
+func (c *Clientset) TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface {
+	return &faketektonv1alpha1.FakeTektonV1alpha1{Fake: &c.Fake}
 }
 
-// Pipeline retrieves the PipelineV1alpha1Client
-func (c *Clientset) Pipeline() pipelinev1alpha1.PipelineV1alpha1Interface {
-	return &fakepipelinev1alpha1.FakePipelineV1alpha1{Fake: &c.Fake}
+// Tekton retrieves the TektonV1alpha1Client
+func (c *Clientset) Tekton() tektonv1alpha1.TektonV1alpha1Interface {
+	return &faketektonv1alpha1.FakeTektonV1alpha1{Fake: &c.Fake}
 }
