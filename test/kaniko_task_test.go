@@ -99,7 +99,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	}
 	if withSecretConfig {
 		stepOps = append(stepOps,
-			tb.VolumeMount(corev1.VolumeMount{Name: "kaniko-secret", MountPath: "/secrets"}),
+			tb.VolumeMount("kaniko-secret", "/secrets"),
 			tb.EnvVar("GOOGLE_APPLICATION_CREDENTIALS", "/secrets/config.json"),
 		)
 		taskSpecOps = append(taskSpecOps, tb.TaskVolume("kaniko-secret", tb.VolumeSource(corev1.VolumeSource{

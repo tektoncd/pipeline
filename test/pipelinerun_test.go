@@ -98,7 +98,7 @@ func TestPipelineRun(t *testing.T) {
 				tb.Step("config-docker", "gcr.io/cloud-builders/docker",
 					tb.Command("docker"),
 					tb.Args("pull", "gcr.io/build-crd-testing/secret-sauce"),
-					tb.VolumeMount(corev1.VolumeMount{Name: "docker-socket", MountPath: "/var/run/docker.sock"}),
+					tb.VolumeMount("docker-socket", "/var/run/docker.sock"),
 				),
 				tb.TaskVolume("docker-socket", tb.VolumeSource(corev1.VolumeSource{
 					HostPath: &corev1.HostPathVolumeSource{
