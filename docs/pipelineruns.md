@@ -15,6 +15,7 @@ Creation of a `PipelineRun` will trigger the creation of
 - [Syntax](#syntax)
   - [Resources](#resources)
   - [Service account](#service-account)
+- [Labels](#labels)
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
 - [Examples](#examples)
 
