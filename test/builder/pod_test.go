@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Knative Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -18,35 +18,42 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/knative/build-pipeline/test/builder"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestBuild(t *testing.T) {
+func TestPod(t *testing.T) {
 	trueB := true
 	volume := corev1.Volume{
 		Name:         "tools-volume",
 		VolumeSource: corev1.VolumeSource{},
 	}
-	build := tb.Build("build-foo", "foo",
-		tb.BuildLabel("label", "label-value"),
-		tb.BuildOwnerReference("TaskRun", "taskrun-foo",
+	pod := tb.Pod("foo-pod-123456", "foo",
+		tb.PodAnnotation("annotation", "annotation-value"),
+		tb.PodLabel("label", "label-value"),
+		tb.PodOwnerReference("TaskRun", "taskrun-foo",
 			tb.OwnerReferenceAPIVersion("a1")),
-		tb.BuildSpec(
-			tb.BuildServiceAccountName("sa"),
-			tb.BuildStep("simple-step", "foo",
-				tb.Command("/mycmd"), tb.Args("my", "args"),
+		tb.PodSpec(
+			tb.PodServiceAccountName("sa"),
+			tb.PodRestartPolicy(corev1.RestartPolicyNever),
+			tb.PodContainer("nop", "nop:latest"),
+			tb.PodInitContainer("basic", "ubuntu",
+				tb.Command("/bin/sh"),
+				tb.Args("-c", "ls -l"),
+				tb.WorkingDir("/workspace"),
+				tb.EnvVar("HOME", "/builder/home"),
 				tb.VolumeMount("tools-volume", "/tools"),
 			),
-			tb.BuildSource("foo", tb.BuildSourceGit("https://foo.git", "master")),
-			tb.BuildVolume(volume),
+			tb.PodVolumes(volume),
 		),
 	)
-	expectedBuild := &buildv1alpha1.Build{
+	expectedPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
-			Name:      "build-foo",
+			Name:      "foo-pod-123456",
+			Annotations: map[string]string{
+				"annotation": "annotation-value",
+			},
 			Labels: map[string]string{
 				"label": "label-value",
 			},
@@ -58,26 +65,32 @@ func TestBuild(t *testing.T) {
 				BlockOwnerDeletion: &trueB,
 			}},
 		},
-		Spec: buildv1alpha1.BuildSpec{
+		Spec: corev1.PodSpec{
 			ServiceAccountName: "sa",
-			Steps: []corev1.Container{{
-				Name:    "simple-step",
-				Image:   "foo",
-				Command: []string{"/mycmd"},
-				Args:    []string{"my", "args"},
+			RestartPolicy:      corev1.RestartPolicyNever,
+			Containers: []corev1.Container{{
+				Name:  "nop",
+				Image: "nop:latest",
+			}},
+			InitContainers: []corev1.Container{{
+				Name:       "basic",
+				Image:      "ubuntu",
+				Command:    []string{"/bin/sh"},
+				Args:       []string{"-c", "ls -l"},
+				WorkingDir: "/workspace",
+				Env: []corev1.EnvVar{{
+					Name:  "HOME",
+					Value: "/builder/home",
+				}},
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "tools-volume",
 					MountPath: "/tools",
 				}},
 			}},
-			Sources: []buildv1alpha1.SourceSpec{{
-				Name: "foo",
-				Git:  &buildv1alpha1.GitSourceSpec{Url: "https://foo.git", Revision: "master"},
-			}},
 			Volumes: []corev1.Volume{volume},
 		},
 	}
-	if d := cmp.Diff(expectedBuild, build); d != "" {
-		t.Fatalf("Build diff -want, +got: %v", d)
+	if d := cmp.Diff(expectedPod, pod); d != "" {
+		t.Fatalf("Pod diff -want, +got: %v", d)
 	}
 }

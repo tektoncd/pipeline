@@ -110,11 +110,11 @@ func getClusterResourceTask(namespace, name, resName, configName string) *v1alph
 			tb.Command("cat"), tb.Args("/workspace/helloworld-cluster/kubeconfig"),
 		),
 		tb.Step("check-config-data", "ubuntu", tb.Command("cat"), tb.Args("/config/test.data"),
-			tb.VolumeMount(corev1.VolumeMount{Name: "config-vol", MountPath: "/config"}),
+			tb.VolumeMount("config-vol", "/config"),
 		),
 		tb.Step("check-contents", "ubuntu",
 			tb.Command("bash"), tb.Args("-c", "cmp -b /workspace/helloworld-cluster/kubeconfig /config/test.data"),
-			tb.VolumeMount(corev1.VolumeMount{Name: "config-vol", MountPath: "/config"}),
+			tb.VolumeMount("config-vol", "/config"),
 		),
 	))
 }
