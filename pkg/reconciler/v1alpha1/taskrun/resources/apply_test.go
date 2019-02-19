@@ -29,22 +29,31 @@ import (
 
 var simpleBuild = &buildv1alpha1.Build{
 	Spec: buildv1alpha1.BuildSpec{
-		Steps: []corev1.Container{
-			{
-				Name:  "foo",
-				Image: "${inputs.params.myimage}",
-			},
-			{
-				Name:  "baz",
-				Image: "bat",
-				Args:  []string{"${inputs.resources.workspace.url}"},
-			},
-			{
-				Name:  "qux",
-				Image: "quux",
-				Args:  []string{"${outputs.resources.imageToUse.url}"},
-			},
-		},
+		Steps: []corev1.Container{{
+			Name:  "foo",
+			Image: "${inputs.params.myimage}",
+		}, {
+			Name:  "baz",
+			Image: "bat",
+			Args:  []string{"${inputs.resources.workspace.url}"},
+		}, {
+			Name:  "qux",
+			Image: "quux",
+			Args:  []string{"${outputs.resources.imageToUse.url}"},
+		}},
+	},
+}
+var volumeMountBuild = &buildv1alpha1.Build{
+	Spec: buildv1alpha1.BuildSpec{
+		Steps: []corev1.Container{{
+			Name:  "foo",
+			Image: "busybox:${inputs.params.FOO}",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "${inputs.params.FOO}",
+				MountPath: "path/to/${inputs.params.FOO}",
+				SubPath:   "sub/${inputs.params.FOO}/path",
+			}},
+		}},
 	},
 }
 
@@ -121,34 +130,52 @@ func TestApplyParameters(t *testing.T) {
 		name string
 		args args
 		want *buildv1alpha1.Build
-	}{
-		{
-			name: "single parameter",
-			args: args{
-				b:  simpleBuild,
-				tr: paramTaskRun,
-			},
-			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
-				b.Spec.Steps[0].Image = "bar"
-			}),
+	}{{
+		name: "single parameter",
+		args: args{
+			b:  simpleBuild,
+			tr: paramTaskRun,
 		},
-		{
-			name: "with default parameter",
-			args: args{
-				b:  simpleBuild,
-				tr: &v1alpha1.TaskRun{},
-				dp: []v1alpha1.TaskParam{
-					{
-						Name:    "myimage",
-						Default: "mydefault",
+		want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
+			b.Spec.Steps[0].Image = "bar"
+		}),
+	}, {
+		name: "volume mount parameter",
+		args: args{
+			b: volumeMountBuild,
+			tr: &v1alpha1.TaskRun{
+				Spec: v1alpha1.TaskRunSpec{
+					Inputs: v1alpha1.TaskRunInputs{
+						Params: []v1alpha1.Param{{
+							Name:  "FOO",
+							Value: "world",
+						}},
 					},
 				},
 			},
-			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
-				b.Spec.Steps[0].Image = "mydefault"
-			}),
 		},
-	}
+		want: applyMutation(volumeMountBuild, func(b *buildv1alpha1.Build) {
+			b.Spec.Steps[0].VolumeMounts[0].Name = "world"
+			b.Spec.Steps[0].VolumeMounts[0].SubPath = "sub/world/path"
+			b.Spec.Steps[0].VolumeMounts[0].MountPath = "path/to/world"
+			b.Spec.Steps[0].Image = "busybox:world"
+		}),
+	}, {
+		name: "with default parameter",
+		args: args{
+			b:  simpleBuild,
+			tr: &v1alpha1.TaskRun{},
+			dp: []v1alpha1.TaskParam{
+				{
+					Name:    "myimage",
+					Default: "mydefault",
+				},
+			},
+		},
+		want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
+			b.Spec.Steps[0].Image = "mydefault"
+		}),
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ApplyParameters(tt.args.b, tt.args.tr, tt.args.dp...)
@@ -308,6 +335,72 @@ func TestVolumeReplacement(t *testing.T) {
 						},
 					}},
 				},
+			},
+		},
+	}, {
+		name: "volume secretname",
+		b: &buildv1alpha1.Build{
+			Spec: buildv1alpha1.BuildSpec{
+				Volumes: []corev1.Volume{{
+					Name: "${name}",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							"${secretname}",
+							nil,
+							nil,
+							nil,
+						},
+					}},
+				},
+			},
+		},
+		repl: map[string]string{
+			"name":       "mysecret",
+			"secretname": "totallysecure",
+		},
+		want: &buildv1alpha1.Build{
+			Spec: buildv1alpha1.BuildSpec{
+				Volumes: []corev1.Volume{{
+					Name: "mysecret",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							"totallysecure",
+							nil,
+							nil,
+							nil,
+						},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "volume PVC name",
+		b: &buildv1alpha1.Build{
+			Spec: buildv1alpha1.BuildSpec{
+				Volumes: []corev1.Volume{{
+					Name: "${name}",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "${FOO}",
+						},
+					},
+				}},
+			},
+		},
+		repl: map[string]string{
+			"name": "mypvc",
+			"FOO":  "pvcrocks",
+		},
+		want: &buildv1alpha1.Build{
+			Spec: buildv1alpha1.BuildSpec{
+				Volumes: []corev1.Volume{{
+					Name: "mypvc",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "pvcrocks",
+						},
+					},
+				}},
 			},
 		},
 	}}
