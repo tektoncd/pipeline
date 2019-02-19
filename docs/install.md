@@ -1,45 +1,37 @@
-# Installing the Knative Pipelines component
+# Installing Tekton Pipelines
 
-Before you can run Knative Pipelines, you must install the Knative Pipelines components
-in your Kubernetes cluster. Use this page to add the component to an existing 
-Kubernetes cluster.
+Use this page to add the component to an existing Kubernetes cluster.
 
-## Before you begin
+## Adding the Tekton Pipelines
 
-Pipelines can be installed and run on a Kubernetes cluster without any Knative dependencies. 
-
-For complete installation instructions of Knative components, see [Installing Knative](https://github.com/knative/docs/blob/master/install/README.md).
-
-## Adding the Knative Pipelines component
-
-To add only the Knative Pipelines component to an existing installation:
+To add the Tekton Pipelines component to an existing cluster:
 
 1. Run the
    [`kubectl apply`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#apply)
-   command to install [Knative Pipelines](https://github.com/knative/build-pipeline) and its
+   command to install [Tekton Pipelines](https://github.com/knative/build-pipeline) and its
    dependencies:
    ```bash
-   kubectl apply --filename https://storage.googleapis.com/knative-releases/build-pipeline/latest/release.yaml
+   kubectl apply --filename https://storage.googleapis.com/tekton-pipeline-releases/latest/release.yaml
    ```
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
-   command to monitor the Knative Pipelines components until all of the components
+   command to monitor the Tekton Pipelines components until all of the components
    show a `STATUS` of `Running`:
 
    ```bash
-   kubectl get pods --namespace knative-build-pipeline
+   kubectl get pods --namespace tekton-pipeline
    ```
 
    Tip: Instead of running the `kubectl get` command multiple times, you can
    append the `--watch` flag to view the component's status updates in real
    time. Use CTRL + C to exit watch mode.
 
-You are now ready to create and run Knative Pipelines: 
- - See [Knative Pipeline tutorial](./tutorial.md) to get started. 
- - Look at [the examples](https://github.com/knative/build-pipeline/tree/master/examples)
+You are now ready to create and run Tekton Pipelines: 
+ - See [Tekton Pipeline tutorial](./tutorial.md) to get started. 
+ - Look at the [examples](https://github.com/knative/build-pipeline/tree/master/examples)
 
 
-## Configuring Knative Pipelines
+## Configuring Tekton Pipelines
 
 ### How are resources shared between tasks?
 
@@ -85,7 +77,7 @@ image can be configured by editing the `image`'s value in a configmap named
 ## Custom Releases
 
 The [release script](./../hack/release.md) can be used for creating a custom 
-release of Knative Pipelines. This can be useful for advanced users that need 
+release of Tekton Pipelines. This can be useful for advanced users that need 
 to configure the container images built and used by the Pipelines components.
 
 
