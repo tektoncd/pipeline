@@ -76,10 +76,10 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	if err != nil {
 		t.Fatalf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
 	}
-	c.PipelineClient = cs.PipelineV1alpha1().Pipelines(namespace)
-	c.TaskClient = cs.PipelineV1alpha1().Tasks(namespace)
-	c.TaskRunClient = cs.PipelineV1alpha1().TaskRuns(namespace)
-	c.PipelineRunClient = cs.PipelineV1alpha1().PipelineRuns(namespace)
-	c.PipelineResourceClient = cs.PipelineV1alpha1().PipelineResources(namespace)
+	c.PipelineClient = cs.TektonV1alpha1().Pipelines(namespace)
+	c.TaskClient = cs.TektonV1alpha1().Tasks(namespace)
+	c.TaskRunClient = cs.TektonV1alpha1().TaskRuns(namespace)
+	c.PipelineRunClient = cs.TektonV1alpha1().PipelineRuns(namespace)
+	c.PipelineResourceClient = cs.TektonV1alpha1().PipelineResources(namespace)
 	return c
 }

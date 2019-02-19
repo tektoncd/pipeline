@@ -348,7 +348,7 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 	}
 	if !reflect.DeepEqual(taskrun.Status, newtaskrun.Status) {
 		newtaskrun.Status = taskrun.Status
-		return c.PipelineClientSet.PipelineV1alpha1().TaskRuns(taskrun.Namespace).UpdateStatus(newtaskrun)
+		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(taskrun.Namespace).UpdateStatus(newtaskrun)
 	}
 	return newtaskrun, nil
 }
