@@ -27,7 +27,7 @@ import (
 
 // FakePipelineResources implements PipelineResourceInterface
 type FakePipelineResources struct {
-	Fake *FakePipelineV1alpha1
+	Fake *FakeTektonV1alpha1
 	ns   string
 }
 

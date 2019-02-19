@@ -27,7 +27,7 @@ import (
 
 // FakeClusterTasks implements ClusterTaskInterface
 type FakeClusterTasks struct {
-	Fake *FakePipelineV1alpha1
+	Fake *FakeTektonV1alpha1
 }
 
 var clustertasksResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1alpha1", Resource: "clustertasks"}
