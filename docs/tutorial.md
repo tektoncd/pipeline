@@ -601,8 +601,8 @@ Tekton Pipelines is known to work with:
 - Logs can remain in-memory only as opposed to sent to a service such as
   [Stackdriver](https://cloud.google.com/logging/).
 
-Elasticsearch can be deployed locally as a means to view logs "after the fact":
-an example is provided at https://github.com/mgreau/knative-elastic-tutorials.
+Elasticsearch, Beats and Kibana can be deployed locally as a means to view logs:
+an example is provided at https://github.com/mgreau/tekton-pipelines-elastic-tutorials.
 
 ## Experimentation
 
