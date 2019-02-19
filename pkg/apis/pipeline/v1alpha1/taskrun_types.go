@@ -147,7 +147,7 @@ type TaskRunStatus struct {
 
 	// Failed Status History
 	// +optional
-	RetriesStatus []TaskRunStatus `json:"retries,omitempty"`
+	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
 }
 
 // GetCondition returns the Condition matching the given type.
