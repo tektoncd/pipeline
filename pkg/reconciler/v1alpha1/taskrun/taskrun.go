@@ -333,11 +333,11 @@ func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1a
 	if bs := buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded); bs != nil {
 		// Build Failure
 		if bs.IsFalse() {
-			// if Retry happnens, don't do anything else
+			// if Retry happens, don't do anything else
 			taskRunStatus := taskRun.Status.DeepCopy()
 			taskRunStatus.Conditions = buildStatus.Conditions
 			if retry(taskRun, taskRunStatus) {
-				//return
+				return
 			}
 		} else {
 			taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
@@ -548,11 +548,14 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 
 func retry(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus) bool {
 
-	if len(tr.Status.Retries) < tr.Spec.Retries {
+	if len(tr.Status.RetriesStatus) < tr.Spec.Retries {
 		tr.Status.StartTime = nil
 		tr.Status.CompletionTime = nil
+		//tr.Status.PodName = nil
+		tr.Status.Steps = nil
+		tr.Status.Results = nil
 
-		tr.Status.Retries = append(tr.Status.Retries, *status)
+		tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, *status)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,

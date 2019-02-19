@@ -1610,14 +1610,12 @@ func TestRetryFailedTaskRun(t *testing.T) {
 		PodName:        "im-am-the-pod",
 		StartTime:      &startTime,
 		CompletionTime: &completionTime,
-		Steps: []v1alpha1.StepState{
-			{
-				ContainerState: *completed.DeepCopy(),
-			},
+		Steps: []v1alpha1.StepState{{
+			ContainerState: *completed.DeepCopy(),
+		},
 			{
 				ContainerState: *failed.DeepCopy(),
-			},
-		},
+			}},
 	}
 
 	expectedStatus := v1alpha1.TaskRunStatus{
@@ -1625,16 +1623,8 @@ func TestRetryFailedTaskRun(t *testing.T) {
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		}},
-		PodName: "im-am-the-pod",
-		Steps: []v1alpha1.StepState{
-			{
-				ContainerState: *completed.DeepCopy(),
-			},
-			{
-				ContainerState: *failed.DeepCopy(),
-			},
-		},
-		Retries: []v1alpha1.TaskRunStatus{retries},
+		PodName:       "im-am-the-pod",
+		RetriesStatus: []v1alpha1.TaskRunStatus{retries},
 	}
 
 	updateStatusFromBuildStatus(taskRun, buildStatus)
@@ -1982,18 +1972,18 @@ func TestReconcileOnFailedTaskRunWithRetry(t *testing.T) {
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
-	if d := len(newTr.Status.Retries); d != 1 {
+	if d := len(newTr.Status.RetriesStatus); d != 1 {
 		t.Fatalf("Status retries unexpected %v", d)
 	}
 
-	if d := cmp.Diff(newTr.Status.Retries[0].GetCondition(duckv1alpha1.ConditionSucceeded).Status, corev1.ConditionFalse, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(newTr.Status.RetriesStatus[0].GetCondition(duckv1alpha1.ConditionSucceeded).Status, corev1.ConditionFalse, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
-	if d := cmp.Diff(newTr.Status.Retries[0].GetCondition(duckv1alpha1.ConditionSucceeded).Reason, reasonTimedOut, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(newTr.Status.RetriesStatus[0].GetCondition(duckv1alpha1.ConditionSucceeded).Reason, reasonTimedOut, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
-	if d := cmp.Diff(newTr.Status.Retries[0].GetCondition(duckv1alpha1.ConditionSucceeded).Message, `TaskRun "test-taskrun-failed-with-retry" failed to finish within "1µs"`, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(newTr.Status.RetriesStatus[0].GetCondition(duckv1alpha1.ConditionSucceeded).Message, `TaskRun "test-taskrun-failed-with-retry" failed to finish within "1µs"`, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
