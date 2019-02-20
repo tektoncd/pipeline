@@ -40,7 +40,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "valid bucket",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 			Data: map[string]string{
@@ -68,7 +68,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "location empty",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 			Data: map[string]string{
@@ -91,7 +91,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "missing location",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 			Data: map[string]string{
@@ -113,7 +113,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "no config map data",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 		},
@@ -131,7 +131,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "no secret",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 			Data: map[string]string{
@@ -200,7 +200,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "valid bucket",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 			Data: map[string]string{
@@ -221,7 +221,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "location empty",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 			Data: map[string]string{
@@ -235,7 +235,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "missing location",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 			Data: map[string]string{
@@ -248,7 +248,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		desc: "no config map data",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      v1alpha1.BucketConfigName,
 			},
 		},

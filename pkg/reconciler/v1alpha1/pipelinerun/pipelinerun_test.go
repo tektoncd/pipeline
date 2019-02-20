@@ -50,7 +50,7 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.TestAssets {
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
-	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.Namespace)
+	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{

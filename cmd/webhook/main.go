@@ -64,7 +64,7 @@ func main() {
 		logger.Fatal("Failed to get the client set", zap.Error(err))
 	}
 	// Watch the logging config map and dynamically update logging levels.
-	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
+	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.GetNamespace())
 	configMapWatcher.Watch(logging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logging.WebhookLogKey))
 	if err = configMapWatcher.Start(stopCh); err != nil {
 		logger.Fatalf("failed to start configuration manager: %v", err)
@@ -73,7 +73,7 @@ func main() {
 	options := webhook.ControllerOptions{
 		ServiceName:    "tekton-pipelines-webhook",
 		DeploymentName: "tekton-pipelines-webhook",
-		Namespace:      system.Namespace,
+		Namespace:      system.GetNamespace(),
 		Port:           443,
 		SecretName:     "webhook-certs",
 		WebhookName:    "webhook.tekton.dev",

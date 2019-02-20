@@ -88,7 +88,7 @@ func main() {
 		logger.Fatalf("Error building pipeline clientset: %v", err)
 	}
 
-	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
+	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.GetNamespace())
 
 	opt := reconciler.Options{
 		KubeClientSet:     kubeClient,

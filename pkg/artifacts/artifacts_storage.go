@@ -43,7 +43,7 @@ type ArtifactStorageInterface interface {
 // InitializeArtifactStorage will check if there is there is a
 // bucket configured or create a PVC
 func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
-	configMap, err := c.CoreV1().ConfigMaps(system.Namespace).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
 	shouldCreatePVC, err := needsPVC(configMap, err, logger)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func needsPVC(configMap *corev1.ConfigMap, err error, logger *zap.SugaredLogger)
 // GetArtifactStorage returns the storage interface to enable
 // consumer code to get a container step for copy to/from storage
 func GetArtifactStorage(prName string, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
-	configMap, err := c.CoreV1().ConfigMaps(system.Namespace).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
 	pvc, err := needsPVC(configMap, err, logger)
 	if err != nil {
 		return nil, err
