@@ -119,6 +119,7 @@ kubectl create clusterrolebinding cluster-admin-binding \
 ```
 
 ### Install in custom namespace
+
 1. To install into a different namespace you will need to modify resources in the `./config` folder
     - remove all `namespace: tekton` references from all yaml files
     - delete the `namespace.yaml` [here](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/100-namespace.yaml)
