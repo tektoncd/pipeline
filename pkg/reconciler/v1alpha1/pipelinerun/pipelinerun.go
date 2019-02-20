@@ -326,6 +326,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	pr.Status.SetCondition(after)
 
+	retry(pr, after)
+
+	reconciler.EmitEvent(c.Recorder, before, after, pr)
+
+	updateTaskRunsStatus(pr, pipelineState)
+
+	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	return nil
+}
+
+func retry(pr *v1alpha1.PipelineRun, after *duckv1alpha1.Condition) {
+
 	if len(pr.Status.RetriesStatus) < pr.Spec.Retries && after != nil && after.IsFalse() {
 		pr.Status.RetriesStatus = append(pr.Status.RetriesStatus, *pr.Status.DeepCopy())
 		pr.Status.StartTime = nil
@@ -334,15 +346,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		pr.Status.TaskRuns = nil
 		pr.Status.TaskRuns = make(map[string]v1alpha1.TaskRunStatus)
 
-		pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Status = corev1.ConditionUnknown
+		pr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		})
 	}
-
-	reconciler.EmitEvent(c.Recorder, before, after, pr)
-
-	updateTaskRunsStatus(pr, pipelineState)
-
-	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
-	return nil
 }
 
 func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask) {
