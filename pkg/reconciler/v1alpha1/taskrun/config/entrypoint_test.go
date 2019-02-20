@@ -40,7 +40,7 @@ func TestEntrypointConfiguration(t *testing.T) {
 		},
 		config: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      EntrypointConfigName,
 			},
 			Data: map[string]string{
@@ -53,7 +53,7 @@ func TestEntrypointConfiguration(t *testing.T) {
 		},
 		config: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: system.Namespace,
+				Namespace: system.GetNamespace(),
 				Name:      EntrypointConfigName,
 			},
 			Data: map[string]string{},
@@ -65,7 +65,7 @@ func TestEntrypointConfiguration(t *testing.T) {
 			},
 			config: &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: system.Namespace,
+					Namespace: system.GetNamespace(),
 					Name:      EntrypointConfigName,
 				},
 			}},
