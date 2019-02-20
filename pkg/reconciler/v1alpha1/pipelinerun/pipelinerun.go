@@ -326,6 +326,17 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	pr.Status.SetCondition(after)
 
+	if len(pr.Status.RetriesStatus) < pr.Spec.Retries && after != nil && after.IsFalse() {
+		pr.Status.RetriesStatus = append(pr.Status.RetriesStatus, *pr.Status.DeepCopy())
+		pr.Status.StartTime = nil
+		pr.Status.CompletionTime = nil
+		pr.Status.Results = nil
+		pr.Status.TaskRuns = nil
+		pr.Status.TaskRuns = make(map[string]v1alpha1.TaskRunStatus)
+
+		pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Status = corev1.ConditionUnknown
+	}
+
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
 	updateTaskRunsStatus(pr, pipelineState)

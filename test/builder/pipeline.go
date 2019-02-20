@@ -300,6 +300,13 @@ func PipelineRunTimeout(duration *metav1.Duration) PipelineRunSpecOp {
 	}
 }
 
+// PipelineRunTimeout sets the number of retries
+func PipelineRunRetries(retries int) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.Retries = retries
+	}
+}
+
 // PipelineRunNodeSelector sets the Node selector to the PipelineSpec.
 func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {

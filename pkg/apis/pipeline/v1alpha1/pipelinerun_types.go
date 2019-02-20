@@ -67,6 +67,9 @@ type PipelineRunSpec struct {
 	// If specified, the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Number of retries
+	// +optional
+	Retries int `json:"retries,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
@@ -128,6 +131,9 @@ type PipelineRunStatus struct {
 	// map of TaskRun Status with the taskRun name as the key
 	//+optional
 	TaskRuns map[string]TaskRunStatus `json:"taskRuns,omitempty"`
+	// Failed Status History
+	// +optional
+	RetriesStatus []PipelineRunStatus `json:"retriesStatus,omitempty"`
 }
 
 var pipelineRunCondSet = duckv1alpha1.NewBatchConditionSet()
