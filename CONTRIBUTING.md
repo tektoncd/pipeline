@@ -1,7 +1,7 @@
 # Contributing to Tekton Pipelines
 
-Welcome to the Tekton Pipelines project! Thanks for considering contributing to our
-project and we hope you'll enjoy it :D
+Welcome to the Tekton Pipelines project! Thanks for considering contributing to
+our project and we hope you'll enjoy it :D
 
 **All contributors must comply with
 [the code of conduct](./code-of-conduct.md).**

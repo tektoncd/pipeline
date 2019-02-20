@@ -56,8 +56,8 @@ repository, specified by the `--branch` flag.
 
 - `--version` Defines the version of the release, and must be in the form
   `X.Y.Z`, where X, Y and Z are numbers.
-- `--branch` Defines the branch in Tekton Pipeline repository from which
-  the release will be built. If not passed, the `master` branch at HEAD will be
+- `--branch` Defines the branch in Tekton Pipeline repository from which the
+  release will be built. If not passed, the `master` branch at HEAD will be
   used. This branch must be created before the script is executed, and must be
   in the form `release-X.Y`, where X and Y must match the numbers used in the
   version passed in the `--version` flag. This flag has no effect unless
@@ -72,9 +72,9 @@ challenge before the release is published.
 
 Since we are currently using
 [the knative release scripts](vendor/github.com/knative/test-infra/scripts/release.sh#L404)
-the title of the release will be _Knative Build Pipeline release vX.Y.Z_ and
-we will manually need to change this to _Tekton Pipeline release vX.Y.Z_.
-It will also be tagged _vX.Y.Z_ (both on GitHub and as a git annotated tag).
+the title of the release will be _Knative Build Pipeline release vX.Y.Z_ and we
+will manually need to change this to _Tekton Pipeline release vX.Y.Z_. It will
+also be tagged _vX.Y.Z_ (both on GitHub and as a git annotated tag).
 
 #### Release notes
 

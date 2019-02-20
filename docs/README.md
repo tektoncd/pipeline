@@ -1,7 +1,7 @@
 # Tekton Pipelines
 
-Tekton Pipelines is an open source implementation to configure and run CI/CD style
-pipelines for your Kubernetes application.
+Tekton Pipelines is an open source implementation to configure and run CI/CD
+style pipelines for your Kubernetes application.
 
 Pipeline creates
 [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
