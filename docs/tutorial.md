@@ -602,7 +602,8 @@ Tekton Pipelines is known to work with:
   [Stackdriver](https://cloud.google.com/logging/).
 
 Elasticsearch, Beats and Kibana can be deployed locally as a means to view logs:
-an example is provided at https://github.com/mgreau/tekton-pipelines-elastic-tutorials.
+an example is provided at
+https://github.com/mgreau/tekton-pipelines-elastic-tutorials.
 
 ## Experimentation
 

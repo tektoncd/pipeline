@@ -3,8 +3,9 @@
 Use the `TaskRun` resource object to create and run on-cluster processes to
 completion.
 
-To create a `TaskRun`, you must first create a [`Task`](tasks.md) which specifies
-one or more container images that you have implemented to perform and complete a task.
+To create a `TaskRun`, you must first create a [`Task`](tasks.md) which
+specifies one or more container images that you have implemented to perform and
+complete a task.
 
 A `TaskRun` runs until all `steps` have completed or until a failure occurs.
 

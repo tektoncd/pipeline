@@ -2,8 +2,8 @@
 
 [![Go Report Card](https://goreportcard.com/badge/knative/build-pipeline)](https://goreportcard.com/report/knative/build-pipeline)
 
-The Tekton Pipelines project provides k8s-style resources for declaring CI/CD-style
-pipelines.
+The Tekton Pipelines project provides k8s-style resources for declaring
+CI/CD-style pipelines.
 
 Tekton Pipelines are **Cloud Native**:
 

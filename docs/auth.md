@@ -28,42 +28,42 @@ aggregates them into their respective files in `$HOME`.
 
 1. Define a `Secret` containing your SSH private key (in `secret.yaml`):
 
-    ```yaml
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: ssh-key
-      annotations:
-        tekton.dev/git-0: https://github.com # Described below
-    type: kubernetes.io/ssh-auth
-    data:
-      ssh-privatekey: <base64 encoded>
-      # This is non-standard, but its use is encouraged to make this more secure.
-      known_hosts: <base64 encoded>
-    ```
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: ssh-key
+     annotations:
+       tekton.dev/git-0: https://github.com # Described below
+   type: kubernetes.io/ssh-auth
+   data:
+     ssh-privatekey: <base64 encoded>
+     # This is non-standard, but its use is encouraged to make this more secure.
+     known_hosts: <base64 encoded>
+   ```
 
-    `tekton.dev/git-0` in the example above specifies which web
-    address these credentials belong to. See
-    [Guiding Credential Selection](#guiding-credential-selection) below for more
-    information.
+   `tekton.dev/git-0` in the example above specifies which web address these
+   credentials belong to. See
+   [Guiding Credential Selection](#guiding-credential-selection) below for more
+   information.
 
 1. Generate the value of `ssh-privatekey` by copying the value of (for example)
-    `cat ~/.ssh/id_rsa | base64`.
+   `cat ~/.ssh/id_rsa | base64`.
 
 1. Copy the value of `cat ~/.ssh/known_hosts | base64` to the `known_hosts`
-    field.
+   field.
 
 1. Next, direct a `ServiceAccount` to use this `Secret` (in
-    `serviceaccount.yaml`):
+   `serviceaccount.yaml`):
 
-    ```yaml
-    apiVersion: v1
-    kind: ServiceAccount
-    metadata:
-      name: build-bot
-    secrets:
-      - name: ssh-key
-    ```
+   ```yaml
+   apiVersion: v1
+   kind: ServiceAccount
+   metadata:
+     name: build-bot
+   secrets:
+     - name: ssh-key
+   ```
 
 1. Then use that `ServiceAccount` in your `TaskRun` (in `run.yaml`):
 
@@ -80,23 +80,23 @@ spec:
 
 1. Or use that `ServiceAccount` in your `PipelineRun` (in `run.yaml`):
 
-    ```yaml
-    apiVersion: tekton.dev/v1alpha1
-    kind: PipelineRun
-    metadata:
-      name: demo-pipeline
-      namespace: default
-    spec:
-      serviceAccount: build-bot
-      pipelineRef:
-        name: demo-pipeline
-    ```
+   ```yaml
+   apiVersion: tekton.dev/v1alpha1
+   kind: PipelineRun
+   metadata:
+     name: demo-pipeline
+     namespace: default
+   spec:
+     serviceAccount: build-bot
+     pipelineRef:
+       name: demo-pipeline
+   ```
 
 1. Execute the `Run`:
 
-    ```shell
-    kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
-    ```
+   ```shell
+   kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
+   ```
 
 When the `Run` executes, before steps execute, a `~/.ssh/config` will be
 generated containing the key configured in the `Secret`. This key is then used
@@ -105,70 +105,70 @@ to authenticate when retrieving any `PipelineResources`.
 ## Basic authentication (Git)
 
 1. Define a `Secret` containing the username and password that the `Run` should
-    use to authenticate to a Git repository (in `secret.yaml`):
+   use to authenticate to a Git repository (in `secret.yaml`):
 
-    ```yaml
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: basic-user-pass
-      annotations:
-        tekton.dev/git-0: https://github.com # Described below
-    type: kubernetes.io/basic-auth
-    stringData:
-      username: <username>
-      password: <password>
-    ```
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: basic-user-pass
+     annotations:
+       tekton.dev/git-0: https://github.com # Described below
+   type: kubernetes.io/basic-auth
+   stringData:
+     username: <username>
+     password: <password>
+   ```
 
-    `tekton.dev/git-0` in the example above specifies which web
-    address these credentials belong to. See
-    [Guiding Credential Selection](#guiding-credential-selection) below for more
-    information.
+   `tekton.dev/git-0` in the example above specifies which web address these
+   credentials belong to. See
+   [Guiding Credential Selection](#guiding-credential-selection) below for more
+   information.
 
 1. Next, direct a `ServiceAccount` to use this `Secret` (in
-    `serviceaccount.yaml`):
+   `serviceaccount.yaml`):
 
-    ```yaml
-    apiVersion: v1
-    kind: ServiceAccount
-    metadata:
-      name: build-bot
-    secrets:
-      - name: basic-user-pass
-    ```
+   ```yaml
+   apiVersion: v1
+   kind: ServiceAccount
+   metadata:
+     name: build-bot
+   secrets:
+     - name: basic-user-pass
+   ```
 
 1. Then use that `ServiceAccount` in your `TaskRun` (in `run.yaml`):
 
-    ```yaml
-    apiVersion: tekton.dev/v1alpha1
-    kind: TaskRun
-    metadata:
-      name: build-push-task-run-2
-    spec:
-      serviceAccount: buid-bot
-      taskRef:
-        name: build-push
-    ```
+   ```yaml
+   apiVersion: tekton.dev/v1alpha1
+   kind: TaskRun
+   metadata:
+     name: build-push-task-run-2
+   spec:
+     serviceAccount: buid-bot
+     taskRef:
+       name: build-push
+   ```
 
 1. Or use that `ServiceAccount` in your `PipelineRun` (in `run.yaml`):
 
-    ```yaml
-    apiVersion: tekton.dev/v1alpha1
-    kind: PipelineRun
-    metadata:
-      name: demo-pipeline
-      namespace: default
-    spec:
-      serviceAccount: build-bot
-      pipelineRef:
-        name: demo-pipeline
-    ```
+   ```yaml
+   apiVersion: tekton.dev/v1alpha1
+   kind: PipelineRun
+   metadata:
+     name: demo-pipeline
+     namespace: default
+   spec:
+     serviceAccount: build-bot
+     pipelineRef:
+       name: demo-pipeline
+   ```
 
 1. Execute the `Run`:
 
-    ```shell
-    kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
-    ```
+   ```shell
+   kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
+   ```
 
 When this `Run` executes, before steps execute, a `~/.gitconfig` will be
 generated containing the credentials configured in the `Secret`, and these
@@ -178,37 +178,37 @@ credentials are then used to authenticate when retrieving any
 ## Basic authentication (Docker)
 
 1. Define a `Secret` containing the username and password that the build should
-    use to authenticate to a Docker registry (in `secret.yaml`):
+   use to authenticate to a Docker registry (in `secret.yaml`):
 
-    ```yaml
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: basic-user-pass
-      annotations:
-        tekton.dev/docker-0: https://gcr.io # Described below
-    type: kubernetes.io/basic-auth
-    stringData:
-      username: <username>
-      password: <password>
-    ```
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: basic-user-pass
+     annotations:
+       tekton.dev/docker-0: https://gcr.io # Described below
+   type: kubernetes.io/basic-auth
+   stringData:
+     username: <username>
+     password: <password>
+   ```
 
-    `tekton.dev/docker-0` in the example above specifies which web
-    address these credentials belong to. See
-    [Guiding Credential Selection](#guiding-credential-selection) below for more
-    information.
+   `tekton.dev/docker-0` in the example above specifies which web address these
+   credentials belong to. See
+   [Guiding Credential Selection](#guiding-credential-selection) below for more
+   information.
 
 1. Next, direct a `ServiceAccount` to use this `Secret` (in
-    `serviceaccount.yaml`):
+   `serviceaccount.yaml`):
 
-    ```yaml
-    apiVersion: v1
-    kind: ServiceAccount
-    metadata:
-      name: build-bot
-    secrets:
-      - name: basic-user-pass
-    ```
+   ```yaml
+   apiVersion: v1
+   kind: ServiceAccount
+   metadata:
+     name: build-bot
+   secrets:
+     - name: basic-user-pass
+   ```
 
 1. Then use that `ServiceAccount` in your `TaskRun` (in `run.yaml`):
 
@@ -225,23 +225,23 @@ spec:
 
 1. Or use that `ServiceAccount` in your `PipelineRun` (in `run.yaml`):
 
-    ```yaml
-    apiVersion: tekton.dev/v1alpha1
-    kind: PipelineRun
-    metadata:
-      name: demo-pipeline
-      namespace: default
-    spec:
-      serviceAccount: build-bot
-      pipelineRef:
-        name: demo-pipeline
-    ```
+   ```yaml
+   apiVersion: tekton.dev/v1alpha1
+   kind: PipelineRun
+   metadata:
+     name: demo-pipeline
+     namespace: default
+   spec:
+     serviceAccount: build-bot
+     pipelineRef:
+       name: demo-pipeline
+   ```
 
 1. Execute the `Run`:
 
-    ```shell
-    kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
-    ```
+   ```shell
+   kubectl apply --filename secret.yaml serviceaccount.yaml run.yaml
+   ```
 
 When the `Run` executes, before steps execute, a `~/.docker/config.json` will be
 generated containing the credentials configured in the `Secret`, and these
@@ -293,8 +293,8 @@ This describes an SSH key secret that should be used to access Git repos at
 github.com only.
 
 Credential annotation keys must begin with `tekton.dev/docker-` or
-`tekton.dev/git-`, and the value describes the URL of the host with
-which to use the credential.
+`tekton.dev/git-`, and the value describes the URL of the host with which to use
+the credential.
 
 ## Implementation details
 
