@@ -118,6 +118,22 @@ kubectl create clusterrolebinding cluster-admin-binding \
   --user="${USER}"
 ```
 
+### Install in custom namespace
+1. To install into a different namespace you will need to modify resources in the `./config`
+    - remove all `namespace: tekton` resources
+    - delete the `namespace.yaml
+    - modify the `subjects.namespace` value to the desired namespace
+    - add `downwardapi` entry to webhook and controller `deployment` resources and set current namespace.
+     
+     e.g.
+```yaml
+        env:
+          - name: SYSTEM_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+```
+
 ## Iterating
 
 While iterating on the project, you may need to:
