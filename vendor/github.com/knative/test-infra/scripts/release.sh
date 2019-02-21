@@ -142,28 +142,30 @@ function prepare_auto_release() {
   TAG_RELEASE=1
   PUBLISH_RELEASE=1
 
+  git fetch --all
   local tags="$(git tag | cut -d 'v' -f2 | cut -d '.' -f1-2 | sort | uniq)"
-  local branches="$( { (git branch -r | grep origin/release-) ; (git branch  | grep release-); } | cut -d '-' -f2 | sort | uniq)"
+  local branches="$( { (git branch -r | grep upstream/release-) ; (git branch | grep release-); } | cut -d '-' -f2 | sort | uniq)"
   RELEASE_VERSION=""
 
   [[ -n "${tags}" ]] || abort "cannot obtain release tags for the repository"
   [[ -n "${branches}" ]] || abort "cannot obtain release branches for the repository"
 
   for i in $branches; do
-    RELEASE_VERSION=$i
+    RELEASE_NUMBER=$i
     for j in $tags; do
       if [[ "$i" == "$j" ]]; then
-        RELEASE_VERSION=""
+        RELEASE_NUMBER=""
       fi
     done
   done
 
-  if [ -z "$RELEASE_VERSION" ]; then
+  if [ -z "$RELEASE_NUMBER" ]; then
     echo "*** No new release will be generated, as no new branches exist"
     exit  0
   fi
 
-  RELEASE_BRANCH="release-${RELEASE_VERSION}"
+  RELEASE_VERSION="${RELEASE_NUMBER}.0"
+  RELEASE_BRANCH="release-${RELEASE_NUMBER}"
   echo "Will create release ${RELEASE_VERSION} from branch ${RELEASE_BRANCH}"
   # If --release-notes not used, add a placeholder
   if [[ -z "${RELEASE_NOTES}" ]]; then
