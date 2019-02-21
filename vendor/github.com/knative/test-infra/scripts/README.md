@@ -133,10 +133,9 @@ This is a helper script for Knative E2E test scripts. To use it:
 
 1. Write logic for the end-to-end tests. Run all go tests using `go_test_e2e()`
    (or `report_go_test()` if you need a more fine-grained control) and call
-   `fail_test()` or `success()` if any of them failed. The environment variables
-   `DOCKER_REPO_OVERRIDE`, `K8S_CLUSTER_OVERRIDE` and `K8S_USER_OVERRIDE` will be
-   set according to the test cluster. You can also use the following boolean (0 is
-   false, 1 is true) environment variables for the logic:
+   `fail_test()` or `success()` if any of them failed. The environment variable
+   `KO_DOCKER_REPO` will be set according to the test cluster. You can also use
+   the following boolean (0 is false, 1 is true) environment variables for the logic:
 
    - `EMIT_METRICS`: true if `--emit-metrics` was passed.
    - `USING_EXISTING_CLUSTER`: true if the test cluster is an already existing one,
@@ -149,9 +148,8 @@ This is a helper script for Knative E2E test scripts. To use it:
 1. Calling your script without arguments will create a new cluster in the GCP
    project `$PROJECT_ID` and run the tests against it.
 
-1. Calling your script with `--run-tests` and the variables `K8S_CLUSTER_OVERRIDE`,
-   `K8S_USER_OVERRIDE` and `DOCKER_REPO_OVERRIDE` set will immediately start the
-   tests against the cluster.
+1. Calling your script with `--run-tests` and the variable `KO_DOCKER_REPO` set
+   will immediately start the tests against the cluster currently configured for `kubectl`.
 
 1. You can force running the tests against a specific GKE cluster version by using
    the `--cluster-version` flag and passing a X.Y.Z version as the flag value.
