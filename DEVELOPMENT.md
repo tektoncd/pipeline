@@ -120,11 +120,20 @@ kubectl create clusterrolebinding cluster-admin-binding \
 
 ### Install in custom namespace
 
-1. To install into a different namespace you will need to modify resources in the `./config` folder
-    - remove all `namespace: tekton` references from all yaml files
-    - delete the `namespace.yaml` [here](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/100-namespace.yaml)
-    - modify the `subjects.namespace` [here](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/201-clusterrolebinding.yaml#L21) value to the desired namespace
-    - add `downwardapi` entry to webhook and controller `deployment` resources. E.g. add the environment variable section from the code snippet below to [controller](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/controller.yaml#L29) and [webhook](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/webhook.yaml#L32)
+1. To install into a different namespace you will need to modify resources in
+   the `./config` folder
+   - remove all `namespace: tekton` references from all yaml files
+   - delete the `namespace.yaml`
+     [here](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/100-namespace.yaml)
+   - modify the `subjects.namespace`
+     [here](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/201-clusterrolebinding.yaml#L21)
+     value to the desired namespace
+   - add `downwardapi` entry to webhook and controller `deployment` resources.
+     E.g. add the environment variable section from the code snippet below to
+     [controller](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/controller.yaml#L29)
+     and
+     [webhook](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/webhook.yaml#L32)
+
 ```yaml
 env:
   - name: SYSTEM_NAMESPACE

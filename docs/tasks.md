@@ -343,7 +343,12 @@ ${inputs.params.<name>}
 
 #### Templating Volumes
 
-Task volume names and different [types of volumes](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes) can be parameterized. Current support includes for widely used types of volumes like configmap, secret and PersistentVolumeClaim. Here is an [example](#using-kubernetes-configmap-as-volume-source) on how to use this in Task definitions.
+Task volume names and different
+[types of volumes](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
+can be parameterized. Current support includes for widely used types of volumes
+like configmap, secret and PersistentVolumeClaim. Here is an
+[example](#using-kubernetes-configmap-as-volume-source) on how to use this in
+Task definitions.
 
 ## Examples
 

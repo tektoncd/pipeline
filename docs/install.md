@@ -8,15 +8,16 @@ To add the Tekton Pipelines component to an existing cluster:
 
 1. Run the
    [`kubectl apply`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#apply)
-   command to install [Tekton Pipelines](https://github.com/knative/build-pipeline) and its
+   command to install
+   [Tekton Pipelines](https://github.com/knative/build-pipeline) and its
    dependencies:
    ```bash
    kubectl apply --filename https://storage.googleapis.com/tekton-pipeline-releases/latest/release.yaml
    ```
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
-   command to monitor the Tekton Pipelines components until all of the components
-   show a `STATUS` of `Running`:
+   command to monitor the Tekton Pipelines components until all of the
+   components show a `STATUS` of `Running`:
 
    ```bash
    kubectl get pods --namespace tekton-pipeline
@@ -26,29 +27,31 @@ To add the Tekton Pipelines component to an existing cluster:
    append the `--watch` flag to view the component's status updates in real
    time. Use CTRL + C to exit watch mode.
 
-You are now ready to create and run Tekton Pipelines: 
- - See [Tekton Pipeline tutorial](./tutorial.md) to get started. 
- - Look at the [examples](https://github.com/knative/build-pipeline/tree/master/examples)
+You are now ready to create and run Tekton Pipelines:
 
+- See [Tekton Pipeline tutorial](./tutorial.md) to get started.
+- Look at the
+  [examples](https://github.com/knative/build-pipeline/tree/master/examples)
 
 ## Configuring Tekton Pipelines
 
 ### How are resources shared between tasks?
 
-Pipelines need a way to share resources between tasks. The alternatives are a [Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+Pipelines need a way to share resources between tasks. The alternatives are a
+[Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 or a (GCS storage bucket)[https://cloud.google.com/storage/]
 
-The PVC option does not require any configuration, but the GCS storage bucket can be 
-configured using a ConfigMap with the name `config-artifact-bucket` with the following 
-attributes:
+The PVC option does not require any configuration, but the GCS storage bucket
+can be configured using a ConfigMap with the name `config-artifact-bucket` with
+the following attributes:
 
 - location: the address of the bucket (for example gs://mybucket)
 - bucket.service.account.secret.name: the name of the secret that will contain
   the credentials for the service account with access to the bucket
 - bucket.service.account.secret.key: the key in the secret with the required
-  service account json. 
-- The bucket is recommended to be configured with a
-  retention policy after which files will be deleted.
+  service account json.
+- The bucket is recommended to be configured with a retention policy after which
+  files will be deleted.
 
 Both options provide the same functionality to the pipeline. The choice is based
 on the infrastructure used, for example in some Kubernetes platforms, the
@@ -59,8 +62,8 @@ the persistent volume can fail.
 ### Entrypoint
 
 When containers are run in a `Task`, the `entrypoint` of the container will be
-overwritten with a custom binary. This custom binary is for controlling the 
-execution of step containers. 
+overwritten with a custom binary. This custom binary is for controlling the
+execution of step containers.
 
 Due to this metadata lookup, if you use a private image as a step inside a
 `Task`, the build-pipeline controller needs to be able to access that registry.
@@ -70,16 +73,15 @@ performing the lookup
 
 #### Configure Entrypoint image
 
-To run a step, the `pod` will need to pull an `Entrypoint` image. The default 
+To run a step, the `pod` will need to pull an `Entrypoint` image. The default
 image can be configured by editing the `image`'s value in a configmap named
 [`config-entrypoint`](./../config/config-entrypoint.yaml).
 
 ## Custom Releases
 
-The [release script](./../hack/release.md) can be used for creating a custom 
-release of Tekton Pipelines. This can be useful for advanced users that need 
-to configure the container images built and used by the Pipelines components.
-
+The [release script](./../hack/release.md) can be used for creating a custom
+release of Tekton Pipelines. This can be useful for advanced users that need to
+configure the container images built and used by the Pipelines components.
 
 ---
 

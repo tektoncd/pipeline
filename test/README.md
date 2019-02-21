@@ -362,8 +362,8 @@ which only
 have access to.
 
 If you would like to run the integration tests against your cluster, you can use
-the current context in your kubeconfig, provide `KO_DOCKER_REPO` (as
-specified in the [DEVELOPMENT.md](../DEVELOPMENT.md#environment-setup)), use
+the current context in your kubeconfig, provide `KO_DOCKER_REPO` (as specified
+in the [DEVELOPMENT.md](../DEVELOPMENT.md#environment-setup)), use
 `e2e-tests.sh` directly and provide the `--run-tests` argument:
 
 ```shell
