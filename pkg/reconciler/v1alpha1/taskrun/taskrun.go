@@ -307,6 +307,13 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
+	if after != nil && after.IsFalse() {
+		// if Retry happens, don't do anything else
+		taskRunStatus := tr.Status.DeepCopy()
+		taskRunStatus.Conditions = tr.Status.Conditions
+		retry(tr, taskRunStatus, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete, c.Logger)
+	}
+
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
@@ -331,18 +338,7 @@ func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1a
 	}
 
 	if bs := buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded); bs != nil {
-		// Build Failure
-		if bs.IsFalse() {
-			// if Retry happens, don't do anything else
-			taskRunStatus := taskRun.Status.DeepCopy()
-			taskRunStatus.Conditions = buildStatus.Conditions
-			if retry(taskRun, taskRunStatus) {
-				return
-			}
-		} else {
-			taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
-		}
-
+		taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
 	} else {
 		// If the buildStatus doesn't exist yet, it's because we just started running
 		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
@@ -530,28 +526,19 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 			// update tr completed time
 			status.CompletionTime = &metav1.Time{Time: time.Now()}
 
-			if retry(tr, status) {
-				return false, nil
-			}
-
 			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
-			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-				c.Logger.Errorf("Failed to terminate pod: %v", err)
-				return true, err
-			}
 
-			return true, nil
+			return true, retry(tr, status, dp, c.Logger)
 		}
 	}
 	return false, nil
 }
 
-func retry(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus) bool {
+func retry(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus, dp DeletePod, logger *zap.SugaredLogger) (err error) {
 
 	if len(tr.Status.RetriesStatus) < tr.Spec.Retries {
 		tr.Status.StartTime = nil
 		tr.Status.CompletionTime = nil
-		//tr.Status.PodName = nil
 		tr.Status.Steps = nil
 		tr.Status.Results = nil
 
@@ -561,8 +548,14 @@ func retry(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus) bool {
 			Status: corev1.ConditionUnknown,
 		})
 
-		return true
+		if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			logger.Errorf("Failed to terminate pod: %v", err)
+		}
+
+		tr.Status.PodName = ""
+
+		return
 	}
 	tr.Status = *status
-	return false
+	return
 }

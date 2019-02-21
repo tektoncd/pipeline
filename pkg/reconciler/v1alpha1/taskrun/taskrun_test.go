@@ -1600,7 +1600,7 @@ func TestRetryFailedTaskRun(t *testing.T) {
 		},
 	}
 
-	retries := v1alpha1.TaskRunStatus{
+	expectedStatus := v1alpha1.TaskRunStatus{
 		Conditions: []duckv1alpha1.Condition{{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
@@ -1616,15 +1616,6 @@ func TestRetryFailedTaskRun(t *testing.T) {
 			{
 				ContainerState: *failed.DeepCopy(),
 			}},
-	}
-
-	expectedStatus := v1alpha1.TaskRunStatus{
-		Conditions: []duckv1alpha1.Condition{{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		}},
-		PodName:       "im-am-the-pod",
-		RetriesStatus: []v1alpha1.TaskRunStatus{retries},
 	}
 
 	updateStatusFromBuildStatus(taskRun, buildStatus)
@@ -1899,7 +1890,7 @@ func TestReconcileOnTimedOutTaskRunWithRetry(t *testing.T) {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
 
-	newTr, err = clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(newTr.Name, metav1.GetOptions{})
+	timeoutTask, err := clients.Pipeline.PipelineV1alpha1().TaskRuns(taskRun.Namespace).Get(newTr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
@@ -1910,7 +1901,7 @@ func TestReconcileOnTimedOutTaskRunWithRetry(t *testing.T) {
 		Reason:  "TaskRunTimeout",
 		Message: `TaskRun "test-taskrun-timeout-with-retry" failed to finish within "1µs"`,
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(timeoutTask.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
@@ -1964,11 +1955,10 @@ func TestReconcileOnFailedTaskRunWithRetry(t *testing.T) {
 	}
 
 	expectedStatus := &duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
-		Status:  corev1.ConditionUnknown,
-		Reason:  "Running",
-		Message: "Running",
+		Type:   duckv1alpha1.ConditionSucceeded,
+		Status: corev1.ConditionUnknown,
 	}
+
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
