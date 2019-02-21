@@ -20,7 +20,7 @@ To add the Tekton Pipelines component to an existing cluster:
    components show a `STATUS` of `Running`:
 
    ```bash
-   kubectl get pods --namespace tekton-pipeline
+   kubectl get pods --namespace tekton-pipelines
    ```
 
    Tip: Instead of running the `kubectl get` command multiple times, you can
