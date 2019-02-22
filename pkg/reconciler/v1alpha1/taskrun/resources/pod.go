@@ -123,7 +123,7 @@ func gcsToContainer(source v1alpha1.SourceSpec, index int) (*corev1.Container, e
 		containerName = containerName + strconv.Itoa(index)
 	}
 
-	containerName = names.SimpleNameGenerator.GenerateName(containerName)
+	containerName = names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerName)
 
 	return &corev1.Container{
 		Name:         containerName,
@@ -183,7 +183,7 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 		}
 
 		if matched {
-			name := names.SimpleNameGenerator.GenerateName(fmt.Sprintf("secret-volume-%s", secret.Name))
+			name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("secret-volume-%s", secret.Name))
 			volumeMounts = append(volumeMounts, corev1.VolumeMount{
 				Name:      name,
 				MountPath: credentials.VolumeName(secret.Name),
@@ -200,7 +200,7 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 	}
 
 	return &corev1.Container{
-		Name:         names.SimpleNameGenerator.GenerateName(initContainerPrefix + credsInit),
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(initContainerPrefix + credsInit),
 		Image:        *credsImage,
 		Args:         args,
 		VolumeMounts: volumeMounts,
@@ -270,7 +270,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 		if step.Name == "" {
 			step.Name = fmt.Sprintf("%v%d", unnamedInitContainerPrefix, i)
 		} else {
-			step.Name = names.SimpleNameGenerator.GenerateBuildStepName(fmt.Sprintf("%v%v", initContainerPrefix, step.Name))
+			step.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", initContainerPrefix, step.Name))
 		}
 
 		initContainers = append(initContainers, step)
@@ -298,7 +298,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 			// Generate a unique name based on the build's name.
 			// Add a unique suffix to avoid confusion when a build
 			// is deleted and re-created with the same name.
-			// We don't use GenerateName here because k8s fakes don't support it.
+			// We don't use RestrictLengthWithRandomSuffix here because k8s fakes don't support it.
 			Name: fmt.Sprintf("%s-pod-%s", build.Name, gibberish),
 			// If our parent TaskRun is deleted, then we should be as well.
 			OwnerReferences: build.OwnerReferences,

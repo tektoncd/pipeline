@@ -53,7 +53,7 @@ func getContextLogger(n string) *logging.BaseLogger {
 
 func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
 	t.Helper()
-	namespace := names.SimpleNameGenerator.GenerateName("arendelle")
+	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	createNamespace(namespace, logger, c.KubeClient)

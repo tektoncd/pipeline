@@ -157,7 +157,7 @@ func getCreateImageTask(namespace string, t *testing.T, logger *logging.BaseLogg
 		t.Fatalf("KO_DOCKER_REPO env variable is required")
 	}
 
-	imageName = fmt.Sprintf("%s/%s", dockerRepo, names.SimpleNameGenerator.GenerateName(sourceImageName))
+	imageName = fmt.Sprintf("%s/%s", dockerRepo, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(sourceImageName))
 	logger.Infof("Image to be pusblished: %s", imageName)
 
 	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
@@ -230,7 +230,7 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string, logg
 
 	clusterRoleBindings[0] = &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: names.SimpleNameGenerator.GenerateName("tiller"),
+			Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("tiller"),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
@@ -246,7 +246,7 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string, logg
 
 	clusterRoleBindings[1] = &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: names.SimpleNameGenerator.GenerateName("default-tiller"),
+			Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("default-tiller"),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
@@ -262,7 +262,7 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string, logg
 
 	clusterRoleBindings[2] = &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: names.SimpleNameGenerator.GenerateName("default-tiller"),
+			Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("default-tiller"),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
