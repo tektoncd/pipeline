@@ -196,7 +196,7 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
 			}, {
-				Name:         "build-step-a-sixty-three-character-step-name-to-trigger-ma",
+				Name:         "build-step-a-sixty-three-character-step-name-to-trigger-max-len",
 				Image:        "image",
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
