@@ -168,7 +168,7 @@ func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error)
 	}
 
 	clusterContainer := corev1.Container{
-		Name:  names.SimpleNameGenerator.GenerateName("kubeconfig"),
+		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("kubeconfig"),
 		Image: *kubeconfigWriterImage,
 		Args: []string{
 			"-clusterConfig", s.String(),

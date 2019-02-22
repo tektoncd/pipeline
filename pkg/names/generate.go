@@ -25,14 +25,14 @@ import (
 // NameGenerator generates names for objects. Some backends may have more information
 // available to guide selection of new names and this interface hides those details.
 type NameGenerator interface {
-	// GenerateName generates a valid name from the base name, adding a random suffix to the
+	// RestrictLengthWithRandomSuffix generates a valid name from the base name, adding a random suffix to the
 	// the base. If base is valid, the returned name must also be valid. The generator is
 	// responsible for knowing the maximum valid name length.
-	GenerateName(base string) string
+	RestrictLengthWithRandomSuffix(base string) string
 
-	// GenerateBuildStepName generates a valid name from the name of a step specified in a Task,
+	// RestrictLength generates a valid name from the name of a step specified in a Task,
 	// shortening it to the maximum valid name length if needed.
-	GenerateBuildStepName(base string) string
+	RestrictLength(base string) string
 }
 
 // simpleNameGenerator generates random names.
@@ -50,14 +50,14 @@ const (
 	maxGeneratedNameLength = maxNameLength - randomLength
 )
 
-func (simpleNameGenerator) GenerateName(base string) string {
-	if len(base) > maxGeneratedNameLength {
-		base = base[:maxGeneratedNameLength]
+func (simpleNameGenerator) RestrictLengthWithRandomSuffix(base string) string {
+	if len(base) > maxGeneratedNameLength - 1 {
+		base = base[:maxGeneratedNameLength - 1]
 	}
 	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength))
 }
 
-func (simpleNameGenerator) GenerateBuildStepName(base string) string {
+func (simpleNameGenerator) RestrictLength(base string) string {
 	if len(base) > maxGeneratedNameLength {
 		base = base[:maxGeneratedNameLength]
 	}

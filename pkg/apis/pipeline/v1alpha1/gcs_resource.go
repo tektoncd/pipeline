@@ -119,7 +119,7 @@ func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
 	return []corev1.Container{{
-		Name:         names.SimpleNameGenerator.GenerateName(fmt.Sprintf("upload-%s", s.Name)),
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        *gsutilImage,
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
@@ -142,7 +142,7 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 	return []corev1.Container{
 		CreateDirContainer(s.Name, s.DestinationDir), {
-			Name:         names.SimpleNameGenerator.GenerateName(fmt.Sprintf("fetch-%s", s.Name)),
+			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        *gsutilImage,
 			Args:         args,
 			Env:          envVars,

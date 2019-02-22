@@ -49,7 +49,7 @@ func (p *ArtifactPVC) StorageBasePath(pr *PipelineRun) string {
 // GetCopyFromContainerSpec returns a container used to download artifacts from temporary storage
 func (p *ArtifactPVC) GetCopyFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
 	return []corev1.Container{{
-		Name:  names.SimpleNameGenerator.GenerateName(fmt.Sprintf("source-copy-%s", name)),
+		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
 		Image: *bashNoopImage,
 		Args:  []string{"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath}, " ")},
 	}}
@@ -58,14 +58,14 @@ func (p *ArtifactPVC) GetCopyFromContainerSpec(name, sourcePath, destinationPath
 // GetCopyToContainerSpec returns a container used to upload artifacts for temporary storage
 func (p *ArtifactPVC) GetCopyToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
 	return []corev1.Container{{
-		Name:  names.SimpleNameGenerator.GenerateName(fmt.Sprintf("source-mkdir-%s", name)),
+		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-mkdir-%s", name)),
 		Image: *bashNoopImage,
 		Args: []string{
 			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),
 		},
 		VolumeMounts: []corev1.VolumeMount{getPvcMount(p.Name)},
 	}, {
-		Name:  names.SimpleNameGenerator.GenerateName(fmt.Sprintf("source-copy-%s", name)),
+		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
 		Image: *bashNoopImage,
 		Args: []string{
 			"-args", strings.Join([]string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath}, " "),
@@ -84,7 +84,7 @@ func getPvcMount(name string) corev1.VolumeMount {
 // CreateDirContainer returns a container step to create a dir
 func CreateDirContainer(name, destinationPath string) corev1.Container {
 	return corev1.Container{
-		Name:  names.SimpleNameGenerator.GenerateName(fmt.Sprintf("create-dir-%s", name)),
+		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", name)),
 		Image: *bashNoopImage,
 		Args:  []string{"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " ")},
 	}

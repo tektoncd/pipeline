@@ -113,7 +113,7 @@ func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	args = append(args, []string{"-path", dPath}...)
 
 	return []corev1.Container{{
-		Name:       names.SimpleNameGenerator.GenerateName(gitSource + "-" + s.Name),
+		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
 		Image:      *gitImage,
 		Args:       args,
 		WorkingDir: workspaceDir,
