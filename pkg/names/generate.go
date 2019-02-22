@@ -47,19 +47,19 @@ const (
 	// TODO: make this flexible for non-core resources with alternate naming rules.
 	maxNameLength          = 63
 	randomLength           = 5
-	maxGeneratedNameLength = maxNameLength - randomLength
+	maxGeneratedNameLength = maxNameLength - randomLength - 1
 )
 
 func (simpleNameGenerator) RestrictLengthWithRandomSuffix(base string) string {
-	if len(base) > maxGeneratedNameLength - 1 {
-		base = base[:maxGeneratedNameLength - 1]
+	if len(base) > maxGeneratedNameLength {
+		base = base[:maxGeneratedNameLength]
 	}
 	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength))
 }
 
 func (simpleNameGenerator) RestrictLength(base string) string {
-	if len(base) > maxGeneratedNameLength {
-		base = base[:maxGeneratedNameLength]
+	if len(base) > maxNameLength {
+		base = base[:maxNameLength]
 	}
 	return base
 }
