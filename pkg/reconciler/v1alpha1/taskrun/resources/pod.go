@@ -270,7 +270,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 		if step.Name == "" {
 			step.Name = fmt.Sprintf("%v%d", unnamedInitContainerPrefix, i)
 		} else {
-			step.Name = fmt.Sprintf("%v%v", initContainerPrefix, step.Name)
+			step.Name = names.SimpleNameGenerator.GenerateBuildStepName(fmt.Sprintf("%v%v", initContainerPrefix, step.Name))
 		}
 
 		initContainers = append(initContainers, step)
