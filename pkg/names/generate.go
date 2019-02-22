@@ -29,6 +29,10 @@ type NameGenerator interface {
 	// the base. If base is valid, the returned name must also be valid. The generator is
 	// responsible for knowing the maximum valid name length.
 	GenerateName(base string) string
+
+	// GenerateBuildStepName generates a valid name from the name of a step specified in a Task,
+	// shortening it to the maximum valid name length if needed.
+	GenerateBuildStepName(base string) string
 }
 
 // simpleNameGenerator generates random names.
@@ -51,4 +55,11 @@ func (simpleNameGenerator) GenerateName(base string) string {
 		base = base[:maxGeneratedNameLength]
 	}
 	return fmt.Sprintf("%s-%s", base, utilrand.String(randomLength))
+}
+
+func (simpleNameGenerator) GenerateBuildStepName(base string) string {
+	if len(base) > maxGeneratedNameLength {
+		base = base[:maxGeneratedNameLength]
+	}
+	return base
 }
