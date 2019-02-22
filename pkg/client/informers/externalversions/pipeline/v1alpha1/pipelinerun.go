@@ -58,13 +58,13 @@ func NewFilteredPipelineRunInformer(client versioned.Interface, namespace string
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PipelineV1alpha1().PipelineRuns(namespace).List(options)
+				return client.TektonV1alpha1().PipelineRuns(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PipelineV1alpha1().PipelineRuns(namespace).Watch(options)
+				return client.TektonV1alpha1().PipelineRuns(namespace).Watch(options)
 			},
 		},
 		&pipeline_v1alpha1.PipelineRun{},

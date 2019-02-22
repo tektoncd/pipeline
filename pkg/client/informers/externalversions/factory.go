@@ -169,9 +169,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Pipeline() pipeline.Interface
+	Tekton() pipeline.Interface
 }
 
-func (f *sharedInformerFactory) Pipeline() pipeline.Interface {
+func (f *sharedInformerFactory) Tekton() pipeline.Interface {
 	return pipeline.New(f, f.namespace, f.tweakListOptions)
 }

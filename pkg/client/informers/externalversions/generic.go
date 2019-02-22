@@ -49,19 +49,19 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=pipeline.knative.dev, Version=v1alpha1
+	// Group=tekton.dev, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("clustertasks"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().ClusterTasks().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha1().ClusterTasks().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("pipelines"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().Pipelines().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha1().Pipelines().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("pipelineresources"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().PipelineResources().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha1().PipelineResources().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("pipelineruns"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().PipelineRuns().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha1().PipelineRuns().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tasks"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().Tasks().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha1().Tasks().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("taskruns"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Pipeline().V1alpha1().TaskRuns().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha1().TaskRuns().Informer()}, nil
 
 	}
 

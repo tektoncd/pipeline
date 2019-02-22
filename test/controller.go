@@ -108,12 +108,12 @@ func SeedTestData(d Data) (Clients, Informers) {
 	kubeInformer := kubeinformers.NewSharedInformerFactory(c.Kube, 0)
 
 	i := Informers{
-		PipelineRun:      sharedInformer.Pipeline().V1alpha1().PipelineRuns(),
-		Pipeline:         sharedInformer.Pipeline().V1alpha1().Pipelines(),
-		TaskRun:          sharedInformer.Pipeline().V1alpha1().TaskRuns(),
-		Task:             sharedInformer.Pipeline().V1alpha1().Tasks(),
-		ClusterTask:      sharedInformer.Pipeline().V1alpha1().ClusterTasks(),
-		PipelineResource: sharedInformer.Pipeline().V1alpha1().PipelineResources(),
+		PipelineRun:      sharedInformer.Tekton().V1alpha1().PipelineRuns(),
+		Pipeline:         sharedInformer.Tekton().V1alpha1().Pipelines(),
+		TaskRun:          sharedInformer.Tekton().V1alpha1().TaskRuns(),
+		Task:             sharedInformer.Tekton().V1alpha1().Tasks(),
+		ClusterTask:      sharedInformer.Tekton().V1alpha1().ClusterTasks(),
+		PipelineResource: sharedInformer.Tekton().V1alpha1().PipelineResources(),
 		Pod:              kubeInformer.Core().V1().Pods(),
 	}
 

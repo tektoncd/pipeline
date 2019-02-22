@@ -22,7 +22,7 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type PipelineV1alpha1Interface interface {
+type TektonV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClusterTasksGetter
 	PipelinesGetter
@@ -32,37 +32,37 @@ type PipelineV1alpha1Interface interface {
 	TaskRunsGetter
 }
 
-// PipelineV1alpha1Client is used to interact with features provided by the pipeline.knative.dev group.
-type PipelineV1alpha1Client struct {
+// TektonV1alpha1Client is used to interact with features provided by the tekton.dev group.
+type TektonV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *PipelineV1alpha1Client) ClusterTasks() ClusterTaskInterface {
+func (c *TektonV1alpha1Client) ClusterTasks() ClusterTaskInterface {
 	return newClusterTasks(c)
 }
 
-func (c *PipelineV1alpha1Client) Pipelines(namespace string) PipelineInterface {
+func (c *TektonV1alpha1Client) Pipelines(namespace string) PipelineInterface {
 	return newPipelines(c, namespace)
 }
 
-func (c *PipelineV1alpha1Client) PipelineResources(namespace string) PipelineResourceInterface {
+func (c *TektonV1alpha1Client) PipelineResources(namespace string) PipelineResourceInterface {
 	return newPipelineResources(c, namespace)
 }
 
-func (c *PipelineV1alpha1Client) PipelineRuns(namespace string) PipelineRunInterface {
+func (c *TektonV1alpha1Client) PipelineRuns(namespace string) PipelineRunInterface {
 	return newPipelineRuns(c, namespace)
 }
 
-func (c *PipelineV1alpha1Client) Tasks(namespace string) TaskInterface {
+func (c *TektonV1alpha1Client) Tasks(namespace string) TaskInterface {
 	return newTasks(c, namespace)
 }
 
-func (c *PipelineV1alpha1Client) TaskRuns(namespace string) TaskRunInterface {
+func (c *TektonV1alpha1Client) TaskRuns(namespace string) TaskRunInterface {
 	return newTaskRuns(c, namespace)
 }
 
-// NewForConfig creates a new PipelineV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*PipelineV1alpha1Client, error) {
+// NewForConfig creates a new TektonV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*TektonV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -71,12 +71,12 @@ func NewForConfig(c *rest.Config) (*PipelineV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PipelineV1alpha1Client{client}, nil
+	return &TektonV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new PipelineV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new TektonV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *PipelineV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *TektonV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -84,9 +84,9 @@ func NewForConfigOrDie(c *rest.Config) *PipelineV1alpha1Client {
 	return client
 }
 
-// New creates a new PipelineV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *PipelineV1alpha1Client {
-	return &PipelineV1alpha1Client{c}
+// New creates a new TektonV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *TektonV1alpha1Client {
+	return &TektonV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -104,7 +104,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *PipelineV1alpha1Client) RESTClient() rest.Interface {
+func (c *TektonV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

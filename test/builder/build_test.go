@@ -25,10 +25,6 @@ import (
 
 func TestBuild(t *testing.T) {
 	trueB := true
-	toolsMount := corev1.VolumeMount{
-		Name:      "tools-volume",
-		MountPath: "/tools",
-	}
 	volume := corev1.Volume{
 		Name:         "tools-volume",
 		VolumeSource: corev1.VolumeSource{},
@@ -41,7 +37,7 @@ func TestBuild(t *testing.T) {
 			tb.BuildServiceAccountName("sa"),
 			tb.BuildStep("simple-step", "foo",
 				tb.Command("/mycmd"), tb.Args("my", "args"),
-				tb.VolumeMount(toolsMount),
+				tb.VolumeMount("tools-volume", "/tools"),
 			),
 			tb.BuildSource("foo", tb.BuildSourceGit("https://foo.git", "master")),
 			tb.BuildVolume(volume),
@@ -65,11 +61,14 @@ func TestBuild(t *testing.T) {
 		Spec: buildv1alpha1.BuildSpec{
 			ServiceAccountName: "sa",
 			Steps: []corev1.Container{{
-				Name:         "simple-step",
-				Image:        "foo",
-				Command:      []string{"/mycmd"},
-				Args:         []string{"my", "args"},
-				VolumeMounts: []corev1.VolumeMount{toolsMount},
+				Name:    "simple-step",
+				Image:   "foo",
+				Command: []string{"/mycmd"},
+				Args:    []string{"my", "args"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "tools-volume",
+					MountPath: "/tools",
+				}},
 			}},
 			Sources: []buildv1alpha1.SourceSpec{{
 				Name: "foo",

@@ -39,7 +39,7 @@ func setUp() {
 	logger, _ = logging.NewLogger("", "")
 	fakeClient := fakeclientset.NewSimpleClientset()
 	sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
-	pipelineResourceInformer := sharedInfomer.Pipeline().V1alpha1().PipelineResources()
+	pipelineResourceInformer := sharedInfomer.Tekton().V1alpha1().PipelineResources()
 	pipelineResourceLister = pipelineResourceInformer.Lister()
 
 	rs := []*v1alpha1.PipelineResource{{
@@ -181,7 +181,7 @@ func build() *buildv1alpha1.Build {
 			Name:      "build-from-repo",
 			Namespace: "marshmallow",
 			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "pipeline.knative.dev/v1alpha1",
+				APIVersion:         "tekton.dev/v1alpha1",
 				Kind:               "TaskRun",
 				Name:               "build-from-repo-run",
 				Controller:         &boolTrue,
@@ -834,7 +834,7 @@ func Test_StorageInputResource(t *testing.T) {
 				Name:      "build-from-repo",
 				Namespace: "marshmallow",
 				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					APIVersion:         "tekton.dev/v1alpha1",
 					Kind:               "TaskRun",
 					Name:               "build-from-repo-run",
 					Controller:         &boolTrue,
@@ -911,7 +911,7 @@ func Test_StorageInputResource(t *testing.T) {
 				Name:      "build-from-repo",
 				Namespace: "marshmallow",
 				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "pipeline.knative.dev/v1alpha1",
+					APIVersion:         "tekton.dev/v1alpha1",
 					Kind:               "TaskRun",
 					Name:               "build-from-repo-run",
 					Controller:         &boolTrue,
@@ -1074,7 +1074,7 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "knative-build-pipeline",
+						Namespace: "tekton-pipelines",
 						Name:      v1alpha1.BucketConfigName,
 					},
 					Data: map[string]string{

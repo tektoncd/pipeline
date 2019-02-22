@@ -184,11 +184,6 @@ Tests importing
 the
 [flags added by `knative/pkg/test`](https://github.com/knative/pkg/tree/master/test#flags).
 
-Note the environment variable `K8S_CLUSTER_OVERRIDE`, while used by
-[knative/serving](https://github.com/knative/serving) and not by this project,
-will override the cluster used by the integration tests since they use
-[the same libs to get these flags](https://github.com/knative/serving).
-
 ### One test case
 
 To run one e2e test case, e.g. TestTaskRun, use
@@ -367,14 +362,12 @@ which only
 have access to.
 
 If you would like to run the integration tests against your cluster, you can use
-the `K8S_CLUSTER_OVERRIDE` environment variable to force the scripts to use your
-own cluster, provide `DOCKER_REPO_OVERRIDE` (as specified in the
-[DEVELOPMENT.md](../DEVELOPMENT.md#environment-setup)), use `e2e-tests.sh`
-directly and provide the `--run-tests` argument:
+the current context in your kubeconfig, provide `KO_DOCKER_REPO` (as specified
+in the [DEVELOPMENT.md](../DEVELOPMENT.md#environment-setup)), use
+`e2e-tests.sh` directly and provide the `--run-tests` argument:
 
 ```shell
-export K8S_CLUSTER_OVERRIDE=my_k8s_cluster # corresponds to a `context` in your kubeconfig
-export DOCKER_REPO_OVERRIDE=gcr.io/my_docker_repo
+export KO_DOCKER_REPO=gcr.io/my_docker_repo
 test/e2e-tests.sh --run-tests
 ```
 

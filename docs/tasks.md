@@ -33,7 +33,7 @@ In case of using a ClusterTask, the `TaskRef` kind should be added. The default
 kind is Task which represents a namespaced Task
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: demo-pipeline
@@ -57,7 +57,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `pipeline.knative.dev/v1alpha1`.
+    `tekton.dev/v1alpha1`.
   - [`kind`][kubernetes-overview] - Specify the `Task` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `Task` resource object, for example a `name`.
@@ -87,39 +87,33 @@ metadata:
   name: example-task-name
 spec:
   serviceAccountName: task-auth-example
-  source:
-    git:
-      url: https://github.com/example/build-example.git
-      revision: master
   inputs:
     resources:
-    - name: workspace
-      type: git
+      - name: workspace
+        type: git
     params:
-    - name: pathToDockerFile
-      description: The path to the dockerfile to build
-      default: /workspace/workspace/Dockerfile
+      - name: pathToDockerFile
+        description: The path to the dockerfile to build
+        default: /workspace/workspace/Dockerfile
   outputs:
     resources:
-    - name: builtImage
-      type: image
+      - name: builtImage
+        type: image
   steps:
-  - name: ubuntu-example
-    image: ubuntu
-    args: ["ubuntu-build-example", "SECRETS-example.md"]
-  steps:
-  - image: gcr.io/example-builders/build-example
-    args: ['echo', '${inputs.resources.params.pathToDockerFile}']
-  steps:
-  - name: dockerfile-pushexample
-    image: gcr.io/example-builders/push-example
-    args: ["push", "${outputs.resources.builtImage.url}"]
-    volumeMounts:
-    - name: docker-socket-example
-      mountPath: /var/run/docker.sock
+    - name: ubuntu-example
+      image: ubuntu
+      args: ["ubuntu-build-example", "SECRETS-example.md"]
+    - image: gcr.io/example-builders/build-example
+      args: ["echo", "${inputs.resources.params.pathToDockerFile}"]
+    - name: dockerfile-pushexample
+      image: gcr.io/example-builders/push-example
+      args: ["push", "${outputs.resources.builtImage.url}"]
+      volumeMounts:
+        - name: docker-socket-example
+          mountPath: /var/run/docker.sock
   volumes:
-  - name: example-volume
-    emptyDir: {}
+    - name: example-volume
+      emptyDir: {}
 ```
 
 ### Steps
@@ -151,8 +145,6 @@ TaskRun. Some example use-cases of this include:
 - A Task that needs to know what compilation flags to use when building an
   application.
 - A Task that needs to know what to name a built artifact.
-- A Task that supports several different strategies, and leaves the choice up to
-  the other.
 
 Parameters name are limited to alpha-numeric characters, `-` and `_` and can
 only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
@@ -170,7 +162,7 @@ The following `Task` declares an input parameter called 'flags', and uses it in
 the `steps.args` list.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: task-with-parameters
@@ -188,7 +180,7 @@ spec:
 The following `TaskRun` supplies a value for `flags`:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: run-with-parameters
@@ -279,7 +271,7 @@ initialized under `/workspace`. Following example demonstrates how git input
 repository could be initialized in `$GOPATH` to run tests:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: task-with-input
@@ -316,6 +308,9 @@ For example, use volumes to accomplish one of the following common tasks:
 - [Mount a Kubernetes secret](./auth.md).
 - Create an `emptyDir` volume to act as a cache for use across multiple build
   steps. Consider using a persistent volume for inter-build caching.
+- Mount
+  [Kubernetes configmap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)
+  as volume source.
 - Mount a host's Docker socket to use a `Dockerfile` for container image builds.
   **Note:** Building a container image using `docker build` on-cluster is _very
   unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
@@ -324,7 +319,7 @@ For example, use volumes to accomplish one of the following common tasks:
 ### Templating
 
 `Tasks` support templating using values from all [`inputs`](#inputs) and
-[`outputs`](#outputs),
+[`outputs`](#outputs).
 
 [`PipelineResources`](resources.md) can be referenced in a `Task` spec like
 this, where `<name>` is the Resource Name and `<key>` is a one of the resource's
@@ -340,11 +335,20 @@ Or for an output resource:
 ${outputs.resources.<name>.<key>}
 ```
 
-To access an input parameter, replace `resources` with `params` as below:
+To access an input parameter, replace `resources` with `params`.
 
 ```shell
 ${inputs.params.<name>}
 ```
+
+#### Templating Volumes
+
+Task volume names and different
+[types of volumes](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
+can be parameterized. Current support includes for widely used types of volumes
+like configmap, secret and PersistentVolumeClaim. Here is an
+[example](#using-kubernetes-configmap-as-volume-source) on how to use this in
+Task definitions.
 
 ## Examples
 
@@ -352,6 +356,7 @@ Use these code snippets to help you understand how to define your `Tasks`.
 
 - [Example of image building and pushing](#example-task)
 - [Mounting extra volumes](#using-an-extra-volume)
+- [Mounting configMap as volume source](#using-kubernetes-configmap-as-volume-source)
 
 _Tip: See the collection of simple
 [examples](https://github.com/knative/build-pipeline/tree/master/examples) for
@@ -442,7 +447,29 @@ spec:
       emptyDir: {}
 ```
 
----
+#### Using Kubernetes Configmap as Volume Source
+
+```yaml
+spec:
+  inputs:
+    params:
+      - name: CFGNAME
+        description: Name of config map
+      - name: volumeName
+        description: Name of volume
+  steps:
+    - image: ubuntu
+      entrypoint: ["bash"]
+      args: ["-c", "cat /var/configmap/test"]
+      volumeMounts:
+        - name: "${inputs.params.volumeName}"
+          mountPath: /var/configmap
+
+  volumes:
+    - name: "${inputs.params.volumeName}"
+      configMap:
+        name: "${inputs.params.CFGNAME}"
+```
 
 Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),

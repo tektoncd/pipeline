@@ -36,7 +36,7 @@ const (
 	readFileTaskName          = "read-new-file-task"
 	bucketTestPipelineName    = "bucket-test-pipeline"
 	bucketTestPipelineRunName = "bucket-test-pipeline-run"
-	systemNamespace           = "knative-build-pipeline"
+	systemNamespace           = "tekton-pipelines"
 	bucketSecretName          = "bucket-secret"
 	bucketSecretKey           = "bucket-secret-key"
 )
@@ -72,10 +72,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		tb.Step("step1", "google/cloud-sdk:alpine",
 			tb.Command("/bin/bash"),
 			tb.Args("-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil mb gs://%s", bucketName)),
-			tb.VolumeMount(corev1.VolumeMount{
-				Name:      "bucket-secret-volume",
-				MountPath: fmt.Sprintf("/var/secret/%s", bucketSecretName),
-			}),
+			tb.VolumeMount("bucket-secret-volume", fmt.Sprintf("/var/secret/%s", bucketSecretName)),
 			tb.EnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey)),
 		),
 	),
@@ -226,10 +223,7 @@ func runTaskToDeleteBucket(c *clients, t *testing.T, logger *logging.BaseLogger,
 		tb.Step("step1", "google/cloud-sdk:alpine",
 			tb.Command("/bin/bash"),
 			tb.Args("-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil rm -r gs://%s", bucketName)),
-			tb.VolumeMount(corev1.VolumeMount{
-				Name:      "bucket-secret-volume",
-				MountPath: fmt.Sprintf("/var/secret/%s", bucketSecretName),
-			}),
+			tb.VolumeMount("bucket-secret-volume", fmt.Sprintf("/var/secret/%s", bucketSecretName)),
 			tb.EnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey)),
 		),
 	),

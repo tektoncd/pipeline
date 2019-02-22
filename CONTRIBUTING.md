@@ -1,7 +1,7 @@
-# Contributing to Pipeline CRD
+# Contributing to Tekton Pipelines
 
-Welcome to the Pipeline CRD project! Thanks for considering contributing to our
-project and we hope you'll enjoy it :D
+Welcome to the Tekton Pipelines project! Thanks for considering contributing to
+our project and we hope you'll enjoy it :D
 
 **All contributors must comply with
 [the code of conduct](./code-of-conduct.md).**
@@ -38,8 +38,9 @@ Unit test coverage should increase or stay the same with every PR.
 
 This means that most PRs should include both:
 
-- Tests
-- Documentation explaining features being added, including updates to
+- [Tests](https://github.com/knative/build-pipeline/tree/master/test#tests)
+- [Documentation](https://github.com/knative/build-pipeline/tree/master/docs)
+  explaining features being added, including updates to
   [DEVELOPMENT.md](./DEVELOPMENT.md) if required
 
 ## Development Process

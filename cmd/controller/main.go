@@ -88,7 +88,7 @@ func main() {
 		logger.Fatalf("Error building pipeline clientset: %v", err)
 	}
 
-	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.Namespace)
+	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.GetNamespace())
 
 	opt := reconciler.Options{
 		KubeClientSet:     kubeClient,
@@ -102,14 +102,14 @@ func main() {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, opt.ResyncPeriod)
 	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, opt.ResyncPeriod)
 
-	taskInformer := pipelineInformerFactory.Pipeline().V1alpha1().Tasks()
-	clusterTaskInformer := pipelineInformerFactory.Pipeline().V1alpha1().ClusterTasks()
-	taskRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().TaskRuns()
-	resourceInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineResources()
+	taskInformer := pipelineInformerFactory.Tekton().V1alpha1().Tasks()
+	clusterTaskInformer := pipelineInformerFactory.Tekton().V1alpha1().ClusterTasks()
+	taskRunInformer := pipelineInformerFactory.Tekton().V1alpha1().TaskRuns()
+	resourceInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineResources()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 
-	pipelineInformer := pipelineInformerFactory.Pipeline().V1alpha1().Pipelines()
-	pipelineRunInformer := pipelineInformerFactory.Pipeline().V1alpha1().PipelineRuns()
+	pipelineInformer := pipelineInformerFactory.Tekton().V1alpha1().Pipelines()
+	pipelineRunInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineRuns()
 	// Build all of our controllers, with the clients constructed above.
 	controllers := []*controller.Impl{
 		// Pipeline Controllers

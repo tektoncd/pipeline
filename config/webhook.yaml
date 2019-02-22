@@ -15,16 +15,16 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: build-pipeline-webhook
-  namespace: knative-build-pipeline
+  name: tekton-pipelines-webhook
+  namespace: tekton-pipelines
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: build-pipeline-webhook
+        app: tekton-pipelines-webhook
     spec:
-      serviceAccountName: build-pipeline-controller
+      serviceAccountName: tekton-pipelines-controller
       containers:
       - name: webhook
         # This is the Go import path for the binary that is containerized

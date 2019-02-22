@@ -1,0 +1,26 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: ClusterTask
+metadata:
+  name: dump-cluster-task
+spec:
+  steps:
+  - name: step-git
+    image: gcr.io/cloud-builders/git
+    args: [
+        "clone", "https://github.com/bazelbuild/rules_docker.git",
+        # Clone into another-directory/...
+        "another-directory",
+    ]
+  - name: dump-buildfile
+    image: ubuntu
+    args: ["cat", "/workspace/another-directory/BUILD"]
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-clustertask
+spec:
+  taskRef:
+    name: dump-cluster-task
+    kind: ClusterTask

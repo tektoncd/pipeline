@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-workspace-volume
+spec:
+  taskSpec:
+    steps:
+    - name: write
+      image: ubuntu
+      command: ['bash']
+      args: ['-c', 'echo some stuff > /workspace/stuff']
+    - name: read
+      image: ubuntu
+      args: ['cat', '/workspace/stuff']
+
+    - name: override-workspace
+      image: ubuntu
+      command: ['bash']
+      # /workspace/stuff *doesn't* exist.
+      args: ['-c', '[[ ! -f /workspace/stuff ]]']
+      volumeMounts:
+      - name: empty
+        mountPath: /workspace
+
+    volumes:
+    - name: empty
+      emptyDir: {}

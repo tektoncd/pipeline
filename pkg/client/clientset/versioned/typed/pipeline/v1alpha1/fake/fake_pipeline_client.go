@@ -21,37 +21,37 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-type FakePipelineV1alpha1 struct {
+type FakeTektonV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakePipelineV1alpha1) ClusterTasks() v1alpha1.ClusterTaskInterface {
+func (c *FakeTektonV1alpha1) ClusterTasks() v1alpha1.ClusterTaskInterface {
 	return &FakeClusterTasks{c}
 }
 
-func (c *FakePipelineV1alpha1) Pipelines(namespace string) v1alpha1.PipelineInterface {
+func (c *FakeTektonV1alpha1) Pipelines(namespace string) v1alpha1.PipelineInterface {
 	return &FakePipelines{c, namespace}
 }
 
-func (c *FakePipelineV1alpha1) PipelineResources(namespace string) v1alpha1.PipelineResourceInterface {
+func (c *FakeTektonV1alpha1) PipelineResources(namespace string) v1alpha1.PipelineResourceInterface {
 	return &FakePipelineResources{c, namespace}
 }
 
-func (c *FakePipelineV1alpha1) PipelineRuns(namespace string) v1alpha1.PipelineRunInterface {
+func (c *FakeTektonV1alpha1) PipelineRuns(namespace string) v1alpha1.PipelineRunInterface {
 	return &FakePipelineRuns{c, namespace}
 }
 
-func (c *FakePipelineV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
+func (c *FakeTektonV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
 	return &FakeTasks{c, namespace}
 }
 
-func (c *FakePipelineV1alpha1) TaskRuns(namespace string) v1alpha1.TaskRunInterface {
+func (c *FakeTektonV1alpha1) TaskRuns(namespace string) v1alpha1.TaskRunInterface {
 	return &FakeTaskRuns{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakePipelineV1alpha1) RESTClient() rest.Interface {
+func (c *FakeTektonV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

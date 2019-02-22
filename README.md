@@ -1,23 +1,23 @@
-# ![pipe](./pipe.png) Pipelines
+# ![pipe](./pipe.png) Tekton Pipelines
 
 [![Go Report Card](https://goreportcard.com/badge/knative/build-pipeline)](https://goreportcard.com/report/knative/build-pipeline)
 
-The Pipeline project provides k8s-style resources for declaring CI/CD-style
-pipelines.
+The Tekton Pipelines project provides k8s-style resources for declaring
+CI/CD-style pipelines.
 
-Pipelines are **Cloud Native**:
+Tekton Pipelines are **Cloud Native**:
 
 - Run on Kubernetes
 - Have Kubernetes clusters as a first class type
 - Use containers as their building blocks
 
-Pipelines are **Decoupled**:
+Tekton Pipelines are **Decoupled**:
 
 - One Pipeline can be used to deploy to any k8s cluster
 - The Tasks which make up a Pipeline can easily be run in isolation
 - Resources such as git repos can easily be swapped between runs
 
-Pipelines are **Typed**:
+Tekton Pipelines are **Typed**:
 
 - The concept of typed resources means that for a resource such as an `Image`,
   implementations can easily be swapped out (e.g. building with
@@ -26,6 +26,7 @@ Pipelines are **Typed**:
 
 ## Want to start using Pipelines?
 
+- [Installing Knative Pipelines](docs/install.md)
 - Jump in with [the tutorial!](docs/tutorial.md)
 - [Read about it](/docs/README.md)
 - Look at [some examples](/examples)

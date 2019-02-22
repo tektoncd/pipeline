@@ -28,9 +28,6 @@ type BuildSpecOp func(*buildv1alpha1.BuildSpec)
 // SourceSpecOp is an operation which modify a SourceSpec struct.
 type SourceSpecOp func(*buildv1alpha1.SourceSpec)
 
-// ContainerOp is an operation which modify a Container struct.
-type ContainerOp func(*corev1.Container)
-
 // Build creates a Build with default values.
 // Any number of Build modifier can be passed to transform it.
 func Build(name, namespace string, ops ...BuildOp) *buildv1alpha1.Build {
@@ -133,40 +130,9 @@ func BuildStep(name, image string, ops ...func(*corev1.Container)) BuildSpecOp {
 	}
 }
 
-// EnvVar add an environment variable, with specified name and value, to the Container (step).
-func EnvVar(name, value string) ContainerOp {
-	return func(c *corev1.Container) {
-		c.Env = append(c.Env, corev1.EnvVar{
-			Name:  name,
-			Value: value,
-		})
-	}
-}
-
-// VolumeMount add a VolumeMount to the Container (step).
-func VolumeMount(mount corev1.VolumeMount) ContainerOp {
-	return func(c *corev1.Container) {
-		c.VolumeMounts = append(c.VolumeMounts, mount)
-	}
-}
-
 // BuildVolume adds a Volume to the BuildSpec (step).fl
 func BuildVolume(volume corev1.Volume) BuildSpecOp {
 	return func(spec *buildv1alpha1.BuildSpec) {
 		spec.Volumes = append(spec.Volumes, volume)
-	}
-}
-
-// Command sets the command to the Container (step in this case).
-func Command(args ...string) ContainerOp {
-	return func(container *corev1.Container) {
-		container.Command = args
-	}
-}
-
-// Args sets the command arguments to the Container (step in this case).
-func Args(args ...string) ContainerOp {
-	return func(container *corev1.Container) {
-		container.Args = args
 	}
 }

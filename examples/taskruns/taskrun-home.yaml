@@ -1,0 +1,13 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-home-is-set
+spec:
+  taskSpec:
+    steps:
+    - name: test
+      image: ubuntu
+      command: ['bash']
+      args:
+      - '-c'
+      - '[[ $HOME == /builder/home ]]'

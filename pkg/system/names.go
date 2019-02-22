@@ -16,9 +16,19 @@ limitations under the License.
 
 package system
 
+import "os"
+
 const (
-	// Namespace holds the K8s namespace where our build-pipeline system
-	// components run.
-	Namespace    = "knative-build-pipeline"
-	PipelineKind = "Pipeline"
+	DefaultNamespace      = "tekton-pipelines"
+	SystemNamespaceEnvVar = "SYSTEM_NAMESPACE"
 )
+
+// GetNamespace holds the K8s namespace where our build-pipeline system
+// components run.
+func GetNamespace() string {
+	systemNamespace := os.Getenv(SystemNamespaceEnvVar)
+	if systemNamespace == "" {
+		return DefaultNamespace
+	}
+	return os.Getenv(SystemNamespaceEnvVar)
+}

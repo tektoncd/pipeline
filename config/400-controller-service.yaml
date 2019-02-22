@@ -16,9 +16,9 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: build-pipeline-controller
-  name: build-pipeline-controller
-  namespace: knative-build-pipeline
+    app: tekton-pipelines-controller
+  name: tekton-pipelines-controller
+  namespace: tekton-pipelines
 spec:
   ports:
   - name: metrics
@@ -26,4 +26,4 @@ spec:
     protocol: TCP
     targetPort: 9090
   selector:
-    app: build-pipeline-controller
+    app: tekton-pipelines-controller

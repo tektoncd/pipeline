@@ -1,6 +1,6 @@
 # Hello World Tutorial
 
-Welcome to the Pipeline tutorial!
+Welcome to the Tekton Pipeline tutorial!
 
 This tutorial will walk you through creating and running some simple
 [`Task`](tasks.md), [`Pipeline`](pipelines.md) and running them by creating
@@ -15,7 +15,7 @@ For more details on using `Pipelines`, see [our usage docs](README.md).
 
 ## Task
 
-The main objective of the Pipeline CRDs is to run your Task individually or as a
+The main objective of Tekton Pipelines is to run your Task individually or as a
 part of a Pipeline. Every task runs as a Pod on your Kubernetes cluster with
 each step as its own container.
 
@@ -23,7 +23,7 @@ A [`Task`](tasks.md) defines the work that needs to be executed, for example the
 following is a simple task that will echo hello world:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: echo-hello-world
@@ -43,7 +43,7 @@ A [`TaskRun`](taskruns.md) runs the `Task` you defined. Here is a simple example
 of a `TaskRun` you can use to execute your task:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: echo-hello-world-task-run
@@ -69,7 +69,7 @@ kubectl get taskruns/echo-hello-world-task-run -o yaml
 You will get an output similar to the following:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   creationTimestamp: 2018-12-11T15:49:13Z
@@ -77,7 +77,7 @@ metadata:
   name: echo-hello-world-task-run
   namespace: default
   resourceVersion: "6706789"
-  selfLink: /apis/pipeline.knative.dev/v1alpha1/namespaces/default/taskruns/echo-hello-world-task-run
+  selfLink: /apis/tekton.dev/v1alpha1/namespaces/default/taskruns/echo-hello-world-task-run
   uid: 4e96e9c6-fd5c-11e8-9129-42010a8a0fdc
 spec:
   generation: 1
@@ -129,7 +129,7 @@ The [`git` resource](resources.md#git-resource) represents a git repository with
 a specific revision:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-git
@@ -146,7 +146,7 @@ The [`image` resource](resources.md#image-resource) represents the image to be
 built by the task:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-web
@@ -163,7 +163,7 @@ args of the task command support templating so that the definition of task is
 constant and the value of parameters can change in runtime.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: build-docker-image-from-git-source
@@ -201,7 +201,7 @@ sets values to the parameters used for templating in addition to executing the
 task steps.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: build-docker-image-from-git-source-task-run
@@ -234,7 +234,7 @@ resources, the task and taskrun.
 kubectl apply -f <name-of-file.yaml>
 ```
 
-To see all the resource created so far as part of the Pipeline CRD, run the
+To see all the resource created so far as part of Tekton Pipelines, run the
 command:
 
 ```bash
@@ -264,7 +264,7 @@ kubectl get taskruns/echo-hello-world-task-run -o yaml
 You will get an output similar to the following:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   creationTimestamp: 2018-12-11T18:14:29Z
@@ -272,7 +272,7 @@ metadata:
   name: build-docker-image-from-git-source-task-run
   namespace: default
   resourceVersion: "6733537"
-  selfLink: /apis/pipeline.knative.dev/v1alpha1/namespaces/default/taskruns/build-docker-image-from-git-source-task-run
+  selfLink: /apis/tekton.dev/v1alpha1/namespaces/default/taskruns/build-docker-image-from-git-source-task-run
   uid: 99d297fd-fd70-11e8-9129-42010a8a0fdc
 spec:
   generation: 1
@@ -293,9 +293,6 @@ spec:
         paths: null
         resourceRef:
           name: skaffold-image-leeroy-web
-  results:
-    type: gcs
-    url: gcs://somebucket/results/logs #configure: remove results entirely if you're happy to use stdout
   taskRef:
     name: build-docker-image-from-git-source
   taskSpec: null
@@ -331,15 +328,15 @@ resource definition.
 
 # Pipeline
 
-A [`Pipeline`](pipelines.md) defines a list of tasks to execute in order, while
-also indicating if any outputs should be used as inputs of a following task by
-using [the `from` field](pipelines.md#from). The same templating you used in
-tasks is also available in pipeline.
+A [`Pipeline`](pipelines.md) defines a list of tasks to execute, while also
+indicating if any outputs should be used as inputs of a following task by using
+[the `from` field](pipelines.md#from). The same templating you used in tasks is
+also available in pipeline.
 
 For example:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: tutorial-pipeline
@@ -389,7 +386,7 @@ The above `Pipeline` is referencing a `Task` called `deploy-using-kubectl` which
 can be found here:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: deploy-using-kubectl
@@ -433,7 +430,7 @@ spec:
 To run the `Pipeline`, create a [`PipelineRun`](pipelineruns.md) as follows:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
   name: tutorial-pipeline-run-1
@@ -470,7 +467,7 @@ kubectl get pipelineruns/tutorial-pipeline-run-1 -o yaml
 You will get an output similar to the following:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
   annotations:
@@ -479,7 +476,7 @@ metadata:
   name: tutorial-pipeline-run-1
   namespace: default
   resourceVersion: "6760151"
-  selfLink: /apis/pipeline.knative.dev/v1alpha1/namespaces/default/pipelineruns/tutorial-pipeline-run-1
+  selfLink: /apis/tekton.dev/v1alpha1/namespaces/default/pipelineruns/tutorial-pipeline-run-1
   uid: 93acb0ea-fd83-11e8-9129-42010a8a0fdc
 spec:
   generation: 1
@@ -565,7 +562,7 @@ the status of individual Task runs are shown.
 
 ### Known good configuration
 
-Knative (as of version 0.3) is known to work with:
+Tekton Pipelines is known to work with:
 
 - [Docker for Desktop](https://www.docker.com/products/docker-desktop): a
   version that uses Kubernetes 1.11 or higher. At the time of this document,
@@ -602,12 +599,11 @@ Knative (as of version 0.3) is known to work with:
 ### Logging
 
 - Logs can remain in-memory only as opposed to sent to a service such as
-  [Stackdriver](https://cloud.google.com/logging/). Achieve this by modifying or
-  deleting entirely (to just use stdout) a PipelineRun or TaskRun's `results`
-  specification.
+  [Stackdriver](https://cloud.google.com/logging/).
 
-Elasticsearch can be deployed locally as a means to view logs "after the fact":
-an example is provided at https://github.com/mgreau/knative-elastic-tutorials.
+Elasticsearch, Beats and Kibana can be deployed locally as a means to view logs:
+an example is provided at
+https://github.com/mgreau/tekton-pipelines-elastic-tutorials.
 
 ## Experimentation
 

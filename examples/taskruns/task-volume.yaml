@@ -1,0 +1,33 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: task-volume
+spec:
+  steps:
+  - name: write
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ["-c", "echo some stuff > /im/a/custom/mount/path/file"]
+    volumeMounts:
+    - name: custom
+      mountPath: /im/a/custom/mount/path
+  - name: read
+    image: ubuntu
+    command: ["/bin/bash"]
+    args: ["-c", "cat /short/and/stout/file"]
+    volumeMounts:
+    - name: custom
+      mountPath: /short/and/stout
+
+  volumes:
+  - name: custom
+    emptyDir: {}
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-template-volume
+spec:
+  taskRef:
+    name:  task-volume

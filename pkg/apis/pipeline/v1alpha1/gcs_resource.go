@@ -43,7 +43,7 @@ type GCSResource struct {
 	Secrets []SecretParam `json:"secrets"`
 }
 
-// NewGCSResource creates a new GCS resource to pass to knative build
+// NewGCSResource creates a new GCS resource to pass to a Task
 func NewGCSResource(r *PipelineResource) (*GCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, fmt.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)

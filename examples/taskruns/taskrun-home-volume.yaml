@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-home-volume
+  labels:
+    expect: succeeded
+spec:
+  taskSpec:
+    steps:
+    - name: write
+      image: ubuntu
+      command: ['bash']
+      args: ['-c', 'echo some stuff > /builder/home/stuff']
+    - name: read
+      image: ubuntu
+      args: ['cat', '/builder/home/stuff']
+    - name: override-homevol
+      image: ubuntu
+      command: ['bash']
+      # /builder/home/stuff *doesn't* exist.
+      args: ['-c', '[[ ! -f /builder/home/stuff ]]']
+      volumeMounts:
+      - name: empty
+        mountPath: /builder/home
+    volumes:
+    - name: empty
+      emptyDir: {}

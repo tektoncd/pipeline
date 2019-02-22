@@ -27,7 +27,7 @@ import (
 var testPipeline = v1alpha1.Pipeline{
 	TypeMeta: metav1.TypeMeta{
 		Kind:       "foo",
-		APIVersion: "pipeline.knative.test/v1test1",
+		APIVersion: "tekton.test/v1test1",
 	},
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "test-pipeline",
@@ -38,7 +38,7 @@ func TestNewDuplicatePipelineTask(t *testing.T) {
 	err := NewDuplicatePipelineTask(&testPipeline, "duplicate")
 	expectedDetails := &metav1.StatusDetails{
 		Name:  "test-pipeline",
-		Group: "pipeline.knative.test",
+		Group: "tekton.test",
 		Kind:  "foo",
 		Causes: []metav1.StatusCause{
 			{Type: metav1.CauseTypeFieldValueDuplicate,
@@ -56,7 +56,7 @@ func TestNewPipelineTaskNotFound(t *testing.T) {
 	err := NewPipelineTaskNotFound(&testPipeline, "not-found")
 	expectedDetails := &metav1.StatusDetails{
 		Name:  "test-pipeline",
-		Group: "pipeline.knative.test",
+		Group: "tekton.test",
 		Kind:  "foo",
 		Causes: []metav1.StatusCause{
 			{Type: metav1.CauseTypeFieldValueNotFound,
@@ -74,7 +74,7 @@ func TestNewInvalidPipeline(t *testing.T) {
 	err := NewInvalidPipeline(&testPipeline, "cycle found")
 	expectedDetails := &metav1.StatusDetails{
 		Name:  "test-pipeline",
-		Group: "pipeline.knative.test",
+		Group: "tekton.test",
 		Kind:  "foo",
 		Causes: []metav1.StatusCause{
 			{Type: metav1.CauseType("InternalError"),

@@ -1,0 +1,89 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: rules-branch
+spec:
+  type: git
+  params:
+  - name: revision
+    value: master
+  - name: url
+    value: https://github.com/bazelbuild/rules_docker
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: rules-ref
+spec:
+  type: git
+  params:
+  - name: revision
+    value: pull/100/head
+  - name: url
+    value: https://github.com/bazelbuild/rules_docker
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: rules-tag
+spec:
+  type: git
+  params:
+  - name: revision
+    value: v0.4.0
+  - name: url
+    value: https://github.com/bazelbuild/rules_docker
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: dump-workspace-task
+spec:
+  inputs:
+    resources:
+    - name: gitspace
+      type: git
+  steps:
+  - name: dump-workspace
+    image: ubuntu
+    args: ["cat", "/workspace/gitspace/WORKSPACE"]
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-git-tag
+spec:
+  inputs:
+    resources:
+    - name: gitspace
+      resourceRef:
+        name: rules-tag
+  taskRef:
+    name: dump-workspace-task
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-git-ref
+spec:
+  inputs:
+    resources:
+    - name: gitspace
+      resourceRef:
+        name: rules-ref
+  taskRef:
+    name: dump-workspace-task
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-git-branch
+spec:
+  inputs:
+    resources:
+    - name: gitspace
+      resourceRef:
+        name: rules-branch
+  taskRef:
+    name: dump-workspace-task

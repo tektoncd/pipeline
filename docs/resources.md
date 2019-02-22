@@ -26,7 +26,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `pipeline.knative.dev/v1alpha1`.
+    `tekton.dev/v1alpha1`.
   - [`kind`][kubernetes-overview] - Specify the `PipelineResource` resource
     object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
@@ -45,10 +45,12 @@ following fields:
 
 The following `PipelineResources` are currently supported:
 
-- [Git resource](#git-resource)
-- [Image resource](#image-resource)
-- [Cluster resource](#cluster-resource)
-- [Storage resource](#storage-resource)
+- [Git Resource](#git-resource)
+- [Image Resource](#image-resource)
+- [Cluster Resource](#cluster-resource)
+- [Storage Resource](#storage-resource)
+  - [GCS Storage Resource](#gcs-storage-resource)
+  - [BuildGCS Storage Resource](#buildgcs-storage-resource)
 
 ### Git Resource
 
@@ -60,7 +62,7 @@ actions on the contents of the repo.
 To create a git resource using the `PipelineResource` CRD:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: wizzbang-git
@@ -78,7 +80,7 @@ Params that can be added are the following:
 
 1. `url`: represents the location of the git repository, you can use this to
    change the repo, e.g. [to use a fork](#using-a-fork)
-1. `revision`: Git
+2. `revision`: Git
    [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions)
    (branch, tag, commit SHA or ref) to clone. You can use this to control what
    commit [or branch](#using-a-branch) is used. _If no revision is specified,
@@ -141,12 +143,14 @@ Params that can be added are the following:
 2. `digest`: The
    [image digest](https://success.docker.com/article/images-tagging-vs-digests)
    which uniquely identifies a particular build of an image with a particular
-   tag.
+   tag. _While this can be provided as a parameter, there is not yet a way to
+   update this value after an image is built, but this is planned in
+   [#216](https://github.com/knative/build-pipeline/issues/216)._
 
 For example:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: kritis-resources-image
@@ -161,7 +165,7 @@ spec:
 ### Cluster Resource
 
 Cluster Resource represents a Kubernetes cluster other than the current cluster
-the pipeline CRD is running on. A common use case for this resource is to deploy
+Tekton Pipelines is running on. A common use case for this resource is to deploy
 your application/function on different clusters.
 
 The resource will use the provided parameters to create a
@@ -172,26 +176,26 @@ cluster. The kubeconfig will be placed in
 
 The Cluster resource has the following parameters:
 
-- Name (required): The name to be given to the target cluster, will be used in
+- `name` (required): The name to be given to the target cluster, will be used in
   the kubeconfig and also as part of the path to the kubeconfig file
-- URL (required): Host url of the master node
-- Username (required): the user with access to the cluster
-- Password: to be used for clusters with basic auth
-- Token: to be used for authentication, if present will be used ahead of the
+- `url` (required): Host url of the master node
+- `username` (required): the user with access to the cluster
+- `password`: to be used for clusters with basic auth
+- `token`: to be used for authentication, if present will be used ahead of the
   password
-- Insecure: to indicate server should be accessed without verifying the TLS
+- `insecure`: to indicate server should be accessed without verifying the TLS
   certificate.
-- CAData (required): holds PEM-encoded bytes (typically read from a root
+- `cadata` (required): holds PEM-encoded bytes (typically read from a root
   certificates bundle).
 
 Note: Since only one authentication technique is allowed per user, either a
-token or a password should be provided, if both are provided, the password will
-be ignored.
+`token` or a `password` should be provided, if both are provided, the `password`
+will be ignored.
 
 The following example shows the syntax and structure of a Cluster Resource:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: test-cluster
@@ -225,7 +229,7 @@ data:
 and then apply secrets to the cluster resource
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: test-cluster
@@ -248,7 +252,7 @@ spec:
 Example usage of the cluster resource in a Task:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: deploy-image
@@ -278,9 +282,12 @@ spec:
 Storage resource represents blob storage, that contains either an object or
 directory. Adding the storage resource as an input to a Task will download the
 blob and allow the Task to perform the required actions on the contents of the
-blob. Blob storage type
+blob.
+
+Only blob storage type
 [Google Cloud Storage](https://cloud.google.com/storage/)(gcs) is supported as
-of now.
+of now via [GCS storage resource](#gcs-storage-resource) and
+[BuildGCS storage resource](#buildgcs-storage-resource).
 
 #### GCS Storage Resource
 
@@ -290,7 +297,7 @@ GCS Storage resource points to
 To create a GCS type of storage resource using the `PipelineResource` CRD:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: wizzbang-storage
@@ -307,8 +314,8 @@ spec:
 Params that can be added are the following:
 
 1. `location`: represents the location of the blob storage.
-2. `type`: represents the type of blob storage. Currently there is
-   implementation for only `gcs`.
+2. `type`: represents the type of blob storage. For GCS storage resource this
+   value should be set to `gcs`.
 3. `dir`: represents whether the blob storage is a directory or not. By default
    storage artifact is considered not a directory.
    - If artifact is a directory then `-r`(recursive) flag is used to copy all
@@ -340,7 +347,7 @@ service account.
    `fieldName` key.
 
    ```yaml
-   apiVersion: pipeline.knative.dev/v1alpha1
+   apiVersion: tekton.dev/v1alpha1
    kind: PipelineResource
    metadata:
      name: wizzbang-storage
@@ -361,6 +368,68 @@ service account.
    ```
 
 ---
+
+#### BuildGCS Storage Resource
+
+BuildGCS storage resource points to
+[Google Cloud Storage](https://cloud.google.com/storage/) blob like
+[GCS Storage Resource](#gcs-storage-resource) either in the form of a .zip
+archive, or based on the contents of a source manifest file.
+
+In addition to fetching an .zip archive, BuildGCS also unzips it.
+
+A
+[Source Manifest File](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests)
+is a JSON object listing other objects in Cloud Storage that should be fetched.
+The format of the manifest is a mapping of destination file path to the location
+in Cloud Storage where the file's contents can be found. BuildGCS resource can
+also do incremental uploads of sources via Source Manifest File.
+
+To create a BuildGCS type of storage resource using the `PipelineResource` CRD:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: build-gcs-storage
+  namespace: default
+spec:
+  type: storage
+  params:
+    - name: type
+      value: build-gcs
+    - name: location
+      value: gs://build-crd-tests/rules_docker-master.zip
+    - name: artifactType
+      value: Archive
+```
+
+Params that can be added are the following:
+
+1. `location`: represents the location of the blob storage.
+2. `type`: represents the type of blob storage. For BuildGCS, this value should
+   be set to `build-gcs`
+3. `artifactType`: represent the type of GCS resource. Right now, we support
+   following types:
+   - `Archive`:
+     - Archive indicates that resource fetched is an archive file. Currently,
+       Build GCS resource only supports `.zip` archive.
+     - It unzips the archive and places all the files in the directory which is
+       set at runtime.
+     - If `artifactType` is set to `Archive`, `location` should point to a
+       `.zip` file.
+   - [`Manifest`](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests):
+     - Manifest indicates that resource should be fetched using a source
+       manifest file.
+     - If `artifactType` is set to `Manifest`, `location` should point to a
+       source manifest file.
+
+Private buckets other than ones accessible by
+[TaskRun Service Account](./taskruns.md#service-account) can not be configured
+as storage resources for BuildGCS Storage Resource right now. This is because
+the container image
+[gcr.io/cloud-builders//gcs-fetcher](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher)
+does not support configuring secrets.
 
 Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),

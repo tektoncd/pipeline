@@ -85,11 +85,11 @@ func getGCSStorageTask(namespace, secretName, secretKey string) *v1alpha1.Task {
 		),
 		tb.Step("read-secret-env", "ubuntu", tb.Command("/bin/bash"),
 			tb.Args("-c", "ls -la $CREDENTIALS"),
-			tb.VolumeMount(corev1.VolumeMount{
-				Name: fmt.Sprintf("volume-gcs-resource-%s", secretName), // this build should have volume with
+			tb.VolumeMount(fmt.Sprintf("volume-gcs-resource-%s", secretName),
+				// this build should have volume with
 				// name volume-(resource_name)-(secret_name) because of storage resource(gcs)
-				MountPath: fmt.Sprintf("/var/secret/%s", secretName),
-			}),
+				fmt.Sprintf("/var/secret/%s", secretName),
+			),
 			tb.EnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", secretName, secretKey)),
 		),
 	))

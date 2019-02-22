@@ -27,13 +27,13 @@ import (
 
 // FakeTaskRuns implements TaskRunInterface
 type FakeTaskRuns struct {
-	Fake *FakePipelineV1alpha1
+	Fake *FakeTektonV1alpha1
 	ns   string
 }
 
-var taskrunsResource = schema.GroupVersionResource{Group: "pipeline.knative.dev", Version: "v1alpha1", Resource: "taskruns"}
+var taskrunsResource = schema.GroupVersionResource{Group: "tekton.dev", Version: "v1alpha1", Resource: "taskruns"}
 
-var taskrunsKind = schema.GroupVersionKind{Group: "pipeline.knative.dev", Version: "v1alpha1", Kind: "TaskRun"}
+var taskrunsKind = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1alpha1", Kind: "TaskRun"}
 
 // Get takes name of the taskRun, and returns the corresponding taskRun object, and an error if there is any.
 func (c *FakeTaskRuns) Get(name string, options v1.GetOptions) (result *v1alpha1.TaskRun, err error) {

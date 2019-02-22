@@ -153,10 +153,6 @@ func ExamplePipelineResource() {
 }
 
 func ExampleBuildSpec() {
-	toolsMount := corev1.VolumeMount{
-		Name:      "tools-volume",
-		MountPath: "/tools",
-	}
 	volume := corev1.Volume{
 		Name:         "tools-volume",
 		VolumeSource: corev1.VolumeSource{
@@ -165,7 +161,7 @@ func ExampleBuildSpec() {
 	}
 	buildSpec := tb.BuildSpec(
 		tb.BuildStep("simple-step", "foo", tb.Command("/myentrypoint"),
-			tb.VolumeMount(toolsMount),
+			tb.VolumeMount("tools-volume", "/tools"),
 		),
 		tb.BuildVolume(volume),
 	)

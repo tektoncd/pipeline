@@ -1,0 +1,41 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: pipeline-git
+spec:
+  type: git
+  params:
+  - name: revision
+    value: master
+  - name: url
+    value: https://github.com/knative/build-pipeline
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: gopath-test
+spec:
+  inputs:
+    resources:
+    - name: gitspace
+      resourceRef:
+        name: pipeline-git
+  taskSpec:
+    inputs:
+      resources:
+      - name: gitspace
+        type: git
+        targetPath: go/src/github.com/knative/build-pipeline
+    steps:
+    - name: test-build
+      image: golang
+      command: ['go']
+      args:
+      - 'test'
+      - '-v'
+      - '-count=1'
+      - './...'
+      workingDir: "/workspace/go/src/github.com/knative/build-pipeline"
+      env:
+      - name: GOPATH
+        value: /workspace/go

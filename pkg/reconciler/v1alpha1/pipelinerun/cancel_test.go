@@ -82,7 +82,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			if cond.IsTrue() {
 				t.Errorf("Expected PipelineRun status to be complete and false, but was %v", cond)
 			}
-			l, err := c.Pipeline.PipelineV1alpha1().TaskRuns("foo").List(metav1.ListOptions{})
+			l, err := c.Pipeline.TektonV1alpha1().TaskRuns("foo").List(metav1.ListOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}

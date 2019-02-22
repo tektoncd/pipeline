@@ -59,10 +59,10 @@ and
 should be considered `alpha`, however these types are more stable than
 `Pipeline`, `PipelineRun`, and `PipelineResource`.
 
-### Possibly `beta` in Knative 0.6
+### Possibly `beta` in 0.3
 
-The status of these types will be revisited ~2 releases (i.e. Knative 0.6) and
-see if they can be promoted to `beta`.
+The status of these types will be revisited ~2 releases (i.e. 0.3) and see if
+they can be promoted to `beta`.
 
 Once these types are promoted to `beta`, any backwards incompatible changes must
 be introduced in a backwards compatible manner first, with a deprecation warning

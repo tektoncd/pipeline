@@ -50,7 +50,7 @@ type tasks struct {
 }
 
 // newTasks returns a Tasks
-func newTasks(c *PipelineV1alpha1Client, namespace string) *tasks {
+func newTasks(c *TektonV1alpha1Client, namespace string) *tasks {
 	return &tasks{
 		client: c.RESTClient(),
 		ns:     namespace,

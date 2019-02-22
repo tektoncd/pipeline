@@ -47,7 +47,7 @@ type GitResource struct {
 	TargetPath string
 }
 
-// NewGitResource create a new git resource to pass to Knative Build
+// NewGitResource create a new git resource to pass to a Task
 func NewGitResource(r *PipelineResource) (*GitResource, error) {
 	if r.Spec.Type != PipelineResourceTypeGit {
 		return nil, fmt.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)

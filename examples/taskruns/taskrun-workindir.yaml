@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-workingdir
+spec:
+  taskSpec:
+    steps:
+    - name: default
+      image: ubuntu
+      command: ['bash']
+      args:
+      - '-c'
+      - '[[ $PWD == /workspace ]]'
+
+    - name: override
+      image: ubuntu
+      command: ['bash']
+      workingDir: '/a/path/too/far'
+      args:
+      - '-c'
+      - '[[ $PWD == /a/path/too/far ]]'

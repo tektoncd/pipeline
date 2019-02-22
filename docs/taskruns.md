@@ -3,9 +3,9 @@
 Use the `TaskRun` resource object to create and run on-cluster processes to
 completion.
 
-To create a `TaskRun` in Knative, you must first create a [`Task`](tasks.md)
-which specifies one or more container images that you have implemented to
-perform and complete a task.
+To create a `TaskRun`, you must first create a [`Task`](tasks.md) which
+specifies one or more container images that you have implemented to perform and
+complete a task.
 
 A `TaskRun` runs until all `steps` have completed or until a failure occurs.
 
@@ -29,7 +29,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `pipeline.knative.dev/v1alpha1`.
+    `tekton.dev/v1alpha1`.
   - [`kind`][kubernetes-overview] - Specify the `TaskRun` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `TaskRun` resource object, for example a `name`.
@@ -152,45 +152,6 @@ of the `TaskRun` resource object.
 For examples and more information about specifying service accounts, see the
 [`ServiceAccount`](./auth.md) reference topic.
 
-## Labels
-
-Any labels specified in the metadata field of a `TaskRun` will be propagated to
-the `Pod` created to execute the `Task`. In addition, the following label will
-be added automatically:
-
-- `pipeline.knative.dev/taskRun` will contain the name of the `TaskRun`
-
-If the `TaskRun` was created automatically by a `PipelineRun`, then the
-following two labels will also be added to the `TaskRun` and `Pod`:
-
-- `pipeline.knative.dev/pipeline` will contain the name of the `Pipeline`
-- `pipeline.knative.dev/pipelineRun` will contain the name of the `PipelineRun`
-
-These labels make it easier to find the resources that are associated with a
-given `TaskRun`.
-
-For example, to find all `Pods` created by a `TaskRun` named test-taskrun, you
-could use the following command:
-
-```shell
-kubectl get pods --all-namespaces -l pipeline.knative.dev/taskRun=test-taskrun
-```
-
-## Cancelling a TaskRun
-
-In order to cancel a running task (`TaskRun`), you need to update its spec to
-mark it as cancelled. Running Pods will be deleted.
-
-```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
-kind: TaskRun
-metadata:
-  name: go-example-git
-spec:
-  # […]
-  status: "TaskRunCancelled"
-```
-
 ### Overriding where resources are copied from
 
 When specifying input and output `PipelineResources`, you can optionally specify
@@ -217,13 +178,12 @@ taskrun(`volume-taskrun`), `custom` volume will have entire resource
 `/custom/workspace/`.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: volume-task
   namespace: default
 spec:
-  generation: 1
   inputs:
     resources:
       - name: workspace
@@ -239,7 +199,7 @@ spec:
 ```
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: volume-taskrun
@@ -264,6 +224,21 @@ spec:
       emptyDir: {}
 ```
 
+## Cancelling a TaskRun
+
+In order to cancel a running task (`TaskRun`), you need to update its spec to
+mark it as cancelled. Running Pods will be deleted.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  status: "TaskRunCancelled"
+```
+
 ## Examples
 
 - [Example TaskRun](#example-taskrun)
@@ -278,7 +253,7 @@ creating `read-repo-run`. Task `read-task` has git input resource and TaskRun
 `read-repo-run` includes reference to `go-example-git`.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: read-repo-run
@@ -293,7 +268,7 @@ spec:
         resourceRef:
           name: go-example-git
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: go-example-git
@@ -303,7 +278,7 @@ spec:
     - name: url
       value: https://github.com/pivotal-nader-ziada/gohelloworld
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: read-task
@@ -329,7 +304,7 @@ include either Task reference or TaskSpec but not both. Below is an example
 where `build-push-task-run-2` includes `TaskSpec` and no reference to Task.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
   name: go-example-git
@@ -339,7 +314,7 @@ spec:
     - name: url
       value: https://github.com/pivotal-nader-ziada/gohelloworld
 ---
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: build-push-task-run-2
@@ -371,7 +346,7 @@ a Pipeline Resource Spec but not both. Below is an example where Git Pipeline
 Resource Spec is provided as input for TaskRun `read-repo`.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: read-repo
@@ -498,7 +473,7 @@ spec:
 Specifying a `ServiceAccount` to access a private `git` repository:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: test-task-with-serviceaccount-git-ssh
@@ -535,7 +510,7 @@ kind: Secret
 metadata:
   name: test-git-ssh
   annotations:
-    pipeline.knative.dev/git-0: github.com
+    tekton.dev/git-0: github.com
 type: kubernetes.io/ssh-auth
 data:
   # Generated by:

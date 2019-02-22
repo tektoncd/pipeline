@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"io"
 
-	pipelinev1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	TektonV1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	trlogs "github.com/knative/build-pipeline/test/logs/taskrun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -34,7 +34,7 @@ ctx is used to carry cancellation of command. cfg is the kubernetes REST configu
 used to create pipeline client.
 */
 func TailLogs(ctx context.Context, cfg *rest.Config, out io.Writer, name, namespace string) error {
-	pclient, err := pipelinev1alpha1.NewForConfig(cfg)
+	pclient, err := TektonV1alpha1.NewForConfig(cfg)
 	if err != nil {
 		return err
 	}

@@ -98,10 +98,10 @@ func fakeClients(d Data) *clients {
 	fakeClients, _ := SeedTestData(d)
 	// 	c.KubeClient = fakeClients.Kube
 	return &clients{
-		PipelineClient:         fakeClients.Pipeline.PipelineV1alpha1().Pipelines(waitNamespace),
-		PipelineResourceClient: fakeClients.Pipeline.PipelineV1alpha1().PipelineResources(waitNamespace),
-		PipelineRunClient:      fakeClients.Pipeline.PipelineV1alpha1().PipelineRuns(waitNamespace),
-		TaskClient:             fakeClients.Pipeline.PipelineV1alpha1().Tasks(waitNamespace),
-		TaskRunClient:          fakeClients.Pipeline.PipelineV1alpha1().TaskRuns(waitNamespace),
+		PipelineClient:         fakeClients.Pipeline.TektonV1alpha1().Pipelines(waitNamespace),
+		PipelineResourceClient: fakeClients.Pipeline.TektonV1alpha1().PipelineResources(waitNamespace),
+		PipelineRunClient:      fakeClients.Pipeline.TektonV1alpha1().PipelineRuns(waitNamespace),
+		TaskClient:             fakeClients.Pipeline.TektonV1alpha1().Tasks(waitNamespace),
+		TaskRunClient:          fakeClients.Pipeline.TektonV1alpha1().TaskRuns(waitNamespace),
 	}
 }

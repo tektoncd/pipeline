@@ -14,12 +14,12 @@
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
-  name: build-pipeline-controller-admin
+  name: tekton-pipelines-controller-admin
 subjects:
   - kind: ServiceAccount
-    name: build-pipeline-controller
-    namespace: knative-build-pipeline
+    name: tekton-pipelines-controller
+    namespace: tekton-pipelines
 roleRef:
   kind: ClusterRole
-  name: knative-build-pipeline-admin
+  name: tekton-pipelines-admin
   apiGroup: rbac.authorization.k8s.io

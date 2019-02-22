@@ -18,7 +18,7 @@ following fields:
 
 - Required:
   - [`apiVersion`][kubernetes-overview] - Specifies the API version, for example
-    `pipeline.knative.dev/v1alpha1`.
+    `tekton.dev/v1alpha1`.
   - [`kind`][kubernetes-overview] - Specify the `Pipeline` resource object.
   - [`metadata`][kubernetes-overview] - Specifies data to uniquely identify the
     `Pipeline` resource object, for example a `name`.
@@ -82,7 +82,7 @@ a parameter are optional, and if the `default` field is specified and this
 the `default` value will be used.
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: pipeline-with-parameters
@@ -105,7 +105,7 @@ spec:
 The following `PipelineRun` supplies a value for `context`:
 
 ```yaml
-apiVersion: pipeline.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
   name: pipelinerun-with-parameters
@@ -174,7 +174,6 @@ Express this dependency by adding `from` on `Resources` that your `Tasks` need.
   `PipelineTasks` (i.e. the named instance of a `Task`) in the `Pipeline`
 - When the `from` key is specified on an input source, the version of the
   resource that is from the defined list of tasks is used
-- `from` can support fan in and fan out
 - The name of the `PipelineResource` must correspond to a `PipelineResource`
   from the `Task` that the referenced `PipelineTask` gives as an output
 

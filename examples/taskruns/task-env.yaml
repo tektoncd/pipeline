@@ -1,0 +1,61 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: task-env-merge
+spec:
+  inputs:
+    params:
+    - name: FOO
+      description: FOO variable
+    - name: BAR
+      description: BAR variable
+    - name: FOOBAR
+      description: FOODBAR variable
+      default: foobar
+  steps:
+  # Test the environment variables are set in the task
+  # using this template
+  - name: foo
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', '[[ ${FOO} == "foo" ]]']
+    env:
+    - name: FOO
+      value: ${inputs.params.FOO}
+  - name: foobar
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', '[[ ${FOOBAR} == "foobar" ]]']
+    env:
+    - name: FOOBAR
+      value: ${inputs.params.FOOBAR}
+  - name: bar
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', '[[ ${BAR} == "bar" ]]']
+    env:
+    - name: BAR
+      value: ${inputs.params.BAR}
+  # Use the taskrun's declared env value, overriding the template's
+  - name: foo-override
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', '[[ ${FOO} == "bazzzzz" ]]']
+    env:
+    - name: FOO
+      value: bazzzzz
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: taskrun-env-merge
+spec:
+  inputs:
+    params:
+    - name: FOO
+      value: foo
+    - name: BAR
+      value: bar
+  taskRef:
+    name: task-env-merge

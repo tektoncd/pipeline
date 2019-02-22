@@ -51,7 +51,7 @@ type pipelines struct {
 }
 
 // newPipelines returns a Pipelines
-func newPipelines(c *PipelineV1alpha1Client, namespace string) *pipelines {
+func newPipelines(c *TektonV1alpha1Client, namespace string) *pipelines {
 	return &pipelines{
 		client: c.RESTClient(),
 		ns:     namespace,

@@ -1,0 +1,13 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-unnamed-steps
+spec:
+  taskSpec:
+    steps:
+    - image: 'ubuntu'
+      args: ['true']
+    - image: 'ubuntu'
+      args: ['true']
+    - image: 'ubuntu'
+      args: ['true']
