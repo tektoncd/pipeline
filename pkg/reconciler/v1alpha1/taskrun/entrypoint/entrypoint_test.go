@@ -1,7 +1,6 @@
 package entrypoint
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,27 +9,25 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
 )
 
 const (
 	exceedCacheSize = 10
 )
 
-func TestAddEntrypoint(t *testing.T) {
+func TestRewriteSteps(t *testing.T) {
 	inputs := []corev1.Container{
 		{
-			Image: "image",
-		},
-		{
-			Image: "image:tag",
-			Args:  []string{"abcd"},
+			Image:   "image",
+			Command: []string{"abcd"},
 		},
 		{
 			Image:   "my.registry.svc/image:tag",
@@ -38,33 +35,15 @@ func TestAddEntrypoint(t *testing.T) {
 			Args:    []string{"efgh"},
 		},
 	}
-	// The first test case showcases the downloading of the entrypoint for the
-	// image. The second test shows downloading the image as well as the args
-	// being passed in. The third command shows a set Command overriding the
-	// remote one.
-	envVarStrings := []string{
-		`{"args":null,"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-		`{"args":["abcd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-		`{"args":["abcd","efgh"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`,
-	}
-	err := RedirectSteps(inputs)
+	observer, _ := observer.New(zap.InfoLevel)
+	entrypointCache, _ := NewCache()
+	err := RedirectSteps(entrypointCache, inputs, zap.New(observer).Sugar())
 	if err != nil {
 		t.Errorf("failed to get resources: %v", err)
 	}
-	for i, input := range inputs {
+	for _, input := range inputs {
 		if len(input.Command) == 0 || input.Command[0] != BinaryLocation {
 			t.Errorf("command incorrectly set: %q", input.Command)
-		}
-		if len(input.Args) > 0 {
-			t.Errorf("containers should have no args")
-		}
-		if len(input.Env) == 0 {
-			t.Error("there should be atleast one envvar")
-		}
-		for _, e := range input.Env {
-			if e.Name == JSONConfigEnvVar && e.Value != envVarStrings[i] {
-				t.Errorf("envvar \n%s\n does not match \n%s", e.Value, envVarStrings[i])
-			}
 		}
 		found := false
 		for _, vm := range input.VolumeMounts {
@@ -77,6 +56,62 @@ func TestAddEntrypoint(t *testing.T) {
 			t.Error("could not find tools volume mount")
 		}
 	}
+}
+
+func TestGetArgs(t *testing.T) {
+	// first step
+	// multiple commands
+	// no args
+	for _, c := range []struct {
+		desc         string
+		stepNum      int
+		commands     []string
+		args         []string
+		expectedArgs []string
+	}{{
+		desc:     "Args for first step",
+		stepNum:  0,
+		commands: []string{"echo"},
+		args:     []string{"hello", "world"},
+		expectedArgs: []string{
+			"-wait_file", "",
+			"-post_file", "/tools/0",
+			"-entrypoint", "echo",
+			"--",
+			"hello", "world",
+		},
+	}, {
+		desc:     "Multiple commands",
+		stepNum:  4,
+		commands: []string{"echo", "hello"},
+		args:     []string{"world"},
+		expectedArgs: []string{
+			"-wait_file", "/tools/3",
+			"-post_file", "/tools/4",
+			"-entrypoint", "echo",
+			"--",
+			"hello", "world",
+		},
+	}, {
+		desc:     "No args",
+		stepNum:  4,
+		commands: []string{"ls"},
+		args:     []string{},
+		expectedArgs: []string{
+			"-wait_file", "/tools/3",
+			"-post_file", "/tools/4",
+			"-entrypoint", "ls",
+			"--",
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			a := GetArgs(c.stepNum, c.commands, c.args)
+			if d := cmp.Diff(a, c.expectedArgs); d != "" {
+				t.Errorf("Didn't get expected arguments, difference: %s", d)
+			}
+		})
+	}
+
 }
 
 type image struct {
@@ -145,7 +180,7 @@ func getDigestAsString(image v1.Image) string {
 func TestGetRemoteEntrypoint(t *testing.T) {
 	expectedEntrypoint := []string{"/bin/expected", "entrypoint"}
 	img := getImage(t, &v1.ConfigFile{
-		ContainerConfig: v1.Config{
+		Config: v1.Config{
 			Entrypoint: expectedEntrypoint,
 		},
 	})
@@ -253,12 +288,6 @@ func TestEntrypointCacheLRU(t *testing.T) {
 }
 
 func TestAddCopyStep(t *testing.T) {
-	cfg := &config.Config{
-		Entrypoint: &config.Entrypoint{
-			Image: config.DefaultEntrypointImage,
-		},
-	}
-	ctx := config.ToContext(context.Background(), cfg)
 
 	bs := &v1alpha1.BuildSpec{
 		Steps: []corev1.Container{
@@ -272,7 +301,7 @@ func TestAddCopyStep(t *testing.T) {
 	}
 
 	expectedSteps := len(bs.Steps) + 1
-	AddCopyStep(ctx, bs)
+	AddCopyStep(bs)
 	if len(bs.Steps) != 3 {
 		t.Errorf("BuildSpec has the wrong step count: %d should be %d", len(bs.Steps), expectedSteps)
 	}

@@ -17,18 +17,18 @@ limitations under the License.
 package entrypoint
 
 import (
-	"context"
-	"encoding/json"
+	"flag"
 	"fmt"
+	"strconv"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	lru "github.com/hashicorp/golang-lru"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
 )
 
@@ -40,8 +40,6 @@ const (
 	BinaryLocation    = MountPoint + "/entrypoint"
 	JSONConfigEnvVar  = "ENTRYPOINT_OPTIONS"
 	InitContainerName = "place-tools"
-	ProcessLogFile    = "/tools/process-log.txt"
-	MarkerFile        = "/tools/marker-file.txt"
 	digestSeparator   = "@"
 	cacheSize         = 1024
 )
@@ -50,6 +48,10 @@ var toolsMount = corev1.VolumeMount{
 	Name:      MountName,
 	MountPath: MountPoint,
 }
+var (
+	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
+		"The container image containing our entrypoint binary.")
+)
 
 // Cache is a simple caching mechanism allowing for caching the results of
 // getting the Entrypoint of a container image from a remote registry. The
@@ -76,41 +78,27 @@ func (c *Cache) set(sha string, ep []string) {
 	c.lru.Add(sha, ep)
 }
 
+// AddToEntrypointCache adds an image digest and its entrypoint
+// to the cache
+func AddToEntrypointCache(c *Cache, sha string, ep []string) {
+	c.set(sha, ep)
+}
+
 // AddCopyStep will prepend a BuildStep (Container) that will
 // copy the entrypoint binary from the entrypoint image into the
 // volume mounted at MountPoint, so that it can be mounted by
 // subsequent steps and used to capture logs.
-func AddCopyStep(ctx context.Context, b *v1alpha1.BuildSpec) {
-	cfg := config.FromContext(ctx).Entrypoint
+func AddCopyStep(b *v1alpha1.BuildSpec) {
 
 	cp := corev1.Container{
 		Name:         InitContainerName,
-		Image:        cfg.Image,
+		Image:        *entrypointImage,
 		Command:      []string{"/bin/cp"},
-		Args:         []string{"/entrypoint", BinaryLocation},
+		Args:         []string{"/ko-app", BinaryLocation},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	b.Steps = append([]corev1.Container{cp}, b.Steps...)
 
-}
-
-type entrypointArgs struct {
-	Args       []string `json:"args"`
-	ProcessLog string   `json:"process_log"`
-	MarkerFile string   `json:"marker_file"`
-}
-
-func getEnvVar(cmd, args []string) (string, error) {
-	entrypointArgs := entrypointArgs{
-		Args:       append(cmd, args...),
-		ProcessLog: ProcessLogFile,
-		MarkerFile: MarkerFile,
-	}
-	j, err := json.Marshal(entrypointArgs)
-	if err != nil {
-		return "", fmt.Errorf("couldn't marshal arguments %q for entrypoint env var: %s", entrypointArgs, err)
-	}
-	return string(j), nil
 }
 
 // GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
@@ -128,8 +116,8 @@ func GetRemoteEntrypoint(cache *Cache, digest string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get config for image %s: %v", digest, err)
 	}
-	cache.set(digest, cfg.ContainerConfig.Entrypoint)
-	return cfg.ContainerConfig.Entrypoint, nil
+	cache.set(digest, cfg.Config.Entrypoint)
+	return cfg.Config.Entrypoint, nil
 }
 
 // GetImageDigest tries to find and return image digest in cache, if
@@ -158,23 +146,50 @@ func GetImageDigest(cache *Cache, image string) (string, error) {
 // the binary being run is no longer the one specified by the Command
 // and the Args, but is instead the entrypoint binary, which will
 // itself invoke the Command and Args, but also capture logs.
-func RedirectSteps(steps []corev1.Container) error {
+func RedirectSteps(cache *Cache, steps []corev1.Container, logger *zap.SugaredLogger) error {
 	for i := range steps {
 		step := &steps[i]
-		e, err := getEnvVar(step.Command, step.Args)
-		if err != nil {
-			return fmt.Errorf("couldn't get env var for entrypoint: %s", err)
+		if len(step.Command) == 0 {
+			logger.Infof("Getting Cmd from remote entrypoint for step: %s", step.Name)
+			var err error
+			step.Command, err = GetRemoteEntrypoint(cache, step.Image)
+			if err != nil {
+				logger.Errorf("**ALERT**: Error getting entry point image", err.Error())
+				return err
+			}
 		}
-		step.Command = []string{BinaryLocation}
-		step.Args = []string{}
 
-		step.Env = append(step.Env, corev1.EnvVar{
-			Name:  JSONConfigEnvVar,
-			Value: e,
-		})
+		step.Args = GetArgs(i, step.Command, step.Args)
+		step.Command = []string{BinaryLocation}
 		step.VolumeMounts = append(step.VolumeMounts, toolsMount)
 	}
+
 	return nil
+}
+
+// GetArgs returns the arguments that should be specified for the step which has been wrapped
+// such that it will execute our custom entrypoint instead of the user provided Command and Args.
+func GetArgs(stepNum int, commands, args []string) []string {
+	waitFile := fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum-1))
+	if stepNum == 0 {
+		waitFile = ""
+	}
+	// The binary we want to run must be separated from its arguments by --
+	// so if commands has more than one value, we'll move the other values
+	// into the arg list so we can separate them
+	if len(commands) > 1 {
+		args = append(commands[1:], args...)
+		commands = commands[:1]
+	}
+	argsForEntrypoint := append([]string{
+		"-wait_file", waitFile,
+		"-post_file", fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum)),
+		"-entrypoint"},
+		commands...,
+	)
+	// TODO: what if Command has multiple elements, do we need "--" between command and args?
+	argsForEntrypoint = append(argsForEntrypoint, "--")
+	return append(argsForEntrypoint, args...)
 }
 
 func getRemoteImage(image string) (v1.Image, error) {

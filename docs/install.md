@@ -61,24 +61,6 @@ creation of a persistent volume could be slower than uploading/downloading files
 to a bucket, or if the the cluster is running in multiple zones, the access to
 the persistent volume can fail.
 
-### Entrypoint
-
-When containers are run in a `Task`, the `entrypoint` of the container will be
-overwritten with a custom binary. This custom binary is for controlling the
-execution of step containers.
-
-Due to this metadata lookup, if you use a private image as a step inside a
-`Task`, the build-pipeline controller needs to be able to access that registry.
-The simplest way to accomplish this is to add a `.docker/config.json` at
-`$HOME/.docker/config.json`, which will then be used by the controller when
-performing the lookup
-
-#### Configure Entrypoint image
-
-To run a step, the `pod` will need to pull an `Entrypoint` image. The default
-image can be configured by editing the `image`'s value in a configmap named
-[`config-entrypoint`](./../config/config-entrypoint.yaml).
-
 ## Custom Releases
 
 The [release script](./../hack/release.md) can be used for creating a custom

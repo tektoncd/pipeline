@@ -25,7 +25,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/apis/pipeline"
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/knative/build-pipeline/pkg/system"
 	"github.com/knative/build-pipeline/test"
@@ -53,6 +53,7 @@ const (
 )
 
 var (
+	entrypointCache          *entrypoint.Cache
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
 	// Pods are created with a random 3-byte (6 hex character) suffix that we want to ignore in our diffs.
 	ignoreRandomPodNameSuffix = cmp.FilterPath(func(path cmp.Path) bool {
@@ -60,8 +61,6 @@ var (
 	}, cmp.Comparer(func(name1, name2 string) bool {
 		return name1[:len(name1)-6] == name2[:len(name2)-6]
 	}))
-
-	entrypointOptionEnvVar = tb.EnvVar("ENTRYPOINT_OPTIONS", `{"args":["/mycmd"],"process_log":"/tools/process-log.txt","marker_file":"/tools/marker-file.txt"}`)
 
 	simpleStep  = tb.Step("simple-step", "foo", tb.Command("/mycmd"))
 	simpleTask  = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
@@ -138,9 +137,9 @@ var (
 		)
 	}
 
-	placeToolsInitContainer = tb.PodInitContainer("build-step-place-tools", "gcr.io/k8s-prow/entrypoint@sha256:7c7cd8906ce4982ffee326218e9fc75da2d4896d53cabc9833b9cc8d2d6b2b8f",
+	placeToolsInitContainer = tb.PodInitContainer("build-step-place-tools", "override-with-entrypoint:latest",
 		tb.Command("/bin/cp"),
-		tb.Args("/entrypoint", entrypointLocation),
+		tb.Args("/ko-app", entrypointLocation),
 		tb.WorkingDir(workspaceDir),
 		tb.EnvVar("HOME", "/builder/home"),
 		tb.VolumeMount("tools", "/tools"),
@@ -156,6 +155,7 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(d test.Data) test.TestAssets {
+	entrypointCache, _ = entrypoint.NewCache()
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
@@ -172,6 +172,7 @@ func getTaskRunController(d test.Data) test.TestAssets {
 			i.ClusterTask,
 			i.PipelineResource,
 			i.Pod,
+			entrypointCache,
 		),
 		Logs:      logs,
 		Clients:   c,
@@ -294,18 +295,18 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				tb.PodContainer("nop", "override-with-nop:latest"),
 				getCredentialsInitContainer("9l9zj"),
 				placeToolsInitContainer,
-				tb.PodInitContainer("build-step-simple-step", "foo",
+				tb.PodContainer("build-step-simple-step", "foo",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/tools/0", "-entrypoint", "/mycmd", "--"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					entrypointOptionEnvVar,
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
+				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	}, {
@@ -321,18 +322,18 @@ func TestReconcile(t *testing.T) {
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				tb.PodContainer("nop", "override-with-nop:latest"),
 				getCredentialsInitContainer("9l9zj"),
 				placeToolsInitContainer,
-				tb.PodInitContainer("build-step-sa-step", "foo",
+				tb.PodContainer("build-step-sa-step", "foo",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/tools/0", "-entrypoint", "/mycmd", "--"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					entrypointOptionEnvVar,
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
+				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	}, {
@@ -353,34 +354,40 @@ func TestReconcile(t *testing.T) {
 					},
 				}, toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				tb.PodContainer("nop", "override-with-nop:latest"),
 				getCredentialsInitContainer("mz4c7"),
-				tb.PodInitContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
-					tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
-					tb.WorkingDir(workspaceDir),
-					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("workspace", workspaceDir),
-					tb.VolumeMount("home", "/builder/home"),
-				),
 				placeToolsInitContainer,
-				tb.PodInitContainer("build-step-mycontainer", "myimage",
+				tb.PodContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/tools/0", "-entrypoint", "/ko-app", "--",
+						"-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					tb.EnvVar("ENTRYPOINT_OPTIONS", "{\"args\":[\"/mycmd\",\"--my-arg=foo\",\"--my-arg-with-default=bar\",\"--my-arg-with-default2=thedefault\",\"--my-additional-arg=gcr.io/kristoff/sven\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}"),
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodInitContainer("build-step-myothercontainer", "myotherimage",
+				tb.PodContainer("build-step-mycontainer", "myimage",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/0", "-post_file", "/tools/1", "-entrypoint", "/mycmd", "--",
+						"--my-arg=foo", "--my-arg-with-default=bar", "--my-arg-with-default2=thedefault",
+						"--my-additional-arg=gcr.io/kristoff/sven"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					tb.EnvVar("ENTRYPOINT_OPTIONS", "{\"args\":[\"/mycmd\",\"--my-other-arg=https://foo.git\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}"),
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
+				tb.PodContainer("build-step-myothercontainer", "myotherimage",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/1", "-post_file", "/tools/2", "-entrypoint", "/mycmd", "--",
+						"--my-other-arg=https://foo.git"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+				),
+				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	}, {
@@ -393,7 +400,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-input-output",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
-				tb.PodVolumes(toolsVolume, corev1.Volume{
+				tb.PodVolumes(corev1.Volume{
 					Name: "test-pvc",
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
@@ -401,66 +408,84 @@ func TestReconcile(t *testing.T) {
 							ReadOnly:  false,
 						},
 					},
-				}, workspaceVolume, homeVolume),
+				}, toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				tb.PodContainer("nop", "override-with-nop:latest"),
 				getCredentialsInitContainer("vr6ds"),
-				tb.PodInitContainer("build-step-create-dir-another-git-resource-78c5n", "override-with-bash-noop:latest",
-					tb.Args("-args", "mkdir -p /workspace/another-git-resource"),
-					tb.WorkingDir(workspaceDir),
-					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("workspace", workspaceDir),
-					tb.VolumeMount("home", "/builder/home"),
-				),
-				tb.PodInitContainer("build-step-source-copy-another-git-resource-mssqb", "override-with-bash-noop:latest",
-					tb.Args("-args", "cp -r source-folder/. /workspace/another-git-resource"),
-					tb.WorkingDir(workspaceDir),
-					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("test-pvc", "/pvc"),
-					tb.VolumeMount("workspace", workspaceDir),
-					tb.VolumeMount("home", "/builder/home"),
-				),
-				tb.PodInitContainer("build-step-create-dir-git-resource-mz4c7", "override-with-bash-noop:latest",
-					tb.Args("-args", "mkdir -p /workspace/git-resource"),
-					tb.WorkingDir(workspaceDir),
-					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("workspace", workspaceDir),
-					tb.VolumeMount("home", "/builder/home"),
-				),
-				tb.PodInitContainer("build-step-source-copy-git-resource-9l9zj", "override-with-bash-noop:latest",
-					tb.Args("-args", "cp -r source-folder/. /workspace/git-resource"),
-					tb.WorkingDir(workspaceDir),
-					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("test-pvc", "/pvc"),
-					tb.VolumeMount("workspace", workspaceDir),
-					tb.VolumeMount("home", "/builder/home"),
-				),
 				placeToolsInitContainer,
-				tb.PodInitContainer("build-step-simple-step", "foo",
+				tb.PodContainer("build-step-create-dir-another-git-resource-78c5n", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/tools/0", "-entrypoint", "/ko-app", "--",
+						"-args", "mkdir -p /workspace/another-git-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					entrypointOptionEnvVar,
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodInitContainer("build-step-source-mkdir-git-resource-6nl7g", "override-with-bash-noop:latest",
-					tb.Args("-args", "mkdir -p output-folder"),
+				tb.PodContainer("build-step-source-copy-another-git-resource-mssqb", "override-with-bash-noop:latest",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/0", "-post_file", "/tools/1", "-entrypoint", "/ko-app", "--",
+						"-args", "cp -r source-folder/. /workspace/another-git-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
 					tb.VolumeMount("test-pvc", "/pvc"),
+					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodInitContainer("build-step-source-copy-git-resource-j2tds", "override-with-bash-noop:latest",
-					tb.Args("-args", "cp -r /workspace/git-resource/. output-folder"),
+				tb.PodContainer("build-step-create-dir-git-resource-mz4c7", "override-with-bash-noop:latest",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/1", "-post_file", "/tools/2", "-entrypoint", "/ko-app", "--",
+						"-args", "mkdir -p /workspace/git-resource"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+				),
+				tb.PodContainer("build-step-source-copy-git-resource-9l9zj", "override-with-bash-noop:latest",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/2", "-post_file", "/tools/3", "-entrypoint", "/ko-app", "--",
+						"-args", "cp -r source-folder/. /workspace/git-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
 					tb.VolumeMount("test-pvc", "/pvc"),
+					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
+				tb.PodContainer("build-step-simple-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/3", "-post_file", "/tools/4", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+				),
+				tb.PodContainer("build-step-source-mkdir-git-resource-6nl7g", "override-with-bash-noop:latest",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/4", "-post_file", "/tools/5", "-entrypoint", "/ko-app", "--",
+						"-args", "mkdir -p output-folder"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("test-pvc", "/pvc"),
+					tb.VolumeMount("tools", "/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+				),
+				tb.PodContainer("build-step-source-copy-git-resource-j2tds", "override-with-bash-noop:latest",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/5", "-post_file", "/tools/6", "-entrypoint", "/ko-app", "--",
+						"-args", "cp -r /workspace/git-resource/. output-folder"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("test-pvc", "/pvc"),
+					tb.VolumeMount("tools", "/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+				),
+				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	}, {
@@ -474,25 +499,29 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				tb.PodContainer("nop", "override-with-nop:latest"),
 				getCredentialsInitContainer("mz4c7"),
-				tb.PodInitContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
-					tb.Args("-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
-					tb.WorkingDir(workspaceDir),
-					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("workspace", workspaceDir),
-					tb.VolumeMount("home", "/builder/home"),
-				),
-				placeToolsInitContainer,
-				tb.PodInitContainer("build-step-mycontainer", "myimage",
+				tb.PodContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/tools/0", "-entrypoint", "/ko-app", "--",
+						"-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					tb.EnvVar("ENTRYPOINT_OPTIONS", "{\"args\":[\"/mycmd\",\"--my-arg=foo\"],\"process_log\":\"/tools/process-log.txt\",\"marker_file\":\"/tools/marker-file.txt\"}"),
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
+				placeToolsInitContainer,
+				tb.PodContainer("build-step-mycontainer", "myimage",
+					tb.Command(entrypointLocation),
+					tb.WorkingDir(workspaceDir),
+					tb.Args("-wait_file", "/tools/0", "-post_file", "/tools/1", "-entrypoint", "/mycmd", "--",
+						"--my-arg=foo"),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+				),
+				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	}, {
@@ -507,18 +536,18 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				tb.PodContainer("nop", "override-with-nop:latest"),
 				getCredentialsInitContainer("9l9zj"),
 				placeToolsInitContainer,
-				tb.PodInitContainer("build-step-simple-step", "foo",
+				tb.PodContainer("build-step-simple-step", "foo",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/tools/0", "-entrypoint", "/mycmd", "--"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					entrypointOptionEnvVar,
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
+				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	}, {
@@ -532,25 +561,29 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				tb.PodContainer("nop", "override-with-nop:latest"),
 				getCredentialsInitContainer("mz4c7"),
-				tb.PodInitContainer("build-step-git-source-workspace-9l9zj", "override-with-git:latest",
-					tb.Args("-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path", "/workspace/workspace"),
-					tb.WorkingDir(workspaceDir),
-					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("workspace", workspaceDir),
-					tb.VolumeMount("home", "/builder/home"),
-				),
 				placeToolsInitContainer,
-				tb.PodInitContainer("build-step-mystep", "ubuntu",
+				tb.PodContainer("build-step-git-source-workspace-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/tools/0", "-entrypoint", "/ko-app", "--",
+						"-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path",
+						"/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					entrypointOptionEnvVar,
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
+				tb.PodContainer("build-step-mystep", "ubuntu",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/tools/0", "-post_file", "/tools/1", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+				),
+				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	}, {
@@ -566,25 +599,24 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				tb.PodContainer("nop", "override-with-nop:latest"),
 				getCredentialsInitContainer("9l9zj"),
 				placeToolsInitContainer,
-				tb.PodInitContainer("build-step-simple-step", "foo",
+				tb.PodContainer("build-step-simple-step", "foo",
 					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/tools/0", "-entrypoint", "/mycmd", "--"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					entrypointOptionEnvVar,
 					tb.VolumeMount("tools", "/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
+				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
-
 			testAssets := getTaskRunController(d)
 			c := testAssets.Controller
 			clients := testAssets.Clients
@@ -598,6 +630,9 @@ func TestReconcile(t *testing.T) {
 					Namespace: tc.taskRun.Namespace,
 				},
 			})
+
+			entrypoint.AddToEntrypointCache(entrypointCache, "override-with-git:latest", []string{"/ko-app"})
+			entrypoint.AddToEntrypointCache(entrypointCache, "override-with-bash-noop:latest", []string{"/ko-app"})
 
 			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)
@@ -967,12 +1002,6 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 }
 
 func TestCreateRedirectedBuild(t *testing.T) {
-	cfg := &config.Config{
-		Entrypoint: &config.Entrypoint{
-			Image: config.DefaultEntrypointImage,
-		},
-	}
-	ctx := config.ToContext(context.Background(), cfg)
 
 	tr := tb.TaskRun("tr", "tr", tb.TaskRunSpec(
 		tb.TaskRunServiceAccount("sa"),
@@ -986,7 +1015,9 @@ func TestCreateRedirectedBuild(t *testing.T) {
 	expectedSteps := len(bs.Steps) + 1
 	expectedVolumes := len(bs.Volumes) + 1
 
-	b, err := createRedirectedBuild(ctx, &bs, tr)
+	observer, _ := observer.New(zap.InfoLevel)
+	entrypointCache, _ := entrypoint.NewCache()
+	b, err := createRedirectedBuild(&bs, tr, entrypointCache, zap.New(observer).Sugar())
 	if err != nil {
 		t.Errorf("expected createRedirectedBuild to pass: %v", err)
 	}

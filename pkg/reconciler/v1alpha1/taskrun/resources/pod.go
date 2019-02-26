@@ -36,6 +36,7 @@ import (
 	"github.com/knative/build-pipeline/pkg/credentials/dockercreds"
 	"github.com/knative/build-pipeline/pkg/credentials/gitcreds"
 	"github.com/knative/build-pipeline/pkg/names"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -77,7 +78,7 @@ const (
 	// Prefixes to add to the name of the init containers.
 	// IMPORTANT: Changing these values without changing fluentd collection configuration
 	// will break log collection for init containers.
-	initContainerPrefix        = "build-step-"
+	containerPrefix            = "build-step-"
 	unnamedInitContainerPrefix = "build-step-unnamed-"
 	// A label with the following is added to the pod to identify the pods belonging to a build.
 	buildNameLabelKey = "build.knative.dev/buildName"
@@ -114,7 +115,7 @@ func gcsToContainer(source v1alpha1.SourceSpec, index int) (*corev1.Container, e
 	}
 
 	// source name is empty then use `build-step-gcs-source` name
-	containerName := initContainerPrefix + gcsSource + "-"
+	containerName := containerPrefix + gcsSource + "-"
 
 	// update container name to include `name` as suffix
 	if source.Name != "" {
@@ -200,7 +201,7 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 	}
 
 	return &corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(initContainerPrefix + credsInit),
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + credsInit),
 		Image:        *credsImage,
 		Args:         args,
 		VolumeMounts: volumeMounts,
@@ -228,6 +229,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 	}
 
 	initContainers := []corev1.Container{*cred}
+	podContainers := []corev1.Container{}
 	var sources []v1alpha1.SourceSpec
 	// if source is present convert into sources
 	if source := build.Spec.Source; source != nil {
@@ -244,7 +246,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 			if err != nil {
 				return nil, err
 			}
-			initContainers = append(initContainers, *gcs)
+			podContainers = append(podContainers, *gcs)
 		}
 	}
 
@@ -270,10 +272,14 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 		if step.Name == "" {
 			step.Name = fmt.Sprintf("%v%d", unnamedInitContainerPrefix, i)
 		} else {
-			step.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", initContainerPrefix, step.Name))
+			step.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, step.Name))
 		}
-
-		initContainers = append(initContainers, step)
+		// use the step name to add the entrypoint biary as an init container
+		if step.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
+			initContainers = append(initContainers, step)
+		} else {
+			podContainers = append(podContainers, step)
+		}
 	}
 	// Add our implicit volumes and any volumes needed for secrets to the explicitly
 	// declared user volumes.
@@ -289,6 +295,8 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 		return nil, err
 	}
 	gibberish := hex.EncodeToString(b)
+
+	podContainers = append(podContainers, corev1.Container{Name: "nop", Image: *nopImage})
 
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -307,12 +315,9 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 		},
 		Spec: corev1.PodSpec{
 			// If the build fails, don't restart it.
-			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: initContainers,
-			Containers: []corev1.Container{{
-				Name:  "nop",
-				Image: *nopImage,
-			}},
+			RestartPolicy:      corev1.RestartPolicyNever,
+			InitContainers:     initContainers,
+			Containers:         podContainers,
 			ServiceAccountName: build.Spec.ServiceAccountName,
 			Volumes:            volumes,
 			NodeSelector:       build.Spec.NodeSelector,

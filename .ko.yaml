@@ -3,4 +3,5 @@ baseImageOverrides:
   github.com/knative/build-pipeline/cmd/creds-init: gcr.io/knative-nightly/github.com/knative/build/build-base:latest
   github.com/knative/build-pipeline/cmd/git-init: gcr.io/knative-nightly/github.com/knative/build/build-base:latest
   github.com/knative/build-pipeline/cmd/bash: busybox # image should have shell in $PATH
+  github.com/knative/build-pipeline/cmd/entrypoint: busybox # image should have shell in $PATH
   github.com/knative/build-pipeline/cmd/gsutil: google/cloud-sdk:alpine # image should have gsutil in $PATH
