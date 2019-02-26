@@ -31,7 +31,9 @@ import (
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -57,7 +59,7 @@ func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
 
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	createNamespace(namespace, logger, c.KubeClient)
-
+	verifyServiceAccountExistence(namespace, logger, c.KubeClient)
 	return c, namespace
 }
 
@@ -110,6 +112,21 @@ func createNamespace(namespace string, logger *logging.BaseLogger, kubeClient *k
 		},
 	}); err != nil {
 		logger.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
+	}
+}
+
+func verifyServiceAccountExistence(namespace string, logger *logging.BaseLogger, kubeClient *knativetest.KubeClient) {
+	defaultSA := "default"
+	logger.Infof("Verify SA %q is created in namespace %q", defaultSA, namespace)
+
+	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+		_, err := kubeClient.Kube.CoreV1().ServiceAccounts(namespace).Get(defaultSA, metav1.GetOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			return false, nil
+		}
+		return true, err
+	}); err != nil {
+		logger.Fatalf("Failed to get SA %q in namespace %q for tests: %s", defaultSA, namespace, err)
 	}
 }
 
