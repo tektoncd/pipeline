@@ -53,18 +53,19 @@ const (
 
 func GetNextTasks(prName string, d *dag.DAG, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger) ([]*ResolvedPipelineRunTask, error) {
 	tasks := []*ResolvedPipelineRunTask{}
-	done := []string{}
+	var done []string
+
 	for _, t := range state {
 		if t.TaskRun != nil {
 			c := t.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-			if c != nil && c.Status == corev1.ConditionTrue {
+			if c.IsTrue() {
 				done = append(done, t.PipelineTask.Name)
 			}
 		}
 	}
 	toSchedule, err := d.GetSchedulable(done...)
 	if err != nil {
-		return tasks, fmt.Errorf("somehow the list of done tasks %v is invalid: %v", done, err)
+		return tasks, fmt.Errorf("error getting schedulable tasks %v: %v", done, err)
 	}
 	for _, t := range state {
 		for _, s := range toSchedule {
