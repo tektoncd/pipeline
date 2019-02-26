@@ -57,9 +57,12 @@ const (
 	// ReasonCouldntGetResource indicates that the reason for the failure status is that the
 	// associated PipelineRun's bound PipelineResources couldn't all be retrieved
 	ReasonCouldntGetResource = "CouldntGetResource"
-	// ReasonFailedValidation indicated that the reason for failure status is
+	// ReasonFailedValidation indicates that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	ReasonFailedValidation = "PipelineValidationFailed"
+	// ReasonInvalidGraph indicates that the reason for the failure status is that the
+	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
+	ReasonInvalidGraph = "PipelineInvalidGraph"
 	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
 	pipelineRunAgentName = "pipeline-controller"
 	// pipelineRunControllerName defines name for PipelineRun Controller
@@ -225,7 +228,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
-			Reason: ReasonInvalidBindings,
+			Reason: ReasonInvalidGraph,
 			Message: fmt.Sprintf("PipelineRun %s's Pipeline DAG is invalid: %s",
 				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
 		})
@@ -325,7 +328,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	err = resources.ResolveTaskRuns(c.taskRunLister.TaskRuns(pr.Namespace).Get, pipelineState)
 	if err != nil {
-		return fmt.Errorf("error getting TaskRuns for Pipeline %s: %s", p.Name, err)
+		return fmt.Errorf("Error getting TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
 
 	// If the pipelinerun is cancelled, cancel tasks and update status
@@ -335,7 +338,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	rprts, err := resources.GetNextTasks(pr.Name, d, pipelineState, c.Logger)
 	if err != nil {
-		c.Logger.Error("Unable to get next tasks for valid pipelinerun, should not happen: %v", err)
+		c.Logger.Errorf("Error getting next tasks for valid pipelinerun %s: %v", pr.Name, err)
 		return err
 	}
 

@@ -347,24 +347,24 @@ func testGraph() *DAG {
 	g.Nodes["x"] = &Node{
 		Task: v1alpha1.PipelineTask{Name: "x"},
 	}
-	g.linkPipelineTasks(g.Nodes["a"], g.Nodes["x"])
+	linkPipelineTasks(g.Nodes["a"], g.Nodes["x"])
 
 	g.Nodes["y"] = &Node{
 		Task: v1alpha1.PipelineTask{Name: "y"},
 	}
-	g.linkPipelineTasks(g.Nodes["a"], g.Nodes["y"])
-	g.linkPipelineTasks(g.Nodes["x"], g.Nodes["y"])
+	linkPipelineTasks(g.Nodes["a"], g.Nodes["y"])
+	linkPipelineTasks(g.Nodes["x"], g.Nodes["y"])
 
 	g.Nodes["z"] = &Node{
 		Task: v1alpha1.PipelineTask{Name: "z"},
 	}
-	g.linkPipelineTasks(g.Nodes["x"], g.Nodes["z"])
+	linkPipelineTasks(g.Nodes["x"], g.Nodes["z"])
 
 	g.Nodes["w"] = &Node{
 		Task: v1alpha1.PipelineTask{Name: "w"},
 	}
-	g.linkPipelineTasks(g.Nodes["y"], g.Nodes["w"])
-	g.linkPipelineTasks(g.Nodes["b"], g.Nodes["w"])
+	linkPipelineTasks(g.Nodes["y"], g.Nodes["w"])
+	linkPipelineTasks(g.Nodes["b"], g.Nodes["w"])
 	return g
 }
 

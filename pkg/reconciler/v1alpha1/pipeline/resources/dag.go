@@ -56,7 +56,7 @@ func (g *DAG) addPipelineTask(t v1alpha1.PipelineTask) (*Node, error) {
 	return newNode, nil
 }
 
-func (g *DAG) linkPipelineTasks(prev *Node, next *Node) error {
+func linkPipelineTasks(prev *Node, next *Node) error {
 	// Check for self cycle
 	if prev.Task.Name == next.Task.Name {
 		return fmt.Errorf("cycle detected; task %q depends on itself", next.Task.Name)
@@ -178,13 +178,13 @@ func toMap(t ...string) map[string]struct{} {
 	return m
 }
 
-func addLink(pt v1alpha1.PipelineTask, previousTask string, d *DAG) error {
-	prev, ok := d.Nodes[previousTask]
+func addLink(pt v1alpha1.PipelineTask, previousTask string, nodes map[string]*Node) error {
+	prev, ok := nodes[previousTask]
 	if !ok {
 		return fmt.Errorf("Task %s depends on %s but %s wasn't present in Pipeline", pt.Name, previousTask, previousTask)
 	}
-	next, _ := d.Nodes[pt.Name]
-	if err := d.linkPipelineTasks(prev, next); err != nil {
+	next, _ := nodes[pt.Name]
+	if err := linkPipelineTasks(prev, next); err != nil {
 		return fmt.Errorf("Couldn't create link from %s to %s: %v", prev.Task.Name, next.Task.Name, err)
 	}
 	return nil
@@ -203,14 +203,14 @@ func Build(p *v1alpha1.Pipeline) (*DAG, error) {
 	// Process all from and runAfter constraints to add task dependency
 	for _, pt := range p.Spec.Tasks {
 		for _, previousTask := range pt.RunAfter {
-			if err := addLink(pt, previousTask, d); err != nil {
+			if err := addLink(pt, previousTask, d.Nodes); err != nil {
 				return nil, fmt.Errorf("couldn't add link between %s and %s: %v", pt.Name, previousTask, err)
 			}
 		}
 		if pt.Resources != nil {
 			for _, rd := range pt.Resources.Inputs {
 				for _, previousTask := range rd.From {
-					if err := addLink(pt, previousTask, d); err != nil {
+					if err := addLink(pt, previousTask, d.Nodes); err != nil {
 						return nil, fmt.Errorf("couldn't add link between %s and %s: %v", pt.Name, previousTask, err)
 					}
 				}

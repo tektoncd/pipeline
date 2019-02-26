@@ -34,12 +34,11 @@ following fields:
     [`PipelineResources`](resources.md) of which types the `Pipeline` will be
     using in its [Tasks](#pipeline-tasks)
   - `tasks`
-    - `resources`
-      - `inputs/outputs`
-        - [`from`](#from) - Used when the content of the [`PipelineResource`](resources.md)
-          should come from the [output](tasks.md#output) of a previous [Pipeline Task](#pipeline-tasks)
-        - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-task) should be executed
-          after another Pipeline Task, but there is no [output linking](#from) required
+    - `resources.inputs` / `resource.outputs`
+      - [`from`](#from) - Used when the content of the [`PipelineResource`](resources.md)
+        should come from the [output](tasks.md#output) of a previous [Pipeline Task](#pipeline-tasks)
+      - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-task) should be executed
+        after another Pipeline Task, but there is no [output linking](#from) required
 
 [kubernetes-overview]:
   <https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields>
