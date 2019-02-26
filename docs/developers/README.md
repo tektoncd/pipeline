@@ -111,3 +111,17 @@ expected in directory path `/workspace/output/resource_name`.
         - name: gcs-workspace
           type: storage
   ```
+
+## Entrypoint rewriting and step ordering
+
+`Entrypoint` is injected into the `Task` Container(s), wraps the `Task` step 
+to manage the execution order of the containers. The `entrypoint` binary has 
+the following arguments: 
+
+ * `wait_file` - If specified, file to wait for
+ * `post_file` - If specified, file to write upon completion
+ * `entrypoint` - The command to run in the image being wrapped
+
+As part of the PodSpec created by `TaskRun` the entrypoint for each `Task` step
+is changed to the entrypoint binary with the mentioned arguments and a volume 
+with the binary and file(s) is mounted.

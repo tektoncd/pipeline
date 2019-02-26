@@ -36,6 +36,7 @@ spec:
           "-nop-image", "github.com/knative/build-pipeline/cmd/nop",
           "-bash-noop-image", "github.com/knative/build-pipeline/cmd/bash",
           "-gsutil-image","github.com/knative/build-pipeline/cmd/gsutil",
+          "-entrypoint-image", "github.com/knative/build-pipeline/cmd/entrypoint",
         ]
         volumeMounts:
         - name: config-logging

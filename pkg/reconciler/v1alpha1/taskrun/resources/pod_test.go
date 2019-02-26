@@ -93,21 +93,23 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         initContainerPrefix + credsInit + "-9l9zj",
+				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
-			}, {
+			}},
+			Containers: []corev1.Container{{
 				Name:         "build-step-name",
 				Image:        "image",
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
-			}},
-			Containers: []corev1.Container{nopContainer},
-			Volumes:    implicitVolumes,
+			},
+				nopContainer,
+			},
+			Volumes: implicitVolumes,
 		},
 	}, {
 		desc: "gcs-source-with-targetPath",
@@ -124,22 +126,24 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         initContainerPrefix + credsInit + "-9l9zj",
+				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
-			}, {
-				Name:         initContainerPrefix + gcsSource + "-gcs-foo-bar" + "-mz4c7",
+			}},
+			Containers: []corev1.Container{{
+				Name:         containerPrefix + gcsSource + "-gcs-foo-bar" + "-mz4c7",
 				Image:        *gcsFetcherImage,
 				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar", "--dest_dir", "/workspace/path/foo"},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
 				WorkingDir:   workspaceDir,
-			}},
-			Containers: []corev1.Container{nopContainer},
-			Volumes:    implicitVolumes,
+			},
+				nopContainer,
+			},
+			Volumes: implicitVolumes,
 		},
 	}, {
 		desc: "with-service-account",
@@ -154,7 +158,7 @@ func TestMakePod(t *testing.T) {
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:  initContainerPrefix + credsInit + "-mz4c7",
+				Name:  containerPrefix + credsInit + "-mz4c7",
 				Image: *credsImage,
 				Args: []string{
 					"-basic-docker=multi-creds=https://docker.io",
@@ -165,15 +169,17 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMountsWithSecrets,
 				WorkingDir:   workspaceDir,
-			}, {
+			}},
+			Containers: []corev1.Container{{
 				Name:         "build-step-name",
 				Image:        "image",
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
-			}},
-			Containers: []corev1.Container{nopContainer},
-			Volumes:    implicitVolumesWithSecrets,
+			},
+				nopContainer,
+			},
+			Volumes: implicitVolumesWithSecrets,
 		},
 	}, {
 		desc: "very-long-step-name",
@@ -189,21 +195,23 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         initContainerPrefix + credsInit + "-9l9zj",
+				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
-			}, {
+			}},
+			Containers: []corev1.Container{{
 				Name:         "build-step-a-sixty-three-character-step-name-to-trigger-max-len",
 				Image:        "image",
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
-			}},
-			Containers: []corev1.Container{nopContainer},
-			Volumes:    implicitVolumes,
+			},
+				nopContainer,
+			},
+			Volumes: implicitVolumes,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {

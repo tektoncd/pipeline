@@ -27,12 +27,10 @@ import (
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/config"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
 	"go.uber.org/zap"
@@ -79,11 +77,6 @@ var (
 	}
 )
 
-type configStore interface {
-	ToContext(ctx context.Context) context.Context
-	WatchConfigs(w configmap.Watcher)
-}
-
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	*reconciler.Base
@@ -94,7 +87,7 @@ type Reconciler struct {
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    listers.PipelineResourceLister
 	tracker           tracker.Interface
-	configStore       configStore
+	cache             *entrypoint.Cache
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -108,6 +101,7 @@ func NewController(
 	clusterTaskInformer informers.ClusterTaskInformer,
 	resourceInformer informers.PipelineResourceInformer,
 	podInformer coreinformers.PodInformer,
+	entrypointCache *entrypoint.Cache,
 ) *controller.Impl {
 
 	c := &Reconciler{
@@ -131,9 +125,12 @@ func NewController(
 		UpdateFunc: controller.PassNew(c.tracker.OnChanged),
 	})
 
-	c.Logger.Info("Setting up ConfigMap receivers")
-	c.configStore = config.NewStore(c.Logger.Named("config-store"))
-	c.configStore.WatchConfigs(opt.ConfigMapWatcher)
+	c.Logger.Info("Setting up Entrypoint cache")
+	c.cache = entrypointCache
+	if c.cache == nil {
+		c.cache, _ = entrypoint.NewCache()
+	}
+
 	return impl
 }
 
@@ -147,8 +144,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Errorf("invalid resource key: %s", key)
 		return nil
 	}
-
-	ctx = c.configStore.ToContext(ctx)
 
 	// Get the Task Run resource with this namespace/name
 	original, err := c.taskRunLister.TaskRuns(namespace).Get(name)
@@ -293,7 +288,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		}
 	} else {
 		// Build pod is not present, create build pod.
-		pod, err = c.createBuildPod(ctx, tr, rtr.TaskSpec, rtr.TaskName)
+		pod, err = c.createBuildPod(tr, rtr.TaskSpec, rtr.TaskName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			var msg string
@@ -387,48 +382,32 @@ func (c *Reconciler) updateLabels(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, erro
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a
 // volumeMount
-func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
+func (c *Reconciler) createBuildPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
 	// TODO: Preferably use Validate on task.spec to catch validation error
 	bs := ts.GetBuildSpec()
 	if bs == nil {
 		return nil, fmt.Errorf("task %s has nil BuildSpec", taskName)
 	}
 
-	// For each step with no entrypoint set, try to populate it with the info
-	// from the remote registry
-	entrypointCache, err := entrypoint.NewCache()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create new entrypoint cache: %v", err)
-	}
-	digestCache, err := entrypoint.NewCache()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create new digest cache: %v", err)
-	}
 	bSpec := bs.DeepCopy()
-	for i := range bSpec.Steps {
-		step := &bSpec.Steps[i]
-		if len(step.Command) == 0 {
-			digest, err := entrypoint.GetImageDigest(digestCache, step.Image)
-			if err != nil {
-				return nil, fmt.Errorf("could not get digest for %s: %v", step.Image, err)
-			}
-			ep, err := entrypoint.GetRemoteEntrypoint(entrypointCache, digest)
-			if err != nil {
-				return nil, fmt.Errorf("could not get entrypoint from registry for %s: %v", step.Image, err)
-			}
-			step.Command = ep
-		}
-	}
 	bSpec.Timeout = tr.Spec.Timeout
 	bSpec.Affinity = tr.Spec.Affinity
 	bSpec.NodeSelector = tr.Spec.NodeSelector
 
-	build, err := createRedirectedBuild(ctx, bSpec, tr)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
+	build := &buildv1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      tr.Name,
+			Namespace: tr.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(tr, groupVersionKind),
+			},
+			// Attach new label and pass taskrun labels to build
+			Labels: makeLabels(tr),
+		},
+		Spec: *bSpec,
 	}
 
-	build, err = resources.AddInputResource(c.KubeClientSet, build, taskName, ts, tr, c.resourceLister, c.Logger)
+	build, err := resources.AddInputResource(c.KubeClientSet, build, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
@@ -438,6 +417,11 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
+	}
+
+	build, err = createRedirectedBuild(&build.Spec, tr, c.cache, c.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
 
 	var defaults []v1alpha1.TaskParam
@@ -469,20 +453,20 @@ func (c *Reconciler) createBuildPod(ctx context.Context, tr *v1alpha1.TaskRun, t
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the BuildSpec and modifies it freely
-func createRedirectedBuild(ctx context.Context, bs *buildv1alpha1.BuildSpec, tr *v1alpha1.TaskRun) (*buildv1alpha1.Build, error) {
+func createRedirectedBuild(bs *buildv1alpha1.BuildSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*buildv1alpha1.Build, error) {
 	// Pass service account name from taskrun to build
 	bs.ServiceAccountName = tr.Spec.ServiceAccount
 
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
-	err := entrypoint.RedirectSteps(bs.Steps)
+	err := entrypoint.RedirectSteps(cache, bs.Steps, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add entrypoint to steps of TaskRun %s: %v", tr.Name, err)
 	}
 	// Add the step which will copy the entrypoint into the volume
 	// we are going to be using, so that all of the steps will have
 	// access to it.
-	entrypoint.AddCopyStep(ctx, bs)
+	entrypoint.AddCopyStep(bs)
 	b := &buildv1alpha1.Build{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      tr.Name,

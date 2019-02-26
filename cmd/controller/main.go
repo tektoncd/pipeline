@@ -119,6 +119,7 @@ func main() {
 			clusterTaskInformer,
 			resourceInformer,
 			podInformer,
+			nil, //entrypoint cache will be initialized by controller if not provided
 		),
 		pipelinerun.NewController(opt,
 			pipelineRunInformer,
