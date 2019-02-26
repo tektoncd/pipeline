@@ -165,6 +165,14 @@ func (pr *PipelineRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
 	}
 }
 
+func (pr *PipelineRunStatus) IsDone() bool {
+	return !pr.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+}
+
+func (sp PipelineRunSpec) IsCancelled() bool {
+	return sp.Status == PipelineRunSpecStatusCancelled
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

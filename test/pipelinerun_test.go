@@ -181,8 +181,8 @@ func TestPipelineRun(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to collect matching events: %q", err)
 			}
-			if len(events) != td.expectedNumberOfEvents {
-				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), events)
+			if len(events) < td.expectedNumberOfEvents {
+				logger.Fatalf("Expected at least %d number of successful events from pipelinerun and taskrun but got %d", td.expectedNumberOfEvents, len(events))
 			}
 			logger.Infof("Successfully finished test %q", td.name)
 		})
@@ -369,8 +369,10 @@ func collectMatchingEvents(kubeClient *knativetest.KubeClient, namespace string,
 			event := wevent.Object.(*corev1.Event)
 			if val, ok := kinds[event.InvolvedObject.Kind]; ok {
 				for _, expectedName := range val {
-					if event.InvolvedObject.Name == expectedName && event.Reason == reason {
-						events = append(events, event)
+					if event.InvolvedObject.Name == expectedName {
+						if event.Reason == fmt.Sprintf("%s%s", event.InvolvedObject.Kind, reason) {
+							events = append(events, event)
+						}
 					}
 				}
 			}

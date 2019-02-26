@@ -39,9 +39,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 )
 
 const (
@@ -157,7 +159,10 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 func getTaskRunController(d test.Data) test.TestAssets {
 	entrypointCache, _ = entrypoint.NewCache()
 	c, i := test.SeedTestData(d)
+	stopCh := make(chan struct{})
 	observer, logs := observer.New(zap.InfoLevel)
+	fr := record.NewFakeRecorder(100)
+
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	return test.TestAssets{
 		Controller: NewController(
@@ -165,6 +170,7 @@ func getTaskRunController(d test.Data) test.TestAssets {
 				Logger:            zap.New(observer).Sugar(),
 				KubeClientSet:     c.Kube,
 				PipelineClientSet: c.Pipeline,
+				Recorder:          fr,
 				ConfigMapWatcher:  configMapWatcher,
 			},
 			i.TaskRun,
@@ -173,6 +179,7 @@ func getTaskRunController(d test.Data) test.TestAssets {
 			i.PipelineResource,
 			i.Pod,
 			entrypointCache,
+			reconciler.NewTimeoutHandler(zap.New(observer).Sugar(), c.Kube, c.Pipeline, stopCh),
 		),
 		Logs:      logs,
 		Clients:   c,
@@ -698,18 +705,15 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 		name    string
 		taskRun *v1alpha1.TaskRun
 		reason  string
-	}{
-		{
-			name:    "task run with no task",
-			taskRun: noTaskRun,
-			reason:  reasonFailedResolution,
-		},
-		{
-			name:    "task run with no task",
-			taskRun: withWrongRef,
-			reason:  reasonFailedResolution,
-		},
-	}
+	}{{
+		name:    "task run with no task",
+		taskRun: noTaskRun,
+		reason:  reasonFailedResolution,
+	}, {
+		name:    "task run with no task",
+		taskRun: withWrongRef,
+		reason:  reasonFailedResolution,
+	}}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -726,8 +730,12 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 			if len(clients.Kube.Actions()) != 0 {
 				t.Errorf("expected no actions created by the reconciler, got %v", clients.Kube.Actions())
 			}
+			newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
+			}
 			// Since the TaskRun is invalid, the status should say it has failed
-			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			condition := newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected invalid TaskRun to have failed status, but had %v", condition)
 			}
@@ -1114,7 +1122,8 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionUnknown}),
-			tb.TaskRunStartTime(time.Now().Add(-15*time.Second))))
+			tb.TaskRunStartTime(time.Now().Add(-15*time.Second)),
+		))
 
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{taskRun},
@@ -1125,21 +1134,44 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
+	if _, err := clients.Kube.CoreV1().ServiceAccounts(taskRun.Namespace).Create(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: taskRun.Namespace,
+		},
+	}); err != nil {
+		t.Fatalf("Unexpected error when creating SA: %v", err)
+	}
+
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
 	}
-	newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
-	}
-
 	expectedStatus := &duckv1alpha1.Condition{
 		Type:    duckv1alpha1.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
-		Reason:  "TaskRunTimeout",
+		Reason:  "Timeout",
 		Message: `TaskRun "test-taskrun-timeout" failed to finish within "10s"`,
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+
+	if err := wait.PollImmediate(100*time.Millisecond, 5*time.Second, func() (bool, error) {
+		reconciledRun, err := clients.Pipeline.TektonV1alpha1().TaskRuns(taskRun.Namespace).Get(taskRun.Name, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		cond := reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if cond.IsFalse() {
+			d := cmp.Diff(cond, expectedStatus, ignoreLastTransitionTime)
+			if d == "" {
+				return true, nil
+			}
+			return false, fmt.Errorf("Expected TaskRun to be %#v, but condition diff status is %s", expectedStatus, d)
+		}
+		if cond.IsTrue() {
+			return false, fmt.Errorf("Expected TaskRun to be failed, but condition is true with reason: %s", cond.Reason)
+		}
+		return false, nil
+	}); err != nil {
+		t.Fatalf("Expected Taskrun to be timed out, but got error %v", err)
 	}
 }

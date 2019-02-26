@@ -15,6 +15,7 @@ package pipelinerun
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 )
@@ -50,6 +52,7 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.TestAssets {
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
+	stopCh := make(chan struct{})
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	return test.TestAssets{
 		Controller: NewController(
@@ -66,6 +69,7 @@ func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.T
 			i.ClusterTask,
 			i.TaskRun,
 			i.PipelineResource,
+			reconciler.NewTimeoutHandler(zap.New(observer).Sugar(), c.Kube, c.Pipeline, stopCh),
 		),
 		Logs:      logs,
 		Clients:   c,
@@ -578,21 +582,37 @@ func TestReconcileWithTimeout(t *testing.T) {
 	testAssets := getPipelineRunController(d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
+	expectedStatus := &duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  "Timeout",
+		Message: `PipelineRun "test-pipeline-run-with-timeout" failed to finish within "12h0m0s"`,
+	}
 
-	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-timeout")
-	if err != nil {
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-timeout"); err != nil {
 		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
 	}
+	ignoreLastTransitionTime := cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
 
-	// Check that the PipelineRun was reconciled correctly
-	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
-	}
-
-	// The PipelineRun should be timed out.
-	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Reason != resources.ReasonTimedOut {
-		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	if err := wait.PollImmediate(1*time.Second, 10*time.Second, func() (bool, error) {
+		reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		cond := reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if cond.IsFalse() {
+			d := cmp.Diff(cond, expectedStatus, ignoreLastTransitionTime)
+			if d == "" {
+				return true, nil
+			}
+			return false, fmt.Errorf("Expected PipelineRun to be timed out, but condition diff %s", d)
+		}
+		if cond.IsTrue() {
+			return false, fmt.Errorf("Expected PipelineRun to be failed, but condition is true with reason: %s", cond.Reason)
+		}
+		return false, nil
+	}); err != nil {
+		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %v", err)
 	}
 
 	// Check that the expected TaskRun was created

@@ -43,6 +43,7 @@ import (
 
 const (
 	threadsPerController = 2
+	resyncPeriod         = 10 * time.Hour
 )
 
 var (
@@ -99,8 +100,8 @@ func main() {
 		Logger:            logger,
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, opt.ResyncPeriod)
-	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, opt.ResyncPeriod)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, resyncPeriod)
+	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, resyncPeriod)
 
 	taskInformer := pipelineInformerFactory.Tekton().V1alpha1().Tasks()
 	clusterTaskInformer := pipelineInformerFactory.Tekton().V1alpha1().ClusterTasks()
@@ -110,6 +111,9 @@ func main() {
 
 	pipelineInformer := pipelineInformerFactory.Tekton().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineRuns()
+	timeoutHandler := reconciler.NewTimeoutHandler(logger, kubeClient, pipelineClient, stopCh)
+	timeoutHandler.CheckTimeouts()
+
 	// Build all of our controllers, with the clients constructed above.
 	controllers := []*controller.Impl{
 		// Pipeline Controllers
@@ -120,6 +124,7 @@ func main() {
 			resourceInformer,
 			podInformer,
 			nil, //entrypoint cache will be initialized by controller if not provided
+			timeoutHandler,
 		),
 		pipelinerun.NewController(opt,
 			pipelineRunInformer,
@@ -128,6 +133,7 @@ func main() {
 			clusterTaskInformer,
 			taskRunInformer,
 			resourceInformer,
+			timeoutHandler,
 		),
 	}
 

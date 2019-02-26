@@ -226,3 +226,12 @@ func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 	}
 	return false
 }
+
+// isDone returns true if the TaskRun's status indicates that it is done.
+func (st *TaskRunStatus) IsDone() bool {
+	return !st.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+}
+
+func (sp TaskRunSpec) IsCancelled() bool {
+	return sp.Status == TaskRunSpecStatusCancelled
+}
