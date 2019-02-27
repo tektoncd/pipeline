@@ -47,9 +47,11 @@ func cancelPipelineRun(pr *v1alpha1.PipelineRun, pipelineState []*resources.Reso
 			continue
 		}
 		rprt.TaskRun.Spec.Status = v1alpha1.TaskRunSpecStatusCancelled
+		if _, err := clientSet.TektonV1alpha1().TaskRuns(pr.Namespace).UpdateStatus(rprt.TaskRun); err != nil {
+			errs = append(errs, err.Error())
+		}
 		if _, err := clientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Update(rprt.TaskRun); err != nil {
 			errs = append(errs, err.Error())
-			continue
 		}
 	}
 	if len(errs) > 0 {

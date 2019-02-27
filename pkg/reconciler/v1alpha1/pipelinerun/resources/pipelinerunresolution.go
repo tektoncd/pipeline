@@ -244,7 +244,7 @@ func getTaskRunName(taskRunsStatus map[string]v1alpha1.TaskRunStatus, prName str
 		}
 	}
 
-	return names.SimpleNameGenerator.GenerateName(base)
+	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(base)
 }
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be

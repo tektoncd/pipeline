@@ -11,7 +11,7 @@ This tutorial will walk you through creating and running some simple
 
 For more details on using `Pipelines`, see [our usage docs](README.md).
 
-**[This tutorial can be run on a local workstation](#local-development)**<br>
+**Note:** [This tutorial can be run on a local workstation](#local-development)
 
 ## Task
 
@@ -326,7 +326,7 @@ The status of type `Succeeded = True` shows the Task ran successfully and you
 can also validate the Docker image is created in the location specified in the
 resource definition.
 
-# Pipeline
+## Pipeline
 
 A [`Pipeline`](pipelines.md) defines a list of tasks to execute, while also
 indicating if any outputs should be used as inputs of a following task by using
@@ -603,7 +603,7 @@ Tekton Pipelines is known to work with:
 
 Elasticsearch, Beats and Kibana can be deployed locally as a means to view logs:
 an example is provided at
-https://github.com/mgreau/tekton-pipelines-elastic-tutorials.
+<https://github.com/mgreau/tekton-pipelines-elastic-tutorials>.
 
 ## Experimentation
 

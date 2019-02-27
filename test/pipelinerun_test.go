@@ -181,9 +181,7 @@ func TestPipelineRun(t *testing.T) {
 		expectedTaskRuns: []string{"create-file-kritis", "create-fan-out-1", "create-fan-out-2", "check-fan-in"},
 		// 1 from PipelineRun and 4 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 5,
-	}}
-	// TODO(#375): Reenable the 'fan-in and fan-out' test once it's fixed.
-	tds = []tests{{
+	}, {
 		name: "service account propagation",
 		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
@@ -308,14 +306,15 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit,
 				tb.ResourceTargetPath("brandnewspace"),
 			)),
-			tb.TaskOutputs(tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("write-data-task-0-step-0", "ubuntu", tb.Command("/bin/bash"),
 				tb.Args("-c", "echo stuff > /workspace/brandnewspace/stuff"),
 			),
 			tb.Step("write-data-task-0-step-1", "ubuntu", tb.Command("/bin/bash"),
 				tb.Args("-c", "echo other > /workspace/brandnewspace/other"),
 			),
-		)), tb.Task("check-create-files-exists", namespace, tb.TaskSpec(
+		)),
+		tb.Task("check-create-files-exists", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
@@ -324,7 +323,8 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			tb.Step("write-data-task-1", "ubuntu", tb.Command("/bin/bash"),
 				tb.Args("-c", "echo something > /workspace/workspace/something"),
 			),
-		)), tb.Task("check-create-files-exists-2", namespace, tb.TaskSpec(
+		)),
+		tb.Task("check-create-files-exists-2", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
@@ -333,7 +333,8 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			tb.Step("write-data-task-1", "ubuntu", tb.Command("/bin/bash"),
 				tb.Args("-c", "echo else > /workspace/workspace/else"),
 			),
-		)), tb.Task("read-files", namespace, tb.TaskSpec(
+		)),
+		tb.Task("read-files", namespace, tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit,
 				tb.ResourceTargetPath("readingspace"),
 			)),
@@ -351,18 +352,21 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 }
 
 func getFanInFanOutPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
+	outGitResource := tb.PipelineTaskOutputResource("workspace", "git-repo")
+
 	return tb.Pipeline(getName(pipelineName, suffix), namespace, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-repo", "git"),
 		tb.PipelineTask("create-file-kritis", "create-file",
-			tb.PipelineTaskOutputResource("workspace", "git-repo"),
+			tb.PipelineTaskInputResource("workspace", "git-repo"),
+			outGitResource,
 		),
 		tb.PipelineTask("create-fan-out-1", "check-create-files-exists",
 			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-file-kritis")),
-			tb.PipelineTaskOutputResource("workspace", "git-repo"),
+			outGitResource,
 		),
 		tb.PipelineTask("create-fan-out-2", "check-create-files-exists-2",
 			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-file-kritis")),
-			tb.PipelineTaskOutputResource("workspace", "git-repo"),
+			outGitResource,
 		),
 		tb.PipelineTask("check-fan-in", "read-files",
 			tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("create-fan-out-2", "create-fan-out-1")),
@@ -392,10 +396,10 @@ func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceA
 	}
 }
 func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
-	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace, tb.PipelineRunSpec(
-		getName(pipelineName, suffix),
-		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("kritis-resource-git")),
-	))
+	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
+		tb.PipelineRunSpec(getName(pipelineName, suffix),
+			tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("kritis-resource-git")),
+		))
 }
 
 func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {

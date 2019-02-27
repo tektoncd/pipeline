@@ -46,6 +46,7 @@ var (
 )
 
 func TestMakePod(t *testing.T) {
+	names.TestingSeed()
 	subPath := "subpath"
 	implicitVolumeMountsWithSubPath := []corev1.VolumeMount{}
 	for _, vm := range implicitVolumeMounts {
@@ -173,6 +174,36 @@ func TestMakePod(t *testing.T) {
 			}},
 			Containers: []corev1.Container{nopContainer},
 			Volumes:    implicitVolumesWithSecrets,
+		},
+	}, {
+		desc: "very-long-step-name",
+		b: v1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Name:  "a-sixty-three-character-step-name-to-trigger-max-length-checkxx",
+				Image: "image",
+			}},
+		},
+		bAnnotations: map[string]string{
+			"simple-annotation-key": "simple-annotation-val",
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{{
+				Name:         initContainerPrefix + credsInit + "-9l9zj",
+				Image:        *credsImage,
+				Args:         []string{},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+			}, {
+				Name:         "build-step-a-sixty-three-character-step-name-to-trigger-max-len",
+				Image:        "image",
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+			}},
+			Containers: []corev1.Container{nopContainer},
+			Volumes:    implicitVolumes,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
