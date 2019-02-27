@@ -21,7 +21,7 @@ _See [the contribution guide](https://github.com/knative/build-pipeline/blob/mas
 <!--
 Does your PR contain User facing changes?
 
-If so, breifly describe them here so we can include this description in the
+If so, briefly describe them here so we can include this description in the
 release notes for the next release!
 -->
 
