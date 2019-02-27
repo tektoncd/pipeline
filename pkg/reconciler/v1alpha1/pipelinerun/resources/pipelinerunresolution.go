@@ -68,12 +68,8 @@ func GetNextTasks(prName string, d *dag.DAG, state []*ResolvedPipelineRunTask, l
 		return tasks, fmt.Errorf("error getting schedulable tasks %v: %v", done, err)
 	}
 	for _, t := range state {
-		for _, s := range toSchedule {
-			if t.PipelineTask.Name == s.Name {
-				if t.TaskRun == nil {
-					tasks = append(tasks, t)
-				}
-			}
+		if _, ok := toSchedule[t.PipelineTask.Name]; ok && t.TaskRun == nil {
+			tasks = append(tasks, t)
 		}
 	}
 	return tasks, nil

@@ -17,7 +17,6 @@ limitations under the License.
 package pipeline
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -373,43 +372,69 @@ func TestGetSchedulable(t *testing.T) {
 	tcs := []struct {
 		name          string
 		finished      []string
-		expectedTasks []v1alpha1.PipelineTask
+		expectedTasks map[string]v1alpha1.PipelineTask
 	}{{
-		name:          "nothing-done",
-		finished:      []string{},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "a"}, {Name: "b"}},
+		name:     "nothing-done",
+		finished: []string{},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"a": {Name: "a"},
+			"b": {Name: "b"},
+		},
 	}, {
-		name:          "a-done",
-		finished:      []string{"a"},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "b"}, {Name: "x"}},
+		name:     "a-done",
+		finished: []string{"a"},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"b": {Name: "b"},
+			"x": {Name: "x"},
+		},
 	}, {
-		name:          "b-done",
-		finished:      []string{"b"},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "a"}},
+		name:     "b-done",
+		finished: []string{"b"},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"a": {Name: "a"},
+		},
 	}, {
-		name:          "a-and-b-done",
-		finished:      []string{"a", "b"},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "x"}},
+		name:     "a-and-b-done",
+		finished: []string{"a", "b"},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"x": {Name: "x"},
+		},
 	}, {
-		name:          "a-x-done",
-		finished:      []string{"a", "x"},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "b"}, {Name: "y"}, {Name: "z"}},
+		name:     "a-x-done",
+		finished: []string{"a", "x"},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"b": {Name: "b"},
+			"y": {Name: "y"},
+			"z": {Name: "z"},
+		},
 	}, {
-		name:          "a-x-b-done",
-		finished:      []string{"a", "x", "b"},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "y"}, {Name: "z"}},
+		name:     "a-x-b-done",
+		finished: []string{"a", "x", "b"},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"y": {Name: "y"},
+			"z": {Name: "z"},
+		},
 	}, {
-		name:          "a-x-y-done",
-		finished:      []string{"a", "x", "y"},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "b"}, {Name: "z"}},
+		name:     "a-x-y-done",
+		finished: []string{"a", "x", "y"},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"b": {Name: "b"},
+			"z": {Name: "z"},
+		},
 	}, {
-		name:          "a-x-y-done",
-		finished:      []string{"a", "x", "y"},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "b"}, {Name: "z"}},
+		name:     "a-x-y-done",
+		finished: []string{"a", "x", "y"},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"b": {Name: "b"},
+			"z": {Name: "z"},
+		},
 	}, {
-		name:          "a-x-y-b-done",
-		finished:      []string{"a", "x", "y", "b"},
-		expectedTasks: []v1alpha1.PipelineTask{{Name: "w"}, {Name: "z"}},
+		name:     "a-x-y-b-done",
+		finished: []string{"a", "x", "y", "b"},
+		expectedTasks: map[string]v1alpha1.PipelineTask{
+			"w": {Name: "w"},
+			"z": {Name: "z"},
+		},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -417,18 +442,11 @@ func TestGetSchedulable(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Didn't expect error when getting next tasks for %v but got %v", tc.finished, err)
 			}
-			if d := cmp.Diff(sortPipelineTask(tasks), tc.expectedTasks); d != "" {
+			if d := cmp.Diff(tasks, tc.expectedTasks); d != "" {
 				t.Errorf("expected that with %v done, %v would be ready to schedule but was different: %s", tc.finished, tc.expectedTasks, d)
 			}
 		})
 	}
-}
-
-func sortPipelineTask(tasks []v1alpha1.PipelineTask) []v1alpha1.PipelineTask {
-	sort.Slice(tasks, func(i, j int) bool {
-		return tasks[i].Name < tasks[j].Name
-	})
-	return tasks
 }
 
 func TestGetSchedulable_Invalid(t *testing.T) {

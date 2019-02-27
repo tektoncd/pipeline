@@ -95,20 +95,22 @@ func getVisitedPath(path []string) string {
 	return strings.Join(path, " -> ")
 }
 
-// GetSchedulable returns a list of PipelineTask that can be scheduled,
-// given a list of successfully finished doneTasks. It returns task which have
-// all dependecies marked as done, and thus can be scheduled. If the
+// GetSchedulable returns a map of PipelineTask that can be scheduled (keyed
+// by the name of the PipelineTask) given a list of successfully finished doneTasks.
+// It returns tasks which have all dependecies marked as done, and thus can be scheduled. If the
 // specified doneTasks are invalid (i.e. if it is indicated that a Task is
 // done, but the previous Tasks are not done), an error is returned.
-func (g *DAG) GetSchedulable(doneTasks ...string) ([]v1alpha1.PipelineTask, error) {
+func (g *DAG) GetSchedulable(doneTasks ...string) (map[string]v1alpha1.PipelineTask, error) {
 	roots := g.getRoots()
 	tm := toMap(doneTasks...)
-	d := []v1alpha1.PipelineTask{}
+	d := map[string]v1alpha1.PipelineTask{}
 
 	visited := map[string]struct{}{}
 	for _, root := range roots {
 		schedulable := findSchedulable(root, visited, tm)
-		d = append(d, schedulable...)
+		for _, task := range schedulable {
+			d[task.Name] = task
+		}
 	}
 
 	visitedNames := make([]string, len(visited))
@@ -118,7 +120,7 @@ func (g *DAG) GetSchedulable(doneTasks ...string) ([]v1alpha1.PipelineTask, erro
 
 	notVisited := list.DiffLeft(doneTasks, visitedNames)
 	if len(notVisited) > 0 {
-		return []v1alpha1.PipelineTask{}, fmt.Errorf("invalid list of done tasks; some tasks were indicated completed without ancestors being done: %v", notVisited)
+		return map[string]v1alpha1.PipelineTask{}, fmt.Errorf("invalid list of done tasks; some tasks were indicated completed without ancestors being done: %v", notVisited)
 	}
 
 	return d, nil
