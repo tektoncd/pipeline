@@ -96,15 +96,26 @@ func TestReconcile(t *testing.T) {
 				tb.PipelineDeclaredResource("best-image", "image"),
 				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
 				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				// unit-test-3 uses runAfter to indicate it should run last
+				tb.PipelineTask("unit-test-3", "unit-test-task",
+					funParam, moreFunParam, templatedParam,
+					tb.RunAfter("unit-test-2"),
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+				),
+				// unit-test-1 can run right away because it has no dependencies
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
 					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
+				// unit-test-2 uses `from` to indicate it should run after `unit-test-1`
 				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("unit-test-1")),
 				),
+				// unit-test-cluster-task can run right away because it has no dependencies
 				tb.PipelineTask("unit-test-cluster-task", "unit-test-cluster-task",
 					tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
 					funParam, moreFunParam, templatedParam,
@@ -187,7 +198,7 @@ func TestReconcile(t *testing.T) {
 
 	// Check that the expected TaskRun was created
 	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject()
-	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1-9l9zj", "foo",
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-1-mz4c7", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
 			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
 			tb.Controller, tb.BlockOwnerDeletion,
@@ -233,13 +244,13 @@ func TestReconcile(t *testing.T) {
 	}
 
 	if len(reconciledRun.Status.TaskRuns) != 2 {
-		t.Errorf("Expected PipelineRun status to include only one TaskRun status item: %v", reconciledRun.Status.TaskRuns)
+		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
 	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1-9l9zj"]; exists == false {
-		t.Error("Expected PipelineRun status to include TaskRun status")
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1-mz4c7"]; exists == false {
+		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
 	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task-mssqb"]; exists == false {
-		t.Error("Expected PipelineRun status to include TaskRun status")
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task-78c5n"]; exists == false {
+		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
 	}
 }
 
