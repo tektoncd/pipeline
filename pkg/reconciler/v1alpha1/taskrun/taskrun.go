@@ -331,7 +331,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		// if Retry happens, don't do anything else
 		taskRunStatus := tr.Status.DeepCopy()
 		taskRunStatus.Conditions = tr.Status.Conditions
-		retry(tr, taskRunStatus, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete, c.Logger)
+		retryIfNeeded(tr, taskRunStatus, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete, c.Logger)
 	}
 
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
@@ -560,13 +560,13 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 
 			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
 
-			return true, retry(tr, status, dp, c.Logger)
+			return true, retryIfNeeded(tr, status, dp, c.Logger)
 		}
 	}
 	return false, nil
 }
 
-func retry(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus, dp DeletePod, logger *zap.SugaredLogger) (err error) {
+func retryIfNeeded(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus, dp DeletePod, logger *zap.SugaredLogger) (err error) {
 
 	if len(tr.Status.RetriesStatus) < tr.Spec.Retries {
 		tr.Status.StartTime = nil
@@ -574,6 +574,7 @@ func retry(tr *v1alpha1.TaskRun, status *v1alpha1.TaskRunStatus, dp DeletePod, l
 		tr.Status.Steps = nil
 		tr.Status.Results = nil
 
+		status.RetriesStatus = nil
 		tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, *status)
 		tr.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:   duckv1alpha1.ConditionSucceeded,

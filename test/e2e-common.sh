@@ -80,8 +80,12 @@ function check_results() {
   local failed=0
   results="$(kubectl get $1.tekton.dev --output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
   for result in ${results}; do
-    if [[ ! "${result,,}" == *"=succeededtrue" ]]; then
+    if [[ ! "${result,,}" == *"=succeededtrue" && ! "$result" ==  *"failure"* ]]; then
       echo "ERROR: test ${result} but should be succeededtrue"
+      failed=1
+    fi
+    if [[ ! "${result,,}" == *"=succeededfalse" &&  "$result" ==  *"failure"* ]]; then
+      echo "ERROR: test ${result} but should be succeededfalse"
       failed=1
     fi
   done

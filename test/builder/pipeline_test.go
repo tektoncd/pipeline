@@ -85,6 +85,7 @@ func TestPipelineRun(t *testing.T) {
 		"tomatoes", tb.PipelineRunServiceAccount("sa"),
 		tb.PipelineRunParam("first-param", "first-value"),
 		tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
+		tb.PipelineRunRetries(1),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
 		Type: duckv1alpha1.ConditionSucceeded,

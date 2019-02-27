@@ -220,3 +220,44 @@ func TestTaskRunTimeout(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
 	}
 }
+
+// TestTaskRunTimeoutWithRetry is an integration test that will verify a TaskRun can be timed out and retried.
+func TestTaskRunTimeoutAndRetry(t *testing.T) {
+	logger := logging.GetContextLogger(t.Name())
+	c, namespace := setup(t, logger)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+	defer tearDown(t, logger, c, namespace)
+
+	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
+	if _, err := c.TaskClient.Create(tb.Task("giraffe", namespace,
+		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 300"))))); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
+	}
+	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", namespace,
+		tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
+			tb.TaskRunTimeout(10*time.Second), tb.TaskRunRetries(1)))); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", "run-giraffe", err)
+	}
+
+	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", "run-giraffe", namespace)
+	if err := WaitForTaskRunState(c, "run-giraffe", func(tr *v1alpha1.TaskRun) (bool, error) {
+		cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		retries := len(tr.Status.RetriesStatus)
+		if cond != nil {
+			if cond.Status == corev1.ConditionFalse {
+				if cond.Reason == "TaskRunTimeout" && retries == 1 {
+					return true, nil
+				}
+				return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", "run-giraffe", cond.Reason)
+			} else if cond.Status == corev1.ConditionTrue {
+				return true, fmt.Errorf("taskRun %s completed successfully, should have been timed out", "run-giraffe")
+			}
+		}
+
+		return false, nil
+	}, "TaskRunTimeout"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
+	}
+}

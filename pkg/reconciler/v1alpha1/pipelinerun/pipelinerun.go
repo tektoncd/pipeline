@@ -357,11 +357,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 func retry(pr *v1alpha1.PipelineRun, after *duckv1alpha1.Condition) {
 
 	if len(pr.Status.RetriesStatus) < pr.Spec.Retries && after != nil && after.IsFalse() {
-		pr.Status.RetriesStatus = append(pr.Status.RetriesStatus, *pr.Status.DeepCopy())
+		newStatus := *pr.Status.DeepCopy()
+		newStatus.RetriesStatus = nil
+		pr.Status.RetriesStatus = append(pr.Status.RetriesStatus, newStatus)
 		pr.Status.StartTime = nil
 		pr.Status.CompletionTime = nil
 		pr.Status.Results = nil
-		pr.Status.TaskRuns = nil
 		pr.Status.TaskRuns = make(map[string]v1alpha1.TaskRunStatus)
 
 		pr.Status.SetCondition(&duckv1alpha1.Condition{

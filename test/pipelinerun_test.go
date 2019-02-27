@@ -45,6 +45,108 @@ var (
 	pipelineRunTimeout = 10 * time.Minute
 )
 
+func TestPipelineRunWithRetry(t *testing.T) {
+	t.Parallel()
+	type tests struct {
+		name            string
+		testSetup       func(t *testing.T, c *clients, namespace string, index int)
+		pipelineRunFunc func(int, string) *v1alpha1.PipelineRun
+		expectedRetries int
+	}
+
+	tds := []tests{{
+		name:            "timeout with a retry",
+		expectedRetries: 1,
+		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
+			t.Helper()
+			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
+				t.Fatalf("Failed to create secret `%s`: %s", getName(secretName, index), err)
+			}
+
+			if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts(namespace).Create(getPipelineRunServiceAccount(index, namespace)); err != nil {
+				t.Fatalf("Failed to create SA `%s`: %s", getName(saName, index), err)
+			}
+
+			task := tb.Task(getName(taskName, index), namespace, tb.TaskSpec(
+				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
+				tb.Step("foo", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "exit 1")),
+			))
+			if _, err := c.TaskClient.Create(task); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
+			}
+
+			if _, err := c.PipelineClient.Create(getHelloWorldPipelineWithSingularTask(index, namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(pipelineName, index), err)
+			}
+		},
+		pipelineRunFunc: getSimplePipelinewithRetry,
+	}}
+
+	for i, td := range tds {
+		t.Run(td.name, func(t *testing.T) {
+			td := td
+			t.Parallel()
+			// Note that getting a new logger has the side effect of setting the global metrics logger as well,
+			// this means that metrics emitted from these tests will have the wrong test name attached. We should
+			// revisit this if we ever start using those metrics (maybe use a different metrics gatherer).
+			logger := getContextLogger(t.Name())
+			logger.Info("Starting test ", td.name)
+			c, namespace := setup(t, logger)
+
+			knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
+			defer tearDown(t, logger, c, namespace)
+
+			logger.Infof("Setting up test resources for %q test in namespace %s", td.name, namespace)
+			td.testSetup(t, c, namespace, i)
+
+			prName := fmt.Sprintf("%s%d", pipelineRunName, i)
+			_, err := c.PipelineRunClient.Create(td.pipelineRunFunc(i, namespace))
+			if err != nil {
+				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+			}
+
+			logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+			if err := WaitForPipelineRunState(c, prName, pipelineRunTimeout, PipelineRunFinished(), "PipelineRunSuccess"); err != nil {
+				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+			}
+
+			actualTaskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", prName)})
+			if err != nil {
+				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
+			}
+
+			logger.Info("Waiting for retried Tasks to complete")
+			for _, actualTaskRunItem := range actualTaskrunList.Items {
+				taskRunName := actualTaskRunItem.Name
+				r, err := c.TaskRunClient.Get(taskRunName, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
+				}
+
+				if err := WaitForTaskRunState(c, taskRunName, TaskRunFailed(taskRunName), "TaskRunFailed"); err != nil {
+					t.Errorf("Error waiting for TaskRun %s to finish: %s", "createbuckettaskrun", err)
+				}
+
+				if !r.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsFalse() {
+					t.Fatalf("Expected TaskRun %s to have failed but Status is %v", taskRunName, r.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+				}
+			}
+
+			if td.expectedRetries > 0 {
+				// Check label propagation to PipelineRuns.
+				pr, err := c.PipelineRunClient.Get(prName, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("Couldn't get expected PipelineRun for %s: %s", prName, err)
+				}
+
+				if pr.Spec.Retries != len(pr.Status.RetriesStatus) {
+					t.Fatal("Unexpected number of retries:  ", pr.Spec.Retries, "expected: ", len(pr.Status.RetriesStatus))
+				}
+			}
+		})
+	}
+}
+
 func TestPipelineRun(t *testing.T) {
 	t.Parallel()
 	type tests struct {
@@ -124,11 +226,12 @@ func TestPipelineRun(t *testing.T) {
 	for i, td := range tds {
 		t.Run(td.name, func(t *testing.T) {
 			td := td
-			t.Parallel()
+			//t.Parallel()
 			// Note that getting a new logger has the side effect of setting the global metrics logger as well,
 			// this means that metrics emitted from these tests will have the wrong test name attached. We should
 			// revisit this if we ever start using those metrics (maybe use a different metrics gatherer).
 			logger := getContextLogger(t.Name())
+			logger.Info("Starting test ", td.name)
 			c, namespace := setup(t, logger)
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
@@ -333,6 +436,17 @@ func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRu
 	)
 }
 
+func getSimplePipelinewithRetry(suffix int, namespace string) *v1alpha1.PipelineRun {
+	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
+		tb.PipelineRunLabel("hello-world-key", "hello-world-value"),
+		tb.PipelineRunSpec(getName(pipelineName, suffix),
+			tb.PipelineRunServiceAccount(fmt.Sprintf("%s%d", saName, suffix)),
+			tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Millisecond}),
+			tb.PipelineRunRetries(1),
+		),
+	)
+}
+
 func getName(namespace string, suffix int) string {
 	return fmt.Sprintf("%s%d", namespace, suffix)
 }
@@ -419,10 +533,13 @@ func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineR
 	assertLabelsMatch(t, labels, tr.ObjectMeta.Labels)
 
 	// Check label propagation to Pods.
-	pod := getPodForTaskRun(t, c.KubeClient, namespace, tr)
-	// This label is added to every Pod by the TaskRun controller
-	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = tr.Name
-	assertLabelsMatch(t, labels, pod.ObjectMeta.Labels)
+	// PodName is "" iff a retry happened and pod is deleted
+	if tr.Status.PodName != "" {
+		pod := getPodForTaskRun(t, c.KubeClient, namespace, tr)
+		// This label is added to every Pod by the TaskRun controller
+		labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = tr.Name
+		assertLabelsMatch(t, labels, pod.ObjectMeta.Labels)
+	}
 }
 
 func getPodForTaskRun(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1alpha1.TaskRun) *corev1.Pod {

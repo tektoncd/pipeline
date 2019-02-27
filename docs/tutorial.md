@@ -258,7 +258,7 @@ tasks/build-docker-image-from-git-source   7m
 To see the output of the TaskRun, use the following command:
 
 ```bash
-kubectl get taskruns/echo-hello-world-task-run -o yaml
+kubectl get taskruns/build-docker-image-from-git-source-task-run -o yaml
 ```
 
 You will get an output similar to the following:

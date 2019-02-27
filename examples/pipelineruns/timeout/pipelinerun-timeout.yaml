@@ -1,0 +1,53 @@
+# This demo modifies the cluster (deploys to it) you must use a service
+# account with permission to admin the cluster (or make your default user an admin
+# of the `default` namespace with default-cluster-admin.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: default-cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: sleep-task
+spec:
+  steps:
+  - name: sleep
+    image: ubuntu
+    command:
+    - /bin/sh
+    args:
+    - -c
+    - sleep 10
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: demo-pipeline-failure-2
+spec:
+  tasks:
+  - name: go-to-sleep
+    taskRef:
+      name: sleep-task
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: demo-pipeline-failure-run-2
+spec:
+  timeout: 1s
+  retries: 2
+  pipelineRef:
+    name: demo-pipeline-failure-2
+  trigger:
+    type: manual
+  serviceAccount: 'default'

@@ -972,137 +972,6 @@ func TestUpdateStatusFromBuildStatus(t *testing.T) {
 	}
 }
 
-func TestRetryFailedTaskRun(t *testing.T) {
-
-	completed := corev1.ContainerState{
-		Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "success"},
-	}
-
-	failed := corev1.ContainerState{
-		Terminated: &corev1.ContainerStateTerminated{ExitCode: 127, Reason: "oh-my-lord"},
-	}
-	startTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 0, 0, 0, time.UTC))
-	completionTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 8, 0, 0, time.UTC))
-
-	taskRun := tb.TaskRun("test-taskrun-failed-with-retry", "foo",
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-			tb.TaskRunRetries(1),
-		),
-		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown}),
-		))
-
-	buildStatus := buildv1alpha1.BuildStatus{
-		StartTime:      &startTime,
-		CompletionTime: &completionTime,
-		StepStates: []corev1.ContainerState{
-			completed,
-			failed,
-		},
-		Conditions: []duckv1alpha1.Condition{{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  "Build failed",
-			Message: "Build failed",
-		}},
-		Cluster: &buildv1alpha1.ClusterSpec{
-			Namespace: "default",
-			PodName:   "im-am-the-pod",
-		},
-	}
-
-	expectedStatus := v1alpha1.TaskRunStatus{
-		Conditions: []duckv1alpha1.Condition{{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  "Build failed",
-			Message: "Build failed",
-		}},
-		PodName:        "im-am-the-pod",
-		StartTime:      &startTime,
-		CompletionTime: &completionTime,
-		Steps: []v1alpha1.StepState{{
-			ContainerState: *completed.DeepCopy(),
-		},
-			{
-				ContainerState: *failed.DeepCopy(),
-			}},
-	}
-
-	updateStatusFromBuildStatus(taskRun, buildStatus)
-
-	if d := cmp.Diff(taskRun.Status, expectedStatus, ignoreLastTransitionTime); d != "" {
-		t.Errorf("-want, +got: %v", d)
-	}
-}
-func TestNoRetryFailedTaskRun(t *testing.T) {
-
-	completed := corev1.ContainerState{
-		Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "success"},
-	}
-
-	failed := corev1.ContainerState{
-		Terminated: &corev1.ContainerStateTerminated{ExitCode: 127, Reason: "oh-my-lord"},
-	}
-	startTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 0, 0, 0, time.UTC))
-	completionTime := metav1.NewTime(time.Date(2018, time.November, 10, 23, 8, 0, 0, time.UTC))
-
-	taskRun := tb.TaskRun("test-taskrun-failed-with-retry", "foo",
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-		),
-		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
-			Status: corev1.ConditionUnknown}),
-		))
-
-	buildStatus := buildv1alpha1.BuildStatus{
-		StartTime:      &startTime,
-		CompletionTime: &completionTime,
-		StepStates: []corev1.ContainerState{
-			completed,
-			failed,
-		},
-		Conditions: []duckv1alpha1.Condition{{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  "Build failed",
-			Message: "Build failed",
-		}},
-		Cluster: &buildv1alpha1.ClusterSpec{
-			Namespace: "default",
-			PodName:   "im-am-the-pod",
-		},
-	}
-	expectedStatus := v1alpha1.TaskRunStatus{
-		Conditions: []duckv1alpha1.Condition{{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  "Build failed",
-			Message: "Build failed",
-		}},
-		PodName:        "im-am-the-pod",
-		StartTime:      &startTime,
-		CompletionTime: &completionTime,
-		Steps: []v1alpha1.StepState{
-			{
-				ContainerState: *completed.DeepCopy(),
-			},
-			{
-				ContainerState: *failed.DeepCopy(),
-			},
-		},
-	}
-
-	updateStatusFromBuildStatus(taskRun, buildStatus)
-
-	if d := cmp.Diff(taskRun.Status, expectedStatus, ignoreLastTransitionTime); d != "" {
-		t.Errorf("-want, +got: %v", d)
-	}
-}
-
 func TestCreateRedirectedBuild(t *testing.T) {
 	cfg := &config.Config{
 		Entrypoint: &config.Entrypoint{
@@ -1250,7 +1119,7 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 }
 func TestReconcileOnTimedOutTaskRunWithRetry(t *testing.T) {
 
-	taskRun := tb.TaskRun("test-taskrun-timeout-with-retry", "foo",
+	taskRun := tb.TaskRun("test-taskrun-timeout-with-retryIfNeeded", "foo",
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name),
 			tb.TaskRunTimeout(1*time.Microsecond),
@@ -1312,16 +1181,25 @@ func TestReconcileOnTimedOutTaskRunWithRetry(t *testing.T) {
 		Type:    duckv1alpha1.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunTimeout",
-		Message: `TaskRun "test-taskrun-timeout-with-retry" failed to finish within "1µs"`,
+		Message: `TaskRun "test-taskrun-timeout-with-retryIfNeeded" failed to finish within "1µs"`,
 	}
 	if d := cmp.Diff(timeoutTask.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
 }
+
+// Given a Task with a small timeout (1us) and one retryIfNeeded
+// When executed first Reconciliation
+// Then the taskRun must
+//    - Be running (unkwown suceess status)
+//    - Have one retryIfNeeded done
+//    - Retry status mush be a failure (Succeeded to false)
+//    - Retry status reason must be Timeout
+//    - Retry message should match with name and timeout accordingly.
 func TestReconcileOnFailedTaskRunWithRetry(t *testing.T) {
 
-	taskRun := tb.TaskRun("test-taskrun-failed-with-retry", "foo",
+	taskRun := tb.TaskRun("test-taskrun-failed-with-retryIfNeeded", "foo",
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name),
 			tb.TaskRunTimeout(1*time.Microsecond),
@@ -1346,6 +1224,10 @@ func TestReconcileOnFailedTaskRunWithRetry(t *testing.T) {
 			Namespace: taskRun.Namespace,
 		},
 	}))
+
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
+	}
 
 	taskRun.Status.PodName = pod.Name
 
@@ -1386,8 +1268,155 @@ func TestReconcileOnFailedTaskRunWithRetry(t *testing.T) {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
-	if d := cmp.Diff(newTr.Status.RetriesStatus[0].GetCondition(duckv1alpha1.ConditionSucceeded).Message, `TaskRun "test-taskrun-failed-with-retry" failed to finish within "1µs"`, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(newTr.Status.RetriesStatus[0].GetCondition(duckv1alpha1.ConditionSucceeded).Message, `TaskRun "test-taskrun-failed-with-retryIfNeeded" failed to finish within "1µs"`, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
+}
+
+func TestRetryIfNeeded(t *testing.T) {
+
+	dp := func(podName string, options *metav1.DeleteOptions) error { return nil }
+
+	tests := []struct {
+		skip           bool
+		name           string
+		retries        int
+		taskRun        *v1alpha1.TaskRun
+		newStatus      *v1alpha1.TaskRunStatus
+		expectedStatus *v1alpha1.TaskRunStatus
+	}{
+		{
+			skip:    true,
+			name:    "One retry is done",
+			retries: 1,
+			taskRun: tb.TaskRun("test-taskrun-failed-with-retryIfNeeded", "foo",
+				tb.TaskRunSpec(
+					tb.TaskRunTaskRef(simpleTask.Name),
+					tb.TaskRunTimeout(1*time.Microsecond),
+					tb.TaskRunRetries(1),
+				),
+				tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionUnknown}),
+				)),
+
+			expectedStatus: &v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+				}},
+				RetriesStatus: []v1alpha1.TaskRunStatus{{
+					Conditions: []duckv1alpha1.Condition{{
+						Type:   duckv1alpha1.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				}},
+			},
+			newStatus: &v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			},
+		},
+		{
+			name:    "No retry is done",
+			retries: 1,
+			taskRun: tb.TaskRun("test-taskrun-failed-with-retryIfNeeded", "foo",
+				tb.TaskRunSpec(
+					tb.TaskRunTaskRef(simpleTask.Name),
+					tb.TaskRunTimeout(1*time.Microsecond),
+					tb.TaskRunRetries(1),
+				),
+				tb.TaskRunStatus(
+					tb.Condition(duckv1alpha1.Condition{
+						Type:   duckv1alpha1.ConditionSucceeded,
+						Status: corev1.ConditionUnknown}),
+					tb.Retry(v1alpha1.TaskRunStatus{
+						Conditions: []duckv1alpha1.Condition{{
+							Type:   duckv1alpha1.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+						}},
+					}),
+				),
+			),
+
+			expectedStatus: &v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+				}},
+				RetriesStatus: []v1alpha1.TaskRunStatus{{
+					Conditions: []duckv1alpha1.Condition{{
+						Type:   duckv1alpha1.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				}},
+			},
+			newStatus: &v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+				}},
+				RetriesStatus: []v1alpha1.TaskRunStatus{{
+					Conditions: []duckv1alpha1.Condition{{
+						Type:   duckv1alpha1.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				}},
+			},
+		},
+		{
+			skip:    true,
+			name:    "No retry within specs",
+			retries: 0,
+			taskRun: tb.TaskRun("test-taskrun-failed-with-retryIfNeeded", "foo",
+				tb.TaskRunSpec(
+					tb.TaskRunTaskRef(simpleTask.Name),
+					tb.TaskRunTimeout(1*time.Microsecond),
+				),
+				tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionUnknown}),
+				)),
+
+			expectedStatus: &v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			},
+			newStatus: &v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.skip {
+				return
+
+			}
+
+			err := retryIfNeeded(tt.taskRun, tt.newStatus, dp, nil)
+
+			if err != nil {
+				t.Fatalf("Retry has not been done")
+			}
+
+			if len(tt.taskRun.Status.RetriesStatus) != tt.retries {
+				fmt.Println(" retries ", tt.taskRun.Status.RetriesStatus)
+				t.Fatalf("%s :Unexpected Retries: %d vs %d", tt.name, len(tt.taskRun.Status.RetriesStatus), tt.retries)
+			}
+
+			if d := cmp.Diff(tt.taskRun.Status, *tt.expectedStatus, ignoreLastTransitionTime); d != "" {
+				t.Fatalf("-want, +got: %v", d)
+			}
+		})
+	}
 }

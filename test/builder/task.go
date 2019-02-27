@@ -291,6 +291,12 @@ func Condition(condition duckv1alpha1.Condition) TaskRunStatusOp {
 	}
 }
 
+func Retry(retry v1alpha1.TaskRunStatus) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.RetriesStatus = append(s.RetriesStatus, retry)
+	}
+}
+
 // StepState adds a StepState to the TaskRunStatus.
 func StepState(ops ...StepStateOp) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {

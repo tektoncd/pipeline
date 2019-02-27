@@ -637,8 +637,16 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 		t.Error("PipelineRunStatus retries should be 1")
 	}
 
+	if reconciledRun.Status.StartTime != nil {
+		t.Error("StartTime should be nil after retry")
+	}
+
 	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Reason == resources.ReasonTimedOut {
 		t.Errorf("Expected PipelineRun to be ok, but condition reason is %s", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+
+	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Status != corev1.ConditionUnknown {
+		t.Errorf("Expected condition is 'Unknown' but is %s", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Status)
 	}
 	// The PipelineRun should be timed out within the RetriesStatus
 	if reconciledRun.Status.RetriesStatus[0].GetCondition(duckv1alpha1.ConditionSucceeded).Reason != resources.ReasonTimedOut {
