@@ -11,7 +11,7 @@ This tutorial will walk you through creating and running some simple
 
 For more details on using `Pipelines`, see [our usage docs](README.md).
 
-**[This tutorial can be run on a local workstation](#local-development)**<br>
+**Note:** [This tutorial can be run on a local workstation](#local-development)
 
 ## Task
 
