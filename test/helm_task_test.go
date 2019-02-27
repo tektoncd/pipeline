@@ -45,7 +45,6 @@ const (
 )
 
 var (
-	imageName            string
 	clusterRoleBindings  [3]*rbacv1.ClusterRoleBinding
 	tillerServiceAccount *corev1.ServiceAccount
 )
@@ -64,6 +63,11 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	logger.Infof("Creating Git PipelineResource %s", sourceResourceName)
 	if _, err := c.PipelineResourceClient.Create(getGoHelloworldGitResource(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceResourceName, err)
+	}
+
+	logger.Infof("Creating Image PipelineResource %s", sourceImageName)
+	if _, err := c.PipelineResourceClient.Create(getHelmImageResource(namespace)); err != nil {
+		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceImageName, err)
 	}
 
 	logger.Infof("Creating Task %s", createImageTaskName)
@@ -144,11 +148,11 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(sourceResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("Url", "https://github.com/knative/build-pipeline"),
+		tb.PipelineResourceSpecParam("url", "https://github.com/knative/build-pipeline"),
 	))
 }
 
-func getCreateImageTask(namespace string, t *testing.T, logger *logging.BaseLogger) *v1alpha1.Task {
+func getHelmImageResource(namespace string) *v1alpha1.PipelineResource {
 	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)
 	// the KO_DOCKER_REPO will be set with according to the project where the cluster is created
 	// it is used here to dynamically get the docker registry to push the image to
@@ -156,16 +160,22 @@ func getCreateImageTask(namespace string, t *testing.T, logger *logging.BaseLogg
 	if dockerRepo == "" {
 		t.Fatalf("KO_DOCKER_REPO env variable is required")
 	}
+	imageName := fmt.Sprintf("%s/%s", dockerRepo, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(sourceImageName))
 
-	imageName = fmt.Sprintf("%s/%s", dockerRepo, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(sourceImageName))
-	logger.Infof("Image to be pusblished: %s", imageName)
+	return tb.PipelineResource(sourceImageName, namespace, tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeImage,
+		tb.PipelineResourceSpecParam("url", imageName),
+	))
+}
 
+func getCreateImageTask(namespace string, t *testing.T, logger *logging.BaseLogger) *v1alpha1.Task {
 	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskOutputs(tb.OutputsResource("builtimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("kaniko", "gcr.io/kaniko-project/executor", tb.Args(
 			"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
 			"--context=/workspace/gitsource/",
-			fmt.Sprintf("--destination=%s", imageName),
+			"--destination=${outputs.resources.builtimage.url}",
 		)),
 	))
 }
@@ -174,8 +184,9 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 	return tb.Task(helmDeployTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit),
+			tb.InputsResource("image", v1alpha1.PipelineResourceTypeImage),
 			tb.InputsParam("pathToHelmCharts", tb.ParamDescription("Path to the helm charts")),
-			tb.InputsParam("image"), tb.InputsParam("chartname", tb.ParamDefault("")),
+			tb.InputsParam("chartname", tb.ParamDefault("")),
 		),
 		tb.Step("helm-init", "alpine/helm", tb.Args("init", "--wait")),
 		tb.Step("helm-deploy", "alpine/helm", tb.Args(
@@ -184,7 +195,7 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 			"--name=${inputs.params.chartname}",
 			"${inputs.params.pathToHelmCharts}",
 			"--set",
-			"image.repository=${inputs.params.image}",
+			"image.repository=${inputs.resources.image.url}",
 		)),
 	))
 }
@@ -192,15 +203,17 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(helmDeployPipelineName, namespace, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-repo", "git"),
+		tb.PipelineDeclaredResource("the-image", "image"),
 		tb.PipelineParam("chartname"),
 		tb.PipelineTask("push-image", createImageTaskName,
 			tb.PipelineTaskInputResource("gitsource", "git-repo"),
+			tb.PipelineTaskOutputResource("builtimage", "the-image"),
 		),
 		tb.PipelineTask("helm-deploy", helmDeployTaskName,
 			tb.PipelineTaskInputResource("gitsource", "git-repo"),
+			tb.PipelineTaskInputResource("image", "the-image", tb.From("push-image")),
 			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
 			tb.PipelineTaskParam("chartname", "${params.chartname}"),
-			tb.PipelineTaskParam("image", imageName),
 		),
 	))
 }
@@ -210,6 +223,7 @@ func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 		helmDeployPipelineName,
 		tb.PipelineRunParam("chartname", "gohelloworld"),
 		tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef(sourceResourceName)),
+		tb.PipelineRunResourceBinding("the-image", tb.PipelineResourceBindingRef(sourceImageName)),
 	))
 }
 
