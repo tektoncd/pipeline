@@ -40,7 +40,7 @@ func TestGitPipelineRun(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	t.Parallel()
 
-	revisions := []string{"c15aced0e5aaee6456fbe6f7a7e95e0b5b3b2b2f", "c15aced", "release-0.1", "v0.1.0", "refs/pull/347/head"}
+	revisions := []string{"master", "c15aced0e5aaee6456fbe6f7a7e95e0b5b3b2b2f", "c15aced", "release-0.1", "v0.1.0", "refs/pull/347/head"}
 
 	for _, revision := range revisions {
 
@@ -70,15 +70,6 @@ func TestGitPipelineRun(t *testing.T) {
 
 		if err := WaitForPipelineRunState(c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
 			t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
-			taskruns, err := c.TaskRunClient.List(metav1.ListOptions{})
-			if err != nil {
-				t.Errorf("Error getting TaskRun list for PipelineRun %s %s", gitTestPipelineRunName, err)
-			}
-			for _, tr := range taskruns.Items {
-				if tr.Status.PodName != "" {
-					CollectBuildLogs(c, tr.Status.PodName, namespace, logger)
-				}
-			}
 			t.Fatalf("PipelineRun execution failed")
 		}
 	}
