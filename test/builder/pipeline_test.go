@@ -108,6 +108,7 @@ func TestPipelineRun(t *testing.T) {
 				Value: "first-value",
 			}},
 			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Retries: 1,
 			Resources: []v1alpha1.PipelineResourceBinding{{
 				Name: "some-resource",
 				ResourceRef: v1alpha1.PipelineResourceRef{
