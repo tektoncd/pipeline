@@ -42,6 +42,8 @@ readonly E2E_CLUSTER_REGION=${E2E_CLUSTER_REGION:-us-central1}
 # By default we use regional clusters.
 readonly E2E_CLUSTER_ZONE=${E2E_CLUSTER_ZONE:-}
 readonly E2E_CLUSTER_MACHINE=${E2E_CLUSTER_MACHINE:-n1-standard-4}
+readonly E2E_GKE_ENVIRONMENT=${E2E_GKE_ENVIRONMENT:-prod}
+readonly E2E_GKE_COMMAND_GROUP=${E2E_GKE_COMMAND_GROUP:-beta}
 
 # Each knative repository may have a different cluster size requirement here,
 # so we allow calling code to set these parameters.  If they are not set we
@@ -60,11 +62,8 @@ IS_BOSKOS=0
 # Tear down the test resources.
 function teardown_test_resources() {
   header "Tearing down test environment"
-  # Free resources in GCP project.
-  if (( ! USING_EXISTING_CLUSTER )) && function_exists teardown; then
-    teardown
-  fi
-
+  function_exists test_teardown && test_teardown
+  (( ! SKIP_KNATIVE_SETUP )) && function_exists knative_teardown && knative_teardown
   # Delete the kubernetes source downloaded by kubetest
   rm -fr kubernetes kubernetes.tar.gz
 }
@@ -77,49 +76,6 @@ function go_test_e2e() {
   (( EMIT_METRICS )) && test_options="-emitmetrics"
   [[ ! " $@" == *" -tags="* ]] && go_options="-tags=e2e"
   report_go_test -v -count=1 ${go_options} $@ ${test_options}
-}
-
-# Download the k8s binaries required by kubetest.
-# Parameters: $1 - GCP project that will host the test cluster.
-function download_k8s() {
-  # Fetch valid versions
-  local versions="$(gcloud container get-server-config \
-      --project=$1 \
-      --format='value(validMasterVersions)' \
-      --region=${E2E_CLUSTER_REGION})"
-  local gke_versions=(`echo -n ${versions//;/ /}`)
-  echo "Valid GKE versions are [${versions//;/, }]"
-  if [[ "${E2E_CLUSTER_VERSION}" == "latest" ]]; then
-    # Get first (latest) version, excluding the "-gke.#" suffix
-    E2E_CLUSTER_VERSION="${gke_versions[0]%-*}"
-    echo "Using latest version, ${E2E_CLUSTER_VERSION}"
-  elif [[ "${E2E_CLUSTER_VERSION}" == "default" ]]; then
-    echo "ERROR: `default` GKE version is not supported yet"
-    return 1
-  else
-    echo "Using command-line supplied version ${E2E_CLUSTER_VERSION}"
-  fi
-  readonly E2E_CLUSTER_VERSION
-  export KUBERNETES_PROVIDER=gke
-  export KUBERNETES_RELEASE=v${E2E_CLUSTER_VERSION}
-  # Download k8s to staging dir
-  local staging_dir=${GOPATH}/src/k8s.io/kubernetes/_output/gcs-stage
-  rm -fr ${staging_dir}
-  staging_dir=${staging_dir}/${KUBERNETES_RELEASE}
-  mkdir -p ${staging_dir}
-  pushd ${staging_dir}
-  curl -fsSL https://get.k8s.io | bash
-  local result=$?
-  if [[ ${result} -eq 0 ]]; then
-    mv kubernetes/server/kubernetes-server-*.tar.gz .
-    mv kubernetes/client/kubernetes-client-*.tar.gz .
-    rm -fr kubernetes
-    # Create an empty kubernetes test tarball; we don't use it but kubetest will fetch it
-    # As of August 21 2018 this means avoiding a useless 1.2GB download
-    tar -czf kubernetes-test.tar.gz -T /dev/null
-  fi
-  popd
-  return ${result}
 }
 
 # Dump info about the test cluster. If dump_extra_cluster_info() is defined, calls it too.
@@ -151,11 +107,13 @@ function save_metadata() {
     geo_key="Zone"
     geo_value="${E2E_CLUSTER_REGION}-${E2E_CLUSTER_ZONE}"
   fi
+  local gcloud_project="$(gcloud config get-value project)"
+  local cluster_version="$(gcloud container clusters list --project=${gcloud_project} --format='value(currentMasterVersion)')"
   cat << EOF > ${ARTIFACTS}/metadata.json
 {
   "E2E:${geo_key}": "${geo_value}",
   "E2E:Machine": "${E2E_CLUSTER_MACHINE}",
-  "E2E:Version": "${E2E_CLUSTER_VERSION}",
+  "E2E:Version": "${cluster_version}",
   "E2E:MinNodes": "${E2E_MIN_CLUSTER_NODES}",
   "E2E:MaxNodes": "${E2E_MAX_CLUSTER_NODES}"
 }
@@ -176,14 +134,16 @@ function create_test_cluster() {
   local geoflag="--gcp-region=${E2E_CLUSTER_REGION}"
   [[ -n "${E2E_CLUSTER_ZONE}" ]] && geoflag="--gcp-zone=${E2E_CLUSTER_REGION}-${E2E_CLUSTER_ZONE}"
   local CLUSTER_CREATION_ARGS=(
-    --gke-create-command="beta container clusters create --quiet --enable-autoscaling --min-nodes=${E2E_MIN_CLUSTER_NODES} --max-nodes=${E2E_MAX_CLUSTER_NODES} --scopes=cloud-platform --enable-basic-auth --no-issue-client-certificate ${EXTRA_CLUSTER_CREATION_FLAGS[@]}"
+    --gke-create-command="container clusters create --quiet --enable-autoscaling --min-nodes=${E2E_MIN_CLUSTER_NODES} --max-nodes=${E2E_MAX_CLUSTER_NODES} --scopes=cloud-platform --enable-basic-auth --no-issue-client-certificate ${EXTRA_CLUSTER_CREATION_FLAGS[@]}"
     --gke-shape={\"default\":{\"Nodes\":${E2E_MIN_CLUSTER_NODES}\,\"MachineType\":\"${E2E_CLUSTER_MACHINE}\"}}
     --provider=gke
     --deployment=gke
     --cluster="${E2E_CLUSTER_NAME}"
     ${geoflag}
     --gcp-network="${E2E_NETWORK_NAME}"
-    --gke-environment=prod
+    --gke-environment="${E2E_GKE_ENVIRONMENT}"
+    --gke-command-group="${E2E_GKE_COMMAND_GROUP}"
+    --test=false
   )
   if (( ! IS_BOSKOS )); then
     CLUSTER_CREATION_ARGS+=(--gcp-project=${GCP_PROJECT})
@@ -195,19 +155,16 @@ function create_test_cluster() {
   touch $HOME/.ssh/google_compute_engine
   # Assume test failed (see details in set_test_return_code()).
   set_test_return_code 1
-  # Get the current GCP project for downloading kubernetes
   local gcloud_project="${GCP_PROJECT}"
   [[ -z "${gcloud_project}" ]] && gcloud_project="$(gcloud config get-value project)"
   echo "gcloud project is ${gcloud_project}"
   (( IS_BOSKOS )) && echo "Using boskos for the test cluster"
   [[ -n "${GCP_PROJECT}" ]] && echo "GCP project for test cluster is ${GCP_PROJECT}"
   echo "Test script is ${E2E_SCRIPT}"
-  download_k8s ${gcloud_project} || return 1
-  # Save some metadata about cluster creation for using in prow and testgrid
-  save_metadata
   # Set arguments for this script again
-  local test_cmd_args="--run-tests --cluster-version ${E2E_CLUSTER_VERSION}"
+  local test_cmd_args="--run-tests"
   (( EMIT_METRICS )) && test_cmd_args+=" --emit-metrics"
+  (( SKIP_KNATIVE_SETUP )) && test_cmd_args+=" --skip-knative-setup"
   [[ -n "${GCP_PROJECT}" ]] && test_cmd_args+=" --gcp-project ${GCP_PROJECT}"
   [[ -n "${E2E_SCRIPT_CUSTOM_FLAGS[@]}" ]] && test_cmd_args+=" ${E2E_SCRIPT_CUSTOM_FLAGS[@]}"
   # Don't fail test for kubetest, as it might incorrectly report test failure
@@ -217,10 +174,11 @@ function create_test_cluster() {
     kubetest "${CLUSTER_CREATION_ARGS[@]}" \
     --up \
     --down \
-    --extract local \
+    --extract "${E2E_CLUSTER_VERSION}" \
     --gcp-node-image "${SERVING_GKE_IMAGE}" \
     --test-cmd "${E2E_SCRIPT}" \
-    --test-cmd-args "${test_cmd_args}"
+    --test-cmd-args "${test_cmd_args}" \
+    ${EXTRA_KUBETEST_FLAGS[@]}
   echo "Test subprocess exited with code $?"
   # Ignore any errors below, this is a best-effort cleanup and shouldn't affect the test result.
   set +o errexit
@@ -245,6 +203,7 @@ function create_test_cluster() {
     gcloud compute http-health-checks delete -q --project=${gcloud_project} ${http_health_checks}
   fi
   local result="$(cat ${TEST_RESULT_FILE})"
+  echo "Artifacts were written to ${ARTIFACTS}"
   echo "Test result code is ${result}"
 
   exit ${result}
@@ -256,19 +215,19 @@ function setup_test_cluster() {
   set -o errexit
   set -o pipefail
 
+  header "Setting up test cluster"
+
+  # Save some metadata about cluster creation for using in prow and testgrid
+  save_metadata
+
   local k8s_user=$(gcloud config get-value core/account)
   local k8s_cluster=$(kubectl config current-context)
 
-  # Acquire cluster admin role in case user doesn't have it
+  # If cluster admin role isn't set, this is a brand new cluster
+  # Setup the admin role and also KO_DOCKER_REPO
   if [[ -z "$(kubectl get clusterrolebinding cluster-admin-binding 2> /dev/null)" ]]; then
-    USING_EXISTING_CLUSTER=0
     acquire_cluster_admin_role ${k8s_user} ${E2E_CLUSTER_NAME} ${E2E_CLUSTER_REGION} ${E2E_CLUSTER_ZONE}
     kubectl config set-context ${k8s_cluster} --namespace=default
-  fi
-
-  readonly USING_EXISTING_CLUSTER
-
-  if (( ! USING_EXISTING_CLUSTER )); then
     export KO_DOCKER_REPO=gcr.io/$(gcloud config get-value project)/${E2E_BASE_NAME}-e2e-img
   fi
 
@@ -280,14 +239,16 @@ function setup_test_cluster() {
 
   trap teardown_test_resources EXIT
 
-  if (( USING_EXISTING_CLUSTER )) && function_exists teardown; then
-    echo "Deleting any previous SUT instance"
-    teardown
-  fi
-
   # Handle failures ourselves, so we can dump useful info.
   set +o errexit
   set +o pipefail
+
+  if (( ! SKIP_KNATIVE_SETUP )) && function_exists knative_setup; then
+    knative_setup || fail_test "Knative setup failed"
+  fi
+  if function_exists test_setup; then
+    test_setup || fail_test "test setup failed"
+  fi
 }
 
 # Set the return code that the test script will return.
@@ -301,6 +262,7 @@ function set_test_return_code() {
   echo -n "$1"> ${TEST_RESULT_FILE}
 }
 
+# Signal (as return code and in the logs) that all E2E tests passed.
 function success() {
   set_test_return_code 0
   echo "**************************************"
@@ -320,11 +282,12 @@ function fail_test() {
 
 RUN_TESTS=0
 EMIT_METRICS=0
-USING_EXISTING_CLUSTER=1
+SKIP_KNATIVE_SETUP=0
 GCP_PROJECT=""
 E2E_SCRIPT=""
 E2E_CLUSTER_VERSION=""
 EXTRA_CLUSTER_CREATION_FLAGS=()
+EXTRA_KUBETEST_FLAGS=()
 E2E_SCRIPT_CUSTOM_FLAGS=()
 
 # Parse flags and initialize the test cluster.
@@ -353,16 +316,15 @@ function initialize() {
     case ${parameter} in
       --run-tests) RUN_TESTS=1 ;;
       --emit-metrics) EMIT_METRICS=1 ;;
+      --skip-knative-setup) SKIP_KNATIVE_SETUP=1 ;;
       *)
         [[ $# -ge 2 ]] || abort "missing parameter after $1"
         shift
         case ${parameter} in
           --gcp-project) GCP_PROJECT=$1 ;;
-          --cluster-version)
-            [[ $1 =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || abort "kubernetes version must be 'X.Y.Z'"
-            E2E_CLUSTER_VERSION=$1
-            ;;
+          --cluster-version) E2E_CLUSTER_VERSION=$1 ;;
           --cluster-creation-flag) EXTRA_CLUSTER_CREATION_FLAGS+=($1) ;;
+          --kubetest-flag) EXTRA_KUBETEST_FLAGS+=($1) ;;
           *) abort "unknown option ${parameter}" ;;
         esac
     esac
@@ -389,6 +351,8 @@ function initialize() {
   readonly GCP_PROJECT
   readonly IS_BOSKOS
   readonly EXTRA_CLUSTER_CREATION_FLAGS
+  readonly EXTRA_KUBETEST_FLAGS
+  readonly SKIP_KNATIVE_SETUP
 
   if (( ! RUN_TESTS )); then
     create_test_cluster

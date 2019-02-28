@@ -19,7 +19,7 @@
 # called from command line.
 
 # Default GKE version to be used with Knative Serving
-readonly SERVING_GKE_VERSION=latest
+readonly SERVING_GKE_VERSION=gke-latest
 readonly SERVING_GKE_IMAGE=cos
 
 # Public latest stable nightly images and yaml files.
@@ -43,6 +43,11 @@ fi
 readonly IS_PROW
 readonly REPO_ROOT_DIR="$(git rev-parse --show-toplevel)"
 readonly REPO_NAME="$(basename ${REPO_ROOT_DIR})"
+
+# Set ARTIFACTS to an empty temp dir if unset
+if [[ -z "${ARTIFACTS:-}" ]]; then
+  export ARTIFACTS="$(mktemp -d)"
+fi
 
 # On a Prow job, redirect stderr to stdout so it's synchronously added to log
 (( IS_PROW )) && exec 2>&1
@@ -200,6 +205,29 @@ function get_app_pods() {
   kubectl get pods ${namespace} --selector=app=$1 --output=jsonpath="{.items[*].metadata.name}"
 }
 
+# Capitalize the first letter of each word.
+# Parameters: $1..$n - words to capitalize.
+function capitalize() {
+  local capitalized=()
+  for word in $@; do
+    local initial="$(echo ${word:0:1}| tr 'a-z' 'A-Z')"
+    capitalized+=("${initial}${word:1}")
+  done
+  echo "${capitalized[@]}"
+}
+
+# Dumps pod logs for the given app.
+# Parameters: $1 - app name.
+#             $2 - namespace.
+function dump_app_logs() {
+  echo ">>> ${REPO_NAME_FORMATTED} $1 logs:"
+  for pod in $(get_app_pods "$1" "$2")
+  do
+    echo ">>> Pod: $pod"
+    kubectl -n "$2" logs "$pod" -c "$1"
+  done
+}
+
 # Sets the given user as cluster admin.
 # Parameters: $1 - user
 #             $2 - cluster name
@@ -246,10 +274,6 @@ function report_go_test() {
   local args=" $@ "
   local go_test="go test -race -v ${args/ -v / }"
   # Just run regular go tests if not on Prow.
-  if (( ! IS_PROW )); then
-    ${go_test}
-    return
-  fi
   echo "Running tests with '${go_test}'"
   local report=$(mktemp)
   ${go_test} | tee ${report}
@@ -264,6 +288,13 @@ function report_go_test() {
       | sed -e "s#\"github.com/knative/${REPO_NAME}/#\"#g" \
       > ${xml}
   echo "XML report written to ${xml}"
+  if (( ! IS_PROW )); then
+    # Keep the suffix, so files are related.
+    local logfile=${xml/junit_/go_test_}
+    logfile=${logfile/.xml/.log}
+    cp ${report} ${logfile}
+    echo "Test log written to ${logfile}"
+  fi
   return ${failed}
 }
 
@@ -392,3 +423,4 @@ function get_canonical_path() {
 # These MUST come last.
 
 readonly _TEST_INFRA_SCRIPTS_DIR="$(dirname $(get_canonical_path ${BASH_SOURCE[0]}))"
+readonly REPO_NAME_FORMATTED="Knative $(capitalize ${REPO_NAME//-/})"
