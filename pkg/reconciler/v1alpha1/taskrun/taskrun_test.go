@@ -139,7 +139,7 @@ var (
 
 	placeToolsInitContainer = tb.PodInitContainer("build-step-place-tools", "override-with-entrypoint:latest",
 		tb.Command("/bin/cp"),
-		tb.Args("/ko-app", entrypointLocation),
+		tb.Args("/ko-app/entrypoint", entrypointLocation),
 		tb.WorkingDir(workspaceDir),
 		tb.EnvVar("HOME", "/builder/home"),
 		tb.VolumeMount("tools", "/tools"),
@@ -1010,14 +1010,15 @@ func TestCreateRedirectedBuild(t *testing.T) {
 		tb.BuildStep("foo1", "bar1", tb.Command("abcd"), tb.Args("efgh")),
 		tb.BuildStep("foo2", "bar2", tb.Command("abcd"), tb.Args("efgh")),
 		tb.BuildVolume(corev1.Volume{Name: "v"}),
-	)).Spec
+	))
 
-	expectedSteps := len(bs.Steps) + 1
-	expectedVolumes := len(bs.Volumes) + 1
+	expectedSteps := len(bs.Spec.Steps) + 1
+	expectedVolumes := len(bs.Spec.Volumes) + 1
 
 	observer, _ := observer.New(zap.InfoLevel)
 	entrypointCache, _ := entrypoint.NewCache()
-	b, err := createRedirectedBuild(&bs, tr, entrypointCache, zap.New(observer).Sugar())
+	c := fakekubeclientset.NewSimpleClientset()
+	b, err := createRedirectedBuild(c, bs, tr, entrypointCache, zap.New(observer).Sugar())
 	if err != nil {
 		t.Errorf("expected createRedirectedBuild to pass: %v", err)
 	}

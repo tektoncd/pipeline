@@ -17,6 +17,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 )
 
 const (
@@ -35,9 +37,23 @@ func TestRewriteSteps(t *testing.T) {
 			Args:    []string{"efgh"},
 		},
 	}
+	build := &v1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "build",
+		},
+		Spec: v1alpha1.BuildSpec{
+			Steps: []corev1.Container{{
+				Image:   "ubuntu",
+				Command: []string{"echo"},
+				Args:    []string{"hello"},
+			}},
+		},
+	}
 	observer, _ := observer.New(zap.InfoLevel)
 	entrypointCache, _ := NewCache()
-	err := RedirectSteps(entrypointCache, inputs, zap.New(observer).Sugar())
+	c := fakekubeclientset.NewSimpleClientset()
+	err := RedirectSteps(entrypointCache, inputs, c, build, zap.New(observer).Sugar())
 	if err != nil {
 		t.Errorf("failed to get resources: %v", err)
 	}
@@ -215,50 +231,32 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("couldn't create new entrypoint cache: %v", err)
 	}
-	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest)
+	build := &v1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "build",
+		},
+		Spec: v1alpha1.BuildSpec{
+			ServiceAccountName: "default",
+			Steps: []corev1.Container{{
+				Image:   "ubuntu",
+				Command: []string{"echo"},
+				Args:    []string{"hello"},
+			}},
+		},
+	}
+	c := fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: "foo",
+		},
+	})
+	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest, c, build)
 	if err != nil {
 		t.Errorf("couldn't get entrypoint remote: %v", err)
 	}
 	if !reflect.DeepEqual(ep, expectedEntrypoint) {
 		t.Errorf("entrypoints do not match: %s should be %s", ep[0], expectedEntrypoint)
-	}
-}
-
-func TestGetImageDigest(t *testing.T) {
-	img := getImage(t, &v1.ConfigFile{
-		ContainerConfig: v1.Config{},
-	})
-	digetsSha := getDigestAsString(img)
-	expectedRepo := "image"
-	manifestPath := fmt.Sprintf("/v2/%s/manifests/latest", expectedRepo)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/v2/":
-			w.WriteHeader(http.StatusOK)
-		case manifestPath:
-			if r.Method != http.MethodGet {
-				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
-			}
-			w.Write(mustRawManifest(t, img))
-		default:
-			t.Fatalf("Unexpected path: %v", r.URL.Path)
-		}
-	}))
-	defer server.Close()
-	image := path.Join(strings.TrimPrefix(server.URL, "http://"), "image:latest")
-	expectedDigetsSha := image + "@" + digetsSha
-
-	digestCache, err := NewCache()
-	if err != nil {
-		t.Fatalf("couldn't create new digest cache: %v", err)
-	}
-	digest, err := GetImageDigest(digestCache, image)
-	if err != nil {
-		t.Errorf("couldn't get digest remote: %v", err)
-	}
-	if !reflect.DeepEqual(expectedDigetsSha, digest) {
-		t.Errorf("digest do not match: %s should be %s", expectedDigetsSha, digest)
 	}
 }
 

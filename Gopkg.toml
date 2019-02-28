@@ -34,16 +34,23 @@ required = [
   version = "kubernetes-1.11.3"
 
 [[override]]
+  name = "golang.org/x/sys"
+  revision = "1c9583448a9c3aa0f9a6a5241bf73c0bd8aafded"  
+
+[[override]]
   name = "github.com/json-iterator/go"
   # This is the commit at which k8s depends on this in 1.11
   # It seems to be broken at HEAD.
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
+[[constraint]]
+  name = "github.com/google/go-containerregistry"
+  # HEAD as of 2019-02-06
+  revision = "dbc4da98389f9d0c42eb314c2b346bf1d2a27310"
+
 [[override]]
-  name = "github.com/Azure/go-autorest"
-  # This is the commit at which k8s depends on this in 1.11
-  # It seems to be broken at HEAD.
-  revision = "1ff28809256a84bb6966640ff3d0371af82ccba4"
+  name = "github.com/golang/protobuf"
+  revision = "c823c79ea1570fb5ff454033735a8e68575d1d0f"
 
 [[override]]
   name = "github.com/knative/pkg"

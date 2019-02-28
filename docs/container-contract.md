@@ -11,7 +11,8 @@ are executed in the specified order.
 As such, it is always recommended to explicitly specify a command.
 
 When `command` is not explicitly set, the controller will attempt to lookup the
-entrypoint from the remote registry.
+entrypoint from the remote registry. If the image is a private registry, the
+service account should include an [ImagePullSecret](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account)
 
 Due to this metadata lookup, if you use a private image as a step inside a
 `Task`, the build-pipeline controller needs to be able to access that registry.

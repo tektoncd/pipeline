@@ -26,6 +26,8 @@ metadata:
   name: test-robot-docker-basic
 secrets:
 - name: test-docker-basic
+imagePullSecrets:
+- name: test-docker-basic
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
