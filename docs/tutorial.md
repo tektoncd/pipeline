@@ -96,15 +96,13 @@ status:
   podName: echo-hello-world-task-run-pod-85ca51
   startTime: 2018-12-11T15:49:39Z
   steps:
-    - logsURL: ""
-      terminated:
+    - terminated:
         containerID: docker://fcfe4a004...6729d6d2ad53faff41
         exitCode: 0
         finishedAt: 2018-12-11T15:50:01Z
         reason: Completed
         startedAt: 2018-12-11T15:50:01Z
-    - logsURL: ""
-      terminated:
+    - terminated:
         containerID: docker://fe86fc5f7...eb429697b44ce4a5b
         exitCode: 0
         finishedAt: 2018-12-11T15:50:02Z
@@ -306,15 +304,13 @@ status:
   podName: build-docker-image-from-git-source-task-run-pod-24d414
   startTime: 2018-12-11T18:14:29Z
   steps:
-    - logsURL: ""
-      terminated:
+    - terminated:
         containerID: docker://138ce30c722eed....c830c9d9005a0542
         exitCode: 0
         finishedAt: 2018-12-11T18:14:47Z
         reason: Completed
         startedAt: 2018-12-11T18:14:47Z
-    - logsURL: ""
-      terminated:
+    - terminated:
         containerID: docker://4a75136c029fb1....4c94b348d4f67744
         exitCode: 0
         finishedAt: 2018-12-11T18:14:48Z
@@ -512,15 +508,13 @@ status:
       podName: tutorial-pipeline-run-1-build-skaffold-web-pod-21ddf0
       startTime: 2018-12-11T20:30:19Z
       steps:
-        - logsURL: ""
-          terminated:
+        - terminated:
             containerID: docker://c699fcba94....f96108ac9f4db22b94e0c
             exitCode: 0
             finishedAt: 2018-12-11T20:30:36Z
             reason: Completed
             startedAt: 2018-12-11T20:30:36Z
-        - logsURL: ""
-          terminated:
+        - terminated:
             containerID: docker://f5f752d....824262ad6ce7675
             exitCode: 0
             finishedAt: 2018-12-11T20:31:17Z
@@ -534,22 +528,19 @@ status:
       podName: tutorial-pipeline-run-1-deploy-web-pod-7a796b
       startTime: 2018-12-11T20:32:11Z
       steps:
-        - logsURL: ""
-          terminated:
+        - terminated:
             containerID: docker://eaefb7b6d685....f001f895430f71374
             exitCode: 0
             finishedAt: 2018-12-11T20:32:28Z
             reason: Completed
             startedAt: 2018-12-11T20:32:28Z
-        - logsURL: ""
-          terminated:
+        - terminated:
             containerID: docker://4cfc6eba47a7a....dcaef1e9b1eee3661b8a85f
             exitCode: 0
             finishedAt: 2018-12-11T20:32:31Z
             reason: Completed
             startedAt: 2018-12-11T20:32:31Z
-        - logsURL: ""
-          terminated:
+        - terminated:
             containerID: docker://01b376b92....dce4ccec9641d77
             exitCode: 0
             finishedAt: 2018-12-11T20:32:35Z
