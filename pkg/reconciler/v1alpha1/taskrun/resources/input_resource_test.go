@@ -926,7 +926,7 @@ func Test_StorageInputResource(t *testing.T) {
 				}, {
 					Name:  "fetch-storage-gcs-keys-mz4c7",
 					Image: "override-with-gsutil-image:latest",
-					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/** /workspace/gcs-input-resource"},
+					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/* /workspace/gcs-input-resource"},
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
 					},
@@ -1029,7 +1029,7 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 			}, {
 				Name:  "artifact-copy-from-gitspace-78c5n",
 				Image: "override-with-gsutil-image:latest",
-				Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gitspace"},
+				Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/* /workspace/gitspace"},
 			}},
 		},
 	}, {
@@ -1065,7 +1065,7 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 			}, {
 				Name:  "artifact-copy-from-workspace-j2tds",
 				Image: "override-with-gsutil-image:latest",
-				Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gcs-dir"},
+				Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
 			}},
 		},
 	}} {

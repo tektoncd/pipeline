@@ -236,7 +236,7 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 		}, {
 			Name:  "fetch-gcs-valid-mz4c7",
 			Image: "override-with-gsutil-image:latest",
-			Args:  []string{"-args", "cp -r gs://some-bucket/** /workspace"},
+			Args:  []string{"-args", "cp -r gs://some-bucket/* /workspace"},
 			Env: []corev1.EnvVar{{
 				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 				Value: "/var/secret/secretName/key.json",

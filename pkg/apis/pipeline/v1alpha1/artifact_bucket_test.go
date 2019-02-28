@@ -41,7 +41,7 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 	}, {
 		Name:         "artifact-copy-from-workspace-mz4c7",
 		Image:        "override-with-gsutil-image:latest",
-		Args:         []string{"-args", "cp -r gs://fake-bucket/src-path/** /workspace/destination"},
+		Args:         []string{"-args", "cp -r gs://fake-bucket/src-path/* /workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
 		VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-secret1", MountPath: "/var/bucketsecret/secret1"}},
 	}}
