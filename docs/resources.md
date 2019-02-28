@@ -1,7 +1,7 @@
 # PipelineResources
 
 `PipelinesResources` in a pipeline are the set of objects that are going to be
-used as inputs to a [`Task`](task.md) and can be output by a `Task`.
+used as inputs to a [`Task`](tasks.md) and can be output by a `Task`.
 
 A `Task` can have multiple inputs and outputs.
 
@@ -39,7 +39,7 @@ following fields:
     `PipelineResource`
 
 [kubernetes-overview]:
-  https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
+  <https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields>
 
 ## Resource Types
 
@@ -80,7 +80,7 @@ Params that can be added are the following:
 
 1. `url`: represents the location of the git repository, you can use this to
    change the repo, e.g. [to use a fork](#using-a-fork)
-2. `revision`: Git
+1. `revision`: Git
    [revision](https://git-scm.com/docs/gitrevisions#_specifying_revisions)
    (branch, tag, commit SHA or ref) to clone. You can use this to control what
    commit [or branch](#using-a-branch) is used. _If no revision is specified,
@@ -132,7 +132,7 @@ spec:
 ### Image Resource
 
 An Image resource represents an image that lives in a remote repository. It is
-usually used as [a `Task` `output`](concepts.md#task) for `Tasks` that build
+usually used as [a `Task` `output`](tasks.md#outputs) for `Tasks` that build
 images. This allows the same `Tasks` to be used to generically push to any
 registry.
 
@@ -140,7 +140,7 @@ Params that can be added are the following:
 
 1. `url`: The complete path to the image, including the registry and the image
    tag
-2. `digest`: The
+1. `digest`: The
    [image digest](https://success.docker.com/article/images-tagging-vs-digests)
    which uniquely identifies a particular build of an image with a particular
    tag. _While this can be provided as a parameter, there is not yet a way to
@@ -314,10 +314,11 @@ spec:
 Params that can be added are the following:
 
 1. `location`: represents the location of the blob storage.
-2. `type`: represents the type of blob storage. For GCS storage resource this
+1. `type`: represents the type of blob storage. For GCS storage resource this
    value should be set to `gcs`.
-3. `dir`: represents whether the blob storage is a directory or not. By default
+1. `dir`: represents whether the blob storage is a directory or not. By default
    storage artifact is considered not a directory.
+
    - If artifact is a directory then `-r`(recursive) flag is used to copy all
      files under source directory to GCS bucket. Eg:
      `gsutil cp -r source_dir gs://some-bucket`
@@ -335,13 +336,13 @@ service account.
    [official documentation](https://cloud.google.com/compute/docs/access/service-accounts)
    on how to create service accounts and configuring IAM permissions to access
    bucket.
-2. Create a Kubernetes secret from downloaded service account json key
+1. Create a Kubernetes secret from downloaded service account json key
 
    ```bash
    kubectl create secret generic bucket-sa --from-file=./service_account.json
    ```
 
-3. To access GCS private bucket environment variable
+1. To access GCS private bucket environment variable
    [`GOOGLE_APPLICATION_CREDENTIALS`](https://cloud.google.com/docs/authentication/production)
    should be set so apply above created secret to the GCS storage resource under
    `fieldName` key.
@@ -407,10 +408,11 @@ spec:
 Params that can be added are the following:
 
 1. `location`: represents the location of the blob storage.
-2. `type`: represents the type of blob storage. For BuildGCS, this value should
+1. `type`: represents the type of blob storage. For BuildGCS, this value should
    be set to `build-gcs`
-3. `artifactType`: represent the type of GCS resource. Right now, we support
+1. `artifactType`: represent the type of GCS resource. Right now, we support
    following types:
+
    - `Archive`:
      - Archive indicates that resource fetched is an archive file. Currently,
        Build GCS resource only supports `.zip` archive.

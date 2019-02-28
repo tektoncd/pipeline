@@ -47,6 +47,7 @@ following fields:
     scheduled on that node. More info:
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/>
   - [`affinity`] - The pod's scheduling constraints. More info:
+
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature>
 
 [kubernetes-overview]:

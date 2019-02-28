@@ -24,7 +24,7 @@ Tekton Pipelines are **Typed**:
   [kaniko](https://github.com/GoogleContainerTools/kaniko) v.s.
   [buildkit](https://github.com/moby/buildkit))
 
-## Want to start using Pipelines?
+## Want to start using Pipelines
 
 - [Installing Knative Pipelines](docs/install.md)
 - Jump in with [the tutorial!](docs/tutorial.md)
@@ -34,7 +34,7 @@ Tekton Pipelines are **Typed**:
 _See [our API compatibility policy](api_compatibility_policy.md) for info on the
 stability level of the API._
 
-## Want to contribute?
+## Want to contribute
 
 We are so excited to have you!
 
