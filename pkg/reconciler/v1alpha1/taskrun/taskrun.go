@@ -40,6 +40,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	coreinformers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -419,7 +420,7 @@ func (c *Reconciler) createBuildPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec,
 		return nil, err
 	}
 
-	build, err = createRedirectedBuild(&build.Spec, tr, c.cache, c.Logger)
+	build, err = createRedirectedBuild(c.KubeClientSet, build, tr, c.cache, c.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
 	}
@@ -453,13 +454,14 @@ func (c *Reconciler) createBuildPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec,
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the BuildSpec and modifies it freely
-func createRedirectedBuild(bs *buildv1alpha1.BuildSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*buildv1alpha1.Build, error) {
+func createRedirectedBuild(kubeclient kubernetes.Interface, build *buildv1alpha1.Build, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*buildv1alpha1.Build, error) {
+	bs := &build.Spec
 	// Pass service account name from taskrun to build
 	bs.ServiceAccountName = tr.Spec.ServiceAccount
 
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
-	err := entrypoint.RedirectSteps(cache, bs.Steps, logger)
+	err := entrypoint.RedirectSteps(cache, bs.Steps, kubeclient, build, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add entrypoint to steps of TaskRun %s: %v", tr.Name, err)
 	}

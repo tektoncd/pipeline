@@ -22,12 +22,17 @@ import (
 	"strconv"
 
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/google"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	lru "github.com/hashicorp/golang-lru"
+	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
 )
@@ -94,65 +99,24 @@ func AddCopyStep(b *v1alpha1.BuildSpec) {
 		Name:         InitContainerName,
 		Image:        *entrypointImage,
 		Command:      []string{"/bin/cp"},
-		Args:         []string{"/ko-app", BinaryLocation},
+		Args:         []string{"/ko-app/entrypoint", BinaryLocation},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	b.Steps = append([]corev1.Container{cp}, b.Steps...)
 
 }
 
-// GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
-// to look for. If the cache does not contain the digest, it will lookup the
-// metadata from the images registry, and then commit that to the cache
-func GetRemoteEntrypoint(cache *Cache, digest string) ([]string, error) {
-	if ep, ok := cache.get(digest); ok {
-		return ep, nil
-	}
-	img, err := getRemoteImage(digest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch remote image %s: %v", digest, err)
-	}
-	cfg, err := img.ConfigFile()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get config for image %s: %v", digest, err)
-	}
-	cache.set(digest, cfg.Config.Entrypoint)
-	return cfg.Config.Entrypoint, nil
-}
-
-// GetImageDigest tries to find and return image digest in cache, if
-// cache doesn't exists it will lookup the digest in remote image manifest
-// and then cache it
-func GetImageDigest(cache *Cache, image string) (string, error) {
-	if digestList, ok := cache.get(image); ok && (len(digestList) > 0) {
-		return digestList[0], nil
-	}
-	img, err := getRemoteImage(image)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch remote image %s: %v", image, err)
-	}
-	digestHash, err := img.Digest()
-	if err != nil {
-		return "", fmt.Errorf("couldn't get digest hash for image %s: %v", image, err)
-	}
-	// Parse Digest Hash struct into sha string
-	digest := fmt.Sprintf("%s%s%s", image, digestSeparator, digestHash.String())
-	cache.set(image, []string{digest})
-
-	return digest, nil
-}
-
 // RedirectSteps will modify each of the steps/containers such that
 // the binary being run is no longer the one specified by the Command
 // and the Args, but is instead the entrypoint binary, which will
 // itself invoke the Command and Args, but also capture logs.
-func RedirectSteps(cache *Cache, steps []corev1.Container, logger *zap.SugaredLogger) error {
+func RedirectSteps(cache *Cache, steps []corev1.Container, kubeclient kubernetes.Interface, build *buildv1alpha1.Build, logger *zap.SugaredLogger) error {
 	for i := range steps {
 		step := &steps[i]
 		if len(step.Command) == 0 {
 			logger.Infof("Getting Cmd from remote entrypoint for step: %s", step.Name)
 			var err error
-			step.Command, err = GetRemoteEntrypoint(cache, step.Image)
+			step.Command, err = GetRemoteEntrypoint(cache, step.Image, kubeclient, build)
 			if err != nil {
 				logger.Errorf("**ALERT**: Error getting entry point image", err.Error())
 				return err
@@ -192,15 +156,77 @@ func GetArgs(stepNum int, commands, args []string) []string {
 	return append(argsForEntrypoint, args...)
 }
 
-func getRemoteImage(image string) (v1.Image, error) {
+// GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
+// to look for. If the cache does not contain the digest, it will lookup the
+// metadata from the images registry, and then commit that to the cache
+func GetRemoteEntrypoint(cache *Cache, digest string, kubeclient kubernetes.Interface, build *buildv1alpha1.Build) ([]string, error) {
+	if ep, ok := cache.get(digest); ok {
+		return ep, nil
+	}
+	img, err := getRemoteImage(digest, kubeclient, build)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to fetch remote image %s: %v", digest, err)
+	}
+	cfg, err := img.ConfigFile()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get config for image %s: %v", digest, err)
+	}
+	var command []string
+	command = cfg.Config.Entrypoint
+	if len(command) == 0 {
+		command = cfg.Config.Cmd
+	}
+	cache.set(digest, command)
+	return command, nil
+}
+
+func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv1alpha1.Build) (v1.Image, error) {
 	// verify the image name, then download the remote config file
 	ref, err := name.ParseReference(image, name.WeakValidation)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't parse image %s: %v", image, err)
+		return nil, fmt.Errorf("Failed to parse image %s: %v", image, err)
 	}
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
+	var kc authn.Keychain
+	serviceAccountName := build.Spec.ServiceAccountName
+	if serviceAccountName != "" && serviceAccountName != "default" {
+		sa, err := kubeclient.CoreV1().ServiceAccounts(build.Namespace).Get(serviceAccountName, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("Failed to get service account %s: %v", serviceAccountName, err)
+		}
+		if len(sa.ImagePullSecrets) == 0 {
+			return nil, fmt.Errorf("No ImagePullSecret for service account %s: %v", serviceAccountName, err)
+		}
+		for _, secret := range sa.ImagePullSecrets {
+			_, err = kubeclient.CoreV1().Secrets(build.Namespace).Get(secret.Name, metav1.GetOptions{})
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get ImagePullSecret for service account %s: %v", serviceAccountName, err)
+			}
+
+			kc, err = k8schain.New(kubeclient, k8schain.Options{
+				ImagePullSecrets: []string{secret.Name},
+				Namespace:        build.Namespace,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("Failed to create k8schain: %v", err)
+			}
+		}
+	} else {
+		kc, err = k8schain.New(kubeclient, k8schain.Options{
+			Namespace:          build.Namespace,
+			ServiceAccountName: "default",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("Failed to create k8schain: %v", err)
+		}
+	}
+
+	// this will first try to authenticate using the k8schain,
+	// then fall back to the google keychain,
+	// then fall back to anonymous
+	mkc := authn.NewMultiKeychain(kc, google.Keychain)
+	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
 	if err != nil {
-		return nil, fmt.Errorf("couldn't get container image info from registry %s: %v", image, err)
+		return nil, fmt.Errorf("Failed to get container image info from registry %s: %v", image, err)
 	}
 
 	return img, nil

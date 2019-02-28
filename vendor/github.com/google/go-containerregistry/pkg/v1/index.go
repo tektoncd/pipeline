@@ -18,6 +18,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
+// ImageIndex defines the interface for interacting with an OCI image index.
 type ImageIndex interface {
 	// MediaType of this image's manifest.
 	MediaType() (types.MediaType, error)

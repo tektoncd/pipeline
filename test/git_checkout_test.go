@@ -117,7 +117,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 					t.Fatalf("Error getting pod `%s` in namespace `%s`", tr.Status.PodName, namespace)
 				}
 
-				for _, stat := range p.Status.InitContainerStatuses {
+				for _, stat := range p.Status.ContainerStatuses {
 					if strings.HasPrefix(stat.Name, "build-step-git-source-"+gitSourceResourceName) {
 						if stat.State.Terminated != nil {
 							req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
@@ -130,7 +130,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 								strings.Contains(string(logContent), "pathspec 'Idontexistrabbitmonkeydonkey' did not match any file(s) known to git") {
 								logger.Infof("Found exepected errors when retrieving non-existent git revision")
 							} else {
-								logger.Infof("Init container `%s` log File: %s", stat.Name, logContent)
+								logger.Infof("Container `%s` log File: %s", stat.Name, logContent)
 								t.Fatalf("The git code extraction did not fail as expected.  Expected errors not found in log file.")
 							}
 						}
