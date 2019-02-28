@@ -320,7 +320,7 @@ Params that can be added are the following:
    storage artifact is considered not a directory.
    - If artifact is a directory then `-r`(recursive) flag is used to copy all
      files under source directory to GCS bucket. Eg:
-     `gsutil cp -r source_dir gs://some-bucket`
+     `gsutil cp -r source_dir/* gs://some-bucket`
    - If artifact is a single file like zip, tar files then copy will be only 1
      level deep(no recursive). It will not trigger copy of sub directories in
      source directory. Eg: `gsutil cp source.tar gs://some-bucket.tar`.

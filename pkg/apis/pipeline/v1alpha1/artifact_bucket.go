@@ -77,7 +77,7 @@ func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
 
 // GetCopyFromContainerSpec returns a container used to download artifacts from temporary storage
 func (b *ArtifactBucket) GetCopyFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
-	args := []string{"-args", fmt.Sprintf("cp -r %s %s", fmt.Sprintf("%s/%s/**", b.Location, sourcePath), destinationPath)}
+	args := []string{"-args", fmt.Sprintf("cp -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
