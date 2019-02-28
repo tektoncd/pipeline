@@ -31,18 +31,6 @@ function banner() {
     make_banner "@" "$1"
 }
 
-# Capitalize the first letter of each word.
-# Parameters: $1..$n - words to capitalize.
-function capitalize() {
-  local words=("$1")
-  local capitalized=()
-  for word in $@; do
-    local initial="$(echo ${word:0:1}| tr 'a-z' 'A-Z')"
-    capitalized+=("${initial}${word:1}")
-  done
-  echo "${capitalized[@]}"
-}
-
 # Tag images in the yaml files if $TAG is not empty.
 # $KO_DOCKER_REPO is the registry containing the images to tag with $TAG.
 # Parameters: $1..$n - yaml files to parse for images.
@@ -388,7 +376,11 @@ function main() {
 
   run_validation_tests ${VALIDATION_TESTS}
   banner "Building the release"
-  build_release || abort "error building the release"
+  build_release
+  # Do not use `||` above or any error will be swallowed.
+  if [[ $? -ne 0 ]]; then
+    abort "error building the release"
+  fi
   [[ -z "${YAMLS_TO_PUBLISH}" ]] && abort "no manifests were generated"
   echo "New release built successfully"
   if (( PUBLISH_RELEASE )); then
@@ -403,7 +395,7 @@ function main() {
 # Parameters: $1..$n - YAML files to add to the release.
 function publish_to_github() {
   (( PUBLISH_TO_GITHUB )) || return 0
-  local title="Knative $(capitalize ${REPO_NAME//-/ }) release ${TAG}"
+  local title="${REPO_NAME_FORMATTED} release ${TAG}"
   local attachments=()
   local description="$(mktemp)"
   local attachments_dir="$(mktemp -d)"

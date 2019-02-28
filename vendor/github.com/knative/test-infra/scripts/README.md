@@ -116,7 +116,18 @@ This is a helper script for Knative E2E test scripts. To use it:
 
 1. Source the script.
 
-1. [optional] Write the `teardown()` function, which will tear down your test
+1. [optional] Write the `knative_setup()` function, which will set up your
+   system under test (e.g., Knative Serving). This function won't be called if you
+   use the `--skip-knative-setup` flag.
+
+1. [optional] Write the `knative_teardown()` function, which will tear down your
+   system under test (e.g., Knative Serving). This function won't be called if you
+   use the `--skip-knative-setup` flag.
+
+1. [optional] Write the `test_setup()` function, which will set up the test
+   resources.
+
+1. [optional] Write the `test_teardown()` function, which will tear down the test
    resources.
 
 1. [optional] Write the `dump_extra_cluster_state()` function. It will be
@@ -138,8 +149,6 @@ This is a helper script for Knative E2E test scripts. To use it:
    the following boolean (0 is false, 1 is true) environment variables for the logic:
 
    - `EMIT_METRICS`: true if `--emit-metrics` was passed.
-   - `USING_EXISTING_CLUSTER`: true if the test cluster is an already existing one,
-     and not a temporary cluster created by `kubetest`.
 
    All environment variables above are marked read-only.
 
@@ -149,10 +158,11 @@ This is a helper script for Knative E2E test scripts. To use it:
    project `$PROJECT_ID` and run the tests against it.
 
 1. Calling your script with `--run-tests` and the variable `KO_DOCKER_REPO` set
-   will immediately start the tests against the cluster currently configured for `kubectl`.
+   will immediately start the tests against the cluster currently configured for
+   `kubectl`.
 
 1. You can force running the tests against a specific GKE cluster version by using
-   the `--cluster-version` flag and passing a X.Y.Z version as the flag value.
+   the `--cluster-version` flag and passing a full version as the flag value.
 
 ### Sample end-to-end test script
 
@@ -168,8 +178,11 @@ E2E_CLUSTER_REGION=us-west2
 
 source vendor/github.com/knative/test-infra/scripts/e2e-tests.sh
 
-function teardown() {
-  echo "TODO: tear down test resources"
+function knative_setup() {
+  start_latest_knative_serving
+  if (( WAIT_FOR_KNATIVE )); then
+    wait_until_pods_running knative-serving || fail_test "Knative Serving not up"
+  fi
 }
 
 function parse_flags() {
@@ -183,12 +196,6 @@ function parse_flags() {
 WAIT_FOR_KNATIVE=1
 
 initialize $@
-
-start_latest_knative_serving
-
-if (( WAIT_FOR_KNATIVE )); then
-  wait_until_pods_running knative-serving || fail_test "Knative Serving is not up"
-fi
 
 # TODO: use go_test_e2e to run the tests.
 kubectl get pods || fail_test
