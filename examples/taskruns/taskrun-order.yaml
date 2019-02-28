@@ -1,0 +1,13 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-steps-run-in-order
+spec:
+  taskSpec:
+    steps:
+    - image: busybox
+      cmd: bash
+      args: ['-c', 'sleep 3 && touch foo']
+    - image: busybox
+      cmd: bash
+      args: ['-c', 'ls', 'foo']
