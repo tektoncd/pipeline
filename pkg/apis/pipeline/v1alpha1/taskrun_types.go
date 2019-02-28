@@ -162,12 +162,9 @@ func (tr *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
 	}
 }
 
-// StepState reports the results of running a step in the Task. Each
-// task has the potential to succeed or fail (based on the exit code)
-// and produces logs.
+// StepState reports the results of running a step in the Task.
 type StepState struct {
 	corev1.ContainerState
-	LogsURL string `json:"logsURL"`
 }
 
 // +genclient
