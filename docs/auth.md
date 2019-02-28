@@ -331,7 +331,7 @@ Given URLs, usernames, and passwords of the form: `https://url{n}.com`,
 ```
 === ~/.gitconfig ===
 [credential]
-	helper = store
+    helper = store
 [credential "https://url1.com"]
     username = "user1"
 [credential "https://url2.com"]

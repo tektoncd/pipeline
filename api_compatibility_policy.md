@@ -7,7 +7,7 @@ therefore likely to change.
 
 For these purposes the CRDs are divided into three groups:
 
-- [`Build` and `BuildTemplate`] - from https://github.com/knative/build
+- [`Build` and `BuildTemplate`] - from <https://github.com/knative/build>
 - [`TaskRun`, `Task`, and `ClusterTask`] - "more stable"
 - [`PipelineRun`, `Pipeline` and `PipelineResource`] - "less stable"
 
@@ -15,7 +15,7 @@ The use of `alpha`, `beta` and `GA` in this document is meant to correspond
 roughly to
 [the kubernetes API deprecation policies](https://kubernetes.io/docs/reference/using-api/deprecation-policy/#deprecating-a-flag-or-cli).
 
-## What does compatibility mean here?
+## What does compatibility mean here
 
 This policy is about changes to the APIs of the
 [CRDs](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/),
@@ -29,10 +29,10 @@ this process may become less painful).
 The current process would look something like:
 
 1. Backup the instances
-2. Delete the instances
-3. Deploy the new type definitions
-4. Update the backups with the new spec
-5. Deploy the updated backups
+1. Delete the instances
+1. Deploy the new type definitions
+1. Update the backups with the new spec
+1. Deploy the updated backups
 
 _This policy does not yet cover other functionality which could be considered
 part of the API, but isn’t part of the CRD definition (e.g. a contract re. files
@@ -52,10 +52,10 @@ particularly to support embedding of Build resources within
 ## `TaskRun`, `Task`, and `ClusterTask`
 
 The CRD types
-[`Task`](https://github.com/knative/build-pipeline/blob/master/docs/Concepts.md#task),
-[`ClusterTask`](https://github.com/knative/build-pipeline/blob/master/docs/Concepts.md#clustertask),
+[`Task`](https://github.com/knative/build-pipeline/blob/master/docs/tasks.md),
+[`ClusterTask`](https://github.com/knative/build-pipeline/blob/master/docs/tasks.md#clustertask),
 and
-[`TaskRun`](https://github.com/knative/build-pipeline/blob/master/docs/Concepts.md#taskrun)
+[`TaskRun`](https://github.com/knative/build-pipeline/blob/master/docs/taskruns.md)
 should be considered `alpha`, however these types are more stable than
 `Pipeline`, `PipelineRun`, and `PipelineResource`.
 
@@ -85,10 +85,10 @@ between releases.
 ## `PipelineRun`, `Pipeline` and `PipelineResource`
 
 The CRD types
-[`Pipeline`](https://github.com/knative/build-pipeline/blob/master/docs/Concepts.md#pipeline),
-[`PipelineRun`](https://github.com/knative/build-pipeline/blob/master/docs/Concepts.md#pipelinerun)
+[`Pipeline`](https://github.com/knative/build-pipeline/blob/master/docs/pipelines.md),
+[`PipelineRun`](https://github.com/knative/build-pipeline/blob/master/docs/pipelines.md)
 and
-[`PipelineResource`](https://github.com/knative/build-pipeline/blob/master/docs/Concepts.md#pipelineresources)
+[`PipelineResource`](https://github.com/knative/build-pipeline/blob/master/docs/resources.md#pipelineresources)
 should be considered `alpha`, i.e. the API should be considered unstable.
 Backwards incompatible changes can be introduced between releases, however they
 must include a backwards incompatibility warning in the release notes.

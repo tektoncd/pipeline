@@ -53,12 +53,12 @@ following fields:
   - [`nodeSelector`] - a selector which must be true for the pod to fit on a
     node. The selector which must match a node's labels for the pod to be
     scheduled on that node. More info:
-    https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+    <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/>
   - [`affinity`] - the pod's scheduling constraints. More info:
-    https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature
+    <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature>
 
 [kubernetes-overview]:
-  https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
+  <https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields>
 
 ### Specifying a task
 
@@ -372,8 +372,8 @@ the `Task`.
 ### Example Task Reuse
 
 For the sake of illustrating re-use, here are several example
-[`TaskRuns`](taskrun.md) (including referenced
-[`PipelineResources`](resource.md)) instantiating the
+[`TaskRuns`](taskruns.md) (including referenced
+[`PipelineResources`](resources.md)) instantiating the
 [`Task` (`dockerfile-build-and-push`) in the `Task` example docs](tasks.md#example-task).
 
 Build `mchmarny/rester-tester`:
