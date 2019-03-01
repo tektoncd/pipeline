@@ -6,8 +6,8 @@ spec:
   taskSpec:
     steps:
     - image: 'ubuntu'
-      args: ['true']
+      command: ['true']
     - image: 'ubuntu'
-      args: ['true']
+      command: ['true']
     - image: 'ubuntu'
-      args: ['true']
+      command: ['true']
