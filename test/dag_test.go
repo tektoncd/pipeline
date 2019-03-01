@@ -68,7 +68,7 @@ func TestDAGPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create simple repo PipelineResource: %s", err)
 	}
 
-	// Intentionally delcaring Tasks in a mixed up order to ensure the order
+	// Intentionally declaring Tasks in a mixed up order to ensure the order
 	// of execution isn't at all dependent on the order they are declared in
 	pipeline := tb.Pipeline("dag-pipeline", namespace, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("repo", "repo"),
