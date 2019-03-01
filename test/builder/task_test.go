@@ -109,6 +109,8 @@ func TestClusterTask(t *testing.T) {
 
 func TestTaskRunWitTaskRef(t *testing.T) {
 	var trueB = true
+	startTime := time.Now().Add(-5 * time.Minute)
+	statusStartTime := metav1.NewTime(startTime)
 	taskRun := tb.TaskRun("test-taskrun", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test",
 			tb.OwnerReferenceAPIVersion("a1"),
@@ -141,7 +143,7 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 		tb.TaskRunStatus(
 			tb.PodName("my-pod-name"),
 			tb.Condition(duckv1alpha1.Condition{Type: duckv1alpha1.ConditionSucceeded}),
-			tb.TaskRunStartTime(time.Now().Add(-5*time.Minute)),
+			tb.TaskRunStartTime(startTime),
 			tb.Retry(v1alpha1.TaskRunStatus{
 				Conditions: []duckv1alpha1.Condition{{
 					Type:   duckv1alpha1.ConditionSucceeded,
@@ -196,7 +198,14 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 		},
 		Status: v1alpha1.TaskRunStatus{
 			PodName:    "my-pod-name",
+			StartTime:  &statusStartTime,
 			Conditions: []duckv1alpha1.Condition{{Type: duckv1alpha1.ConditionSucceeded}},
+			RetriesStatus: []v1alpha1.TaskRunStatus{{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			}},
 			Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
 				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
 			}}},
