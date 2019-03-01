@@ -1,0 +1,11 @@
+# For help, see
+# https://github.com/markdownlint/markdownlint/blob/master/docs/configuration.md 
+
+# The following rules are ignored
+# MD004: Unordered list style
+# MD005: Inconsistent indentation for list items at the same level
+# MD007: Unsorted list indentation
+# MD013: Ignore long lines
+# MD036: Emphasis used instead of a header
+# MD039: Spaces inside link text
+rules "~MD004", "~MD005", "~MD007", "~MD013", "~MD036", "~MD039"

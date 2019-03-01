@@ -72,6 +72,12 @@ type Pipeline struct {
 type PipelineTask struct {
 	Name    string  `json:"name"`
 	TaskRef TaskRef `json:"taskRef"`
+
+	// RunAfter is the list of PipelineTask names that should be executed before
+	// this Task executes. (Used to force a specific ordering in graph execution.)
+	// +optional
+	RunAfter []string `json:"runAfter,omitempty"`
+
 	// +optional
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
 	// +optional
@@ -127,6 +133,7 @@ type PipelineTaskInputResource struct {
 	// Resource is the name of the DeclaredPipelineResource to use.
 	Resource string `json:"resource"`
 	// From is the list of PipelineTask names that the resource has to come from.
+	// (Implies an ordering in the execution graph.)
 	// +optional
 	From []string `json:"from,omitempty"`
 }

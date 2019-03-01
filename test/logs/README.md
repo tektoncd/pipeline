@@ -1,4 +1,4 @@
-# How to follow log outputs?
+# How to follow log outputs
 
 - [How to follow PipelineRun logs?](#pipelinerun)
 - [How to follow TaskRun logs?](#taskrun)

@@ -75,7 +75,7 @@ following fields:
     available to your build.
 
 [kubernetes-overview]:
-  https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
+  <https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields>
 
 The following example is a non-working sample where most of the possible
 configuration fields are used:
