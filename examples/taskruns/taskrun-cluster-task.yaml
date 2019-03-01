@@ -14,7 +14,8 @@ spec:
     ]
   - name: dump-buildfile
     image: ubuntu
-    args: ["cat", "/workspace/another-directory/BUILD"]
+    command: ["cat"]
+    args: ["/workspace/another-directory/BUILD"]
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun

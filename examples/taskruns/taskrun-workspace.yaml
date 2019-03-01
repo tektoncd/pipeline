@@ -11,7 +11,8 @@ spec:
       args: ['-c', 'echo some stuff > /workspace/stuff']
     - name: read
       image: ubuntu
-      args: ['cat', '/workspace/stuff']
+      command: ['cat']
+      args: ['/workspace/stuff']
 
     - name: override-workspace
       image: ubuntu

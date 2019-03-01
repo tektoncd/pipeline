@@ -13,7 +13,8 @@ spec:
       args: ['-c', 'echo some stuff > /builder/home/stuff']
     - name: read
       image: ubuntu
-      args: ['cat', '/builder/home/stuff']
+      command: ['cat']
+      args: ['/builder/home/stuff']
     - name: override-homevol
       image: ubuntu
       command: ['bash']
