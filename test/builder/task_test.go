@@ -141,6 +141,13 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 		tb.TaskRunStatus(
 			tb.PodName("my-pod-name"),
 			tb.Condition(duckv1alpha1.Condition{Type: duckv1alpha1.ConditionSucceeded}),
+			tb.TaskRunStartTime(time.Now().Add(-5*time.Minute)),
+			tb.Retry(v1alpha1.TaskRunStatus{
+				Conditions: []duckv1alpha1.Condition{{
+					Type:   duckv1alpha1.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}},
+			}),
 			tb.StepState(tb.StateTerminated(127)),
 		),
 	)
