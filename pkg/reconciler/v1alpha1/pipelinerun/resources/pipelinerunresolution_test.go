@@ -595,7 +595,7 @@ func TestResolvePipelineRun(t *testing.T) {
 	}}
 
 	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-		t.Fatalf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
+		t.Errorf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
 	}
 }
 
@@ -1035,7 +1035,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 
 	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-resource", "git"),
-		tb.PipelineTask("mytask1", "task",
+		tb.PipelineTask("mytask-with-a-really-long-name-to-trigger-truncation", "task",
 			tb.PipelineTaskInputResource("input1", "git-resource"),
 		),
 	))
@@ -1053,8 +1053,11 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 			Type: v1alpha1.PipelineResourceTypeGit,
 		},
 	}
-	taskrunStatus := map[string]v1alpha1.TaskRunStatus{}
-	taskrunStatus["pipelinerun-mytask1-9l9zj"] = v1alpha1.TaskRunStatus{}
+	taskrunStatus := map[string]*v1alpha1.PipelineRunTaskRunStatus{}
+	taskrunStatus["pipelinerun-mytask-with-a-really-long-name-to-trigger-tru-9l9zj"] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "mytask-with-a-really-long-name-to-trigger-truncation",
+		Status:           &v1alpha1.TaskRunStatus{},
+	}
 
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1077,7 +1080,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	}
 	expectedState := PipelineRunState{{
 		PipelineTask: &p.Spec.Tasks[0],
-		TaskRunName:  "pipelinerun-mytask1-9l9zj",
+		TaskRunName:  "pipelinerun-mytask-with-a-really-long-name-to-trigger-tru-9l9zj",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
