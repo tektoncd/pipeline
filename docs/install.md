@@ -11,9 +11,11 @@ To add the Tekton Pipelines component to an existing cluster:
    command to install
    [Tekton Pipelines](https://github.com/knative/build-pipeline) and its
    dependencies:
+
    ```bash
    kubectl apply --filename https://storage.googleapis.com/knative-releases/build-pipeline/latest/release.yaml
    ```
+
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
    command to monitor the Tekton Pipelines components until all of the
@@ -35,11 +37,11 @@ You are now ready to create and run Tekton Pipelines:
 
 ## Configuring Tekton Pipelines
 
-### How are resources shared between tasks?
+### How are resources shared between tasks
 
 Pipelines need a way to share resources between tasks. The alternatives are a
 [Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
-or a (GCS storage bucket)[https://cloud.google.com/storage/]
+or a [GCS storage bucket](https://cloud.google.com/storage/)
 
 The PVC option does not require any configuration, but the GCS storage bucket
 can be configured using a ConfigMap with the name `config-artifact-bucket` with

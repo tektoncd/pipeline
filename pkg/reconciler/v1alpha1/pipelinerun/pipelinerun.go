@@ -28,6 +28,7 @@ import (
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
+	dag "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipeline/resources"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/config"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
@@ -56,9 +57,12 @@ const (
 	// ReasonCouldntGetResource indicates that the reason for the failure status is that the
 	// associated PipelineRun's bound PipelineResources couldn't all be retrieved
 	ReasonCouldntGetResource = "CouldntGetResource"
-	// ReasonFailedValidation indicated that the reason for failure status is
+	// ReasonFailedValidation indicates that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	ReasonFailedValidation = "PipelineValidationFailed"
+	// ReasonInvalidGraph indicates that the reason for the failure status is that the
+	// associated Pipeline is an invalid graph (a.k.a wrong order, cycle, …)
+	ReasonInvalidGraph = "PipelineInvalidGraph"
 	// pipelineRunAgentName defines logging agent name for PipelineRun Controller
 	pipelineRunAgentName = "pipeline-controller"
 	// pipelineRunControllerName defines name for PipelineRun Controller
@@ -218,6 +222,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	p = p.DeepCopy()
 
+	d, err := dag.Build(p)
+	if err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonInvalidGraph,
+			Message: fmt.Sprintf("PipelineRun %s's Pipeline DAG is invalid: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
+		})
+		return nil
+	}
 	providedResources, err := resources.GetResourcesFromBindings(p, pr)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
@@ -254,7 +270,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		c.resourceLister.PipelineResources(pr.Namespace).Get,
 		p.Spec.Tasks, providedResources,
 	)
-
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		switch err := err.(type) {
@@ -285,7 +300,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		}
 		return nil
 	}
-
 	if err := resources.ValidateFrom(pipelineState); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -314,7 +328,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	err = resources.ResolveTaskRuns(c.taskRunLister.TaskRuns(pr.Namespace).Get, pipelineState)
 	if err != nil {
-		return fmt.Errorf("error getting TaskRuns for Pipeline %s: %s", p.Name, err)
+		return fmt.Errorf("Error getting TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
 
 	// If the pipelinerun is cancelled, cancel tasks and update status
@@ -322,7 +336,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
 	}
 
-	rprt := resources.GetNextTask(pr.Name, pipelineState, c.Logger)
+	candidateTasks, err := d.GetSchedulable(pipelineState.SuccessfulPipelineTaskNames()...)
+	if err != nil {
+		c.Logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
+	}
+	rprts := pipelineState.GetNextTasks(candidateTasks)
 
 	var as artifacts.ArtifactStorageInterface
 	if as, err = artifacts.InitializeArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
@@ -330,12 +348,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return err
 	}
 
-	if rprt != nil {
-		c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-		rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, as.StorageBasePath(pr))
-		if err != nil {
-			c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
-			return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+	for _, rprt := range rprts {
+		if rprt != nil {
+			c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
+			rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, as.StorageBasePath(pr))
+			if err != nil {
+				c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
+				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+			}
 		}
 	}
 

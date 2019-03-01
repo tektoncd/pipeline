@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
+	"github.com/knative/build-pipeline/pkg/list"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 

@@ -71,12 +71,12 @@ for your GitHub username, password, and possibly 2-factor authentication
 challenge before the release is published.
 
 Since we are currently using
-[the knative release scripts](vendor/github.com/knative/test-infra/scripts/release.sh#L404)
+[the knative release scripts](../vendor/github.com/knative/test-infra/scripts/release.sh#L404)
 the title of the release will be _Knative Build Pipeline release vX.Y.Z_ and we
 will manually need to change this to _Tekton Pipeline release vX.Y.Z_. It will
 also be tagged _vX.Y.Z_ (both on GitHub and as a git annotated tag).
 
-#### Release notes
+### Release notes
 
 Release notes will need to be manually collected for the release by looking at
 the `Release Notes` section of every PR which has been merged between the last

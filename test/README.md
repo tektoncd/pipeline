@@ -147,13 +147,13 @@ export GCP_SERVICE_ACCOUNT_KEY_PATH="$PWD/config.json"
 
 ### Running
 
-Integration tests live in this directory. To run these tests, you must provide
+End to end tests live in this directory. To run these tests, you must provide
 `go` with `-tags=e2e`. By default the tests run against your current kubeconfig
 context, but you can change that and other settings with [the flags](#flags):
 
 ```shell
-go test -v -count=1 -tags=e2e ./test
-go test -v -tags=e2e -count=1 ./test --kubeconfig ~/special/kubeconfig --cluster myspecialcluster
+go test -v -count=1 -tags=e2e -timeout=20m ./test
+go test -v -count=1 -tags=e2e -timeout=20m ./test --kubeconfig ~/special/kubeconfig --cluster myspecialcluster
 ```
 
 You can also use
@@ -170,6 +170,8 @@ You can also use
   test as well as from k8s libraries.
 - Using `-count=1` is
   [the idiomatic way to disable test caching](https://golang.org/doc/go1.10#test).
+- The end to end tests take a long time to run so a value like `-timeout=20m` can
+  be useful depending on what you're running
 
 You can [use test flags](#flags) to control the environment your tests run
 against, i.e. override

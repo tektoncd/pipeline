@@ -21,15 +21,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/names"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/list"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/knative/build-pipeline/pkg/list"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
 const (
@@ -49,33 +50,6 @@ const (
 	ReasonTimedOut = "PipelineRunTimeout"
 )
 
-// GetNextTask returns the next Task for which a TaskRun should be created,
-// or nil if no TaskRun should be created.
-func GetNextTask(prName string, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger) *ResolvedPipelineRunTask {
-	for _, prtr := range state {
-		if prtr.TaskRun != nil {
-			c := prtr.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-			if c == nil {
-				logger.Infof("TaskRun %s doesn't have a condition so it is just starting and we shouldn't start more for PipelineRun %s", prtr.TaskRunName, prName)
-				return nil
-			}
-			switch c.Status {
-			case corev1.ConditionFalse:
-				logger.Infof("TaskRun %s has failed; we don't need to run PipelineRun %s", prtr.TaskRunName, prName)
-				return nil
-			case corev1.ConditionUnknown:
-				logger.Infof("TaskRun %s is still running so we shouldn't start more for PipelineRun %s", prtr.TaskRunName, prName)
-				return nil
-			}
-		} else {
-			logger.Infof("TaskRun %s should be started for PipelineRun %s", prtr.TaskRunName, prName)
-			return prtr
-		}
-	}
-	logger.Infof("No TaskRuns to start for PipelineRun %s", prName)
-	return nil
-}
-
 // ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
 // exists. TaskRun can be nil to represent there being no TaskRun.
 type ResolvedPipelineRunTask struct {
@@ -83,6 +57,37 @@ type ResolvedPipelineRunTask struct {
 	TaskRun               *v1alpha1.TaskRun
 	PipelineTask          *v1alpha1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
+}
+
+// PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
+// state of the PipelineRun.
+type PipelineRunState []*ResolvedPipelineRunTask
+
+// GetNextTasks will return the next ResolvedPipelineRunTasks to execute, which are the ones in the
+// list of candidateTasks which aren't yet indicated in state to be running.
+func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.PipelineTask) []*ResolvedPipelineRunTask {
+	tasks := []*ResolvedPipelineRunTask{}
+	for _, t := range state {
+		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil {
+			tasks = append(tasks, t)
+		}
+	}
+	return tasks
+}
+
+// SuccessfulPipelineTaskNames returns a list of the names of all of the PipelineTasks in state
+// which have successfully completed.
+func (state PipelineRunState) SuccessfulPipelineTaskNames() []string {
+	done := []string{}
+	for _, t := range state {
+		if t.TaskRun != nil {
+			c := t.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			if c.IsTrue() {
+				done = append(done, t.PipelineTask.Name)
+			}
+		}
+	}
+	return done
 }
 
 // GetTaskRun is a function that will retrieve the TaskRun name.
@@ -171,7 +176,7 @@ func ResolvePipelineRun(
 	getResource resources.GetResource,
 	tasks []v1alpha1.PipelineTask,
 	providedResources map[string]v1alpha1.PipelineResourceRef,
-) ([]*ResolvedPipelineRunTask, error) {
+) (PipelineRunState, error) {
 
 	state := []*ResolvedPipelineRunTask{}
 	for i := range tasks {
@@ -218,7 +223,7 @@ func ResolvePipelineRun(
 
 // ResolveTaskRuns will go through all tasks in state and check if there are existing TaskRuns
 // for each of them by calling getTaskRun.
-func ResolveTaskRuns(getTaskRun GetTaskRun, state []*ResolvedPipelineRunTask) error {
+func ResolveTaskRuns(getTaskRun GetTaskRun, state PipelineRunState) error {
 	for _, rprt := range state {
 		// Check if we have already started a TaskRun for this task
 		taskRun, err := getTaskRun(rprt.TaskRunName)
@@ -249,7 +254,7 @@ func getTaskRunName(taskRunsStatus map[string]v1alpha1.TaskRunStatus, prName str
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
-func GetPipelineConditionStatus(prName string, state []*ResolvedPipelineRunTask, logger *zap.SugaredLogger, startTime *metav1.Time,
+func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *zap.SugaredLogger, startTime *metav1.Time,
 	pipelineTimeout *metav1.Duration) *duckv1alpha1.Condition {
 	allFinished := true
 	if !startTime.IsZero() && pipelineTimeout != nil {
@@ -271,14 +276,15 @@ func GetPipelineConditionStatus(prName string, state []*ResolvedPipelineRunTask,
 		if rprt.TaskRun == nil {
 			logger.Infof("TaskRun %s doesn't have a Status, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
 			allFinished = false
-			break
+			continue
 		}
 		c := rprt.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c == nil {
 			logger.Infof("TaskRun %s doesn't have a condition, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
 			allFinished = false
-			break
+			continue
 		}
+		logger.Infof("TaskRun %s status : %v", rprt.TaskRunName, c.Status)
 		// If any TaskRuns have failed, we should halt execution and consider the run failed
 		if c.Status == corev1.ConditionFalse {
 			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed", rprt.TaskRunName, prName)
@@ -326,7 +332,7 @@ func findReferencedTask(pb string, state []*ResolvedPipelineRunTask) *ResolvedPi
 // it corresponds to must actually exist in the `Pipeline`. The `PipelineResource` that is bound to the input
 // must be the same `PipelineResource` that was bound to the output of the previous `Task`. If the state is
 // not valid, it will return an error.
-func ValidateFrom(state []*ResolvedPipelineRunTask) error {
+func ValidateFrom(state PipelineRunState) error {
 	for _, rprt := range state {
 		if rprt.PipelineTask.Resources != nil {
 			for _, dep := range rprt.PipelineTask.Resources.Inputs {

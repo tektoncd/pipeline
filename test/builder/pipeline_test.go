@@ -37,6 +37,9 @@ func TestPipeline(t *testing.T) {
 			tb.PipelineTaskInputResource("some-repo", "my-only-git-resource", tb.From("foo")),
 			tb.PipelineTaskOutputResource("some-image", "my-only-image-resource"),
 		),
+		tb.PipelineTask("never-gonna", "give-you-up",
+			tb.RunAfter("foo"),
+		),
 	))
 	expectedPipeline := &v1alpha1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: "foo"},
@@ -71,6 +74,10 @@ func TestPipeline(t *testing.T) {
 						Resource: "my-only-image-resource",
 					}},
 				},
+			}, {
+				Name:     "never-gonna",
+				TaskRef:  v1alpha1.TaskRef{Name: "give-you-up"},
+				RunAfter: []string{"foo"},
 			}},
 		},
 	}

@@ -774,6 +774,11 @@ func (in *PipelineStatus) DeepCopy() *PipelineStatus {
 func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 	*out = *in
 	out.TaskRef = in.TaskRef
+	if in.RunAfter != nil {
+		in, out := &in.RunAfter, &out.RunAfter
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
 		if *in == nil {

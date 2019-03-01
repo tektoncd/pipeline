@@ -3,14 +3,14 @@ name: Issue Template
 about: Template for both bug reports and feature requests
 ---
 
-## Expected Behavior
+# Expected Behavior
 
-## Actual Behavior
+# Actual Behavior
 
-## Steps to Reproduce the Problem
+# Steps to Reproduce the Problem
 
 1.
 2.
 3.
 
-## Additional Info
+# Additional Info

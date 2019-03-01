@@ -1,6 +1,6 @@
 # Container Contract
 
-Each container image used as a step in a [`Task`](task.md) must comply with a
+Each container image used as a step in a [`Task`](tasks.md) must comply with a
 specific contract.
 
 ## Entrypoint

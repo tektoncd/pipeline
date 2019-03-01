@@ -51,6 +51,28 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
+  name: unit-tests
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+      targetPath: go/src/github.com/GoogleContainerTools/skaffold
+  steps:
+  - name: run-tests
+    image: golang
+    env:
+    - name: GOPATH
+      value: /workspace/go
+    workingDir: /workspace/go/src/github.com/GoogleContainerTools/skaffold
+    command:
+    - make
+    args:
+    - test
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
   name: build-push
 spec:
   inputs:
@@ -140,7 +162,15 @@ spec:
   - name: app-image
     type: image
   tasks:
+  - name: skaffold-unit-tests
+    taskRef:
+      name: unit-tests
+    resources:
+      inputs:
+      - name: workspace
+        resource: source-repo
   - name: build-skaffold-web
+    runAfter: [skaffold-unit-tests]
     taskRef:
       name: build-push
     params:
@@ -156,6 +186,7 @@ spec:
       - name: builtImage
         resource: web-image
   - name: build-skaffold-app
+    runAfter: [skaffold-unit-tests]
     taskRef:
       name: build-push
     params:

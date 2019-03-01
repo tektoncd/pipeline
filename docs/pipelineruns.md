@@ -3,9 +3,8 @@
 This document defines `PipelineRuns` and their capabilities.
 
 On its own, a [`Pipeline`](pipelines.md) declares what [`Tasks`](tasks.md) to
-run, and dependencies between [`Task`](tasks.md) inputs and outputs via
-[`from`](pipelines.md#from). To execute the `Tasks` in the `Pipeline`, you must
-create a `PipelineRun`.
+run, and [the order they run in](pipelines.md#ordering). To execute the `Tasks`
+in the `Pipeline`, you must create a `PipelineRun`.
 
 Creation of a `PipelineRun` will trigger the creation of
 [`TaskRuns`](taskruns.md) for each `Task` in your pipeline.
@@ -43,7 +42,7 @@ following fields:
     object that enables your build to run with the defined authentication
     information.
   - `timeout` - Specifies timeout after which the `PipelineRun` will fail.
-  - [`nodeSelector`] - a selector which must be true for the pod to fit on a
+  - [`nodeSelector`] - A selector which must be true for the pod to fit on a
     node. The selector which must match a node's labels for the pod to be
     scheduled on that node. More info:
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/>

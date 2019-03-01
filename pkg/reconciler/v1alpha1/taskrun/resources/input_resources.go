@@ -90,8 +90,8 @@ func AddInputResource(
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
 		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
-			for i, path := range boundResource.Paths {
-				cpContainers := as.GetCopyFromContainerSpec(fmt.Sprintf("%s-%d", boundResource.Name, i), path, dPath)
+			for _, path := range boundResource.Paths {
+				cpContainers := as.GetCopyFromContainerSpec(boundResource.Name, path, dPath)
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 
 					mountPVC = true

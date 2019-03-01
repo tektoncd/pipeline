@@ -450,7 +450,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Image: "override-with-bash-noop:latest",
 				Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
 			}, {
-				Name:         "source-copy-gitspace-0-9l9zj",
+				Name:         "source-copy-gitspace-9l9zj",
 				Image:        "override-with-bash-noop:latest",
 				Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gitspace"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
@@ -526,7 +526,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Image: "override-with-bash-noop:latest",
 				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
 			}, {
-				Name:         "source-copy-workspace-0-9l9zj",
+				Name:         "source-copy-workspace-9l9zj",
 				Image:        "override-with-bash-noop:latest",
 				Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gcs-dir"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
@@ -1023,11 +1023,11 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 		build: build(),
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "artifact-dest-mkdir-gitspace-0-mssqb",
+				Name:  "artifact-dest-mkdir-gitspace-mssqb",
 				Image: "override-with-bash-noop:latest",
 				Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
 			}, {
-				Name:  "artifact-copy-from-gitspace-0-78c5n",
+				Name:  "artifact-copy-from-gitspace-78c5n",
 				Image: "override-with-gsutil-image:latest",
 				Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gitspace"},
 			}},
@@ -1059,11 +1059,11 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 		build: build(),
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "artifact-dest-mkdir-workspace-0-6nl7g",
+				Name:  "artifact-dest-mkdir-workspace-6nl7g",
 				Image: "override-with-bash-noop:latest",
 				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
 			}, {
-				Name:  "artifact-copy-from-workspace-0-j2tds",
+				Name:  "artifact-copy-from-workspace-j2tds",
 				Image: "override-with-gsutil-image:latest",
 				Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/** /workspace/gcs-dir"},
 			}},
