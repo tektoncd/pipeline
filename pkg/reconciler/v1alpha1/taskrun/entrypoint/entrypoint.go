@@ -96,10 +96,11 @@ func AddToEntrypointCache(c *Cache, sha string, ep []string) {
 func AddCopyStep(b *v1alpha1.BuildSpec) {
 
 	cp := corev1.Container{
-		Name:         InitContainerName,
-		Image:        *entrypointImage,
-		Command:      []string{"/bin/cp"},
-		Args:         []string{"/ko-app/entrypoint", BinaryLocation},
+		Name:    InitContainerName,
+		Image:   *entrypointImage,
+		Command: []string{"/bin/sh"},
+		// based on the ko version, the binary could be in one of two different locations
+		Args:         []string{"-c", fmt.Sprintf("if [[ -d /ko-app ]]; then cp /ko-app/entrypoint %s; else cp /ko-app %s;  fi;", BinaryLocation, BinaryLocation)},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	b.Steps = append([]corev1.Container{cp}, b.Steps...)
