@@ -18,7 +18,6 @@ package resources
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/knative/build-pipeline/pkg/names"
@@ -184,7 +183,7 @@ func ResolvePipelineRun(
 
 		rprt := ResolvedPipelineRunTask{
 			PipelineTask: &pt,
-			TaskRunName:  getTaskRunName(pipelineRun.Status.TaskRuns, pipelineRun.Name, &pt),
+			TaskRunName:  getTaskRunName(pipelineRun.Status.TaskRuns, pt.Name, pipelineRun.Name),
 		}
 
 		// Find the Task that this task in the Pipeline this PipelineTask is using
@@ -239,17 +238,15 @@ func ResolveTaskRuns(getTaskRun GetTaskRun, state PipelineRunState) error {
 	return nil
 }
 
-// getTaskRunName should return a uniquie name for a `TaskRun`.
-func getTaskRunName(taskRunsStatus map[string]v1alpha1.TaskRunStatus, prName string, pt *v1alpha1.PipelineTask) string {
-	base := fmt.Sprintf("%s-%s", prName, pt.Name)
-
-	for k := range taskRunsStatus {
-		if strings.HasPrefix(k, base) {
+// getTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
+func getTaskRunName(taskRunsStatus map[string]*v1alpha1.PipelineRunTaskRunStatus, ptName, prName string) string {
+	for k, v := range taskRunsStatus {
+		if v.PipelineTaskName == ptName {
 			return k
 		}
 	}
 
-	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(base)
+	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", prName, ptName))
 }
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be

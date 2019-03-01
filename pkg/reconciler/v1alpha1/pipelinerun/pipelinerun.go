@@ -375,7 +375,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask) {
 	for _, rprt := range pipelineState {
 		if rprt.TaskRun != nil {
-			pr.Status.TaskRuns[rprt.TaskRun.Name] = rprt.TaskRun.Status
+			prtrs := pr.Status.TaskRuns[rprt.TaskRun.Name]
+			if prtrs == nil {
+				prtrs = &v1alpha1.PipelineRunTaskRunStatus{
+					PipelineTaskName: rprt.PipelineTask.Name,
+				}
+				pr.Status.TaskRuns[rprt.TaskRun.Name] = prtrs
+			}
+			prtrs.Status = &rprt.TaskRun.Status
 		}
 	}
 }
