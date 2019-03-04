@@ -19,7 +19,7 @@ import (
 	"github.com/knative/pkg/apis"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/templating"
+	"github.com/knative/build-pipeline/pkg/templating"
 )
 
 func TestValidateVariables(t *testing.T) {
