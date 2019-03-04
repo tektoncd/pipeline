@@ -53,16 +53,6 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 			)),
 		},
 		{
-			name: "from task is afterward",
-			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
-				tb.PipelineTask("foo", "foo-task",
-					tb.PipelineTaskInputResource("the-resource", "great-resource", tb.From("bar"))),
-				tb.PipelineTask("bar", "bar-task",
-					tb.PipelineTaskOutputResource("the-resource", "great-resource")),
-			)),
-		},
-		{
 			name: "unused resources declared",
 			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
@@ -112,6 +102,13 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 				tb.PipelineParam("foo", tb.PipelineParamDefault("something")),
 				tb.PipelineTask("foo", "foo-task",
 					tb.PipelineTaskParam("a-param", "${params.foo} and ${params.does-not-exist}")))),
+		},
+		{
+			name: "invalid dependency graph between the tasks",
+			p: tb.Pipeline("foo", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo", tb.RunAfter("bar")),
+				tb.PipelineTask("bar", "bar", tb.RunAfter("foo")),
+			)),
 		},
 	}
 	for _, tt := range tests {
