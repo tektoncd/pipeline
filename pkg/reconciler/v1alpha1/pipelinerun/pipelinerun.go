@@ -28,7 +28,7 @@ import (
 	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/knative/build-pipeline/pkg/reconciler"
-	dag "github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipeline/resources"
+	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipeline/dag"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/config"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
@@ -222,7 +222,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	p = p.DeepCopy()
 
-	d, err := dag.Build(p)
+	d, err := dag.Build(p.Spec.Tasks)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
