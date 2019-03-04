@@ -91,7 +91,7 @@ func TestGetArgs(t *testing.T) {
 		args:     []string{"hello", "world"},
 		expectedArgs: []string{
 			"-wait_file", "",
-			"-post_file", "/tools/0",
+			"-post_file", "/builder/tools/0",
 			"-entrypoint", "echo",
 			"--",
 			"hello", "world",
@@ -102,8 +102,8 @@ func TestGetArgs(t *testing.T) {
 		commands: []string{"echo", "hello"},
 		args:     []string{"world"},
 		expectedArgs: []string{
-			"-wait_file", "/tools/3",
-			"-post_file", "/tools/4",
+			"-wait_file", "/builder/tools/3",
+			"-post_file", "/builder/tools/4",
 			"-entrypoint", "echo",
 			"--",
 			"hello", "world",
@@ -114,8 +114,8 @@ func TestGetArgs(t *testing.T) {
 		commands: []string{"ls"},
 		args:     []string{},
 		expectedArgs: []string{
-			"-wait_file", "/tools/3",
-			"-post_file", "/tools/4",
+			"-wait_file", "/builder/tools/3",
+			"-post_file", "/builder/tools/4",
 			"-entrypoint", "ls",
 			"--",
 		},
