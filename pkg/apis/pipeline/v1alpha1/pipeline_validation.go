@@ -58,8 +58,8 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 	return nil
 }
 
-func isOutput(task PipelineTask, resource string) bool {
-	for _, output := range task.Resources.Outputs {
+func isOutput(outputs []PipelineTaskOutputResource, resource string) bool {
+	for _, output := range outputs {
 		if output.Resource == resource {
 			return true
 		}
@@ -69,32 +69,42 @@ func isOutput(task PipelineTask, resource string) bool {
 
 // validateFrom ensures that the `from` values make sense: that they rely on values from Tasks
 // that ran previously, and that the PipelineResource is actually an output of the Task it should come from.
-// TODO(#168) when pipelines don't just execute linearly this will need to be more sophisticated
 func validateFrom(tasks []PipelineTask) error {
-	for i, t := range tasks {
+	taskOutputs := map[string][]PipelineTaskOutputResource{}
+	for _, task := range tasks {
+		var to []PipelineTaskOutputResource
+		if task.Resources != nil {
+			to = make([]PipelineTaskOutputResource, len(task.Resources.Outputs))
+			for i, o := range task.Resources.Outputs {
+				to[i] = o
+			}
+		}
+		taskOutputs[task.Name] = to
+	}
+	for _, t := range tasks {
 		if t.Resources != nil {
 			for _, rd := range t.Resources.Inputs {
 				for _, pb := range rd.From {
-					if i == 0 {
-						return fmt.Errorf("first Task in Pipeline can't depend on anything before it (b/c there is nothing)")
-					}
-					found := false
-					// Look for previous Task that satisfies constraint
-					for j := i - 1; j >= 0; j-- {
-						if tasks[j].Name == pb {
-							// The input resource must actually be an output of the from tasks
-							if !isOutput(tasks[j], rd.Resource) {
-								return fmt.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pb)
-							}
-							found = true
-						}
-					}
+					outputs, found := taskOutputs[pb]
 					if !found {
 						return fmt.Errorf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pb, pb)
+					}
+					if !isOutput(outputs, rd.Resource) {
+						return fmt.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pb)
 					}
 				}
 			}
 		}
+	}
+	return nil
+}
+
+// validateGraph ensures the Pipeline's dependency Graph (DAG) make sense: that there is no dependency
+// cycle or that they rely on values from Tasks that ran previously, and that the PipelineResource
+// is actually an output of the Task it should come from.
+func validateGraph(tasks []PipelineTask) error {
+	if _, err := BuildDAG(tasks); err != nil {
+		return err
 	}
 	return nil
 }
@@ -124,6 +134,11 @@ func (ps *PipelineSpec) Validate() *apis.FieldError {
 	// The from values should make sense
 	if err := validateFrom(ps.Tasks); err != nil {
 		return apis.ErrInvalidValue(err.Error(), "spec.tasks.resources.inputs.from")
+	}
+
+	// Validate the pipeline task graph
+	if err := validateGraph(ps.Tasks); err != nil {
+		return apis.ErrInvalidValue(err.Error(), "spec.tasks")
 	}
 
 	// The parameter variables should be valid

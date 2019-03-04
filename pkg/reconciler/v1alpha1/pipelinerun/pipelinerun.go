@@ -222,7 +222,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	p = p.DeepCopy()
 
-	d, err := dag.Build(p.Spec.Tasks)
+	d, err := v1alpha1.BuildDAG(p.Spec.Tasks)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&duckv1alpha1.Condition{
@@ -336,7 +336,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
 	}
 
-	candidateTasks, err := d.GetSchedulable(pipelineState.SuccessfulPipelineTaskNames()...)
+	candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulPipelineTaskNames()...)
 	if err != nil {
 		c.Logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 	}
