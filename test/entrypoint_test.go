@@ -28,10 +28,11 @@ const (
 	epTaskRunName = "ep-task-run"
 )
 
-// TestEntrypointRemoteImage is an integration test that will
+// TestEntrypointRunningStepsInOrder is an integration test that will
 // verify attempt to the get the entrypoint of a container image
-// that doesn't have a cmd defined.
-func TestEntrypointRemoteImage(t *testing.T) {
+// that doesn't have a cmd defined. In addition to making sure the steps
+// are executed in the order specified
+func TestEntrypointRunningStepsInOrder(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
 	t.Parallel()
@@ -41,7 +42,8 @@ func TestEntrypointRemoteImage(t *testing.T) {
 
 	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
 	task := tb.Task(epTaskName, namespace, tb.TaskSpec(
-		tb.Step("foo", "ubuntu", tb.Args("-c", "ls", "/workspace")),
+		tb.Step("step1", "ubuntu", tb.Args("-c", "sleep 3 && touch foo")),
+		tb.Step("step2", "ubuntu", tb.Args("-c", "ls", "foo")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)

@@ -41,7 +41,7 @@ const (
 	// MountName is the name of the pvc being mounted (which
 	// will contain the entrypoint binary and eventually the logs)
 	MountName         = "tools"
-	MountPoint        = "/tools"
+	MountPoint        = "/builder/tools"
 	BinaryLocation    = MountPoint + "/entrypoint"
 	JSONConfigEnvVar  = "ENTRYPOINT_OPTIONS"
 	InitContainerName = "place-tools"
@@ -119,7 +119,7 @@ func RedirectSteps(cache *Cache, steps []corev1.Container, kubeclient kubernetes
 			var err error
 			step.Command, err = GetRemoteEntrypoint(cache, step.Image, kubeclient, build)
 			if err != nil {
-				logger.Errorf("**ALERT**: Error getting entry point image", err.Error())
+				logger.Errorf("Error getting entry point image", err.Error())
 				return err
 			}
 		}
