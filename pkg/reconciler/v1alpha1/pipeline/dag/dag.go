@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipeline
+package dag
 
 import (
 	"fmt"
@@ -193,17 +193,17 @@ func addLink(pt v1alpha1.PipelineTask, previousTask string, nodes map[string]*No
 }
 
 // Build returns a valid pipeline DAG. Returns error if the pipeline is invalid
-func Build(p *v1alpha1.Pipeline) (*DAG, error) {
+func Build(tasks []v1alpha1.PipelineTask) (*DAG, error) {
 	d := new()
 
 	// Add all Tasks mentioned in the `PipelineSpec`
-	for _, pt := range p.Spec.Tasks {
+	for _, pt := range tasks {
 		if _, err := d.addPipelineTask(pt); err != nil {
 			return nil, fmt.Errorf("task %s is already present in graph, can't add it again: %v", pt.Name, err)
 		}
 	}
 	// Process all from and runAfter constraints to add task dependency
-	for _, pt := range p.Spec.Tasks {
+	for _, pt := range tasks {
 		for _, previousTask := range pt.RunAfter {
 			if err := addLink(pt, previousTask, d.Nodes); err != nil {
 				return nil, fmt.Errorf("couldn't add link between %s and %s: %v", pt.Name, previousTask, err)

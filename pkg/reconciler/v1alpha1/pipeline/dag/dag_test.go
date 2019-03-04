@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipeline
+package dag
 
 import (
 	"testing"
@@ -91,7 +91,7 @@ func TestBuild_Parallel(t *testing.T) {
 			"c": {Task: c},
 		},
 	}
-	g, err := Build(p)
+	g, err := Build(p.Spec.Tasks)
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -157,7 +157,7 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnARunsAfterB, zDependsOnX, b, c},
 		},
 	}
-	g, err := Build(p)
+	g, err := Build(p.Spec.Tasks)
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -226,7 +226,7 @@ func TestBuild_FanInFanOut(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{a, dDependsOnA, eRunsAfterA, fDependsOnDAndE, gRunsAfterF},
 		},
 	}
-	g, err := Build(p)
+	g, err := Build(p.Spec.Tasks)
 	if err != nil {
 		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
 	}
@@ -321,7 +321,7 @@ func TestBuild_Invalid(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: tc.name},
 				Spec:       tc.spec,
 			}
-			if _, err := Build(p); err == nil {
+			if _, err := Build(p.Spec.Tasks); err == nil {
 				t.Errorf("expected to see an error for invalid DAG in pipeline %v but had none", tc.spec)
 			}
 		})
