@@ -18,8 +18,8 @@ package names
 
 import (
 	"fmt"
-
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
+	"regexp"
 )
 
 // NameGenerator generates names for objects. Some backends may have more information
@@ -60,6 +60,11 @@ func (simpleNameGenerator) RestrictLengthWithRandomSuffix(base string) string {
 func (simpleNameGenerator) RestrictLength(base string) string {
 	if len(base) > maxNameLength {
 		base = base[:maxNameLength]
+	}
+	var isAlphaNumeric = regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString
+
+	for !isAlphaNumeric(base[len(base)-1:]) {
+		base = base[:len(base)-1]
 	}
 	return base
 }
