@@ -11,6 +11,8 @@ To add the Tekton Pipelines component to an existing cluster:
    command to install
    [Tekton Pipelines](https://github.com/knative/build-pipeline) and its
    dependencies:
+   
+   _Ensure you've setup RBAC on your cluster, see [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control) for more information on how to set this up on GKE._
 
    ```bash
    kubectl apply --filename https://storage.googleapis.com/knative-releases/build-pipeline/latest/release.yaml
