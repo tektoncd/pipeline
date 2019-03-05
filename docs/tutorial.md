@@ -362,7 +362,7 @@ spec:
             resource: web-image
     - name: deploy-web
       taskRef:
-        name: demo-deploy-kubectl
+        name: deploy-using-kubectl
       resources:
         inputs:
           - name: workspace
