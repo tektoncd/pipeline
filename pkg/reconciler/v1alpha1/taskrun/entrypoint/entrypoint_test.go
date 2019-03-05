@@ -260,6 +260,73 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 	}
 }
 
+func TestGetRemoteEntrypointWithNonDefaultSA(t *testing.T) {
+	expectedEntrypoint := []string{"/bin/expected", "entrypoint"}
+	img := getImage(t, &v1.ConfigFile{
+		Config: v1.Config{
+			Entrypoint: expectedEntrypoint,
+		},
+	})
+	expectedRepo := "image"
+	digetsSha := getDigestAsString(img)
+	configPath := fmt.Sprintf("/v2/%s/blobs/%s", expectedRepo, mustConfigName(t, img))
+	manifestPath := fmt.Sprintf("/v2/%s/manifests/%s", expectedRepo, digetsSha)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v2/":
+			w.WriteHeader(http.StatusOK)
+		case configPath:
+			if r.Method != http.MethodGet {
+				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
+			}
+			w.Write(mustRawConfigFile(t, img))
+		case manifestPath:
+			if r.Method != http.MethodGet {
+				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
+			}
+			w.Write(mustRawManifest(t, img))
+		default:
+			t.Fatalf("Unexpected path: %v", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	image := path.Join(strings.TrimPrefix(server.URL, "http://"), expectedRepo)
+	finalDigest := image + "@" + digetsSha
+
+	entrypointCache, err := NewCache()
+	if err != nil {
+		t.Fatalf("couldn't create new entrypoint cache: %v", err)
+	}
+	build := &v1alpha1.Build{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "build",
+		},
+		Spec: v1alpha1.BuildSpec{
+			ServiceAccountName: "some-other-sa",
+			Steps: []corev1.Container{{
+				Image:   "ubuntu",
+				Command: []string{"echo"},
+				Args:    []string{"hello"},
+			}},
+		},
+	}
+	c := fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "some-other-sa",
+			Namespace: "foo",
+		},
+	})
+	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest, c, build)
+	if err != nil {
+		t.Errorf("couldn't get entrypoint remote: %v", err)
+	}
+	if !reflect.DeepEqual(ep, expectedEntrypoint) {
+		t.Errorf("entrypoints do not match: %s should be %s", ep[0], expectedEntrypoint)
+	}
+}
+
 func TestEntrypointCacheLRU(t *testing.T) {
 	entrypoint := []string{"/bin/expected", "entrypoint"}
 	entrypointCache, err := NewCache()
