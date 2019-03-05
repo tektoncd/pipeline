@@ -2,6 +2,23 @@
 
 Use this page to add the component to an existing Kubernetes cluster.
 
+## Pre-requisites
+
+1. A Kubernetes cluster (_if you don't have an existing cluster_):
+```bash
+   # Example cluster creation command on GKE
+   gcloud container clusters create $CLUSTER_NAME \
+     --zone=$CLUSTER_ZONE
+   ```
+
+2. Grant cluster-admin permissions to the current user:
+   ```bash
+   kubectl create clusterrolebinding cluster-admin-binding \
+   --clusterrole=cluster-admin \
+   --user=$(gcloud config get-value core/account)
+   ```
+   _see [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control) for more information_.
+
 ## Adding the Tekton Pipelines
 
 To add the Tekton Pipelines component to an existing cluster:
@@ -11,8 +28,6 @@ To add the Tekton Pipelines component to an existing cluster:
    command to install
    [Tekton Pipelines](https://github.com/knative/build-pipeline) and its
    dependencies:
-   
-   _Ensure you've setup RBAC on your cluster, see [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control) for more information on how to set this up on GKE._
 
    ```bash
    kubectl apply --filename https://storage.googleapis.com/knative-releases/build-pipeline/latest/release.yaml
