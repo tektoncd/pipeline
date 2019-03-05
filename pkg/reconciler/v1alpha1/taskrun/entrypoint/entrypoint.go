@@ -27,11 +27,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/google"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/hashicorp/golang-lru"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/knative/build/pkg/apis/build/v1alpha1"
@@ -187,38 +186,13 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse image %s: %v", image, err)
 	}
-	var kc authn.Keychain
-	serviceAccountName := build.Spec.ServiceAccountName
-	if serviceAccountName != "" && serviceAccountName != "default" {
-		sa, err := kubeclient.CoreV1().ServiceAccounts(build.Namespace).Get(serviceAccountName, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("Failed to get service account %s: %v", serviceAccountName, err)
-		}
-		if len(sa.ImagePullSecrets) == 0 {
-			return nil, fmt.Errorf("No ImagePullSecret for service account %s: %v", serviceAccountName, err)
-		}
-		for _, secret := range sa.ImagePullSecrets {
-			_, err = kubeclient.CoreV1().Secrets(build.Namespace).Get(secret.Name, metav1.GetOptions{})
-			if err != nil {
-				return nil, fmt.Errorf("Failed to get ImagePullSecret for service account %s: %v", serviceAccountName, err)
-			}
 
-			kc, err = k8schain.New(kubeclient, k8schain.Options{
-				ImagePullSecrets: []string{secret.Name},
-				Namespace:        build.Namespace,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("Failed to create k8schain: %v", err)
-			}
-		}
-	} else {
-		kc, err = k8schain.New(kubeclient, k8schain.Options{
-			Namespace:          build.Namespace,
-			ServiceAccountName: "default",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("Failed to create k8schain: %v", err)
-		}
+	kc, err := k8schain.New(kubeclient, k8schain.Options{
+		Namespace:          build.Namespace,
+		ServiceAccountName: build.Spec.ServiceAccountName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create k8schain: %v", err)
 	}
 
 	// this will first try to authenticate using the k8schain,
