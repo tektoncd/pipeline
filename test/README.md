@@ -170,8 +170,8 @@ You can also use
   test as well as from k8s libraries.
 - Using `-count=1` is
   [the idiomatic way to disable test caching](https://golang.org/doc/go1.10#test).
-- The end to end tests take a long time to run so a value like `-timeout=20m` can
-  be useful depending on what you're running
+- The end to end tests take a long time to run so a value like `-timeout=20m`
+  can be useful depending on what you're running
 
 You can [use test flags](#flags) to control the environment your tests run
 against, i.e. override

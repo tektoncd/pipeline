@@ -51,7 +51,7 @@ following fields:
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature>
 
 [kubernetes-overview]:
-  <https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields>
+  https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
 ### Resources
 
