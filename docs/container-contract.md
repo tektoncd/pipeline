@@ -7,17 +7,18 @@ specific contract.
 
 When containers are run in a `Task`, the `entrypoint` of the container will be
 overwritten with a custom binary that ensures the containers within the `Task`
-pod are executed in the specified order.
-As such, it is always recommended to explicitly specify a command.
+pod are executed in the specified order. As such, it is always recommended to
+explicitly specify a command.
 
 When `command` is not explicitly set, the controller will attempt to lookup the
 entrypoint from the remote registry. If the image is a private registry, the
-service account should include an [ImagePullSecret](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account).
+service account should include an
+[ImagePullSecret](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account).
 The build-pipeline controller will use the `ImagePullSecret` of the service
 account, and if service account is empty, `default` is assumed. Next is falling
-back to docker config added in a `.docker/config.json` at `$HOME/.docker/config.json`.
-If none of these credentials are available the controller will try to lookup
-the image anonymously.
+back to docker config added in a `.docker/config.json` at
+`$HOME/.docker/config.json`. If none of these credentials are available the
+controller will try to lookup the image anonymously.
 
 For example, in the following Task with the images,
 `gcr.io/cloud-builders/gcloud` and `gcr.io/cloud-builders/docker`, the

@@ -324,12 +324,11 @@ resource definition.
 
 ## Pipeline
 
-A [`Pipeline`](pipelines.md) defines a list of tasks to execute in
-order, while also indicating if any outputs should be used as inputs
-of a following task by using [the `from` field](pipelines.md#from) and
-also indicating [the order of executing (using the `runAfter` and
-`from` fields)](pipelines.md#ordering). The same templating you used
-in tasks is also available in pipeline.
+A [`Pipeline`](pipelines.md) defines a list of tasks to execute in order, while
+also indicating if any outputs should be used as inputs of a following task by
+using [the `from` field](pipelines.md#from) and also indicating
+[the order of executing (using the `runAfter` and `from` fields)](pipelines.md#ordering).
+The same templating you used in tasks is also available in pipeline.
 
 For example:
 
@@ -605,13 +604,16 @@ annotation applies to subjects such as Docker registries, log output locations
 and other nuances that may be specific to particular cloud providers or
 services.
 
-The `TaskRuns` have been created in the following [order](pipelines.md#ordering):
+The `TaskRuns` have been created in the following
+[order](pipelines.md#ordering):
 
-1. `tutorial-pipeline-run-1-build-skaffold-web` - This runs the [Pipeline Task](pipelines.md#pipeline-tasks)
-   `build-skaffold-web` first, because it has no [`from` or `runAfter` clauses](pipelines.md#ordering)
-1. `tutorial-pipeline-run-1-deploy-web` - This runs `deploy-web` second, because its [input](tasks.md#inputs)
-   `web-image` comes [`from`](pipelines.md#from) `build-skaffold-web` (therefore `build-skaffold-web`
-   must run before `deploy-web`).
+1. `tutorial-pipeline-run-1-build-skaffold-web` - This runs the
+   [Pipeline Task](pipelines.md#pipeline-tasks) `build-skaffold-web` first,
+   because it has no [`from` or `runAfter` clauses](pipelines.md#ordering)
+1. `tutorial-pipeline-run-1-deploy-web` - This runs `deploy-web` second, because
+   its [input](tasks.md#inputs) `web-image` comes [`from`](pipelines.md#from)
+   `build-skaffold-web` (therefore `build-skaffold-web` must run before
+   `deploy-web`).
 
 ---
 

@@ -114,9 +114,9 @@ expected in directory path `/workspace/output/resource_name`.
 
 ## Entrypoint rewriting and step ordering
 
-`Entrypoint` is injected into the `Task` Container(s), wraps the `Task` step
-to manage the execution order of the containers. The `entrypoint` binary has
-the following arguments:
+`Entrypoint` is injected into the `Task` Container(s), wraps the `Task` step to
+manage the execution order of the containers. The `entrypoint` binary has the
+following arguments:
 
 - `wait_file` - If specified, file to wait for
 - `post_file` - If specified, file to write upon completion

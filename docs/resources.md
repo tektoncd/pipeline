@@ -39,7 +39,7 @@ following fields:
     `PipelineResource`
 
 [kubernetes-overview]:
-  <https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields>
+  https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
 ## Resource Types
 
