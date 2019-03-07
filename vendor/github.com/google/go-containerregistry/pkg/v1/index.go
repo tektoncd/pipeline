@@ -29,6 +29,12 @@ type ImageIndex interface {
 	// IndexManifest returns this image index's manifest object.
 	IndexManifest() (*IndexManifest, error)
 
-	// RawIndexManifest returns the serialized bytes of IndexManifest().
-	RawIndexManifest() ([]byte, error)
+	// RawManifest returns the serialized bytes of IndexManifest().
+	RawManifest() ([]byte, error)
+
+	// Image returns a v1.Image that this ImageIndex references.
+	Image(Hash) (Image, error)
+
+	// ImageIndex returns a v1.ImageIndex that this ImageIndex references.
+	ImageIndex(Hash) (ImageIndex, error)
 }
