@@ -28,7 +28,7 @@ function build_release() {
     echo "Using .ko.yaml.release for base image overrides"
   fi
   # Build the base image for creds-init and git images.
-  docker build -t "${KO_DOCKER_REPO}/github.com/knative/build-pipeline/build-base" -f images/Dockerfile images/
+  docker build -t "${KO_DOCKER_REPO}/github.com/tektoncd/pipeline/build-base" -f images/Dockerfile images/
   echo "Building build-pipeline"
   ko resolve ${KO_FLAGS} -f config/ > ${OUTPUT_YAML}
   YAMLS_TO_PUBLISH="${OUTPUT_YAML}"

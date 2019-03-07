@@ -8,7 +8,7 @@
 steps are translated into init containers.
 
 There is a "gotcha" about tailing logs for init containers (to be fixed in
-[#224](https://github.com/knative/build-pipeline/issues/224)). Logs cannot be
+[#224](https://github.com/tektoncd/pipeline/issues/224)). Logs cannot be
 retrieved from pod that has been shut down for a while. In this case tailing
 logs will return error `Unable to retrieve container logs`.
 

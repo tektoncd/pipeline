@@ -26,17 +26,17 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/knative/build-pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/pkg/logging"
 
-	"github.com/knative/build-pipeline/pkg/reconciler"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
-	"github.com/knative/build-pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/pkg/reconciler"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/tektoncd/pipeline/pkg/system"
 	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
 	"github.com/knative/pkg/controller"
 
-	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
-	pipelineinformers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelineinformers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/signals"
 )

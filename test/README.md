@@ -36,17 +36,17 @@ fake clients and objects for unit testing. The ones we are using are:
    CRDs.
 
 You can create a fake PipelineClient for the Controller under test like
-[this](https://github.com/knative/build-pipeline/blob/d97057a58e16c11ca5e38b780a7bb3ddae42bae1/pkg/reconciler/v1alpha1/pipelinerun/pipelinerun_test.go#L209):
+[this](https://github.com/tektoncd/pipeline/blob/d97057a58e16c11ca5e38b780a7bb3ddae42bae1/pkg/reconciler/v1alpha1/pipelinerun/pipelinerun_test.go#L209):
 
 ```go
 import (
-    fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake
+    fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake
 )
 pipelineClient := fakepipelineclientset.NewSimpleClientset()
 ```
 
 This
-[pipelineClient](https://github.com/knative/build-pipeline/blob/d97057a58e16c11ca5e38b780a7bb3ddae42bae1/pkg/client/clientset/versioned/clientset.go#L34)
+[pipelineClient](https://github.com/tektoncd/pipeline/blob/d97057a58e16c11ca5e38b780a7bb3ddae42bae1/pkg/client/clientset/versioned/clientset.go#L34)
 is initialized with no runtime objects. You can also initialize the client with
 Kubernetes objects and can interact with them using the
 `pipelineClient.Pipeline()`
@@ -271,7 +271,7 @@ func setup(t *testing.T) *test.Clients {
 The `Clients` struct contains initialized clients for accessing:
 
 - Kubernetes objects
-- [`Pipelines`](https://github.com/knative/build-pipeline#pipeline)
+- [`Pipelines`](https://github.com/tektoncd/pipeline#pipeline)
 
 For example, to create a `Pipeline`:
 
@@ -298,7 +298,7 @@ You can use the function `GenerateName()` to append a random string for `crd`s
 or anything else, so that your tests can use unique names each time they run.
 
 ```go
-import "github.com/knative/build-pipeline/pkg/names"
+import "github.com/tektoncd/pipeline/pkg/names"
 
 namespace := names.SimpleNameGenerator.GenerateName("arendelle")
 ```
@@ -347,7 +347,7 @@ test/presubmit-tests.sh --unit-tests
 
 Prow is configured in
 [the knative `config.yaml` in `knative/test-infra`](https://github.com/knative/test-infra/blob/master/ci/prow/config.yaml)
-via the sections for `knative/build-pipeline`.
+via the sections for `tektoncd/pipeline`.
 
 ### Running presubmit integration tests
 

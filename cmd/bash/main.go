@@ -45,7 +45,7 @@ import (
 	"log"
 	"os/exec"
 
-	"github.com/knative/build-pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/pkg/logging"
 )
 
 var (

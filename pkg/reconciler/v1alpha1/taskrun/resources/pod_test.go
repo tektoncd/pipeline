@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/knative/build-pipeline/test/names"
+	"github.com/tektoncd/pipeline/test/names"
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/build/pkg/system"
 	"github.com/knative/pkg/apis"

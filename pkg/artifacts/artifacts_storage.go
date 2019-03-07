@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

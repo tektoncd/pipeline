@@ -14,10 +14,10 @@ limitations under the License.
 package test
 
 import (
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	fakepipelineclientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned/fake"
-	informers "github.com/knative/build-pipeline/pkg/client/informers/externalversions"
-	informersv1alpha1 "github.com/knative/build-pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
+	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
+	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"

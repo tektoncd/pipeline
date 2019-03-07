@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/names"
-	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/names"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
@@ -148,7 +148,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(sourceResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("url", "https://github.com/knative/build-pipeline"),
+		tb.PipelineResourceSpecParam("url", "https://github.com/tektoncd/pipeline"),
 	))
 }
 

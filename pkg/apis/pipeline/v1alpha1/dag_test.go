@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	"testing"
 
-	"github.com/knative/build-pipeline/pkg/list"
+	"github.com/tektoncd/pipeline/pkg/list"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

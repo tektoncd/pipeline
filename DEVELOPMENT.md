@@ -18,7 +18,7 @@ Then you can [iterate](#iterating) (including
 ### Checkout your fork
 
 The Go tools require that you clone the repository to the
-`src/github.com/knative/build-pipeline` directory in your
+`src/github.com/tektoncd/pipeline` directory in your
 [`GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
 
 To check out this repository:
@@ -32,7 +32,7 @@ mkdir -p ${GOPATH}/src/github.com/knative
 cd ${GOPATH}/src/github.com/knative
 git clone git@github.com:${YOUR_GITHUB_USERNAME}/build-pipeline.git
 cd build-pipeline
-git remote add upstream git@github.com:knative/build-pipeline.git
+git remote add upstream git@github.com:tektoncd/pipeline.git
 git remote set-url --push upstream no_push
 ```
 
@@ -124,15 +124,15 @@ kubectl create clusterrolebinding cluster-admin-binding \
    the `./config` folder
    - remove all `namespace: tekton` references from all yaml files
    - delete the `namespace.yaml`
-     [here](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/100-namespace.yaml)
+     [here](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/100-namespace.yaml)
    - modify the `subjects.namespace`
-     [here](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/201-clusterrolebinding.yaml#L21)
+     [here](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/201-clusterrolebinding.yaml#L21)
      value to the desired namespace
    - add `downwardapi` entry to webhook and controller `deployment` resources.
      E.g. add the environment variable section from the code snippet below to
-     [controller](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/controller.yaml#L29)
+     [controller](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/controller.yaml#L29)
      and
-     [webhook](https://github.com/knative/build-pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/webhook.yaml#L32)
+     [webhook](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/webhook.yaml#L32)
 
 ```yaml
 env:

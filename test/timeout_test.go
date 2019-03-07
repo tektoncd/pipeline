@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
-	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"

@@ -3,10 +3,10 @@ package taskrun_test
 import (
 	"testing"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
-	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {

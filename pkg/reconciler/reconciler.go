@@ -19,8 +19,8 @@ package reconciler
 import (
 	"time"
 
-	clientset "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
-	pipelineScheme "github.com/knative/build-pipeline/pkg/client/clientset/versioned/scheme"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelineScheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	cachingclientset "github.com/knative/caching/pkg/client/clientset/versioned"
 	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
 	"github.com/knative/pkg/configmap"

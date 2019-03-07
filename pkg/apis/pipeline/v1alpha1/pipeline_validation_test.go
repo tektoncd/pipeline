@@ -19,8 +19,8 @@ package v1alpha1_test
 import (
 	"testing"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestPipelineSpec_Validate_Error(t *testing.T) {

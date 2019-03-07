@@ -1,6 +1,6 @@
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/cloud.google.com/go
+Import: github.com/tektoncd/pipeline/vendor/cloud.google.com/go
 
 
                                  Apache License
@@ -208,7 +208,7 @@ Import: github.com/knative/build-pipeline/vendor/cloud.google.com/go
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/davecgh/go-spew
+Import: github.com/tektoncd/pipeline/vendor/github.com/davecgh/go-spew
 
 ISC License
 
@@ -229,7 +229,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/ghodss/yaml
+Import: github.com/tektoncd/pipeline/vendor/github.com/ghodss/yaml
 
 The MIT License (MIT)
 
@@ -285,7 +285,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/gogo/protobuf
+Import: github.com/tektoncd/pipeline/vendor/github.com/gogo/protobuf
 
 Protocol Buffers for Go with Gadgets
 
@@ -327,7 +327,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/golang/glog
+Import: github.com/tektoncd/pipeline/vendor/github.com/golang/glog
 
 Apache License
 Version 2.0, January 2004
@@ -524,7 +524,7 @@ third-party archives.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/golang/groupcache
+Import: github.com/tektoncd/pipeline/vendor/github.com/golang/groupcache
 
 Apache License
 Version 2.0, January 2004
@@ -721,7 +721,7 @@ third-party archives.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/golang/protobuf
+Import: github.com/tektoncd/pipeline/vendor/github.com/golang/protobuf
 
 Go support for Protocol Buffers - Google's data interchange format
 
@@ -758,7 +758,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/google/btree
+Import: github.com/tektoncd/pipeline/vendor/github.com/google/btree
 
 
                                  Apache License
@@ -966,7 +966,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/google/btree
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/google/go-cmp
+Import: github.com/tektoncd/pipeline/vendor/github.com/google/go-cmp
 
 Copyright (c) 2017 The Go Authors. All rights reserved.
 
@@ -999,7 +999,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/google/gofuzz
+Import: github.com/tektoncd/pipeline/vendor/github.com/google/gofuzz
 
 
                                  Apache License
@@ -1207,7 +1207,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/google/gofuzz
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/googleapis/gnostic
+Import: github.com/tektoncd/pipeline/vendor/github.com/googleapis/gnostic
 
 
                                  Apache License
@@ -1416,7 +1416,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/googleapis/gnostic
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/gregjones/httpcache
+Import: github.com/tektoncd/pipeline/vendor/github.com/gregjones/httpcache
 
 Copyright © 2012 Greg Jones (greg.jones@gmail.com)
 
@@ -1428,7 +1428,7 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/hashicorp/golang-lru
+Import: github.com/tektoncd/pipeline/vendor/github.com/hashicorp/golang-lru
 
 Mozilla Public License, version 2.0
 
@@ -1796,7 +1796,7 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/imdario/mergo
+Import: github.com/tektoncd/pipeline/vendor/github.com/imdario/mergo
 
 Copyright (c) 2013 Dario Castañé. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
@@ -1830,7 +1830,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/json-iterator/go
+Import: github.com/tektoncd/pipeline/vendor/github.com/json-iterator/go
 
 MIT License
 
@@ -1857,7 +1857,7 @@ SOFTWARE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/knative/build
+Import: github.com/tektoncd/pipeline/vendor/github.com/knative/build
 
 
                                  Apache License
@@ -2065,7 +2065,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/knative/build
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/knative/caching
+Import: github.com/tektoncd/pipeline/vendor/github.com/knative/caching
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2272,7 +2272,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/knative/caching
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/knative/pkg
+Import: github.com/tektoncd/pipeline/vendor/github.com/knative/pkg
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2479,7 +2479,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/knative/pkg
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/mattbaird/jsonpatch
+Import: github.com/tektoncd/pipeline/vendor/github.com/mattbaird/jsonpatch
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2687,7 +2687,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/mattbaird/jsonpatch
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/modern-go/concurrent
+Import: github.com/tektoncd/pipeline/vendor/github.com/modern-go/concurrent
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2894,7 +2894,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/modern-go/concurrent
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/modern-go/reflect2
+Import: github.com/tektoncd/pipeline/vendor/github.com/modern-go/reflect2
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3101,7 +3101,7 @@ Import: github.com/knative/build-pipeline/vendor/github.com/modern-go/reflect2
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/peterbourgon/diskv
+Import: github.com/tektoncd/pipeline/vendor/github.com/peterbourgon/diskv
 
 Copyright (c) 2011-2012 Peter Bourgon
 
@@ -3126,7 +3126,7 @@ THE SOFTWARE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/github.com/spf13/pflag
+Import: github.com/tektoncd/pipeline/vendor/github.com/spf13/pflag
 
 Copyright (c) 2012 Alex Ogier. All rights reserved.
 Copyright (c) 2012 The Go Authors. All rights reserved.
@@ -3160,7 +3160,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/go.uber.org/atomic
+Import: github.com/tektoncd/pipeline/vendor/go.uber.org/atomic
 
 Copyright (c) 2016 Uber Technologies, Inc.
 
@@ -3185,7 +3185,7 @@ THE SOFTWARE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/go.uber.org/multierr
+Import: github.com/tektoncd/pipeline/vendor/go.uber.org/multierr
 
 Copyright (c) 2017 Uber Technologies, Inc.
 
@@ -3210,7 +3210,7 @@ THE SOFTWARE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/go.uber.org/zap
+Import: github.com/tektoncd/pipeline/vendor/go.uber.org/zap
 
 Copyright (c) 2016-2017 Uber Technologies, Inc.
 
@@ -3235,7 +3235,7 @@ THE SOFTWARE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/golang.org/x/crypto
+Import: github.com/tektoncd/pipeline/vendor/golang.org/x/crypto
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3268,7 +3268,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/golang.org/x/net
+Import: github.com/tektoncd/pipeline/vendor/golang.org/x/net
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3301,7 +3301,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/golang.org/x/oauth2
+Import: github.com/tektoncd/pipeline/vendor/golang.org/x/oauth2
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3334,7 +3334,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/golang.org/x/sys
+Import: github.com/tektoncd/pipeline/vendor/golang.org/x/sys
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3367,7 +3367,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/golang.org/x/text
+Import: github.com/tektoncd/pipeline/vendor/golang.org/x/text
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3400,7 +3400,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/golang.org/x/time
+Import: github.com/tektoncd/pipeline/vendor/golang.org/x/time
 
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -3433,7 +3433,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/gopkg.in/inf.v0
+Import: github.com/tektoncd/pipeline/vendor/gopkg.in/inf.v0
 
 Copyright (c) 2012 Péter Surányi. Portions Copyright (c) 2009 The Go
 Authors. All rights reserved.
@@ -3467,7 +3467,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/gopkg.in/yaml.v2
+Import: github.com/tektoncd/pipeline/vendor/gopkg.in/yaml.v2
 
                                  Apache License
                            Version 2.0, January 2004
@@ -3674,7 +3674,7 @@ Import: github.com/knative/build-pipeline/vendor/gopkg.in/yaml.v2
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/k8s.io/api
+Import: github.com/tektoncd/pipeline/vendor/k8s.io/api
 
 
                                  Apache License
@@ -3882,7 +3882,7 @@ Import: github.com/knative/build-pipeline/vendor/k8s.io/api
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/k8s.io/apimachinery
+Import: github.com/tektoncd/pipeline/vendor/k8s.io/apimachinery
 
 
                                  Apache License
@@ -4090,7 +4090,7 @@ Import: github.com/knative/build-pipeline/vendor/k8s.io/apimachinery
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/k8s.io/client-go
+Import: github.com/tektoncd/pipeline/vendor/k8s.io/client-go
 
 
                                  Apache License
@@ -4298,7 +4298,7 @@ Import: github.com/knative/build-pipeline/vendor/k8s.io/client-go
 
 
 ===========================================================
-Import: github.com/knative/build-pipeline/vendor/k8s.io/kube-openapi
+Import: github.com/tektoncd/pipeline/vendor/k8s.io/kube-openapi
 
 
                                  Apache License

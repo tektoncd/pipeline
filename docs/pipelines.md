@@ -342,7 +342,7 @@ build-app  build-frontend
 ## Examples
 
 For complete examples, see
-[the examples folder](https://github.com/knative/build-pipeline/tree/master/examples).
+[the examples folder](https://github.com/tektoncd/pipeline/tree/master/examples).
 
 ---
 

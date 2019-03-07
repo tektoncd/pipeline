@@ -52,10 +52,10 @@ particularly to support embedding of Build resources within
 ## `TaskRun`, `Task`, and `ClusterTask`
 
 The CRD types
-[`Task`](https://github.com/knative/build-pipeline/blob/master/docs/tasks.md),
-[`ClusterTask`](https://github.com/knative/build-pipeline/blob/master/docs/tasks.md#clustertask),
+[`Task`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md),
+[`ClusterTask`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md#clustertask),
 and
-[`TaskRun`](https://github.com/knative/build-pipeline/blob/master/docs/taskruns.md)
+[`TaskRun`](https://github.com/tektoncd/pipeline/blob/master/docs/taskruns.md)
 should be considered `alpha`, however these types are more stable than
 `Pipeline`, `PipelineRun`, and `PipelineResource`.
 
@@ -85,10 +85,10 @@ between releases.
 ## `PipelineRun`, `Pipeline` and `PipelineResource`
 
 The CRD types
-[`Pipeline`](https://github.com/knative/build-pipeline/blob/master/docs/pipelines.md),
-[`PipelineRun`](https://github.com/knative/build-pipeline/blob/master/docs/pipelines.md)
+[`Pipeline`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),
+[`PipelineRun`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md)
 and
-[`PipelineResource`](https://github.com/knative/build-pipeline/blob/master/docs/resources.md#pipelineresources)
+[`PipelineResource`](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md#pipelineresources)
 should be considered `alpha`, i.e. the API should be considered unstable.
 Backwards incompatible changes can be introduced between releases, however they
 must include a backwards incompatibility warning in the release notes.

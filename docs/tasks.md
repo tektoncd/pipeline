@@ -281,7 +281,7 @@ spec:
     resources:
       - name: workspace
         type: git
-        targetPath: go/src/github.com/knative/build-pipeline
+        targetPath: go/src/github.com/tektoncd/pipeline
   steps:
     - name: unit-tests
       image: golang
@@ -289,7 +289,7 @@ spec:
       args:
         - "test"
         - "./..."
-      workingDir: "/workspace/go/src/github.com/knative/build-pipeline"
+      workingDir: "/workspace/go/src/github.com/tektoncd/pipeline"
       env:
         - name: GOPATH
           value: /workspace/go
@@ -359,7 +359,7 @@ Use these code snippets to help you understand how to define your `Tasks`.
 - [Mounting configMap as volume source](#using-kubernetes-configmap-as-volume-source)
 
 _Tip: See the collection of simple
-[examples](https://github.com/knative/build-pipeline/tree/master/examples) for
+[examples](https://github.com/tektoncd/pipeline/tree/master/examples) for
 additional code samples._
 
 ### Example Task

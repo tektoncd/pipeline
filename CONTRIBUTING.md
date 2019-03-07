@@ -38,8 +38,8 @@ Unit test coverage should increase or stay the same with every PR.
 
 This means that most PRs should include both:
 
-- [Tests](https://github.com/knative/build-pipeline/tree/master/test#tests)
-- [Documentation](https://github.com/knative/build-pipeline/tree/master/docs)
+- [Tests](https://github.com/tektoncd/pipeline/tree/master/test#tests)
+- [Documentation](https://github.com/tektoncd/pipeline/tree/master/docs)
   explaining features being added, including updates to
   [DEVELOPMENT.md](./DEVELOPMENT.md) if required
 
@@ -101,7 +101,7 @@ _See also
 
 Prow is configured in
 [the knative `config.yaml` in `knative/test-infra`](https://github.com/knative/test-infra/blob/master/ci/prow/config.yaml)
-via the sections for `knative/build-pipeline`.
+via the sections for `tektoncd/pipeline`.
 
 ### Prow commands
 
@@ -116,9 +116,9 @@ Before a PR can be merged, it must have both `/lgtm` AND `/approve`:
 - `/lgtm` can be added by anyone in
   [the knative org](https://github.com/orgs/knative/people)
 - `/approve` can be added only by
-  [OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS)
+  [OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS)
 
-[OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS)
+[OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS)
 automatically get `/approve` but still will need an `/lgtm` to merge.
 
 The merge will happen automatically once the PR has both `/lgtm` and `/approve`,
@@ -185,9 +185,9 @@ you can find something interesting to work on:
 
 - To find issues that we particularly would like contributors to tackle, look
   for
-  [issues with the "help wanted" label](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+  [issues with the "help wanted" label](https://github.com/tektoncd/pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 - Issues that are good for new folks will additionally be marked with
-  ["good first issue"](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+  ["good first issue"](https://github.com/tektoncd/pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 ### Assigning yourself an issue
 

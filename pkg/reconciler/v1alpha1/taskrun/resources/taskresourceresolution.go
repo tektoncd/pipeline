@@ -19,7 +19,7 @@ package resources
 import (
 	"fmt"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 // ResolvedTaskResources contains all the data that is needed to execute
