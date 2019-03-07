@@ -26,9 +26,6 @@ Tekton Pipelines are **Typed**:
 
 ## Want to start using Pipelines
 
-- [Installing Knative Pipelines](docs/install.md)
-- Jump in with [the tutorial!](docs/tutorial.md)
-- [Read about it](/docs/README.md)
 - Look at [some examples](/examples)
 
 _See [our API compatibility policy](api_compatibility_policy.md) for info on the
@@ -40,9 +37,7 @@ We are so excited to have you!
 
 - See [CONTRIBUTING.md](CONTRIBUTING.md) for an overview of our processes
 - See [DEVELOPMENT.md](DEVELOPMENT.md) for how to get started
-- [Deep dive](./docs/developers/README.md) into demystifying the inner workings
-  (advanced reading material)
 - Look at our
-  [good first issues](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+  [good first issues](https://github.com/tektoncd/pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
   and our
-  [help wanted issues](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+  [help wanted issues](https://github.com/tektoncd/pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
