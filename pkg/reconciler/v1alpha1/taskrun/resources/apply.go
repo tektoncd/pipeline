@@ -19,8 +19,8 @@ package resources
 import (
 	"fmt"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/templating"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/templating"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 )
 

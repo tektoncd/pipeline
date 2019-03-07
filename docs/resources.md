@@ -145,7 +145,7 @@ Params that can be added are the following:
    which uniquely identifies a particular build of an image with a particular
    tag. _While this can be provided as a parameter, there is not yet a way to
    update this value after an image is built, but this is planned in
-   [#216](https://github.com/knative/build-pipeline/issues/216)._
+   [#216](https://github.com/tektoncd/pipeline/issues/216)._
 
 For example:
 

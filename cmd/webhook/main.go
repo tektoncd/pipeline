@@ -20,12 +20,12 @@ import (
 	"flag"
 	"log"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 
 	"go.uber.org/zap"
 
-	"github.com/knative/build-pipeline/pkg/logging"
-	"github.com/knative/build-pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/logging/logkey"
 	"github.com/knative/pkg/signals"

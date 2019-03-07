@@ -16,8 +16,8 @@ package resources
 import (
 	"fmt"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/templating"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/templating"
 )
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.

@@ -21,10 +21,10 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/knative/build-pipeline/pkg/artifacts"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	logtesting "github.com/knative/pkg/logging/testing"
 
-	test "github.com/knative/build-pipeline/pkg/reconciler/testing"
+	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 )
 
 func TestStoreLoadWithContext(t *testing.T) {

@@ -37,7 +37,7 @@ spec:
         - name: revision
           value: master
         - name: url
-          value: git@github.com:knative/build-pipeline.git
+          value: git@github.com:tektoncd/pipeline.git
   taskSpec:
     inputs:
       resources:

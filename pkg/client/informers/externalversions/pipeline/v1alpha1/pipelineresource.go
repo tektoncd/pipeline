@@ -18,10 +18,10 @@ package v1alpha1
 import (
 	time "time"
 
-	pipeline_v1alpha1 "github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	versioned "github.com/knative/build-pipeline/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/knative/build-pipeline/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
+	pipeline_v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	versioned "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	internalinterfaces "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"io"
 
-	TektonV1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/test/logs/color"
-	"github.com/knative/build-pipeline/test/logs/pod"
+	TektonV1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/logs/color"
+	"github.com/tektoncd/pipeline/test/logs/pod"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"

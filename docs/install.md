@@ -26,7 +26,7 @@ To add the Tekton Pipelines component to an existing cluster:
 1. Run the
    [`kubectl apply`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#apply)
    command to install
-   [Tekton Pipelines](https://github.com/knative/build-pipeline) and its
+   [Tekton Pipelines](https://github.com/tektoncd/pipeline) and its
    dependencies:
 
    ```bash
@@ -50,7 +50,7 @@ You are now ready to create and run Tekton Pipelines:
 
 - See [Tekton Pipeline tutorial](./tutorial.md) to get started.
 - Look at the
-  [examples](https://github.com/knative/build-pipeline/tree/master/examples)
+  [examples](https://github.com/tektoncd/pipeline/tree/master/examples)
 
 ## Configuring Tekton Pipelines
 

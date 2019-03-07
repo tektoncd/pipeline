@@ -19,8 +19,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
@@ -147,7 +147,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 func getGitPipelineResource(namespace, revision string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(gitSourceResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("Url", "https://github.com/knative/build-pipeline"),
+		tb.PipelineResourceSpecParam("Url", "https://github.com/tektoncd/pipeline"),
 		tb.PipelineResourceSpecParam("Revision", revision),
 	))
 }

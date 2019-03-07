@@ -24,7 +24,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/knative/build-pipeline/pkg/entrypoint"
+	"github.com/tektoncd/pipeline/pkg/entrypoint"
 )
 
 var (

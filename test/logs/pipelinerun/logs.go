@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"io"
 
-	TektonV1alpha1 "github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
-	trlogs "github.com/knative/build-pipeline/test/logs/taskrun"
+	TektonV1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	trlogs "github.com/tektoncd/pipeline/test/logs/taskrun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )

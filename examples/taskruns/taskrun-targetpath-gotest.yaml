@@ -8,7 +8,7 @@ spec:
   - name: revision
     value: master
   - name: url
-    value: https://github.com/knative/build-pipeline
+    value: https://github.com/tektoncd/pipeline
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
@@ -25,7 +25,7 @@ spec:
       resources:
       - name: gitspace
         type: git
-        targetPath: go/src/github.com/knative/build-pipeline
+        targetPath: go/src/github.com/tektoncd/pipeline
     steps:
     - name: test-build
       image: golang
@@ -35,7 +35,7 @@ spec:
       - '-v'
       - '-count=1'
       - './...'
-      workingDir: "/workspace/go/src/github.com/knative/build-pipeline"
+      workingDir: "/workspace/go/src/github.com/tektoncd/pipeline"
       env:
       - name: GOPATH
         value: /workspace/go

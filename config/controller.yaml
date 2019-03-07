@@ -26,17 +26,17 @@ spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
-        image: github.com/knative/build-pipeline/cmd/controller
+        image: github.com/tektoncd/pipeline/cmd/controller
         args: [
           "-logtostderr",
           "-stderrthreshold", "INFO",
-          "-kubeconfig-writer-image", "github.com/knative/build-pipeline/cmd/kubeconfigwriter",
-          "-creds-image", "github.com/knative/build-pipeline/cmd/creds-init",
-          "-git-image", "github.com/knative/build-pipeline/cmd/git-init",
-          "-nop-image", "github.com/knative/build-pipeline/cmd/nop",
-          "-bash-noop-image", "github.com/knative/build-pipeline/cmd/bash",
-          "-gsutil-image","github.com/knative/build-pipeline/cmd/gsutil",
-          "-entrypoint-image", "github.com/knative/build-pipeline/cmd/entrypoint",
+          "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+          "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
+          "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",
+          "-nop-image", "github.com/tektoncd/pipeline/cmd/nop",
+          "-bash-noop-image", "github.com/tektoncd/pipeline/cmd/bash",
+          "-gsutil-image","github.com/tektoncd/pipeline/cmd/gsutil",
+          "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",
         ]
         volumeMounts:
         - name: config-logging
