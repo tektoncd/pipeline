@@ -22,7 +22,6 @@ import (
 
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	"github.com/knative/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,9 +29,6 @@ import (
 // Check that TaskRun may be validated and defaulted.
 var _ apis.Validatable = (*TaskRun)(nil)
 var _ apis.Defaultable = (*TaskRun)(nil)
-
-// Assert that TaskRun implements the GenericCRD interface.
-var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {

@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"github.com/knative/pkg/apis"
-	"github.com/knative/pkg/webhook"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,9 +40,6 @@ func (t *ClusterTask) SetDefaults() {
 // Check that Task may be validated and defaulted.
 var _ apis.Validatable = (*ClusterTask)(nil)
 var _ apis.Defaultable = (*ClusterTask)(nil)
-
-// Assert that Task implements the GenericCRD interface.
-var _ webhook.GenericCRD = (*ClusterTask)(nil)
 
 // +genclient
 // +genclient:noStatus
