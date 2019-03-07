@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/knative/pkg/apis"
-	"github.com/knative/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -83,9 +82,6 @@ type PipelineResourceStatus struct {
 // Check that PipelineResource may be validated and defaulted.
 var _ apis.Validatable = (*PipelineResource)(nil)
 var _ apis.Defaultable = (*PipelineResource)(nil)
-
-// Assert that PipelineResource implements the GenericCRD interface.
-var _ webhook.GenericCRD = (*PipelineResource)(nil)
 
 // TaskResource defines an input or output Resource declared as a requirement
 // by a Task. The Name field will be used to refer to these Resources within
