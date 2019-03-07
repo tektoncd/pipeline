@@ -45,8 +45,8 @@ required = [
 
 [[constraint]]
   name = "github.com/google/go-containerregistry"
-  # HEAD as of 2019-02-06
-  revision = "dbc4da98389f9d0c42eb314c2b346bf1d2a27310"
+  # HEAD as of 2019-03-07
+  revision = "fcd5acbb4e785f428f197ddd66a8931df6923fe6"
 
 [[override]]
   name = "github.com/golang/protobuf"
