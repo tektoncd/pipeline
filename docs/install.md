@@ -5,6 +5,7 @@ Use this page to add the component to an existing Kubernetes cluster.
 ## Pre-requisites
 
 1. A Kubernetes cluster (_if you don't have an existing cluster_):
+
    ```bash
    # Example cluster creation command on GKE
    gcloud container clusters create $CLUSTER_NAME \
@@ -17,7 +18,9 @@ Use this page to add the component to an existing Kubernetes cluster.
    --clusterrole=cluster-admin \
    --user=$(gcloud config get-value core/account)
    ```
-   _See [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control) for more information_.
+   _See
+   [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control)
+   for more information_.
 
 ## Adding the Tekton Pipelines
 
