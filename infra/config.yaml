@@ -1,0 +1,113 @@
+plank:
+  job_url_template: 'https://tekton-releases.appspot.com/build/tekton-prow/{{if or (eq .Spec.Type "presubmit") (eq .Spec.Type "batch")}}pr-logs/pull{{with .Spec.Refs}}/{{.Org}}_{{.Repo}}{{end}}{{else}}logs{{end}}{{if eq .Spec.Type "presubmit"}}/{{with index .Spec.Refs.Pulls 0}}{{.Number}}{{end}}{{else if eq .Spec.Type "batch"}}/batch{{end}}/{{.Spec.Job}}/{{.Status.BuildID}}/'
+  report_template: '[Full PR test history](https://tekton-releases.appspot.com/pr/{{.Spec.Refs.Org}}_{{.Spec.Refs.Repo}}/{{with index .Spec.Refs.Pulls 0}}{{.Number}}{{end}}). [Your PR dashboard](http://34.95.121.238/pr/{{with index .Spec.Refs.Pulls 0}}{{.Author}}{{end}}).'
+  pod_pending_timeout: 60m
+  default_decoration_config:
+    timeout: 7200000000000 # 2h
+    grace_period: 15000000000 # 15s
+    utility_images:
+      clonerefs: "gcr.io/k8s-prow/clonerefs@sha256:b62ba1f379ac19c5ec9ee7bcab14d3f0b3c31cea9cdd4bc491e98e2c5f346c07"
+      initupload: "gcr.io/k8s-prow/initupload@sha256:58f89f2aae68f7dc46aaf05c7e8204c4f26b53ec9ce30353d1c27ce44a60d121"
+      entrypoint: "gcr.io/k8s-prow/entrypoint:v20180512-0255926d1"
+      sidecar: "gcr.io/k8s-prow/sidecar@sha256:8807b2565f4d2699920542fcf890878824b1ede4198d7ff46bca53feb064ed44"
+    gcs_configuration:
+      bucket: "tekton-prow"
+      path_strategy: "explicit"
+    gcs_credentials_secret: "test-account"
+branch-protection:
+  orgs:
+    tektoncd:
+      # Protect all branches in knative
+      # This means all prow jobs with "always_run" set are required
+      # to pass before tide can merge the PR.
+      # Currently this is manually enabled by the knative org admins,
+      # but it's stated here for documentation and reference purposes.
+      protect: true
+      # Admins can overrule checks
+      enforce_admins: false
+tide:
+  queries:
+  - repos:
+    - tektoncd/pipeline
+    labels:
+    - lgtm
+    - approved
+    missingLabels:
+    - do-not-merge/hold
+    - do-not-merge/work-in-progress
+  merge_method:
+    tektoncd/pipeline: rebase
+  target_url: http://34.95.121.238/tide
+
+presubmits:
+  tektoncd/pipeline:
+  - name: pull-tekton-pipeline-unit-tests
+    agent: kubernetes
+    context: tekton-pipeline-unit-tests
+    always_run: true
+    rerun_command: "/test tekton-pipeline-unit-tests"
+    trigger: "(?m)^/test (all|tekton-pipeline-unit-tests),?(\\s+|$)"
+    spec:
+      containers:
+      - image: gcr.io/knative-tests/test-infra/prow-tests:stable
+        imagePullPolicy: Always
+        args:
+        - "--scenario=kubernetes_execute_bazel"
+        - "--clean"
+        - "--job=$(JOB_NAME)"
+        - "--repo=github.com/$(REPO_OWNER)/$(REPO_NAME)=$(PULL_REFS)"
+        - "--root=/go/src"
+        - "--service-account=/etc/test-account/service-account.json"
+        - "--upload=gs://tekton-prow/pr-logs"
+        - "--" # end bootstrap args, scenario args below
+        - "--" # end kubernetes_execute_bazel flags (consider following flags as text)
+        - "./test/presubmit-tests.sh"
+        - "--unit-tests"
+        volumeMounts:
+        - name: test-account
+          mountPath: /etc/test-account
+          readOnly: true
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/test-account/service-account.json
+        - name: E2E_CLUSTER_REGION
+          value: us-west1
+      volumes:
+      - name: test-account
+        secret:
+          secretName: test-account
+  - name: pull-tekton-pipeline-integration-tests
+    agent: kubernetes
+    context: pull-tekton-pipeline-integration-tests
+    always_run: true
+    rerun_command: "/test pull-tekton-pipeline-integration-tests"
+    trigger: "(?m)^/test (all|pull-tekton-pipeline-integration-tests),?(\\s+|$)"
+    spec:
+      containers:
+      - image: gcr.io/knative-tests/test-infra/prow-tests:stable
+        imagePullPolicy: Always
+        args:
+        - "--scenario=kubernetes_execute_bazel"
+        - "--clean"
+        - "--job=$(JOB_NAME)"
+        - "--repo=github.com/$(REPO_OWNER)/$(REPO_NAME)=$(PULL_REFS)"
+        - "--root=/go/src"
+        - "--service-account=/etc/test-account/service-account.json"
+        - "--upload=gs://tekton-prow/pr-logs"
+        - "--" # end bootstrap args, scenario args below
+        - "--" # end kubernetes_execute_bazel flags (consider following flags as text)
+        - "./test/presubmit-tests.sh"
+        - "--integration-tests"
+        volumeMounts:
+        - name: test-account
+          mountPath: /etc/test-account
+          readOnly: true
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/test-account/service-account.json
+        - name: E2E_CLUSTER_REGION
+          value: us-west1
+      volumes:
+      - name: test-account
+        secret:
+          secretName: test-account

@@ -1,0 +1,5 @@
+resources:
+- names:
+  - tekton-releases
+  state: dirty
+  type: gke-project
