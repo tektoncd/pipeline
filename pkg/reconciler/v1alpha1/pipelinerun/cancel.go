@@ -27,11 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// isCancelled returns true if the PipelineRun's spec indicates it is cancelled
-func isCancelled(spec v1alpha1.PipelineRunSpec) bool {
-	return spec.Status == v1alpha1.PipelineRunSpecStatusCancelled
-}
-
 // cancelPipelineRun makrs the PipelineRun as cancelled and any resolved taskrun too.
 func cancelPipelineRun(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask, clientSet clientset.Interface) error {
 	pr.Status.SetCondition(&duckv1alpha1.Condition{

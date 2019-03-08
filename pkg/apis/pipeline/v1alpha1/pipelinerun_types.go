@@ -213,3 +213,13 @@ func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {
 		*metav1.NewControllerRef(pr, groupVersionKind),
 	}
 }
+
+// IsDone returns true if the PipelineRun's status indicates that it is done.
+func (pr *PipelineRunStatus) IsDone() bool {
+	return !pr.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+}
+
+// IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
+func (sp PipelineRunSpec) IsCancelled() bool {
+	return sp.Status == PipelineRunSpecStatusCancelled
+}

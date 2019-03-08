@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -123,5 +124,26 @@ func TestTaskRun_HasPipelineRun(t *testing.T) {
 				t.Fatalf("taskrun pipeline run pvc name mismatch: got %s ; expected %t", tt.tr.GetPipelineRunPVCName(), tt.want)
 			}
 		})
+	}
+}
+func TestTaskRunIsDone(t *testing.T) {
+	tr := &TaskRun{}
+	foo := &duckv1alpha1.Condition{
+		Type:   duckv1alpha1.ConditionSucceeded,
+		Status: corev1.ConditionFalse,
+	}
+	tr.Status.SetCondition(foo)
+	if !tr.Status.IsDone() {
+		t.Fatal("Expected pipelinerun status to be done")
+	}
+}
+
+func TestTaskRunIsCancelled(t *testing.T) {
+	ts := TaskRunSpec{
+		Status: TaskRunSpecStatusCancelled,
+	}
+
+	if !ts.IsCancelled() {
+		t.Fatal("Expected pipelinerun status to be cancelled")
 	}
 }

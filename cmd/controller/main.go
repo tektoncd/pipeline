@@ -46,8 +46,9 @@ const (
 )
 
 var (
-	masterURL  string
-	kubeconfig string
+	masterURL    string
+	kubeconfig   string
+	resyncPeriod = 10 * time.Hour
 )
 
 func main() {
@@ -99,8 +100,8 @@ func main() {
 		Logger:            logger,
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, opt.ResyncPeriod)
-	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, opt.ResyncPeriod)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, resyncPeriod)
+	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, resyncPeriod)
 
 	taskInformer := pipelineInformerFactory.Tekton().V1alpha1().Tasks()
 	clusterTaskInformer := pipelineInformerFactory.Tekton().V1alpha1().ClusterTasks()
@@ -110,26 +111,35 @@ func main() {
 
 	pipelineInformer := pipelineInformerFactory.Tekton().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineRuns()
+	timeoutHandler := reconciler.NewTimeoutHandler(logger, kubeClient, pipelineClient, stopCh)
+
+	trc := taskrun.NewController(opt,
+		taskRunInformer,
+		taskInformer,
+		clusterTaskInformer,
+		resourceInformer,
+		podInformer,
+		nil, //entrypoint cache will be initialized by controller if not provided
+		timeoutHandler,
+	)
+	prc := pipelinerun.NewController(opt,
+		pipelineRunInformer,
+		pipelineInformer,
+		taskInformer,
+		clusterTaskInformer,
+		taskRunInformer,
+		resourceInformer,
+		timeoutHandler,
+	)
 	// Build all of our controllers, with the clients constructed above.
 	controllers := []*controller.Impl{
 		// Pipeline Controllers
-		taskrun.NewController(opt,
-			taskRunInformer,
-			taskInformer,
-			clusterTaskInformer,
-			resourceInformer,
-			podInformer,
-			nil, //entrypoint cache will be initialized by controller if not provided
-		),
-		pipelinerun.NewController(opt,
-			pipelineRunInformer,
-			pipelineInformer,
-			taskInformer,
-			clusterTaskInformer,
-			taskRunInformer,
-			resourceInformer,
-		),
+		trc,
+		prc,
 	}
+	timeoutHandler.AddtrCallBackFunc(trc.Enqueue)
+	timeoutHandler.AddPrCallBackFunc(prc.Enqueue)
+	timeoutHandler.CheckTimeouts()
 
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher.Watch(logging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logging.ControllerLogKey))

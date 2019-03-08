@@ -91,6 +91,7 @@ type Reconciler struct {
 	resourceLister    listers.PipelineResourceLister
 	tracker           tracker.Interface
 	configStore       configStore
+	timeoutHandler    *reconciler.TimeoutSet
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -105,6 +106,7 @@ func NewController(
 	clusterTaskInformer informers.ClusterTaskInformer,
 	taskRunInformer informers.TaskRunInformer,
 	resourceInformer informers.PipelineResourceInformer,
+	timeoutHandler *reconciler.TimeoutSet,
 ) *controller.Impl {
 
 	r := &Reconciler{
@@ -115,6 +117,7 @@ func NewController(
 		clusterTaskLister: clusterTaskInformer.Lister(),
 		taskRunLister:     taskRunInformer.Lister(),
 		resourceLister:    resourceInformer.Lister(),
+		timeoutHandler:    timeoutHandler,
 	}
 
 	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName, reconciler.MustNewStatsReporter(pipelineRunControllerName, r.Logger))
@@ -126,9 +129,10 @@ func NewController(
 		DeleteFunc: impl.Enqueue,
 	})
 
-	r.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
+	r.tracker = tracker.New(impl.EnqueueKey, opt.GetTrackerLease())
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: controller.PassNew(r.tracker.OnChanged),
+		UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
+		AddFunc:    impl.EnqueueControllerOf,
 	})
 
 	r.Logger.Info("Setting up ConfigMap receivers")
@@ -164,7 +168,11 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	pr := original.DeepCopy()
 	pr.Status.InitializeConditions()
 
-	if isDone(&pr.Status) {
+	if pr.Status.IsDone() {
+		statusMapKey := fmt.Sprintf("%s/%s", pipelineRunControllerName, key)
+		c.timeoutHandler.Release(statusMapKey)
+		// remove key from status map
+		defer c.timeoutHandler.ReleaseKey(statusMapKey)
 		c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
 		return nil
 	}
@@ -332,7 +340,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	// If the pipelinerun is cancelled, cancel tasks and update status
-	if isCancelled(pr.Spec) {
+	if pr.Spec.IsCancelled() {
 		return cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
 	}
 
@@ -357,16 +365,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %s", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
 			}
 		}
+		go c.timeoutHandler.WaitPipelineRun(pr)
 	}
 
 	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, pr.Spec.Timeout)
+	statusKey := fmt.Sprintf("%s/%s/%s", pipelineRunControllerName, pr.Namespace, pr.Name)
 
+	c.timeoutHandler.StatusLock(statusKey)
 	pr.Status.SetCondition(after)
+	updateTaskRunsStatus(pr, pipelineState)
+	c.timeoutHandler.StatusUnlock(statusKey)
 
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
-
-	updateTaskRunsStatus(pr, pipelineState)
 
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
 	return nil
@@ -459,9 +470,4 @@ func (c *Reconciler) updateLabels(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		return c.PipelineClientSet.TektonV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
-}
-
-// isDone returns true if the PipelineRun's status indicates the build is done.
-func isDone(status *v1alpha1.PipelineRunStatus) bool {
-	return !status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
 }

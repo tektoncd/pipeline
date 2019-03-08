@@ -50,26 +50,31 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.TestAssets {
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
+	stopCh := make(chan struct{})
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
+	th := reconciler.NewTimeoutHandler(zap.New(observer).Sugar(), c.Kube, c.Pipeline, stopCh)
+	prc := NewController(
+		reconciler.Options{
+			Logger:            zap.New(observer).Sugar(),
+			KubeClientSet:     c.Kube,
+			PipelineClientSet: c.Pipeline,
+			Recorder:          recorder,
+			ConfigMapWatcher:  configMapWatcher,
+		},
+		i.PipelineRun,
+		i.Pipeline,
+		i.Task,
+		i.ClusterTask,
+		i.TaskRun,
+		i.PipelineResource,
+		th,
+	)
+	th.AddPrCallBackFunc(prc.Enqueue)
 	return test.TestAssets{
-		Controller: NewController(
-			reconciler.Options{
-				Logger:            zap.New(observer).Sugar(),
-				KubeClientSet:     c.Kube,
-				PipelineClientSet: c.Pipeline,
-				Recorder:          recorder,
-				ConfigMapWatcher:  configMapWatcher,
-			},
-			i.PipelineRun,
-			i.Pipeline,
-			i.Task,
-			i.ClusterTask,
-			i.TaskRun,
-			i.PipelineResource,
-		),
-		Logs:      logs,
-		Clients:   c,
-		Informers: i,
+		Controller: prc,
+		Logs:       logs,
+		Clients:    c,
+		Informers:  i,
 	}
 }
 

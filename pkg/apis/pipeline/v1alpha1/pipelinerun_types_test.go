@@ -87,3 +87,24 @@ func TestInitializeConditions(t *testing.T) {
 		t.Fatalf("PipelineRun status getting reset")
 	}
 }
+func TestPipelineRunIsDone(t *testing.T) {
+	p := &PipelineRun{}
+	foo := &duckv1alpha1.Condition{
+		Type:   duckv1alpha1.ConditionSucceeded,
+		Status: corev1.ConditionFalse,
+	}
+	p.Status.SetCondition(foo)
+	if !p.Status.IsDone() {
+		t.Fatal("Expected pipelinerun status to be done")
+	}
+}
+
+func TestPipelineRunIsCancelled(t *testing.T) {
+	ps := PipelineRunSpec{
+		Status: PipelineRunSpecStatusCancelled,
+	}
+
+	if !ps.IsCancelled() {
+		t.Fatal("Expected pipelinerun status to be cancelled")
+	}
+}
