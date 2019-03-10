@@ -28,17 +28,17 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/logging"
 
+	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
+	"github.com/knative/pkg/controller"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"
 	"github.com/tektoncd/pipeline/pkg/system"
-	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
-	"github.com/knative/pkg/controller"
 
-	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	pipelineinformers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/signals"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	pipelineinformers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
 )
 
 const (

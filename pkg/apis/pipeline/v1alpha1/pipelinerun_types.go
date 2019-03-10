@@ -34,7 +34,6 @@ var (
 	}
 )
 
-
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
 	PipelineRef PipelineRef     `json:"pipelineRef"`

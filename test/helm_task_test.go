@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
+	knativetest "github.com/knative/pkg/test"
+	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
