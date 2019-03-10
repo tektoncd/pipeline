@@ -118,8 +118,8 @@ Before a PR can be merged, it must have both `/lgtm` AND `/approve`:
 - `/approve` can be added only by
   [OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS)
 
-[OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS)
-automatically get `/approve` but still will need an `/lgtm` to merge.
+[OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS) automatically
+get `/approve` but still will need an `/lgtm` to merge.
 
 The merge will happen automatically once the PR has both `/lgtm` and `/approve`,
 and all tests pass. If you don't want this to happen you should
