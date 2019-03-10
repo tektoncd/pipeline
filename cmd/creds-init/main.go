@@ -18,10 +18,10 @@ package main
 import (
 	"flag"
 
+	"github.com/knative/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
-	"github.com/knative/pkg/logging"
 )
 
 func main() {

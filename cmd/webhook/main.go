@@ -24,12 +24,12 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/tektoncd/pipeline/pkg/logging"
-	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/logging/logkey"
 	"github.com/knative/pkg/signals"
 	"github.com/knative/pkg/webhook"
+	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/pkg/system"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

@@ -38,9 +38,9 @@ package test
 import (
 	"testing"
 
+	knativetest "github.com/knative/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
-	knativetest "github.com/knative/pkg/test"
 )
 
 // clients holds instances of interfaces for making requests to the Pipeline controllers.

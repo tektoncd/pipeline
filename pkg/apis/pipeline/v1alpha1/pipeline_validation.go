@@ -19,9 +19,9 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/templating"
-	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 

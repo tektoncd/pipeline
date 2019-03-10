@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
+	knativetest "github.com/knative/pkg/test"
+	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

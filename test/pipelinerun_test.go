@@ -25,10 +25,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	tb "github.com/tektoncd/pipeline/test/builder"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 

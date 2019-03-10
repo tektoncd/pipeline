@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/names"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/names"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
