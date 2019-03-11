@@ -18,6 +18,14 @@ Currently [the Pipeline API is considered `alpha`](api_compatibility_policy.md).
 In 2019 we aim to release a 1.0 version, after which we would implement a policy
 where backwards incompatible changes must be made across multiple releases.
 
+This would also imply that the project is in a state where it is safe for other
+projects to rely on it, for example:
+
+- If users of [`knative/build`](https://github.com/knative/build) want to migrate to
+  [TaskRun](docs/taskruns.md)
+- If [`knative/serving`](https://github.com/knative/serving) would like to take a
+  dependency on this project
+
 ## Workflow
 
 Enable more powerful workflows than the simple linear builds we support today.
@@ -70,17 +78,3 @@ Get Pipelines into a reliable release cadence, with trustworthy integration
 tests and performance metrics to guard against regressions. The Pipelines team
 itself should dogfood Pipelines for our own CI and CD infrastructure, alongside
 or instead of Prow, by having Prow use Pipelines somehow.
-
-## Migrate to Pipelines
-
-The Knative Build Working Group has historically focused on `Build` and
-associated resources. With the successful experimentation around `Pipelines` and
-`Tasks` and `Resources` at the end of 2018, we believe it's time to further
-invest in these resources and migrate existing `Build` users to these new more
-flexible and powerful resources.
-
-## Don't Break Serving
-
-As always, we should continue to ensure that our main client, Knative Serving,
-remains happy with the work we produce. This means fixing bugs, answering
-questions and implementing features in a timely manner.
