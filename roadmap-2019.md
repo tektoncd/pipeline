@@ -2,27 +2,21 @@
 
 This is an incomplete list of work we hope to accomplish in 2019.
 
-For comparison, Build CRD's 2018 roadmap is
-[here](https://github.com/knative/build/blob/master/roadmap-2018.md).
+Highlights:
 
-## Migrate to Pipelines
+* [Version 1.0](#version-10)
+* [Workflow features](#workflow) such as conditional execution
+* [Triggering](#triggering)
+* [Library of shared Pipelines and Tasks](#community-library)
 
-The Knative Build Working Group has historically focused on `Build` and
-associated resources. With the successful experimentation around `Pipelines` and
-`Tasks` and `Resources` at the end of 2018, we believe it's time to further
-invest in these resources and migrate existing `Build` users to these new more
-flexible and powerful resources.
+_For comparison, Build CRD's 2018 roadmap is
+[here](https://github.com/knative/build/blob/master/roadmap-2018.md)._
 
-This means ensuring compatibility between the resources, and updating
-documentation where necessary to focus on the new resources. We'll probably have
-to support both for some amount of time. By mid-to-late 2019 the `Build`
-resource should be no more, and `TaskRun` should take its place.
+## Version 1.0
 
-## Don't Break Serving
-
-As always, we should continue to ensure that our main client, Knative Serving,
-remains happy with the work we produce. This means fixing bugs, answering
-questions and implementing features in a timely manner.
+Currently [the Pipeline API is considered `alpha`](api_compatibility_policy.md).
+In 2019 we aim to release a 1.0 version, after which we would implement a policy
+where backwards incompatible changes must be made across multiple releases.
 
 ## Workflow
 
@@ -54,7 +48,7 @@ swappable in the future. This work has not yet been designed at this time, so
 there's a great opportunity in the community to pick up this work and make it
 shine.
 
-## Community
+## Community library
 
 Pipelines are designed with many extension points. Pipeline and Task
 configurations can be parameterized and shared, they depend on Resources and
@@ -76,3 +70,17 @@ Get Pipelines into a reliable release cadence, with trustworthy integration
 tests and performance metrics to guard against regressions. The Pipelines team
 itself should dogfood Pipelines for our own CI and CD infrastructure, alongside
 or instead of Prow, by having Prow use Pipelines somehow.
+
+## Migrate to Pipelines
+
+The Knative Build Working Group has historically focused on `Build` and
+associated resources. With the successful experimentation around `Pipelines` and
+`Tasks` and `Resources` at the end of 2018, we believe it's time to further
+invest in these resources and migrate existing `Build` users to these new more
+flexible and powerful resources.
+
+## Don't Break Serving
+
+As always, we should continue to ensure that our main client, Knative Serving,
+remains happy with the work we produce. This means fixing bugs, answering
+questions and implementing features in a timely manner.
