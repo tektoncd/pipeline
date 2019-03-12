@@ -80,7 +80,7 @@ You can see more details (including a burndown, issues in epics, etc.) on our
 [zenhub board](https://app.zenhub.com/workspaces/pipelines-5bc61a054b5806bc2bed4fb2/boards?repos=146641150).
 To see this board, you must:
 
-- Ask [an OWNER](OWNER) via [slack](https://knative.slack.com) for an invitation
+- Ask [an OWNER](OWNERS) via [slack](https://knative.slack.com) for an invitation
 - Add [the zenhub browser extension](https://www.zenhub.com/extension) to see
   new info via GitHub (or just use zenhub.com directly)
 
