@@ -27,6 +27,8 @@ export DISABLE_MD_LINTING=1
 
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/presubmit-tests.sh
 
+# Increase GOMAXPROCS. The e2e tests run in a large cluster and are limited by that,
+# not the CPU on the runner machine itself.
+export GOMAXPROCS=8
 # We use the default build, unit and integration test runners.
-
 main $@
