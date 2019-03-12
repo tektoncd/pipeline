@@ -26,7 +26,7 @@ Tekton Pipelines are **Typed**:
 
 ## Want to start using Pipelines
 
-- [Installing Knative Pipelines](docs/install.md)
+- [Installing Tekton Pipelines](docs/install.md)
 - Jump in with [the tutorial!](docs/tutorial.md)
 - [Read about it](/docs/README.md)
 - Look at [some examples](/examples)
