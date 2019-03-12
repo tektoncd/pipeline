@@ -28,10 +28,10 @@ To check out this repository:
 1. Clone it to your machine:
 
 ```shell
-mkdir -p ${GOPATH}/src/github.com/knative
-cd ${GOPATH}/src/github.com/knative
-git clone git@github.com:${YOUR_GITHUB_USERNAME}/build-pipeline.git
-cd build-pipeline
+mkdir -p ${GOPATH}/src/github.com/tektoncd
+cd ${GOPATH}/src/github.com/tektoncd
+git clone git@github.com:${YOUR_GITHUB_USERNAME}/pipeline.git
+cd pipeline
 git remote add upstream git@github.com:tektoncd/pipeline.git
 git remote set-url --push upstream no_push
 ```
