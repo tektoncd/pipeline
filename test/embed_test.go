@@ -66,6 +66,7 @@ func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 func TestTaskRun_EmbeddedResource(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
+	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
 	defer tearDown(t, logger, c, namespace)
