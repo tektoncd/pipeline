@@ -195,14 +195,29 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv
 		return nil, fmt.Errorf("Failed to create k8schain: %v", err)
 	}
 
-	// this will first try to authenticate using the k8schain,
-	// then fall back to the google keychain,
-	// then fall back to anonymous
-	mkc := authn.NewMultiKeychain(kc, google.Keychain)
+	// this will first try to anonymous
+	// the fall back to authenticate using the k8schain,
+	// then fall back to the google keychain (it fill error out in case of `gcloud` binary not available)
+	mkc := authn.NewMultiKeychain(&anonymousKeychain{}, kc, google.Keychain)
 	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get container image info from registry %s: %v", image, err)
 	}
 
 	return img, nil
+}
+
+type anonymousKeychain struct{}
+
+func (a *anonymousKeychain) Resolve(_ name.Registry) (authn.Authenticator, error) {
+	// This anonymous keychain returns our own anonythous authenticator implementation,
+	// as authn.NewMultiKeychain has a special logic to detect authn.Anonymous, that will
+	// make it try anonymously on last resort ; whereas we want to try anonymously first.
+	return &anonymous{}, nil
+}
+
+type anonymous struct{}
+
+func (a *anonymous) Authorization() (string, error) {
+	return "", nil
 }
