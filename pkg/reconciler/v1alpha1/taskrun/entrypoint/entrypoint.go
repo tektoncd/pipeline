@@ -187,6 +187,17 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv
 		return nil, fmt.Errorf("Failed to parse image %s: %v", image, err)
 	}
 
+	// First try to get the image anonymously
+	// FIXME(vdemeester): once google.Keychain fails smoother, this could be removed
+	// See https://gist.github.com/vdemeester/c397ffb3fd19b4cc2ba3243dc4db9f83 for the current errors
+	// with google.Keychain in case `gcloud` command isn't available in the cluster.'
+	if img, err := remote.Image(ref); err == nil {
+		// Calling ConfigFile to actually try to connect to the remote registry
+		if _, err := img.ConfigFile(); err == nil {
+			return img, nil
+		}
+	}
+
 	kc, err := k8schain.New(kubeclient, k8schain.Options{
 		Namespace:          build.Namespace,
 		ServiceAccountName: build.Spec.ServiceAccountName,
@@ -195,29 +206,14 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv
 		return nil, fmt.Errorf("Failed to create k8schain: %v", err)
 	}
 
-	// this will first try to anonymous
-	// the fall back to authenticate using the k8schain,
-	// then fall back to the google keychain (it fill error out in case of `gcloud` binary not available)
-	mkc := authn.NewMultiKeychain(&anonymousKeychain{}, kc, google.Keychain)
+	// this will first try to authenticate using the k8schain,
+	// then fall back to the google keychain,
+	// then fall back to anonymous
+	mkc := authn.NewMultiKeychain(kc, google.Keychain)
 	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get container image info from registry %s: %v", image, err)
 	}
 
 	return img, nil
-}
-
-type anonymousKeychain struct{}
-
-func (a *anonymousKeychain) Resolve(_ name.Registry) (authn.Authenticator, error) {
-	// This anonymous keychain returns our own anonythous authenticator implementation,
-	// as authn.NewMultiKeychain has a special logic to detect authn.Anonymous, that will
-	// make it try anonymously on last resort ; whereas we want to try anonymously first.
-	return &anonymous{}, nil
-}
-
-type anonymous struct{}
-
-func (a *anonymous) Authorization() (string, error) {
-	return "", nil
 }
