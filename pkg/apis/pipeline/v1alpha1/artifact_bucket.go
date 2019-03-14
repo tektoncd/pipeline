@@ -82,14 +82,16 @@ func (b *ArtifactBucket) GetCopyFromContainerSpec(name, sourcePath, destinationP
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []corev1.Container{{
-		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
-		Image: *bashNoopImage,
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
+		Image:   *bashNoopImage,
+		Command: []string{"/ko-app/bash"},
 		Args: []string{
 			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),
 		},
 	}, {
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-from-%s", name)),
 		Image:        *gsutilImage,
+		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
@@ -105,6 +107,7 @@ func (b *ArtifactBucket) GetCopyToContainerSpec(name, sourcePath, destinationPat
 	return []corev1.Container{{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-to-%s", name)),
 		Image:        *gsutilImage,
+		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,

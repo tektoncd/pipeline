@@ -198,9 +198,10 @@ func Test_ClusterResource_GetDownloadContainerSpec(t *testing.T) {
 			}},
 		},
 		wantContainers: []corev1.Container{{
-			Name:  "kubeconfig-9l9zj",
-			Image: "override-with-kubeconfig-writer:latest",
-			Args:  []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
+			Name:    "kubeconfig-9l9zj",
+			Image:   "override-with-kubeconfig-writer:latest",
+			Command: []string{"/ko-app/kubeconfigwriter"},
+			Args:    []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
 			Env: []corev1.EnvVar{{
 				Name: "CADATA",
 				ValueFrom: &corev1.EnvVarSource{
