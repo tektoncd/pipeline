@@ -203,6 +203,7 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 	return &corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + credsInit),
 		Image:        *credsImage,
+		Command:      []string{"/ko-app/creds-init"},
 		Args:         args,
 		VolumeMounts: volumeMounts,
 		Env:          implicitEnvVars,
@@ -296,7 +297,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 	}
 	gibberish := hex.EncodeToString(b)
 
-	podContainers = append(podContainers, corev1.Container{Name: "nop", Image: *nopImage})
+	podContainers = append(podContainers, corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}})
 
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

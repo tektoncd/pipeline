@@ -35,12 +35,14 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 		}},
 	}
 	want := []corev1.Container{{
-		Name:  "artifact-dest-mkdir-workspace-9l9zj",
-		Image: "override-with-bash-noop:latest",
-		Args:  []string{"-args", "mkdir -p /workspace/destination"},
+		Name:    "artifact-dest-mkdir-workspace-9l9zj",
+		Image:   "override-with-bash-noop:latest",
+		Command: []string{"/ko-app/bash"},
+		Args:    []string{"-args", "mkdir -p /workspace/destination"},
 	}, {
 		Name:         "artifact-copy-from-workspace-mz4c7",
 		Image:        "override-with-gsutil-image:latest",
+		Command:      []string{"/ko-app/gsutil"},
 		Args:         []string{"-args", "cp -r gs://fake-bucket/src-path/* /workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
 		VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-secret1", MountPath: "/var/bucketsecret/secret1"}},
@@ -65,6 +67,7 @@ func TestBucketGetCopyToContainerSpec(t *testing.T) {
 	want := []corev1.Container{{
 		Name:         "artifact-copy-to-workspace-9l9zj",
 		Image:        "override-with-gsutil-image:latest",
+		Command:      []string{"/ko-app/gsutil"},
 		Args:         []string{"-args", "cp -r src-path gs://fake-bucket/workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
 		VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-secret1", MountPath: "/var/bucketsecret/secret1"}},

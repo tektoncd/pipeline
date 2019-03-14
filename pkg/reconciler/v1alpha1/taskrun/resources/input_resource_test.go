@@ -276,6 +276,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-9l9zj",
 				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "master", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
 			}},
@@ -308,6 +309,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
 			}},
@@ -345,11 +347,13 @@ func TestAddResourceToBuild(t *testing.T) {
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-with-branch-mz4c7",
 				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/git-duplicate-space"},
 				WorkingDir: "/workspace",
 			}, {
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
 			}},
@@ -382,6 +386,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-9l9zj",
 				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "master", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
 			}},
@@ -414,6 +419,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
 			}},
@@ -446,12 +452,14 @@ func TestAddResourceToBuild(t *testing.T) {
 		wantErr: false,
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "create-dir-gitspace-mz4c7",
-				Image: "override-with-bash-noop:latest",
-				Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
+				Name:    "create-dir-gitspace-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gitspace"},
 			}, {
 				Name:         "source-copy-gitspace-9l9zj",
 				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
 				Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gitspace"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 			}},
@@ -485,13 +493,15 @@ func TestAddResourceToBuild(t *testing.T) {
 		wantErr: false,
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "create-dir-storage1-9l9zj",
-				Image: "override-with-bash-noop:latest",
-				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
+				Name:    "create-dir-storage1-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gcs-dir"},
 			}, {
-				Name:  "fetch-storage1-mz4c7",
-				Image: "override-with-gsutil-image:latest",
-				Args:  []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-dir"},
+				Name:    "fetch-storage1-mz4c7",
+				Image:   "override-with-gsutil-image:latest",
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-dir"},
 			}},
 		},
 	}, {
@@ -522,12 +532,14 @@ func TestAddResourceToBuild(t *testing.T) {
 		wantErr: false,
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "create-dir-workspace-mz4c7",
-				Image: "override-with-bash-noop:latest",
-				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
+				Name:    "create-dir-workspace-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gcs-dir"},
 			}, {
 				Name:         "source-copy-workspace-9l9zj",
 				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
 				Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gcs-dir"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 			}},
@@ -638,8 +650,9 @@ func TestAddResourceToBuild(t *testing.T) {
 		wantErr: false,
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "kubeconfig-9l9zj",
-				Image: "override-with-kubeconfig-writer:latest",
+				Name:    "kubeconfig-9l9zj",
+				Image:   "override-with-kubeconfig-writer:latest",
+				Command: []string{"/ko-app/kubeconfigwriter"},
 				Args: []string{
 					"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
 				},
@@ -684,8 +697,9 @@ func TestAddResourceToBuild(t *testing.T) {
 		wantErr: false,
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "kubeconfig-9l9zj",
-				Image: "override-with-kubeconfig-writer:latest",
+				Name:    "kubeconfig-9l9zj",
+				Image:   "override-with-kubeconfig-writer:latest",
+				Command: []string{"/ko-app/kubeconfigwriter"},
 				Args: []string{
 					"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
 				},
@@ -843,13 +857,15 @@ func Test_StorageInputResource(t *testing.T) {
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
-					Name:  "create-dir-gcs-input-resource-9l9zj",
-					Image: "override-with-bash-noop:latest",
-					Args:  []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
+					Name:    "create-dir-gcs-input-resource-9l9zj",
+					Image:   "override-with-bash-noop:latest",
+					Command: []string{"/ko-app/bash"},
+					Args:    []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
 				}, {
-					Name:  "fetch-gcs-input-resource-mz4c7",
-					Image: "override-with-gsutil-image:latest",
-					Args:  []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource"},
+					Name:    "fetch-gcs-input-resource-mz4c7",
+					Image:   "override-with-gsutil-image:latest",
+					Command: []string{"/ko-app/gsutil"},
+					Args:    []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource"},
 				}},
 			},
 		},
@@ -920,13 +936,15 @@ func Test_StorageInputResource(t *testing.T) {
 			},
 			Spec: buildv1alpha1.BuildSpec{
 				Steps: []corev1.Container{{
-					Name:  "create-dir-storage-gcs-keys-9l9zj",
-					Image: "override-with-bash-noop:latest",
-					Args:  []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
+					Name:    "create-dir-storage-gcs-keys-9l9zj",
+					Image:   "override-with-bash-noop:latest",
+					Command: []string{"/ko-app/bash"},
+					Args:    []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
 				}, {
-					Name:  "fetch-storage-gcs-keys-mz4c7",
-					Image: "override-with-gsutil-image:latest",
-					Args:  []string{"-args", "cp -r gs://fake-bucket/rules.zip/* /workspace/gcs-input-resource"},
+					Name:    "fetch-storage-gcs-keys-mz4c7",
+					Image:   "override-with-gsutil-image:latest",
+					Command: []string{"/ko-app/gsutil"},
+					Args:    []string{"-args", "cp -r gs://fake-bucket/rules.zip/* /workspace/gcs-input-resource"},
 					VolumeMounts: []corev1.VolumeMount{
 						{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
 					},
@@ -1023,13 +1041,15 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 		build: build(),
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "artifact-dest-mkdir-gitspace-mssqb",
-				Image: "override-with-bash-noop:latest",
-				Args:  []string{"-args", "mkdir -p /workspace/gitspace"},
+				Name:    "artifact-dest-mkdir-gitspace-mssqb",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gitspace"},
 			}, {
-				Name:  "artifact-copy-from-gitspace-78c5n",
-				Image: "override-with-gsutil-image:latest",
-				Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/* /workspace/gitspace"},
+				Name:    "artifact-copy-from-gitspace-78c5n",
+				Image:   "override-with-gsutil-image:latest",
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "cp -r gs://fake-bucket/prev-task-path/* /workspace/gitspace"},
 			}},
 		},
 	}, {
@@ -1059,13 +1079,15 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 		build: build(),
 		want: buildv1alpha1.BuildSpec{
 			Steps: []corev1.Container{{
-				Name:  "artifact-dest-mkdir-workspace-6nl7g",
-				Image: "override-with-bash-noop:latest",
-				Args:  []string{"-args", "mkdir -p /workspace/gcs-dir"},
+				Name:    "artifact-dest-mkdir-workspace-6nl7g",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gcs-dir"},
 			}, {
-				Name:  "artifact-copy-from-workspace-j2tds",
-				Image: "override-with-gsutil-image:latest",
-				Args:  []string{"-args", "cp -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
+				Name:    "artifact-copy-from-workspace-j2tds",
+				Image:   "override-with-gsutil-image:latest",
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "cp -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
 			}},
 		},
 	}} {

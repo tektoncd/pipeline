@@ -49,7 +49,12 @@ You must install these tools:
 1. [`dep`](https://github.com/golang/dep): For managing external Go
    dependencies. - Please Install dep v0.5.0 or greater.
 1. [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko):
-   For development.
+   For development. A recent version of `ko` (after the 23th of
+   February, see
+   [google/go-containerregistry#380](https://github.com/google/go-containerregistry/pull/380))
+   is required for `pipeline` to work correctly.
+   
+   won't work).
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
    interacting with your kube cluster
 

@@ -130,6 +130,7 @@ var (
 
 	getCredentialsInitContainer = func(suffix string) tb.PodSpecOp {
 		return tb.PodInitContainer("build-step-credential-initializer-"+suffix, "override-with-creds:latest",
+			tb.Command("/ko-app/creds-init"),
 			tb.WorkingDir(workspaceDir),
 			tb.EnvVar("HOME", "/builder/home"),
 			tb.VolumeMount("workspace", workspaceDir),
@@ -306,7 +307,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -333,7 +334,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -358,7 +359,7 @@ func TestReconcile(t *testing.T) {
 				placeToolsInitContainer,
 				tb.PodContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/git-init", "--",
 						"-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
@@ -387,7 +388,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -414,7 +415,7 @@ func TestReconcile(t *testing.T) {
 				placeToolsInitContainer,
 				tb.PodContainer("build-step-create-dir-another-git-resource-78c5n", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/bash", "--",
 						"-args", "mkdir -p /workspace/another-git-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
@@ -424,7 +425,7 @@ func TestReconcile(t *testing.T) {
 				),
 				tb.PodContainer("build-step-source-copy-another-git-resource-mssqb", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/bash", "--",
 						"-args", "cp -r source-folder/. /workspace/another-git-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
@@ -435,7 +436,7 @@ func TestReconcile(t *testing.T) {
 				),
 				tb.PodContainer("build-step-create-dir-git-resource-mz4c7", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "/builder/tools/1", "-post_file", "/builder/tools/2", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "/builder/tools/1", "-post_file", "/builder/tools/2", "-entrypoint", "/ko-app/bash", "--",
 						"-args", "mkdir -p /workspace/git-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
@@ -445,7 +446,7 @@ func TestReconcile(t *testing.T) {
 				),
 				tb.PodContainer("build-step-source-copy-git-resource-9l9zj", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "/builder/tools/2", "-post_file", "/builder/tools/3", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "/builder/tools/2", "-post_file", "/builder/tools/3", "-entrypoint", "/ko-app/bash", "--",
 						"-args", "cp -r source-folder/. /workspace/git-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
@@ -465,7 +466,7 @@ func TestReconcile(t *testing.T) {
 				),
 				tb.PodContainer("build-step-source-mkdir-git-resource-6nl7g", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "/builder/tools/4", "-post_file", "/builder/tools/5", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "/builder/tools/4", "-post_file", "/builder/tools/5", "-entrypoint", "/ko-app/bash", "--",
 						"-args", "mkdir -p output-folder"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
@@ -476,7 +477,7 @@ func TestReconcile(t *testing.T) {
 				),
 				tb.PodContainer("build-step-source-copy-git-resource-j2tds", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "/builder/tools/5", "-post_file", "/builder/tools/6", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "/builder/tools/5", "-post_file", "/builder/tools/6", "-entrypoint", "/ko-app/bash", "--",
 						"-args", "cp -r /workspace/git-resource/. output-folder"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
@@ -485,7 +486,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -502,7 +503,7 @@ func TestReconcile(t *testing.T) {
 				getCredentialsInitContainer("mz4c7"),
 				tb.PodContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/git-init", "--",
 						"-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
@@ -521,7 +522,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -547,7 +548,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -565,7 +566,7 @@ func TestReconcile(t *testing.T) {
 				placeToolsInitContainer,
 				tb.PodContainer("build-step-git-source-workspace-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
-					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app", "--",
+					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/git-init", "--",
 						"-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path",
 						"/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
@@ -583,7 +584,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -610,7 +611,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	},
@@ -631,8 +632,8 @@ func TestReconcile(t *testing.T) {
 				},
 			})
 
-			entrypoint.AddToEntrypointCache(entrypointCache, "override-with-git:latest", []string{"/ko-app"})
-			entrypoint.AddToEntrypointCache(entrypointCache, "override-with-bash-noop:latest", []string{"/ko-app"})
+			entrypoint.AddToEntrypointCache(entrypointCache, "override-with-git:latest", []string{"/ko-app/git-init"})
+			entrypoint.AddToEntrypointCache(entrypointCache, "override-with-bash-noop:latest", []string{"/ko-app/bash"})
 
 			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
 				t.Errorf("expected no error. Got error %v", err)

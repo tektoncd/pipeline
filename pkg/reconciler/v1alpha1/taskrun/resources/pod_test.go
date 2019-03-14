@@ -40,8 +40,9 @@ var (
 	ignoreVolatileTime          = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
 	ignoreVolatileTimePtr       = cmp.Comparer(func(_, _ *apis.VolatileTime) bool { return true })
 	nopContainer                = corev1.Container{
-		Name:  "nop",
-		Image: *nopImage,
+		Name:    "nop",
+		Image:   *nopImage,
+		Command: []string{"/ko-app/nop"},
 	}
 )
 
@@ -95,6 +96,7 @@ func TestMakePod(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
@@ -128,6 +130,7 @@ func TestMakePod(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
@@ -158,8 +161,9 @@ func TestMakePod(t *testing.T) {
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:  containerPrefix + credsInit + "-mz4c7",
-				Image: *credsImage,
+				Name:    containerPrefix + credsInit + "-mz4c7",
+				Image:   *credsImage,
+				Command: []string{"/ko-app/creds-init"},
 				Args: []string{
 					"-basic-docker=multi-creds=https://docker.io",
 					"-basic-docker=multi-creds=https://us.gcr.io",
@@ -197,6 +201,7 @@ func TestMakePod(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
@@ -229,6 +234,7 @@ func TestMakePod(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,

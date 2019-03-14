@@ -115,6 +115,7 @@ func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	return []corev1.Container{{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
 		Image:      *gitImage,
+		Command:    []string{"/ko-app/git-init"},
 		Args:       args,
 		WorkingDir: workspaceDir,
 	}}, nil

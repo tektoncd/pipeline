@@ -222,9 +222,10 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 			ArtifactType:   "Archive",
 		},
 		wantContainers: []corev1.Container{{
-			Name:  "create-dir-gcs-valid-9l9zj",
-			Image: "override-with-bash-noop:latest",
-			Args:  []string{"-args", "mkdir -p /workspace"},
+			Name:    "create-dir-gcs-valid-9l9zj",
+			Image:   "override-with-bash-noop:latest",
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "mkdir -p /workspace"},
 		}, {
 			Name:  "storage-fetch-gcs-valid-mz4c7",
 			Image: "gcr.io/cloud-builders/gcs-fetcher:latest",
