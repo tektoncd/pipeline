@@ -7,6 +7,8 @@ Highlights:
 * [Version 1.0](#version-10)
 * [Workflow features](#workflow) such as conditional execution
 * [Triggering](#triggering)
+* [Security](#security)
+* [SCM](#scm)
 * [Library of shared Pipelines and Tasks](#community-library)
 
 _For comparison, Build CRD's 2018 roadmap is
@@ -55,6 +57,28 @@ Eventing, or support a duck-typing model to allow the eventing subsystem to be
 swappable in the future. This work has not yet been designed at this time, so
 there's a great opportunity in the community to pick up this work and make it
 shine.
+
+## Security
+
+Security requirements inform much of the overall Tekton pipelines design, but we
+still have lots of work to do. Declarative pipelines should make it possible to
+automatically vet delivery systems for compliance, secure software supply chains,
+auditability and other key features.
+
+## SCM
+
+Software Change Management systems are the start of any CI/CD system. Tekton
+supports the git protocol today with simple authentication requirements, but
+this is just the beginning. Users expect an SCM system to provide features like:
+
+- Code review management
+- Issue tracking
+- Pre-submit unit and integration testing
+- Linting
+- and more!
+
+Tekton should abstract these interactions (and providers!) away so Task authors can
+focus on adding value rather than implementing API wrappers.
 
 ## Community library
 
