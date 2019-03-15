@@ -1,0 +1,184 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: publish-tekton-pipelines
+spec:
+  inputs:
+    resources:
+    - name: source
+      type: git
+      targetPath: go/src/github.com/tektoncd/pipeline
+    - name: bucket
+      type: storage
+    params:
+    - name: versionTag
+      description: The X.Y.Z version that the artifacts should be tagged with
+    - name: imageRegistry
+      description: TODO(#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
+    - name: pathToProject
+      description: The path to the folder in the go/src dir that contains the project, which is used by `ko` to name the resulting images
+  outputs:
+    resources:
+    - name: bucket
+      type: storage
+    - name: builtBaseImage
+      type: image
+    - name: builtEntrypointImage
+      type: image
+    - name: builtKubeconfigWriterImage
+      type: image
+    - name: builtCredsInitImage
+      type: image
+    - name: builtGitInitImage
+      type: image
+    - name: builtNopImage
+      type: image
+    - name: builtBashImage
+      type: image
+    - name: builtGsutilImage
+      type: image
+    - name: builtControllerImage
+      type: image
+    - name: builtWebhookImage
+      type: image
+  steps:
+
+  - name: build-push-base-images
+    image: gcr.io/kaniko-project/executor
+    command:
+    - /kaniko/executor
+    args:
+    - --dockerfile=/workspace/go/src/github.com/tektoncd/pipeline/images/Dockerfile
+    - --destination=${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtBaseImage.url}
+    - --context=/workspace/go/src/github.com/tektoncd/pipeline
+
+  - name: create-ko-yaml
+    image: busybox
+    command:
+    - /bin/sh
+    args:
+    - -ce
+    - |
+      set -e
+      set -x
+
+      cat <<EOF > /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
+      # By default `ko` will build images on top of `distroless`
+      baseImageOverrides:
+        ${inputs.params.pathToProject}/${outputs.resources.builtCredsInitImage.url}: ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
+        ${inputs.params.pathToProject}/${outputs.resources.builtGitInitImage.url}: ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
+        ${inputs.params.pathToProject}/${outputs.resources.builtBashImage.url}: busybox # image should have shell in $PATH
+        ${inputs.params.pathToProject}/${outputs.resources.builtEntrypointImage.url}: busybox # image should have shell in $PATH
+        ${inputs.params.pathToProject}/${outputs.resources.builtGsutilImage.url}: google/cloud-sdk:alpine # image should have gsutil in $PATH
+      EOF
+
+      cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
+
+  # TODO(#631): publish a `ko` image
+  - name: install-ko
+    image: golang
+    env:
+    - name: GOBIN
+      value: /workspace
+    command: ["go"]
+    args:
+    - "get"
+    - "github.com/google/go-containerregistry/cmd/ko"
+
+  # TODO(#631): publish a `ko` image (which has golang)
+  - name: install-go
+    image: golang
+    env:
+    command:
+    - /bin/sh
+    args:
+    - -ce
+    - |
+      set -e
+      set -x
+      # TODO(#631): this is a hack to make the go binary available in a container that has gcloud
+      mkdir -p /workspace/golang
+      cp /usr/local/go/bin/go /workspace/golang/go
+      cp -R /usr/local/go /workspace/golang/localgo
+
+  - name: ensure-release-dirs-exist
+    image: busybox
+    command: ["mkdir"]
+    args:
+    - "-p"
+    - "/workspace/bucket/latest/"
+    - "/workspace/bucket/previous/"
+  
+  - name: run-ko
+    image: google/cloud-sdk
+    env:
+    - name: KO_DOCKER_REPO
+      value: ${inputs.params.imageRegistry}
+    - name: GOBIN
+      value: /workspace/golang
+    - name: GOPATH
+      value: /workspace/go
+    command:
+    - /bin/sh
+    args:
+    - -ce
+    - |
+      set -e
+      set -x
+
+      # TODO(#631) Hacks to have the go binary available in this container
+      ls -lA /workspace/golang
+      cp -R /workspace/golang/localgo/ /usr/local/go
+      cp /workspace/golang/go /usr/bin/go
+
+      # TODO(#631) This is a hack to auth with the default creds, need a solution that supports service accounts
+      gcloud auth configure-docker
+
+      # Publish images and create release.yaml
+      /workspace/ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/bucket/latest/release.yaml
+
+  - name: copy-to-tagged-bucket
+    image: busybox
+    workingDir: "/workspace/bucket"
+    command:
+    - /bin/sh
+    args:
+    - -ce
+    - |
+      mkdir -p /workspace/bucket/previous/${inputs.params.versionTag}/
+      cp /workspace/bucket/latest/release.yaml /workspace/bucket/previous/${inputs.params.versionTag}/release.yaml
+
+  # TODO(#216) Hopefully once we can avoid doing this parsing; on the other hand, `ko` doesn't
+  # really fit super well into our declarative model
+  - name: tag-images
+    image: google/cloud-sdk
+    command:
+    - /bin/bash
+    args:
+    - -ce
+    - |
+      set -e
+      set -x
+
+      REGIONS=(us eu asia)
+      IMAGES=(
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtEntrypointImage.url}
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtKubeconfigWriterImage.url}
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtCredsInitImage.url}
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtGitInitImage.url}
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtNopImage.url}
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtBashImage.url}
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtGsutilImage.url}
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtControllerImage.url}
+        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtWebhookImage.url}
+      )
+      BUILT_IMAGES=( $(/workspace/go/src/github.com/tektoncd/pipeline/tekton/koparse/koparse.py --path /workspace/bucket/latest/release.yaml --base ${inputs.params.imageRegistry}/${inputs.params.pathToProject} --images ${IMAGES[@]}) )
+
+      for IMAGE in "${BUILT_IMAGES[@]}"
+      do
+        for REGION in "${REGIONS[@]}"
+        do
+          IMAGE_WITHOUT_SHA=${IMAGE%%@*}
+          gcloud -q container images add-tag ${IMAGE} ${REGION}.${IMAGE_WITHOUT_SHA}:${inputs.params.versionTag}
+        done
+      done

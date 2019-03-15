@@ -309,6 +309,8 @@ spec:
       value: gcs
     - name: location
       value: gs://some-bucket
+    - name: dir
+      value: "y" # This can have any value to be considered "true"
 ```
 
 Params that can be added are the following:
@@ -361,7 +363,7 @@ service account.
        - name: location
          value: gs://some-private-bucket
        - name: dir
-         value: "directory"
+         value: "y"
      secrets:
        - fieldName: GOOGLE_APPLICATION_CREDENTIALS
          secretName: bucket-sa
