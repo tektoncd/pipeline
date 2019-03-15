@@ -52,9 +52,7 @@ You must install these tools:
    For development. A recent version of `ko` (after the 23th of
    February, see
    [google/go-containerregistry#380](https://github.com/google/go-containerregistry/pull/380))
-   is required for `pipeline` to work correctly.
-   
-   won't work).
+   is required for `pipeline` to work correctly.   
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
    interacting with your kube cluster
 
