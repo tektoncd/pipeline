@@ -36,3 +36,6 @@
 
 # JetBrains IDE config
 .idea
+
+# Python
+*.pyc

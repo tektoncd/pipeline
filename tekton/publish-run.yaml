@@ -1,0 +1,185 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: tekton-pipelines
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/tektoncd/pipeline # REPLACE with your own fork
+  - name: revision
+    value: master # REPLACE with your own commit
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: tekton-bucket
+spec:
+  type: storage
+  params:
+   - name: type
+     value: gcs
+   - name: location
+     value: gs://tekton-releases # REPLACE with your own bucket
+   - name: dir
+     value: "y"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: base-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: build-base # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: entrypoint-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/entrypoint # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: kubeconfigwriter-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/kubeconfigwriter # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: creds-init-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/creds-init # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: git-init-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/git-init # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nop-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/nop # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: bash-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/bash # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: gsutil-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/gsutil # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: controller-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/controller # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: webhook-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/webhook # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: publish-run
+spec:
+  taskRef:
+    name: publish-tekton-pipelines
+  trigger:
+    type: manual
+  inputs:
+    resources:
+    - name: source
+      resourceRef:
+        name: tekton-pipelines
+    - name: bucket
+      resourceRef:
+        name: tekton-bucket
+    params:
+    - name: versionTag
+      value: 0.0.0 # REPLACE with the version you want to release, for nightly releases, we might want to use `vYYYYMMDD-commit`
+    - name: imageRegistry
+      value: gcr.io/tekton-releases # REPLACE with your own registry
+    - name: pathToProject
+      value: github.com/tektoncd/pipeline
+  outputs:
+    resources:
+    - name: bucket
+      resourceRef:
+        name: tekton-bucket
+    - name: builtBaseImage
+      resourceRef:
+        name: base-image
+    - name: builtEntrypointImage
+      resourceRef:
+        name: entrypoint-image
+    - name: builtKubeconfigWriterImage
+      resourceRef:
+        name: kubeconfigwriter-image
+    - name: builtCredsInitImage
+      resourceRef:
+        name: creds-init-image
+    - name: builtGitInitImage
+      resourceRef:
+        name: git-init-image
+    - name: builtNopImage
+      resourceRef:
+        name: nop-image
+    - name: builtBashImage
+      resourceRef:
+        name: bash-image
+    - name: builtGsutilImage
+      resourceRef:
+        name: gsutil-image
+    - name: builtControllerImage
+      resourceRef:
+        name: controller-image
+    - name: builtWebhookImage
+      resourceRef:
+        name: webhook-image
