@@ -28,9 +28,8 @@ To add the Tekton Pipelines component to an existing cluster:
 
 1. Run the
    [`kubectl apply`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#apply)
-   command to install
-   [Tekton Pipelines](https://github.com/tektoncd/pipeline) and its
-   dependencies:
+   command to install [Tekton Pipelines](https://github.com/tektoncd/pipeline)
+   and its dependencies:
 
    ```bash
    kubectl apply --filename https://storage.googleapis.com/knative-releases/build-pipeline/latest/release.yaml

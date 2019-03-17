@@ -4,12 +4,12 @@ This is an incomplete list of work we hope to accomplish in 2019.
 
 Highlights:
 
-* [Version 1.0](#version-10)
-* [Workflow features](#workflow) such as conditional execution
-* [Triggering](#triggering)
-* [Security](#security)
-* [SCM](#scm)
-* [Library of shared Pipelines and Tasks](#community-library)
+- [Version 1.0](#version-10)
+- [Workflow features](#workflow) such as conditional execution
+- [Triggering](#triggering)
+- [Security](#security)
+- [SCM](#scm)
+- [Library of shared Pipelines and Tasks](#community-library)
 
 _For comparison, Build CRD's 2018 roadmap is
 [here](https://github.com/knative/build/blob/master/roadmap-2018.md)._
@@ -23,10 +23,10 @@ where backwards incompatible changes must be made across multiple releases.
 This would also imply that the project is in a state where it is safe for other
 projects to rely on it, for example:
 
-- If users of [`knative/build`](https://github.com/knative/build) want to migrate to
-  [TaskRun](docs/taskruns.md)
-- If [`knative/serving`](https://github.com/knative/serving) would like to take a
-  dependency on this project
+- If users of [`knative/build`](https://github.com/knative/build) want to
+  migrate to [TaskRun](docs/taskruns.md)
+- If [`knative/serving`](https://github.com/knative/serving) would like to take
+  a dependency on this project
 
 ## Workflow
 
@@ -62,8 +62,8 @@ shine.
 
 Security requirements inform much of the overall Tekton pipelines design, but we
 still have lots of work to do. Declarative pipelines should make it possible to
-automatically vet delivery systems for compliance, secure software supply chains,
-auditability and other key features.
+automatically vet delivery systems for compliance, secure software supply
+chains, auditability and other key features.
 
 ## SCM
 
@@ -77,8 +77,8 @@ this is just the beginning. Users expect an SCM system to provide features like:
 - Linting
 - and more!
 
-Tekton should abstract these interactions (and providers!) away so Task authors can
-focus on adding value rather than implementing API wrappers.
+Tekton should abstract these interactions (and providers!) away so Task authors
+can focus on adding value rather than implementing API wrappers.
 
 ## Community library
 
