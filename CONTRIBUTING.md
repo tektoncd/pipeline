@@ -80,7 +80,8 @@ You can see more details (including a burndown, issues in epics, etc.) on our
 [zenhub board](https://app.zenhub.com/workspaces/pipelines-5bc61a054b5806bc2bed4fb2/boards?repos=146641150).
 To see this board, you must:
 
-- Ask [an OWNER](OWNERS) via [slack](https://knative.slack.com) for an invitation
+- Ask [an OWNER](OWNERS) via [slack](https://knative.slack.com) for an
+  invitation
 - Add [the zenhub browser extension](https://www.zenhub.com/extension) to see
   new info via GitHub (or just use zenhub.com directly)
 
@@ -118,8 +119,8 @@ Before a PR can be merged, it must have both `/lgtm` AND `/approve`:
 - `/approve` can be added only by
   [OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS)
 
-[OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS)
-automatically get `/approve` but still will need an `/lgtm` to merge.
+[OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS) automatically
+get `/approve` but still will need an `/lgtm` to merge.
 
 The merge will happen automatically once the PR has both `/lgtm` and `/approve`,
 and all tests pass. If you don't want this to happen you should
