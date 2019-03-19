@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 """
 koparse.py parses release.yaml files from `ko`
@@ -20,13 +20,14 @@ import os
 import re
 import string
 import sys
+from typing import List
 
 
 DIGEST_MARKER = "@sha256"
 
 
 class ImagesMismatchError(Exception):
-    def __init__(self, missing, extra):
+    def __init__(self, missing: List[str], extra: List[str]):
         self.missing = missing
         self.extra = extra
 
@@ -37,18 +38,18 @@ class ImagesMismatchError(Exception):
         if self.extra:
             errs.append("Images %s were present but not expected." %
                         self.extra)
-        return string.join(errs, " ")
+        return " ".join(errs)
 
 
 class BadActualImageFormatError(Exception):
-    def __init__(self, image):
+    def __init__(self, image: str):
         self.image = image
 
     def __str__(self):
         return "Format of image %s was unexpected, did not contain %s" % (self.image, DIGEST_MARKER)
 
 
-def parse_release(base, path):
+def parse_release(base: str, path: str) -> List[str]:
     """Extracts built images from the release.yaml at path
 
     Args:
@@ -61,13 +62,13 @@ def parse_release(base, path):
     images = []
     with open(path) as f:
         for line in f:
-            match = re.search(base + ".*@sha256:[0-9a-f]*", line)
+            match = re.search(base + ".*" + DIGEST_MARKER + ":[0-9a-f]*", line)
             if match:
                 images.append(match.group(0))
     return images
 
 
-def compare_expected_images(expected, actual):
+def compare_expected_images(expected: List[str], actual: List[str]) -> None:
     """Ensures that the list of actual images includes only the expected images
 
     Args:
@@ -80,8 +81,7 @@ def compare_expected_images(expected, actual):
         if DIGEST_MARKER not in image:
             raise BadActualImageFormatError(image)
 
-    actual_no_digest = [string.split(image, DIGEST_MARKER)[0]
-                        for image in actual]
+    actual_no_digest = [image.split(DIGEST_MARKER)[0] for image in actual]
 
     missing = set(expected) - set(actual_no_digest)
     extra = set(actual_no_digest) - set(expected)
