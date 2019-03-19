@@ -1,0 +1,27 @@
+
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: publish-ci-images
+spec:
+  inputs:
+    resources:
+    - name: source
+      type: git
+    params:
+    - name: imageRegistry
+      description: TODO(#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
+  outputs:
+    resources:
+    - name: builtKoImage
+      type: image
+  steps:
+
+  - name: build-push-ko-image
+    image: gcr.io/kaniko-project/executor
+    command:
+    - /kaniko/executor
+    args:
+    - --dockerfile=/workspace/source/tekton/ko/Dockerfile
+    - --destination=${inputs.params.imageRegistry}/${outputs.resources.builtKoImage.url}
+    - --context=/workspace/source

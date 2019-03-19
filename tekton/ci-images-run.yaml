@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: tekton-pipelines
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/tektoncd/pipeline # REPLACE with your own fork
+  - name: revision
+    value: master # REPLACE with your own commit
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: ko-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: ko-ci # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: publish-ci-images-run
+spec:
+  taskRef:
+    name: publish-ci-images
+  trigger:
+    type: manual
+  inputs:
+    resources:
+    - name: source
+      resourceRef:
+        name: tekton-pipelines
+    params:
+    - name: imageRegistry
+      value: gcr.io/tekton-releases # REPLACE with your own registry
+  outputs:
+    resources:
+    - name: builtKoImage
+      resourceRef:
+        name: ko-image
