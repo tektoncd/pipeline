@@ -74,33 +74,6 @@ spec:
 
       cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
 
-  # TODO(#631): publish a `ko` image
-  - name: install-ko
-    image: golang
-    env:
-    - name: GOBIN
-      value: /workspace
-    command: ["go"]
-    args:
-    - "get"
-    - "github.com/google/go-containerregistry/cmd/ko"
-
-  # TODO(#631): publish a `ko` image (which has golang)
-  - name: install-go
-    image: golang
-    env:
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
-      set -e
-      set -x
-      # TODO(#631): this is a hack to make the go binary available in a container that has gcloud
-      mkdir -p /workspace/golang
-      cp /usr/local/go/bin/go /workspace/golang/go
-      cp -R /usr/local/go /workspace/golang/localgo
-
   - name: ensure-release-dirs-exist
     image: busybox
     command: ["mkdir"]
@@ -108,14 +81,13 @@ spec:
     - "-p"
     - "/workspace/bucket/latest/"
     - "/workspace/bucket/previous/"
-  
+
   - name: run-ko
-    image: google/cloud-sdk
+    # TODO(#639) we should be able to use the image built by an upstream Task here instead of hardcoding
+    image: gcr.io/tekton-releases/ko-ci
     env:
     - name: KO_DOCKER_REPO
       value: ${inputs.params.imageRegistry}
-    - name: GOBIN
-      value: /workspace/golang
     - name: GOPATH
       value: /workspace/go
     command:
@@ -126,16 +98,11 @@ spec:
       set -e
       set -x
 
-      # TODO(#631) Hacks to have the go binary available in this container
-      ls -lA /workspace/golang
-      cp -R /workspace/golang/localgo/ /usr/local/go
-      cp /workspace/golang/go /usr/bin/go
-
       # TODO(#631) This is a hack to auth with the default creds, need a solution that supports service accounts
       gcloud auth configure-docker
 
       # Publish images and create release.yaml
-      /workspace/ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/bucket/latest/release.yaml
+      ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/bucket/latest/release.yaml
 
   - name: copy-to-tagged-bucket
     image: busybox

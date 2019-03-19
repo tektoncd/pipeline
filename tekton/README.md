@@ -13,6 +13,9 @@ to invoke these `Pipelines` automatically, but for now we will have to invoke th
 
 The `Tasks` which make up our release `Pipeline` are:
 
+* [`ci-images.yaml`](ci-images.yaml) - This `Task` uses [`kaniko`](https://github.com/GoogleContainerTools/kaniko)
+  to build and publish [images for the CI itself](#supporting-images), which can then be used as `steps` in
+  downstream `Tasks`
 * [`publish.yaml`](publish.yaml) - This `Task` uses [`kaniko`](https://github.com/GoogleContainerTools/kaniko)
   to build and publish base images, and uses [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko)
   to build all of the container images we release and generate the `release.yaml`
@@ -30,6 +33,14 @@ and [`PipelineResources`](https://github.com/knative/build-pipeline/blob/master/
 TODO(#569): Normally we'd use the image `PipelineResources` to control which image registry the images are pushed to.
 However since we have so many images, all going to the same registry, we are cheating and using a parameter
 for the image registry instead.
+
+* [`ciimages-run.yaml`](ci-images-run.yaml) - This example `TaskRun` and `PipelineResources` demonstrate
+  how to invoke `ci-images.yaml`:
+
+  ```bash
+  kubectl apply -f tekton/ci-images.yaml
+  kubectl apply -f tekton/ci-images-run.yaml
+  ```
 
 * [`publish-run.yaml`](publish-run.yaml) - This example `TaskRun` and `PipelineResources` demonstrate
   how to invoke `publish.yaml`:
@@ -69,3 +80,23 @@ users.
 Some supporting scripts have been written using Python 2.7:
 
 * [koparse](./koparse) - Contains logic for parsing `release.yaml` files created by `ko`
+
+## Supporting images
+
+TODO(#639) Ensure we are using the images that are published by the `Pipeline` itself.
+
+These images are built and published to be used by the release Pipeline itself.
+
+### ko image
+
+In order to run `ko`, and to be able to use a cluster's default credentials, we need an image which
+contains:
+
+* `ko`
+* `golang` - Required by `ko` to build
+* `gcloud` - Required to auth with default namespace credentials
+
+The image which we use for this is built from [tekton/ko/Dockerfile](./ko/Dockerfile).
+
+_[go-containerregistry#383](https://github.com/google/go-containerregistry/issues/383) is about publishing
+a `ko` image, which hopefully we'll be able to move it._
