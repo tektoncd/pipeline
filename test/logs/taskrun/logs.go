@@ -71,37 +71,25 @@ func TailLogs(ctx context.Context, cfg *rest.Config, name, namespace string, out
 	}
 
 	for i, container := range pod.Status.InitContainerStatuses {
-		pod, err := watcher.WaitForPod(ctx, func(p *v1.Pod) bool {
-			waiting := p.Status.InitContainerStatuses[i].State.Waiting
-			if waiting == nil {
-				return true
+		terminated, err := waitAndLog(ctx, out, watcher, pods, getInitContainerStatuses, container.Name, name, i)
+		if err != nil {
+			return err
+		}
+		if terminated.ExitCode != 0 {
+			message := "Build Failed"
+			if terminated.Message != "" {
+				message += ": " + terminated.Message
 			}
 
-			if waiting.Message != "" {
-				fmt.Fprintln(out, color.Red(fmt.Sprintf("[%s] %s", container.Name, waiting.Message)))
-			}
-
-			return false
-		})
+			fmt.Fprintln(out, color.Red(fmt.Sprintf("[%s] %s", container.Name, message)))
+			return nil
+		}
+	}
+	for i, container := range pod.Status.ContainerStatuses {
+		terminated, err := waitAndLog(ctx, out, watcher, pods, getContainerStatuses, container.Name, name, i)
 		if err != nil {
-			return fmt.Errorf("waiting for container: %v", err)
+			return err
 		}
-
-		container := pod.Status.InitContainerStatuses[i]
-		followContainer := container.State.Terminated == nil
-		if err := printContainerLogs(ctx, out, pods, podName, container.Name, followContainer, name); err != nil {
-			return fmt.Errorf("printing logs: %v", err)
-		}
-
-		pod, err = watcher.WaitForPod(ctx, func(p *v1.Pod) bool {
-			return p.Status.InitContainerStatuses[i].State.Terminated != nil
-		})
-		if err != nil {
-			return fmt.Errorf("waiting for container termination: %v", err)
-		}
-
-		container = pod.Status.InitContainerStatuses[i]
-		terminated := container.State.Terminated
 		if terminated.ExitCode != 0 {
 			message := "Build Failed"
 			if terminated.Message != "" {
@@ -113,6 +101,48 @@ func TailLogs(ctx context.Context, cfg *rest.Config, name, namespace string, out
 		}
 	}
 	return nil
+}
+
+func waitAndLog(ctx context.Context, out io.Writer, watcher pod.Watcher, pods corev1.PodInterface, getStatusesFn func(*v1.Pod) []v1.ContainerStatus, containerName, taskRunName string, i int) (*v1.ContainerStateTerminated, error) {
+	pod, err := watcher.WaitForPod(ctx, func(p *v1.Pod) bool {
+		waiting := getStatusesFn(p)[i].State.Waiting
+		if waiting == nil {
+			return true
+		}
+
+		if waiting.Message != "" {
+			fmt.Fprintln(out, color.Red(fmt.Sprintf("[%s] %s", containerName, waiting.Message)))
+		}
+
+		return false
+	})
+	if err != nil {
+		return nil, fmt.Errorf("waiting for container: %v", err)
+	}
+
+	container := getStatusesFn(pod)[i]
+	followContainer := container.State.Terminated == nil
+	if err := printContainerLogs(ctx, out, pods, pod.Name, container.Name, followContainer, taskRunName); err != nil {
+		return nil, fmt.Errorf("printing logs: %v", err)
+	}
+
+	pod, err = watcher.WaitForPod(ctx, func(p *v1.Pod) bool {
+		return getStatusesFn(p)[i].State.Terminated != nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("waiting for container termination: %v", err)
+	}
+
+	container = getStatusesFn(pod)[i]
+	return container.State.Terminated, nil
+}
+
+func getContainerStatuses(pod *v1.Pod) []v1.ContainerStatus {
+	return pod.Status.ContainerStatuses
+}
+
+func getInitContainerStatuses(pod *v1.Pod) []v1.ContainerStatus {
+	return pod.Status.InitContainerStatuses
 }
 
 func printContainerLogs(ctx context.Context, out io.Writer, pods corev1.PodExpansion, podName, containerName string, follow bool, name string) error {
