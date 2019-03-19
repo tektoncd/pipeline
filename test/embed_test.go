@@ -39,7 +39,7 @@ func getEmbeddedTask(namespace string, args []string) *v1alpha1.Task {
 			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
 			tb.Step("read", "ubuntu",
 				tb.Command("/bin/bash"),
-				tb.Args("-c", "cat /workspace/docs/README.md"),
+				tb.Args("-c", "cat /workspace/docs/LICENSE"),
 			),
 			tb.Step("helloworld-busybox", "busybox", tb.Command(args...)),
 		))
@@ -50,7 +50,7 @@ func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 		Type: v1alpha1.PipelineResourceTypeGit,
 		Params: []v1alpha1.Param{{
 			Name:  "URL",
-			Value: "http://github.com/knative/docs",
+			Value: "https://github.com/knative/docs",
 		}},
 	}
 	return tb.TaskRun(embedTaskRunName, namespace,
