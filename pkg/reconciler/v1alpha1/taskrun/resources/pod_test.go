@@ -327,7 +327,8 @@ func TestBuildStatusFromPod(t *testing.T) {
 		podStatus: corev1.PodStatus{
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init; ignored
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name: "state-name",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -354,7 +355,8 @@ func TestBuildStatusFromPod(t *testing.T) {
 				// creds-init; ignored.
 			}, {
 				// git-init; ignored.
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name: "state-name",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -388,7 +390,8 @@ func TestBuildStatusFromPod(t *testing.T) {
 				// first git-init; ignored.
 			}, {
 				// second git-init; ignored.
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name: "state-name",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -440,10 +443,11 @@ func TestBuildStatusFromPod(t *testing.T) {
 	}, {
 		desc: "failure-terminated",
 		podStatus: corev1.PodStatus{
-			Phase: corev1.PodFailed,
+			Phase:                 corev1.PodFailed,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name:    "status-name",
 				ImageID: "image-id",
 				State: corev1.ContainerState{
@@ -492,10 +496,11 @@ func TestBuildStatusFromPod(t *testing.T) {
 	}, {
 		desc: "pending-waiting-message",
 		podStatus: corev1.PodStatus{
-			Phase: corev1.PodPending,
+			Phase:                 corev1.PodPending,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name: "status-name",
 				State: corev1.ContainerState{
 					Waiting: &corev1.ContainerStateWaiting{
