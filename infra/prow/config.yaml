@@ -1,6 +1,6 @@
 plank:
   job_url_template: 'https://tekton-releases.appspot.com/build/tekton-prow/{{if or (eq .Spec.Type "presubmit") (eq .Spec.Type "batch")}}pr-logs/pull{{with .Spec.Refs}}/{{.Org}}_{{.Repo}}{{end}}{{else}}logs{{end}}{{if eq .Spec.Type "presubmit"}}/{{with index .Spec.Refs.Pulls 0}}{{.Number}}{{end}}{{else if eq .Spec.Type "batch"}}/batch{{end}}/{{.Spec.Job}}/{{.Status.BuildID}}/'
-  report_template: '[Full PR test history](https://tekton-releases.appspot.com/pr/{{.Spec.Refs.Org}}_{{.Spec.Refs.Repo}}/{{with index .Spec.Refs.Pulls 0}}{{.Number}}{{end}}). [Your PR dashboard](http://34.95.121.238/pr/{{with index .Spec.Refs.Pulls 0}}{{.Author}}{{end}}).'
+  report_template: '[Full PR test history](https://tekton-releases.appspot.com/pr/{{.Spec.Refs.Org}}_{{.Spec.Refs.Repo}}/{{with index .Spec.Refs.Pulls 0}}{{.Number}}{{end}}). [Your PR dashboard](https://prow.tekton.dev/pr/{{with index .Spec.Refs.Pulls 0}}{{.Author}}{{end}}).'
   pod_pending_timeout: 60m
   default_decoration_config:
     timeout: 7200000000000 # 2h
@@ -37,7 +37,7 @@ tide:
     - do-not-merge/work-in-progress
   merge_method:
     tektoncd/pipeline: rebase
-  target_url: http://34.95.121.238/tide
+  target_url: https://prow.tekton.dev/tide
 
 presubmits:
   tektoncd/pipeline:

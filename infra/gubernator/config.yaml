@@ -15,14 +15,14 @@
 
 default_external_services:
   gcs_pull_prefix: tekton-prow/pr-logs/pull
-  prow_url: 34.95.121.238
+  prow_url: tekton.dev
 default_org: tektoncd
 default_repo: pipeline
 external_services:
   tektoncd:
     gcs_bucket: tekton-prow/
     gcs_pull_prefix: tekton-prow/pr-logs/pull
-    prow_url: 34.95.121.238
+    prow_url: tekton.dev
 jobs:
   tekton-prow/pr-logs/directory/:
   - pull-tekton-pipeline-build-tests

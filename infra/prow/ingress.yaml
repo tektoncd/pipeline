@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    certmanager.k8s.io/acme-http01-edit-in-place: "true"
+    certmanager.k8s.io/cluster-issuer: letsencrypt-prod
+  name: ing
+  namespace: default
+spec:
+  tls:
+  - secretName: prow-tekton-dev-tls
+    hosts:
+    - prow.tekton.dev
+  rules:
+  - http:
+      paths:
+      - backend:
+          serviceName: deck
+          servicePort: 80
+        path: /*
+      - backend:
+          serviceName: hook
+          servicePort: 8888
+        path: /hook    
