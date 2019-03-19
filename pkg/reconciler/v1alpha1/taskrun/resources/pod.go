@@ -338,22 +338,11 @@ func BuildStatusFromPod(p *corev1.Pod, buildSpec v1alpha1.BuildSpec) v1alpha1.Bu
 		StartTime: &p.CreationTimestamp,
 	}
 
-	// Always ignore the first pod status, which is creds-init.
-	skip := 1
-	if buildSpec.Source != nil {
-		// If the build specifies source, skip another container status, which
-		// is the source-fetching container.
-		skip++
-	}
-	// Also skip multiple sourcees specified by the build.
-	skip += len(buildSpec.Sources)
-	if skip <= len(p.Status.InitContainerStatuses) {
-		for _, s := range p.Status.InitContainerStatuses[skip:] {
-			if s.State.Terminated != nil {
-				status.StepsCompleted = append(status.StepsCompleted, s.Name)
-			}
-			status.StepStates = append(status.StepStates, s.State)
+	for _, s := range p.Status.ContainerStatuses {
+		if s.State.Terminated != nil {
+			status.StepsCompleted = append(status.StepsCompleted, s.Name)
 		}
+		status.StepStates = append(status.StepStates, s.State)
 	}
 
 	switch p.Status.Phase {
@@ -389,7 +378,7 @@ func BuildStatusFromPod(p *corev1.Pod, buildSpec v1alpha1.BuildSpec) v1alpha1.Bu
 
 func getWaitingMessage(pod *corev1.Pod) string {
 	// First, try to surface reason for pending/unknown about the actual build step.
-	for _, status := range pod.Status.InitContainerStatuses {
+	for _, status := range pod.Status.ContainerStatuses {
 		wait := status.State.Waiting
 		if wait != nil && wait.Message != "" {
 			return fmt.Sprintf("build step %q is pending with reason %q",
@@ -416,7 +405,7 @@ func getWaitingMessage(pod *corev1.Pod) string {
 
 func getFailureMessage(pod *corev1.Pod) string {
 	// First, try to surface an error about the actual build step that failed.
-	for _, status := range pod.Status.InitContainerStatuses {
+	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
 		if term != nil && term.ExitCode != 0 {
 			return fmt.Sprintf("build step %q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s",
