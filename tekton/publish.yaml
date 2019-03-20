@@ -101,6 +101,9 @@ spec:
       # TODO(#631) This is a hack to auth with the default creds, need a solution that supports service accounts
       gcloud auth configure-docker
 
+      # ko requires this variable to be set in order to set image creation timestamps correctly https://github.com/google/go-containerregistry/pull/146
+      export SOURCE_DATE_EPOCH=`date +%s`
+
       # Publish images and create release.yaml
       ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/bucket/latest/release.yaml
 
