@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	artifacts "github.com/knative/build-pipeline/pkg/artifacts"
-	listers "github.com/knative/build-pipeline/pkg/client/listers/pipeline/v1alpha1"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
+	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"

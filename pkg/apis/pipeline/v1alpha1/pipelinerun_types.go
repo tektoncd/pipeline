@@ -20,7 +20,6 @@ import (
 	"time"
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
-	"github.com/knative/pkg/webhook"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,9 +33,6 @@ var (
 		Kind:    pipelineRunControllerName,
 	}
 )
-
-// Assert that TaskRun implements the GenericCRD interface.
-var _ webhook.GenericCRD = (*TaskRun)(nil)
 
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {

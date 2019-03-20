@@ -19,7 +19,7 @@ package resources
 import (
 	"path/filepath"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 // GetOutputSteps will add the correct `path` to the input resources for pt

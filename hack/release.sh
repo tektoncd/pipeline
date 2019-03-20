@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+export SOURCE_DATE_EPOCH=`date +%s`
+
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/release.sh
 
 # Local generated yaml file
@@ -28,7 +30,7 @@ function build_release() {
     echo "Using .ko.yaml.release for base image overrides"
   fi
   # Build the base image for creds-init and git images.
-  docker build -t "${KO_DOCKER_REPO}/github.com/knative/build-pipeline/build-base" -f images/Dockerfile images/
+  docker build -t "${KO_DOCKER_REPO}/github.com/tektoncd/pipeline/build-base" -f images/Dockerfile images/
   echo "Building build-pipeline"
   ko resolve ${KO_FLAGS} -f config/ > ${OUTPUT_YAML}
   YAMLS_TO_PUBLISH="${OUTPUT_YAML}"

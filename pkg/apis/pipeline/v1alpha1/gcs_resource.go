@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/knative/build-pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -121,6 +121,7 @@ func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	return []corev1.Container{{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        *gsutilImage,
+		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
 		Env:          envVars,
@@ -144,6 +145,7 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 		CreateDirContainer(s.Name, s.DestinationDir), {
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        *gsutilImage,
+			Command:      []string{"/ko-app/gsutil"},
 			Args:         args,
 			Env:          envVars,
 			VolumeMounts: secretVolumeMount,

@@ -1,6 +1,6 @@
 # ![pipe](./pipe.png) Tekton Pipelines
 
-[![Go Report Card](https://goreportcard.com/badge/knative/build-pipeline)](https://goreportcard.com/report/knative/build-pipeline)
+[![Go Report Card](https://goreportcard.com/badge/tektoncd/pipeline)](https://goreportcard.com/report/tektoncd/pipeline)
 
 The Tekton Pipelines project provides k8s-style resources for declaring
 CI/CD-style pipelines.
@@ -27,11 +27,8 @@ Tekton Pipelines are **Typed**:
 ## Want to start using Pipelines
 
 - [Installing Tekton Pipelines](docs/install.md)
-
 - Jump in with [the tutorial!](docs/tutorial.md)
-
 - [Read about it](/docs/README.md)
-
 - Look at [some examples](/examples)
 
 _See [our API compatibility policy](api_compatibility_policy.md) for info on the

@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	tb "github.com/knative/build-pipeline/test/builder"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 const (
@@ -39,7 +39,7 @@ func getEmbeddedTask(namespace string, args []string) *v1alpha1.Task {
 			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
 			tb.Step("read", "ubuntu",
 				tb.Command("/bin/bash"),
-				tb.Args("-c", "cat /workspace/docs/README.md"),
+				tb.Args("-c", "cat /workspace/docs/LICENSE"),
 			),
 			tb.Step("helloworld-busybox", "busybox", tb.Command(args...)),
 		))
@@ -50,7 +50,7 @@ func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 		Type: v1alpha1.PipelineResourceTypeGit,
 		Params: []v1alpha1.Param{{
 			Name:  "URL",
-			Value: "http://github.com/knative/docs",
+			Value: "https://github.com/knative/docs",
 		}},
 	}
 	return tb.TaskRun(embedTaskRunName, namespace,
@@ -66,6 +66,7 @@ func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 func TestTaskRun_EmbeddedResource(t *testing.T) {
 	logger := logging.GetContextLogger(t.Name())
 	c, namespace := setup(t, logger)
+	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
 	defer tearDown(t, logger, c, namespace)

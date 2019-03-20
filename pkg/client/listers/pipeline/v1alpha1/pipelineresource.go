@@ -16,7 +16,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
+	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"

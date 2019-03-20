@@ -561,7 +561,7 @@ Tekton Pipelines is known to work with:
   this requires the _edge_ version of Docker to be installed. A known good
   configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space
 - The following
-  [prerequisites](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#requirements)
+  [prerequisites](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements)
 - Setting `host.docker.local:5000` as an insecure registry with Docker for
   Desktop (set via preferences or configuration, see the
   [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/)

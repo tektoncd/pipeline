@@ -187,6 +187,17 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv
 		return nil, fmt.Errorf("Failed to parse image %s: %v", image, err)
 	}
 
+	// First try to get the image anonymously
+	// FIXME(vdemeester): once google.Keychain fails smoother, this could be removed
+	// See https://gist.github.com/vdemeester/c397ffb3fd19b4cc2ba3243dc4db9f83 for the current errors
+	// with google.Keychain in case `gcloud` command isn't available in the cluster.'
+	if img, err := remote.Image(ref); err == nil {
+		// Calling ConfigFile to actually try to connect to the remote registry
+		if _, err := img.ConfigFile(); err == nil {
+			return img, nil
+		}
+	}
+
 	kc, err := k8schain.New(kubeclient, k8schain.Options{
 		Namespace:          build.Namespace,
 		ServiceAccountName: build.Spec.ServiceAccountName,

@@ -10,6 +10,7 @@ To get started developing, see our [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 In this file you'll find info on:
 
+- [Contacting other contributors](#contact)
 - [Principles](#principles)
 - [Development process](#development-process)
 - [The pull request process](#pull-request-process) and
@@ -19,10 +20,20 @@ In this file you'll find info on:
 - [Finding something to work on](#finding-something-to-work-on)
 - [The roadmap](#roadmap)
 - [API compatibility policy](#api-compatibility-policy)
-- [Contacting other contributors](#contact)
 
 _See also
 [the contribution guidelines for Knative](https://github.com/knative/docs/blob/master/community/CONTRIBUTING.md)._
+
+## Contact
+
+This work is being done by the Tekton Pipeline working group.
+If you are interested please join our meetings
+[at 4pm GMT on Thursdays](https://calendar.google.com/event?action=TEMPLATE&tmeid=M3NtMDU5M2Y0aTdkMDRqNjVjYXM1N3YyY2RfMjAxOTAzMjFUMTYwMDAwWiBnb29nbGUuY29tX2Qzb3Zjdm8xcDMyMTloOTg5NTczdjk4Zm5zQGc&tmsrc=google.com_d3ovcvo1p3219h989573v98fns%40group.calendar.google.com&scp=ALL)
+and or in slack at [`#build-pipeline`](https://knative.slack.com/messages/build-pipeline)!
+
+All docs shared with this group are made visible to members of
+[tekton-dev@](https://groups.google.com/forum/#!forum/tekton-dev), please join
+if you are interested!
 
 ## Principles
 
@@ -38,8 +49,8 @@ Unit test coverage should increase or stay the same with every PR.
 
 This means that most PRs should include both:
 
-- [Tests](https://github.com/knative/build-pipeline/tree/master/test#tests)
-- [Documentation](https://github.com/knative/build-pipeline/tree/master/docs)
+- [Tests](https://github.com/tektoncd/pipeline/tree/master/test#tests)
+- [Documentation](https://github.com/tektoncd/pipeline/tree/master/docs)
   explaining features being added, including updates to
   [DEVELOPMENT.md](./DEVELOPMENT.md) if required
 
@@ -80,7 +91,8 @@ You can see more details (including a burndown, issues in epics, etc.) on our
 [zenhub board](https://app.zenhub.com/workspaces/pipelines-5bc61a054b5806bc2bed4fb2/boards?repos=146641150).
 To see this board, you must:
 
-- Ask [an OWNER](OWNER) via [slack](https://knative.slack.com) for an invitation
+- Ask [an OWNER](OWNERS) via [slack](https://knative.slack.com) for an
+  invitation
 - Add [the zenhub browser extension](https://www.zenhub.com/extension) to see
   new info via GitHub (or just use zenhub.com directly)
 
@@ -101,7 +113,7 @@ _See also
 
 Prow is configured in
 [the knative `config.yaml` in `knative/test-infra`](https://github.com/knative/test-infra/blob/master/ci/prow/config.yaml)
-via the sections for `knative/build-pipeline`.
+via the sections for `tektoncd/pipeline`.
 
 ### Prow commands
 
@@ -116,10 +128,10 @@ Before a PR can be merged, it must have both `/lgtm` AND `/approve`:
 - `/lgtm` can be added by anyone in
   [the knative org](https://github.com/orgs/knative/people)
 - `/approve` can be added only by
-  [OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS)
+  [OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS)
 
-[OWNERS](https://github.com/knative/build-pipeline/blob/master/OWNERS)
-automatically get `/approve` but still will need an `/lgtm` to merge.
+[OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS) automatically
+get `/approve` but still will need an `/lgtm` to merge.
 
 The merge will happen automatically once the PR has both `/lgtm` and `/approve`,
 and all tests pass. If you don't want this to happen you should
@@ -185,9 +197,9 @@ you can find something interesting to work on:
 
 - To find issues that we particularly would like contributors to tackle, look
   for
-  [issues with the "help wanted" label](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+  [issues with the "help wanted" label](https://github.com/tektoncd/pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
 - Issues that are good for new folks will additionally be marked with
-  ["good first issue"](https://github.com/knative/build-pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+  ["good first issue"](https://github.com/tektoncd/pipeline/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 ### Assigning yourself an issue
 
@@ -224,14 +236,3 @@ The project's roadmap for 2019 is published [here](./roadmap-2019.md).
 
 The API compatibility policy (i.e. the policy for making backwards incompatible
 API changes) can be found [here](api_compatibility_policy.md).
-
-## Contact
-
-This work is being done by
-[the Build CRD working group](https://github.com/knative/docs/blob/master/community/WORKING-GROUPS.md#build).
-If you are interested please join our meetings and or in slack at
-[`#build-pipeline`](https://knative.slack.com/messages/build-pipeline)!
-
-All docs shared with this group are made visible to members of
-[knative-dev@](https://groups.google.com/forum/#!forum/knative-dev), please join
-if you are interested!

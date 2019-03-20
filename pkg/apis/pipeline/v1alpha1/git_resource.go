@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/knative/build-pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -115,6 +115,7 @@ func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	return []corev1.Container{{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
 		Image:      *gitImage,
+		Command:    []string{"/ko-app/git-init"},
 		Args:       args,
 		WorkingDir: workspaceDir,
 	}}, nil

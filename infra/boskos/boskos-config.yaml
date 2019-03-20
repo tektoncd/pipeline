@@ -1,0 +1,19 @@
+apiVersion: v1
+data:
+  config: |
+    resources:
+    - names:
+      - tekton-prow-0
+      - tekton-prow-1
+      - tekton-prow-2
+      - tekton-prow-3
+      - tekton-prow-4
+      - tekton-prow-5
+      state: dirty
+      type: gke-project
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: resources
+  namespace: test-pods
+

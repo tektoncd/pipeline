@@ -21,7 +21,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/pkg/apis"
-	"github.com/knative/pkg/webhook"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -56,9 +55,6 @@ type TaskSpec struct {
 // Check that Task may be validated and defaulted.
 var _ apis.Validatable = (*Task)(nil)
 var _ apis.Defaultable = (*Task)(nil)
-
-// Assert that Task implements the GenericCRD interface.
-var _ webhook.GenericCRD = (*Task)(nil)
 
 // +genclient
 // +genclient:noStatus

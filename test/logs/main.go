@@ -24,9 +24,9 @@ import (
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-	"github.com/knative/build-pipeline/test/logs/color"
-	"github.com/knative/build-pipeline/test/logs/pipelinerun"
-	trlogs "github.com/knative/build-pipeline/test/logs/taskrun"
+	"github.com/tektoncd/pipeline/test/logs/color"
+	"github.com/tektoncd/pipeline/test/logs/pipelinerun"
+	trlogs "github.com/tektoncd/pipeline/test/logs/taskrun"
 
 	"k8s.io/client-go/tools/clientcmd"
 )

@@ -17,8 +17,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	tb "github.com/knative/build-pipeline/test/builder"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestApplyParameters(t *testing.T) {

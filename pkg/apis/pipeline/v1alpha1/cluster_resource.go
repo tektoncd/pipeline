@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/knative/build-pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -168,8 +168,9 @@ func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error)
 	}
 
 	clusterContainer := corev1.Container{
-		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("kubeconfig"),
-		Image: *kubeconfigWriterImage,
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("kubeconfig"),
+		Image:   *kubeconfigWriterImage,
+		Command: []string{"/ko-app/kubeconfigwriter"},
 		Args: []string{
 			"-clusterConfig", s.String(),
 		},

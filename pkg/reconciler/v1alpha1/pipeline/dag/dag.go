@@ -19,8 +19,8 @@ package dag
 import (
 	"fmt"
 
-	"github.com/knative/build-pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/knative/build-pipeline/pkg/list"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/list"
 )
 
 // GetSchedulable returns a map of PipelineTask that can be scheduled (keyed

@@ -54,12 +54,12 @@ Additional reference topics not related to a specific component:
 
 - Follow along with [the tutorial](tutorial.md)
 - Look at
-  [the examples](https://github.com/knative/build-pipeline/tree/master/examples)
+  [the examples](https://github.com/tektoncd/pipeline/tree/master/examples)
 
 ## Related info
 
 If you are interested in contributing to the Tekton Pipeline project, see the
-[Tekton Pipeline contribution guide](https://github.com/knative/build-pipeline/blob/master/CONTRIBUTING.md).
+[Tekton Pipeline contribution guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md).
 
 ---
 

@@ -28,11 +28,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/knative/build-pipeline/test/names"
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/build/pkg/system"
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/tektoncd/pipeline/test/names"
 )
 
 var (
@@ -40,8 +40,9 @@ var (
 	ignoreVolatileTime          = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
 	ignoreVolatileTimePtr       = cmp.Comparer(func(_, _ *apis.VolatileTime) bool { return true })
 	nopContainer                = corev1.Container{
-		Name:  "nop",
-		Image: *nopImage,
+		Name:    "nop",
+		Image:   *nopImage,
+		Command: []string{"/ko-app/nop"},
 	}
 )
 
@@ -95,6 +96,7 @@ func TestMakePod(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
@@ -128,6 +130,7 @@ func TestMakePod(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts, // without subpath
@@ -158,8 +161,9 @@ func TestMakePod(t *testing.T) {
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:  containerPrefix + credsInit + "-mz4c7",
-				Image: *credsImage,
+				Name:    containerPrefix + credsInit + "-mz4c7",
+				Image:   *credsImage,
+				Command: []string{"/ko-app/creds-init"},
 				Args: []string{
 					"-basic-docker=multi-creds=https://docker.io",
 					"-basic-docker=multi-creds=https://us.gcr.io",
@@ -197,6 +201,7 @@ func TestMakePod(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
@@ -229,6 +234,7 @@ func TestMakePod(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
 				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
@@ -321,7 +327,8 @@ func TestBuildStatusFromPod(t *testing.T) {
 		podStatus: corev1.PodStatus{
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init; ignored
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name: "state-name",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -348,7 +355,8 @@ func TestBuildStatusFromPod(t *testing.T) {
 				// creds-init; ignored.
 			}, {
 				// git-init; ignored.
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name: "state-name",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -382,7 +390,8 @@ func TestBuildStatusFromPod(t *testing.T) {
 				// first git-init; ignored.
 			}, {
 				// second git-init; ignored.
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name: "state-name",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -434,10 +443,11 @@ func TestBuildStatusFromPod(t *testing.T) {
 	}, {
 		desc: "failure-terminated",
 		podStatus: corev1.PodStatus{
-			Phase: corev1.PodFailed,
+			Phase:                 corev1.PodFailed,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name:    "status-name",
 				ImageID: "image-id",
 				State: corev1.ContainerState{
@@ -486,10 +496,11 @@ func TestBuildStatusFromPod(t *testing.T) {
 	}, {
 		desc: "pending-waiting-message",
 		podStatus: corev1.PodStatus{
-			Phase: corev1.PodPending,
+			Phase:                 corev1.PodPending,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
-			}, {
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
 				Name: "status-name",
 				State: corev1.ContainerState{
 					Waiting: &corev1.ContainerStateWaiting{

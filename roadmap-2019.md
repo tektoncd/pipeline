@@ -2,27 +2,31 @@
 
 This is an incomplete list of work we hope to accomplish in 2019.
 
-For comparison, Build CRD's 2018 roadmap is
-[here](https://github.com/knative/build/blob/master/roadmap-2018.md).
+Highlights:
 
-## Migrate to Pipelines
+- [Version 1.0](#version-10)
+- [Workflow features](#workflow) such as conditional execution
+- [Triggering](#triggering)
+- [Security](#security)
+- [SCM](#scm)
+- [Library of shared Pipelines and Tasks](#community-library)
 
-The Knative Build Working Group has historically focused on `Build` and
-associated resources. With the successful experimentation around `Pipelines` and
-`Tasks` and `Resources` at the end of 2018, we believe it's time to further
-invest in these resources and migrate existing `Build` users to these new more
-flexible and powerful resources.
+_For comparison, Build CRD's 2018 roadmap is
+[here](https://github.com/knative/build/blob/master/roadmap-2018.md)._
 
-This means ensuring compatibility between the resources, and updating
-documentation where necessary to focus on the new resources. We'll probably have
-to support both for some amount of time. By mid-to-late 2019 the `Build`
-resource should be no more, and `TaskRun` should take its place.
+## Version 1.0
 
-## Don't Break Serving
+Currently [the Pipeline API is considered `alpha`](api_compatibility_policy.md).
+In 2019 we aim to release a 1.0 version, after which we would implement a policy
+where backwards incompatible changes must be made across multiple releases.
 
-As always, we should continue to ensure that our main client, Knative Serving,
-remains happy with the work we produce. This means fixing bugs, answering
-questions and implementing features in a timely manner.
+This would also imply that the project is in a state where it is safe for other
+projects to rely on it, for example:
+
+- If users of [`knative/build`](https://github.com/knative/build) want to
+  migrate to [TaskRun](docs/taskruns.md)
+- If [`knative/serving`](https://github.com/knative/serving) would like to take
+  a dependency on this project
 
 ## Workflow
 
@@ -54,7 +58,29 @@ swappable in the future. This work has not yet been designed at this time, so
 there's a great opportunity in the community to pick up this work and make it
 shine.
 
-## Community
+## Security
+
+Security requirements inform much of the overall Tekton pipelines design, but we
+still have lots of work to do. Declarative pipelines should make it possible to
+automatically vet delivery systems for compliance, secure software supply
+chains, auditability and other key features.
+
+## SCM
+
+Software Change Management systems are the start of any CI/CD system. Tekton
+supports the git protocol today with simple authentication requirements, but
+this is just the beginning. Users expect an SCM system to provide features like:
+
+- Code review management
+- Issue tracking
+- Pre-submit unit and integration testing
+- Linting
+- and more!
+
+Tekton should abstract these interactions (and providers!) away so Task authors
+can focus on adding value rather than implementing API wrappers.
+
+## Community library
 
 Pipelines are designed with many extension points. Pipeline and Task
 configurations can be parameterized and shared, they depend on Resources and

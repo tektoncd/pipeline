@@ -83,5 +83,5 @@ the `Release Notes` section of every PR which has been merged between the last
 release and the current one.
 
 Visiting
-[github.com/knative/build-pipeline/compare](https://github.com/knative/build-pipeline/compare)
+[github.com/tektoncd/pipeline/compare](https://github.com/tektoncd/pipeline/compare)
 will allow you to compare changes between git tags.

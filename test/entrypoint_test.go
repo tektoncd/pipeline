@@ -20,7 +20,7 @@ import (
 	knativetest "github.com/knative/pkg/test"
 	"github.com/knative/pkg/test/logging"
 
-	tb "github.com/knative/build-pipeline/test/builder"
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 const (

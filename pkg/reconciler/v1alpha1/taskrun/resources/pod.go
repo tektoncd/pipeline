@@ -32,14 +32,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/knative/build-pipeline/pkg/credentials"
-	"github.com/knative/build-pipeline/pkg/credentials/dockercreds"
-	"github.com/knative/build-pipeline/pkg/credentials/gitcreds"
-	"github.com/knative/build-pipeline/pkg/names"
-	"github.com/knative/build-pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/credentials"
+	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
+	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
+	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
 
 const workspaceDir = "/workspace"
@@ -203,6 +203,7 @@ func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Inte
 	return &corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + credsInit),
 		Image:        *credsImage,
+		Command:      []string{"/ko-app/creds-init"},
 		Args:         args,
 		VolumeMounts: volumeMounts,
 		Env:          implicitEnvVars,
@@ -296,7 +297,7 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 	}
 	gibberish := hex.EncodeToString(b)
 
-	podContainers = append(podContainers, corev1.Container{Name: "nop", Image: *nopImage})
+	podContainers = append(podContainers, corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}})
 
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -337,22 +338,11 @@ func BuildStatusFromPod(p *corev1.Pod, buildSpec v1alpha1.BuildSpec) v1alpha1.Bu
 		StartTime: &p.CreationTimestamp,
 	}
 
-	// Always ignore the first pod status, which is creds-init.
-	skip := 1
-	if buildSpec.Source != nil {
-		// If the build specifies source, skip another container status, which
-		// is the source-fetching container.
-		skip++
-	}
-	// Also skip multiple sourcees specified by the build.
-	skip += len(buildSpec.Sources)
-	if skip <= len(p.Status.InitContainerStatuses) {
-		for _, s := range p.Status.InitContainerStatuses[skip:] {
-			if s.State.Terminated != nil {
-				status.StepsCompleted = append(status.StepsCompleted, s.Name)
-			}
-			status.StepStates = append(status.StepStates, s.State)
+	for _, s := range p.Status.ContainerStatuses {
+		if s.State.Terminated != nil {
+			status.StepsCompleted = append(status.StepsCompleted, s.Name)
 		}
+		status.StepStates = append(status.StepStates, s.State)
 	}
 
 	switch p.Status.Phase {
@@ -388,7 +378,7 @@ func BuildStatusFromPod(p *corev1.Pod, buildSpec v1alpha1.BuildSpec) v1alpha1.Bu
 
 func getWaitingMessage(pod *corev1.Pod) string {
 	// First, try to surface reason for pending/unknown about the actual build step.
-	for _, status := range pod.Status.InitContainerStatuses {
+	for _, status := range pod.Status.ContainerStatuses {
 		wait := status.State.Waiting
 		if wait != nil && wait.Message != "" {
 			return fmt.Sprintf("build step %q is pending with reason %q",
@@ -415,7 +405,7 @@ func getWaitingMessage(pod *corev1.Pod) string {
 
 func getFailureMessage(pod *corev1.Pod) string {
 	// First, try to surface an error about the actual build step that failed.
-	for _, status := range pod.Status.InitContainerStatuses {
+	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
 		if term != nil && term.ExitCode != 0 {
 			return fmt.Sprintf("build step %q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s",

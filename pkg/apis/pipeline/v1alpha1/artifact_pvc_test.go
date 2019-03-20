@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/knative/build-pipeline/test/names"
+	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,9 +32,10 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 		Name: "pipelinerun-pvc",
 	}
 	want := []corev1.Container{{
-		Name:  "source-copy-workspace-9l9zj",
-		Image: "override-with-bash-noop:latest",
-		Args:  []string{"-args", "cp -r src-path/. /workspace/destination"},
+		Name:    "source-copy-workspace-9l9zj",
+		Image:   "override-with-bash-noop:latest",
+		Command: []string{"/ko-app/bash"},
+		Args:    []string{"-args", "cp -r src-path/. /workspace/destination"},
 	}}
 
 	got := pvc.GetCopyFromContainerSpec("workspace", "src-path", "/workspace/destination")
@@ -52,11 +53,13 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 	want := []corev1.Container{{
 		Name:         "source-mkdir-workspace-9l9zj",
 		Image:        "override-with-bash-noop:latest",
+		Command:      []string{"/ko-app/bash"},
 		Args:         []string{"-args", "mkdir -p /workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 	}, {
 		Name:         "source-copy-workspace-mz4c7",
 		Image:        "override-with-bash-noop:latest",
+		Command:      []string{"/ko-app/bash"},
 		Args:         []string{"-args", "cp -r src-path/. /workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 	}}
@@ -71,9 +74,10 @@ func TestPVCGetMakeDirContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
 	want := corev1.Container{
-		Name:  "create-dir-workspace-9l9zj",
-		Image: "override-with-bash-noop:latest",
-		Args:  []string{"-args", "mkdir -p /workspace/destination"},
+		Name:    "create-dir-workspace-9l9zj",
+		Image:   "override-with-bash-noop:latest",
+		Command: []string{"/ko-app/bash"},
+		Args:    []string{"-args", "mkdir -p /workspace/destination"},
 	}
 	got := CreateDirContainer("workspace", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {

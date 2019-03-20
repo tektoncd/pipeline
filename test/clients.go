@@ -18,7 +18,7 @@ To initialize client objects you can use the setup function. It returns a client
 that contains initialized clients for accessing:
 
 	- Kubernetes objects
-	- Pipelines (https://github.com/knative/build-pipeline#pipeline)
+	- Pipelines (https://github.com/tektoncd/pipeline#pipeline)
 
 For example, to create a Pipeline
 
@@ -38,9 +38,9 @@ package test
 import (
 	"testing"
 
-	"github.com/knative/build-pipeline/pkg/client/clientset/versioned"
-	"github.com/knative/build-pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 )
 
 // clients holds instances of interfaces for making requests to the Pipeline controllers.
