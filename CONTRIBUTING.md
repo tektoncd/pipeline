@@ -10,6 +10,7 @@ To get started developing, see our [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 In this file you'll find info on:
 
+- [Contacting other contributors](#contact)
 - [Principles](#principles)
 - [Development process](#development-process)
 - [The pull request process](#pull-request-process) and
@@ -19,10 +20,20 @@ In this file you'll find info on:
 - [Finding something to work on](#finding-something-to-work-on)
 - [The roadmap](#roadmap)
 - [API compatibility policy](#api-compatibility-policy)
-- [Contacting other contributors](#contact)
 
 _See also
 [the contribution guidelines for Knative](https://github.com/knative/docs/blob/master/community/CONTRIBUTING.md)._
+
+## Contact
+
+This work is being done by the Tekton Pipeline working group.
+If you are interested please join our meetings
+[at 4pm GMT on Thursdays](https://calendar.google.com/event?action=TEMPLATE&tmeid=M3NtMDU5M2Y0aTdkMDRqNjVjYXM1N3YyY2RfMjAxOTAzMjFUMTYwMDAwWiBnb29nbGUuY29tX2Qzb3Zjdm8xcDMyMTloOTg5NTczdjk4Zm5zQGc&tmsrc=google.com_d3ovcvo1p3219h989573v98fns%40group.calendar.google.com&scp=ALL)
+and or in slack at [`#build-pipeline`](https://knative.slack.com/messages/build-pipeline)!
+
+All docs shared with this group are made visible to members of
+[tekton-dev@](https://groups.google.com/forum/#!forum/tekton-dev), please join
+if you are interested!
 
 ## Principles
 
@@ -225,14 +236,3 @@ The project's roadmap for 2019 is published [here](./roadmap-2019.md).
 
 The API compatibility policy (i.e. the policy for making backwards incompatible
 API changes) can be found [here](api_compatibility_policy.md).
-
-## Contact
-
-This work is being done by
-[the Build CRD working group](https://github.com/knative/docs/blob/master/community/WORKING-GROUPS.md#build).
-If you are interested please join our meetings and or in slack at
-[`#build-pipeline`](https://knative.slack.com/messages/build-pipeline)!
-
-All docs shared with this group are made visible to members of
-[knative-dev@](https://groups.google.com/forum/#!forum/knative-dev), please join
-if you are interested!
