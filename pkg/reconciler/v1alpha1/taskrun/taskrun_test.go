@@ -848,7 +848,6 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 }
 
 func TestCreateRedirectedBuild(t *testing.T) {
-
 	tr := tb.TaskRun("tr", "tr", tb.TaskRunSpec(
 		tb.TaskRunServiceAccount("sa"),
 	))
