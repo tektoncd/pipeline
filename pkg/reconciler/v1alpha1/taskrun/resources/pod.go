@@ -34,7 +34,6 @@ import (
 
 	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/pkg/apis"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
@@ -325,98 +324,4 @@ func MakePod(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Po
 			Affinity:           build.Spec.Affinity,
 		},
 	}, nil
-}
-
-// BuildStatusFromPod returns a BuildStatus based on the Pod and the original BuildSpec.
-func BuildStatusFromPod(p *corev1.Pod, buildSpec v1alpha1.BuildSpec) v1alpha1.BuildStatus {
-	status := v1alpha1.BuildStatus{
-		Builder: v1alpha1.ClusterBuildProvider,
-		Cluster: &v1alpha1.ClusterSpec{
-			Namespace: p.Namespace,
-			PodName:   p.Name,
-		},
-		StartTime: &p.CreationTimestamp,
-	}
-
-	for _, s := range p.Status.ContainerStatuses {
-		if s.State.Terminated != nil {
-			status.StepsCompleted = append(status.StepsCompleted, s.Name)
-		}
-		status.StepStates = append(status.StepStates, s.State)
-	}
-
-	switch p.Status.Phase {
-	case corev1.PodRunning:
-		status.SetCondition(&duckv1alpha1.Condition{
-			Type:   v1alpha1.BuildSucceeded,
-			Status: corev1.ConditionUnknown,
-			Reason: "Building",
-		})
-	case corev1.PodFailed:
-		msg := getFailureMessage(p)
-		status.SetCondition(&duckv1alpha1.Condition{
-			Type:    v1alpha1.BuildSucceeded,
-			Status:  corev1.ConditionFalse,
-			Message: msg,
-		})
-	case corev1.PodPending:
-		msg := getWaitingMessage(p)
-		status.SetCondition(&duckv1alpha1.Condition{
-			Type:    v1alpha1.BuildSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  "Pending",
-			Message: msg,
-		})
-	case corev1.PodSucceeded:
-		status.SetCondition(&duckv1alpha1.Condition{
-			Type:   v1alpha1.BuildSucceeded,
-			Status: corev1.ConditionTrue,
-		})
-	}
-	return status
-}
-
-func getWaitingMessage(pod *corev1.Pod) string {
-	// First, try to surface reason for pending/unknown about the actual build step.
-	for _, status := range pod.Status.ContainerStatuses {
-		wait := status.State.Waiting
-		if wait != nil && wait.Message != "" {
-			return fmt.Sprintf("build step %q is pending with reason %q",
-				status.Name, wait.Message)
-		}
-	}
-	// Try to surface underlying reason by inspecting pod's recent status if condition is not true
-	for i, podStatus := range pod.Status.Conditions {
-		if podStatus.Status != corev1.ConditionTrue {
-			return fmt.Sprintf("pod status %q:%q; message: %q",
-				pod.Status.Conditions[i].Type,
-				pod.Status.Conditions[i].Status,
-				pod.Status.Conditions[i].Message)
-		}
-	}
-	// Next, return the Pod's status message if it has one.
-	if pod.Status.Message != "" {
-		return pod.Status.Message
-	}
-
-	// Lastly fall back on a generic pending message.
-	return "Pending"
-}
-
-func getFailureMessage(pod *corev1.Pod) string {
-	// First, try to surface an error about the actual build step that failed.
-	for _, status := range pod.Status.ContainerStatuses {
-		term := status.State.Terminated
-		if term != nil && term.ExitCode != 0 {
-			return fmt.Sprintf("build step %q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s",
-				status.Name, term.ExitCode, status.ImageID,
-				pod.Namespace, pod.Name, status.Name)
-		}
-	}
-	// Next, return the Pod's status message if it has one.
-	if pod.Status.Message != "" {
-		return pod.Status.Message
-	}
-	// Lastly fall back on a generic error message.
-	return "build failed for unspecified reasons."
 }

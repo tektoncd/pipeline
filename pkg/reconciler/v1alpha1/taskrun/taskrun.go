@@ -288,7 +288,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			return err
 		}
 	} else {
-		// Build pod is not present, create build pod.
+		// Pod is not present, create pod.
 		pod, err = c.createBuildPod(tr, rtr.TaskSpec, rtr.TaskName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
@@ -315,15 +315,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
-
-	// FIXME
-	// updateStatusFromPod(tr, pod)
-
-	// Translate Pod -> BuildStatus
-	buildStatus := resources.BuildStatusFromPod(pod, buildv1alpha1.BuildSpec{})
-	// Translate BuildStatus -> TaskRunStatus
-	updateStatusFromBuildStatus(tr, buildStatus)
-
+	updateStatusFromPod(tr, pod)
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
@@ -334,7 +326,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 }
 
 func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
-	if taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded) == nil {
+	if taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded) == nil || taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
 		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
@@ -344,34 +336,89 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 		})
 	}
 
+	taskRun.Status.StartTime = &pod.CreationTimestamp
 	taskRun.Status.PodName = pod.Name
-}
 
-func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1alpha1.BuildStatus) {
-	if buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded) != nil {
-		taskRun.Status.SetCondition(buildStatus.GetCondition(duckv1alpha1.ConditionSucceeded))
-	} else {
-		// If the buildStatus doesn't exist yet, it's because we just started running
+	taskRun.Status.Steps = []v1alpha1.StepState{}
+	for _, s := range pod.Status.ContainerStatuses {
+		taskRun.Status.Steps = append(taskRun.Status.Steps, v1alpha1.StepState{
+			ContainerState: *s.State.DeepCopy(),
+		})
+	}
+
+	switch pod.Status.Phase {
+	case corev1.PodRunning:
+		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+			Reason: "Building",
+		})
+	case corev1.PodFailed:
+		msg := getFailureMessage(pod)
+		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Message: msg,
+		})
+	case corev1.PodPending:
+		msg := getWaitingMessage(pod)
 		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
 			Type:    duckv1alpha1.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  reasonRunning,
-			Message: reasonRunning,
+			Reason:  "Pending",
+			Message: msg,
+		})
+	case corev1.PodSucceeded:
+		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:   duckv1alpha1.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
 		})
 	}
-	taskRun.Status.StartTime = buildStatus.StartTime
-	if buildStatus.Cluster != nil {
-		taskRun.Status.PodName = buildStatus.Cluster.PodName
-	}
-	taskRun.Status.CompletionTime = buildStatus.CompletionTime
+}
 
-	taskRun.Status.Steps = []v1alpha1.StepState{}
-	for i := 0; i < len(buildStatus.StepStates); i++ {
-		state := buildStatus.StepStates[i]
-		taskRun.Status.Steps = append(taskRun.Status.Steps, v1alpha1.StepState{
-			ContainerState: *state.DeepCopy(),
-		})
+func getWaitingMessage(pod *corev1.Pod) string {
+	// First, try to surface reason for pending/unknown about the actual build step.
+	for _, status := range pod.Status.ContainerStatuses {
+		wait := status.State.Waiting
+		if wait != nil && wait.Message != "" {
+			return fmt.Sprintf("build step %q is pending with reason %q",
+				status.Name, wait.Message)
+		}
 	}
+	// Try to surface underlying reason by inspecting pod's recent status if condition is not true
+	for i, podStatus := range pod.Status.Conditions {
+		if podStatus.Status != corev1.ConditionTrue {
+			return fmt.Sprintf("pod status %q:%q; message: %q",
+				pod.Status.Conditions[i].Type,
+				pod.Status.Conditions[i].Status,
+				pod.Status.Conditions[i].Message)
+		}
+	}
+	// Next, return the Pod's status message if it has one.
+	if pod.Status.Message != "" {
+		return pod.Status.Message
+	}
+
+	// Lastly fall back on a generic pending message.
+	return "Pending"
+}
+
+func getFailureMessage(pod *corev1.Pod) string {
+	// First, try to surface an error about the actual build step that failed.
+	for _, status := range pod.Status.ContainerStatuses {
+		term := status.State.Terminated
+		if term != nil && term.ExitCode != 0 {
+			return fmt.Sprintf("build step %q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s",
+				status.Name, term.ExitCode, status.ImageID,
+				pod.Namespace, pod.Name, status.Name)
+		}
+	}
+	// Next, return the Pod's status message if it has one.
+	if pod.Status.Message != "" {
+		return pod.Status.Message
+	}
+	// Lastly fall back on a generic error message.
+	return "build failed for unspecified reasons."
 }
 
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
