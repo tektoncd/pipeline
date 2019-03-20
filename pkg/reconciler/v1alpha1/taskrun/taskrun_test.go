@@ -774,7 +774,10 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 			Name:      taskRun.Name,
 			Namespace: taskRun.Namespace,
 		},
-		Spec: *simpleTask.Spec.GetBuildSpec(),
+		Spec: buildv1alpha1.BuildSpec{
+			Steps:   simpleTask.Spec.Steps,
+			Volumes: simpleTask.Spec.Volumes,
+		},
 	}
 	// TODO(jasonhall): This avoids a circular dependency where
 	// getTaskRunController takes a test.Data which must be populated with
