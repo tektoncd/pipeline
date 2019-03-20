@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/pkg/apis"
@@ -122,11 +121,4 @@ type TaskList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Task `json:"items"`
-}
-
-func (ts *TaskSpec) GetBuildSpec() *buildv1alpha1.BuildSpec {
-	return &buildv1alpha1.BuildSpec{
-		Steps:   ts.Steps,
-		Volumes: ts.Volumes,
-	}
 }

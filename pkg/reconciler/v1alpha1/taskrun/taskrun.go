@@ -316,6 +316,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
+	// FIXME
+	// updateStatusFromPod(tr, pod)
+
 	// Translate Pod -> BuildStatus
 	buildStatus := resources.BuildStatusFromPod(pod, buildv1alpha1.BuildSpec{})
 	// Translate BuildStatus -> TaskRunStatus
@@ -328,6 +331,20 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
 
 	return nil
+}
+
+func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
+	if taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded) == nil {
+		// If the taskRunStatus doesn't exist yet, it's because we just started running
+		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
+			Type:    duckv1alpha1.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  reasonRunning,
+			Message: reasonRunning,
+		})
+	}
+
+	taskRun.Status.PodName = pod.Name
 }
 
 func updateStatusFromBuildStatus(taskRun *v1alpha1.TaskRun, buildStatus buildv1alpha1.BuildStatus) {
@@ -384,13 +401,12 @@ func (c *Reconciler) updateLabels(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, erro
 // createPod creates a Pod based on the Task's configuration, with pvcName as a
 // volumeMount
 func (c *Reconciler) createBuildPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
-	// TODO: Preferably use Validate on task.spec to catch validation error
-	bs := ts.GetBuildSpec()
-	if bs == nil {
-		return nil, fmt.Errorf("task %s has nil BuildSpec", taskName)
+	s := &buildv1alpha1.BuildSpec{
+		Steps:   ts.Steps,
+		Volumes: ts.Volumes,
 	}
 
-	bSpec := bs.DeepCopy()
+	bSpec := s.DeepCopy()
 	bSpec.Timeout = tr.Spec.Timeout
 	bSpec.Affinity = tr.Spec.Affinity
 	bSpec.NodeSelector = tr.Spec.NodeSelector
