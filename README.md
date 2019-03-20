@@ -26,6 +26,12 @@ Tekton Pipelines are **Typed**:
 
 ## Want to start using Pipelines
 
+- [Installing Tekton Pipelines](docs/install.md)
+
+- Jump in with [the tutorial!](docs/tutorial.md)
+
+- [Read about it](/docs/README.md)
+
 - Look at [some examples](/examples)
 
 _See [our API compatibility policy](api_compatibility_policy.md) for info on the
