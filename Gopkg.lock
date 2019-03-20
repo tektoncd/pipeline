@@ -302,12 +302,11 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:109397c6089086e57a6c5c25b641f8d667c43035b3d5d65bcaee83d7700a38b5"
+  digest = "1:faa93f53fef9bca20a58773929a19d15a58623c34752d7c70c4de53ee3380a1d"
   name = "github.com/knative/build"
   packages = [
     "pkg/apis/build",
     "pkg/apis/build/v1alpha1",
-    "pkg/system",
   ]
   pruneopts = "NUT"
   revision = "v0.3.0"
@@ -1051,7 +1050,6 @@
     "github.com/google/go-containerregistry/pkg/v1/types",
     "github.com/hashicorp/golang-lru",
     "github.com/knative/build/pkg/apis/build/v1alpha1",
-    "github.com/knative/build/pkg/system",
     "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/caching/pkg/client/clientset/versioned",
     "github.com/knative/pkg/apis",
