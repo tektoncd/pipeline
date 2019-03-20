@@ -135,22 +135,6 @@ func gcsToContainer(source v1alpha1.SourceSpec, index int) (*corev1.Container, e
 	}, nil
 }
 
-func customToContainer(source *corev1.Container, name string) (*corev1.Container, error) {
-	if source.Name != "" {
-		return nil, apis.ErrMissingField("b.spec.source.name")
-	}
-	custom := source.DeepCopy()
-
-	// source name is empty then use `custom-source` name
-	if name == "" {
-		name = customSource
-	} else {
-		name = customSource + "-" + name
-	}
-	custom.Name = name
-	return custom, nil
-}
-
 func makeCredentialInitializer(build *v1alpha1.Build, kubeclient kubernetes.Interface) (*corev1.Container, []corev1.Volume, error) {
 	serviceAccountName := build.Spec.ServiceAccountName
 	if serviceAccountName == "" {

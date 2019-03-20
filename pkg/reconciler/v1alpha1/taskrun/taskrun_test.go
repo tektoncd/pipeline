@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -55,6 +56,7 @@ const (
 var (
 	entrypointCache          *entrypoint.Cache
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
+	ignoreVolatileTime       = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
 	// Pods are created with a random 3-byte (6 hex character) suffix that we want to ignore in our diffs.
 	ignoreRandomPodNameSuffix = cmp.FilterPath(func(path cmp.Path) bool {
 		return path.GoString() == "{v1.ObjectMeta}.Name"
@@ -986,5 +988,254 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
+	}
+}
+
+func TestUpdateStatusFromPod(t *testing.T) {
+	conditionRunning := duckv1alpha1.Condition{
+		Type:    duckv1alpha1.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  reasonRunning,
+		Message: reasonRunning,
+	}
+	conditionTrue := duckv1alpha1.Condition{
+		Type:   duckv1alpha1.ConditionSucceeded,
+		Status: corev1.ConditionTrue,
+	}
+	conditionBuilding := duckv1alpha1.Condition{
+		Type:   duckv1alpha1.ConditionSucceeded,
+		Status: corev1.ConditionUnknown,
+		Reason: "Building",
+	}
+	for _, c := range []struct {
+		desc      string
+		podStatus corev1.PodStatus
+		want      v1alpha1.TaskRunStatus
+	}{{
+		desc:      "empty",
+		podStatus: corev1.PodStatus{},
+
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{conditionRunning},
+			Steps:      []v1alpha1.StepState{},
+		},
+	}, {
+		desc: "ignore-creds-init",
+		podStatus: corev1.PodStatus{
+			InitContainerStatuses: []corev1.ContainerStatus{{
+				// creds-init; ignored
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "state-name",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 123,
+					},
+				},
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{conditionRunning},
+			Steps: []v1alpha1.StepState{{
+				corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 123,
+					}},
+			}},
+		},
+	}, {
+		desc: "ignore-init-containers",
+		podStatus: corev1.PodStatus{
+			InitContainerStatuses: []corev1.ContainerStatus{{
+				// creds-init; ignored.
+			}, {
+				// git-init; ignored.
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "state-name",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 123,
+					},
+				},
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{conditionRunning},
+			Steps: []v1alpha1.StepState{{
+				corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 123,
+					}},
+			}},
+		},
+	}, {
+		desc:      "success",
+		podStatus: corev1.PodStatus{Phase: corev1.PodSucceeded},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{conditionTrue},
+			Steps:      []v1alpha1.StepState{},
+		},
+	}, {
+		desc:      "running",
+		podStatus: corev1.PodStatus{Phase: corev1.PodRunning},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{conditionBuilding},
+			Steps:      []v1alpha1.StepState{},
+		},
+	}, {
+		desc: "failure-terminated",
+		podStatus: corev1.PodStatus{
+			Phase:                 corev1.PodFailed,
+			InitContainerStatuses: []corev1.ContainerStatus{{
+				// creds-init status; ignored
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name:    "status-name",
+				ImageID: "image-id",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 123,
+					},
+				},
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Message: `build step "status-name" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c status-name`,
+			}},
+			Steps: []v1alpha1.StepState{{
+				corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 123,
+					}},
+			}},
+		},
+	}, {
+		desc: "failure-message",
+		podStatus: corev1.PodStatus{
+			Phase:   corev1.PodFailed,
+			Message: "boom",
+		},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Message: "boom",
+			}},
+			Steps: []v1alpha1.StepState{},
+		},
+	}, {
+		desc:      "failure-unspecified",
+		podStatus: corev1.PodStatus{Phase: corev1.PodFailed},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Message: "build failed for unspecified reasons.",
+			}},
+			Steps: []v1alpha1.StepState{},
+		},
+	}, {
+		desc: "pending-waiting-message",
+		podStatus: corev1.PodStatus{
+			Phase:                 corev1.PodPending,
+			InitContainerStatuses: []corev1.ContainerStatus{{
+				// creds-init status; ignored
+			}},
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "status-name",
+				State: corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{
+						Message: "i'm pending",
+					},
+				},
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: `build step "status-name" is pending with reason "i'm pending"`,
+			}},
+			Steps: []v1alpha1.StepState{{
+				corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{
+						Message: "i'm pending",
+					},
+				},
+			}},
+		},
+	}, {
+		desc: "pending-pod-condition",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodPending,
+			Conditions: []corev1.PodCondition{{
+				Status:  corev1.ConditionUnknown,
+				Type:    "the type",
+				Message: "the message",
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: `pod status "the type":"Unknown"; message: "the message"`,
+			}},
+			Steps: []v1alpha1.StepState{},
+		},
+	}, {
+		desc: "pending-message",
+		podStatus: corev1.PodStatus{
+			Phase:   corev1.PodPending,
+			Message: "pod status message",
+		},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "pod status message",
+			}},
+			Steps: []v1alpha1.StepState{},
+		},
+	}, {
+		desc:      "pending-no-message",
+		podStatus: corev1.PodStatus{Phase: corev1.PodPending},
+		want: v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionUnknown,
+				Reason:  "Pending",
+				Message: "Pending",
+			}},
+			Steps: []v1alpha1.StepState{},
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			now := metav1.Now()
+			p := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "pod",
+					Namespace:         "foo",
+					CreationTimestamp: now,
+				},
+				Status: c.podStatus,
+			}
+			tr := tb.TaskRun("taskRun", "foo")
+			updateStatusFromPod(tr, p)
+
+			// Common traits, set for test case brevity.
+			c.want.PodName = "pod"
+			c.want.StartTime = &now
+
+			if d := cmp.Diff(tr.Status, c.want, ignoreVolatileTime); d != "" {
+				t.Errorf("Diff:\n%s", d)
+			}
+		})
 	}
 }
