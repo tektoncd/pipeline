@@ -48,7 +48,7 @@ You must install these tools:
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`dep`](https://github.com/golang/dep): For managing external Go
    dependencies. - Please Install dep v0.5.0 or greater.
-1. [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko):
+1. [`ko`](https://github.com/google/ko):
    For development. A recent version of `ko` (after the 23th of February, see
    [google/go-containerregistry#380](https://github.com/google/go-containerregistry/pull/380))
    is required for `pipeline` to work correctly.
