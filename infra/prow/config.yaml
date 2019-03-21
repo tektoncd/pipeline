@@ -49,7 +49,7 @@ presubmits:
     trigger: "(?m)^/test (all|pull-tekton-pipeline-build-tests),?(\\s+|$)"
     spec:
       containers:
-      - image: gcr.io/knative-tests/test-infra/prow-tests:stable
+      - image: gcr.io/knative-tests/test-infra/prow-tests@sha256:39296f6df4f29812689b41c47c78bdb00fbbec5ee63407fcbfefec0f48f5b6b1
         imagePullPolicy: Always
         args:
         - "--scenario=kubernetes_execute_bazel"
@@ -84,7 +84,7 @@ presubmits:
     trigger: "(?m)^/test (all|tekton-pipeline-unit-tests),?(\\s+|$)"
     spec:
       containers:
-      - image: gcr.io/knative-tests/test-infra/prow-tests:stable
+      - image: gcr.io/knative-tests/test-infra/prow-tests@sha256:39296f6df4f29812689b41c47c78bdb00fbbec5ee63407fcbfefec0f48f5b6b1
         imagePullPolicy: Always
         args:
         - "--scenario=kubernetes_execute_bazel"
@@ -119,7 +119,7 @@ presubmits:
     trigger: "(?m)^/test (all|pull-tekton-pipeline-integration-tests),?(\\s+|$)"
     spec:
       containers:
-      - image: gcr.io/knative-tests/test-infra/prow-tests:stable
+      - image: gcr.io/knative-tests/test-infra/prow-tests@sha256:39296f6df4f29812689b41c47c78bdb00fbbec5ee63407fcbfefec0f48f5b6b1
         imagePullPolicy: Always
         args:
         - "--scenario=kubernetes_execute_bazel"
