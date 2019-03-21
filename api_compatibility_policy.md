@@ -34,6 +34,8 @@ The current process would look something like:
 1. Update the backups with the new spec
 1. Deploy the updated backups
 
+TODO(bobcatfish): This policy really _should_ include the entire API.
+
 _This policy does not yet cover other functionality which could be considered
 part of the API, but isn’t part of the CRD definition (e.g. a contract re. files
 expected to be written in certain locations by a resulting pod)._

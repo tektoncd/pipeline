@@ -12,6 +12,7 @@ In this file you'll find info on:
 
 - [Contacting other contributors](#contact)
 - [Principles](#principles)
+- [Proposing features](#proposing-features)
 - [Development process](#development-process)
 - [The pull request process](#pull-request-process) and
   [Prow commands](#prow-commands)
@@ -54,6 +55,36 @@ This means that most PRs should include both:
   explaining features being added, including updates to
   [DEVELOPMENT.md](./DEVELOPMENT.md) if required
 
+## Proposing features
+
+If you have an idea for a feature, or if you have a solution for an existing issue
+that involves an API change (i.e. changes
+[the structure of a CRD](api_compatibility_policy.md#what-does-compatibility-mean-here)),
+we highly suggest that you propose the changes before implementing them.
+
+This is for two main reasons:
+
+1. [Yes is forever](https://twitter.com/solomonstre/status/715277134978113536)
+2. It's easier/cheaper to make changes before implementation (and you'll feel
+   less emotionally invested!)
+
+Some suggestions for how to do this:
+
+1. Write up a design doc and share it with [tekton-dev@](https://groups.google.com/forum/#!forum/tekton-dev)
+2. Bring your design/ideas to [our working group meetings](#contact) for discussion
+
+A great proposal will include:
+
+* **The use case(s) it solves** Who needs this and why?
+* **Requirements** What needs to be true about the solution?
+* **2+ alternative proposals** Even if alternatives aren't obvious, forcing yourself to
+  brainstorm a couple more approaches may give you new ideas or make clear that your
+  initial proposal is the best one
+
+Also feel free to reach out to us on [slack](#contact) if you want any help/guidance.
+
+Thanks so much!!
+
 ## Development Process
 
 Our contributors are made up of:
@@ -64,7 +95,7 @@ Our contributors are made up of:
 
 If you are interested in becoming an OWNER, take a look at the
 [approver requirements](https://github.com/knative/docs/blob/master/community/ROLES.md#approver)
-and follow up with an existing OWNER [on slack](https://knative.slack.com/)).
+and follow up with an existing OWNER [on slack](#contact).
 
 ### OWNER review process
 
