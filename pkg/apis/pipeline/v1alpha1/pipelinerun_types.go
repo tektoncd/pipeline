@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"time"
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -197,7 +198,7 @@ type PipelineTaskRun struct {
 // GetTaskRunRef for pipelinerun
 func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 	return corev1.ObjectReference{
-		APIVersion: "build-tekton.dev/v1alpha1",
+		APIVersion: "tekton.dev/v1alpha1",
 		Kind:       "TaskRun",
 		Namespace:  pr.Namespace,
 		Name:       pr.Name,
@@ -212,4 +213,24 @@ func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		*metav1.NewControllerRef(pr, groupVersionKind),
 	}
+}
+
+// IsDone returns true if the PipelineRun's status indicates that it is done.
+func (pr *PipelineRun) IsDone() bool {
+	return !pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+}
+
+// HasStarted function check whether pipelinerun has valid start time set in its status
+func (pr *PipelineRun) HasStarted() bool {
+	return pr.Status.StartTime != nil && !pr.Status.StartTime.IsZero()
+}
+
+// IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
+func (pr *PipelineRun) IsCancelled() bool {
+	return pr.Spec.Status == PipelineRunSpecStatusCancelled
+}
+
+// GetRunKey return the pipelinerun key for timeout handler map
+func (pr *PipelineRun) GetRunKey() string {
+	return fmt.Sprintf("%s/%s/%s", pipelineRunControllerName, pr.Namespace, pr.Name)
 }

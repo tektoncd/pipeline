@@ -50,11 +50,14 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.TestAssets {
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
+	stopCh := make(chan struct{})
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
+	logger := zap.New(observer).Sugar()
+	th := reconciler.NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, logger)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
-				Logger:            zap.New(observer).Sugar(),
+				Logger:            logger,
 				KubeClientSet:     c.Kube,
 				PipelineClientSet: c.Pipeline,
 				Recorder:          recorder,
@@ -66,6 +69,7 @@ func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.T
 			i.ClusterTask,
 			i.TaskRun,
 			i.PipelineResource,
+			th,
 		),
 		Logs:      logs,
 		Clients:   c,
@@ -184,7 +188,7 @@ func TestReconcile(t *testing.T) {
 	c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
 
 	// make sure there is no failed events
-	validateEvents(t, fr)
+	validateNoEvents(t, fr)
 
 	if len(clients.Pipeline.Actions()) == 0 {
 		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
@@ -334,7 +338,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			// and forget about the Run.
 
 			// make sure there is no failed events
-			validateEvents(t, fr)
+			validateNoEvents(t, fr)
 
 			// Since the PipelineRun is invalid, the status should say it has failed
 			condition := tc.pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
@@ -486,6 +490,18 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// This PipelineRun should still be complete and the status should reflect that
 	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown() {
 		t.Errorf("Expected PipelineRun status to be complete, but was %v", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+}
+
+func validateNoEvents(t *testing.T, r *record.FakeRecorder) {
+	t.Helper()
+	timer := time.NewTimer(1 * time.Second)
+
+	select {
+	case event := <-r.Events:
+		t.Errorf("Expected no event but got %s", event)
+	case <-timer.C:
+		return
 	}
 }
 

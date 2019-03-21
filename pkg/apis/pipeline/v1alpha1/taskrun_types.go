@@ -222,3 +222,18 @@ func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 	}
 	return false
 }
+
+// IsDone returns true if the TaskRun's status indicates that it is done.
+func (tr *TaskRun) IsDone() bool {
+	return !tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+}
+
+// IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
+func (tr *TaskRun) IsCancelled() bool {
+	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// GetRunKey return the taskrun key for timeout handler map
+func (tr *TaskRun) GetRunKey() string {
+	return fmt.Sprintf("%s/%s/%s", "TaskRun", tr.Namespace, tr.Name)
+}

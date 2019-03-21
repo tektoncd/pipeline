@@ -46,6 +46,7 @@ type Data struct {
 	ClusterTasks      []*v1alpha1.ClusterTask
 	PipelineResources []*v1alpha1.PipelineResource
 	Pods              []*corev1.Pod
+	Namespaces        []*corev1.Namespace
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -99,6 +100,9 @@ func SeedTestData(d Data) (Clients, Informers) {
 	kubeObjs := []runtime.Object{}
 	for _, p := range d.Pods {
 		kubeObjs = append(kubeObjs, p)
+	}
+	for _, n := range d.Namespaces {
+		kubeObjs = append(kubeObjs, n)
 	}
 	c := Clients{
 		Pipeline: fakepipelineclientset.NewSimpleClientset(objs...),

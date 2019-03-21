@@ -43,6 +43,7 @@ import (
 
 const (
 	threadsPerController = 2
+	resyncPeriod         = 10 * time.Hour
 )
 
 var (
@@ -95,7 +96,7 @@ func main() {
 		SharedClientSet:   sharedClient,
 		PipelineClientSet: pipelineClient,
 		ConfigMapWatcher:  configMapWatcher,
-		ResyncPeriod:      time.Second * 30,
+		ResyncPeriod:      resyncPeriod,
 		Logger:            logger,
 	}
 
@@ -110,26 +111,35 @@ func main() {
 
 	pipelineInformer := pipelineInformerFactory.Tekton().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineRuns()
+	timeoutHandler := reconciler.NewTimeoutHandler(kubeClient, pipelineClient, stopCh, logger)
+
+	trc := taskrun.NewController(opt,
+		taskRunInformer,
+		taskInformer,
+		clusterTaskInformer,
+		resourceInformer,
+		podInformer,
+		nil, //entrypoint cache will be initialized by controller if not provided
+		timeoutHandler,
+	)
+	prc := pipelinerun.NewController(opt,
+		pipelineRunInformer,
+		pipelineInformer,
+		taskInformer,
+		clusterTaskInformer,
+		taskRunInformer,
+		resourceInformer,
+		timeoutHandler,
+	)
 	// Build all of our controllers, with the clients constructed above.
 	controllers := []*controller.Impl{
 		// Pipeline Controllers
-		taskrun.NewController(opt,
-			taskRunInformer,
-			taskInformer,
-			clusterTaskInformer,
-			resourceInformer,
-			podInformer,
-			nil, //entrypoint cache will be initialized by controller if not provided
-		),
-		pipelinerun.NewController(opt,
-			pipelineRunInformer,
-			pipelineInformer,
-			taskInformer,
-			clusterTaskInformer,
-			taskRunInformer,
-			resourceInformer,
-		),
+		trc,
+		prc,
 	}
+	timeoutHandler.SetTaskRunCallbackFunc(trc.Enqueue)
+	timeoutHandler.SetPipelineRunCallbackFunc(prc.Enqueue)
+	timeoutHandler.CheckTimeouts()
 
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher.Watch(logging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logging.ControllerLogKey))

@@ -162,10 +162,13 @@ func getTaskRunController(d test.Data) test.TestAssets {
 	c, i := test.SeedTestData(d)
 	observer, logs := observer.New(zap.InfoLevel)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
+	stopCh := make(chan struct{})
+	logger := zap.New(observer).Sugar()
+	th := reconciler.NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, logger)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
-				Logger:            zap.New(observer).Sugar(),
+				Logger:            logger,
 				KubeClientSet:     c.Kube,
 				PipelineClientSet: c.Pipeline,
 				ConfigMapWatcher:  configMapWatcher,
@@ -176,6 +179,7 @@ func getTaskRunController(d test.Data) test.TestAssets {
 			i.PipelineResource,
 			i.Pod,
 			entrypointCache,
+			th,
 		),
 		Logs:      logs,
 		Clients:   c,

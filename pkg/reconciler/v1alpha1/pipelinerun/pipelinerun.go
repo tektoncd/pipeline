@@ -91,6 +91,7 @@ type Reconciler struct {
 	resourceLister    listers.PipelineResourceLister
 	tracker           tracker.Interface
 	configStore       configStore
+	timeoutHandler    *reconciler.TimeoutSet
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -105,6 +106,7 @@ func NewController(
 	clusterTaskInformer informers.ClusterTaskInformer,
 	taskRunInformer informers.TaskRunInformer,
 	resourceInformer informers.PipelineResourceInformer,
+	timeoutHandler *reconciler.TimeoutSet,
 ) *controller.Impl {
 
 	r := &Reconciler{
@@ -115,6 +117,7 @@ func NewController(
 		clusterTaskLister: clusterTaskInformer.Lister(),
 		taskRunLister:     taskRunInformer.Lister(),
 		resourceLister:    resourceInformer.Lister(),
+		timeoutHandler:    timeoutHandler,
 	}
 
 	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName, reconciler.MustNewStatsReporter(pipelineRunControllerName, r.Logger))
@@ -128,7 +131,7 @@ func NewController(
 
 	r.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: controller.PassNew(r.tracker.OnChanged),
+		UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
 	})
 
 	r.Logger.Info("Setting up ConfigMap receivers")
@@ -162,9 +165,17 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	pr := original.DeepCopy()
+	c.timeoutHandler.StatusLock(pr)
+	if !pr.HasStarted() {
+		// start goroutine to track pipelinerun timeout only startTime is not set
+		go c.timeoutHandler.WaitPipelineRun(pr)
+	}
 	pr.Status.InitializeConditions()
 
-	if isDone(&pr.Status) {
+	c.timeoutHandler.StatusUnlock(original)
+
+	if pr.IsDone() {
+		c.timeoutHandler.Release(pr)
 		c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
 		return nil
 	}
@@ -177,7 +188,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Reconcile this copy of the task run and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
-	err = c.reconcile(ctx, pr)
+	if err = c.reconcile(ctx, pr); err != nil {
+		c.Logger.Errorf("Reconcile error: %v", err.Error())
+		return err
+	}
 	if equality.Semantic.DeepEqual(original.Status, pr.Status) {
 		// If we didn't change anything then don't call updateStatus.
 		// This is important because the copy we loaded from the informer's
@@ -198,11 +212,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		}
 	}
 
-	if err == nil {
-		c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun reconciled successfully")
-	} else {
-		c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to reconcile")
-	}
 	return err
 }
 
@@ -332,7 +341,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	// If the pipelinerun is cancelled, cancel tasks and update status
-	if isCancelled(pr.Spec) {
+	if pr.IsCancelled() {
 		return cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
 	}
 
@@ -358,12 +367,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			}
 		}
 	}
-
 	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	c.timeoutHandler.StatusLock(pr)
 	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, pr.Spec.Timeout)
 
 	pr.Status.SetCondition(after)
-
+	c.timeoutHandler.StatusUnlock(pr)
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
 	updateTaskRunsStatus(pr, pipelineState)
@@ -459,9 +468,4 @@ func (c *Reconciler) updateLabels(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		return c.PipelineClientSet.TektonV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
-}
-
-// isDone returns true if the PipelineRun's status indicates the build is done.
-func isDone(status *v1alpha1.PipelineRunStatus) bool {
-	return !status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
 }

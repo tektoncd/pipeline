@@ -31,11 +31,6 @@ type logger interface {
 	Warnf(template string, args ...interface{})
 }
 
-// isCancelled returns true if the TaskRun's' spec indicates it is cancelled
-func isCancelled(spec v1alpha1.TaskRunSpec) bool {
-	return spec.Status == v1alpha1.TaskRunSpecStatusCancelled
-}
-
 // cancelTaskRun marks the TaskRun as cancelled and delete pods linked to it.
 func cancelTaskRun(tr *v1alpha1.TaskRun, clientSet kubernetes.Interface, logger logger) error {
 	logger.Warn("task run %q has been cancelled", tr.Name)
