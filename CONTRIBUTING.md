@@ -28,7 +28,7 @@ _See also
 
 This work is being done by the Tekton Pipeline working group.
 If you are interested please join our meetings
-[at 4pm GMT on Thursdays](https://calendar.google.com/event?action=TEMPLATE&tmeid=M3NtMDU5M2Y0aTdkMDRqNjVjYXM1N3YyY2RfMjAxOTAzMjFUMTYwMDAwWiBnb29nbGUuY29tX2Qzb3Zjdm8xcDMyMTloOTg5NTczdjk4Zm5zQGc&tmsrc=google.com_d3ovcvo1p3219h989573v98fns%40group.calendar.google.com&scp=ALL)
+[at 9am PST on Tuesdays](https://calendar.google.com/event?action=TEMPLATE&tmeid=amZyNTljOWpkZWdibmpsY3JlazNodDU5NWdfMjAxOTAzMjZUMTYwMDAwWiBnb29nbGUuY29tX2Qzb3Zjdm8xcDMyMTloOTg5NTczdjk4Zm5zQGc&tmsrc=google.com_d3ovcvo1p3219h989573v98fns%40group.calendar.google.com&scp=ALL)
 and or in slack at [`#build-pipeline`](https://knative.slack.com/messages/build-pipeline)!
 
 All docs shared with this group are made visible to members of
