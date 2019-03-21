@@ -111,9 +111,7 @@ _See also
 
 ### Prow configuration
 
-Prow is configured in
-[the knative `config.yaml` in `knative/test-infra`](https://github.com/knative/test-infra/blob/master/ci/prow/config.yaml)
-via the sections for `tektoncd/pipeline`.
+See [infra/README.md](./infra/README.md).
 
 ### Prow commands
 
