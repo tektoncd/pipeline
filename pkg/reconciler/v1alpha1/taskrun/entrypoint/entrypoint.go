@@ -25,7 +25,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/google"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	lru "github.com/hashicorp/golang-lru"
 	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
@@ -198,7 +197,7 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv
 	// this will first try to authenticate using the k8schain,
 	// then fall back to the google keychain,
 	// then fall back to anonymous
-	mkc := authn.NewMultiKeychain(kc, google.Keychain)
+	mkc := authn.NewMultiKeychain(kc)
 	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get container image info from registry %s: %v", image, err)

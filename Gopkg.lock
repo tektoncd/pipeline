@@ -199,14 +199,13 @@
   version = "v0.2.0"
 
 [[projects]]
-  digest = "1:378e4a2f51fef2d461e0d5ec6dfcdb9de35011d63cc46798b3fb11e7d46e3941"
+  digest = "1:b70151e9d07b7606ff7f2250e58b6d24e33519e0c27a5aa2d8a912af91021810"
   name = "github.com/google/go-containerregistry"
   packages = [
     "pkg/authn",
     "pkg/authn/k8schain",
     "pkg/name",
     "pkg/v1",
-    "pkg/v1/google",
     "pkg/v1/partial",
     "pkg/v1/remote",
     "pkg/v1/remote/transport",
@@ -1044,7 +1043,6 @@
     "github.com/google/go-containerregistry/pkg/authn/k8schain",
     "github.com/google/go-containerregistry/pkg/name",
     "github.com/google/go-containerregistry/pkg/v1",
-    "github.com/google/go-containerregistry/pkg/v1/google",
     "github.com/google/go-containerregistry/pkg/v1/partial",
     "github.com/google/go-containerregistry/pkg/v1/remote",
     "github.com/google/go-containerregistry/pkg/v1/types",
