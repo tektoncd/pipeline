@@ -56,17 +56,20 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 			defer wg.Done()
 
 			if err := WaitForTaskRunState(c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed"); err != nil {
-				t.Fatalf("Error waiting for TaskRun to finish: %s", err)
+				t.Errorf("Error waiting for TaskRun to finish: %s", err)
+				return
 			}
 
 			pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{
 				LabelSelector: fmt.Sprintf("%s=%s", pipeline.GroupName+pipeline.TaskRunLabelKey, taskrunName),
 			})
 			if err != nil {
-				t.Fatalf("Error getting TaskRun pod list: %v", err)
+				t.Errorf("Error getting TaskRun pod list: %v", err)
+				return
 			}
 			if n := len(pods.Items); n != 1 {
-				t.Fatalf("Error matching the number of build pods: expecting 1 pod, got %d", n)
+				t.Errorf("Error matching the number of build pods: expecting 1 pod, got %d", n)
+				return
 			}
 		}(t)
 	}
