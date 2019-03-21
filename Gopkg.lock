@@ -199,7 +199,7 @@
   version = "v0.2.0"
 
 [[projects]]
-  digest = "1:2d701965b8d2b2351afab35af19efc3f07b28f64449d1969d7b29bb120a77cf3"
+  digest = "1:378e4a2f51fef2d461e0d5ec6dfcdb9de35011d63cc46798b3fb11e7d46e3941"
   name = "github.com/google/go-containerregistry"
   packages = [
     "pkg/authn",
@@ -215,7 +215,7 @@
     "pkg/v1/v1util",
   ]
   pruneopts = "NUT"
-  revision = "fcd5acbb4e785f428f197ddd66a8931df6923fe6"
+  revision = "8d4083db9aa0d2fae6588c1acdbe6a1f5db461e3"
 
 [[projects]]
   digest = "1:f9425215dccf1c63f659ec781ca46bc81804341821d0cd8d2459c5b58f8bd067"
