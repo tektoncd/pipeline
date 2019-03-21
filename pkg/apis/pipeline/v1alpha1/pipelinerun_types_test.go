@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
@@ -52,7 +53,7 @@ func TestPipelineRun_TaskRunref(t *testing.T) {
 	}
 
 	expectTaskRunRef := corev1.ObjectReference{
-		APIVersion: "build-tekton.dev/v1alpha1",
+		APIVersion: "tekton.dev/v1alpha1",
 		Kind:       "TaskRun",
 		Namespace:  p.Namespace,
 		Name:       p.Name,
@@ -85,5 +86,79 @@ func TestInitializeConditions(t *testing.T) {
 	p.Status.InitializeConditions()
 	if len(p.Status.TaskRuns) != 1 {
 		t.Fatalf("PipelineRun status getting reset")
+	}
+}
+
+func TestPipelineRunIsDone(t *testing.T) {
+	pr := &PipelineRun{}
+	foo := &duckv1alpha1.Condition{
+		Type:   duckv1alpha1.ConditionSucceeded,
+		Status: corev1.ConditionFalse,
+	}
+	pr.Status.SetCondition(foo)
+	if !pr.IsDone() {
+		t.Fatal("Expected pipelinerun status to be done")
+	}
+}
+
+func TestPipelineRunIsCancelled(t *testing.T) {
+	pr := &PipelineRun{
+		Spec: PipelineRunSpec{
+			Status: PipelineRunSpecStatusCancelled,
+		},
+	}
+	if !pr.IsCancelled() {
+		t.Fatal("Expected pipelinerun status to be cancelled")
+	}
+}
+
+func TestPipelineRunKey(t *testing.T) {
+	pr := &PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "prunname",
+			Namespace: "testns",
+		},
+	}
+	expectedKey := "PipelineRun/testns/prunname"
+	if pr.GetRunKey() != expectedKey {
+		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, pr.GetRunKey())
+	}
+}
+
+func TestPipelineRunHasStarted(t *testing.T) {
+	params := []struct {
+		name          string
+		prStatus      PipelineRunStatus
+		expectedValue bool
+	}{{
+		name:          "prWithNoStartTime",
+		prStatus:      PipelineRunStatus{},
+		expectedValue: false,
+	}, {
+		name: "prWithStartTime",
+		prStatus: PipelineRunStatus{
+			StartTime: &metav1.Time{time.Now()},
+		},
+		expectedValue: true,
+	}, {
+		name: "prWithZeroStartTime",
+		prStatus: PipelineRunStatus{
+			StartTime: &metav1.Time{},
+		},
+		expectedValue: false,
+	}}
+	for _, tc := range params {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prunname",
+					Namespace: "testns",
+				},
+				Status: tc.prStatus,
+			}
+			if pr.HasStarted() != tc.expectedValue {
+				t.Fatalf("Expected pipelinerun HasStarted() to return %t but got %t", tc.expectedValue, pr.HasStarted())
+			}
+		})
 	}
 }

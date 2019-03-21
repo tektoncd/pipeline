@@ -89,6 +89,7 @@ type Reconciler struct {
 	resourceLister    listers.PipelineResourceLister
 	tracker           tracker.Interface
 	cache             *entrypoint.Cache
+	timeoutHandler    *reconciler.TimeoutSet
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -103,6 +104,7 @@ func NewController(
 	resourceInformer informers.PipelineResourceInformer,
 	podInformer coreinformers.PodInformer,
 	entrypointCache *entrypoint.Cache,
+	timeoutHandler *reconciler.TimeoutSet,
 ) *controller.Impl {
 
 	c := &Reconciler{
@@ -111,6 +113,7 @@ func NewController(
 		taskLister:        taskInformer.Lister(),
 		clusterTaskLister: clusterTaskInformer.Lister(),
 		resourceLister:    resourceInformer.Lister(),
+		timeoutHandler:    timeoutHandler,
 	}
 	impl := controller.NewImpl(c, c.Logger, taskRunControllerName, reconciler.MustNewStatsReporter(taskRunControllerName, c.Logger))
 
@@ -122,8 +125,9 @@ func NewController(
 
 	c.tracker = tracker.New(impl.EnqueueKey, opt.GetTrackerLease())
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.tracker.OnChanged,
-		UpdateFunc: controller.PassNew(c.tracker.OnChanged),
+		AddFunc:    impl.EnqueueControllerOf,
+		UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
+		DeleteFunc: impl.EnqueueControllerOf,
 	})
 
 	c.Logger.Info("Setting up Entrypoint cache")
@@ -161,7 +165,8 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	tr := original.DeepCopy()
 	tr.Status.InitializeConditions()
 
-	if isDone(&tr.Status) {
+	if tr.IsDone() {
+		c.timeoutHandler.Release(tr)
 		return nil
 	}
 
@@ -216,7 +221,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) resources.GetTask {
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
 	// If the taskrun is cancelled, kill resources and update status
-	if isCancelled(tr.Spec) {
+	if tr.IsCancelled() {
 		before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		err := cancelTaskRun(tr, c.KubeClientSet, c.Logger)
 		after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
@@ -289,6 +294,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		}
 	} else {
 		// Pod is not present, create pod.
+		go c.timeoutHandler.WaitTaskRun(tr)
 		pod, err = c.createBuildPod(tr, rtr.TaskSpec, rtr.TaskName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
@@ -315,7 +321,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+
+	c.timeoutHandler.StatusLock(tr)
 	updateStatusFromPod(tr, pod)
+	c.timeoutHandler.StatusUnlock(tr)
+
 	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
@@ -566,11 +576,6 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	}
 	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
 	return labels
-}
-
-// isDone returns true if the TaskRun's status indicates that it is done.
-func isDone(status *v1alpha1.TaskRunStatus) bool {
-	return !status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
 }
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error

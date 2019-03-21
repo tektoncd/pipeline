@@ -193,11 +193,13 @@ func TestTaskRunTimeout(t *testing.T) {
 
 	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(tb.Task("giraffe", namespace,
-		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 300"))))); err != nil {
+		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 3000"))))); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
 	}
 	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
-		tb.TaskRunTimeout(10*time.Second)))); err != nil {
+		// Do not reduce this timeout. Taskrun e2e test is also verifying
+		// if reconcile is triggered from timeout handler and not by pod informers
+		tb.TaskRunTimeout(30*time.Second)))); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", "run-giraffe", err)
 	}
 
