@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+
 	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -112,4 +114,4 @@ func (bt *BuildTemplate) GetGroupVersionKind() schema.GroupVersionKind {
 }
 
 // SetDefaults for build template
-func (bt *BuildTemplate) SetDefaults() {}
+func (bt *BuildTemplate) SetDefaults(ctx context.Context) {}

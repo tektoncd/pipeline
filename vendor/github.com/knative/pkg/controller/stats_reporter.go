@@ -21,6 +21,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/knative/pkg/metrics"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -107,7 +108,7 @@ func (r *reporter) ReportQueueDepth(v int64) error {
 	if r.globalCtx == nil {
 		return errors.New("reporter is not initialized correctly")
 	}
-	stats.Record(r.globalCtx, workQueueDepthStat.M(v))
+	metrics.Record(r.globalCtx, workQueueDepthStat.M(v))
 	return nil
 }
 
@@ -122,8 +123,8 @@ func (r *reporter) ReportReconcile(duration time.Duration, key, success string) 
 		return err
 	}
 
-	stats.Record(ctx, reconcileCountStat.M(1))
-	stats.Record(ctx, reconcileLatencyStat.M(int64(duration/time.Millisecond)))
+	metrics.Record(ctx, reconcileCountStat.M(1))
+	metrics.Record(ctx, reconcileLatencyStat.M(int64(duration/time.Millisecond)))
 	return nil
 }
 

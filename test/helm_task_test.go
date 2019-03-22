@@ -23,7 +23,6 @@ import (
 	"time"
 
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -52,40 +51,39 @@ var (
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
-	setupClusterBindingForHelm(c, t, namespace, logger)
+	c, namespace := setup(t)
+	setupClusterBindingForHelm(c, t, namespace)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	logger.Infof("Creating Git PipelineResource %s", sourceResourceName)
+	t.Logf("Creating Git PipelineResource %s", sourceResourceName)
 	if _, err := c.PipelineResourceClient.Create(getGoHelloworldGitResource(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceResourceName, err)
 	}
 
-	logger.Infof("Creating Image PipelineResource %s", sourceImageName)
+	t.Logf("Creating Image PipelineResource %s", sourceImageName)
 	if _, err := c.PipelineResourceClient.Create(getHelmImageResource(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceImageName, err)
 	}
 
-	logger.Infof("Creating Task %s", createImageTaskName)
-	if _, err := c.TaskClient.Create(getCreateImageTask(namespace, t, logger)); err != nil {
+	t.Logf("Creating Task %s", createImageTaskName)
+	if _, err := c.TaskClient.Create(getCreateImageTask(namespace, t)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", createImageTaskName, err)
 	}
 
-	logger.Infof("Creating Task %s", helmDeployTaskName)
+	t.Logf("Creating Task %s", helmDeployTaskName)
 	if _, err := c.TaskClient.Create(getHelmDeployTask(namespace)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", helmDeployTaskName, err)
 	}
 
-	logger.Infof("Creating Pipeline %s", helmDeployPipelineName)
+	t.Logf("Creating Pipeline %s", helmDeployPipelineName)
 	if _, err := c.PipelineClient.Create(getHelmDeployPipeline(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", helmDeployPipelineName, err)
 	}
 
-	logger.Infof("Creating PipelineRun %s", helmDeployPipelineRunName)
+	t.Logf("Creating PipelineRun %s", helmDeployPipelineRunName)
 	if _, err := c.PipelineRunClient.Create(getHelmDeployPipelineRun(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", helmDeployPipelineRunName, err)
 	}
@@ -99,13 +97,13 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		}
 		for _, tr := range taskruns.Items {
 			if tr.Status.PodName != "" {
-				CollectBuildLogs(c, tr.Status.PodName, namespace, logger)
+				CollectBuildLogs(c, tr.Status.PodName, namespace, t.Logf)
 			}
 		}
 		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
 	}
 
-	logger.Info("Waiting for service to get external IP")
+	t.Log("Waiting for service to get external IP")
 	var serviceIp string
 	if err := WaitForServiceExternalIPState(c, namespace, helmDeployServiceName, func(svc *corev1.Service) (bool, error) {
 		ingress := svc.Status.LoadBalancer.Ingress
@@ -121,11 +119,11 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	// cleanup task to remove helm from cluster, will not fail the test if it fails, just log
-	knativetest.CleanupOnInterrupt(func() { helmCleanup(c, t, namespace, logger) }, logger)
-	defer helmCleanup(c, t, namespace, logger)
+	knativetest.CleanupOnInterrupt(func() { helmCleanup(c, t, namespace) }, t.Logf)
+	defer helmCleanup(c, t, namespace)
 
 	if serviceIp != "" {
-		logger.Info("Polling service with external IP")
+		t.Log("Polling service with external IP")
 		waitErr := wait.PollImmediate(100*time.Millisecond, 30*time.Second, func() (bool, error) {
 			resp, err := http.Get(fmt.Sprintf("http://%s:8080", serviceIp))
 			if err != nil {
@@ -168,7 +166,7 @@ func getHelmImageResource(namespace string) *v1alpha1.PipelineResource {
 	))
 }
 
-func getCreateImageTask(namespace string, t *testing.T, logger *logging.BaseLogger) *v1alpha1.Task {
+func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
 	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource("builtimage", v1alpha1.PipelineResourceTypeImage)),
@@ -227,7 +225,7 @@ func getHelmDeployPipelineRun(namespace string) *v1alpha1.PipelineRun {
 	))
 }
 
-func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string, logger *logging.BaseLogger) {
+func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string) {
 	tillerServiceAccount = &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "tiller",
@@ -235,7 +233,7 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string, logg
 		},
 	}
 
-	logger.Infof("Creating tiller service account")
+	t.Logf("Creating tiller service account")
 	if _, err := c.KubeClient.Kube.CoreV1().ServiceAccounts("kube-system").Create(tillerServiceAccount); err != nil {
 		if !errors.IsAlreadyExists(err) {
 			t.Fatalf("Failed to create default Service account for Helm %s", err)
@@ -291,33 +289,33 @@ func setupClusterBindingForHelm(c *clients, t *testing.T, namespace string, logg
 	}
 
 	for _, crb := range clusterRoleBindings {
-		logger.Infof("Creating Cluster Role binding %s for helm", crb.Name)
+		t.Logf("Creating Cluster Role binding %s for helm", crb.Name)
 		if _, err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Create(crb); err != nil {
 			t.Fatalf("Failed to create cluster role binding for Helm %s", err)
 		}
 	}
 }
 
-func helmCleanup(c *clients, t *testing.T, namespace string, logger *logging.BaseLogger) {
-	logger.Infof("Cleaning up helm from cluster...")
+func helmCleanup(c *clients, t *testing.T, namespace string) {
+	t.Logf("Cleaning up helm from cluster...")
 
-	removeAllHelmReleases(c, t, namespace, logger)
-	removeHelmFromCluster(c, t, namespace, logger)
+	removeAllHelmReleases(c, t, namespace)
+	removeHelmFromCluster(c, t, namespace)
 
-	logger.Infof("Deleting tiller service account")
+	t.Logf("Deleting tiller service account")
 	if err := c.KubeClient.Kube.CoreV1().ServiceAccounts("kube-system").Delete("tiller", &metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete default Service account for Helm %s", err)
 	}
 
 	for _, crb := range clusterRoleBindings {
-		logger.Infof("Deleting Cluster Role binding %s for helm", crb.Name)
+		t.Logf("Deleting Cluster Role binding %s for helm", crb.Name)
 		if err := c.KubeClient.Kube.RbacV1beta1().ClusterRoleBindings().Delete(crb.Name, &metav1.DeleteOptions{}); err != nil {
 			t.Fatalf("Failed to delete cluster role binding for Helm %s", err)
 		}
 	}
 }
 
-func removeAllHelmReleases(c *clients, t *testing.T, namespace string, logger *logging.BaseLogger) {
+func removeAllHelmReleases(c *clients, t *testing.T, namespace string) {
 	helmRemoveAllTaskName := "helm-remove-all-task"
 	helmRemoveAllTask := tb.Task(helmRemoveAllTaskName, namespace, tb.TaskSpec(
 		tb.Step("helm-remove-all", "alpine/helm", tb.Command("/bin/sh"),
@@ -330,23 +328,23 @@ func removeAllHelmReleases(c *clients, t *testing.T, namespace string, logger *l
 		tb.TaskRunTaskRef(helmRemoveAllTaskName),
 	))
 
-	logger.Infof("Creating Task %s", helmRemoveAllTaskName)
+	t.Logf("Creating Task %s", helmRemoveAllTaskName)
 	if _, err := c.TaskClient.Create(helmRemoveAllTask); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", helmRemoveAllTaskName, err)
 	}
 
-	logger.Infof("Creating TaskRun %s", helmRemoveAllTaskRunName)
+	t.Logf("Creating TaskRun %s", helmRemoveAllTaskRunName)
 	if _, err := c.TaskRunClient.Create(helmRemoveAllTaskRun); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", helmRemoveAllTaskRunName, err)
 	}
 
-	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", helmRemoveAllTaskRunName, namespace)
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", helmRemoveAllTaskRunName, namespace)
 	if err := WaitForTaskRunState(c, helmRemoveAllTaskRunName, TaskRunSucceed(helmRemoveAllTaskRunName), "TaskRunSuccess"); err != nil {
-		logger.Infof("TaskRun %s failed to finish: %s", helmRemoveAllTaskRunName, err)
+		t.Logf("TaskRun %s failed to finish: %s", helmRemoveAllTaskRunName, err)
 	}
 }
 
-func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *logging.BaseLogger) {
+func removeHelmFromCluster(c *clients, t *testing.T, namespace string) {
 	helmResetTaskName := "helm-reset-task"
 	helmResetTask := tb.Task(helmResetTaskName, namespace, tb.TaskSpec(
 		tb.Step("helm-reset", "alpine/helm", tb.Args("reset", "--force")),
@@ -357,18 +355,18 @@ func removeHelmFromCluster(c *clients, t *testing.T, namespace string, logger *l
 		tb.TaskRunTaskRef(helmResetTaskName),
 	))
 
-	logger.Infof("Creating Task %s", helmResetTaskName)
+	t.Logf("Creating Task %s", helmResetTaskName)
 	if _, err := c.TaskClient.Create(helmResetTask); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", helmResetTaskName, err)
 	}
 
-	logger.Infof("Creating TaskRun %s", helmResetTaskRunName)
+	t.Logf("Creating TaskRun %s", helmResetTaskRunName)
 	if _, err := c.TaskRunClient.Create(helmResetTaskRun); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", helmResetTaskRunName, err)
 	}
 
-	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", helmResetTaskRunName, namespace)
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", helmResetTaskRunName, namespace)
 	if err := WaitForTaskRunState(c, helmResetTaskRunName, TaskRunSucceed(helmResetTaskRunName), "TaskRunSuccess"); err != nil {
-		logger.Infof("TaskRun %s failed to finish: %s", helmResetTaskRunName, err)
+		t.Logf("TaskRun %s failed to finish: %s", helmResetTaskRunName, err)
 	}
 }

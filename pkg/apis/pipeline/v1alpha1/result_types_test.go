@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,7 +29,7 @@ func TestValidate(t *testing.T) {
 		URL:  "http://google.com",
 		Type: "gcs",
 	}
-	err := results.Validate("somepath")
+	err := results.Validate(context.Background(), "somepath")
 	if err != nil {
 		t.Fatalf("Did not expect error when validating valid Results but got %s", err)
 	}
@@ -76,7 +77,7 @@ func TestValidate_Invalid(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			path := "spec.results"
-			err := tc.results.Validate(path)
+			err := tc.results.Validate(context.Background(), path)
 			if d := cmp.Diff(err.Error(), tc.want.Error()); d != "" {
 				t.Errorf("Results.Validate/%s (-want, +got) = %v", tc.name, d)
 			}

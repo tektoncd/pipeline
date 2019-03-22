@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/knative/pkg/apis"
@@ -24,15 +25,15 @@ import (
 )
 
 // Validate pipelinerun
-func (pr *PipelineRun) Validate() *apis.FieldError {
+func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(pr.GetObjectMeta()).ViaField("metadata"); err != nil {
 		return err
 	}
-	return pr.Spec.Validate()
+	return pr.Spec.Validate(ctx)
 }
 
 // Validate pipelinerun spec
-func (ps *PipelineRunSpec) Validate() *apis.FieldError {
+func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineRunSpec{}) {
 		return apis.ErrMissingField("spec")
 	}
@@ -45,7 +46,7 @@ func (ps *PipelineRunSpec) Validate() *apis.FieldError {
 	}
 	// check for results
 	if ps.Results != nil {
-		if err := ps.Results.Validate("spec.results"); err != nil {
+		if err := ps.Results.Validate(ctx, "spec.results"); err != nil {
 			return err
 		}
 	}

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -115,7 +116,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 				Outputs: tt.fields.Outputs,
 				Steps:   tt.fields.BuildSteps,
 			}
-			if err := ts.Validate(); err != nil {
+			if err := ts.Validate(context.Background()); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
 		})
@@ -328,7 +329,7 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 				Outputs: tt.fields.Outputs,
 				Steps:   tt.fields.BuildSteps,
 			}
-			err := ts.Validate()
+			err := ts.Validate(context.Background())
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}

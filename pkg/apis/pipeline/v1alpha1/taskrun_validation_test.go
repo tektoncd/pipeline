@@ -16,6 +16,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -55,7 +56,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.task.Validate()
+			err := ts.task.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
 				t.Errorf("TaskRun.Validate/%s (-want, +got) = %v", ts.name, d)
 			}
@@ -78,7 +79,7 @@ func TestTaskRun_Validate(t *testing.T) {
 			},
 		},
 	}
-	if err := tr.Validate(); err != nil {
+	if err := tr.Validate(context.Background()); err != nil {
 		t.Errorf("TaskRun.Validate() error = %v", err)
 	}
 }
@@ -151,7 +152,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.spec.Validate()
+			err := ts.spec.Validate(context.Background())
 			if d := cmp.Diff(ts.wantErr.Error(), err.Error()); d != "" {
 				t.Errorf("TaskRunSpec.Validate/%s (-want, +got) = %v", ts.name, d)
 			}
@@ -211,7 +212,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			if err := ts.spec.Validate(); err != nil {
+			if err := ts.spec.Validate(context.Background()); err != nil {
 				t.Errorf("TaskRunSpec.Validate()/%s error = %v", ts.name, err)
 			}
 		})
@@ -231,7 +232,7 @@ func TestInput_Validate(t *testing.T) {
 			Name: "workspace",
 		}},
 	}
-	if err := i.Validate("spec.inputs"); err != nil {
+	if err := i.Validate(context.Background(), "spec.inputs"); err != nil {
 		t.Errorf("TaskRunInputs.Validate() error = %v", err)
 	}
 }
@@ -314,7 +315,7 @@ func TestInput_Invalidate(t *testing.T) {
 	}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.inputs.Validate("spec.Inputs")
+			err := ts.inputs.Validate(context.Background(), "spec.Inputs")
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
 				t.Errorf("TaskRunInputs.Validate/%s (-want, +got) = %v", ts.name, d)
 			}
@@ -331,7 +332,7 @@ func TestOutput_Validate(t *testing.T) {
 			Name: "someimage",
 		}},
 	}
-	if err := i.Validate("spec.outputs"); err != nil {
+	if err := i.Validate(context.Background(), "spec.outputs"); err != nil {
 		t.Errorf("TaskRunOutputs.Validate() error = %v", err)
 	}
 }
@@ -369,7 +370,7 @@ func TestOutput_Invalidate(t *testing.T) {
 	}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.outputs.Validate("spec.Outputs")
+			err := ts.outputs.Validate(context.Background(), "spec.Outputs")
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
 				t.Errorf("TaskRunOutputs.Validate/%s (-want, +got) = %v", ts.name, d)
 			}

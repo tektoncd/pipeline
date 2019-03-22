@@ -41,83 +41,73 @@ import (
 
 var metricMutex *sync.Mutex = &sync.Mutex{}
 
-// getContextLogger is a temporary workaround for the fact that `logging.GetContextLogger`
-// manipulates global state and so causes race conditions. Once this fix is contributed
-// upstream we can remove this wrapper.
-func getContextLogger(n string) *logging.BaseLogger {
-	// We need to use a mutext to access `GetContextLogger` b/c it set global state for
-	// collecting metrics :'(
-	metricMutex.Lock()
-	logger := logging.GetContextLogger(n)
-	metricMutex.Unlock()
-	return logger
-}
-
-func setup(t *testing.T, logger *logging.BaseLogger) (*clients, string) {
+func setup(t *testing.T) (*clients, string) {
 	t.Helper()
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
+	initializeLogsAndMetrics(t)
+
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
-	createNamespace(namespace, logger, c.KubeClient)
-	verifyServiceAccountExistence(namespace, logger, c.KubeClient)
+	createNamespace(t, namespace, c.KubeClient)
+	verifyServiceAccountExistence(t, namespace, c.KubeClient)
 	return c, namespace
 }
 
-func header(logger *logging.BaseLogger, text string) {
+func header(logf logging.FormatLogger, text string) {
 	left := "### "
 	right := " ###"
 	txt := left + text + right
 	bar := strings.Repeat("#", len(txt))
-	logger.Info(bar)
-	logger.Info(txt)
-	logger.Info(bar)
+	logf(bar)
+	logf(txt)
+	logf(bar)
 }
 
-func tearDown(t *testing.T, logger *logging.BaseLogger, cs *clients, namespace string) {
+func tearDown(t *testing.T, cs *clients, namespace string) {
 	t.Helper()
 	if cs.KubeClient == nil {
 		return
 	}
 	if t.Failed() {
-		header(logger, fmt.Sprintf("Dumping objects from %s", namespace))
+		header(t.Logf, fmt.Sprintf("Dumping objects from %s", namespace))
 		bs, err := getCRDYaml(cs, namespace)
 		if err != nil {
-			logger.Error(err)
+			t.Error(err)
 		} else {
-			logger.Info(string(bs))
+			t.Log(string(bs))
 		}
 	}
 
-	logger.Infof("Deleting namespace %s", namespace)
+	t.Logf("Deleting namespace %s", namespace)
 	if err := cs.KubeClient.Kube.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
-		logger.Errorf("Failed to delete namespace %s: %s", namespace, err)
+		t.Errorf("Failed to delete namespace %s: %s", namespace, err)
 	}
 }
 
-func initializeLogsAndMetrics() {
+func initializeLogsAndMetrics(t *testing.T) {
 	flag.Parse()
 	flag.Set("alsologtostderr", "true")
 	logging.InitializeLogger(knativetest.Flags.LogVerbose)
 
 	if knativetest.Flags.EmitMetrics {
-		logging.InitializeMetricExporter()
+		logging.InitializeMetricExporter(t.Name())
 	}
 }
 
-func createNamespace(namespace string, logger *logging.BaseLogger, kubeClient *knativetest.KubeClient) {
-	logger.Infof("Create namespace %s to deploy to", namespace)
+func createNamespace(t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
+	t.Logf("Create namespace %s to deploy to", namespace)
 	if _, err := kubeClient.Kube.CoreV1().Namespaces().Create(&corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: namespace,
 		},
 	}); err != nil {
-		logger.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
+		t.Fatalf("Failed to create namespace %s for tests: %s", namespace, err)
 	}
 }
 
-func verifyServiceAccountExistence(namespace string, logger *logging.BaseLogger, kubeClient *knativetest.KubeClient) {
+func verifyServiceAccountExistence(t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
 	defaultSA := "default"
-	logger.Infof("Verify SA %q is created in namespace %q", defaultSA, namespace)
+	t.Logf("Verify SA %q is created in namespace %q", defaultSA, namespace)
 
 	if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
 		_, err := kubeClient.Kube.CoreV1().ServiceAccounts(namespace).Get(defaultSA, metav1.GetOptions{})
@@ -126,16 +116,14 @@ func verifyServiceAccountExistence(namespace string, logger *logging.BaseLogger,
 		}
 		return true, err
 	}); err != nil {
-		logger.Fatalf("Failed to get SA %q in namespace %q for tests: %s", defaultSA, namespace, err)
+		t.Fatalf("Failed to get SA %q in namespace %q for tests: %s", defaultSA, namespace, err)
 	}
 }
 
 // TestMain initializes anything global needed by the tests. Right now this is just log and metric
 // setup since the log and metric libs we're using use global state :(
 func TestMain(m *testing.M) {
-	initializeLogsAndMetrics()
-	logger := logging.GetContextLogger("TestMain")
-	logger.Infof("Using kubeconfig at `%s` with cluster `%s`", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
+	fmt.Fprintf(os.Stderr, "Using kubeconfig at `%s` with cluster `%s`", knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster)
 	c := m.Run()
 	os.Exit(c)
 }

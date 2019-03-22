@@ -17,21 +17,21 @@ required = [
   name = "gopkg.in/yaml.v2"
   version = "v2.2.1"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/api"
-  version = "kubernetes-1.11.3"
+  version = "kubernetes-1.12.6"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.11.3"
+  version = "kubernetes-1.12.6"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/code-generator"
-  version = "kubernetes-1.11.3"
+  version = "kubernetes-1.12.6"
 
-[[constraint]]
+[[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.11.3"
+  version = "kubernetes-1.12.6"
 
 [[override]]
   name = "golang.org/x/sys"
@@ -43,19 +43,25 @@ required = [
   # It seems to be broken at HEAD.
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
-[[constraint]]
+[[override]]
   name = "github.com/google/go-containerregistry"
   # HEAD as of 2019-03-20
   revision = "8d4083db9aa0d2fae6588c1acdbe6a1f5db461e3"
 
 [[override]]
   name = "github.com/golang/protobuf"
-  revision = "c823c79ea1570fb5ff454033735a8e68575d1d0f"
+  # Lock the version of protobuf to keep things building.
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+
+[[constraint]]
+  name = "github.com/knative/caching"
+  # HEAD as of 2019-03-21
+  revision = "3fc06fd3c9880a9ebb5c401f4b20cf6666cc7bc0"
 
 [[override]]
   name = "github.com/knative/pkg"
-  # HEAD as of 2019-02-14 💖
-  revision = "0183bf9cdc7349e3c76c26e51f84689b411fccea"
+  # HEAD as of 2019-03-21 💖
+  revision = "60fdcbcabd2faeb34328d8b2725dc76c59189453"
 
 [[override]]
   name = "go.uber.org/zap"
@@ -63,7 +69,7 @@ required = [
 
 [[constraint]]
   name = "github.com/knative/build"
-  revision = "v0.3.0"
+  revision = "dd3ceb3323922b899a0a913f885fcf59943e7b59"
 
 [prune]
   go-tests = true

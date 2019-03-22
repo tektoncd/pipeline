@@ -30,7 +30,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -124,8 +123,7 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
 	repo, err := getDockerRepo()
@@ -133,30 +131,30 @@ func TestKanikoTaskRun(t *testing.T) {
 		t.Errorf("Expected to get docker repo")
 	}
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
 	hasSecretConfig, err := createSecret(c.KubeClient, namespace)
 	if err != nil {
 		t.Fatalf("Expected to create kaniko creds: %v", err)
 	}
 	if hasSecretConfig {
-		logger.Info("Creating service account secret")
+		t.Log("Creating service account secret")
 	} else {
-		logger.Info("Not creating service account secret. This could cause the test to fail locally!")
+		t.Log("Not creating service account secret. This could cause the test to fail locally!")
 	}
 
-	logger.Infof("Creating Git PipelineResource %s", kanikoResourceName)
+	t.Logf("Creating Git PipelineResource %s", kanikoResourceName)
 	if _, err := c.PipelineResourceClient.Create(getGitResource(namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
 	}
 
-	logger.Infof("Creating Task %s", kanikoTaskName)
+	t.Logf("Creating Task %s", kanikoTaskName)
 	if _, err := c.TaskClient.Create(getTask(repo, namespace, hasSecretConfig)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", kanikoTaskName, err)
 	}
 
-	logger.Infof("Creating TaskRun %s", kanikoTaskRunName)
+	t.Logf("Creating TaskRun %s", kanikoTaskRunName)
 	if _, err := c.TaskRunClient.Create(getTaskRun(namespace)); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", kanikoTaskRunName, err)
 	}

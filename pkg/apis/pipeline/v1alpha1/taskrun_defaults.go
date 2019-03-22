@@ -16,11 +16,13 @@ limitations under the License.
 
 package v1alpha1
 
-func (tr *TaskRun) SetDefaults() {
-	tr.Spec.SetDefaults()
+import "context"
+
+func (tr *TaskRun) SetDefaults(ctx context.Context) {
+	tr.Spec.SetDefaults(ctx)
 }
 
-func (trs *TaskRunSpec) SetDefaults() {
+func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 	if trs.TaskRef != nil && trs.TaskRef.Kind == "" {
 		trs.TaskRef.Kind = NamespacedTaskKind
 	}

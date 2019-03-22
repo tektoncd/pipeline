@@ -21,7 +21,6 @@ import (
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -33,14 +32,13 @@ import (
 // verify that pipelinerun cancel lead to the the correct TaskRun statuses
 // and pod deletions.
 func TestTaskRunPipelineRunCancel(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	logger.Infof("Creating Task in namespace %s", namespace)
+	t.Logf("Creating Task in namespace %s", namespace)
 	task := tb.Task("banana", namespace, tb.TaskSpec(
 		tb.Step("foo", "ubuntu", tb.Command("/bin/bash"), tb.Args("-c", "sleep 5000")),
 	))
@@ -48,7 +46,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		t.Fatalf("Failed to create Task `banana`: %s", err)
 	}
 
-	logger.Infof("Creating Pipeline in namespace %s", namespace)
+	t.Logf("Creating Pipeline in namespace %s", namespace)
 	pipeline := tb.Pipeline("tomatoes", namespace,
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
@@ -58,12 +56,12 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 
 	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name))
 
-	logger.Infof("Creating PipelineRun in namespace %s", namespace)
+	t.Logf("Creating PipelineRun in namespace %s", namespace)
 	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
 	}
 
-	logger.Infof("Waiting for Pipelinerun %s in namespace %s to be started", "pear", namespace)
+	t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", "pear", namespace)
 	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
 		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
@@ -83,7 +81,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", "pear", err)
 	}
 
-	logger.Infof("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", "pear", namespace)
+	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", "pear", namespace)
 	errChan := make(chan error, len(taskrunList.Items))
 	defer close(errChan)
 
@@ -119,7 +117,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		t.Fatalf("Failed to cancel PipelineRun `%s`: %s", "pear", err)
 	}
 
-	logger.Infof("Waiting for PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
+	t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
 	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
 		if c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
 			if c.IsFalse() {
@@ -136,7 +134,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		t.Errorf("Error waiting for PipelineRun `pear` to finished: %s", err)
 	}
 
-	logger.Infof("Waiting for TaskRuns in PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
+	t.Logf("Waiting for TaskRuns in PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
 	errChan2 := make(chan error, len(taskrunList.Items))
 	defer close(errChan2)
 	for _, taskrunItem := range taskrunList.Items {

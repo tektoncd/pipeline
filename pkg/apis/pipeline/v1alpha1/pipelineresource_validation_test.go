@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -215,7 +216,7 @@ func TestResourceValidation_Invalid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.res.Validate()
+			err := tt.res.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), tt.want.Error()); d != "" {
 				t.Errorf("PipleineResource.Validate/%s (-want, +got) = %v", tt.name, d)
 			}
@@ -250,7 +251,7 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 			},
 		},
 	}
-	if err := res.Validate(); err != nil {
+	if err := res.Validate(context.Background()); err != nil {
 		t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
 	}
 }

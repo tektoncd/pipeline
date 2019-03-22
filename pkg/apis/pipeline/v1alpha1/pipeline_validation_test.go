@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -113,7 +114,7 @@ func TestPipelineSpec_Validate_Error(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.p.Spec.Validate(); err == nil {
+			if err := tt.p.Spec.Validate(context.Background()); err == nil {
 				t.Error("PipelineSpec.Validate() did not return error, wanted error")
 			}
 		})
@@ -174,7 +175,7 @@ func TestPipelineSpec_Validate_Valid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.p.Spec.Validate(); err != nil {
+			if err := tt.p.Spec.Validate(context.Background()); err != nil {
 				t.Errorf("PipelineSpec.Validate() returned error: %v", err)
 			}
 		})

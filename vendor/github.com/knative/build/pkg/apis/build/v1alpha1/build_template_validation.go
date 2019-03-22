@@ -17,17 +17,20 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+
 	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // Validate build template
-func (b *BuildTemplate) Validate() *apis.FieldError {
-	return validateObjectMetadata(b.GetObjectMeta()).ViaField("metadata").Also(b.Spec.Validate().ViaField("spec"))
+func (b *BuildTemplate) Validate(ctx context.Context) *apis.FieldError {
+	return validateObjectMetadata(b.GetObjectMeta()).ViaField("metadata").Also(b.Spec.Validate(ctx).ViaField("spec"))
 }
 
 // Validate Build Template
-func (b *BuildTemplateSpec) Validate() *apis.FieldError {
+func (b *BuildTemplateSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateSteps(b.Steps); err != nil {
 		return err
 	}
@@ -44,19 +47,19 @@ func (b *BuildTemplateSpec) Validate() *apis.FieldError {
 // steps of the build ot build template.
 func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	// Build must not duplicate volume names.
-	vols := map[string]struct{}{}
+	vols := sets.NewString()
 	for _, v := range volumes {
-		if _, ok := vols[v.Name]; ok {
+		if vols.Has(v.Name) {
 			return apis.ErrMultipleOneOf("name")
 		}
-		vols[v.Name] = struct{}{}
+		vols.Insert(v.Name)
 	}
 	return nil
 }
 
 func validateSteps(steps []corev1.Container) *apis.FieldError {
 	// Build must not duplicate step names.
-	names := map[string]struct{}{}
+	names := sets.NewString()
 	for _, s := range steps {
 		if s.Image == "" {
 			return apis.ErrMissingField("Image")
@@ -65,22 +68,22 @@ func validateSteps(steps []corev1.Container) *apis.FieldError {
 		if s.Name == "" {
 			continue
 		}
-		if _, ok := names[s.Name]; ok {
+		if names.Has(s.Name) {
 			return apis.ErrMultipleOneOf("name")
 		}
-		names[s.Name] = struct{}{}
+		names.Insert(s.Name)
 	}
 	return nil
 }
 
 func validateParameters(params []ParameterSpec) *apis.FieldError {
 	// Template must not duplicate parameter names.
-	seen := map[string]struct{}{}
+	seen := sets.NewString()
 	for _, p := range params {
-		if _, ok := seen[p.Name]; ok {
+		if seen.Has(p.Name) {
 			return apis.ErrInvalidKeyName("ParamName", "b.spec.params")
 		}
-		seen[p.Name] = struct{}{}
+		seen.Insert(p.Name)
 	}
 	return nil
 }

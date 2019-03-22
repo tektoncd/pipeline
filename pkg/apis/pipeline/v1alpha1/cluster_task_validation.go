@@ -17,12 +17,14 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+
 	"github.com/knative/pkg/apis"
 )
 
-func (t *ClusterTask) Validate() *apis.FieldError {
+func (t *ClusterTask) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
-	return t.Spec.Validate()
+	return t.Spec.Validate(ctx)
 }

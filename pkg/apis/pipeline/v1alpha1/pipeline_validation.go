@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/knative/pkg/apis"
@@ -27,7 +28,7 @@ import (
 
 // Validate checks that the Pipeline structure is valid but does not validate
 // that any references resources exist, that is done at run time.
-func (p *Pipeline) Validate() *apis.FieldError {
+func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(p.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
@@ -111,7 +112,7 @@ func validateGraph(tasks []PipelineTask) error {
 
 // Validate checks that taskNames in the Pipeline are valid and that the graph
 // of Tasks expressed in the Pipeline makes sense.
-func (ps *PipelineSpec) Validate() *apis.FieldError {
+func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineSpec{}) {
 		return apis.ErrMissingField(apis.CurrentField)
 	}

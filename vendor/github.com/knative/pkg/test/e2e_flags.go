@@ -21,6 +21,7 @@ package test
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/user"
 	"path"
@@ -32,19 +33,20 @@ var Flags = initializeFlags()
 
 // EnvironmentFlags define the flags that are needed to run the e2e tests.
 type EnvironmentFlags struct {
-	Cluster         string // K8s cluster (defaults to $K8S_CLUSTER_OVERRIDE)
+	Cluster         string // K8s cluster (defaults to cluster in kubeconfig)
 	Kubeconfig      string // Path to kubeconfig (defaults to ./kube/config)
 	Namespace       string // K8s namespace (blank by default, to be overwritten by test suite)
 	IngressEndpoint string // Host to use for ingress endpoint
 	LogVerbose      bool   // Enable verbose logging
 	EmitMetrics     bool   // Emit metrics
+	DockerRepo      string // Docker repo (defaults to $KO_DOCKER_REPO)
+	Tag             string // Tag for test images
 }
 
 func initializeFlags() *EnvironmentFlags {
 	var f EnvironmentFlags
-	defaultCluster := os.Getenv("K8S_CLUSTER_OVERRIDE")
-	flag.StringVar(&f.Cluster, "cluster", defaultCluster,
-		"Provide the cluster to test against. Defaults to $K8S_CLUSTER_OVERRIDE, then current cluster in kubeconfig if $K8S_CLUSTER_OVERRIDE is unset.")
+	flag.StringVar(&f.Cluster, "cluster", "",
+		"Provide the cluster to test against. Defaults to the current cluster in kubeconfig.")
 
 	var defaultKubeconfig string
 	if usr, err := user.Current(); err == nil {
@@ -65,5 +67,16 @@ func initializeFlags() *EnvironmentFlags {
 	flag.BoolVar(&f.EmitMetrics, "emitmetrics", false,
 		"Set this flag to true if you would like tests to emit metrics, e.g. latency of resources being realized in the system.")
 
+	defaultRepo := os.Getenv("KO_DOCKER_REPO")
+	flag.StringVar(&f.DockerRepo, "dockerrepo", defaultRepo,
+		"Provide the uri of the docker repo you have uploaded the test image to using `uploadtestimage.sh`. Defaults to $KO_DOCKER_REPO")
+
+	flag.StringVar(&f.Tag, "tag", "latest", "Provide the version tag for the test images.")
+
 	return &f
+}
+
+// ImagePath is a helper function to prefix image name with repo and suffix with tag
+func ImagePath(name string) string {
+	return fmt.Sprintf("%s/%s:%s", Flags.DockerRepo, name, Flags.Tag)
 }

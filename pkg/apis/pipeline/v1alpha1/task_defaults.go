@@ -16,10 +16,12 @@ limitations under the License.
 
 package v1alpha1
 
-func (t *Task) SetDefaults() {
-	t.Spec.SetDefaults()
+import "context"
+
+func (t *Task) SetDefaults(ctx context.Context) {
+	t.Spec.SetDefaults(ctx)
 }
 
-func (ts *TaskSpec) SetDefaults() {
+func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 	return
 }

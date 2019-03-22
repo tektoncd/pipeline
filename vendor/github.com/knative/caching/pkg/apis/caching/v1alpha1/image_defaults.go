@@ -16,6 +16,8 @@ limitations under the License.
 
 package v1alpha1
 
-func (r *Image) SetDefaults() {
+import "context"
+
+func (r *Image) SetDefaults(ctx context.Context) {
 	// TODO(mattmoor): This
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -206,7 +207,7 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 }
 
 // SetDefaults for pipelinerun
-func (pr *PipelineRun) SetDefaults() {}
+func (pr *PipelineRun) SetDefaults(ctx context.Context) {}
 
 // GetOwnerReference gets the pipeline run as owner reference for any related objects
 func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {

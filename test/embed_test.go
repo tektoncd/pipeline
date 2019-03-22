@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
@@ -64,14 +63,13 @@ func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 // TestTaskRun_EmbeddedResource is an integration test that will verify a very simple "hello world" TaskRun can be
 // executed with an embedded resource spec.
 func TestTaskRun_EmbeddedResource(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
+	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(getEmbeddedTask(namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)})); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", embedTaskName, err)
 	}
@@ -79,7 +77,7 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", embedTaskRunName, err)
 	}
 
-	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", embedTaskRunName, namespace)
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", embedTaskRunName, namespace)
 	if err := WaitForTaskRunState(c, embedTaskRunName, TaskRunSucceed(embedTaskRunName), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", embedTaskRunName, err)
 	}

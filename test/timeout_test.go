@@ -22,7 +22,6 @@ import (
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -34,14 +33,13 @@ import (
 // verify that pipelinerun timeout works and leads to the the correct TaskRun statuses
 // and pod deletions.
 func TestPipelineRunTimeout(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	logger.Infof("Creating Task in namespace %s", namespace)
+	t.Logf("Creating Task in namespace %s", namespace)
 	task := tb.Task("banana", namespace, tb.TaskSpec(
 		tb.Step("foo", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 10"))))
 	if _, err := c.TaskClient.Create(task); err != nil {
@@ -61,7 +59,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
-	logger.Infof("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
+	t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
 	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
 		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
@@ -81,7 +79,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
 
-	logger.Infof("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", pipelineRun.Name, namespace)
+	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", pipelineRun.Name, namespace)
 	errChan := make(chan error, len(taskrunList.Items))
 	defer close(errChan)
 
@@ -112,7 +110,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
-	logger.Infof("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
+	t.Logf("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
 	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
 		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if c != nil {
@@ -130,7 +128,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
-	logger.Infof("Waiting for TaskRuns from PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
+	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
 	errChan2 := make(chan error, len(taskrunList.Items))
 	defer close(errChan2)
 
@@ -176,7 +174,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", secondPipelineRun.Name, err)
 	}
 
-	logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", secondPipelineRun.Name, namespace)
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", secondPipelineRun.Name, namespace)
 	if err := WaitForPipelineRunState(c, secondPipelineRun.Name, timeout, PipelineRunSucceed(secondPipelineRun.Name), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", secondPipelineRun.Name, err)
 	}
@@ -184,14 +182,13 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
+	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(tb.Task("giraffe", namespace,
 		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 3000"))))); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
@@ -203,7 +200,7 @@ func TestTaskRunTimeout(t *testing.T) {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", "run-giraffe", err)
 	}
 
-	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", "run-giraffe", namespace)
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", "run-giraffe", namespace)
 	if err := WaitForTaskRunState(c, "run-giraffe", func(tr *v1alpha1.TaskRun) (bool, error) {
 		cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 		if cond != nil {

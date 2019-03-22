@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -33,34 +32,33 @@ func TestClusterResource(t *testing.T) {
 	taskName := "helloworld-cluster-task"
 	taskRunName := "helloworld-cluster-taskrun"
 
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	logger.Infof("Creating secret %s", secretName)
+	t.Logf("Creating secret %s", secretName)
 	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getClusterResourceTaskSecret(namespace, secretName)); err != nil {
 		t.Fatalf("Failed to create Secret `%s`: %s", secretName, err)
 	}
 
-	logger.Infof("Creating configMap %s", configName)
+	t.Logf("Creating configMap %s", configName)
 	if _, err := c.KubeClient.Kube.CoreV1().ConfigMaps(namespace).Create(getClusterConfigMap(namespace, configName)); err != nil {
 		t.Fatalf("Failed to create configMap `%s`: %s", configName, err)
 	}
 
-	logger.Infof("Creating cluster PipelineResource %s", resourceName)
+	t.Logf("Creating cluster PipelineResource %s", resourceName)
 	if _, err := c.PipelineResourceClient.Create(getClusterResource(namespace, resourceName, secretName)); err != nil {
 		t.Fatalf("Failed to create cluster Pipeline Resource `%s`: %s", resourceName, err)
 	}
 
-	logger.Infof("Creating Task %s", taskName)
+	t.Logf("Creating Task %s", taskName)
 	if _, err := c.TaskClient.Create(getClusterResourceTask(namespace, taskName, resourceName, configName)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
 	}
 
-	logger.Infof("Creating TaskRun %s", taskRunName)
+	t.Logf("Creating TaskRun %s", taskRunName)
 	if _, err := c.TaskRunClient.Create(getClusterResourceTaskRun(namespace, taskRunName, taskName, resourceName)); err != nil {
 		t.Fatalf("Failed to create Taskrun `%s`: %s", taskRunName, err)
 	}
