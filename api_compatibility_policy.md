@@ -43,8 +43,8 @@ expected to be written in certain locations by a resulting pod)._
 ## `Build` and `BuildTemplate`
 
 The CRD types
-[`Build`](https://github.com/knative/docs/blob/master/build/builds.md) and
-[`BuildTemplate`](https://github.com/knative/docs/blob/master/build/build-templates.md)
+[`Build`](https://github.com/knative/docs/blob/master/docs/build/builds.md) and
+[`BuildTemplate`](https://github.com/knative/docs/blob/master/docs/build/build-templates.md)
 should be considered frozen at beta and only additive changes should be allowed.
 
 Support will continue for the `Build` type for the foreseeable future,
