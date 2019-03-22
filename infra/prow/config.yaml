@@ -17,10 +17,10 @@ plank:
 branch-protection:
   orgs:
     tektoncd:
-      # Protect all branches in knative
+      # Protect all branches in tekton
       # This means all prow jobs with "always_run" set are required
       # to pass before tide can merge the PR.
-      # Currently this is manually enabled by the knative org admins,
+      # Currently this is manually enabled by the tekton org admins,
       # but it's stated here for documentation and reference purposes.
       protect: true
       # Admins can overrule checks
@@ -29,6 +29,14 @@ tide:
   queries:
   - repos:
     - tektoncd/pipeline
+    labels:
+    - lgtm
+    - approved
+    missingLabels:
+    - do-not-merge/hold
+    - do-not-merge/work-in-progress
+  - repos:
+    - tektoncd/community
     labels:
     - lgtm
     - approved
