@@ -208,18 +208,21 @@ func validate(old GenericCRD, new GenericCRD) error {
 		// Copy the old object and set defaults so that we don't reject our own
 		// defaulting done earlier in the webhook.
 		old = old.DeepCopyObject().(GenericCRD)
-		old.SetDefaults()
+		// TODO(mattmoor): Plumb through a real context
+		old.SetDefaults(context.TODO())
 
 		immutableOld, ok := old.(apis.Immutable)
 		if !ok {
 			return fmt.Errorf("unexpected type mismatch %T vs. %T", old, new)
 		}
-		if err := immutableNew.CheckImmutableFields(immutableOld); err != nil {
+		// TODO(mattmoor): Plumb through a real context
+		if err := immutableNew.CheckImmutableFields(context.TODO(), immutableOld); err != nil {
 			return err
 		}
 	}
 	// Can't just `return new.Validate()` because it doesn't properly nil-check.
-	if err := new.Validate(); err != nil {
+	// TODO(mattmoor): Plumb through a real context
+	if err := new.Validate(context.TODO()); err != nil {
 		return err
 	}
 	return nil
@@ -240,7 +243,8 @@ func setAnnotations(patches duck.JSONPatch, new, old GenericCRD, ui *authenticat
 	}
 	b, a := new.DeepCopyObject().(apis.Annotatable), na
 
-	a.AnnotateUserInfo(oa, ui)
+	// TODO(mattmoor): Plumb through a real context
+	a.AnnotateUserInfo(context.TODO(), oa, ui)
 	patch, err := duck.CreatePatch(b, a)
 	if err != nil {
 		return nil, err
@@ -251,7 +255,8 @@ func setAnnotations(patches duck.JSONPatch, new, old GenericCRD, ui *authenticat
 // setDefaults simply leverages apis.Defaultable to set defaults.
 func setDefaults(patches duck.JSONPatch, crd GenericCRD) (duck.JSONPatch, error) {
 	before, after := crd.DeepCopyObject(), crd
-	after.SetDefaults()
+	// TODO(mattmoor): Plumb through a real context
+	after.SetDefaults(context.TODO())
 
 	patch, err := duck.CreatePatch(before, after)
 	if err != nil {
@@ -535,13 +540,18 @@ func (ac *AdmissionController) mutate(ctx context.Context, req *admissionv1beta1
 	}
 	var patches duck.JSONPatch
 
-	// Add these before defaulting fields, otherwise defaulting may cause an illegal patch because
-	// it expects the round tripped through Golang fields to be present already.
-	rtp, err := roundTripPatch(newBytes, newObj)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create patch for round tripped newBytes: %v", err)
+	var err error
+	// Skip this step if the type we're dealing with is a duck type, since it is inherently
+	// incomplete and this will patch away all of the unspecified fields.
+	if _, ok := newObj.(duck.Populatable); !ok {
+		// Add these before defaulting fields, otherwise defaulting may cause an illegal patch
+		// because it expects the round tripped through Golang fields to be present already.
+		rtp, err := roundTripPatch(newBytes, newObj)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create patch for round tripped newBytes: %v", err)
+		}
+		patches = append(patches, rtp...)
 	}
-	patches = append(patches, rtp...)
 
 	if patches, err = setDefaults(patches, newObj); err != nil {
 		logger.Errorw("Failed the resource specific defaulter", zap.Error(err))

@@ -22,17 +22,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/knative/pkg/test/logging"
 	"github.com/knative/pkg/test/spoof"
-	"go.opencensus.io/trace"
 )
-
-// MatchesAny is a NOP matcher. This is useful for polling until a 200 is returned.
-func MatchesAny(_ *spoof.Response) (bool, error) {
-	return true, nil
-}
 
 // Retrying modifies a ResponseChecker to retry certain response codes.
 func Retrying(rc spoof.ResponseChecker, codes ...int) spoof.ResponseChecker {
@@ -50,12 +46,30 @@ func Retrying(rc spoof.ResponseChecker, codes ...int) spoof.ResponseChecker {
 	}
 }
 
+// IsOneOfStatusCodes checks that the response code is equal to the given one.
+func IsOneOfStatusCodes(codes ...int) spoof.ResponseChecker {
+	return func(resp *spoof.Response) (bool, error) {
+		for _, code := range codes {
+			if resp.StatusCode == code {
+				return true, nil
+			}
+		}
+
+		return true, fmt.Errorf("status = %d, want one of: %v", resp.StatusCode, codes)
+	}
+}
+
+// IsStatusOK checks that the response code is a 200.
+func IsStatusOK(resp *spoof.Response) (bool, error) {
+	return IsOneOfStatusCodes(http.StatusOK)(resp)
+}
+
 // MatchesBody checks that the *first* response body matches the "expected" body, otherwise failing.
 func MatchesBody(expected string) spoof.ResponseChecker {
 	return func(resp *spoof.Response) (bool, error) {
 		if !strings.Contains(string(resp.Body), expected) {
 			// Returning (true, err) causes SpoofingClient.Poll to fail.
-			return true, fmt.Errorf("body mismatch: got %q, want %q", string(resp.Body), expected)
+			return true, fmt.Errorf("body = %s, want: %s", string(resp.Body), expected)
 		}
 
 		return true, nil
@@ -75,25 +89,66 @@ func EventuallyMatchesBody(expected string) spoof.ResponseChecker {
 	}
 }
 
-// WaitForEndpointState will poll an endpoint until inState indicates the state is achieved.
+// MatchesAllOf combines multiple ResponseCheckers to one ResponseChecker with a logical AND. The
+// checkers are executed in order. The first function to trigger an error or a retry will short-circuit
+// the other functions (they will not be executed).
+//
+// This is useful for combining a body with a status check like:
+// MatchesAllOf(IsStatusOK, MatchesBody("test"))
+//
+// The MatchesBody check will only be executed after the IsStatusOK has passed.
+func MatchesAllOf(checkers ...spoof.ResponseChecker) spoof.ResponseChecker {
+	return func(resp *spoof.Response) (bool, error) {
+		for _, checker := range checkers {
+			done, err := checker(resp)
+			if err != nil || !done {
+				return done, err
+			}
+		}
+		return true, nil
+	}
+}
+
+// WaitForEndpointState will poll an endpoint until inState indicates the state is achieved,
+// or default timeout is reached.
 // If resolvableDomain is false, it will use kubeClientset to look up the ingress and spoof
 // the domain in the request headers, otherwise it will make the request directly to domain.
 // desc will be used to name the metric that is emitted to track how long it took for the
 // domain to get into the state checked by inState.  Commas in `desc` must be escaped.
-func WaitForEndpointState(kubeClient *KubeClient, logger *logging.BaseLogger, domain string, inState spoof.ResponseChecker, desc string, resolvable bool) (*spoof.Response, error) {
-	metricName := fmt.Sprintf("WaitForEndpointState/%s", desc)
-	_, span := trace.StartSpan(context.Background(), metricName)
-	defer span.End()
+func WaitForEndpointState(kubeClient *KubeClient, logf logging.FormatLogger, theURL string, inState spoof.ResponseChecker, desc string, resolvable bool) (*spoof.Response, error) {
+	return WaitForEndpointStateWithTimeout(kubeClient, logf, theURL, inState, desc, resolvable, spoof.RequestTimeout)
+}
 
-	client, err := NewSpoofingClient(kubeClient, logger, domain, resolvable)
+// WaitForEndpointStateWithTimeout will poll an endpoint until inState indicates the state is achieved
+// or the provided timeout is achieved.
+// If resolvableDomain is false, it will use kubeClientset to look up the ingress and spoof
+// the domain in the request headers, otherwise it will make the request directly to domain.
+// desc will be used to name the metric that is emitted to track how long it took for the
+// domain to get into the state checked by inState.  Commas in `desc` must be escaped.
+func WaitForEndpointStateWithTimeout(
+	kubeClient *KubeClient, logf logging.FormatLogger, theURL string, inState spoof.ResponseChecker,
+	desc string, resolvable bool, timeout time.Duration) (*spoof.Response, error) {
+	defer logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForEndpointState/%s", desc)).End()
+
+	// Try parsing the "theURL" with and without a scheme.
+	asURL, err := url.Parse(fmt.Sprintf("http://%s", theURL))
+	if err != nil {
+		asURL, err = url.Parse(theURL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req, err := http.NewRequest(http.MethodGet, asURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s", domain), nil)
+	client, err := NewSpoofingClient(kubeClient, logf, asURL.Hostname(), resolvable)
 	if err != nil {
 		return nil, err
 	}
+	client.RequestTimeout = timeout
 
 	return client.Poll(req, inState)
 }

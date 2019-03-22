@@ -123,16 +123,12 @@ func TestPipelineRun(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			td := td
 			t.Parallel()
-			// Note that getting a new logger has the side effect of setting the global metrics logger as well,
-			// this means that metrics emitted from these tests will have the wrong test name attached. We should
-			// revisit this if we ever start using those metrics (maybe use a different metrics gatherer).
-			logger := getContextLogger(t.Name())
-			c, namespace := setup(t, logger)
+			c, namespace := setup(t)
 
-			knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-			defer tearDown(t, logger, c, namespace)
+			knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+			defer tearDown(t, c, namespace)
 
-			logger.Infof("Setting up test resources for %q test in namespace %s", td.name, namespace)
+			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			td.testSetup(t, c, namespace, i)
 
 			prName := fmt.Sprintf("%s%d", pipelineRunName, i)
@@ -141,12 +137,12 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
 
-			logger.Infof("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+			t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
 			if err := WaitForPipelineRunState(c, prName, pipelineRunTimeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
 
-			logger.Infof("Making sure the expected TaskRuns %s were created", td.expectedTaskRuns)
+			t.Logf("Making sure the expected TaskRuns %s were created", td.expectedTaskRuns)
 			actualTaskrunList, err := c.TaskRunClient.List(metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", prName)})
 			if err != nil {
 				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
@@ -169,13 +165,13 @@ func TestPipelineRun(t *testing.T) {
 					t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, r.Status)
 				}
 
-				logger.Infof("Checking that labels were propagated correctly for TaskRun %s", r.Name)
+				t.Logf("Checking that labels were propagated correctly for TaskRun %s", r.Name)
 				checkLabelPropagation(t, c, namespace, prName, r)
 			}
 
 			matchKinds := map[string][]string{"PipelineRun": {prName}, "TaskRun": expectedTaskRunNames}
 
-			logger.Infof("Making sure %d events were created from taskrun and pipelinerun with kinds %v", td.expectedNumberOfEvents, matchKinds)
+			t.Logf("Making sure %d events were created from taskrun and pipelinerun with kinds %v", td.expectedNumberOfEvents, matchKinds)
 
 			events, err := collectMatchingEvents(c.KubeClient, namespace, matchKinds, "Succeeded")
 			if err != nil {
@@ -184,7 +180,7 @@ func TestPipelineRun(t *testing.T) {
 			if len(events) != td.expectedNumberOfEvents {
 				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), events)
 			}
-			logger.Infof("Successfully finished test %q", td.name)
+			t.Logf("Successfully finished test %q", td.name)
 		})
 	}
 }

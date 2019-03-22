@@ -27,12 +27,12 @@ import (
 )
 
 // CleanupOnInterrupt will execute the function cleanup if an interrupt signal is caught
-func CleanupOnInterrupt(cleanup func(), logger *logging.BaseLogger) {
+func CleanupOnInterrupt(cleanup func(), logf logging.FormatLogger) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
 		for range c {
-			logger.Info("Test interrupted, cleaning up.")
+			logf("Test interrupted, cleaning up.")
 			cleanup()
 			os.Exit(1)
 		}

@@ -139,6 +139,8 @@ type VirtualServiceSpec struct {
 	// An ordered list of route rules for TCP traffic.
 	// The first rule matching an incoming request is used.
 	Tcp []TCPRoute `json:"tcp,omitempty"`
+
+	Tls []TLSRoute `json:"tls,omitempty"`
 }
 
 // Describes match conditions and actions for routing HTTP/1.1, HTTP2, and
@@ -198,6 +200,9 @@ type HTTPRoute struct {
 
 	// Http headers to remove before returning the response to the caller
 	RemoveResponseHeaders map[string]string `json:"removeResponseHeaders,omitempty"`
+
+	// Cross-Origin Resource Sharing policy
+	CorsPolicy *CorsPolicy `json:"corsPolicy,omitempty"`
 }
 
 // HttpMatchRequest specifies a set of criterion to be met in order for the
@@ -283,6 +288,22 @@ type HTTPMatchRequest struct {
 	//
 	// **Note:** The keys `uri`, `scheme`, `method`, and `authority` will be ignored.
 	Headers map[string]v1alpha1.StringMatch `json:"headers,omitempty"`
+
+	// Specifies the ports on the host that is being addressed. Many services
+	// only expose a single port or label ports with the protocols they support,
+	// in these cases it is not required to explicitly select the port.
+	Port uint32 `json:"port,omitempty"`
+
+	// One or more labels that constrain the applicability of a rule to
+	// workloads with the given labels. If the VirtualService has a list of
+	// gateways specified at the top, it should include the reserved gateway
+	// `mesh` in order for this field to be applicable.
+	SourceLabels map[string]string `json:"sourceLabels,omitempty"`
+
+	// Names of gateways where the rule should be applied to. Gateway names
+	// at the top of the VirtualService (if any) are overridden. The gateway match is
+	// independent of sourceLabels.
+	Gateways []string `json:"gateways,omitempty"`
 }
 
 type DestinationWeight struct {
@@ -470,36 +491,98 @@ type TCPRoute struct {
 	// is matched if any one of the match blocks succeed.
 	Match []L4MatchAttributes `json:"match"`
 
+	// The destinations to which the connection should be forwarded to. Weights
+	// must add to 100%.
+	Route []DestinationWeight `json:"route"`
+}
+
+// Describes match conditions and actions for routing unterminated TLS
+// traffic (TLS/HTTPS) The following routing rule forwards unterminated TLS
+// traffic arriving at port 443 of gateway called mygateway to internal
+// services in the mesh based on the SNI value.
+//
+// ```yaml
+// kind: VirtualService
+// metadata:
+//   name: bookinfo-sni
+// spec:
+//   hosts:
+//   - '*.bookinfo.com'
+//   gateways:
+//   - mygateway
+//   tls:
+//   - match:
+//     - port: 443
+//       sniHosts:
+//       - login.bookinfo.com
+//     route:
+//     - destination:
+//         host: login.prod.svc.cluster.local
+//   - match:
+//     - port: 443
+//       sniHosts:
+//       - reviews.bookinfo.com
+//     route:
+//     - destination:
+//         host: reviews.prod.svc.cluster.local
+// ```
+type TLSRoute struct {
+	// REQUIRED. Match conditions to be satisfied for the rule to be
+	// activated. All conditions inside a single match block have AND
+	// semantics, while the list of match blocks have OR semantics. The rule
+	// is matched if any one of the match blocks succeed.
+	Match []TLSMatchAttributes `json:"match"`
+
 	// The destination to which the connection should be forwarded to.
-	// Currently, only one destination is allowed for TCP services. When TCP
-	// weighted routing support is introduced in Envoy, multiple destinations
-	// with weights can be specified.
-	Route DestinationWeight `json:"route"`
+	Route []DestinationWeight `json:"route"`
 }
 
 // L4 connection match attributes. Note that L4 connection matching support
 // is incomplete.
 type L4MatchAttributes struct {
 	// IPv4 or IPv6 ip address of destination with optional subnet.  E.g.,
-	// a.b.c.d/xx form or just a.b.c.d. This is only valid when the
-	// destination service has several IPs and the application explicitly
-	// specifies a particular IP.
-	DestinationSubnet string `json:"destinationSubnet,omitempty"`
+	// a.b.c.d/xx form or just a.b.c.d.
+	DestinationSubnets []string `json:"destinationSubnets,omitempty"`
 
 	// Specifies the port on the host that is being addressed. Many services
 	// only expose a single port or label ports with the protocols they support,
 	// in these cases it is not required to explicitly select the port.
 	Port int `json:"port,omitempty"`
 
-	// IPv4 or IPv6 ip address of source with optional subnet. E.g., a.b.c.d/xx
-	// form or just a.b.c.d
-	SourceSubnet string `json:"sourceSubnet,omitempty"`
+	// One or more labels that constrain the applicability of a rule to
+	// workloads with the given labels. If the VirtualService has a list of
+	// gateways specified at the top, it should include the reserved gateway
+	// `mesh` in order for this field to be applicable.
+	SourceLabels map[string]string `json:"sourceLabels,omitempty"`
+
+	// Names of gateways where the rule should be applied to. Gateway names
+	// at the top of the VirtualService (if any) are overridden. The gateway match is
+	// independent of sourceLabels.
+	Gateways []string `json:"gateways,omitempty"`
+}
+
+// TLS connection match attributes.
+type TLSMatchAttributes struct {
+	// REQUIRED. SNI (server name indicator) to match on. Wildcard prefixes
+	// can be used in the SNI value, e.g., *.com will match foo.example.com
+	// as well as example.com. An SNI value must be a subset (i.e., fall
+	// within the domain) of the corresponding virtual service's hosts
+	SniHosts []string `json:"sniHosts"`
+
+	// IPv4 or IPv6 ip addresses of destination with optional subnet.  E.g.,
+	// a.b.c.d/xx form or just a.b.c.d.
+	DestinationSubnets []string `json:"destinationSubnets,omitempty"`
+
+	// Specifies the port on the host that is being addressed. Many services
+	// only expose a single port or label ports with the protocols they support,
+	// in these cases it is not required to explicitly select the port.
+	Port int `json:"port,omitempty"`
 
 	// One or more labels that constrain the applicability of a rule to
 	// workloads with the given labels. If the VirtualService has a list of
 	// gateways specified at the top, it should include the reserved gateway
 	// `mesh` in order for this field to be applicable.
-	SourceLabel map[string]string `json:"sourceLabel,omitempty"`
+	SourceLabels map[string]string `json:"sourceLabels,omitempty"`
 
 	// Names of gateways where the rule should be applied to. Gateway names
 	// at the top of the VirtualService (if any) are overridden. The gateway match is

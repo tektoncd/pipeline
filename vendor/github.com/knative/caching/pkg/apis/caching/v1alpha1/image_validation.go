@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -25,11 +26,11 @@ import (
 	"github.com/knative/pkg/apis"
 )
 
-func (rt *Image) Validate() *apis.FieldError {
-	return rt.Spec.Validate().ViaField("spec")
+func (rt *Image) Validate(ctx context.Context) *apis.FieldError {
+	return rt.Spec.Validate(ctx).ViaField("spec")
 }
 
-func (rs *ImageSpec) Validate() *apis.FieldError {
+func (rs *ImageSpec) Validate(ctx context.Context) *apis.FieldError {
 	if rs.Image == "" {
 		return apis.ErrMissingField("image")
 	}

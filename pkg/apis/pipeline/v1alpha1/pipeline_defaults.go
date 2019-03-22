@@ -16,11 +16,13 @@ limitations under the License.
 
 package v1alpha1
 
-func (p *Pipeline) SetDefaults() {
-	p.Spec.SetDefaults()
+import "context"
+
+func (p *Pipeline) SetDefaults(ctx context.Context) {
+	p.Spec.SetDefaults(ctx)
 }
 
-func (ps *PipelineSpec) SetDefaults() {
+func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 	for _, pt := range ps.Tasks {
 		if pt.TaskRef.Kind == "" {
 			pt.TaskRef.Kind = NamespacedTaskKind

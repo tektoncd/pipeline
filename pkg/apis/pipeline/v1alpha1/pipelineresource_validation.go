@@ -17,21 +17,22 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"strings"
 
 	"github.com/knative/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
-func (r *PipelineResource) Validate() *apis.FieldError {
+func (r *PipelineResource) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(r.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 
-	return r.Spec.Validate()
+	return r.Spec.Validate(ctx)
 }
 
-func (rs *PipelineResourceSpec) Validate() *apis.FieldError {
+func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(rs, &PipelineResourceSpec{}) {
 		return apis.ErrMissingField(apis.CurrentField)
 	}

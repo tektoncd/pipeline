@@ -22,7 +22,6 @@ import (
 	"time"
 
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -40,12 +39,11 @@ import (
 //                               |
 //                        pipeline-task-4
 func TestDAGPipelineRun(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
 	// Create the Task that echoes text
 	echoTask := tb.Task("echo-task", namespace, tb.TaskSpec(
@@ -109,12 +107,12 @@ func TestDAGPipelineRun(t *testing.T) {
 	if _, err := c.PipelineRunClient.Create(pipelineRun); err != nil {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}
-	logger.Infof("Waiting for DAG pipeline to complete")
+	t.Logf("Waiting for DAG pipeline to complete")
 	if err := WaitForPipelineRunState(c, "dag-pipeline-run", pipelineRunTimeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	logger.Infof("Verifying order of execution")
+	t.Logf("Verifying order of execution")
 	times := getTaskStartTimes(t, c.TaskRunClient)
 	vefifyExpectedOrder(t, times)
 }

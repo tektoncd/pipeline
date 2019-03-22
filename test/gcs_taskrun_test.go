@@ -23,7 +23,6 @@ import (
 	"testing"
 
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -39,14 +38,13 @@ func TestStorageTaskRun(t *testing.T) {
 	if configFile == "" {
 		t.Skip("GCP_SERVICE_ACCOUNT_KEY_PATH variable is not set.")
 	}
-	logger := logging.GetContextLogger(t.Name())
 	t.Parallel()
 
-	c, namespace := setup(t, logger)
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	c, namespace := setup(t)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	authSec := createGCSSecret(t, logger, namespace, configFile)
+	authSec := createGCSSecret(t, namespace, configFile)
 	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(authSec); err != nil {
 		t.Fatalf("Failed to create secret %s", err)
 	}
@@ -57,7 +55,7 @@ func TestStorageTaskRun(t *testing.T) {
 	}
 
 	taskRunName := "gcs-taskrun"
-	logger.Infof("Creating Task and TaskRun %s in namespace %s", taskRunName, namespace)
+	t.Logf("Creating Task and TaskRun %s in namespace %s", taskRunName, namespace)
 
 	if _, err := c.TaskClient.Create(getGCSStorageTask(namespace, authSec.Name, filepath.Base(configFile))); err != nil {
 		t.Fatalf("Failed to create Task gcs-file : %s", err)
@@ -67,12 +65,12 @@ func TestStorageTaskRun(t *testing.T) {
 		t.Fatalf("Failed to create TaskRun %s: %s", taskRunName, err)
 	}
 
-	logger.Infof("Waiting for TaskRun %s in namespace %s to complete", taskRunName, namespace)
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", taskRunName, namespace)
 
 	if err := WaitForTaskRunState(c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", taskRunName, err)
 	}
-	logger.Infof("TaskRun %s succeeded", taskRunName)
+	t.Logf("TaskRun %s succeeded", taskRunName)
 }
 
 func getGCSStorageTask(namespace, secretName, secretKey string) *v1alpha1.Task {
@@ -112,7 +110,7 @@ func getResources(namespace, name, secretName, secretKey string) *v1alpha1.Pipel
 	))
 }
 
-func createGCSSecret(t *testing.T, logger *logging.BaseLogger, namespace, authFilePath string) *corev1.Secret {
+func createGCSSecret(t *testing.T, namespace, authFilePath string) *corev1.Secret {
 	t.Helper()
 
 	f, err := ioutil.ReadFile(authFilePath)

@@ -16,6 +16,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -101,7 +102,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.pr.Validate()
+			err := ts.pr.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
 				t.Errorf("PipelineRun.Validate/%s (-want, +got) = %v", ts.name, d)
 			}
@@ -127,7 +128,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 	}
-	if err := tr.Validate(); err != nil {
+	if err := tr.Validate(context.Background()); err != nil {
 		t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
 	}
 }

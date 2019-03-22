@@ -27,7 +27,3 @@ dep ensure
 
 rm -rf $(find vendor/ -name 'OWNERS')
 rm -rf $(find vendor/ -name '*_test.go')
-
-# Keep the only dir in knative/test-infra we're interested in
-find vendor/github.com/knative/test-infra -mindepth 1 -maxdepth 1 ! -name scripts -exec rm -fr {} \;
-

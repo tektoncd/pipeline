@@ -129,25 +129,28 @@ type KResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Status KResourceStatus `json:"status"`
+	Status Status `json:"status"`
 }
 
-// KResourceStatus shows how we expect folks to embed Conditions in
+// Status shows how we expect folks to embed Conditions in
 // their Status field.
-type KResourceStatus struct {
-	Conditions Conditions `json:"conditions,omitempty"`
+// WARNING: Adding fields to this struct will add them to all Knative resources.
+type Status struct {
+	// ObservedGeneration is the 'Generation' of the Service that
+	// was last processed by the controller.
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// Conditions the latest available observations of a resource's current state.
+	// +optional
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	Conditions Conditions `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
 }
 
-func (krs *KResourceStatus) GetConditions() Conditions {
-	return krs.Conditions
-}
-
-func (krs *KResourceStatus) SetConditions(conditions Conditions) {
-	krs.Conditions = conditions
-}
-
-// Ensure KResourceStatus satisfies ConditionsAccessor
-var _ ConditionsAccessor = (*KResourceStatus)(nil)
+// TODO: KResourceStatus is added for backwards compatibility for <= 0.4.0 releases. Remove later.
+// KResourceStatus [Deprecated] use Status directly. Will be deleted ~0.6.0 release.
+type KResourceStatus Status
 
 // In order for Conditions to be Implementable, KResource must be Populatable.
 var _ duck.Populatable = (*KResource)(nil)
@@ -162,6 +165,7 @@ func (_ *Conditions) GetFullType() duck.Populatable {
 
 // Populate implements duck.Populatable
 func (t *KResource) Populate() {
+	t.Status.ObservedGeneration = 42
 	t.Status.Conditions = Conditions{{
 		// Populate ALL fields
 		Type:               "Birthday",

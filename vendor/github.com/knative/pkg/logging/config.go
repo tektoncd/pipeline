@@ -173,7 +173,7 @@ func UpdateLevelFromConfigMap(logger *zap.SugaredLogger, atomicLevel zap.AtomicL
 	return func(configMap *corev1.ConfigMap) {
 		loggingConfig, err := NewConfigFromConfigMap(configMap, components...)
 		if err != nil {
-			logger.Error("Failed to parse the logging configmap. Previous config map will be used.", zap.Error(err))
+			logger.Errorw("Failed to parse the logging configmap. Previous config map will be used.", zap.Error(err))
 			return
 		}
 

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +27,7 @@ import (
 const DefaultTimeout = 10 * time.Minute
 
 // SetDefaults for build
-func (b *Build) SetDefaults() {
+func (b *Build) SetDefaults(ctx context.Context) {
 	if b == nil {
 		return
 	}

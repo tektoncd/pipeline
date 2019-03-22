@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -71,4 +73,4 @@ func (bt *ClusterBuildTemplate) GetGroupVersionKind() schema.GroupVersionKind {
 }
 
 // SetDefaults
-func (b *ClusterBuildTemplate) SetDefaults() {}
+func (b *ClusterBuildTemplate) SetDefaults(ctx context.Context) {}

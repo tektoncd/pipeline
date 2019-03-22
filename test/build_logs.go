@@ -27,12 +27,12 @@ import (
 )
 
 // CollectBuildLogs will get the build logs for a task run
-func CollectBuildLogs(c *clients, podName, namespace string, logger *logging.BaseLogger) {
+func CollectBuildLogs(c *clients, podName, namespace string, logf logging.FormatLogger) {
 	logs, err := getInitContainerLogsFromPod(c.KubeClient.Kube, podName, namespace)
 	if err != nil {
-		logger.Infof("Expected there to be logs from build helm-deploy-pipeline-run-helm-deploy %s", err)
+		logf("Expected there to be logs from build helm-deploy-pipeline-run-helm-deploy %s", err)
 	}
-	logger.Infof("build logs %s", logs)
+	logf("build logs %s", logs)
 }
 
 func getInitContainerLogsFromPod(c kubernetes.Interface, pod, namespace string) (string, error) {

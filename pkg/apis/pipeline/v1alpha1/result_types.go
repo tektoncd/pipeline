@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 
@@ -45,7 +46,7 @@ type Results struct {
 // Validate will validate the result configuration. The path is the path at which
 // we found this instance of `Results` (since it is probably a member of another
 // structure) and will be used to report any errors.
-func (r *Results) Validate(path string) *apis.FieldError {
+func (r *Results) Validate(ctx context.Context, path string) *apis.FieldError {
 	if r.Type != ResultTargetTypeGCS {
 		return apis.ErrInvalidValue(string(r.Type), fmt.Sprintf("%s.Type", path))
 	}

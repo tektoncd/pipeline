@@ -17,18 +17,19 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"time"
 
 	"github.com/knative/pkg/apis"
 )
 
 // Validate Build
-func (b *Build) Validate() *apis.FieldError {
-	return validateObjectMetadata(b.GetObjectMeta()).ViaField("metadata").Also(b.Spec.Validate().ViaField("spec"))
+func (b *Build) Validate(ctx context.Context) *apis.FieldError {
+	return validateObjectMetadata(b.GetObjectMeta()).ViaField("metadata").Also(b.Spec.Validate(ctx).ViaField("spec"))
 }
 
 // Validate for build spec
-func (bs *BuildSpec) Validate() *apis.FieldError {
+func (bs *BuildSpec) Validate(ctx context.Context) *apis.FieldError {
 	if bs.Template == nil && len(bs.Steps) == 0 {
 		return apis.ErrMissingOneOf("template", "steps")
 	}
@@ -39,7 +40,7 @@ func (bs *BuildSpec) Validate() *apis.FieldError {
 	// If a build specifies a template, all the template's parameters without
 	// defaults must be satisfied by the build's parameters.
 	if bs.Template != nil {
-		return bs.Template.Validate().ViaField("template")
+		return bs.Template.Validate(ctx).ViaField("template")
 	}
 
 	// Below method potentially has a bug:
@@ -51,7 +52,7 @@ func (bs *BuildSpec) Validate() *apis.FieldError {
 }
 
 // Validate template
-func (b *TemplateInstantiationSpec) Validate() *apis.FieldError {
+func (b *TemplateInstantiationSpec) Validate(ctx context.Context) *apis.FieldError {
 	if b == nil {
 		return nil
 	}

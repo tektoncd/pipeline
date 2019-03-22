@@ -19,8 +19,12 @@ limitations under the License.
 package test
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/knative/pkg/test/logging"
 	"github.com/knative/pkg/test/spoof"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	k8styped "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -34,8 +38,8 @@ type KubeClient struct {
 }
 
 // NewSpoofingClient returns a spoofing client to make requests
-func NewSpoofingClient(client *KubeClient, logger *logging.BaseLogger, domain string, resolvable bool) (*spoof.SpoofingClient, error) {
-	return spoof.New(client.Kube, logger, domain, resolvable, Flags.IngressEndpoint)
+func NewSpoofingClient(client *KubeClient, logf logging.FormatLogger, domain string, resolvable bool) (*spoof.SpoofingClient, error) {
+	return spoof.New(client.Kube, logf, domain, resolvable, Flags.IngressEndpoint)
 }
 
 // NewKubeClient instantiates and returns several clientsets required for making request to the
@@ -67,7 +71,7 @@ func BuildClientConfig(kubeConfigPath string, clusterName string) (*rest.Config,
 
 // UpdateConfigMap updates the config map for specified @name with values
 func (client *KubeClient) UpdateConfigMap(name string, configName string, values map[string]string) error {
-	configMap, err := client.getConfigMap(name).Get(configName, metav1.GetOptions{})
+	configMap, err := client.GetConfigMap(name).Get(configName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -76,11 +80,35 @@ func (client *KubeClient) UpdateConfigMap(name string, configName string, values
 		configMap.Data[key] = value
 	}
 
-	_, err = client.getConfigMap(name).Update(configMap)
+	_, err = client.GetConfigMap(name).Update(configMap)
 	return err
 }
 
-// getConfigMap gets the knative serving config map.
-func (client *KubeClient) getConfigMap(name string) k8styped.ConfigMapInterface {
+// GetConfigMap gets the knative serving config map.
+func (client *KubeClient) GetConfigMap(name string) k8styped.ConfigMapInterface {
 	return client.Kube.CoreV1().ConfigMaps(name)
+}
+
+// CreatePod will create a Pod
+func (client *KubeClient) CreatePod(pod *corev1.Pod) (*corev1.Pod, error) {
+	pods := client.Kube.CoreV1().Pods(pod.GetNamespace())
+	return pods.Create(pod)
+}
+
+// PodLogs returns Pod logs for given Pod and Container
+func (client *KubeClient) PodLogs(podName, containerName string) ([]byte, error) {
+	pods := client.Kube.CoreV1().Pods(Flags.Namespace)
+	podList, err := pods.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	for _, pod := range podList.Items {
+		if strings.Contains(pod.Name, podName) {
+			result := pods.GetLogs(pod.Name, &corev1.PodLogOptions{
+				Container: containerName,
+			}).Do()
+			return result.Raw()
+		}
+	}
+	return nil, fmt.Errorf("Could not find logs for %s/%s", podName, containerName)
 }

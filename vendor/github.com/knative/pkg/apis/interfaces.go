@@ -17,6 +17,8 @@ limitations under the License.
 package apis
 
 import (
+	"context"
+
 	authenticationv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -24,13 +26,13 @@ import (
 // Defaultable defines an interface for setting the defaults for the
 // uninitialized fields of this instance.
 type Defaultable interface {
-	SetDefaults()
+	SetDefaults(context.Context)
 }
 
 // Validatable indicates that a particular type may have its fields validated.
 type Validatable interface {
 	// Validate checks the validity of this types fields.
-	Validate() *FieldError
+	Validate(context.Context) *FieldError
 }
 
 // Immutable indicates that a particular type has fields that should
@@ -38,7 +40,7 @@ type Validatable interface {
 type Immutable interface {
 	// CheckImmutableFields checks that the current instance's immutable
 	// fields haven't changed from the provided original.
-	CheckImmutableFields(original Immutable) *FieldError
+	CheckImmutableFields(ctx context.Context, original Immutable) *FieldError
 }
 
 // Listable indicates that a particular type can be returned via the returned
@@ -51,5 +53,5 @@ type Listable interface {
 
 // Annotatable indicates that a particular type applies various annotations.
 type Annotatable interface {
-	AnnotateUserInfo(previous Annotatable, ui *authenticationv1.UserInfo)
+	AnnotateUserInfo(ctx context.Context, previous Annotatable, ui *authenticationv1.UserInfo)
 }

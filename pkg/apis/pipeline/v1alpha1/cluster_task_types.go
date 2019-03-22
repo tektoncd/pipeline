@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+
 	"github.com/knative/pkg/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -33,8 +35,8 @@ func (t *ClusterTask) Copy() TaskInterface {
 	return t.DeepCopy()
 }
 
-func (t *ClusterTask) SetDefaults() {
-	t.Spec.SetDefaults()
+func (t *ClusterTask) SetDefaults(ctx context.Context) {
+	t.Spec.SetDefaults(ctx)
 }
 
 // Check that Task may be validated and defaulted.

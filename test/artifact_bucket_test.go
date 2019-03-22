@@ -23,7 +23,6 @@ import (
 	"time"
 
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -48,22 +47,21 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	if configFilePath == "" {
 		t.Skip("GCP_SERVICE_ACCOUNT_KEY_PATH variable is not set.")
 	}
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
 	bucketName := fmt.Sprintf("build-pipeline-test-%s-%d", namespace, time.Now().Unix())
 
-	logger.Infof("Creating Secret %s", bucketSecretName)
-	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getBucketSecret(t, logger, configFilePath, namespace)); err != nil {
+	t.Logf("Creating Secret %s", bucketSecretName)
+	if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getBucketSecret(t, configFilePath, namespace)); err != nil {
 		t.Fatalf("Failed to create Secret `%s`: %s", bucketSecretName, err)
 	}
-	defer deleteBucketSecret(c, t, logger, namespace)
+	defer deleteBucketSecret(c, t, namespace)
 
-	logger.Infof("Creating GCS bucket %s", bucketName)
+	t.Logf("Creating GCS bucket %s", bucketName)
 	createbuckettask := tb.Task("createbuckettask", namespace, tb.TaskSpec(
 		tb.TaskVolume("bucket-secret-volume", tb.VolumeSource(corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
@@ -79,7 +77,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	),
 	)
 
-	logger.Infof("Creating Task %s", "createbuckettask")
+	t.Logf("Creating Task %s", "createbuckettask")
 	if _, err := c.TaskClient.Create(createbuckettask); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "createbuckettask", err)
 	}
@@ -87,7 +85,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	createbuckettaskrun := tb.TaskRun("createbuckettaskrun", namespace,
 		tb.TaskRunSpec(tb.TaskRunTaskRef("createbuckettask")))
 
-	logger.Infof("Creating TaskRun %s", "createbuckettaskrun")
+	t.Logf("Creating TaskRun %s", "createbuckettaskrun")
 	if _, err := c.TaskRunClient.Create(createbuckettaskrun); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", "createbuckettaskrun", err)
 	}
@@ -96,7 +94,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", "createbuckettaskrun", err)
 	}
 
-	defer runTaskToDeleteBucket(c, t, logger, namespace, bucketName, bucketSecretName, bucketSecretKey)
+	defer runTaskToDeleteBucket(c, t, namespace, bucketName, bucketSecretName, bucketSecretKey)
 
 	originalConfigMap, err := c.KubeClient.Kube.CoreV1().ConfigMaps(systemNamespace).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
 	if err != nil {
@@ -104,7 +102,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	}
 	originalConfigMapData := originalConfigMap.Data
 
-	logger.Infof("Creating ConfigMap %s", v1alpha1.BucketConfigName)
+	t.Logf("Creating ConfigMap %s", v1alpha1.BucketConfigName)
 	configMapData := map[string]string{
 		v1alpha1.BucketLocationKey:              fmt.Sprintf("gs://%s", bucketName),
 		v1alpha1.BucketServiceAccountSecretName: bucketSecretName,
@@ -113,7 +111,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	c.KubeClient.UpdateConfigMap(systemNamespace, v1alpha1.BucketConfigName, configMapData)
 	defer resetConfigMap(c, systemNamespace, v1alpha1.BucketConfigName, originalConfigMapData)
 
-	logger.Infof("Creating Git PipelineResource %s", helloworldResourceName)
+	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
 	helloworldResource := tb.PipelineResource(helloworldResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/pivotal-nader-ziada/gohelloworld"),
@@ -124,7 +122,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", helloworldResourceName, err)
 	}
 
-	logger.Infof("Creating Task %s", addFileTaskName)
+	t.Logf("Creating Task %s", addFileTaskName)
 	addFileTask := tb.Task(addFileTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
@@ -136,7 +134,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create Task `%s`: %s", addFileTaskName, err)
 	}
 
-	logger.Infof("Creating Task %s", readFileTaskName)
+	t.Logf("Creating Task %s", readFileTaskName)
 	readFileTask := tb.Task(readFileTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("readfile", "ubuntu", tb.Command("/bin/bash"),
@@ -147,7 +145,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create Task `%s`: %s", readFileTaskName, err)
 	}
 
-	logger.Infof("Creating Pipeline %s", bucketTestPipelineName)
+	t.Logf("Creating Pipeline %s", bucketTestPipelineName)
 	bucketTestPipeline := tb.Pipeline(bucketTestPipelineName, namespace, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("source-repo", "git"),
 		tb.PipelineTask("addfile", addFileTaskName,
@@ -162,7 +160,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", bucketTestPipelineName, err)
 	}
 
-	logger.Infof("Creating PipelineRun %s", bucketTestPipelineRunName)
+	t.Logf("Creating PipelineRun %s", bucketTestPipelineRunName)
 	bucketTestPipelineRun := tb.PipelineRun(bucketTestPipelineRunName, namespace, tb.PipelineRunSpec(
 		bucketTestPipelineName,
 		tb.PipelineRunResourceBinding("source-repo", tb.PipelineResourceBindingRef(helloworldResourceName)),
@@ -180,14 +178,14 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		}
 		for _, tr := range taskruns.Items {
 			if tr.Status.PodName != "" {
-				CollectBuildLogs(c, tr.Status.PodName, namespace, logger)
+				CollectBuildLogs(c, tr.Status.PodName, namespace, t.Logf)
 			}
 		}
 		t.Fatalf("PipelineRun execution failed")
 	}
 }
 
-func getBucketSecret(t *testing.T, logger *logging.BaseLogger, configFilePath, namespace string) *corev1.Secret {
+func getBucketSecret(t *testing.T, configFilePath, namespace string) *corev1.Secret {
 	t.Helper()
 	f, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
@@ -204,7 +202,7 @@ func getBucketSecret(t *testing.T, logger *logging.BaseLogger, configFilePath, n
 	}
 }
 
-func deleteBucketSecret(c *clients, t *testing.T, logger *logging.BaseLogger, namespace string) {
+func deleteBucketSecret(c *clients, t *testing.T, namespace string) {
 	if err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Delete(bucketSecretName, &metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete Secret `%s`: %s", bucketSecretName, err)
 	}
@@ -214,7 +212,7 @@ func resetConfigMap(c *clients, namespace, configName string, values map[string]
 	return c.KubeClient.UpdateConfigMap(namespace, configName, values)
 }
 
-func runTaskToDeleteBucket(c *clients, t *testing.T, logger *logging.BaseLogger, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
+func runTaskToDeleteBucket(c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
 	deletelbuckettask := tb.Task("deletelbuckettask", namespace, tb.TaskSpec(
 		tb.TaskVolume("bucket-secret-volume", tb.VolumeSource(corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
@@ -230,7 +228,7 @@ func runTaskToDeleteBucket(c *clients, t *testing.T, logger *logging.BaseLogger,
 	),
 	)
 
-	logger.Infof("Creating Task %s", "deletelbuckettask")
+	t.Logf("Creating Task %s", "deletelbuckettask")
 	if _, err := c.TaskClient.Create(deletelbuckettask); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "deletelbuckettask", err)
 	}
@@ -238,7 +236,7 @@ func runTaskToDeleteBucket(c *clients, t *testing.T, logger *logging.BaseLogger,
 	deletelbuckettaskrun := tb.TaskRun("deletelbuckettaskrun", namespace,
 		tb.TaskRunSpec(tb.TaskRunTaskRef("deletelbuckettask")))
 
-	logger.Infof("Creating TaskRun %s", "deletelbuckettaskrun")
+	t.Logf("Creating TaskRun %s", "deletelbuckettaskrun")
 	if _, err := c.TaskRunClient.Create(deletelbuckettaskrun); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", "deletelbuckettaskrun", err)
 	}

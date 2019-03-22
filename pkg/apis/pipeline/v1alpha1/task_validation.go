@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -27,14 +28,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
-func (t *Task) Validate() *apis.FieldError {
+func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
-	return t.Spec.Validate()
+	return t.Spec.Validate(ctx)
 }
 
-func (ts *TaskSpec) Validate() *apis.FieldError {
+func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(ts, &TaskSpec{}) {
 		return apis.ErrMissingField(apis.CurrentField)
 	}

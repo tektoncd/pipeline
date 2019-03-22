@@ -16,10 +16,12 @@ limitations under the License.
 
 package v1alpha1
 
-func (t *PipelineResource) SetDefaults() {
-	t.Spec.SetDefaults()
+import "context"
+
+func (t *PipelineResource) SetDefaults(ctx context.Context) {
+	t.Spec.SetDefaults(ctx)
 }
 
-func (ts *PipelineResourceSpec) SetDefaults() {
+func (ts *PipelineResourceSpec) SetDefaults(ctx context.Context) {
 	return
 }

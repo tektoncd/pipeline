@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -25,15 +26,15 @@ import (
 )
 
 // Validate taskrun
-func (tr *TaskRun) Validate() *apis.FieldError {
+func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(tr.GetObjectMeta()).ViaField("metadata"); err != nil {
 		return err
 	}
-	return tr.Spec.Validate()
+	return tr.Spec.Validate(ctx)
 }
 
 // Validate taskrun spec
-func (ts *TaskRunSpec) Validate() *apis.FieldError {
+func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(ts, &TaskRunSpec{}) {
 		return apis.ErrMissingField("spec")
 	}
@@ -49,23 +50,23 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 	}
 
 	// Check for Trigger
-	if err := ts.Trigger.Validate("spec.trigger"); err != nil {
+	if err := ts.Trigger.Validate(ctx, "spec.trigger"); err != nil {
 		return err
 	}
 
 	// check for input resources
-	if err := ts.Inputs.Validate("spec.Inputs"); err != nil {
+	if err := ts.Inputs.Validate(ctx, "spec.Inputs"); err != nil {
 		return err
 	}
 
 	// check for output resources
-	if err := ts.Outputs.Validate("spec.Outputs"); err != nil {
+	if err := ts.Outputs.Validate(ctx, "spec.Outputs"); err != nil {
 		return err
 	}
 
 	// check for results
 	if ts.Results != nil {
-		if err := ts.Results.Validate("spec.results"); err != nil {
+		if err := ts.Results.Validate(ctx, "spec.results"); err != nil {
 			return err
 		}
 	}
@@ -73,22 +74,22 @@ func (ts *TaskRunSpec) Validate() *apis.FieldError {
 	return nil
 }
 
-func (i TaskRunInputs) Validate(path string) *apis.FieldError {
-	if err := validatePipelineResources(i.Resources, fmt.Sprintf("%s.Resources.Name", path)); err != nil {
+func (i TaskRunInputs) Validate(ctx context.Context, path string) *apis.FieldError {
+	if err := validatePipelineResources(ctx, i.Resources, fmt.Sprintf("%s.Resources.Name", path)); err != nil {
 		return err
 	}
 	return validateParameters(i.Params)
 }
 
-func (o TaskRunOutputs) Validate(path string) *apis.FieldError {
-	return validatePipelineResources(o.Resources, fmt.Sprintf("%s.Resources.Name", path))
+func (o TaskRunOutputs) Validate(ctx context.Context, path string) *apis.FieldError {
+	return validatePipelineResources(ctx, o.Resources, fmt.Sprintf("%s.Resources.Name", path))
 }
 
 // validatePipelineResources validates that
 //	1. resource is not declared more than once
 //	2. if both resource reference and resource spec is defined at the same time
 //	3. at least resource ref or resource spec is defined
-func validatePipelineResources(resources []TaskResourceBinding, path string) *apis.FieldError {
+func validatePipelineResources(ctx context.Context, resources []TaskResourceBinding, path string) *apis.FieldError {
 	encountered := map[string]struct{}{}
 	for _, r := range resources {
 		// We should provide only one binding for each resource required by the Task.
@@ -105,8 +106,8 @@ func validatePipelineResources(resources []TaskResourceBinding, path string) *ap
 		if r.ResourceRef.Name == "" && r.ResourceSpec == nil {
 			return apis.ErrMissingField(fmt.Sprintf("%s.ResourceRef", path), fmt.Sprintf("%s.ResourceSpec", path))
 		}
-		if r.ResourceSpec != nil && r.ResourceSpec.Validate() != nil {
-			return r.ResourceSpec.Validate()
+		if r.ResourceSpec != nil && r.ResourceSpec.Validate(ctx) != nil {
+			return r.ResourceSpec.Validate(ctx)
 		}
 	}
 
@@ -115,7 +116,7 @@ func validatePipelineResources(resources []TaskResourceBinding, path string) *ap
 
 // Validate validates that the task trigger is of a known type. If it was triggered by a PipelineRun, the
 // name of the trigger should be the name of a PipelienRun.
-func (r TaskTrigger) Validate(path string) *apis.FieldError {
+func (r TaskTrigger) Validate(ctx context.Context, path string) *apis.FieldError {
 	if r.Type == "" {
 		return nil
 	}

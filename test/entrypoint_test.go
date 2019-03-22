@@ -18,7 +18,6 @@ import (
 	"testing"
 
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
@@ -33,14 +32,13 @@ const (
 // that doesn't have a cmd defined. In addition to making sure the steps
 // are executed in the order specified
 func TestEntrypointRunningStepsInOrder(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
+	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := tb.Task(epTaskName, namespace, tb.TaskSpec(
 		tb.Step("step1", "ubuntu", tb.Args("-c", "sleep 3 && touch foo")),
 		tb.Step("step2", "ubuntu", tb.Args("-c", "ls", "foo")),
@@ -55,7 +53,7 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
-	logger.Infof("Waiting for TaskRun in namespace %s to finish successfully", namespace)
+	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
 	if err := WaitForTaskRunState(c, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}

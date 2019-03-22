@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,93 +19,96 @@ limitations under the License.
 package zipkin
 
 import (
-	"errors"
-	"fmt"
-	"net"
-	"os"
-	"os/exec"
+	"sync"
 
 	"github.com/knative/pkg/test/logging"
+	"github.com/knative/pkg/test/monitoring"
 	"go.opencensus.io/trace"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 const (
-
 	//ZipkinTraceIDHeader HTTP response header key to be used to store Zipkin Trace ID.
 	ZipkinTraceIDHeader = "ZIPKIN_TRACE_ID"
 
-	// ZipkinPort port exposed by the Zipkin Pod
+	// ZipkinPort is port exposed by the Zipkin Pod
 	// https://github.com/knative/serving/blob/master/config/monitoring/200-common/100-zipkin.yaml#L25 configures the Zipkin Port on the cluster.
 	ZipkinPort = 9411
 
 	// ZipkinTraceEndpoint port-forwarded zipkin endpoint
 	ZipkinTraceEndpoint = "http://localhost:9411/api/v2/trace/"
 
-	// ZipkinNamespace namespace where zipkin pod runs.
-	// https://github.com/knative/serving/blob/master/config/monitoring/200-common/100-zipkin.yaml#L19 configures the namespace for zipkin.
-	ZipkinNamespace = "istio-system"
+	// App is the name of this component.
+	// This will be used as a label selector
+	app = "zipkin"
+
+	// Namespace we are using for istio components
+	istioNs = "istio-system"
 )
 
-var zipkinPortForwardPID int
+var (
+	zipkinPortForwardPID int
+
+	// ZipkinTracingEnabled variable indicating if zipkin tracing is enabled.
+	ZipkinTracingEnabled = false
+
+	// sync.Once variable to ensure we execute zipkin setup only once.
+	setupOnce sync.Once
+
+	// sync.Once variable to ensure we execute zipkin cleanup only if zipkin is setup and it is executed only once.
+	teardownOnce sync.Once
+)
 
 // SetupZipkinTracing sets up zipkin tracing which involves:
 // 1. Setting up port-forwarding from localhost to zipkin pod on the cluster
 //    (pid of the process doing Port-Forward is stored in a global variable).
 // 2. Enable AlwaysSample config for tracing.
-func SetupZipkinTracing(kubeClientset *kubernetes.Clientset) error {
-	logger := logging.GetContextLogger("SpoofUtil")
+func SetupZipkinTracing(kubeClientset *kubernetes.Clientset, logf logging.FormatLogger) {
+	setupOnce.Do(func() {
+		if err := monitoring.CheckPortAvailability(ZipkinPort); err != nil {
+			logf("Zipkin port not available on the machine: %v", err)
+			return
+		}
 
-	if err := CheckZipkinPortAvailability(); err != nil {
-		return fmt.Errorf("Zipkin port not available on the machine: %v", err)
-	}
+		zipkinPods, err := monitoring.GetPods(kubeClientset, app, istioNs)
+		if err != nil {
+			logf("Error retrieving Zipkin pod details: %v", err)
+			return
+		}
 
-	zipkinPods, err := kubeClientset.CoreV1().Pods(ZipkinNamespace).List(metav1.ListOptions{LabelSelector: "app=zipkin"})
-	if err != nil {
-		return fmt.Errorf("Error retrieving Zipkin pod details: %v", err)
-	}
+		zipkinPortForwardPID, err = monitoring.PortForward(logf, zipkinPods, ZipkinPort, ZipkinPort, istioNs)
+		if err != nil {
+			logf("Error starting kubectl port-forward command: %v", err)
+			return
+		}
 
-	if len(zipkinPods.Items) == 0 {
-		return errors.New("No Zipkin Pod found on the cluster. Ensure monitoring is switched on for your Knative Setup")
-	}
+		logf("Zipkin port-forward process started with PID: %d", zipkinPortForwardPID)
 
-	portForwardCmd := exec.Command("kubectl", "port-forward", "--namespace="+ZipkinNamespace, zipkinPods.Items[0].Name, fmt.Sprintf("%d:%d", ZipkinPort, ZipkinPort))
-	if err = portForwardCmd.Start(); err != nil {
-		return fmt.Errorf("Error starting kubectl port-forward command: %v", err)
-	}
-	zipkinPortForwardPID = portForwardCmd.Process.Pid
-	logger.Infof("Zipkin port-forward process started with PID: %d", zipkinPortForwardPID)
-
-	// Applying AlwaysSample config to ensure we propagate zipkin header for every request made by this client.
-	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
-
-	logger.Info("Successfully setup SpoofingClient for Zipkin Tracing")
-
-	return nil
+		// Applying AlwaysSample config to ensure we propagate zipkin header for every request made by this client.
+		trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
+		logf("Successfully setup SpoofingClient for Zipkin Tracing")
+		ZipkinTracingEnabled = true
+	})
 }
 
 // CleanupZipkinTracingSetup cleans up the Zipkin tracing setup on the machine. This involves killing the process performing port-forward.
-func CleanupZipkinTracingSetup() error {
-	logger := logging.GetContextLogger("SpoofUtil")
+func CleanupZipkinTracingSetup(logf logging.FormatLogger) {
+	teardownOnce.Do(func() {
+		if !ZipkinTracingEnabled {
+			return
+		}
 
-	ps := os.Process{Pid: zipkinPortForwardPID}
-	if err := ps.Kill(); err != nil {
-		return fmt.Errorf("Encoutered error killing port-forward process in CleanupZipkingTracingSetup() : %v", err)
-	}
+		if err := monitoring.Cleanup(zipkinPortForwardPID); err != nil {
+			logf("Encountered error killing port-forward process in CleanupZipkingTracingSetup() : %v", err)
+			return
+		}
 
-	logger.Info("Successfully killed Zipkin port-forward process")
-	return nil
+		ZipkinTracingEnabled = false
+	})
 }
 
 // CheckZipkinPortAvailability checks to see if Zipkin Port is available on the machine.
 // returns error if the port is not available.
 func CheckZipkinPortAvailability() error {
-	server, err := net.Listen("tcp", fmt.Sprintf(":%d", ZipkinPort))
-	if err != nil {
-		// Port is likely taken
-		return err
-	}
-	server.Close()
-	return nil
+	return monitoring.CheckPortAvailability(ZipkinPort)
 }

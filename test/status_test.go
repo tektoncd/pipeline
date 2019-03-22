@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
 
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
@@ -28,14 +27,13 @@ import (
 // verify a very simple "hello world" TaskRun and PipelineRun failure
 // execution lead to the correct TaskRun status.
 func TestTaskRunPipelineRunStatus(t *testing.T) {
-	logger := logging.GetContextLogger(t.Name())
-	c, namespace := setup(t, logger)
+	c, namespace := setup(t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(t, logger, c, namespace) }, logger)
-	defer tearDown(t, logger, c, namespace)
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
 
-	logger.Infof("Creating Task and TaskRun in namespace %s", namespace)
+	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := tb.Task("banana", namespace, tb.TaskSpec(
 		tb.Step("foo", "busybox", tb.Command("ls", "-la")),
 	))
@@ -49,7 +47,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
-	logger.Infof("Waiting for TaskRun in namespace %s to fail", namespace)
+	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
 	if err := WaitForTaskRunState(c, "apple", TaskRunFailed("apple"), "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
@@ -67,7 +65,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", "pear", err)
 	}
 
-	logger.Infof("Waiting for PipelineRun in namespace %s to fail", namespace)
+	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
 	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, PipelineRunFailed("pear"), "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
