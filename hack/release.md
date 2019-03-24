@@ -1,6 +1,7 @@
 # Creating a new Tekton Pipeline release
 
-**Note: we are transitioning to a Pipelines based test and release process, see [tekton/README.md](../tekton/README.md).**
+**Note: we are transitioning to a Pipelines based test and release process, see
+[tekton/README.md](../tekton/README.md).**
 
 The `release.sh` script automates the creation of Tekton Pipeline releases,
 either nightly or versioned ones.
