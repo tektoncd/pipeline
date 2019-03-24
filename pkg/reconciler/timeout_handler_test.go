@@ -61,7 +61,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{taskRunTimedout, taskRunRunning, taskRunDone, taskRunCancelled},
 		Tasks:    []*v1alpha1.Task{simpleTask},
-		Namespaces: []*corev1.Namespace{&corev1.Namespace{
+		Namespaces: []*corev1.Namespace{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: testNs,
 			},
@@ -165,7 +165,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 		PipelineRuns: []*v1alpha1.PipelineRun{prTimeout, prRunning, prDone, prCancelled},
 		Pipelines:    []*v1alpha1.Pipeline{simplePipeline},
 		Tasks:        []*v1alpha1.Task{ts},
-		Namespaces: []*corev1.Namespace{&corev1.Namespace{
+		Namespaces: []*corev1.Namespace{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: testNs,
 			},
@@ -240,7 +240,7 @@ func TestWithNoFunc(t *testing.T) {
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{taskRunRunning},
 		Tasks:    []*v1alpha1.Task{simpleTask},
-		Namespaces: []*corev1.Namespace{&corev1.Namespace{
+		Namespaces: []*corev1.Namespace{{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: testNs,
 			},
