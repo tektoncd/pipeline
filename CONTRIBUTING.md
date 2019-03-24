@@ -27,10 +27,11 @@ _See also
 
 ## Contact
 
-This work is being done by the Tekton Pipeline working group.
-If you are interested please join our meetings
+This work is being done by the Tekton Pipeline working group. If you are
+interested please join our meetings
 [at 9am PST on Tuesdays](https://calendar.google.com/event?action=TEMPLATE&tmeid=amZyNTljOWpkZWdibmpsY3JlazNodDU5NWdfMjAxOTAzMjZUMTYwMDAwWiBnb29nbGUuY29tX2Qzb3Zjdm8xcDMyMTloOTg5NTczdjk4Zm5zQGc&tmsrc=google.com_d3ovcvo1p3219h989573v98fns%40group.calendar.google.com&scp=ALL)
-and or in slack at [`#build-pipeline`](https://knative.slack.com/messages/build-pipeline)!
+and or in slack at
+[`#build-pipeline`](https://knative.slack.com/messages/build-pipeline)!
 
 All docs shared with this group are made visible to members of
 [tekton-dev@](https://groups.google.com/forum/#!forum/tekton-dev), please join
@@ -57,8 +58,8 @@ This means that most PRs should include both:
 
 ## Proposing features
 
-If you have an idea for a feature, or if you have a solution for an existing issue
-that involves an API change (i.e. changes
+If you have an idea for a feature, or if you have a solution for an existing
+issue that involves an API change (i.e. changes
 [the structure of a CRD](api_compatibility_policy.md#what-does-compatibility-mean-here)),
 we highly suggest that you propose the changes before implementing them.
 
@@ -70,18 +71,21 @@ This is for two main reasons:
 
 Some suggestions for how to do this:
 
-1. Write up a design doc and share it with [tekton-dev@](https://groups.google.com/forum/#!forum/tekton-dev)
-2. Bring your design/ideas to [our working group meetings](#contact) for discussion
+1. Write up a design doc and share it with
+   [tekton-dev@](https://groups.google.com/forum/#!forum/tekton-dev)
+2. Bring your design/ideas to [our working group meetings](#contact) for
+   discussion
 
 A great proposal will include:
 
-* **The use case(s) it solves** Who needs this and why?
-* **Requirements** What needs to be true about the solution?
-* **2+ alternative proposals** Even if alternatives aren't obvious, forcing yourself to
-  brainstorm a couple more approaches may give you new ideas or make clear that your
-  initial proposal is the best one
+- **The use case(s) it solves** Who needs this and why?
+- **Requirements** What needs to be true about the solution?
+- **2+ alternative proposals** Even if alternatives aren't obvious, forcing
+  yourself to brainstorm a couple more approaches may give you new ideas or make
+  clear that your initial proposal is the best one
 
-Also feel free to reach out to us on [slack](#contact) if you want any help/guidance.
+Also feel free to reach out to us on [slack](#contact) if you want any
+help/guidance.
 
 Thanks so much!!
 
