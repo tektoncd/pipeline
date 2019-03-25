@@ -118,8 +118,6 @@ spec:
       mkdir -p /workspace/bucket/previous/${inputs.params.versionTag}/
       cp /workspace/bucket/latest/release.yaml /workspace/bucket/previous/${inputs.params.versionTag}/release.yaml
 
-  # TODO(#216) Hopefully once we can avoid doing this parsing; on the other hand, `ko` doesn't
-  # really fit super well into our declarative model
   - name: tag-images
     image: google/cloud-sdk
     command:
@@ -149,6 +147,9 @@ spec:
         for REGION in "${REGIONS[@]}"
         do
           IMAGE_WITHOUT_SHA=${IMAGE%%@*}
-          gcloud -q container images add-tag ${IMAGE} ${REGION}.${IMAGE_WITHOUT_SHA}:${inputs.params.versionTag}
+          for TAG in "latest" ${inputs.params.versionTag}
+          do
+            gcloud -q container images add-tag ${IMAGE} ${REGION}.${IMAGE_WITHOUT_SHA}:$TAG
+          done
         done
       done
