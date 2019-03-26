@@ -339,16 +339,7 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:0836bde83bdc49aae7710e22d04e2555d9bd25cd133fbb78508c492307081aea"
-  name = "github.com/knative/build"
-  packages = [
-    "pkg/apis/build",
-    "pkg/apis/build/v1alpha1",
-  ]
-  pruneopts = "NUT"
-  revision = "dd3ceb3323922b899a0a913f885fcf59943e7b59"
-
-[[projects]]
+  branch = "master"
   digest = "1:9a670ce0109361c513e7103c478dbbea261bb81d41d0f9c822707451bce139bb"
   name = "github.com/knative/caching"
   packages = [
@@ -1179,7 +1170,6 @@
     "github.com/google/go-containerregistry/pkg/v1/remote",
     "github.com/google/go-containerregistry/pkg/v1/types",
     "github.com/hashicorp/golang-lru",
-    "github.com/knative/build/pkg/apis/build/v1alpha1",
     "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/caching/pkg/client/clientset/versioned",
     "github.com/knative/pkg/apis",
