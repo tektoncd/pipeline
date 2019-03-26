@@ -165,14 +165,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	pr := original.DeepCopy()
-	c.timeoutHandler.StatusLock(pr)
-	if !pr.HasStarted() {
-		// start goroutine to track pipelinerun timeout only startTime is not set
-		go c.timeoutHandler.WaitPipelineRun(pr)
-	}
 	pr.Status.InitializeConditions()
-
-	c.timeoutHandler.StatusUnlock(original)
 
 	if pr.IsDone() {
 		c.timeoutHandler.Release(pr)
@@ -186,7 +179,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return err
 	}
 
-	// Reconcile this copy of the task run and then write back any status or label
+	// Reconcile this copy of the pipelinerun run and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
 	if err = c.reconcile(ctx, pr); err != nil {
 		c.Logger.Errorf("Reconcile error: %v", err.Error())
@@ -357,6 +350,12 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return err
 	}
 
+	c.timeoutHandler.StatusLock(pr)
+	if !pr.HasStarted() {
+		// start goroutine to track pipelinerun timeout only startTime is not set
+		go c.timeoutHandler.WaitPipelineRun(pr)
+	}
+	c.timeoutHandler.StatusUnlock(pr)
 	for _, rprt := range rprts {
 		if rprt != nil {
 			c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
