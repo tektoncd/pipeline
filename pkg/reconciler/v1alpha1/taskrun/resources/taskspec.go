@@ -35,7 +35,8 @@ type GetClusterTask func(name string) (v1alpha1.TaskInterface, error)
 func GetTaskData(taskRun *v1alpha1.TaskRun, getTask GetTask) (*metav1.ObjectMeta, *v1alpha1.TaskSpec, error) {
 	taskMeta := metav1.ObjectMeta{}
 	taskSpec := v1alpha1.TaskSpec{}
-	if taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "" {
+	switch {
+	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "":
 		// Get related task for taskrun
 		t, err := getTask(taskRun.Spec.TaskRef.Name)
 		if err != nil {
@@ -43,10 +44,10 @@ func GetTaskData(taskRun *v1alpha1.TaskRun, getTask GetTask) (*metav1.ObjectMeta
 		}
 		taskMeta = t.TaskMetadata()
 		taskSpec = t.TaskSpec()
-	} else if taskRun.Spec.TaskSpec != nil {
+	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec
-	} else {
+	default:
 		return nil, nil, fmt.Errorf("TaskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
 	}
 	return &taskMeta, &taskSpec, nil
