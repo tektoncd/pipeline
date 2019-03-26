@@ -17,10 +17,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // This is a "hack" to make the example "look" like tests
@@ -148,28 +146,6 @@ func ExamplePipelineResource() {
 		t.Fatalf("Task diff -want, +got: %v", d)
 	}
 	if d := cmp.Diff(expectedImageResource, imageResource); d != "" {
-		t.Fatalf("Task diff -want, +got: %v", d)
-	}
-}
-
-func ExampleBuildSpec() {
-	volume := corev1.Volume{
-		Name:         "tools-volume",
-		VolumeSource: corev1.VolumeSource{
-			// …
-		},
-	}
-	buildSpec := tb.BuildSpec(
-		tb.BuildStep("simple-step", "foo", tb.Command("/myentrypoint"),
-			tb.VolumeMount("tools-volume", "/tools"),
-		),
-		tb.BuildVolume(volume),
-	)
-	expectedBuildSpec := buildv1alpha1.BuildSpec{
-		// […]
-	}
-	// […]
-	if d := cmp.Diff(expectedBuildSpec, buildSpec); d != "" {
 		t.Fatalf("Task diff -want, +got: %v", d)
 	}
 }

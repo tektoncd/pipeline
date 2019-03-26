@@ -22,7 +22,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/knative/pkg/apis"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/configmap"
@@ -620,8 +619,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
-	},
-	} {
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
 			testAssets := getTaskRunController(d)
@@ -688,7 +686,7 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func TestReconcile_InvalidTaskRuns(t *testing.T) {
+func TestReconcileInvalidTaskRuns(t *testing.T) {
 	noTaskRun := tb.TaskRun("notaskrun", "foo", tb.TaskRunSpec(tb.TaskRunTaskRef("notask")))
 	withWrongRef := tb.TaskRun("taskrun-with-wrong-ref", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef("taskrun-with-wrong-ref", tb.TaskRefKind(v1alpha1.ClusterTaskKind)),
@@ -746,7 +744,7 @@ func TestReconcile_InvalidTaskRuns(t *testing.T) {
 
 }
 
-func TestReconcileBuildFetchError(t *testing.T) {
+func TestReconcilePodFetchError(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-run-success", "foo",
 		tb.TaskRunSpec(tb.TaskRunTaskRef("test-task")),
 		tb.TaskRunStatus(tb.PodName("will-not-be-found")),
@@ -773,18 +771,9 @@ func TestReconcileBuildFetchError(t *testing.T) {
 	}
 }
 
-func TestReconcileBuildUpdateStatus(t *testing.T) {
+func TestReconcilePodUpdateStatus(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-run-success", "foo", tb.TaskRunSpec(tb.TaskRunTaskRef("test-task")))
-	build := &buildv1alpha1.Build{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      taskRun.Name,
-			Namespace: taskRun.Namespace,
-		},
-		Spec: buildv1alpha1.BuildSpec{
-			Steps:   simpleTask.Spec.Steps,
-			Volumes: simpleTask.Spec.Volumes,
-		},
-	}
+
 	// TODO(jasonhall): This avoids a circular dependency where
 	// getTaskRunController takes a test.Data which must be populated with
 	// a pod created from MakePod which requires a (fake) Kube client. When
@@ -792,7 +781,7 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	// specify the Pod we want to exist directly, and not call MakePod from
 	// the build. This will break the cycle and allow us to simply use
 	// clients normally.
-	pod, err := resources.MakePod(build, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+	pod, err := resources.MakePod(taskRun, simpleTask.Spec, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: taskRun.Namespace,
@@ -853,37 +842,31 @@ func TestReconcileBuildUpdateStatus(t *testing.T) {
 	}
 }
 
-func TestCreateRedirectedBuild(t *testing.T) {
+func TestCreateRedirectedTaskSpec(t *testing.T) {
 	tr := tb.TaskRun("tr", "tr", tb.TaskRunSpec(
 		tb.TaskRunServiceAccount("sa"),
 	))
-	bs := tb.Build("tr", "tr", tb.BuildSpec(
-		tb.BuildStep("foo1", "bar1", tb.Command("abcd"), tb.Args("efgh")),
-		tb.BuildStep("foo2", "bar2", tb.Command("abcd"), tb.Args("efgh")),
-		tb.BuildVolume(corev1.Volume{Name: "v"}),
+	task := tb.Task("tr-ts", "tr", tb.TaskSpec(
+		tb.Step("foo1", "bar1", tb.Command("abcd"), tb.Args("efgh")),
+		tb.Step("foo2", "bar2", tb.Command("abcd"), tb.Args("efgh")),
+		tb.TaskVolume("v"),
 	))
 
-	expectedSteps := len(bs.Spec.Steps) + 1
-	expectedVolumes := len(bs.Spec.Volumes) + 1
+	expectedSteps := len(task.Spec.Steps) + 1
+	expectedVolumes := len(task.Spec.Volumes) + 1
 
 	observer, _ := observer.New(zap.InfoLevel)
 	entrypointCache, _ := entrypoint.NewCache()
 	c := fakekubeclientset.NewSimpleClientset()
-	b, err := createRedirectedBuild(c, bs, tr, entrypointCache, zap.New(observer).Sugar())
+	ts, err := createRedirectedTaskSpec(c, &task.Spec, tr, entrypointCache, zap.New(observer).Sugar())
 	if err != nil {
-		t.Errorf("expected createRedirectedBuild to pass: %v", err)
+		t.Errorf("expected createRedirectedTaskSpec to pass: %v", err)
 	}
-	if b.Name != tr.Name {
-		t.Errorf("names do not match: %s should be %s", b.Name, tr.Name)
+	if len(ts.Steps) != expectedSteps {
+		t.Errorf("step counts do not match: %d should be %d", len(ts.Steps), expectedSteps)
 	}
-	if len(b.Spec.Steps) != expectedSteps {
-		t.Errorf("step counts do not match: %d should be %d", len(b.Spec.Steps), expectedSteps)
-	}
-	if len(b.Spec.Volumes) != expectedVolumes {
-		t.Errorf("volumes do not match: %d should be %d", len(b.Spec.Volumes), expectedVolumes)
-	}
-	if b.Spec.ServiceAccountName != tr.Spec.ServiceAccount {
-		t.Errorf("services accounts do not match: %s should be %s", b.Spec.ServiceAccountName, tr.Spec.ServiceAccount)
+	if len(ts.Volumes) != expectedVolumes {
+		t.Errorf("volumes do not match: %d should be %d", len(ts.Volumes), expectedVolumes)
 	}
 }
 

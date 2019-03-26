@@ -17,7 +17,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakeclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
@@ -33,6 +32,35 @@ import (
 var (
 	pipelineResourceLister listers.PipelineResourceLister
 	logger                 *zap.SugaredLogger
+
+	gitInputs = &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			Name: "gitspace",
+			Type: "git",
+		}},
+	}
+	multipleGitInputs = &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			Name: "gitspace",
+			Type: "git",
+		}, {
+			Name: "git-duplicate-space",
+			Type: "git",
+		}},
+	}
+	gcsInputs = &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			Name:       "workspace",
+			Type:       "gcs",
+			TargetPath: "gcs-dir",
+		}},
+	}
+	clusterInputs = &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			Name: "target-cluster",
+			Type: "cluster",
+		}},
+	}
 )
 
 func setUp() {
@@ -171,39 +199,15 @@ func setUp() {
 	}
 }
 
-func build() *buildv1alpha1.Build {
-	boolTrue := true
-	return &buildv1alpha1.Build{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Build",
-			APIVersion: "build.knative.dev/v1alpha1"},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "build-from-repo",
-			Namespace: "marshmallow",
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "tekton.dev/v1alpha1",
-				Kind:               "TaskRun",
-				Name:               "build-from-repo-run",
-				Controller:         &boolTrue,
-				BlockOwnerDeletion: &boolTrue,
-			}},
-		},
-		Spec: buildv1alpha1.BuildSpec{},
-	}
-}
-func TestAddResourceToBuild(t *testing.T) {
+func TestAddResourceToTask(t *testing.T) {
+
 	task := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-from-repo",
 			Namespace: "marshmallow",
 		},
 		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "gitspace",
-					Type: "git",
-				}},
-			},
+			Inputs: gitInputs,
 		},
 	}
 	taskWithMultipleGitSources := &v1alpha1.Task{
@@ -212,15 +216,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Namespace: "marshmallow",
 		},
 		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "gitspace",
-					Type: "git",
-				}, {
-					Name: "git-duplicate-space",
-					Type: "git",
-				}},
-			},
+			Inputs: multipleGitInputs,
 		},
 	}
 	taskWithTargetPath := &v1alpha1.Task{
@@ -229,13 +225,7 @@ func TestAddResourceToBuild(t *testing.T) {
 			Namespace: "marshmallow",
 		},
 		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name:       "workspace",
-					Type:       "gcs",
-					TargetPath: "gcs-dir",
-				}},
-			},
+			Inputs: gcsInputs,
 		},
 	}
 
@@ -263,16 +253,15 @@ func TestAddResourceToBuild(t *testing.T) {
 		desc    string
 		task    *v1alpha1.Task
 		taskRun *v1alpha1.TaskRun
-		build   *buildv1alpha1.Build
 		wantErr bool
-		want    buildv1alpha1.BuildSpec
+		want    *v1alpha1.TaskSpec
 	}{{
 		desc:    "simple with default revision",
 		task:    task,
 		taskRun: taskRun,
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-9l9zj",
 				Image:      "override-with-git:latest",
@@ -303,9 +292,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
@@ -341,9 +330,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: multipleGitInputs,
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-with-branch-mz4c7",
 				Image:      "override-with-git:latest",
@@ -380,9 +369,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-9l9zj",
 				Image:      "override-with-git:latest",
@@ -413,9 +402,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
 			Steps: []corev1.Container{{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
@@ -448,9 +437,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
 			Steps: []corev1.Container{{
 				Name:    "create-dir-gitspace-mz4c7",
 				Image:   "override-with-bash-noop:latest",
@@ -489,9 +478,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gcsInputs,
 			Steps: []corev1.Container{{
 				Name:    "create-dir-storage1-9l9zj",
 				Image:   "override-with-bash-noop:latest",
@@ -528,9 +517,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gcsInputs,
 			Steps: []corev1.Container{{
 				Name:    "create-dir-workspace-mz4c7",
 				Image:   "override-with-bash-noop:latest",
@@ -569,7 +558,6 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: true,
 	}, {
 		desc: "invalid gcs resource type name",
@@ -590,7 +578,6 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: true,
 	}, {
 		desc: "invalid resource name",
@@ -609,7 +596,6 @@ func TestAddResourceToBuild(t *testing.T) {
 			},
 		},
 		taskRun: taskRun,
-		build:   build(),
 		wantErr: true,
 	}, {
 		desc: "cluster resource with plain text",
@@ -619,12 +605,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "target-cluster",
-						Type: "cluster",
-					}},
-				},
+				Inputs: clusterInputs,
 			},
 		},
 		taskRun: &v1alpha1.TaskRun{
@@ -646,9 +627,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: clusterInputs,
 			Steps: []corev1.Container{{
 				Name:    "kubeconfig-9l9zj",
 				Image:   "override-with-kubeconfig-writer:latest",
@@ -666,12 +647,7 @@ func TestAddResourceToBuild(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "target-cluster",
-						Type: "cluster",
-					}},
-				},
+				Inputs: clusterInputs,
 			},
 		},
 		taskRun: &v1alpha1.TaskRun{
@@ -693,9 +669,9 @@ func TestAddResourceToBuild(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: clusterInputs,
 			Steps: []corev1.Container{{
 				Name:    "kubeconfig-9l9zj",
 				Image:   "override-with-kubeconfig-writer:latest",
@@ -721,12 +697,12 @@ func TestAddResourceToBuild(t *testing.T) {
 			setUp()
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddInputResource(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
+			got, err := AddInputResource(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
 			if got != nil {
-				if d := cmp.Diff(got.Spec, c.want); d != "" {
+				if d := cmp.Diff(got, c.want); d != "" {
 					t.Errorf("Diff:\n%s", d)
 				}
 			}
@@ -734,15 +710,20 @@ func TestAddResourceToBuild(t *testing.T) {
 	}
 }
 
-func Test_StorageInputResource(t *testing.T) {
-	boolTrue := true
+func TestStorageInputResource(t *testing.T) {
+	gcsStorageInputs := &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			Name: "gcs-input-resource",
+			Type: "storage",
+		}},
+	}
+
 	for _, c := range []struct {
 		desc    string
 		task    *v1alpha1.Task
 		taskRun *v1alpha1.TaskRun
-		build   *buildv1alpha1.Build
 		wantErr bool
-		want    *buildv1alpha1.Build
+		want    *v1alpha1.TaskSpec
 	}{{
 		desc: "inputs with no resource spec and resource ref",
 		task: &v1alpha1.Task{
@@ -768,7 +749,6 @@ func Test_StorageInputResource(t *testing.T) {
 				},
 			},
 		},
-		build:   nil,
 		wantErr: true,
 	}, {
 		desc: "inputs with both resource spec and resource ref",
@@ -801,18 +781,12 @@ func Test_StorageInputResource(t *testing.T) {
 				},
 			},
 		},
-		build:   nil,
 		wantErr: true,
 	}, {
 		desc: "inputs with resource spec and no resource ref",
 		task: &v1alpha1.Task{
 			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "gcs-input-resource",
-						Type: "storage",
-					}},
-				},
+				Inputs: gcsStorageInputs,
 			},
 		},
 		taskRun: &v1alpha1.TaskRun{
@@ -838,36 +812,20 @@ func Test_StorageInputResource(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:    "create-dir-gcs-input-resource-9l9zj",
-					Image:   "override-with-bash-noop:latest",
-					Command: []string{"/ko-app/bash"},
-					Args:    []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
-				}, {
-					Name:    "fetch-gcs-input-resource-mz4c7",
-					Image:   "override-with-gsutil-image:latest",
-					Command: []string{"/ko-app/gsutil"},
-					Args:    []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource"},
-				}},
-			},
+		want: &v1alpha1.TaskSpec{
+			Inputs: gcsStorageInputs,
+			Steps: []corev1.Container{{
+				Name:    "create-dir-gcs-input-resource-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
+			}, {
+				Name:    "fetch-gcs-input-resource-mz4c7",
+				Image:   "override-with-gsutil-image:latest",
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource"},
+			}},
 		},
 	}, {
 		desc: "no inputs",
@@ -883,8 +841,8 @@ func Test_StorageInputResource(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 		},
-		build:   nil,
 		wantErr: false,
+		want:    &v1alpha1.TaskSpec{},
 	}, {
 		desc: "storage resource as input",
 		task: &v1alpha1.Task{
@@ -893,12 +851,7 @@ func Test_StorageInputResource(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "gcs-input-resource",
-						Type: "storage",
-					}},
-				},
+				Inputs: gcsStorageInputs,
 			},
 		},
 		taskRun: &v1alpha1.TaskRun{
@@ -917,56 +870,40 @@ func Test_StorageInputResource(t *testing.T) {
 				},
 			},
 		},
-		build:   build(),
 		wantErr: false,
-		want: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Steps: []corev1.Container{{
-					Name:    "create-dir-storage-gcs-keys-9l9zj",
-					Image:   "override-with-bash-noop:latest",
-					Command: []string{"/ko-app/bash"},
-					Args:    []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
-				}, {
-					Name:    "fetch-storage-gcs-keys-mz4c7",
-					Image:   "override-with-gsutil-image:latest",
-					Command: []string{"/ko-app/gsutil"},
-					Args:    []string{"-args", "cp -r gs://fake-bucket/rules.zip/* /workspace/gcs-input-resource"},
-					VolumeMounts: []corev1.VolumeMount{
-						{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
-					},
-					Env: []corev1.EnvVar{
-						{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
-					},
-				}},
-				Volumes: []corev1.Volume{{
-					Name:         "volume-storage-gcs-keys-secret-name",
-					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name"}},
-				}, {
-					Name:         "volume-storage-gcs-keys-secret-name2",
-					VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name2"}},
-				}},
-			},
+		want: &v1alpha1.TaskSpec{
+			Inputs: gcsStorageInputs,
+			Steps: []corev1.Container{{
+				Name:    "create-dir-storage-gcs-keys-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gcs-input-resource"},
+			}, {
+				Name:    "fetch-storage-gcs-keys-mz4c7",
+				Image:   "override-with-gsutil-image:latest",
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "cp -r gs://fake-bucket/rules.zip/* /workspace/gcs-input-resource"},
+				VolumeMounts: []corev1.VolumeMount{
+					{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
+				},
+				Env: []corev1.EnvVar{
+					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
+				},
+			}},
+			Volumes: []corev1.Volume{{
+				Name:         "volume-storage-gcs-keys-secret-name",
+				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name"}},
+			}, {
+				Name:         "volume-storage-gcs-keys-secret-name2",
+				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name2"}},
+			}},
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			setUp()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddInputResource(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
+			got, err := AddInputResource(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
@@ -977,19 +914,14 @@ func Test_StorageInputResource(t *testing.T) {
 	}
 }
 
-func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
+func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 	task := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "build-from-repo",
 			Namespace: "marshmallow",
 		},
 		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "gitspace",
-					Type: "git",
-				}},
-			},
+			Inputs: gitInputs,
 		},
 	}
 	taskWithTargetPath := &v1alpha1.Task{
@@ -998,13 +930,7 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 			Namespace: "marshmallow",
 		},
 		Spec: v1alpha1.TaskSpec{
-			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name:       "workspace",
-					Type:       "gcs",
-					TargetPath: "gcs-dir",
-				}},
-			},
+			Inputs: gcsInputs,
 		},
 	}
 
@@ -1012,8 +938,7 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 		desc    string
 		task    *v1alpha1.Task
 		taskRun *v1alpha1.TaskRun
-		build   *buildv1alpha1.Build
-		want    buildv1alpha1.BuildSpec
+		want    *v1alpha1.TaskSpec
 	}{{
 		desc: "git resource as input from previous task - copy to bucket",
 		task: task,
@@ -1038,8 +963,8 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 				},
 			},
 		},
-		build: build(),
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
 			Steps: []corev1.Container{{
 				Name:    "artifact-dest-mkdir-gitspace-mssqb",
 				Image:   "override-with-bash-noop:latest",
@@ -1076,8 +1001,8 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 				},
 			},
 		},
-		build: build(),
-		want: buildv1alpha1.BuildSpec{
+		want: &v1alpha1.TaskSpec{
+			Inputs: gcsInputs,
 			Steps: []corev1.Container{{
 				Name:    "artifact-dest-mkdir-workspace-6nl7g",
 				Image:   "override-with-bash-noop:latest",
@@ -1104,11 +1029,11 @@ func TestAddStepsToBuild_WithBucketFromConfigMap(t *testing.T) {
 					},
 				},
 			)
-			got, err := AddInputResource(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
+			got, err := AddInputResource(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if err != nil {
 				t.Errorf("Test: %q; AddInputResource() error = %v", c.desc, err)
 			}
-			if d := cmp.Diff(got.Spec, c.want); d != "" {
+			if d := cmp.Diff(got, c.want); d != "" {
 				t.Errorf("Diff:\n%s", d)
 			}
 		})

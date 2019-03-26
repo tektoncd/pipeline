@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
@@ -54,7 +53,6 @@ var (
 // 2. If resource is declared in outputs only then the default is /output/resource_name
 func AddOutputResources(
 	kubeclient kubernetes.Interface,
-	b *buildv1alpha1.Build,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
@@ -112,7 +110,7 @@ func AddOutputResources(
 						boundResource.ResourceRef.Name,
 					)
 				}
-				resourceContainers, resourceVolumes, err = addStoreUploadStep(b, storageResource, sourcePath)
+				resourceContainers, resourceVolumes, err = addStoreUploadStep(taskSpec, storageResource, sourcePath)
 				if err != nil {
 					return fmt.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %v",
 						taskName, boundResource.ResourceRef.Name, err)
@@ -141,8 +139,8 @@ func AddOutputResources(
 			resourceVolumes = append(resourceVolumes, as.GetSecretsVolumes()...)
 		}
 
-		b.Spec.Steps = append(b.Spec.Steps, resourceContainers...)
-		b.Spec.Volumes = append(b.Spec.Volumes, resourceVolumes...)
+		taskSpec.Steps = append(taskSpec.Steps, resourceContainers...)
+		taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
 
 		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 			if pvcName == "" {
@@ -150,18 +148,18 @@ func AddOutputResources(
 			}
 
 			// attach pvc volume only if it is not already attached
-			for _, buildVol := range b.Spec.Volumes {
+			for _, buildVol := range taskSpec.Volumes {
 				if buildVol.Name == pvcName {
 					return nil
 				}
 			}
-			b.Spec.Volumes = append(b.Spec.Volumes, GetPVCVolume(pvcName))
+			taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 		}
 	}
 	return nil
 }
 
-func addStoreUploadStep(build *buildv1alpha1.Build,
+func addStoreUploadStep(spec *v1alpha1.TaskSpec,
 	storageResource v1alpha1.PipelineStorageResourceInterface,
 	sourcePath string,
 ) ([]corev1.Container, []corev1.Volume, error) {
@@ -174,7 +172,7 @@ func addStoreUploadStep(build *buildv1alpha1.Build,
 	var totalBuildVol, storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 
-	for _, volume := range build.Spec.Volumes {
+	for _, volume := range spec.Volumes {
 		mountedSecrets[volume.Name] = ""
 		totalBuildVol = append(totalBuildVol, volume)
 	}

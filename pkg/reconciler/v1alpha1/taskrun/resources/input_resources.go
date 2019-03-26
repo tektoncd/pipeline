@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
@@ -48,17 +47,18 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 // 3. If resource has paths declared then fresh copy of resource is not fetched
 func AddInputResource(
 	kubeclient kubernetes.Interface,
-	build *buildv1alpha1.Build,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
 	pipelineResourceLister listers.PipelineResourceLister,
 	logger *zap.SugaredLogger,
-) (*buildv1alpha1.Build, error) {
+) (*v1alpha1.TaskSpec, error) {
 
 	if taskSpec.Inputs == nil {
-		return build, nil
+		return taskSpec, nil
 	}
+	taskSpec = taskSpec.DeepCopy()
+
 	pvcName := taskRun.GetPipelineRunPVCName()
 	mountPVC := false
 
@@ -108,8 +108,8 @@ func AddInputResource(
 		}
 		// source is copied from previous task so skip fetching download container definition
 		if len(copyStepsFromPrevTasks) > 0 {
-			build.Spec.Steps = append(copyStepsFromPrevTasks, build.Spec.Steps...)
-			build.Spec.Volumes = append(build.Spec.Volumes, as.GetSecretsVolumes()...)
+			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
+			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
 		} else {
 			switch resource.Spec.Type {
 			case v1alpha1.PipelineResourceTypeStorage:
@@ -118,7 +118,7 @@ func AddInputResource(
 					if err != nil {
 						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource: %q: %s", taskName, boundResource.ResourceRef.Name, err.Error())
 					}
-					resourceContainers, resourceVolumes, err = addStorageFetchStep(build, storageResource, dPath)
+					resourceContainers, resourceVolumes, err = addStorageFetchStep(taskSpec, storageResource, dPath)
 					if err != nil {
 						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource download steps: %q: %s", taskName, boundResource.ResourceRef.Name, err.Error())
 					}
@@ -137,18 +137,18 @@ func AddInputResource(
 				}
 			}
 
-			build.Spec.Steps = append(resourceContainers, build.Spec.Steps...)
-			build.Spec.Volumes = append(build.Spec.Volumes, resourceVolumes...)
+			taskSpec.Steps = append(resourceContainers, taskSpec.Steps...)
+			taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
 		}
 	}
 
 	if mountPVC {
-		build.Spec.Volumes = append(build.Spec.Volumes, GetPVCVolume(pvcName))
+		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 	}
-	return build, nil
+	return taskSpec, nil
 }
 
-func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.PipelineStorageResourceInterface, destPath string) ([]corev1.Container, []corev1.Volume, error) {
+func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.PipelineStorageResourceInterface, destPath string) ([]corev1.Container, []corev1.Volume, error) {
 	storageResource.SetDestinationDirectory(destPath)
 	gcsContainers, err := storageResource.GetDownloadContainerSpec()
 	if err != nil {
@@ -157,7 +157,7 @@ func addStorageFetchStep(build *buildv1alpha1.Build, storageResource v1alpha1.Pi
 
 	var buildVol, storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
-	for _, volume := range build.Spec.Volumes {
+	for _, volume := range taskSpec.Volumes {
 		mountedSecrets[volume.Name] = ""
 		buildVol = append(buildVol, volume)
 	}

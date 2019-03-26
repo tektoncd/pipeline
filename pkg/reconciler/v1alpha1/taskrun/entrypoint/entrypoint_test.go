@@ -13,7 +13,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
-	"github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
@@ -37,23 +37,25 @@ func TestRewriteSteps(t *testing.T) {
 			Args:    []string{"efgh"},
 		},
 	}
-	build := &v1alpha1.Build{
+	taskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
-			Name:      "build",
+			Name:      "taskRun",
 		},
-		Spec: v1alpha1.BuildSpec{
-			Steps: []corev1.Container{{
-				Image:   "ubuntu",
-				Command: []string{"echo"},
-				Args:    []string{"hello"},
-			}},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskSpec: &v1alpha1.TaskSpec{
+				Steps: []corev1.Container{{
+					Image:   "ubuntu",
+					Command: []string{"echo"},
+					Args:    []string{"hello"},
+				}},
+			},
 		},
 	}
 	observer, _ := observer.New(zap.InfoLevel)
 	entrypointCache, _ := NewCache()
 	c := fakekubeclientset.NewSimpleClientset()
-	err := RedirectSteps(entrypointCache, inputs, c, build, zap.New(observer).Sugar())
+	err := RedirectSteps(entrypointCache, inputs, c, taskRun, zap.New(observer).Sugar())
 	if err != nil {
 		t.Errorf("failed to get resources: %v", err)
 	}
@@ -231,18 +233,20 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("couldn't create new entrypoint cache: %v", err)
 	}
-	build := &v1alpha1.Build{
+	taskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
-			Name:      "build",
+			Name:      "taskRun",
 		},
-		Spec: v1alpha1.BuildSpec{
-			ServiceAccountName: "default",
-			Steps: []corev1.Container{{
-				Image:   "ubuntu",
-				Command: []string{"echo"},
-				Args:    []string{"hello"},
-			}},
+		Spec: v1alpha1.TaskRunSpec{
+			ServiceAccount: "default",
+			TaskSpec: &v1alpha1.TaskSpec{
+				Steps: []corev1.Container{{
+					Image:   "ubuntu",
+					Command: []string{"echo"},
+					Args:    []string{"hello"},
+				}},
+			},
 		},
 	}
 	c := fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
@@ -251,7 +255,7 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 			Namespace: "foo",
 		},
 	})
-	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest, c, build)
+	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest, c, taskRun)
 	if err != nil {
 		t.Errorf("couldn't get entrypoint remote: %v", err)
 	}
@@ -298,18 +302,20 @@ func TestGetRemoteEntrypointWithNonDefaultSA(t *testing.T) {
 	if err != nil {
 		t.Fatalf("couldn't create new entrypoint cache: %v", err)
 	}
-	build := &v1alpha1.Build{
+	taskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
-			Name:      "build",
+			Name:      "taskRun",
 		},
-		Spec: v1alpha1.BuildSpec{
-			ServiceAccountName: "some-other-sa",
-			Steps: []corev1.Container{{
-				Image:   "ubuntu",
-				Command: []string{"echo"},
-				Args:    []string{"hello"},
-			}},
+		Spec: v1alpha1.TaskRunSpec{
+			ServiceAccount: "some-other-sa",
+			TaskSpec: &v1alpha1.TaskSpec{
+				Steps: []corev1.Container{{
+					Image:   "ubuntu",
+					Command: []string{"echo"},
+					Args:    []string{"hello"},
+				}},
+			},
 		},
 	}
 	c := fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
@@ -318,7 +324,7 @@ func TestGetRemoteEntrypointWithNonDefaultSA(t *testing.T) {
 			Namespace: "foo",
 		},
 	})
-	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest, c, build)
+	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest, c, taskRun)
 	if err != nil {
 		t.Errorf("couldn't get entrypoint remote: %v", err)
 	}
@@ -353,24 +359,20 @@ func TestEntrypointCacheLRU(t *testing.T) {
 }
 
 func TestAddCopyStep(t *testing.T) {
-
-	bs := &v1alpha1.BuildSpec{
-		Steps: []corev1.Container{
-			{
-				Name: "test",
-			},
-			{
-				Name: "test",
-			},
-		},
+	ts := &v1alpha1.TaskSpec{
+		Steps: []corev1.Container{{
+			Name: "test",
+		}, {
+			Name: "test",
+		}},
 	}
 
-	expectedSteps := len(bs.Steps) + 1
-	AddCopyStep(bs)
-	if len(bs.Steps) != 3 {
-		t.Errorf("BuildSpec has the wrong step count: %d should be %d", len(bs.Steps), expectedSteps)
+	expectedSteps := len(ts.Steps) + 1
+	AddCopyStep(ts)
+	if len(ts.Steps) != 3 {
+		t.Errorf("BuildSpec has the wrong step count: %d should be %d", len(ts.Steps), expectedSteps)
 	}
-	if bs.Steps[0].Name != InitContainerName {
-		t.Errorf("entrypoint is incorrect: %s should be %s", bs.Steps[0].Name, InitContainerName)
+	if ts.Steps[0].Name != InitContainerName {
+		t.Errorf("entrypoint is incorrect: %s should be %s", ts.Steps[0].Name, InitContainerName)
 	}
 }

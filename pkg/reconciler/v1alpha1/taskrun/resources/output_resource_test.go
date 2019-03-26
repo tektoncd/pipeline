@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakeclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
@@ -103,13 +102,12 @@ func outputResourceSetup() {
 		pipelineResourceInformer.Informer().GetIndexer().Add(r)
 	}
 }
-func Test_Valid_OutputResources(t *testing.T) {
-	boolTrue := true
+func TestValidOutputResources(t *testing.T) {
+
 	for _, c := range []struct {
 		name        string
 		desc        string
 		task        *v1alpha1.Task
-		build       *buildv1alpha1.Build
 		taskRun     *v1alpha1.TaskRun
 		wantSteps   []corev1.Container
 		wantVolumes []corev1.Volume
@@ -184,7 +182,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}},
-		build: build(),
 	}, {
 		name: "git resource in output only",
 		desc: "git resource declared as output with pipelinerun owner reference",
@@ -242,7 +239,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}},
-		build: build(),
 	}, {
 		name: "image resource in output with pipelinerun with owner",
 		desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
@@ -283,7 +279,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 		},
 		wantSteps:   nil,
 		wantVolumes: nil,
-		build:       build(),
 	}, {
 		name: "git resource in output",
 		desc: "git resource declared in output without pipelinerun owner reference",
@@ -317,7 +312,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 				},
 			},
 		},
-		build: build(),
 	}, {
 		name: "storage resource as both input and output",
 		desc: "storage resource defined in both input and output with parents pipelinerun reference",
@@ -396,7 +390,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Args:         []string{"-args", "cp -r /workspace/faraway-disk/. pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 		}},
-		build: build(),
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
@@ -465,7 +458,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
 			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 		}},
-		build: build(),
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
@@ -518,7 +510,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Command: []string{"/ko-app/gsutil"},
 			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}},
-		build: build(),
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
@@ -570,36 +561,7 @@ func Test_Valid_OutputResources(t *testing.T) {
 			Command: []string{"/ko-app/gsutil"},
 			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
 		}},
-		build: &buildv1alpha1.Build{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "Build",
-				APIVersion: "build.knative.dev/v1alpha1"},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1alpha1",
-					Kind:               "TaskRun",
-					Name:               "build-from-repo-run",
-					Controller:         &boolTrue,
-					BlockOwnerDeletion: &boolTrue,
-				}},
-			},
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "prev-existing-volumes",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				}},
-			},
-		},
 		wantVolumes: []corev1.Volume{{
-			Name: "prev-existing-volumes",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		}, {
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
@@ -643,7 +605,6 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: nil,
-		build:     build(),
 	}, {
 		desc: "image output resource with no steps",
 		taskRun: &v1alpha1.TaskRun{
@@ -677,18 +638,17 @@ func Test_Valid_OutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: nil,
-		build:     build(),
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()
 			outputResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			err := AddOutputResources(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
 
-			if d := cmp.Diff(c.build.Spec.Steps, c.wantSteps); d != "" {
+			if d := cmp.Diff(c.task.Spec.Steps, c.wantSteps); d != "" {
 				t.Fatalf("post build steps mismatch: %s", d)
 			}
 			if c.taskRun.GetPipelineRunPVCName() != "" {
@@ -705,19 +665,18 @@ func Test_Valid_OutputResources(t *testing.T) {
 				)
 			}
 
-			if d := cmp.Diff(c.build.Spec.Volumes, c.wantVolumes); d != "" {
+			if d := cmp.Diff(c.task.Spec.Volumes, c.wantVolumes); d != "" {
 				t.Fatalf("post build steps volumes mismatch: %s", d)
 			}
 		})
 	}
 }
 
-func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
+func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 	for _, c := range []struct {
 		name        string
 		desc        string
 		task        *v1alpha1.Task
-		build       *buildv1alpha1.Build
 		taskRun     *v1alpha1.TaskRun
 		wantSteps   []corev1.Container
 		wantVolumes []corev1.Volume
@@ -779,7 +738,6 @@ func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
 			Command: []string{"/ko-app/gsutil"},
 			Args:    []string{"-args", "cp -r /workspace/source-workspace gs://fake-bucket/pipeline-task-name"},
 		}},
-		build: build(),
 	}, {
 		name: "git resource in output only with bucket storage",
 		desc: "git resource declared as output with pipelinerun owner reference",
@@ -824,7 +782,6 @@ func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
 			Command: []string{"/ko-app/gsutil"},
 			Args:    []string{"-args", "cp -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},
 		}},
-		build: build(),
 	}, {
 		name: "git resource in output",
 		desc: "git resource declared in output without pipelinerun owner reference",
@@ -858,7 +815,6 @@ func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
 				},
 			},
 		},
-		build: build(),
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			outputResourceSetup()
@@ -874,19 +830,19 @@ func Test_Valid_OutputResources_WithBucketStorage(t *testing.T) {
 					},
 				},
 			)
-			err := AddOutputResources(fakekubeclient, c.build, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
 
-			if d := cmp.Diff(c.build.Spec.Steps, c.wantSteps); d != "" {
+			if d := cmp.Diff(c.task.Spec.Steps, c.wantSteps); d != "" {
 				t.Fatalf("post build steps mismatch: %s", d)
 			}
 		})
 	}
 }
 
-func Test_InValid_OutputResources(t *testing.T) {
+func TestInValidOutputResources(t *testing.T) {
 	for _, c := range []struct {
 		desc      string
 		task      *v1alpha1.Task
@@ -1117,7 +1073,7 @@ func Test_InValid_OutputResources(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			outputResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			err := AddOutputResources(fakekubeclient, build(), c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
 				t.Fatalf("Test AddOutputResourceSteps %v : error%v", c.desc, err)
 			}
