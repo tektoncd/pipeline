@@ -24,6 +24,3 @@ rules:
   - apiGroups: ["tekton.dev"]
     resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status", "pipelineruns/status", "pipelineresources/status"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-  - apiGroups: ["build.knative.dev"]
-    resources: ["builds", "buildtemplates", "clusterbuildtemplates"]
-    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
