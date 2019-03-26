@@ -123,7 +123,8 @@ func getTimeout(d *metav1.Duration) time.Duration {
 func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string) {
 	pipelineRuns, err := t.pipelineclientset.TektonV1alpha1().PipelineRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		t.logger.Errorf("Can't get taskruns list in namespace %s: %s", namespace, err)
+		t.logger.Errorf("Can't get pipelinerun list in namespace %s: %s", namespace, err)
+		return
 	}
 	for _, pipelineRun := range pipelineRuns.Items {
 		pipelineRun := pipelineRun
@@ -140,6 +141,7 @@ func (t *TimeoutSet) CheckTimeouts() {
 	namespaces, err := t.kubeclientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get namespaces list: %s", err)
+		return
 	}
 	for _, namespace := range namespaces.Items {
 		t.checkTaskRunTimeouts(namespace.GetName())
@@ -152,7 +154,8 @@ func (t *TimeoutSet) CheckTimeouts() {
 func (t *TimeoutSet) checkTaskRunTimeouts(namespace string) {
 	taskruns, err := t.pipelineclientset.TektonV1alpha1().TaskRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		t.logger.Errorf("Can't get taskruns list in namespace %s: %s", namespace, err)
+		t.logger.Errorf("Can't get taskrun list in namespace %s: %s", namespace, err)
+		return
 	}
 	for _, taskrun := range taskruns.Items {
 		taskrun := taskrun
@@ -218,7 +221,7 @@ func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun) {
 		// we're stopping, give up
 		return
 	case <-finished:
-		// taskrun finished, we can stop watching
+		// pipelinerun finished, we can stop watching
 		return
 	case <-time.After(timeout):
 		t.StatusLock(pr)
