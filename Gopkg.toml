@@ -67,10 +67,6 @@ required = [
   name = "go.uber.org/zap"
   revision = "67bc79d13d155c02fd008f721863ff8cc5f30659"
 
-[[constraint]]
-  name = "github.com/knative/build"
-  revision = "dd3ceb3323922b899a0a913f885fcf59943e7b59"
-
 [prune]
   go-tests = true
   unused-packages = true
