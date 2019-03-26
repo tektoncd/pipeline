@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"time"
 
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
@@ -38,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -68,14 +66,6 @@ const (
 	taskRunAgentName = "taskrun-controller"
 	// taskRunControllerName defines name for TaskRun Controller
 	taskRunControllerName = "TaskRun"
-)
-
-var (
-	groupVersionKind = schema.GroupVersionKind{
-		Group:   v1alpha1.SchemeGroupVersion.Group,
-		Version: v1alpha1.SchemeGroupVersion.Version,
-		Kind:    "TaskRun",
-	}
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -294,7 +284,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		}
 	} else {
 		// Pod is not present, create pod.
-		pod, err = c.createBuildPod(tr, rtr.TaskSpec, rtr.TaskName)
+		go c.timeoutHandler.WaitTaskRun(tr)
+		pod, err = c.createPod(tr, rtr.TaskSpec, rtr.TaskName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			var msg string
@@ -457,45 +448,23 @@ func (c *Reconciler) updateLabels(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, erro
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a
 // volumeMount
-func (c *Reconciler) createBuildPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
-	s := &buildv1alpha1.BuildSpec{
-		Steps:   ts.Steps,
-		Volumes: ts.Volumes,
-	}
-
-	bSpec := s.DeepCopy()
-	bSpec.Timeout = tr.Spec.Timeout
-	bSpec.Affinity = tr.Spec.Affinity
-	bSpec.NodeSelector = tr.Spec.NodeSelector
-
-	build := &buildv1alpha1.Build{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      tr.Name,
-			Namespace: tr.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tr, groupVersionKind),
-			},
-			// Attach new label and pass taskrun labels to build
-			Labels: makeLabels(tr),
-		},
-		Spec: *bSpec,
-	}
-
-	build, err := resources.AddInputResource(c.KubeClientSet, build, taskName, ts, tr, c.resourceLister, c.Logger)
+func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
+	ts = ts.DeepCopy()
+	ts, err := resources.AddInputResource(c.KubeClientSet, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	err = resources.AddOutputResources(c.KubeClientSet, build, taskName, ts, tr, c.resourceLister, c.Logger)
+	err = resources.AddOutputResources(c.KubeClientSet, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	build, err = createRedirectedBuild(c.KubeClientSet, build, tr, c.cache, c.Logger)
+	ts, err = createRedirectedTaskSpec(c.KubeClientSet, ts, tr, c.cache, c.Logger)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't create redirected Build: %v", err)
+		return nil, fmt.Errorf("couldn't create redirected TaskSpec: %v", err)
 	}
 
 	var defaults []v1alpha1.TaskParam
@@ -503,19 +472,19 @@ func (c *Reconciler) createBuildPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec,
 		defaults = append(defaults, ts.Inputs.Params...)
 	}
 	// Apply parameter templating from the taskrun.
-	build = resources.ApplyParameters(build, tr, defaults...)
+	ts = resources.ApplyParameters(ts, tr, defaults...)
 
 	// Apply bound resource templating from the taskrun.
-	build, err = resources.ApplyResources(build, tr.Spec.Inputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get, "inputs")
+	ts, err = resources.ApplyResources(ts, tr.Spec.Inputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get, "inputs")
 	if err != nil {
 		return nil, fmt.Errorf("couldnt apply input resource templating: %s", err)
 	}
-	build, err = resources.ApplyResources(build, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get, "outputs")
+	ts, err = resources.ApplyResources(ts, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get, "outputs")
 	if err != nil {
 		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
 	}
 
-	pod, err := resources.MakePod(build, c.KubeClientSet)
+	pod, err := resources.MakePod(tr, *ts, c.KubeClientSet)
 	if err != nil {
 		return nil, fmt.Errorf("translating Build to Pod: %v", err)
 	}
@@ -523,40 +492,24 @@ func (c *Reconciler) createBuildPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec,
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
 }
 
-// CreateRedirectedBuild takes a build, a persistent volume claim name, a taskrun and
+// CreateRedirectedTaskSpec takes a TaskSpec, a persistent volume claim name, a taskrun and
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
-// its own copy of the BuildSpec and modifies it freely
-func createRedirectedBuild(kubeclient kubernetes.Interface, build *buildv1alpha1.Build, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*buildv1alpha1.Build, error) {
-	bs := &build.Spec
-	// Pass service account name from taskrun to build
-	bs.ServiceAccountName = tr.Spec.ServiceAccount
-
+// its own copy of the TaskSpec and modifies it freely
+func createRedirectedTaskSpec(kubeclient kubernetes.Interface, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*v1alpha1.TaskSpec, error) {
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
-	err := entrypoint.RedirectSteps(cache, bs.Steps, kubeclient, build, logger)
+	err := entrypoint.RedirectSteps(cache, ts.Steps, kubeclient, tr, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add entrypoint to steps of TaskRun %s: %v", tr.Name, err)
 	}
 	// Add the step which will copy the entrypoint into the volume
 	// we are going to be using, so that all of the steps will have
 	// access to it.
-	entrypoint.AddCopyStep(bs)
-	b := &buildv1alpha1.Build{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      tr.Name,
-			Namespace: tr.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(tr, groupVersionKind),
-			},
-			// Attach new label and pass taskrun labels to build
-			Labels: makeLabels(tr),
-		},
-		Spec: *bs,
-	}
+	entrypoint.AddCopyStep(ts)
 
 	// Add the volume used for storing the binary and logs
-	b.Spec.Volumes = append(b.Spec.Volumes, corev1.Volume{
+	ts.Volumes = append(ts.Volumes, corev1.Volume{
 		Name: entrypoint.MountName,
 		VolumeSource: corev1.VolumeSource{
 			// TODO(#107) we need to actually stream these logs somewhere, probably via sidecar.
@@ -564,18 +517,7 @@ func createRedirectedBuild(kubeclient kubernetes.Interface, build *buildv1alpha1
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	})
-
-	return b, nil
-}
-
-// makeLabels constructs the labels we will propagate from TaskRuns to Pods.
-func makeLabels(s *v1alpha1.TaskRun) map[string]string {
-	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
-	for k, v := range s.ObjectMeta.Labels {
-		labels[k] = v
-	}
-	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
-	return labels
+	return ts, nil
 }
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error

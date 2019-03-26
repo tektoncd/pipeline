@@ -27,12 +27,10 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	lru "github.com/hashicorp/golang-lru"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-
-	"github.com/knative/build/pkg/apis/build/v1alpha1"
 )
 
 const (
@@ -87,12 +85,11 @@ func AddToEntrypointCache(c *Cache, sha string, ep []string) {
 	c.set(sha, ep)
 }
 
-// AddCopyStep will prepend a BuildStep (Container) that will
+// AddCopyStep will prepend a Step (Container) that will
 // copy the entrypoint binary from the entrypoint image into the
 // volume mounted at MountPoint, so that it can be mounted by
 // subsequent steps and used to capture logs.
-func AddCopyStep(b *v1alpha1.BuildSpec) {
-
+func AddCopyStep(spec *v1alpha1.TaskSpec) {
 	cp := corev1.Container{
 		Name:    InitContainerName,
 		Image:   *entrypointImage,
@@ -101,7 +98,7 @@ func AddCopyStep(b *v1alpha1.BuildSpec) {
 		Args:         []string{"-c", fmt.Sprintf("if [[ -d /ko-app ]]; then cp /ko-app/entrypoint %s; else cp /ko-app %s;  fi;", BinaryLocation, BinaryLocation)},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
-	b.Steps = append([]corev1.Container{cp}, b.Steps...)
+	spec.Steps = append([]corev1.Container{cp}, spec.Steps...)
 
 }
 
@@ -109,13 +106,13 @@ func AddCopyStep(b *v1alpha1.BuildSpec) {
 // the binary being run is no longer the one specified by the Command
 // and the Args, but is instead the entrypoint binary, which will
 // itself invoke the Command and Args, but also capture logs.
-func RedirectSteps(cache *Cache, steps []corev1.Container, kubeclient kubernetes.Interface, build *buildv1alpha1.Build, logger *zap.SugaredLogger) error {
+func RedirectSteps(cache *Cache, steps []corev1.Container, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun, logger *zap.SugaredLogger) error {
 	for i := range steps {
 		step := &steps[i]
 		if len(step.Command) == 0 {
 			logger.Infof("Getting Cmd from remote entrypoint for step: %s", step.Name)
 			var err error
-			step.Command, err = GetRemoteEntrypoint(cache, step.Image, kubeclient, build)
+			step.Command, err = GetRemoteEntrypoint(cache, step.Image, kubeclient, taskRun)
 			if err != nil {
 				logger.Errorf("Error getting entry point image", err.Error())
 				return err
@@ -158,11 +155,11 @@ func GetArgs(stepNum int, commands, args []string) []string {
 // GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
 // to look for. If the cache does not contain the digest, it will lookup the
 // metadata from the images registry, and then commit that to the cache
-func GetRemoteEntrypoint(cache *Cache, digest string, kubeclient kubernetes.Interface, build *buildv1alpha1.Build) ([]string, error) {
+func GetRemoteEntrypoint(cache *Cache, digest string, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun) ([]string, error) {
 	if ep, ok := cache.get(digest); ok {
 		return ep, nil
 	}
-	img, err := getRemoteImage(digest, kubeclient, build)
+	img, err := getRemoteImage(digest, kubeclient, taskRun)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to fetch remote image %s: %v", digest, err)
 	}
@@ -179,7 +176,7 @@ func GetRemoteEntrypoint(cache *Cache, digest string, kubeclient kubernetes.Inte
 	return command, nil
 }
 
-func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv1alpha1.Build) (v1.Image, error) {
+func getRemoteImage(image string, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun) (v1.Image, error) {
 	// verify the image name, then download the remote config file
 	ref, err := name.ParseReference(image, name.WeakValidation)
 	if err != nil {
@@ -187,8 +184,8 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, build *buildv
 	}
 
 	kc, err := k8schain.New(kubeclient, k8schain.Options{
-		Namespace:          build.Namespace,
-		ServiceAccountName: build.Spec.ServiceAccountName,
+		Namespace:          taskRun.Namespace,
+		ServiceAccountName: taskRun.Spec.ServiceAccount,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create k8schain: %v", err)

@@ -28,15 +28,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 
-	v1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
-	"github.com/knative/pkg/apis"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/names"
 )
 
 var (
 	ignorePrivateResourceFields = cmpopts.IgnoreUnexported(resource.Quantity{})
-	ignoreVolatileTime          = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
-	ignoreVolatileTimePtr       = cmp.Comparer(func(_, _ *apis.VolatileTime) bool { return true })
 	nopContainer                = corev1.Container{
 		Name:    "nop",
 		Image:   *nopImage,
@@ -74,13 +71,14 @@ func TestMakePod(t *testing.T) {
 
 	for _, c := range []struct {
 		desc         string
-		b            v1alpha1.BuildSpec
+		trs          v1alpha1.TaskRunSpec
+		ts           v1alpha1.TaskSpec
 		bAnnotations map[string]string
 		want         *corev1.PodSpec
 		wantErr      error
 	}{{
 		desc: "simple",
-		b: v1alpha1.BuildSpec{
+		ts: v1alpha1.TaskSpec{
 			Steps: []corev1.Container{{
 				Name:  "name",
 				Image: "image",
@@ -112,48 +110,15 @@ func TestMakePod(t *testing.T) {
 			Volumes: implicitVolumes,
 		},
 	}, {
-		desc: "gcs-source-with-targetPath",
-		b: v1alpha1.BuildSpec{
-			Source: &v1alpha1.SourceSpec{
-				Name: "gcs-foo-bar",
-				GCS: &v1alpha1.GCSSourceSpec{
-					Type:     v1alpha1.GCSManifest,
-					Location: "gs://foo/bar",
-				},
-				TargetPath: "path/foo",
-			},
-		},
-		want: &corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts, // without subpath
-				WorkingDir:   workspaceDir,
-			}},
-			Containers: []corev1.Container{{
-				Name:         containerPrefix + gcsSource + "-gcs-foo-bar" + "-mz4c7",
-				Image:        *gcsFetcherImage,
-				Args:         []string{"--type", "Manifest", "--location", "gs://foo/bar", "--dest_dir", "/workspace/path/foo"},
-				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts, // without subpath
-				WorkingDir:   workspaceDir,
-			},
-				nopContainer,
-			},
-			Volumes: implicitVolumes,
-		},
-	}, {
 		desc: "with-service-account",
-		b: v1alpha1.BuildSpec{
-			ServiceAccountName: "service-account",
+		ts: v1alpha1.TaskSpec{
 			Steps: []corev1.Container{{
 				Name:  "name",
 				Image: "image",
 			}},
+		},
+		trs: v1alpha1.TaskRunSpec{
+			ServiceAccount: "service-account",
 		},
 		want: &corev1.PodSpec{
 			ServiceAccountName: "service-account",
@@ -185,7 +150,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "very-long-step-name",
-		b: v1alpha1.BuildSpec{
+		ts: v1alpha1.TaskSpec{
 			Steps: []corev1.Container{{
 				Name:  "a-very-long-character-step-name-to-trigger-max-len----and-invalid-characters",
 				Image: "image",
@@ -218,7 +183,7 @@ func TestMakePod(t *testing.T) {
 		},
 	}, {
 		desc: "step-name-ends-with-non-alphanumeric",
-		b: v1alpha1.BuildSpec{
+		ts: v1alpha1.TaskSpec{
 			Steps: []corev1.Container{{
 				Name:  "ends-with-invalid-%%__$$",
 				Image: "image",
@@ -274,20 +239,20 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			)
-			b := &v1alpha1.Build{
+			tr := &v1alpha1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "build-name",
+					Name:        "taskrun-name",
 					Annotations: c.bAnnotations,
 				},
-				Spec: c.b,
+				Spec: c.trs,
 			}
-			got, err := MakePod(b, cs)
+			got, err := MakePod(tr, c.ts, cs)
 			if err != c.wantErr {
 				t.Fatalf("MakePod: %v", err)
 			}
 
 			// Generated name from hexlifying a stream of 'a's.
-			wantName := "build-name-pod-616161"
+			wantName := "taskrun-name-pod-616161"
 			if got.Name != wantName {
 				t.Errorf("Pod name got %q, want %q", got.Name, wantName)
 			}

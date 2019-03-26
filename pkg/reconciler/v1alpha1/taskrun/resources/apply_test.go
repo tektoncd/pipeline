@@ -21,40 +21,36 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	buildv1alpha1 "github.com/knative/build/pkg/apis/build/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var simpleBuild = &buildv1alpha1.Build{
-	Spec: buildv1alpha1.BuildSpec{
-		Steps: []corev1.Container{{
-			Name:  "foo",
-			Image: "${inputs.params.myimage}",
-		}, {
-			Name:  "baz",
-			Image: "bat",
-			Args:  []string{"${inputs.resources.workspace.url}"},
-		}, {
-			Name:  "qux",
-			Image: "quux",
-			Args:  []string{"${outputs.resources.imageToUse.url}"},
-		}},
-	},
+var simpleTaskSpec = &v1alpha1.TaskSpec{
+	Steps: []corev1.Container{{
+		Name:  "foo",
+		Image: "${inputs.params.myimage}",
+	}, {
+		Name:  "baz",
+		Image: "bat",
+		Args:  []string{"${inputs.resources.workspace.url}"},
+	}, {
+		Name:  "qux",
+		Image: "quux",
+		Args:  []string{"${outputs.resources.imageToUse.url}"},
+	}},
 }
-var volumeMountBuild = &buildv1alpha1.Build{
-	Spec: buildv1alpha1.BuildSpec{
-		Steps: []corev1.Container{{
-			Name:  "foo",
-			Image: "busybox:${inputs.params.FOO}",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "${inputs.params.FOO}",
-				MountPath: "path/to/${inputs.params.FOO}",
-				SubPath:   "sub/${inputs.params.FOO}/path",
-			}},
+
+var volumeMountTaskSpec = &v1alpha1.TaskSpec{
+	Steps: []corev1.Container{{
+		Name:  "foo",
+		Image: "busybox:${inputs.params.FOO}",
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "${inputs.params.FOO}",
+			MountPath: "path/to/${inputs.params.FOO}",
+			SubPath:   "sub/${inputs.params.FOO}/path",
 		}},
-	},
+	}},
 }
 
 var paramTaskRun = &v1alpha1.TaskRun{
@@ -114,35 +110,35 @@ var imageResource = &v1alpha1.PipelineResource{
 	},
 }
 
-func applyMutation(b *buildv1alpha1.Build, f func(b *buildv1alpha1.Build)) *buildv1alpha1.Build {
-	b = b.DeepCopy()
-	f(b)
-	return b
+func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.TaskSpec {
+	ts = ts.DeepCopy()
+	f(ts)
+	return ts
 }
 
 func TestApplyParameters(t *testing.T) {
 	type args struct {
-		b  *buildv1alpha1.Build
+		ts *v1alpha1.TaskSpec
 		tr *v1alpha1.TaskRun
 		dp []v1alpha1.TaskParam
 	}
 	tests := []struct {
 		name string
 		args args
-		want *buildv1alpha1.Build
+		want *v1alpha1.TaskSpec
 	}{{
 		name: "single parameter",
 		args: args{
-			b:  simpleBuild,
+			ts: simpleTaskSpec,
 			tr: paramTaskRun,
 		},
-		want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
-			b.Spec.Steps[0].Image = "bar"
+		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[0].Image = "bar"
 		}),
 	}, {
 		name: "volume mount parameter",
 		args: args{
-			b: volumeMountBuild,
+			ts: volumeMountTaskSpec,
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
@@ -154,16 +150,16 @@ func TestApplyParameters(t *testing.T) {
 				},
 			},
 		},
-		want: applyMutation(volumeMountBuild, func(b *buildv1alpha1.Build) {
-			b.Spec.Steps[0].VolumeMounts[0].Name = "world"
-			b.Spec.Steps[0].VolumeMounts[0].SubPath = "sub/world/path"
-			b.Spec.Steps[0].VolumeMounts[0].MountPath = "path/to/world"
-			b.Spec.Steps[0].Image = "busybox:world"
+		want: applyMutation(volumeMountTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[0].VolumeMounts[0].Name = "world"
+			spec.Steps[0].VolumeMounts[0].SubPath = "sub/world/path"
+			spec.Steps[0].VolumeMounts[0].MountPath = "path/to/world"
+			spec.Steps[0].Image = "busybox:world"
 		}),
 	}, {
 		name: "with default parameter",
 		args: args{
-			b:  simpleBuild,
+			ts: simpleTaskSpec,
 			tr: &v1alpha1.TaskRun{},
 			dp: []v1alpha1.TaskParam{
 				{
@@ -172,13 +168,13 @@ func TestApplyParameters(t *testing.T) {
 				},
 			},
 		},
-		want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
-			b.Spec.Steps[0].Image = "mydefault"
+		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[0].Image = "mydefault"
 		}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ApplyParameters(tt.args.b, tt.args.tr, tt.args.dp...)
+			got := ApplyParameters(tt.args.ts, tt.args.tr, tt.args.dp...)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", d)
 			}
@@ -208,7 +204,7 @@ var imageResourceGetter = func(n string) (*v1alpha1.PipelineResource, error) { r
 
 func TestApplyResources(t *testing.T) {
 	type args struct {
-		b      *buildv1alpha1.Build
+		ts     *v1alpha1.TaskSpec
 		r      []v1alpha1.TaskResourceBinding
 		getter GetResource
 		rStr   string
@@ -216,57 +212,52 @@ func TestApplyResources(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *buildv1alpha1.Build
+		want    *v1alpha1.TaskSpec
 		wantErr bool
-	}{
-		{
-			name: "no replacements specified",
-			args: args{
-				b:      simpleBuild,
-				r:      []v1alpha1.TaskResourceBinding{},
-				getter: mockGetter,
-				rStr:   "inputs",
-			},
-			want: simpleBuild,
+	}{{
+		name: "no replacements specified",
+		args: args{
+			ts:     simpleTaskSpec,
+			r:      []v1alpha1.TaskResourceBinding{},
+			getter: mockGetter,
+			rStr:   "inputs",
 		},
-		{
-			name: "input resource specified",
-			args: args{
-				b:      simpleBuild,
-				r:      inputs,
-				getter: gitResourceGetter,
-				rStr:   "inputs",
-			},
-			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
-				b.Spec.Steps[1].Args = []string{"https://git-repo"}
-			}),
+		want: simpleTaskSpec,
+	}, {
+		name: "input resource specified",
+		args: args{
+			ts:     simpleTaskSpec,
+			r:      inputs,
+			getter: gitResourceGetter,
+			rStr:   "inputs",
 		},
-		{
-			name: "output resource specified",
-			args: args{
-				b:      simpleBuild,
-				r:      outputs,
-				getter: imageResourceGetter,
-				rStr:   "outputs",
-			},
-			want: applyMutation(simpleBuild, func(b *buildv1alpha1.Build) {
-				b.Spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
-			}),
+		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].Args = []string{"https://git-repo"}
+		}),
+	}, {
+		name: "output resource specified",
+		args: args{
+			ts:     simpleTaskSpec,
+			r:      outputs,
+			getter: imageResourceGetter,
+			rStr:   "outputs",
 		},
-		{
-			name: "resource does not exist",
-			args: args{
-				b:      simpleBuild,
-				r:      inputs,
-				getter: mockGetter,
-				rStr:   "inputs",
-			},
-			wantErr: true,
+		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
+		}),
+	}, {
+		name: "resource does not exist",
+		args: args{
+			ts:     simpleTaskSpec,
+			r:      inputs,
+			getter: mockGetter,
+			rStr:   "inputs",
 		},
-	}
+		wantErr: true,
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ApplyResources(tt.args.b, tt.args.r, tt.args.getter, tt.args.rStr)
+			got, err := ApplyResources(tt.args.ts, tt.args.r, tt.args.getter, tt.args.rStr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ApplyResources() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -281,132 +272,116 @@ func TestApplyResources(t *testing.T) {
 func TestVolumeReplacement(t *testing.T) {
 	tests := []struct {
 		name string
-		b    *buildv1alpha1.Build
+		ts   *v1alpha1.TaskSpec
 		repl map[string]string
-		want *buildv1alpha1.Build
+		want *v1alpha1.TaskSpec
 	}{{
 		name: "volume replacement",
-		b: &buildv1alpha1.Build{
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "${foo}",
-				}},
-			},
-		},
-		want: &buildv1alpha1.Build{
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "bar",
-				}},
-			},
+		ts: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "${foo}",
+			}},
 		},
 		repl: map[string]string{"foo": "bar"},
+		want: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "bar",
+			}},
+		},
 	}, {
 		name: "volume configmap",
-		b: &buildv1alpha1.Build{
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "${name}",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							corev1.LocalObjectReference{"${configmapname}"},
-							nil,
-							nil,
-							nil,
-						},
-					}},
-				},
+		ts: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "${name}",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						corev1.LocalObjectReference{"${configmapname}"},
+						nil,
+						nil,
+						nil,
+					},
+				}},
 			},
 		},
 		repl: map[string]string{
 			"name":          "myname",
 			"configmapname": "cfgmapname",
 		},
-		want: &buildv1alpha1.Build{
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "myname",
-					VolumeSource: corev1.VolumeSource{
-						ConfigMap: &corev1.ConfigMapVolumeSource{
-							corev1.LocalObjectReference{"cfgmapname"},
-							nil,
-							nil,
-							nil,
-						},
-					}},
-				},
+		want: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "myname",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						corev1.LocalObjectReference{"cfgmapname"},
+						nil,
+						nil,
+						nil,
+					},
+				}},
 			},
 		},
 	}, {
 		name: "volume secretname",
-		b: &buildv1alpha1.Build{
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "${name}",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							"${secretname}",
-							nil,
-							nil,
-							nil,
-						},
-					}},
-				},
+		ts: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "${name}",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						"${secretname}",
+						nil,
+						nil,
+						nil,
+					},
+				}},
 			},
 		},
 		repl: map[string]string{
 			"name":       "mysecret",
 			"secretname": "totallysecure",
 		},
-		want: &buildv1alpha1.Build{
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "mysecret",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							"totallysecure",
-							nil,
-							nil,
-							nil,
-						},
-					}},
-				},
+		want: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "mysecret",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						"totallysecure",
+						nil,
+						nil,
+						nil,
+					},
+				}},
 			},
 		},
 	}, {
 		name: "volume PVC name",
-		b: &buildv1alpha1.Build{
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "${name}",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "${FOO}",
-						},
+		ts: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "${name}",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "${FOO}",
 					},
-				}},
-			},
+				},
+			}},
 		},
 		repl: map[string]string{
 			"name": "mypvc",
 			"FOO":  "pvcrocks",
 		},
-		want: &buildv1alpha1.Build{
-			Spec: buildv1alpha1.BuildSpec{
-				Volumes: []corev1.Volume{{
-					Name: "mypvc",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "pvcrocks",
-						},
+		want: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "mypvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "pvcrocks",
 					},
-				}},
-			},
+				},
+			}},
 		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ApplyReplacements(tt.b, tt.repl)
+			got := ApplyReplacements(tt.ts, tt.repl)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyResources() diff %s", d)
 			}

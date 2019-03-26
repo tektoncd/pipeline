@@ -43,7 +43,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if len(ts.Steps) == 0 {
 		return apis.ErrMissingField("steps")
 	}
-	if err := validateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
+	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
 		return err
 	}
 	if err := validateSteps(ts.Steps).ViaField("steps"); err != nil {
@@ -94,7 +94,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
-func validateVolumes(volumes []corev1.Volume) *apis.FieldError {
+func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	// Task must not have duplicate volume names.
 	vols := map[string]struct{}{}
 	for _, v := range volumes {
