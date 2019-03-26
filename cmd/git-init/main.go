@@ -82,15 +82,16 @@ func main() {
 			logger.Fatalf("Failed to change directory with path %s; err %v", path, err)
 		}
 	} else {
-		run(logger, "git", "init")
+		runOrFail(logger, "git", "init")
 	}
 
-	run(logger, "git", "remote", "add", "origin", *url)
-	err = run(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision)
-	if err != nil {
+	runOrFail(logger, "git", "remote", "add", "origin", *url)
+	if err := run(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision); err != nil {
 		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
 		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
-		run(logger, "git", "pull", "--recurse-submodules=yes", "origin")
+		if err := run(logger, "git", "pull", "--recurse-submodules=yes", "origin"); err != nil {
+			logger.Warnf("Failed to pull origin : %s", err)
+		}
 		runOrFail(logger, "git", "checkout", *revision)
 	} else {
 		runOrFail(logger, "git", "reset", "--hard", "FETCH_HEAD")
