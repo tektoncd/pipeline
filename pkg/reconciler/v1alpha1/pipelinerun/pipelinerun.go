@@ -186,7 +186,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return err
 	}
 
-	// Reconcile this copy of the task run and then write back any status or label
+	// Reconcile this copy of the pipelinerun and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
 	if err = c.reconcile(ctx, pr); err != nil {
 		c.Logger.Errorf("Reconcile error: %v", err.Error())
