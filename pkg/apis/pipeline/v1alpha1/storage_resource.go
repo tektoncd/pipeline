@@ -41,8 +41,7 @@ func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, 
 	}
 
 	for _, param := range r.Spec.Params {
-		switch {
-		case strings.EqualFold(param.Name, "type"):
+		if strings.EqualFold(param.Name, "type") {
 			switch {
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeGCS)):
 				return NewGCSResource(r)
