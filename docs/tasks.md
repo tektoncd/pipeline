@@ -81,7 +81,7 @@ The following example is a non-working sample where most of the possible
 configuration fields are used:
 
 ```yaml
-apiVersion: build.knative.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: example-task-name
