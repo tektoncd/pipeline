@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -36,7 +37,7 @@ var (
 func main() {
 	flag.Parse()
 
-	entrypoint.Entrypointer{
+	e := entrypoint.Entrypointer{
 		Entrypoint: *ep,
 		WaitFile:   *waitFile,
 		PostFile:   *postFile,
@@ -44,7 +45,26 @@ func main() {
 		Waiter:     &RealWaiter{},
 		Runner:     &RealRunner{},
 		PostWriter: &RealPostWriter{},
-	}.Go()
+	}
+	if err := e.Go(); err != nil {
+		switch err.(type) {
+		case skipError:
+			os.Exit(0)
+		case *exec.ExitError:
+			// Copied from https://stackoverflow.com/questions/10385551/get-exit-code-go
+			// This works on both Unix and Windows. Although
+			// package syscall is generally platform dependent,
+			// WaitStatus is defined for both Unix and Windows and
+			// in both cases has an ExitStatus() method with the
+			// same signature.
+			if status, ok := err.(*exec.ExitError).Sys().(syscall.WaitStatus); ok {
+				os.Exit(status.ExitStatus())
+			}
+			log.Fatalf("Error executing command (ExitError): %v", err)
+		default:
+			log.Fatalf("Error executing command: %v", err)
+		}
+	}
 }
 
 // TODO(jasonhall): Test that original exit code is propagated and that
@@ -55,15 +75,20 @@ type RealWaiter struct{ waitFile string }
 
 var _ entrypoint.Waiter = (*RealWaiter)(nil)
 
-func (*RealWaiter) Wait(file string) {
+func (*RealWaiter) Wait(file string) error {
 	if file == "" {
-		return
+		return nil
 	}
 	for ; ; time.Sleep(time.Second) {
+		// Watch for the post file
 		if _, err := os.Stat(file); err == nil {
-			return
+			return nil
 		} else if !os.IsNotExist(err) {
-			log.Fatalf("Waiting for %q: %v", file, err)
+			return fmt.Errorf("Waiting for %q: %v", file, err)
+		}
+		// Watch for the post error file
+		if _, err := os.Stat(file + ".err"); err == nil {
+			return skipError("error file present, bail and skip the step")
 		}
 	}
 }
@@ -73,9 +98,9 @@ type RealRunner struct{}
 
 var _ entrypoint.Runner = (*RealRunner)(nil)
 
-func (*RealRunner) Run(args ...string) {
+func (*RealRunner) Run(args ...string) error {
 	if len(args) == 0 {
-		return
+		return nil
 	}
 	name, args := args[0], args[1:]
 
@@ -84,20 +109,9 @@ func (*RealRunner) Run(args ...string) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		if exiterr, ok := err.(*exec.ExitError); ok {
-			// Copied from https://stackoverflow.com/questions/10385551/get-exit-code-go
-			// This works on both Unix and Windows. Although
-			// package syscall is generally platform dependent,
-			// WaitStatus is defined for both Unix and Windows and
-			// in both cases has an ExitStatus() method with the
-			// same signature.
-			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				os.Exit(status.ExitStatus())
-			}
-			log.Fatalf("Error executing command (ExitError): %v", err)
-		}
-		log.Fatalf("Error executing command: %v", err)
+		return err
 	}
+	return nil
 }
 
 // RealPostWriter actually writes files.
@@ -112,4 +126,10 @@ func (*RealPostWriter) Write(file string) {
 	if _, err := os.Create(file); err != nil {
 		log.Fatalf("Creating %q: %v", file, err)
 	}
+}
+
+type skipError string
+
+func (e skipError) Error() string {
+	return string(e)
 }

@@ -16,6 +16,10 @@ limitations under the License.
 
 package entrypoint
 
+import (
+	"fmt"
+)
+
 // Entrypointer holds fields for running commands with redirected
 // entrypoints.
 type Entrypointer struct {
@@ -41,12 +45,12 @@ type Entrypointer struct {
 // Waiter encapsulates waiting for files to exist.
 type Waiter interface {
 	// Wait blocks until the specified file exists.
-	Wait(file string)
+	Wait(file string) error
 }
 
 // Runner encapsulates running commands.
 type Runner interface {
-	Run(args ...string)
+	Run(args ...string) error
 }
 
 // PostWriter encapsulates writing a file when complete.
@@ -57,17 +61,33 @@ type PostWriter interface {
 
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
-func (e Entrypointer) Go() {
+func (e Entrypointer) Go() error {
 	if e.WaitFile != "" {
-		e.Waiter.Wait(e.WaitFile)
+		if err := e.Waiter.Wait(e.WaitFile); err != nil {
+			// An error happened while waiting, so we bail
+			// *but* we write postfile to make next steps bail too
+			e.WritePostFile(e.PostFile, err)
+			return err
+		}
 	}
 
 	if e.Entrypoint != "" {
 		e.Args = append([]string{e.Entrypoint}, e.Args...)
 	}
-	e.Runner.Run(e.Args...)
 
-	if e.PostFile != "" {
-		e.PostWriter.Write(e.PostFile)
+	err := e.Runner.Run(e.Args...)
+
+	// Write the post file *no matter what*
+	e.WritePostFile(e.PostFile, err)
+
+	return err
+}
+
+func (e Entrypointer) WritePostFile(postFile string, err error) {
+	if err != nil && postFile != "" {
+		postFile = fmt.Sprintf("%s.err", postFile)
+	}
+	if postFile != "" {
+		e.PostWriter.Write(postFile)
 	}
 }
