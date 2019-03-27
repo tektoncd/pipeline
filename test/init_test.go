@@ -39,7 +39,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
-var metricMutex *sync.Mutex = &sync.Mutex{}
+var initMetrics sync.Once
 
 func setup(t *testing.T) (*clients, string) {
 	t.Helper()
@@ -85,13 +85,15 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 }
 
 func initializeLogsAndMetrics(t *testing.T) {
-	flag.Parse()
-	flag.Set("alsologtostderr", "true")
-	logging.InitializeLogger(knativetest.Flags.LogVerbose)
+	initMetrics.Do(func() {
+		flag.Parse()
+		flag.Set("alsologtostderr", "true")
+		logging.InitializeLogger(knativetest.Flags.LogVerbose)
 
-	if knativetest.Flags.EmitMetrics {
-		logging.InitializeMetricExporter(t.Name())
-	}
+		if knativetest.Flags.EmitMetrics {
+			logging.InitializeMetricExporter(t.Name())
+		}
+	})
 }
 
 func createNamespace(t *testing.T, namespace string, kubeClient *knativetest.KubeClient) {
