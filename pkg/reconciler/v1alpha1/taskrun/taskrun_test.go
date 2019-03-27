@@ -141,7 +141,7 @@ var (
 
 	placeToolsInitContainer = tb.PodInitContainer("build-step-place-tools", "override-with-entrypoint:latest",
 		tb.Command("/bin/sh"),
-		tb.Args("-c", fmt.Sprintf("if [[ -d /ko-app ]]; then cp /ko-app/entrypoint %s; else cp /ko-app %s;  fi;", entrypointLocation, entrypointLocation)),
+		tb.Args("-c", fmt.Sprintf("cp /ko-app/entrypoint %s", entrypointLocation)),
 		tb.WorkingDir(workspaceDir),
 		tb.EnvVar("HOME", "/builder/home"),
 		tb.VolumeMount("tools", "/builder/tools"),
