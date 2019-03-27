@@ -98,7 +98,7 @@ Our contributors are made up of:
 - Any and all other contributors!
 
 If you are interested in becoming an OWNER, take a look at the
-[approver requirements](https://github.com/knative/docs/blob/master/community/ROLES.md#approver)
+[approver requirements](https://github.com/knative/docs/blob/master/contributing/ROLES.md#approver)
 and follow up with an existing OWNER [on slack](#contact).
 
 ### OWNER review process
