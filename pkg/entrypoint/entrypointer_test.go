@@ -17,9 +17,79 @@ limitations under the License.
 package entrypoint
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
+
+func TestEntrypointerFailures(t *testing.T) {
+	for _, c := range []struct {
+		desc, waitFile, postFile string
+		waiter                   Waiter
+		runner                   Runner
+		expectedError            string
+	}{{
+		desc:          "failing runner with no postFile",
+		runner:        &fakeErrorRunner{},
+		expectedError: "runner failed",
+	}, {
+		desc:          "failing runner with postFile",
+		runner:        &fakeErrorRunner{},
+		expectedError: "runner failed",
+		postFile:      "foo",
+	}, {
+		desc:          "failing waiter with no postFile",
+		waitFile:      "foo",
+		waiter:        &fakeErrorWaiter{},
+		expectedError: "waiter failed",
+	}, {
+		desc:          "failing waiter with postFile",
+		waitFile:      "foo",
+		waiter:        &fakeErrorWaiter{},
+		expectedError: "waiter failed",
+		postFile:      "bar",
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			fw := c.waiter
+			if fw == nil {
+				fw = &fakeWaiter{}
+			}
+			fr := c.runner
+			if fr == nil {
+				fr = &fakeRunner{}
+			}
+			fpw := &fakePostWriter{}
+			err := Entrypointer{
+				Entrypoint: "echo",
+				WaitFile:   c.waitFile,
+				PostFile:   c.postFile,
+				Args:       []string{"some", "args"},
+				Waiter:     fw,
+				Runner:     fr,
+				PostWriter: fpw,
+			}.Go()
+			if err == nil {
+				t.Fatalf("Entrpointer didn't fail")
+			}
+			if d := cmp.Diff(c.expectedError, err.Error()); d != "" {
+				t.Errorf("Entrypointer error diff -want, +got: %v", d)
+			}
+
+			if c.postFile != "" {
+				if fpw.wrote == nil {
+					t.Error("Wanted post file written, got nil")
+				} else if *fpw.wrote != c.postFile+".err" {
+					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile)
+				}
+			}
+			if c.postFile == "" && fpw.wrote != nil {
+				t.Errorf("Wrote post file when not required")
+			}
+		})
+	}
+}
 
 func TestEntrypointer(t *testing.T) {
 	for _, c := range []struct {
@@ -50,7 +120,7 @@ func TestEntrypointer(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
-			Entrypointer{
+			err := Entrypointer{
 				Entrypoint: c.entrypoint,
 				WaitFile:   c.waitFile,
 				PostFile:   c.postFile,
@@ -59,6 +129,9 @@ func TestEntrypointer(t *testing.T) {
 				Runner:     fr,
 				PostWriter: fpw,
 			}.Go()
+			if err != nil {
+				t.Fatalf("Entrypointer failed: %v", err)
+			}
 
 			if c.waitFile != "" {
 				if fw.waited == nil {
@@ -102,12 +175,32 @@ func TestEntrypointer(t *testing.T) {
 
 type fakeWaiter struct{ waited *string }
 
-func (f *fakeWaiter) Wait(file string) { f.waited = &file }
+func (f *fakeWaiter) Wait(file string) error {
+	f.waited = &file
+	return nil
+}
 
 type fakeRunner struct{ args *[]string }
 
-func (f *fakeRunner) Run(args ...string) { f.args = &args }
+func (f *fakeRunner) Run(args ...string) error {
+	f.args = &args
+	return nil
+}
 
 type fakePostWriter struct{ wrote *string }
 
 func (f *fakePostWriter) Write(file string) { f.wrote = &file }
+
+type fakeErrorWaiter struct{ waited *string }
+
+func (f *fakeErrorWaiter) Wait(file string) error {
+	f.waited = &file
+	return fmt.Errorf("waiter failed")
+}
+
+type fakeErrorRunner struct{ args *[]string }
+
+func (f *fakeErrorRunner) Run(args ...string) error {
+	f.args = &args
+	return fmt.Errorf("runner failed")
+}
