@@ -95,7 +95,7 @@ func AddCopyStep(spec *v1alpha1.TaskSpec) {
 		Image:   *entrypointImage,
 		Command: []string{"/bin/sh"},
 		// based on the ko version, the binary could be in one of two different locations
-		Args:         []string{"-c", fmt.Sprintf("if [[ -d /ko-app ]]; then cp /ko-app/entrypoint %s; else cp /ko-app %s;  fi;", BinaryLocation, BinaryLocation)},
+		Args:         []string{"-c", fmt.Sprintf("cp /ko-app/entrypoint %s", BinaryLocation)},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	spec.Steps = append([]corev1.Container{cp}, spec.Steps...)
