@@ -48,8 +48,8 @@ You must install these tools:
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`dep`](https://github.com/golang/dep): For managing external Go
    dependencies. - Please Install dep v0.5.0 or greater.
-1. [`ko`](https://github.com/google/ko): For development. `ko`
-   version v0.1 or higher is required for `pipeline` to work correctly.
+1. [`ko`](https://github.com/google/ko): For development. `ko` version v0.1 or
+   higher is required for `pipeline` to work correctly.
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
    interacting with your kube cluster
 
