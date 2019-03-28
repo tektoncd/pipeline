@@ -56,7 +56,8 @@ image registry instead.
   ```
 
 - [`publish-run.yaml`](publish-run.yaml) - This example `TaskRun` and
-  `PipelineResources` demonstrate how to invoke `publish.yaml` (see [Creating a new release](#creating-a-new-release))
+  `PipelineResources` demonstrate how to invoke `publish.yaml` (see
+  [Creating a new release](#creating-a-new-release))
 
 #### Creating a new release
 
@@ -72,44 +73,47 @@ access).
 
 To run the `publish-tekton-pipelines` `Task` and create a release:
 
-1. Pick the revision you want to release and replace the value of the `PipelineResouce`
-   [`tekton-pipelines` `revision`](publish-run.yaml#11), e.g.:
+1. Pick the revision you want to release and replace the value of the
+   `PipelineResouce` [`tekton-pipelines` `revision`](publish-run.yaml#11), e.g.:
 
    ```yaml
-    - name: revision
-      value: 67efb48746a9d5d7d3b9b5c5cc210de7a47c6ebc # REPLACE with your own commit
+   - name: revision
+     value: 67efb48746a9d5d7d3b9b5c5cc210de7a47c6ebc # REPLACE with your own commit
    ```
 
-2. Change the value of the `PipelineRun` [`publish-run`'s `versionTag` parameter], e.g.:
-
-    ```yaml
-    params:
-    - name: versionTag
-      value: 0.2.0 # REPLACE with the version you want to release
-    ```
-
-3. To run against your own infrastructure (not needed for actual releases), also replace
-   the `imageRegistry` param:
+2. Change the value of the `PipelineRun` [`publish-run`'s `versionTag`
+   parameter], e.g.:
 
    ```yaml
-    - name: imageRegistry
-      value: gcr.io/tekton-releases # REPLACE with your own registry
+   params:
+     - name: versionTag
+       value: 0.2.0 # REPLACE with the version you want to release
+   ```
+
+3. To run against your own infrastructure (not needed for actual releases), also
+   replace the `imageRegistry` param:
+
+   ```yaml
+   - name: imageRegistry
+     value: gcr.io/tekton-releases # REPLACE with your own registry
    ```
 
    And the `location` of the `tekton-bucket`:
 
    ```yaml
-      - name: location
-        value: gs://tekton-releases # REPLACE with your own bucket
+   - name: location
+     value: gs://tekton-releases # REPLACE with your own bucket
    ```
 
-4. Setup the required credentials for the `release-right-meow` service acount, either:
+4. Setup the required credentials for the `release-right-meow` service acount,
+   either:
 
-   - For [the GCP service account
-    `release-right-meow@tekton-releases.iam.gserviceaccount.com`](#production-service-account)
-    which has the proper authorization to release the images and yamls in
-    [our `tekton-releases` GCP project](../infra/README.md#prow)
-   - For [your own GCP service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts)
+   - For
+     [the GCP service account `release-right-meow@tekton-releases.iam.gserviceaccount.com`](#production-service-account)
+     which has the proper authorization to release the images and yamls in
+     [our `tekton-releases` GCP project](../infra/README.md#prow)
+   - For
+     [your own GCP service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts)
      if running against your own infrastructure
 
    ```bash
@@ -129,7 +133,7 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
     kubectl apply -f tekton/account.yaml
     kubectl patch serviceaccount $ACCOUNT \
      -p "{\"secrets\": [{\"name\": \"$GENERIC_SECRET\"}]}"
-    ```
+   ```
 
 5. Run the `publish-tekton-pipelines` `Task`:
 
@@ -145,12 +149,11 @@ Users executing the publish task must be able to:
 - Push to the image registry (production registry is `gcr.io/tekton-releases`)
 - Write to the GCS bucket (production bucket is `gs://tekton-releases`)
 
-TODO:
-To be able to publish images via `kaniko` or `ko`, you must be able to push to
-your image registry. At the moment, the publish `Task` will try to use your
-default service account in the namespace where you create the `TaskRun`. If that
-default service account is able to push to your image registry, you are good to
-go. Otherwise, you need to use
+TODO: To be able to publish images via `kaniko` or `ko`, you must be able to
+push to your image registry. At the moment, the publish `Task` will try to use
+your default service account in the namespace where you create the `TaskRun`. If
+that default service account is able to push to your image registry, you are
+good to go. Otherwise, you need to use
 [a secret annotated with your docker registry credentials](https://github.com/tektoncd/pipeline/blob/master/docs/auth.md#basic-authentication-docker).
 
 TODO(#631) Ensure that we are supporting folks using credentials other than the
@@ -168,10 +171,12 @@ should ping @bobcatfish or @dlorenc to get added to the authorized users.
 
 ##### Production service account
 
-TODO(christiewilson, dlorenc): add a group which has access to this service account
+TODO(christiewilson, dlorenc): add a group which has access to this service
+account
 
 The GCP service account for creating release is
-`release-right-meow@tekton-releases.iam.gserviceaccount.com`. This account has the role
+`release-right-meow@tekton-releases.iam.gserviceaccount.com`. This account has
+the role
 [`Storage Admin`](https://cloud.google.com/container-registry/docs/access-control)
 in order to be able to read and write buckets and images.
 
