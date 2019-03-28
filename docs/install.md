@@ -37,7 +37,8 @@ To add the Tekton Pipelines component to an existing cluster:
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
    ```
 
-   _(Previous versions will be available at `previous/$VERSION_NUMBER`, e.g. https://storage.googleapis.com/tekton-releases/previous/0.2.0/release.yaml.)_
+   _(Previous versions will be available at `previous/$VERSION_NUMBER`, e.g.
+   https://storage.googleapis.com/tekton-releases/previous/0.2.0/release.yaml.)_
 
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
