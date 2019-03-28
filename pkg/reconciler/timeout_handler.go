@@ -131,7 +131,9 @@ func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string) {
 		if pipelineRun.IsDone() || pipelineRun.IsCancelled() {
 			continue
 		}
-		go t.WaitPipelineRun(&pipelineRun)
+		started := make(chan struct{})
+		go t.WaitPipelineRun(&pipelineRun, started)
+		<-started
 	}
 }
 
@@ -162,13 +164,15 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string) {
 		if taskrun.IsDone() || taskrun.IsCancelled() {
 			continue
 		}
-		go t.WaitTaskRun(&taskrun)
+		started := make(chan struct{})
+		go t.WaitTaskRun(&taskrun, started)
+		<-started
 	}
 }
 
 // WaitTaskRun function creates a blocking function for taskrun to wait for
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out
-func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun) {
+func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun, started chan struct{}) {
 	timeout := getTimeout(tr.Spec.Timeout)
 	runtime := time.Duration(0)
 
@@ -180,6 +184,9 @@ func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun) {
 	timeout -= runtime
 	finished := t.getOrCreateFinishedChan(tr)
 
+	timeAfter := time.After(timeout)
+	close(started)
+
 	defer t.Release(tr)
 
 	select {
@@ -189,7 +196,7 @@ func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun) {
 	case <-finished:
 		// taskrun finished, we can stop watching
 		return
-	case <-time.After(timeout):
+	case <-timeAfter:
 		t.StatusLock(tr)
 		defer t.StatusUnlock(tr)
 		if t.taskRunCallbackFunc != nil {
@@ -202,7 +209,7 @@ func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun) {
 
 // WaitPipelineRun function creates a blocking function for pipelinerun to wait for
 // 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out
-func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun) {
+func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun, started chan struct{}) {
 	timeout := getTimeout(pr.Spec.Timeout)
 
 	runtime := time.Duration(0)
@@ -214,6 +221,9 @@ func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun) {
 	timeout -= runtime
 	finished := t.getOrCreateFinishedChan(pr)
 
+	timeAfter := time.After(timeout)
+	close(started)
+
 	defer t.Release(pr)
 
 	select {
@@ -223,7 +233,7 @@ func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun) {
 	case <-finished:
 		// pipelinerun finished, we can stop watching
 		return
-	case <-time.After(timeout):
+	case <-timeAfter:
 		t.StatusLock(pr)
 		defer t.StatusUnlock(pr)
 		if t.pipelineRunCallbackFunc != nil {
