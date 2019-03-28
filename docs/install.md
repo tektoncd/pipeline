@@ -13,11 +13,13 @@ Use this page to add the component to an existing Kubernetes cluster.
    ```
 
 2. Grant cluster-admin permissions to the current user:
+
    ```bash
    kubectl create clusterrolebinding cluster-admin-binding \
    --clusterrole=cluster-admin \
    --user=$(gcloud config get-value core/account)
    ```
+
    _See
    [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control)
    for more information_.
@@ -32,8 +34,10 @@ To add the Tekton Pipelines component to an existing cluster:
    and its dependencies:
 
    ```bash
-   kubectl apply --filename https://storage.googleapis.com/knative-releases/build-pipeline/latest/release.yaml
+   kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
    ```
+
+   _(Previous versions will be available at `previous/$VERSION_NUMBER`, e.g. https://storage.googleapis.com/tekton-releases/previous/0.2.0/release.yaml.)_
 
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
@@ -82,7 +86,7 @@ the persistent volume can fail.
 
 ## Custom Releases
 
-The [release script](./../hack/release.md) can be used for creating a custom
+The [relase Task](./../tekton/README.md) can be used for creating a custom
 release of Tekton Pipelines. This can be useful for advanced users that need to
 configure the container images built and used by the Pipelines components.
 
