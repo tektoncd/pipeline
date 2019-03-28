@@ -25,6 +25,21 @@ spec:
     - knative
     - tekton-pipelines
   scope: Namespaced
+  additionalPrinterColumns:
+    - name: Type
+      type: string
+      description: The cron spec defining the interval a CronJob is run
+      JSONPath: .status.conditions[0].type
+    - name: Status
+      type: string
+      description: The number of jobs launched by the CronJob
+      JSONPath: .status.conditions[0].status
+    - name: StartTime
+      type: date
+      JSONPath: .status.startTime
+    - name: CompletionTime
+      type: date
+      JSONPath: .status.conditions[0].lastTransitionTime
   # Opt into the status subresource so metadata.generation
   # starts to increment
   subresources:
