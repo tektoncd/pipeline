@@ -87,7 +87,7 @@ the persistent volume can fail.
 
 ## Custom Releases
 
-The [relase Task](./../tekton/README.md) can be used for creating a custom
+The [release Task](./../tekton/README.md) can be used for creating a custom
 release of Tekton Pipelines. This can be useful for advanced users that need to
 configure the container images built and used by the Pipelines components.
 
