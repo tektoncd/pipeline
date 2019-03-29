@@ -1329,10 +1329,11 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{conditionRunning},
 			},
 			Steps: []v1alpha1.StepState{{
-				corev1.ContainerState{
+				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
+				Name: "state-name",
 			}},
 		},
 	}, {
@@ -1357,31 +1358,61 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{conditionRunning},
 			},
 			Steps: []v1alpha1.StepState{{
-				corev1.ContainerState{
+				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
+				Name: "state-name",
 			}},
 		},
 	}, {
-		desc:      "success",
-		podStatus: corev1.PodStatus{Phase: corev1.PodSucceeded},
+		desc: "success",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "build-step-build-step-push",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 0,
+					},
+				},
+			}},
+		},
 		want: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionTrue},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps: []v1alpha1.StepState{{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 0,
+					}},
+				Name: "build-step-push",
+			}},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
 	}, {
-		desc:      "running",
-		podStatus: corev1.PodStatus{Phase: corev1.PodRunning},
+		desc: "running",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "build-step-running-step",
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{},
+				},
+			}},
+		},
 		want: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionBuilding},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps: []v1alpha1.StepState{{
+				ContainerState: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{},
+				},
+				Name: "running-step",
+			}},
 		},
 	}, {
 		desc: "failure-terminated",
@@ -1391,7 +1422,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				// creds-init status; ignored
 			}},
 			ContainerStatuses: []corev1.ContainerStatus{{
-				Name:    "status-name",
+				Name:    "build-step-failure",
 				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -1405,14 +1436,15 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Message: `build step "status-name" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c status-name`,
+					Message: `"build-step-failure" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c build-step-failure`,
 				}},
 			},
 			Steps: []v1alpha1.StepState{{
-				corev1.ContainerState{
+				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
+				Name: "failure",
 			}},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
@@ -1476,11 +1508,12 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				}},
 			},
 			Steps: []v1alpha1.StepState{{
-				corev1.ContainerState{
+				ContainerState: corev1.ContainerState{
 					Waiting: &corev1.ContainerStateWaiting{
 						Message: "i'm pending",
 					},
 				},
+				Name: "status-name",
 			}},
 		},
 	}, {
