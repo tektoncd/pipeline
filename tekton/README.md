@@ -74,7 +74,8 @@ access).
 To run the `publish-tekton-pipelines` `Task` and create a release:
 
 1. Pick the revision you want to release and replace the value of the
-   `PipelineResource` [`tekton-pipelines` `revision`](publish-run.yaml#11), e.g.:
+   `PipelineResource` [`tekton-pipelines` `revision`](publish-run.yaml#11),
+   e.g.:
 
    ```yaml
    - name: revision
