@@ -38,6 +38,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
@@ -63,6 +64,9 @@ var (
 	}, cmp.Comparer(func(name1, name2 string) bool {
 		return name1[:len(name1)-6] == name2[:len(name2)-6]
 	}))
+	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
+		return x.Cmp(y) == 0
+	})
 
 	simpleStep  = tb.Step("simple-step", "foo", tb.Command("/mycmd"))
 	simpleTask  = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
@@ -273,11 +277,45 @@ func TestReconcile(t *testing.T) {
 		),
 	)
 
+	taskRunWithResourceRequests := tb.TaskRun("test-taskrun-with-resource-requests", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskSpec(
+				tb.Step("step1", "foo",
+					tb.Command("/mycmd"),
+					tb.Resources(
+						tb.Limits(
+							tb.CPU("8"),
+							tb.Memory("10Gi"),
+						),
+						tb.Requests(
+							tb.CPU("4"),
+							tb.Memory("3Gi"),
+						),
+					),
+				),
+				tb.Step("step2", "foo",
+					tb.Command("/mycmd"),
+					tb.Resources(
+						tb.Limits(tb.Memory("5Gi")),
+						tb.Requests(
+							tb.CPU("2"),
+							tb.Memory("5Gi"),
+							tb.EphemeralStorage("25Gi"),
+						),
+					),
+				),
+				tb.Step("step3", "foo",
+					tb.Command("/mycmd"),
+				),
+			),
+		),
+	)
+
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunTemplating, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
-		taskRunWithLabels,
+		taskRunWithLabels, taskRunWithResourceRequests,
 	}
 
 	d := test.Data{
@@ -312,6 +350,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
@@ -343,6 +386,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
@@ -380,6 +428,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-mycontainer", "myimage",
 					tb.Command(entrypointLocation),
@@ -391,6 +444,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-myothercontainer", "myotherimage",
 					tb.Command(entrypointLocation),
@@ -401,6 +459,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
@@ -440,6 +503,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-source-copy-another-git-resource-mssqb", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
@@ -451,6 +519,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-create-dir-git-resource-mz4c7", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
@@ -461,6 +534,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-source-copy-git-resource-9l9zj", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
@@ -472,6 +550,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -481,6 +564,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-source-mkdir-git-resource-6nl7g", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
@@ -492,6 +580,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-source-copy-git-resource-j2tds", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
@@ -503,6 +596,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
@@ -533,6 +631,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-mycontainer", "myimage",
 					tb.Command(entrypointLocation),
@@ -543,6 +646,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
@@ -573,6 +681,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
@@ -604,6 +717,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("build-step-mystep", "ubuntu",
 					tb.Command(entrypointLocation),
@@ -613,6 +731,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
@@ -644,10 +767,86 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
 				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
 					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
+			),
+		),
+	}, {
+		name:    "taskrun-with-resource-requests",
+		taskRun: taskRunWithResourceRequests,
+		wantPod: tb.Pod("test-taskrun-with-resource-requests-pod-123456", "foo",
+			tb.PodAnnotation("sidecar.istio.io/inject", "false"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-resource-requests"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-requests",
+				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+			tb.PodSpec(
+				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getCredentialsInitContainer("9l9zj"),
+				placeToolsInitContainer,
+				tb.PodContainer("build-step-step1", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(
+						tb.Limits(
+							tb.CPU("8"),
+							tb.Memory("10Gi"),
+						),
+						tb.Requests(
+							tb.CPU("4"),
+							tb.Memory("0"),
+							tb.EphemeralStorage("0"),
+						),
+					),
+				),
+				tb.PodContainer("build-step-step2", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(
+						tb.Limits(tb.Memory("5Gi")),
+						tb.Requests(
+							tb.CPU("0"),
+							tb.Memory("5Gi"),
+							tb.EphemeralStorage("25Gi"),
+						),
+					),
+				),
+				tb.PodContainer("build-step-step3", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/builder/tools/1", "-post_file", "/builder/tools/2", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
+				),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/2", "-post_file", "/builder/tools/3", "-entrypoint", "/ko-app/nop", "--"),
 					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
 				),
 			),
@@ -709,7 +908,7 @@ func TestReconcile(t *testing.T) {
 				t.Errorf("Pod metadata doesn't match, diff: %s", d)
 			}
 
-			if d := cmp.Diff(pod.Spec, tc.wantPod.Spec); d != "" {
+			if d := cmp.Diff(pod.Spec, tc.wantPod.Spec, resourceQuantityCmp); d != "" {
 				t.Errorf("Pod spec doesn't match, diff: %s", d)
 			}
 			if len(clients.Kube.Actions()) == 0 {

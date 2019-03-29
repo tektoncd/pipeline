@@ -19,11 +19,15 @@ import (
 	"github.com/google/go-cmp/cmp"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPod(t *testing.T) {
 	trueB := true
+	resourceQuantityCmp := cmp.Comparer(func(x, y resource.Quantity) bool {
+		return x.Cmp(y) == 0
+	})
 	volume := corev1.Volume{
 		Name:         "tools-volume",
 		VolumeSource: corev1.VolumeSource{},
@@ -43,6 +47,14 @@ func TestPod(t *testing.T) {
 				tb.WorkingDir("/workspace"),
 				tb.EnvVar("HOME", "/builder/home"),
 				tb.VolumeMount("tools-volume", "/tools"),
+				tb.Resources(
+					tb.Limits(tb.Memory("1.5Gi")),
+					tb.Requests(
+						tb.CPU("100m"),
+						tb.Memory("1Gi"),
+						tb.EphemeralStorage("500Mi"),
+					),
+				),
 			),
 			tb.PodVolumes(volume),
 		),
@@ -86,11 +98,21 @@ func TestPod(t *testing.T) {
 					Name:      "tools-volume",
 					MountPath: "/tools",
 				}},
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("1.5Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("100m"),
+						corev1.ResourceMemory:           resource.MustParse("1Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("500Mi"),
+					},
+				},
 			}},
 			Volumes: []corev1.Volume{volume},
 		},
 	}
-	if d := cmp.Diff(expectedPod, pod); d != "" {
+	if d := cmp.Diff(expectedPod, pod, resourceQuantityCmp); d != "" {
 		t.Fatalf("Pod diff -want, +got: %v", d)
 	}
 }

@@ -129,6 +129,12 @@ or container images that you define:
   the configuration file.
 - Each container image runs until completion or until the first failure is
   detected.
+- The CPU, memory, and ephemeral storage resource requests will be set to zero
+  if the container image does not have the largest resource request out of all
+  container images in the Task. This ensures that the Pod that executes the Task
+  will only request the resources necessary to execute any single container
+  image in the Task, rather than requesting the sum of all of the container
+  image's resource requests.
 
 ### Inputs
 

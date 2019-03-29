@@ -15,6 +15,7 @@ package builder
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // ContainerOp is an operation which modifies a Container struct.
@@ -22,6 +23,12 @@ type ContainerOp func(*corev1.Container)
 
 // VolumeMountOp is an operation which modifies a VolumeMount struct.
 type VolumeMountOp func(*corev1.VolumeMount)
+
+// ResourceRequirementsOp is an operation which modifies a ResourceRequirements struct.
+type ResourceRequirementsOp func(*corev1.ResourceRequirements)
+
+// ResourceListOp is an operation which modifies a ResourceList struct.
+type ResourceListOp func(corev1.ResourceList)
 
 // Command sets the command to the Container (step in this case).
 func Command(args ...string) ContainerOp {
@@ -65,5 +72,59 @@ func VolumeMount(name, mountPath string, ops ...VolumeMountOp) ContainerOp {
 			op(mount)
 		}
 		c.VolumeMounts = append(c.VolumeMounts, *mount)
+	}
+}
+
+// Resources adds ResourceRequirements to the Container (step).
+func Resources(ops ...ResourceRequirementsOp) ContainerOp {
+	return func(c *corev1.Container) {
+		rr := &corev1.ResourceRequirements{}
+		for _, op := range ops {
+			op(rr)
+		}
+		c.Resources = *rr
+	}
+}
+
+// Limits adds Limits to the ResourceRequirements.
+func Limits(ops ...ResourceListOp) ResourceRequirementsOp {
+	return func(rr *corev1.ResourceRequirements) {
+		limits := corev1.ResourceList{}
+		for _, op := range ops {
+			op(limits)
+		}
+		rr.Limits = limits
+	}
+}
+
+// Requests adds Requests to the ResourceRequirements.
+func Requests(ops ...ResourceListOp) ResourceRequirementsOp {
+	return func(rr *corev1.ResourceRequirements) {
+		requests := corev1.ResourceList{}
+		for _, op := range ops {
+			op(requests)
+		}
+		rr.Requests = requests
+	}
+}
+
+// CPU sets the CPU resource on the ResourceList.
+func CPU(val string) ResourceListOp {
+	return func(r corev1.ResourceList) {
+		r[corev1.ResourceCPU] = resource.MustParse(val)
+	}
+}
+
+// Memory sets the memory resource on the ResourceList.
+func Memory(val string) ResourceListOp {
+	return func(r corev1.ResourceList) {
+		r[corev1.ResourceMemory] = resource.MustParse(val)
+	}
+}
+
+// EphemeralStorage sets the ephemeral storage resource on the ResourceList.
+func EphemeralStorage(val string) ResourceListOp {
+	return func(r corev1.ResourceList) {
+		r[corev1.ResourceEphemeralStorage] = resource.MustParse(val)
 	}
 }

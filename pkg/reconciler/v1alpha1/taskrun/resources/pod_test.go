@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,8 +33,10 @@ import (
 )
 
 var (
-	ignorePrivateResourceFields = cmpopts.IgnoreUnexported(resource.Quantity{})
-	nopContainer                = corev1.Container{
+	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
+		return x.Cmp(y) == 0
+	})
+	nopContainer = corev1.Container{
 		Name:    "nop",
 		Image:   *nopImage,
 		Command: []string{"/builder/tools/entrypoint"},
@@ -110,6 +111,13 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
 			},
 				nopContainer,
 			},
@@ -149,6 +157,13 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
 			},
 				nopContainer,
 			},
@@ -182,6 +197,13 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
 			},
 				nopContainer,
 			},
@@ -215,6 +237,13 @@ func TestMakePod(t *testing.T) {
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
 			},
 				nopContainer,
 			},
@@ -264,7 +293,7 @@ func TestMakePod(t *testing.T) {
 				t.Errorf("Pod name got %q, want %q", got.Name, wantName)
 			}
 
-			if d := cmp.Diff(&got.Spec, c.want, ignorePrivateResourceFields); d != "" {
+			if d := cmp.Diff(&got.Spec, c.want, resourceQuantityCmp); d != "" {
 				t.Errorf("Diff spec:\n%s", d)
 			}
 
