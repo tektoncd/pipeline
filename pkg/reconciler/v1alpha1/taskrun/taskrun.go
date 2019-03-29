@@ -344,6 +344,7 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 	for _, s := range pod.Status.ContainerStatuses {
 		taskRun.Status.Steps = append(taskRun.Status.Steps, v1alpha1.StepState{
 			ContainerState: *s.State.DeepCopy(),
+			Name:           resources.TrimContainerNamePrefix(s.Name),
 		})
 	}
 
@@ -413,7 +414,7 @@ func getFailureMessage(pod *corev1.Pod) string {
 	for _, status := range pod.Status.ContainerStatuses {
 		term := status.State.Terminated
 		if term != nil && term.ExitCode != 0 {
-			return fmt.Sprintf("build step %q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s",
+			return fmt.Sprintf("%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s",
 				status.Name, term.ExitCode, status.ImageID,
 				pod.Namespace, pod.Name, status.Name)
 		}

@@ -162,6 +162,7 @@ func (tr *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 // StepState reports the results of running a step in the Task.
 type StepState struct {
 	corev1.ContainerState
+	Name string `json:"name,omitempty"`
 }
 
 // +genclient

@@ -26,6 +26,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -310,4 +311,9 @@ func findMaxResourceRequest(containers []corev1.Container, resourceNames ...core
 		}
 	}
 	return maxIdxs
+}
+
+// TrimContainerNamePrefix trim the container name prefix to get the corresponding step name
+func TrimContainerNamePrefix(containerName string) string {
+	return strings.TrimPrefix(containerName, containerPrefix)
 }

@@ -78,6 +78,7 @@ func TestTaskRunFailure(t *testing.T) {
 				Reason:   "Error",
 			},
 		},
+		Name: "exit",
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
@@ -85,6 +86,7 @@ func TestTaskRunFailure(t *testing.T) {
 				Reason:   "Completed",
 			},
 		},
+		Name: "hello",
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
@@ -92,6 +94,7 @@ func TestTaskRunFailure(t *testing.T) {
 				Reason:   "Completed",
 			},
 		},
+		Name: "world",
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
@@ -99,6 +102,7 @@ func TestTaskRunFailure(t *testing.T) {
 				Reason:   "Completed",
 			},
 		},
+		Name: "nop",
 	}}
 	ignoreFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
 	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreFields); d != "" {
