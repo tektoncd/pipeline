@@ -29,6 +29,7 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -73,6 +74,8 @@ var (
 		Name:         "home",
 		VolumeSource: emptyVolumeSource,
 	}}
+
+	zeroQty = resource.MustParse("0")
 
 	// Random byte reader used for pod name generation.
 	// var for testing.
@@ -175,6 +178,8 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	initContainers := []corev1.Container{*cred}
 	podContainers := []corev1.Container{}
 
+	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
+
 	for i, step := range taskSpec.Steps {
 		step.Env = append(implicitEnvVars, step.Env...)
 		// TODO(mattmoor): Check that volumeMounts match volumes.
@@ -203,6 +208,7 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 		if step.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
 			initContainers = append(initContainers, step)
 		} else {
+			zeroNonMaxResourceRequests(&step, i, maxIndicesByResource)
 			podContainers = append(podContainers, step)
 		}
 	}
@@ -263,4 +269,44 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	}
 	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
 	return labels
+}
+
+// zeroNonMaxResourceRequests zeroes out the container's cpu, memory, or
+// ephemeral storage resource requests if the container does not have the
+// largest request out of all containers in the pod. This is done because Tekton
+// overwrites each container's entrypoint to make containers effectively execute
+// one at a time, so we want pods to only request the maximum resources needed
+// at any single point in time. If no contianer has an explicit resource
+// request, all requests are set to 0.
+func zeroNonMaxResourceRequests(container *corev1.Container, containerIndex int, maxIndicesByResource map[corev1.ResourceName]int) {
+	if container.Resources.Requests == nil {
+		container.Resources.Requests = corev1.ResourceList{}
+	}
+	for name, maxIdx := range maxIndicesByResource {
+		if maxIdx != containerIndex {
+			container.Resources.Requests[name] = zeroQty
+		}
+	}
+}
+
+// findMaxResourceRequest returns the index of the container with the maximum
+// request for the given resource from among the given set of containers.
+func findMaxResourceRequest(containers []corev1.Container, resourceNames ...corev1.ResourceName) map[corev1.ResourceName]int {
+	maxIdxs := make(map[corev1.ResourceName]int, len(resourceNames))
+	maxReqs := make(map[corev1.ResourceName]resource.Quantity, len(resourceNames))
+	for _, name := range resourceNames {
+		maxIdxs[name] = -1
+		maxReqs[name] = zeroQty
+	}
+	for i, c := range containers {
+		for _, name := range resourceNames {
+			maxReq := maxReqs[name]
+			req, exists := c.Resources.Requests[name]
+			if exists && req.Cmp(maxReq) > 0 {
+				maxIdxs[name] = i
+				maxReqs[name] = req
+			}
+		}
+	}
+	return maxIdxs
 }
