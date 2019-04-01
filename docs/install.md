@@ -53,7 +53,7 @@ To add the Tekton Pipelines component to an existing cluster:
    append the `--watch` flag to view the component's status updates in real
    time. Use CTRL + C to exit watch mode.
 
-## Installing Tekton Pipelines on OpenShift
+### Installing Tekton Pipelines on OpenShift
 
 The `tekton-pipelines-controller` service account needs the `anyuid` security context constraint in order to run the webhook pod.
 
