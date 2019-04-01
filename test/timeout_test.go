@@ -219,3 +219,43 @@ func TestTaskRunTimeout(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
 	}
 }
+
+// TestTaskRunTimeoutShort is an integration test that will try to use the same timeout used by the PipelineRun
+// Timeout test - TestTaskRunTimeout is always failing, and the PipelineRun test isn't, so I'm curious if it's
+// the TaskRun that's to blame, or if it's something about the timing
+func TestTaskRunTimeoutShort(t *testing.T) {
+	c, namespace := setup(t)
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
+	defer tearDown(t, c, namespace)
+
+	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
+	if _, err := c.TaskClient.Create(tb.Task("hippo", namespace,
+		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 10"))))); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", "hippo", err)
+	}
+	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-hippo", namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("hippo"),
+		tb.TaskRunTimeout(5*time.Second)))); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", "run-hippo", err)
+	}
+
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", "run-hippo", namespace)
+	if err := WaitForTaskRunState(c, "run-hippo", func(tr *v1alpha1.TaskRun) (bool, error) {
+		cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		if cond != nil {
+			if cond.Status == corev1.ConditionFalse {
+				if cond.Reason == "TaskRunTimeout" {
+					return true, nil
+				}
+				return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", "run-hippo", cond.Reason)
+			} else if cond.Status == corev1.ConditionTrue {
+				return true, fmt.Errorf("taskRun %s completed successfully, should have been timed out", "run-hippo")
+			}
+		}
+
+		return false, nil
+	}, "TaskRunTimeout"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-hippo", err)
+	}
+}
