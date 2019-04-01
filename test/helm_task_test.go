@@ -64,12 +64,12 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	t.Logf("Creating Image PipelineResource %s", sourceImageName)
-	if _, err := c.PipelineResourceClient.Create(getHelmImageResource(namespace)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getHelmImageResource(t, namespace)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceImageName, err)
 	}
 
 	t.Logf("Creating Task %s", createImageTaskName)
-	if _, err := c.TaskClient.Create(getCreateImageTask(namespace, t)); err != nil {
+	if _, err := c.TaskClient.Create(getCreateImageTask(namespace)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", createImageTaskName, err)
 	}
 
@@ -150,7 +150,7 @@ func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 	))
 }
 
-func getHelmImageResource(namespace string) *v1alpha1.PipelineResource {
+func getHelmImageResource(t *testing.T, namespace string) *v1alpha1.PipelineResource {
 	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)
 	// the KO_DOCKER_REPO will be set with according to the project where the cluster is created
 	// it is used here to dynamically get the docker registry to push the image to
@@ -166,7 +166,7 @@ func getHelmImageResource(namespace string) *v1alpha1.PipelineResource {
 	))
 }
 
-func getCreateImageTask(namespace string, t *testing.T) *v1alpha1.Task {
+func getCreateImageTask(namespace string) *v1alpha1.Task {
 	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource("builtimage", v1alpha1.PipelineResourceTypeImage)),
