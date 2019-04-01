@@ -17,7 +17,6 @@ limitations under the License.
 package test
 
 import (
-	"testing"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -28,9 +27,13 @@ var (
 	// Golang Example functions do not take `t *testing.T` as argument, so we "fake"
 	// it so that examples still compiles (`go test` tries to compile those) and look
 	// nice in the go documentation.
-	t *testing.T
+	t testingT
 	c *clients
 )
+
+type testingT interface {
+	Errorf(string, ...interface{})
+}
 
 func ExampleWaitForTaskRunState() {
 	// […] setup the test, get clients
