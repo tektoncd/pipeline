@@ -34,7 +34,7 @@ aggregates them into their respective files in `$HOME`.
    metadata:
      name: ssh-key
      annotations:
-       tekton.dev/git-0: https://github.com # Described below
+       tekton.dev/git-0: github.com # Described below
    type: kubernetes.io/ssh-auth
    data:
      ssh-privatekey: <base64 encoded>
