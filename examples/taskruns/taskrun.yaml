@@ -66,6 +66,9 @@ spec:
     - --dockerfile=${inputs.params.pathToDockerFile}
     - --destination=${outputs.resources.builtImage.url}
     - --context=${inputs.params.pathToContext}
+    env:
+      - name: "DOCKER_CONFIG"
+        value: "/builder/home/.docker/"
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
