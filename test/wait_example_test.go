@@ -1,3 +1,5 @@
+// +build examples
+
 /*
 Copyright 2018 The Knative Authors.
 
