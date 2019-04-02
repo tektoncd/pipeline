@@ -247,6 +247,7 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			ServiceAccountName: taskRun.Spec.ServiceAccount,
 			Volumes:            volumes,
 			NodeSelector:       taskRun.Spec.NodeSelector,
+			Tolerations:        taskRun.Spec.Tolerations,
 			Affinity:           taskRun.Spec.Affinity,
 		},
 	}, nil

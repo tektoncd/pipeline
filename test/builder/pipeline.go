@@ -315,6 +315,13 @@ func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	}
 }
 
+// PipelineRunTolerations sets the Node selector to the PipelineSpec.
+func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.Tolerations = values
+	}
+}
+
 // PipelineRunAffinity sets the affinity to the PipelineSpec.
 func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {

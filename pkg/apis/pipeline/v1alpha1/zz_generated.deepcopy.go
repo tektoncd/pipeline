@@ -702,6 +702,13 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 			(*out)[key] = val
 		}
 	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]core_v1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Affinity != nil {
 		in, out := &in.Affinity, &out.Affinity
 		if *in == nil {
@@ -1361,6 +1368,13 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val
+		}
+	}
+	if in.Tolerations != nil {
+		in, out := &in.Tolerations, &out.Tolerations
+		*out = make([]core_v1.Toleration, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.Affinity != nil {

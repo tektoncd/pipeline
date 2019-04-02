@@ -46,6 +46,9 @@ following fields:
     node. The selector which must match a node's labels for the pod to be
     scheduled on that node. More info:
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/>
+  - [`tolerations`] - Tolerations are applied to pods, and allow (but do not
+    require) the pods to schedule onto nodes with matching taints. More info:
+    <https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/>
   - [`affinity`] - The pod's scheduling constraints. More info:
 
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature>

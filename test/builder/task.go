@@ -323,6 +323,13 @@ func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	}
 }
 
+// TaskRunTolerations sets the Tolerations to the PipelineSpec.
+func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Tolerations = values
+	}
+}
+
 // TaskRunAffinity sets the Affinity to the PipelineSpec.
 func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
