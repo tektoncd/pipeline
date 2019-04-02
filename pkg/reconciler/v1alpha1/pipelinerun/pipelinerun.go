@@ -438,6 +438,7 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			ServiceAccount: pr.Spec.ServiceAccount,
 			Timeout:        taskRunTimeout,
 			NodeSelector:   pr.Spec.NodeSelector,
+			Tolerations:    pr.Spec.Tolerations,
 			Affinity:       pr.Spec.Affinity,
 		}}
 
