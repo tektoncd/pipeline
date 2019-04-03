@@ -51,17 +51,6 @@ func getGitResource(namespace string) *v1alpha1.PipelineResource {
 	))
 }
 
-func getDockerRepo() (string, error) {
-	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)
-	// the KO_DOCKER_REPO will be set with according to the project where the cluster is created
-	// it is used here to dynamically get the docker registry to push the image to
-	dockerRepo := os.Getenv("KO_DOCKER_REPO")
-	if dockerRepo == "" {
-		return "", fmt.Errorf("KO_DOCKER_REPO env variable is required")
-	}
-	return fmt.Sprintf("%s/kanikotasktest", dockerRepo), nil
-}
-
 func createSecret(c *knativetest.KubeClient, namespace string) (bool, error) {
 	// when running e2e in cluster, this will not be set so just hop out early
 	file := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")
@@ -123,13 +112,9 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
+	repo := ensureDockerRepo(t)
 	c, namespace := setup(t)
 	t.Parallel()
-
-	repo, err := getDockerRepo()
-	if err != nil {
-		t.Errorf("Expected to get docker repo")
-	}
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
