@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -39,6 +40,8 @@ func NewImageResource(r *PipelineResource) (*ImageResource, error) {
 			ir.URL = param.Value
 		case strings.EqualFold(param.Name, "Digest"):
 			ir.Digest = param.Value
+		case strings.EqualFold(param.Name, "IndexPath"):
+			ir.IndexPath = param.Value
 		}
 	}
 
@@ -47,10 +50,11 @@ func NewImageResource(r *PipelineResource) (*ImageResource, error) {
 
 // ImageResource defines an endpoint where artifacts can be stored, such as images.
 type ImageResource struct {
-	Name   string               `json:"name"`
-	Type   PipelineResourceType `json:"type"`
-	URL    string               `json:"url"`
-	Digest string               `json:"digest"`
+	Name      string               `json:"name"`
+	Type      PipelineResourceType `json:"type"`
+	URL       string               `json:"url"`
+	Digest    string               `json:"digest"`
+	IndexPath string               `json:"indexpath"`
 }
 
 // GetName returns the name of the resource
@@ -69,18 +73,34 @@ func (s ImageResource) GetParams() []Param { return []Param{} }
 // Replacements is used for template replacement on an ImageResource inside of a Taskrun.
 func (s *ImageResource) Replacements() map[string]string {
 	return map[string]string{
-		"name":   s.Name,
-		"type":   string(s.Type),
-		"url":    s.URL,
-		"digest": s.Digest,
+		"name":      s.Name,
+		"type":      string(s.Type),
+		"url":       s.URL,
+		"digest":    s.Digest,
+		"indexpath": s.IndexPath,
 	}
 }
 
+// GetUploadContainerSpec returns the spec for the upload container
 func (s *ImageResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	return nil, nil
 }
+
+// GetDownloadContainerSpec returns the spec for the download container
 func (s *ImageResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	return nil, nil
 }
+
+// SetDestinationDirectory sets the destination for the resource
 func (s *ImageResource) SetDestinationDirectory(path string) {
+}
+
+// GetIndexPath return the path to get the index.json file
+func (s *ImageResource) GetIndexPath() string {
+	return s.IndexPath
+}
+
+func (s ImageResource) String() string {
+	json, _ := json.Marshal(s)
+	return string(json)
 }

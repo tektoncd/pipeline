@@ -37,6 +37,7 @@ spec:
           "-bash-noop-image", "github.com/tektoncd/pipeline/cmd/bash",
           "-gsutil-image","github.com/tektoncd/pipeline/cmd/gsutil",
           "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",
+          "-imagedigest-exporter-image", "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
         ]
         volumeMounts:
         - name: config-logging

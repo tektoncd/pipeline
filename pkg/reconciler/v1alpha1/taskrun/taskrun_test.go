@@ -27,6 +27,8 @@ import (
 	"github.com/knative/pkg/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	fakeclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
+	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
@@ -498,9 +500,24 @@ func TestReconcile(t *testing.T) {
 						tb.EphemeralStorage("0"),
 					)),
 				),
+				tb.PodContainer("build-step-image-digest-exporter", "override-with-imagedigest-exporter-image:latest",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/builder/tools/2", "-post_file", "/builder/tools/3", "-entrypoint", "/ko-app/imagedigestexporter", "--",
+						"-images", "[{\"name\":\"image-resource\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"indexpath\":\"\"}]"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
+				),
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
-					tb.Args("-wait_file", "/builder/tools/2", "-post_file", "/builder/tools/3", "-entrypoint", "/ko-app/nop", "--"),
+					tb.Args("-wait_file", "/builder/tools/3", "-post_file", "/builder/tools/4", "-entrypoint", "/ko-app/nop", "--"),
 					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
 				),
 			),
@@ -1535,7 +1552,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 	}, {
 		desc: "failure-terminated",
 		podStatus: corev1.PodStatus{
-			Phase:                 corev1.PodFailed,
+			Phase: corev1.PodFailed,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
 			}},
@@ -1603,7 +1620,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 	}, {
 		desc: "pending-waiting-message",
 		podStatus: corev1.PodStatus{
-			Phase:                 corev1.PodPending,
+			Phase: corev1.PodPending,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
 			}},
@@ -1708,6 +1725,28 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
+			observer, _ := observer.New(zap.InfoLevel)
+			logger := zap.New(observer).Sugar()
+			fakeClient := fakeclientset.NewSimpleClientset()
+			sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
+			pipelineResourceInformer := sharedInfomer.Tekton().V1alpha1().PipelineResources()
+			resourceLister := pipelineResourceInformer.Lister()
+			fakekubeclient := fakekubeclientset.NewSimpleClientset()
+
+			rs := []*v1alpha1.PipelineResource{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "source-image",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: "image",
+				},
+			}}
+
+			for _, r := range rs {
+				pipelineResourceInformer.Informer().GetIndexer().Add(r)
+			}
+
 			now := metav1.Now()
 			p := &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1719,7 +1758,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}
 			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
 			tr := tb.TaskRun("taskRun", "foo", tb.TaskRunStatus(tb.TaskRunStartTime(startTime)))
-			updateStatusFromPod(tr, p)
+			updateStatusFromPod(tr, p, resourceLister, fakekubeclient, logger)
 
 			// Common traits, set for test case brevity.
 			c.want.PodName = "pod"

@@ -119,6 +119,10 @@ type TaskRunStatus struct {
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
 	// +optional
 	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
+	// Results from Resources built during the taskRun. currently includes
+	// the digest of build container images
+	// optional
+	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
 }
 
 // GetCondition returns the Condition matching the given type.
@@ -217,6 +221,11 @@ func (tr *TaskRun) IsDone() bool {
 // HasStarted function check whether taskrun has valid start time set in its status
 func (tr *TaskRun) HasStarted() bool {
 	return tr.Status.StartTime != nil && !tr.Status.StartTime.IsZero()
+}
+
+// IsSuccessful returns true if the TaskRun's status indicates that it is done.
+func (tr *TaskRun) IsSuccessful() bool {
+	return tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 }
 
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state

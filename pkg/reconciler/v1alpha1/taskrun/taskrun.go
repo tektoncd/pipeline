@@ -18,6 +18,7 @@ package taskrun
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -75,6 +76,10 @@ const (
 	taskRunAgentName = "taskrun-controller"
 	// taskRunControllerName defines name for TaskRun Controller
 	taskRunControllerName = "TaskRun"
+
+	// imageDigestExporterContainerName defines the name of the container that will collect the
+	// built images digest
+	imageDigestExporterContainerName = "build-step-image-digest-exporter"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -337,7 +342,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
-	updateStatusFromPod(tr, pod)
+	c.timeoutHandler.StatusLock(tr)
+	updateStatusFromPod(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
+	c.timeoutHandler.StatusUnlock(tr)
 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -348,7 +355,22 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	return nil
 }
 
-func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
+func taskRunHasOutputImageResource(resourceLister listers.PipelineResourceLister, taskRun *v1alpha1.TaskRun) bool {
+	if len(taskRun.Spec.Outputs.Resources) > 0 {
+		for _, r := range taskRun.Spec.Outputs.Resources {
+			resource, err := resourceLister.PipelineResources(taskRun.Namespace).Get(r.ResourceRef.Name)
+			if err != nil {
+				return false
+			}
+			if resource.Spec.Type == v1alpha1.PipelineResourceTypeImage {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) {
 	if taskRun.Status.GetCondition(apis.ConditionSucceeded) == nil || taskRun.Status.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
 		taskRun.Status.SetCondition(&apis.Condition{
@@ -407,6 +429,18 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 		})
 		// update tr completed time
 		taskRun.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	}
+
+	if taskRunHasOutputImageResource(resourceLister, taskRun) && taskRun.IsSuccessful() {
+		req := kubeclient.CoreV1().Pods(taskRun.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: imageDigestExporterContainerName})
+		logContent, err := req.Do().Raw()
+		if err != nil {
+			logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
+		}
+		err = json.Unmarshal(logContent, &taskRun.Status.ResourcesResult)
+		if err != nil {
+			logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
+		}
 	}
 }
 
@@ -492,6 +526,12 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, task
 	err = resources.AddOutputResources(c.KubeClientSet, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
+		return nil, err
+	}
+
+	err = resources.AddOutputImageDigestExporter(tr, ts, c.resourceLister, c.Logger)
+	if err != nil {
+		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output image resource error %v", tr.Name, err)
 		return nil, err
 	}
 
