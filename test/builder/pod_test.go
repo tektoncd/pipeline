@@ -36,7 +36,7 @@ func TestPod(t *testing.T) {
 		tb.PodSpec(
 			tb.PodServiceAccountName("sa"),
 			tb.PodRestartPolicy(corev1.RestartPolicyNever),
-			tb.PodContainer("nop", "nop:latest"),
+			tb.PodContainer("bash", "bash:latest"),
 			tb.PodInitContainer("basic", "ubuntu",
 				tb.Command("/bin/sh"),
 				tb.Args("-c", "ls -l"),
@@ -69,8 +69,8 @@ func TestPod(t *testing.T) {
 			ServiceAccountName: "sa",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			Containers: []corev1.Container{{
-				Name:  "nop",
-				Image: "nop:latest",
+				Name:  "bash",
+				Image: "bash:latest",
 			}},
 			InitContainers: []corev1.Container{{
 				Name:       "basic",

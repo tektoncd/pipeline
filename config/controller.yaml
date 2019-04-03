@@ -33,7 +33,6 @@ spec:
           "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",
-          "-nop-image", "github.com/tektoncd/pipeline/cmd/nop",
           "-bash-noop-image", "github.com/tektoncd/pipeline/cmd/bash",
           "-gsutil-image","github.com/tektoncd/pipeline/cmd/gsutil",
           "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",

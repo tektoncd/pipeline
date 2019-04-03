@@ -34,11 +34,6 @@ import (
 
 var (
 	ignorePrivateResourceFields = cmpopts.IgnoreUnexported(resource.Quantity{})
-	nopContainer                = corev1.Container{
-		Name:    "nop",
-		Image:   *nopImage,
-		Command: []string{"/ko-app/nop"},
-	}
 )
 
 func TestMakePod(t *testing.T) {
@@ -105,7 +100,6 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
 			},
-				nopContainer,
 			},
 			Volumes: implicitVolumes,
 		},
@@ -144,7 +138,6 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
 			},
-				nopContainer,
 			},
 			Volumes: implicitVolumesWithSecrets,
 		},
@@ -177,7 +170,6 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
 			},
-				nopContainer,
 			},
 			Volumes: implicitVolumes,
 		},
@@ -210,7 +202,6 @@ func TestMakePod(t *testing.T) {
 				VolumeMounts: implicitVolumeMounts,
 				WorkingDir:   workspaceDir,
 			},
-				nopContainer,
 			},
 			Volumes: implicitVolumes,
 		},

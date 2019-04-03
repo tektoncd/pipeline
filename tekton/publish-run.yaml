@@ -77,16 +77,6 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: nop-image
-spec:
-  type: image
-  params:
-   - name: url
-     value: cmd/nop # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
   name: bash-image
 spec:
   type: image
@@ -169,9 +159,6 @@ spec:
     - name: builtGitInitImage
       resourceRef:
         name: git-init-image
-    - name: builtNopImage
-      resourceRef:
-        name: nop-image
     - name: builtBashImage
       resourceRef:
         name: bash-image

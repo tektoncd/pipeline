@@ -312,7 +312,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -339,7 +338,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -393,7 +391,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -491,7 +488,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -527,7 +523,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -553,7 +548,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -589,7 +583,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}, {
@@ -616,7 +609,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
 			),
 		),
 	}} {

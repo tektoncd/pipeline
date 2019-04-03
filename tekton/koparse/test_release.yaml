@@ -350,8 +350,6 @@ spec:
         - gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/creds-init@sha256:67448da79e4731ab534b91df08da547bc434ab08e41d905858f2244e70290f48
         - -git-image
         - gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/git-init@sha256:7d5520efa2d55e1346c424797988c541327ee52ef810a840b5c6f278a9de934a
-        - -nop-image
-        - gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/nop@sha256:3784d6b8f73043a29d2c1d6196801bee46fe808fbb94ba4fd21ca52dce503183
         - -bash-noop-image
         - gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/bash@sha256:d55917ef5c92627027e3755bfc577fbfa2fb783cccfb13a98632cb6ba6088cd6
         - -gsutil-image

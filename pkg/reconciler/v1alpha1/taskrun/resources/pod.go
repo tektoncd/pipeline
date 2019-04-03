@@ -92,9 +92,6 @@ var (
 	// The container used to initialize credentials before the build runs.
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
-	// The container that just prints build successful.
-	nopImage = flag.String("nop-image", "override-with-nop:latest",
-		"The container image run at the end of the build to log build success")
 )
 
 func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*corev1.Container, []corev1.Volume, error) {
@@ -219,8 +216,6 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 		return nil, err
 	}
 	gibberish := hex.EncodeToString(b)
-
-	podContainers = append(podContainers, corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}})
 
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
