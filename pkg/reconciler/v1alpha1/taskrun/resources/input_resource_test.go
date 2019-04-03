@@ -882,7 +882,7 @@ func TestStorageInputResource(t *testing.T) {
 				Name:    "fetch-storage-gcs-keys-mz4c7",
 				Image:   "override-with-gsutil-image:latest",
 				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "cp -r gs://fake-bucket/rules.zip/* /workspace/gcs-input-resource"},
+				Args:    []string{"-args", "rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource"},
 				VolumeMounts: []corev1.VolumeMount{
 					{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
 				},

@@ -238,7 +238,7 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 			Name:    "fetch-gcs-valid-mz4c7",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -r gs://some-bucket/* /workspace"},
+			Args:    []string{"-args", "rsync -d -r gs://some-bucket /workspace"},
 			Env: []corev1.EnvVar{{
 				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 				Value: "/var/secret/secretName/key.json",
@@ -329,7 +329,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 			Name:    "upload-gcs-valid-9l9zj",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -r /workspace/* gs://some-bucket"},
+			Args:    []string{"-args", "rsync -d -r /workspace/ gs://some-bucket"},
 			Env:     []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"}},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-gcs-valid-secretName",
