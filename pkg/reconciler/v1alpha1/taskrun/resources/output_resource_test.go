@@ -373,7 +373,7 @@ func TestValidOutputResources(t *testing.T) {
 				MountPath: "/var/secret/sname",
 			}},
 			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -r /workspace/faraway-disk/* gs://some-bucket"},
+			Args:    []string{"-args", "rsync -d -r /workspace/faraway-disk gs://some-bucket"},
 			Env: []corev1.EnvVar{{
 				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
@@ -444,7 +444,7 @@ func TestValidOutputResources(t *testing.T) {
 				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
 			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
+			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
 		}, {
 			Name:         "source-mkdir-source-gcs-mz4c7",
 			Image:        "override-with-bash-noop:latest",
@@ -508,7 +508,7 @@ func TestValidOutputResources(t *testing.T) {
 				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
 			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
+			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
 		}},
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",
@@ -559,7 +559,7 @@ func TestValidOutputResources(t *testing.T) {
 				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 			}},
 			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/* gs://some-bucket"},
+			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
 		}},
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",

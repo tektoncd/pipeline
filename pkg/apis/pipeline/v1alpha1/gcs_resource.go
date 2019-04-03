@@ -111,7 +111,7 @@ func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	}
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("cp -r %s %s", filepath.Join(s.DestinationDir, "*"), s.Location)}
+		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.DestinationDir, s.Location)}
 	} else {
 		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(s.DestinationDir, "*"), s.Location)}
 	}
@@ -135,7 +135,7 @@ func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	}
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("cp -r %s %s", fmt.Sprintf("%s/*", s.Location), s.DestinationDir)}
+		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.Location, s.DestinationDir)}
 	} else {
 		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, s.DestinationDir)}
 	}
