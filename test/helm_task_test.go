@@ -18,7 +18,6 @@ package test
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -51,6 +50,7 @@ var (
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
+	repo := ensureDockerRepo(t)
 	c, namespace := setup(t)
 	setupClusterBindingForHelm(c, t, namespace)
 	t.Parallel()
@@ -64,7 +64,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	t.Logf("Creating Image PipelineResource %s", sourceImageName)
-	if _, err := c.PipelineResourceClient.Create(getHelmImageResource(t, namespace)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getHelmImageResource(namespace, repo)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceImageName, err)
 	}
 
@@ -150,14 +150,7 @@ func getGoHelloworldGitResource(namespace string) *v1alpha1.PipelineResource {
 	))
 }
 
-func getHelmImageResource(t *testing.T, namespace string) *v1alpha1.PipelineResource {
-	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)
-	// the KO_DOCKER_REPO will be set with according to the project where the cluster is created
-	// it is used here to dynamically get the docker registry to push the image to
-	dockerRepo := os.Getenv("KO_DOCKER_REPO")
-	if dockerRepo == "" {
-		t.Fatalf("KO_DOCKER_REPO env variable is required")
-	}
+func getHelmImageResource(namespace, dockerRepo string) *v1alpha1.PipelineResource {
 	imageName := fmt.Sprintf("%s/%s", dockerRepo, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(sourceImageName))
 
 	return tb.PipelineResource(sourceImageName, namespace, tb.PipelineResourceSpec(
