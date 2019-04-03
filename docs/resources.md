@@ -162,6 +162,15 @@ spec:
       value: gcr.io/staging-images/kritis
 ```
 
+#### Surfacing the image digest built in a task
+
+To surface the image digest in the output of the `taskRun` the builder tool should produce this information in a [oci-layout-image](https://github.com/opencontainers/image-spec/blob/master/image-layout.md) `index.json` file. This file should be placed on a location as specified in 
+the image resource `indexpath`. 
+
+The `taskRun` will include the image digest in the `resourcesResult` field that is part of the taskRun.Status. 
+
+If the `index.json` file is not produced, the image digest will not be included in the `taskRun` output.
+
 ### Cluster Resource
 
 Cluster Resource represents a Kubernetes cluster other than the current cluster

@@ -140,6 +140,12 @@ type TaskResourceBinding struct {
 	Paths []string `json:"paths,omitempty"`
 }
 
+// PipelineResourceResult used to export the image name and digest as json
+type PipelineResourceResult struct {
+	Name   string `json:"name"`
+	Digest string `json:"digest"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PipelineResourceList contains a list of PipelineResources
