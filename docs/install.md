@@ -67,9 +67,9 @@ _See [Security Context Constraints](https://docs.openshift.com/container-platfor
 
 1. First, login as a user with `cluster-admin` privileges.  The following example uses the default `system:admin` user:
 
-  ```bash
-  oc login -u system:admin
-  ```
+   ```bash
+   oc login -u system:admin
+   ```
 
 1. Run the following commands to set up the project/namespace, and to install Tekton Pipelines:
 
