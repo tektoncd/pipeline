@@ -74,7 +74,7 @@ func main() {
 		ServiceName:    "tekton-pipelines-webhook",
 		DeploymentName: "tekton-pipelines-webhook",
 		Namespace:      system.GetNamespace(),
-		Port:           443,
+		Port:           8443,
 		SecretName:     "webhook-certs",
 		WebhookName:    "webhook.tekton.dev",
 	}
