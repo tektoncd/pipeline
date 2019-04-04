@@ -16,7 +16,7 @@ Package test holds the project's test helpers and end-to-end tests (e2e).
 
 Create Pipeline resources
 
-To create build-pipeline objects (e.g. Task, Pipeline, …), you
+To create Tekton objects (e.g. Task, Pipeline, …), you
 can use the builder (./builder) package to reduce noise:
 
 	func MyTest(t *testing.T){

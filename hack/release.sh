@@ -31,7 +31,7 @@ function build_release() {
   fi
   # Build the base image for creds-init and git images.
   docker build -t "${KO_DOCKER_REPO}/github.com/tektoncd/pipeline/build-base" -f images/Dockerfile images/
-  echo "Building build-pipeline"
+  echo "Building Tekton Pipeline"
   ko resolve ${KO_FLAGS} -f config/ > ${OUTPUT_YAML}
   YAMLS_TO_PUBLISH="${OUTPUT_YAML}"
 }

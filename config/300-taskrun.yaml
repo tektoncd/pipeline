@@ -22,7 +22,6 @@ spec:
     plural: taskruns
     categories:
     - all
-    - knative
     - tekton-pipelines
   scope: Namespaced
   additionalPrinterColumns:

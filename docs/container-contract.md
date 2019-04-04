@@ -14,7 +14,7 @@ When `command` is not explicitly set, the controller will attempt to lookup the
 entrypoint from the remote registry. If the image is a private registry, the
 service account should include an
 [ImagePullSecret](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account).
-The build-pipeline controller will use the `ImagePullSecret` of the service
+The Tekton controller will use the `ImagePullSecret` of the service
 account, and if service account is empty, `default` is assumed. Next is falling
 back to docker config added in a `.docker/config.json` at
 `$HOME/.docker/config.json`. If none of these credentials are available the

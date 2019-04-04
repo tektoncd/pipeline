@@ -22,7 +22,6 @@ spec:
     plural: pipelines
     categories:
     - all
-    - knative
     - tekton-pipelines
   scope: Namespaced
   # Opt into the status subresource so metadata.generation

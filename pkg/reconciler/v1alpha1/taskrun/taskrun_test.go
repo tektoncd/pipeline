@@ -246,7 +246,7 @@ func TestReconcile(t *testing.T) {
 				Type: v1alpha1.PipelineResourceTypeGit,
 				Params: []v1alpha1.Param{{
 					Name:  "URL",
-					Value: "github.com/build-pipeline.git",
+					Value: "github.com/foo/bar.git",
 				}, {
 					Name:  "revision",
 					Value: "rel-can",
@@ -572,7 +572,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("build-step-git-source-workspace-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/git-init", "--",
-						"-url", "github.com/build-pipeline.git", "-revision", "rel-can", "-path",
+						"-url", "github.com/foo/bar.git", "-revision", "rel-can", "-path",
 						"/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),

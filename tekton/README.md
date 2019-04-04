@@ -4,13 +4,13 @@ We dogfood our project by using Tekton Pipelines to build, test and release
 Tekton Pipelines!
 
 This directory contains the
-[`Tasks`](https://github.com/knative/build-pipeline/blob/master/docs/tasks.md)
+[`Tasks`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md)
 and
-[`Pipelines`](https://github.com/knative/build-pipeline/blob/master/docs/pipelines.md)
+[`Pipelines`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md)
 that we (will) use.
 
 TODO(#538): In #538 or #537 we will update
-[Prow](https://github.com/knative/build-pipeline/blob/master/CONTRIBUTING.md#pull-request-process)
+[Prow](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md#pull-request-process)
 to invoke these `Pipelines` automatically, but for now we will have to invoke
 them manually.
 
@@ -32,15 +32,15 @@ The `Tasks` which make up our release `Pipeline` are:
 
 To run these `Pipelines` and `Tasks`, you must have Tekton Pipelines installed
 (in your own kubernetes cluster) either via
-[an official release](https://github.com/knative/build-pipeline/blob/master/docs/install.md)
+[an official release](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
 or
-[from `HEAD`](https://github.com/knative/build-pipeline/blob/master/DEVELOPMENT.md#install-pipeline).
+[from `HEAD`](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#install-pipeline).
 
 TODO(#531): Add the Pipeline, for now all we have are `Tasks` which we can
 invoke individually by creating
-[`TaskRuns`](https://github.com/knative/build-pipeline/blob/master/docs/taskruns.md)
+[`TaskRuns`](https://github.com/tektoncd/pipeline/blob/master/docs/taskruns.md)
 and
-[`PipelineResources`](https://github.com/knative/build-pipeline/blob/master/docs/resources.md).
+[`PipelineResources`](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md).
 
 TODO(#569): Normally we'd use the image `PipelineResources` to control which
 image registry the images are pushed to. However since we have so many images,

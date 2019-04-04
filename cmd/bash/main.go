@@ -19,13 +19,13 @@ This tool is for executing `shell` command. To override base shell image update 
 
 To use it, run
 ```
-image: github.com/build-pipeline/cmd/bash
+image: github.com/tektoncd/pipeline/cmd/bash
 args: ['-args', 'ARGUMENTS_FOR_SHELL_COMMAND']
 ```
 
 For help, run `man sub-command`
 ```
-image: github.com/build-pipeline/cmd/bash
+image: github.com/tektoncd/pipeline/cmd/bash
 args: ['-args', `man`,`mkdir`]
 ```
 
@@ -33,7 +33,7 @@ For example:
 Following example executes shell sub-command `mkdir`
 
 ```
-image: github.com/build-pipeline/cmd/bash
+image: github.com/tektoncd/pipeline/cmd/bash
 args:  ['-args', 'mkdir', '-p', '/workspace/gcs-dir']
 ```
 */

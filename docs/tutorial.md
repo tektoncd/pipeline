@@ -236,7 +236,7 @@ To see all the resource created so far as part of Tekton Pipelines, run the
 command:
 
 ```bash
-kubectl get build-pipeline
+kubectl get tekton-pipelines
 ```
 
 You will get an output similar to the following:
