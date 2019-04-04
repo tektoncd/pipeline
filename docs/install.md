@@ -53,13 +53,25 @@ To add the Tekton Pipelines component to an existing cluster:
    append the `--watch` flag to view the component's status updates in real
    time. Use CTRL + C to exit watch mode.
 
+You are now ready to create and run Tekton Pipelines:
+
+- See [Tekton Pipeline tutorial](./tutorial.md) to get started.
+- Look at the
+  [examples](https://github.com/tektoncd/pipeline/tree/master/examples)
+
 ### Installing Tekton Pipelines on OpenShift
 
 The `tekton-pipelines-controller` service account needs the `anyuid` security context constraint in order to run the webhook pod.
 
 _See [Security Context Constraints](https://docs.openshift.com/container-platform/3.11/admin_guide/manage_scc.html) for more information_
 
-1. Run the following commands to set up the project/namespace, and to install Tekton Pipelines.
+1. First, login as a user with `cluster-admin` privileges.  The following example uses the default `system:admin` user:
+
+  ```bash
+  oc login -u system:admin
+  ```
+
+1. Run the following commands to set up the project/namespace, and to install Tekton Pipelines:
 
    ```bash
    oc new project tekton-pipelines
@@ -75,12 +87,6 @@ _See [Security Context Constraints](https://docs.openshift.com/container-platfor
    ```bash
    oc get pods --namespace tekton-pipelines --watch
    ```
-
-You are now ready to create and run Tekton Pipelines:
-
-- See [Tekton Pipeline tutorial](./tutorial.md) to get started.
-- Look at the
-  [examples](https://github.com/tektoncd/pipeline/tree/master/examples)
 
 ## Configuring Tekton Pipelines
 
