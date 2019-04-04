@@ -227,12 +227,14 @@ be used to run only [the unit tests](#unit-tests), i.e.:
 // +build e2e
 ```
 
-#### Create build-pipeline objects
+#### Create Tekton objects
 
-To create `build-pipeline` objects (e.g. `Task`, `Pipeline`, …), you can use the
-[`builder`](./builder) package to reduce noise:
+To create Tekton objects (e.g. `Task`, `Pipeline`, …), you can use the
+[`github.com/tektoncd/pipeline/test/builder`](./builder) package to reduce noise:
 
 ```go
+import tb "github.com/tektoncd/pipeline/test/builder"
+
 func MyTest(t *testing.T){
     // Pipeline
     pipeline := tb.Pipeline("tomatoes", "namespace",

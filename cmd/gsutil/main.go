@@ -22,14 +22,14 @@ To override gsutil base image update `.ko.yaml` file.
 
 To use it, run
 ```
-image: github.com/build-pipeline/cmd/gsutil
+image: github.com/tektoncd/pipeline/cmd/gsutil
 args: ['-args', 'ARGUMENTS_FOR_GSUTIL_COMMAND']
 
 ```
 
 For help, run
 ```
-image: github.com/build-pipeline/cmd/gsutil
+image: github.com/tektoncd/pipeline/cmd/gsutil
 args: ['-args','--help']
 ```
 
@@ -37,7 +37,7 @@ For example:
 Following example executes gsutil sub-command `cp`
 
 ```
-image: github.com/build-pipeline/cmd/gsutil
+image: github.com/tektoncd/pipeline/cmd/gsutil
 args: ['-args', 'cp', 'gs://fake-bucket/rules.zip', '/workspace/gcs-dir'
 env:
   - name: GOOGLE_APPLICATION_CREDENTIALS
