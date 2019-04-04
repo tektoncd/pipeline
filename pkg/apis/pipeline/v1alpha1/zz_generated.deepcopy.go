@@ -1430,6 +1430,13 @@ func (in *TaskRunStatus) DeepCopyInto(out *TaskRunStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.RetriesStatus != nil {
+		in, out := &in.RetriesStatus, &out.RetriesStatus
+		*out = make([]TaskRunStatus, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

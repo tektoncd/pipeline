@@ -73,6 +73,10 @@ type PipelineTask struct {
 	Name    string  `json:"name,omitempty"`
 	TaskRef TaskRef `json:"taskRef"`
 
+	// Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False
+	// +optional
+	Retries int `json:"retries",omitempty`
+
 	// RunAfter is the list of PipelineTask names that should be executed before
 	// this Task executes. (Used to force a specific ordering in graph execution.)
 	// +optional
