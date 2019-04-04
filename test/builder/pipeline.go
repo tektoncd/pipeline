@@ -338,6 +338,13 @@ func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
 	}
 }
 
+// PipelineRunSecurityContext sets the securityContext to the PipelineSpec.
+func PipelineRunSecurityContext(securityContext *corev1.PodSecurityContext) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.SecurityContext = securityContext
+	}
+}
+
 // PipelineRunStatus sets the PipelineRunStatus to the PipelineRun.
 // Any number of PipelineRunStatus modifier can be passed to transform it.
 func PipelineRunStatus(ops ...PipelineRunStatusOp) PipelineRunOp {

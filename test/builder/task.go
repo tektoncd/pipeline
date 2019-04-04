@@ -355,6 +355,13 @@ func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	}
 }
 
+// TaskRunSecurityContext sets the SecurityContext to the PipelineSpec.
+func TaskRunSecurityContext(securityContext *corev1.PodSecurityContext) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.SecurityContext = securityContext
+	}
+}
+
 // StateTerminated set Terminated to the StepState.
 func StateTerminated(exitcode int) StepStateOp {
 	return func(s *v1alpha1.StepState) {

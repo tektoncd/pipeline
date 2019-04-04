@@ -732,6 +732,15 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 			(*in).DeepCopyInto(*out)
 		}
 	}
+	if in.SecurityContext != nil {
+		in, out := &in.SecurityContext, &out.SecurityContext
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(core_v1.PodSecurityContext)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	return
 }
 
@@ -1374,6 +1383,15 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 			*out = nil
 		} else {
 			*out = new(core_v1.Affinity)
+			(*in).DeepCopyInto(*out)
+		}
+	}
+	if in.SecurityContext != nil {
+		in, out := &in.SecurityContext, &out.SecurityContext
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(core_v1.PodSecurityContext)
 			(*in).DeepCopyInto(*out)
 		}
 	}

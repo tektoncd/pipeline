@@ -481,11 +481,12 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: rprt.PipelineTask.Params,
 			},
-			ServiceAccount: pr.Spec.ServiceAccount,
-			Timeout:        taskRunTimeout,
-			NodeSelector:   pr.Spec.NodeSelector,
-			Tolerations:    pr.Spec.Tolerations,
-			Affinity:       pr.Spec.Affinity,
+			ServiceAccount:  pr.Spec.ServiceAccount,
+			Timeout:         taskRunTimeout,
+			NodeSelector:    pr.Spec.NodeSelector,
+			Tolerations:     pr.Spec.Tolerations,
+			Affinity:        pr.Spec.Affinity,
+			SecurityContext: pr.Spec.SecurityContext,
 		}}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)

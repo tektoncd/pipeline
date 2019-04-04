@@ -60,6 +60,9 @@ following fields:
     <https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/>
   - [`affinity`] - the pod's scheduling constraints. More info:
     <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature>
+  - [`securityContext`] - holds pod-level security attributes and common 
+    container settings. Defaults to empty. See type description for default 
+    values of each field.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
