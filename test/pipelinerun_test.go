@@ -410,11 +410,15 @@ func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineR
 	}
 	assertLabelsMatch(t, labels, tr.ObjectMeta.Labels)
 
-	// Check label propagation to Pods.
-	pod := getPodForTaskRun(t, c.KubeClient, namespace, tr)
+	// PodName is "" iff a retry happened and pod is deleted
 	// This label is added to every Pod by the TaskRun controller
-	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = tr.Name
-	assertLabelsMatch(t, labels, pod.ObjectMeta.Labels)
+	if tr.Status.PodName != "" {
+		// Check label propagation to Pods.
+		pod := getPodForTaskRun(t, c.KubeClient, namespace, tr)
+		// This label is added to every Pod by the TaskRun controller
+		labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = tr.Name
+		assertLabelsMatch(t, labels, pod.ObjectMeta.Labels)
+	}
 }
 
 func getPodForTaskRun(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1alpha1.TaskRun) *corev1.Pod {

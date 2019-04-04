@@ -15,6 +15,7 @@ package pipelinerun
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -512,6 +513,15 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	if actual == nil {
 		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
 	}
+	actions := clients.Pipeline.Actions()
+	for _, action := range actions {
+		if action != nil {
+			resource := action.GetResource().Resource
+			if resource != "pipelineruns" {
+				t.Fatalf("Expected client to not have created a TaskRun for the completed PipelineRun, but it did")
+			}
+		}
+	}
 
 	// Check that the PipelineRun was reconciled correctly
 	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-completed", metav1.GetOptions{})
@@ -679,6 +689,55 @@ func TestReconcileWithTimeout(t *testing.T) {
 		t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.Timeout.Duration.String(), prs[0].Spec.Timeout.Duration.String())
 	}
 }
+func TestReconcileCancelledPipelineRun(t *testing.T) {
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world", tb.Retries(1)),
+	))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-timeout", "foo",
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunCancelled,
+		),
+	)}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	// create fake recorder for testing
+	fr := record.NewFakeRecorder(2)
+
+	testAssets := getPipelineRunController(d, fr)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-timeout")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// The PipelineRun should be still cancelled.
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunCancelled" {
+		t.Errorf("Expected PipelineRun to be cancelled, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	// Check that no TaskRun is created or run
+	actions := clients.Pipeline.Actions()
+	for _, action := range actions {
+		actionType := fmt.Sprintf("%T", action)
+		if !(actionType == "testing.UpdateActionImpl" || actionType == "testing.GetActionImpl") {
+			t.Errorf("Expected a TaskRun to be get/updated, but it was %s", actionType)
+		}
+	}
+}
 
 func TestReconcilePropagateLabels(t *testing.T) {
 	names.TestingSeed()
@@ -740,5 +799,104 @@ func TestReconcilePropagateLabels(t *testing.T) {
 
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+	}
+}
+
+func TestReconcileWithTimeoutAndRetry(t *testing.T) {
+
+	tcs := []struct {
+		name               string
+		retries            int
+		conditionSucceeded corev1.ConditionStatus
+	}{
+		{
+			name:               "One try has to be done",
+			retries:            1,
+			conditionSucceeded: corev1.ConditionFalse,
+		},
+		{
+			name:               "No more retries are needed",
+			retries:            2,
+			conditionSucceeded: corev1.ConditionUnknown,
+		},
+	}
+
+	for _, tc := range tcs {
+
+		t.Run(tc.name, func(t *testing.T) {
+			ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline-retry", "foo", tb.PipelineSpec(
+				tb.PipelineTask("hello-world-1", "hello-world", tb.Retries(tc.retries)),
+			))}
+			prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-retry-run-with-timeout", "foo",
+				tb.PipelineRunSpec("test-pipeline-retry",
+					tb.PipelineRunServiceAccount("test-sa"),
+					tb.PipelineRunTimeout(&metav1.Duration{Duration: 12 * time.Hour}),
+				),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStartTime(time.Now().AddDate(0, 0, -1))),
+			)}
+
+			ts := []*v1alpha1.Task{
+				tb.Task("hello-world", "foo"),
+			}
+			trs := []*v1alpha1.TaskRun{
+				tb.TaskRun("hello-world-1", "foo",
+					tb.TaskRunStatus(
+						tb.PodName("my-pod-name"),
+						tb.Condition(apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+						}),
+						tb.Retry(v1alpha1.TaskRunStatus{
+							Status: duckv1beta1.Status{
+								Conditions: []apis.Condition{{
+									Type:   apis.ConditionSucceeded,
+									Status: corev1.ConditionFalse,
+								}},
+							},
+						}),
+					)),
+			}
+
+			prtrs := &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: "hello-world-1",
+				Status:           &trs[0].Status,
+			}
+			prs[0].Status.TaskRuns = make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+			prs[0].Status.TaskRuns["hello-world-1"] = prtrs
+
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+				TaskRuns:     trs,
+			}
+
+			fr := record.NewFakeRecorder(2)
+
+			testAssets := getPipelineRunController(d, fr)
+			c := testAssets.Controller
+			clients := testAssets.Clients
+
+			err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-retry-run-with-timeout")
+			if err != nil {
+				t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+			}
+
+			// Check that the PipelineRun was reconciled correctly
+			reconciledRun, err := clients.Pipeline.TektonV1alpha1().PipelineRuns("foo").Get("test-pipeline-retry-run-with-timeout", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+			}
+
+			if len(reconciledRun.Status.TaskRuns["hello-world-1"].Status.RetriesStatus) != tc.retries {
+				t.Fatalf(" %d retry expected but %d ", tc.retries, len(reconciledRun.Status.TaskRuns["hello-world-1"].Status.RetriesStatus))
+			}
+
+			if status := reconciledRun.Status.TaskRuns["hello-world-1"].Status.GetCondition(apis.ConditionSucceeded).Status; status != tc.conditionSucceeded {
+				t.Fatalf("Succedded expected to be %s but is %s", tc.conditionSucceeded, status)
+			}
+
+		})
 	}
 }

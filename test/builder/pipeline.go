@@ -146,6 +146,12 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 	}
 }
 
+func Retries(retries int) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.Retries = retries
+	}
+}
+
 // RunAfter will update the provided Pipeline Task to indicate that it
 // should be run after the provided list of Pipeline Task names.
 func RunAfter(tasks ...string) PipelineTaskOp {

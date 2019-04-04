@@ -144,6 +144,9 @@ func NewController(
 // converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
+
+	c.Logger.Infof("Reconciling %v", time.Now())
+
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -275,6 +278,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		func(name string) (v1alpha1.TaskInterface, error) {
 			return c.taskLister.Tasks(pr.Namespace).Get(name)
 		},
+		func(name string) (*v1alpha1.TaskRun, error) {
+			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
+		},
 		func(name string) (v1alpha1.TaskInterface, error) {
 			return c.clusterTaskLister.Get(name)
 		},
@@ -311,6 +317,13 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		}
 		return nil
 	}
+
+	if pipelineState.IsDone() && pr.IsDone() {
+		c.timeoutHandler.Release(pr)
+		c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
+		return nil
+	}
+
 	if err := resources.ValidateFrom(pipelineState); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&apis.Condition{
@@ -336,11 +349,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			// update pr completed time
 			return nil
 		}
-	}
-
-	err = resources.ResolveTaskRuns(c.taskRunLister.TaskRuns(pr.Namespace).Get, pipelineState)
-	if err != nil {
-		return fmt.Errorf("Error getting TaskRuns for Pipeline %s: %s", p.Name, err)
 	}
 
 	// If the pipelinerun is cancelled, cancel tasks and update status
@@ -438,7 +446,19 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 	}
 	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
 
-	tr := &v1alpha1.TaskRun{
+	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
+
+	if tr != nil {
+		//is a retry
+		addRetryHistory(tr)
+		clearStatus(tr)
+		tr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		})
+		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).UpdateStatus(tr)
+	}
+	tr = &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
 			Namespace:       pr.Namespace,
@@ -462,6 +482,19 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 
 	return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
+}
+
+func addRetryHistory(tr *v1alpha1.TaskRun) {
+	newStatus := *tr.Status.DeepCopy()
+	newStatus.RetriesStatus = nil
+	tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, newStatus)
+}
+
+func clearStatus(tr *v1alpha1.TaskRun) {
+	tr.Status.StartTime = nil
+	tr.Status.CompletionTime = nil
+	tr.Status.Results = nil
+	tr.Status.PodName = ""
 }
 
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
