@@ -93,17 +93,10 @@ func TestPipelineRun(t *testing.T) {
 
 			task := tb.Task(getName(taskName, index), namespace, tb.TaskSpec(
 				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
-				tb.Step("config-docker", "gcr.io/cloud-builders/docker",
-					tb.Command("docker"),
-					tb.Args("pull", "gcr.io/build-crd-testing/secret-sauce"),
-					tb.VolumeMount("docker-socket", "/var/run/docker.sock"),
+				tb.Step("config-docker", "quay.io/rhpipeline/skopeo:alpine",
+					tb.Command("skopeo"),
+					tb.Args("copy", "docker://gcr.io/build-crd-testing/secret-sauce", "dir:///tmp/"),
 				),
-				tb.TaskVolume("docker-socket", tb.VolumeSource(corev1.VolumeSource{
-					HostPath: &corev1.HostPathVolumeSource{
-						Path: "/var/run/docker.sock",
-						Type: newHostPathType(string(corev1.HostPathSocket)),
-					},
-				})),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
