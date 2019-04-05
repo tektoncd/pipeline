@@ -17,6 +17,7 @@ package test
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
@@ -81,9 +82,12 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", "pear", err)
 	}
 
+	var wg sync.WaitGroup
 	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", "pear", namespace)
 	for _, taskrunItem := range taskrunList.Items {
+		wg.Add(1)
 		go func(name string) {
+			defer wg.Done()
 			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
 				if c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
 					if c.IsTrue() || c.IsFalse() {
@@ -99,6 +103,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			}
 		}(taskrunItem.Name)
 	}
+	wg.Wait()
 
 	pr, err := c.PipelineRunClient.Get("pear", metav1.GetOptions{})
 	if err != nil {
@@ -129,7 +134,9 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 
 	t.Logf("Waiting for TaskRuns in PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
 	for _, taskrunItem := range taskrunList.Items {
+		wg.Add(1)
 		go func(name string) {
+			defer wg.Done()
 			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
 				if c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
 					if c.IsFalse() {
@@ -147,6 +154,6 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				t.Errorf("Error waiting for TaskRun %s to be finished: %v", name, err)
 			}
 		}(taskrunItem.Name)
-
 	}
+	wg.Wait()
 }
