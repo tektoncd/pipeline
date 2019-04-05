@@ -180,7 +180,6 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
-	t.Skip("Flakey test, tracked in https://github.com/tektoncd/pipeline/issues/731")
 	c, namespace := setup(t)
 	t.Parallel()
 
