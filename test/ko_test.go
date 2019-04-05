@@ -27,7 +27,6 @@ var (
 )
 
 func ensureDockerRepo(t *testing.T) string {
-	fmt.Println("missingKoFatal", missingKoFatal)
 	repo, err := getDockerRepo()
 	if err != nil {
 		if missingKoFatal == "false" {
