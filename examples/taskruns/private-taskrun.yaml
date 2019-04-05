@@ -46,15 +46,8 @@ spec:
     steps:
     - name: pull
       # Private image is just Ubuntu
-      image: gcr.io/cloud-builders/docker
-      args: ["pull", "gcr.io/build-crd-testing/secret-sauce"]
-      volumeMounts:
-      - name: docker-socket
-        mountPath: /var/run/docker.sock
-    volumes:
-    - name: docker-socket
-      hostPath:
-        path: /var/run/docker.sock
-        type: Socket
+      image: quay.io/rhpipeline/skopeo:alpine
+      command: ["skopeo"]
+      args: ["copy", "docker://gcr.io/build-crd-testing/secret-sauce", "dir:///tmp/"]
   trigger:
     type: manual
