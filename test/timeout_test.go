@@ -17,6 +17,7 @@ package test
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -98,8 +99,8 @@ func TestPipelineRunTimeout(t *testing.T) {
 			}, "TaskRunRunning")
 			errChan <- err
 		}(taskrunItem.Name)
-
 	}
+
 	for i := 1; i <= len(taskrunList.Items); i++ {
 		if <-errChan != nil {
 			t.Errorf("Error waiting for TaskRun %s to be running: %s", taskrunList.Items[i-1].Name, err)
@@ -129,8 +130,11 @@ func TestPipelineRunTimeout(t *testing.T) {
 	}
 
 	t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
+	var wg sync.WaitGroup
 	for _, taskrunItem := range taskrunList.Items {
+		wg.Add(1)
 		go func(name string) {
+			defer wg.Done()
 			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
 				cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 				if cond != nil {
@@ -150,6 +154,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 			}
 		}(taskrunItem.Name)
 	}
+	wg.Wait()
 
 	if _, err := c.PipelineRunClient.Get(pipelineRun.Name, metav1.GetOptions{}); err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
