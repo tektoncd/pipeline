@@ -61,17 +61,22 @@ You are now ready to create and run Tekton Pipelines:
 
 ### Installing Tekton Pipelines on OpenShift
 
-The `tekton-pipelines-controller` service account needs the `anyuid` security context constraint in order to run the webhook pod.
+The `tekton-pipelines-controller` service account needs the `anyuid` security
+context constraint in order to run the webhook pod.
 
-_See [Security Context Constraints](https://docs.openshift.com/container-platform/3.11/admin_guide/manage_scc.html) for more information_
+_See
+[Security Context Constraints](https://docs.openshift.com/container-platform/3.11/admin_guide/manage_scc.html)
+for more information_
 
-1. First, login as a user with `cluster-admin` privileges.  The following example uses the default `system:admin` user:
+1. First, login as a user with `cluster-admin` privileges. The following example
+   uses the default `system:admin` user:
 
    ```bash
    oc login -u system:admin
    ```
 
-1. Run the following commands to set up the project/namespace, and to install Tekton Pipelines:
+1. Run the following commands to set up the project/namespace, and to install
+   Tekton Pipelines:
 
    ```bash
    oc new project tekton-pipelines
@@ -79,10 +84,12 @@ _See [Security Context Constraints](https://docs.openshift.com/container-platfor
    oc apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
    ```
 
-   _See [here](https://docs.openshift.com/container-platform/3.11/cli_reference/get_started_cli.html) for an overview of the `oc` command-line tool for OpenShift._
+   _See
+   [here](https://docs.openshift.com/container-platform/3.11/cli_reference/get_started_cli.html)
+   for an overview of the `oc` command-line tool for OpenShift._
 
-1. Run the `oc get` command to monitor the Tekton Pipelines components until all of the
-   components show a `STATUS` of `Running`:
+1. Run the `oc get` command to monitor the Tekton Pipelines components until all
+   of the components show a `STATUS` of `Running`:
 
    ```bash
    oc get pods --namespace tekton-pipelines --watch
