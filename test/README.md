@@ -230,7 +230,8 @@ be used to run only [the unit tests](#unit-tests), i.e.:
 #### Create Tekton objects
 
 To create Tekton objects (e.g. `Task`, `Pipeline`, …), you can use the
-[`github.com/tektoncd/pipeline/test/builder`](./builder) package to reduce noise:
+[`github.com/tektoncd/pipeline/test/builder`](./builder) package to reduce
+noise:
 
 ```go
 import tb "github.com/tektoncd/pipeline/test/builder"

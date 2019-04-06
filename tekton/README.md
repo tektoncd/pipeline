@@ -4,8 +4,7 @@ We dogfood our project by using Tekton Pipelines to build, test and release
 Tekton Pipelines!
 
 This directory contains the
-[`Tasks`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md)
-and
+[`Tasks`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md) and
 [`Pipelines`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md)
 that we (will) use.
 
