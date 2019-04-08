@@ -994,6 +994,13 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		Status: corev1.ConditionUnknown,
 		Reason: "Building",
 	}
+	// ignoreFields := cmpopts.IgnoreFields(v1alpha1.TaskRunStatus{}, "CompletionTime")
+	compareCompletionTime := cmp.Comparer(func(x, y *metav1.Time) bool {
+		if x == nil {
+			return y == nil
+		}
+		return y != nil
+	})
 	for _, c := range []struct {
 		desc      string
 		podStatus corev1.PodStatus
@@ -1062,6 +1069,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		want: v1alpha1.TaskRunStatus{
 			Conditions: []duckv1alpha1.Condition{conditionTrue},
 			Steps:      []v1alpha1.StepState{},
+			// We don't actually care about the time, just that it's not nil
+			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
 	}, {
 		desc:      "running",
@@ -1099,6 +1108,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 						ExitCode: 123,
 					}},
 			}},
+			// We don't actually care about the time, just that it's not nil
+			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
 	}, {
 		desc: "failure-message",
@@ -1113,6 +1124,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Message: "boom",
 			}},
 			Steps: []v1alpha1.StepState{},
+			// We don't actually care about the time, just that it's not nil
+			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
 	}, {
 		desc:      "failure-unspecified",
@@ -1124,6 +1137,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Message: "build failed for unspecified reasons.",
 			}},
 			Steps: []v1alpha1.StepState{},
+			// We don't actually care about the time, just that it's not nil
+			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
 	}, {
 		desc: "pending-waiting-message",
@@ -1220,7 +1235,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			c.want.PodName = "pod"
 			c.want.StartTime = &now
 
-			if d := cmp.Diff(tr.Status, c.want, ignoreVolatileTime); d != "" {
+			if d := cmp.Diff(tr.Status, c.want, ignoreVolatileTime, compareCompletionTime); d != "" {
 				t.Errorf("Diff:\n%s", d)
 			}
 		})
