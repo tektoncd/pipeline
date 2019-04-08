@@ -361,6 +361,8 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 			Status:  corev1.ConditionFalse,
 			Message: msg,
 		})
+		// update tr completed time
+		taskRun.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	case corev1.PodPending:
 		msg := getWaitingMessage(pod)
 		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
@@ -374,6 +376,8 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 			Type:   duckv1alpha1.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		})
+		// update tr completed time
+		taskRun.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	}
 }
 
