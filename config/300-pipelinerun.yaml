@@ -23,6 +23,9 @@ spec:
     categories:
     - all
     - tekton-pipelines
+    shortNames:
+    - pr
+    - prs
   scope: Namespaced
   additionalPrinterColumns:
     - JSONPath: .status.conditions[?(@.type=="Succeeded")].status
