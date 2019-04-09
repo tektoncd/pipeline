@@ -23,6 +23,9 @@ spec:
     categories:
     - all
     - tekton-pipelines
+    shortNames:
+    - tr
+    - trs
   scope: Namespaced
   additionalPrinterColumns:
   - name: Succeeded

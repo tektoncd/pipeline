@@ -39,9 +39,12 @@ test-git-ref      Succeeded   True      2019-02-11T21:21:02Z
 test-git-tag      Succeeded   True      2019-02-11T21:21:02Z
 ```
 
+
 ```shell
 $ kubectl get pipelineruns -o=custom-columns-file=./test/columns.txt
 NAME                  TYPE        STATUS    START
 demo-pipeline-run-1   Succeeded   True      2019-02-11T21:21:03Z
 output-pipeline-run   Succeeded   True      2019-02-11T21:35:43Z
 ```
+
+You can also use `kubectl get tr` or `kubectl get pr` to query all `taskruns` or `pipelineruns` respectively.
