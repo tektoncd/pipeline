@@ -22,6 +22,7 @@ import (
 	"os/exec"
 
 	"github.com/knative/pkg/logging"
+	homedir "github.com/mitchellh/go-homedir"
 	"go.uber.org/zap"
 )
 
@@ -59,15 +60,24 @@ func main() {
 	logger, _ := logging.NewLogger("", "git-init")
 	defer logger.Sync()
 
-	// HACK HACK HACK
-	// Git seems to ignore $HOME/.ssh and look in /root/.ssh for unknown reasons.
-	// As a workaround, symlink /root/.ssh to where we expect the $HOME to land.
-	// This means SSH auth only works for our built-in git support, and not
-	// custom steps.
-	err := os.Symlink("/builder/home/.ssh", "/root/.ssh")
+	// HACK: This is to get git+ssh to work since ssh doesn't respect the HOME
+	// env variable.
+	homepath, err := homedir.Dir()
 	if err != nil {
-		logger.Fatalf("Unexpected error creating symlink: %v", err)
+		logger.Fatalf("Unexpected error: getting the user home directory: %v", err)
 	}
+	homeenv := os.Getenv("HOME")
+	if homeenv != "" && homeenv != homepath {
+		if _, err := os.Stat(homepath + "/.ssh"); os.IsNotExist(err) {
+			err = os.Symlink(homeenv+"/.ssh", homepath+"/.ssh")
+			if err != nil {
+				// Only do a warning, in case we don't have a real home
+				// directory writable in our image
+				logger.Warnf("Unexpected error: creating symlink: %v", err)
+			}
+		}
+	}
+
 	if *revision == "" {
 		*revision = "master"
 	}
