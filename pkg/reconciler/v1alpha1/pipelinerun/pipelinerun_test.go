@@ -340,6 +340,10 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			// make sure there is no failed events
 			validateNoEvents(t, fr)
 
+			if tc.pipelineRun.Status.CompletionTime == nil {
+				t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+			}
+
 			// Since the PipelineRun is invalid, the status should say it has failed
 			condition := tc.pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
@@ -561,6 +565,13 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 
 	// Check that the PipelineRun was reconciled correctly
 	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-cancelled", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	if reconciledRun.Status.CompletionTime == nil {
+		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+	}
 
 	// This PipelineRun should still be complete and false, and the status should reflect that
 	if !reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsFalse() {
@@ -604,6 +615,10 @@ func TestReconcileWithTimeout(t *testing.T) {
 	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-timeout", metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	if reconciledRun.Status.CompletionTime == nil {
+		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
 	}
 
 	// The PipelineRun should be timed out.

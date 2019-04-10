@@ -331,6 +331,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 				Reason:  ReasonFailedValidation,
 				Message: err.Error(),
 			})
+			// update pr completed time
 			return nil
 		}
 	}
@@ -370,7 +371,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
 	c.timeoutHandler.StatusLock(pr)
 	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, pr.Spec.Timeout)
-
 	pr.Status.SetCondition(after)
 	c.timeoutHandler.StatusUnlock(pr)
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
@@ -450,6 +450,12 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting PipelineRun %s when updating status: %s", pr.Name, err)
+	}
+	succeeded := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	if succeeded.Status == corev1.ConditionFalse || succeeded.Status == corev1.ConditionTrue {
+		// update pr completed time
+		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
 	}
 	if !reflect.DeepEqual(pr.Status, newPr.Status) {
 		newPr.Status = pr.Status
