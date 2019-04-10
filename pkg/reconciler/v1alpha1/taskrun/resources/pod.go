@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -157,7 +158,7 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
-func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
+func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*corev1.Pod, error) {
 	// Copy annotations on the build through to the underlying pod to allow users
 	// to specify pod annotations.
 	annotations := map[string]string{}
@@ -220,7 +221,9 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}
 	gibberish := hex.EncodeToString(b)
 
-	podContainers = append(podContainers, corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}})
+	nopContainer := &corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}}
+	entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger)
+	podContainers = append(podContainers, *nopContainer)
 
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

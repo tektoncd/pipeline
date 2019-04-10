@@ -29,6 +29,7 @@ import (
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/test/names"
 )
 
@@ -37,7 +38,12 @@ var (
 	nopContainer                = corev1.Container{
 		Name:    "nop",
 		Image:   *nopImage,
-		Command: []string{"/ko-app/nop"},
+		Command: []string{"/builder/tools/entrypoint"},
+		Args:    []string{"-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"},
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      entrypoint.MountName,
+			MountPath: entrypoint.MountPoint,
+		}},
 	}
 )
 
@@ -246,7 +252,8 @@ func TestMakePod(t *testing.T) {
 				},
 				Spec: c.trs,
 			}
-			got, err := MakePod(tr, c.ts, cs)
+			cache, _ := entrypoint.NewCache()
+			got, err := MakePod(tr, c.ts, cs, cache, logger)
 			if err != c.wantErr {
 				t.Fatalf("MakePod: %v", err)
 			}

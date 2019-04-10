@@ -488,7 +488,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, task
 		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
 	}
 
-	pod, err := resources.MakePod(tr, *ts, c.KubeClientSet)
+	pod, err := resources.MakePod(tr, *ts, c.KubeClientSet, c.cache, c.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("translating Build to Pod: %v", err)
 	}

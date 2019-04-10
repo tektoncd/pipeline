@@ -109,21 +109,32 @@ func AddCopyStep(spec *v1alpha1.TaskSpec) {
 func RedirectSteps(cache *Cache, steps []corev1.Container, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun, logger *zap.SugaredLogger) error {
 	for i := range steps {
 		step := &steps[i]
-		if len(step.Command) == 0 {
-			logger.Infof("Getting Cmd from remote entrypoint for step: %s", step.Name)
-			var err error
-			step.Command, err = GetRemoteEntrypoint(cache, step.Image, kubeclient, taskRun)
-			if err != nil {
-				logger.Errorf("Error getting entry point image", err.Error())
-				return err
-			}
+		if err := RedirectStep(cache, i, step, kubeclient, taskRun, logger); err != nil {
+			return err
 		}
-
-		step.Args = GetArgs(i, step.Command, step.Args)
-		step.Command = []string{BinaryLocation}
-		step.VolumeMounts = append(step.VolumeMounts, toolsMount)
 	}
 
+	return nil
+}
+
+// RedirectStep will modify a step/container such that
+// the binary being run is no longer the one specified by the Command
+// and the Args, but is instead the entrypoint binary, which will
+// itself invoke the Command and Args, but also capture logs.
+func RedirectStep(cache *Cache, stepNum int, step *corev1.Container, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun, logger *zap.SugaredLogger) error {
+	if len(step.Command) == 0 {
+		logger.Infof("Getting Cmd from remote entrypoint for step: %s", step.Name)
+		var err error
+		step.Command, err = GetRemoteEntrypoint(cache, step.Image, kubeclient, taskRun)
+		if err != nil {
+			logger.Errorf("Error getting entry point image", err.Error())
+			return err
+		}
+	}
+
+	step.Args = GetArgs(stepNum, step.Command, step.Args)
+	step.Command = []string{BinaryLocation}
+	step.VolumeMounts = append(step.VolumeMounts, toolsMount)
 	return nil
 }
 

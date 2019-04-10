@@ -27,6 +27,7 @@ import (
 	"github.com/knative/pkg/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
@@ -312,7 +313,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
 			),
 		),
 	}, {
@@ -339,7 +344,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
 			),
 		),
 	}, {
@@ -393,7 +402,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/2", "-post_file", "/builder/tools/3", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
 			),
 		),
 	}, {
@@ -491,7 +504,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/6", "-post_file", "/builder/tools/7", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
 			),
 		),
 	}, {
@@ -506,6 +523,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("mz4c7"),
+				placeToolsInitContainer,
 				tb.PodContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/git-init", "--",
@@ -516,7 +534,6 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				placeToolsInitContainer,
 				tb.PodContainer("build-step-mycontainer", "myimage",
 					tb.Command(entrypointLocation),
 					tb.WorkingDir(workspaceDir),
@@ -527,7 +544,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/1", "-post_file", "/builder/tools/2", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
 			),
 		),
 	}, {
@@ -553,7 +574,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
 			),
 		),
 	}, {
@@ -589,7 +614,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/1", "-post_file", "/builder/tools/2", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
 			),
 		),
 	}, {
@@ -616,7 +645,11 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
 				),
-				tb.PodContainer("nop", "override-with-nop:latest", tb.Command("/ko-app/nop")),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
 			),
 		),
 	}} {
@@ -774,6 +807,8 @@ func TestReconcilePodFetchError(t *testing.T) {
 func TestReconcilePodUpdateStatus(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-run-success", "foo", tb.TaskRunSpec(tb.TaskRunTaskRef("test-task")))
 
+	logger, _ := logging.NewLogger("", "")
+	cache, _ := entrypoint.NewCache()
 	// TODO(jasonhall): This avoids a circular dependency where
 	// getTaskRunController takes a test.Data which must be populated with
 	// a pod created from MakePod which requires a (fake) Kube client. When
@@ -786,7 +821,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 			Name:      "default",
 			Namespace: taskRun.Namespace,
 		},
-	}))
+	}), cache, logger)
 	if err != nil {
 		t.Fatalf("MakePod: %v", err)
 	}
