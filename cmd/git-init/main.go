@@ -20,6 +20,7 @@ import (
 	"flag"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/knative/pkg/logging"
 	homedir "github.com/mitchellh/go-homedir"
@@ -94,8 +95,8 @@ func main() {
 	} else {
 		runOrFail(logger, "git", "init")
 	}
-
-	runOrFail(logger, "git", "remote", "add", "origin", *url)
+	trimedURL := strings.TrimSpace(*url)
+	runOrFail(logger, "git", "remote", "add", "origin", trimedURL)
 	if err := run(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision); err != nil {
 		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
 		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
@@ -107,5 +108,5 @@ func main() {
 		runOrFail(logger, "git", "reset", "--hard", "FETCH_HEAD")
 	}
 
-	logger.Infof("Successfully cloned %q @ %q in path %q", *url, *revision, *path)
+	logger.Infof("Successfully cloned %q @ %q in path %q", trimedURL, *revision, *path)
 }
