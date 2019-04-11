@@ -355,6 +355,13 @@ func PipelineRunStartTime(startTime time.Time) PipelineRunStatusOp {
 	}
 }
 
+// PipelineRunTaskRunsStatus sets the TaskRuns of the PipelineRunStatus.
+func PipelineRunTaskRunsStatus(taskRuns map[string]*v1alpha1.PipelineRunTaskRunStatus) PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		s.TaskRuns = taskRuns
+	}
+}
+
 // PipelineResource creates a PipelineResource with default values.
 // Any number of PipelineResource modifier can be passed to transform it.
 func PipelineResource(name, namespace string, ops ...PipelineResourceOp) *v1alpha1.PipelineResource {

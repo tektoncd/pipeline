@@ -451,22 +451,45 @@ func TestUpdateTaskRunsState(t *testing.T) {
 }
 
 func TestReconcileOnCompletedPipelineRun(t *testing.T) {
+	prtrs := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+	taskRunName := "test-pipeline-run-completed-hello-world"
+	prtrs[taskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "hello-world-1",
+		Status:           &v1alpha1.TaskRunStatus{},
+	}
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa")),
-		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
-			Status:  corev1.ConditionTrue,
-			Reason:  resources.ReasonSucceeded,
-			Message: "All Tasks have completed executing",
-		})),
+		tb.PipelineRunStatus(
+			tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
+				Type:    duckv1alpha1.ConditionSucceeded,
+				Status:  corev1.ConditionTrue,
+				Reason:  resources.ReasonSucceeded,
+				Message: "All Tasks have completed executing",
+			}),
+			tb.PipelineRunTaskRunsStatus(prtrs),
+		),
 	)}
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
-		tb.PipelineTask("hello-world-1", "hellow-world")))}
+		tb.PipelineTask("hello-world-1", "hello-world")))}
 	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(taskRunName, "foo",
+			tb.TaskRunOwnerReference("kind", "name"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-completed"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world")),
+			tb.TaskRunStatus(
+				tb.Condition(duckv1alpha1.Condition{
+					Type: duckv1alpha1.ConditionSucceeded,
+				}),
+			),
+		),
+	}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
+		TaskRuns:     trs,
 	}
 
 	// create fake recorder for testing
@@ -479,10 +502,15 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-completed")
 
 	// make sure there is no failed events
-	validateEvents(t, fr)
+	validateNoEvents(t, fr)
 
-	if len(clients.Pipeline.Actions()) != 0 {
-		t.Fatalf("Expected client to not have created a TaskRun for the completed PipelineRun, but it did")
+	if len(clients.Pipeline.Actions()) != 1 {
+		t.Fatalf("Expected client to have updated the TaskRun status for a completed PipelineRun, but it did not")
+	}
+
+	actual := clients.Pipeline.Actions()[0].(ktesting.UpdateAction).GetObject().(*v1alpha1.PipelineRun)
+	if actual == nil {
+		t.Errorf("Expected a PipelineRun to be updated, but it wasn't.")
 	}
 
 	// Check that the PipelineRun was reconciled correctly
@@ -494,6 +522,20 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// This PipelineRun should still be complete and the status should reflect that
 	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown() {
 		t.Errorf("Expected PipelineRun status to be complete, but was %v", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	}
+
+	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+	expectedTaskRunsStatus[taskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: prtrs[taskRunName].PipelineTaskName,
+		Status: &v1alpha1.TaskRunStatus{
+			Conditions: []duckv1alpha1.Condition{{
+				Type: duckv1alpha1.ConditionSucceeded,
+			}},
+		},
+	}
+
+	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
 	}
 }
 
