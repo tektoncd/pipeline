@@ -84,19 +84,14 @@ func main() {
 	}
 	if *path != "" {
 		runOrFail(logger, "git", "init", *path)
-		if _, err := os.Stat(*path); os.IsNotExist(err) {
-			if err := os.Mkdir(*path, os.ModePerm); err != nil {
-				logger.Debugf("Creating directory at path %s", *path)
-			}
-		}
 		if err := os.Chdir(*path); err != nil {
 			logger.Fatalf("Failed to change directory with path %s; err %v", path, err)
 		}
 	} else {
 		runOrFail(logger, "git", "init")
 	}
-	trimedURL := strings.TrimSpace(*url)
-	runOrFail(logger, "git", "remote", "add", "origin", trimedURL)
+	trimmedURL := strings.TrimSpace(*url)
+	runOrFail(logger, "git", "remote", "add", "origin", trimmedURL)
 	if err := run(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", *revision); err != nil {
 		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
 		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
@@ -108,5 +103,5 @@ func main() {
 		runOrFail(logger, "git", "reset", "--hard", "FETCH_HEAD")
 	}
 
-	logger.Infof("Successfully cloned %q @ %q in path %q", trimedURL, *revision, *path)
+	logger.Infof("Successfully cloned %q @ %q in path %q", trimmedURL, *revision, *path)
 }
