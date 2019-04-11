@@ -176,22 +176,25 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	if pr.IsDone() {
 		c.timeoutHandler.Release(pr)
-		c.Recorder.Event(pr, corev1.EventTypeNormal, eventReasonSucceeded, "PipelineRun completed successfully.")
-		return nil
+		if err := c.updateTaskRunsStatusDirectly(pr); err != nil {
+			c.Logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
+			return err
+		}
+	} else {
+		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
+			c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
+			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "Failed to create tracker for TaskRuns for PipelineRun")
+			return err
+		}
+
+		// Reconcile this copy of the pipelinerun and then write back any status or label
+		// updates regardless of whether the reconciliation errored out.
+		if err = c.reconcile(ctx, pr); err != nil {
+			c.Logger.Errorf("Reconcile error: %v", err.Error())
+			return err
+		}
 	}
 
-	if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
-		c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
-		c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "Failed to create tracker for TaskRuns for PipelineRun")
-		return err
-	}
-
-	// Reconcile this copy of the pipelinerun and then write back any status or label
-	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, pr); err != nil {
-		c.Logger.Errorf("Reconcile error: %v", err.Error())
-		return err
-	}
 	if equality.Semantic.DeepEqual(original.Status, pr.Status) {
 		// If we didn't change anything then don't call updateStatus.
 		// This is important because the copy we loaded from the informer's
@@ -394,6 +397,23 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 			prtrs.Status = &rprt.TaskRun.Status
 		}
 	}
+}
+
+func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) error {
+	for taskRunName := range pr.Status.TaskRuns {
+		prtrs := pr.Status.TaskRuns[taskRunName]
+		tr, err := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
+		if err != nil {
+			// If the TaskRun isn't found, it just means it won't be run
+			if !errors.IsNotFound(err) {
+				return fmt.Errorf("error retrieving TaskRun %s: %s", taskRunName, err)
+			}
+		} else {
+			prtrs.Status = &tr.Status
+		}
+	}
+
+	return nil
 }
 
 func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
