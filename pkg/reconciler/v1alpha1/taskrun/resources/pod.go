@@ -276,7 +276,7 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 // largest request out of all containers in the pod. This is done because Tekton
 // overwrites each container's entrypoint to make containers effectively execute
 // one at a time, so we want pods to only request the maximum resources needed
-// at any single point in time. If no contianer has an explicit resource
+// at any single point in time. If no container has an explicit resource
 // request, all requests are set to 0.
 func zeroNonMaxResourceRequests(container *corev1.Container, containerIndex int, maxIndicesByResource map[corev1.ResourceName]int) {
 	if container.Resources.Requests == nil {
