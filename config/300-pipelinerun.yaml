@@ -28,16 +28,18 @@ spec:
     - prs
   scope: Namespaced
   additionalPrinterColumns:
-    - JSONPath: .status.conditions[?(@.type=="Succeeded")].status
-      description: The status of the pipelinrun
-      name: Status
+    - name: Succeeded
       type: string
-    - JSONPath: .status.startTime
-      name: StartTime
+      JSONPath: ".status.conditions[?(@.type==\"Succeeded\")].status"
+    - name: Reason
+      type: string
+      JSONPath: ".status.conditions[?(@.type==\"Succeeded\")].reason"
+    - name: StartTime
       type: date
-    - JSONPath: .status.completionTime
-      name: CompletionTime
+      JSONPath: .status.startTime
+    - name: CompletionTime
       type: date
+      JSONPath: .status.completionTime
   # Opt into the status subresource so metadata.generation
   # starts to increment
   subresources:
