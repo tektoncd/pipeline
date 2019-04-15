@@ -208,7 +208,8 @@ For example see this `Pipeline` spec:
     name: deploy-kubectl
   resources:
     inputs:
-      - name: my-image
+      - name: image
+        resource: my-image
         from:
           - build-app
 ```
@@ -236,7 +237,8 @@ For example see this `Pipeline` spec:
     name: make-test
   resources:
     inputs:
-      - name: my-repo
+      - name: workspace
+        resource: my-repo
 - name: build-app
   taskRef:
     name: kaniko-build
@@ -244,7 +246,8 @@ For example see this `Pipeline` spec:
     - test-app
   resources:
     inputs:
-      - name: my-repo
+      - name: workspace
+        resource: my-repo
 ```
 
 In this `Pipeline`, we want to test the code before we build from it, but there
@@ -274,13 +277,15 @@ For example see this `Pipeline` spec:
     name: pylint
   resources:
     inputs:
-      - name: my-repo
+      - name: workspace
+        resource: my-repo
 - name: test-app
   taskRef:
     name: make-test
   resources:
     inputs:
-      - name: my-repo
+      - name: workspace
+        resource: my-repo
 - name: build-app
   taskRef:
     name: kaniko-build-app
@@ -288,7 +293,8 @@ For example see this `Pipeline` spec:
     - test-app
   resources:
     inputs:
-      - name: my-repo
+      - name: workspace
+        resource: my-repo
     outputs:
       - name: image
         resource: my-app-image
@@ -299,7 +305,8 @@ For example see this `Pipeline` spec:
     - test-app
   resources:
     inputs:
-      - name: my-repo
+      - name: workspace
+        resource: my-repo
     outputs:
       - name: image
         resource: my-frontend-image
@@ -309,9 +316,11 @@ For example see this `Pipeline` spec:
   resources:
     inputs:
       - name: my-app-image
+        resource: my-app-image
         from:
           - build-app
       - name: my-frontend-image
+        resource: my-frontend-image
         from:
           - build-frontend
 ```
