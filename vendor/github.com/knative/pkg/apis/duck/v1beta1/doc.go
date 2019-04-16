@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Knative Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,4 +20,4 @@ limitations under the License.
 
 // +k8s:deepcopy-gen=package
 // +groupName=duck.knative.dev
-package v1alpha1
+package v1beta1

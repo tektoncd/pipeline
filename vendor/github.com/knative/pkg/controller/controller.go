@@ -39,6 +39,14 @@ const (
 	trueString  = "true"
 )
 
+var (
+	// DefaultThreadsPerController is the number of threads to use
+	// when processing the controller's workqueue.  Controller binaries
+	// may adjust this process-wide default.  For finer control, invoke
+	// Run on the controller directly.
+	DefaultThreadsPerController = 2
+)
+
 // Reconciler is the interface that controller implementations are expected
 // to implement, so that the shared controller.Impl can drive work through it.
 type Reconciler interface {
@@ -331,4 +339,41 @@ func (err permanentError) Error() string {
 	}
 
 	return err.e.Error()
+}
+
+// Informer is the group of methods that a type must implement to be passed to
+// StartInformers.
+type Informer interface {
+	Run(<-chan struct{})
+	HasSynced() bool
+}
+
+// StartInformers kicks off all of the passed informers and then waits for all
+// of them to synchronize.
+func StartInformers(stopCh <-chan struct{}, informers ...Informer) error {
+	for _, informer := range informers {
+		informer := informer
+		go informer.Run(stopCh)
+	}
+
+	for i, informer := range informers {
+		if ok := cache.WaitForCacheSync(stopCh, informer.HasSynced); !ok {
+			return fmt.Errorf("Failed to wait for cache at index %d to sync", i)
+		}
+	}
+	return nil
+}
+
+// StartAll kicks off all of the passed controllers with DefaultThreadsPerController.
+func StartAll(stopCh <-chan struct{}, controllers ...*Impl) {
+	wg := sync.WaitGroup{}
+	// Start all of the controllers.
+	for _, ctrlr := range controllers {
+		wg.Add(1)
+		go func(c *Impl) {
+			defer wg.Done()
+			c.Run(DefaultThreadsPerController, stopCh)
+		}(ctrlr)
+	}
+	wg.Wait()
 }

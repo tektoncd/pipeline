@@ -141,7 +141,7 @@ type TrafficPolicy struct {
 	OutlierDetection *OutlierDetection `json:"outlierDetection,omitempty"`
 
 	// TLS related settings for connections to the upstream service.
-	Tls *TLSSettings `json:"tls,omitempty"`
+	TLS *TLSSettings `json:"tls,omitempty"`
 
 	// Traffic policies specific to individual ports. Note that port level
 	// settings will override the destination-level settings. Traffic
@@ -172,7 +172,7 @@ type PortTrafficPolicy struct {
 	OutlierDetection *OutlierDetection `json:"outlierDetection,omitempty"`
 
 	// TLS related settings for connections to the upstream service.
-	Tls *TLSSettings `json:"tls,omitempty"`
+	TLS *TLSSettings `json:"tls,omitempty"`
 }
 
 // A subset of endpoints of a service. Subsets can be used for scenarios
@@ -294,15 +294,15 @@ const (
 type ConsistentHashLB struct {
 
 	// It is required to specify exactly one of the fields as hash key:
-	// HttpHeaderName, HttpCookie, or UseSourceIP.
+	// HTTPHeaderName, HTTPCookie, or UseSourceIP.
 	// Hash based on a specific HTTP header.
-	HttpHeaderName string `json:"httpHeaderName,omitempty"`
+	HTTPHeaderName string `json:"httpHeaderName,omitempty"`
 
 	// Hash based on HTTP cookie.
-	HttpCookie *HTTPCookie `json:"httpCookie,omitempty"`
+	HTTPCookie *HTTPCookie `json:"httpCookie,omitempty"`
 
 	// Hash based on the source IP address.
-	UseSourceIp bool `json:"useSourceIp,omitempty"`
+	UseSourceIP bool `json:"useSourceIp,omitempty"`
 
 	// The minimum number of virtual nodes to use for the hash
 	// ring. Defaults to 1024. Larger ring sizes result in more granular
@@ -323,7 +323,7 @@ type HTTPCookie struct {
 	Path string `json:"path,omitempty"`
 
 	// REQUIRED. Lifetime of the cookie.
-	Ttl string `json:"ttl"`
+	TTL string `json:"ttl"`
 }
 
 // Connection pool settings for an upstream host. The settings apply to
@@ -349,10 +349,10 @@ type HTTPCookie struct {
 type ConnectionPoolSettings struct {
 
 	// Settings common to both HTTP and TCP upstream connections.
-	Tcp *TCPSettings `json:"tcp,omitempty"`
+	TCP *TCPSettings `json:"tcp,omitempty"`
 
 	// HTTP connection pool settings.
-	Http *HTTPSettings `json:"http,omitempty"`
+	HTTP *HTTPSettings `json:"http,omitempty"`
 }
 
 // Settings common to both HTTP and TCP upstream connections.
@@ -367,10 +367,10 @@ type TCPSettings struct {
 // Settings applicable to HTTP1.1/HTTP2/GRPC connections.
 type HTTPSettings struct {
 	// Maximum number of pending HTTP requests to a destination. Default 1024.
-	Http1MaxPendingRequests int32 `json:"http1MaxPendingRequests,omitempty"`
+	HTTP1MaxPendingRequests int32 `json:"http1MaxPendingRequests,omitempty"`
 
 	// Maximum number of requests to a backend. Default 1024.
-	Http2MaxRequests int32 `json:"http2MaxRequests,omitempty"`
+	HTTP2MaxRequests int32 `json:"http2MaxRequests,omitempty"`
 
 	// Maximum number of requests per connection to a backend. Setting this
 	// parameter to 1 disables keep alive.

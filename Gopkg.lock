@@ -349,12 +349,12 @@
   revision = "3fc06fd3c9880a9ebb5c401f4b20cf6666cc7bc0"
 
 [[projects]]
-  digest = "1:d284afd59391a3e46e214768d5e86601cc36bcd5c43c8b7fbce43b3a43029776"
+  digest = "1:6a799504a074152e42ff00c6540e5960a920123fd4f57c3e4638f8fab72189e5"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
     "apis/duck",
-    "apis/duck/v1alpha1",
+    "apis/duck/v1beta1",
     "apis/istio",
     "apis/istio/authentication",
     "apis/istio/authentication/v1alpha1",
@@ -376,6 +376,7 @@
     "metrics/metricskey",
     "signals",
     "test",
+    "test/ingress",
     "test/logging",
     "test/monitoring",
     "test/spoof",
@@ -384,7 +385,7 @@
     "webhook",
   ]
   pruneopts = "NUT"
-  revision = "60fdcbcabd2faeb34328d8b2725dc76c59189453"
+  revision = "28cfa161499b88cc5a71cfb7cf8a59fc34bff3d3"
 
 [[projects]]
   branch = "master"
@@ -857,16 +858,18 @@
   version = "kubernetes-1.12.6"
 
 [[projects]]
-  digest = "1:ca256148a59778aed1c4ee48411a68b95c38c202d43004792bfcc69647724c48"
+  digest = "1:9cffe4aa65e6b91018eccf8ab86dba8c6e50ec28627a10580049130df9163678"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
+    "pkg/api/validation",
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
+    "pkg/apis/meta/v1/validation",
     "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
@@ -1189,7 +1192,7 @@
     "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/caching/pkg/client/clientset/versioned",
     "github.com/knative/pkg/apis",
-    "github.com/knative/pkg/apis/duck/v1alpha1",
+    "github.com/knative/pkg/apis/duck/v1beta1",
     "github.com/knative/pkg/client/clientset/versioned",
     "github.com/knative/pkg/configmap",
     "github.com/knative/pkg/controller",

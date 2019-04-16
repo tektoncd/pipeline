@@ -14,6 +14,7 @@ limitations under the License.
 package metrics
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -36,7 +37,7 @@ func newPrometheusExporter(config *metricsConfig, logger *zap.SugaredLogger) (vi
 	logger.Infof("Created Opencensus Prometheus exporter with config: %v. Start the server for Prometheus exporter.", config)
 	// Start the server for Prometheus scraping
 	go func() {
-		srv := startNewPromSrv(e)
+		srv := startNewPromSrv(e, config.prometheusPort)
 		srv.ListenAndServe()
 	}()
 	return e, nil
@@ -57,7 +58,7 @@ func resetCurPromSrv() {
 	}
 }
 
-func startNewPromSrv(e *prometheus.Exporter) *http.Server {
+func startNewPromSrv(e *prometheus.Exporter, port int) *http.Server {
 	sm := http.NewServeMux()
 	sm.Handle("/metrics", e)
 	curPromSrvMux.Lock()
@@ -66,7 +67,7 @@ func startNewPromSrv(e *prometheus.Exporter) *http.Server {
 		curPromSrv.Close()
 	}
 	curPromSrv = &http.Server{
-		Addr:    ":9090",
+		Addr:    fmt.Sprintf(":%v", port),
 		Handler: sm,
 	}
 	return curPromSrv

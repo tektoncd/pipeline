@@ -95,9 +95,9 @@ func (client *KubeClient) CreatePod(pod *corev1.Pod) (*corev1.Pod, error) {
 	return pods.Create(pod)
 }
 
-// PodLogs returns Pod logs for given Pod and Container
-func (client *KubeClient) PodLogs(podName, containerName string) ([]byte, error) {
-	pods := client.Kube.CoreV1().Pods(Flags.Namespace)
+// PodLogs returns Pod logs for given Pod and Container in the namespace
+func (client *KubeClient) PodLogs(podName, containerName, namespace string) ([]byte, error) {
+	pods := client.Kube.CoreV1().Pods(namespace)
 	podList, err := pods.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
