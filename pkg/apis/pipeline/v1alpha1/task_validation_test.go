@@ -41,7 +41,7 @@ var invalidBuildSteps = []corev1.Container{{
 	Image: "myimage",
 }}
 
-func TestTaskSpec_Validate(t *testing.T) {
+func TestTaskSpecValidate(t *testing.T) {
 	type fields struct {
 		Inputs     *Inputs
 		Outputs    *Outputs
@@ -123,7 +123,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 	}
 }
 
-func TestTaskSpec_ValidateError(t *testing.T) {
+func TestTaskSpecValidateError(t *testing.T) {
 	type fields struct {
 		Inputs     *Inputs
 		Outputs    *Outputs
@@ -170,7 +170,7 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			BuildSteps: validBuildSteps,
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value "what"`,
+			Message: `invalid value: what`,
 			Paths:   []string{"taskspec.Inputs.Resources.source.Type"},
 		},
 	}, {
@@ -193,7 +193,7 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			BuildSteps: validBuildSteps,
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value "what"`,
+			Message: `invalid value: what`,
 			Paths:   []string{"taskspec.Outputs.Resources.who.Type"},
 		},
 	}, {
