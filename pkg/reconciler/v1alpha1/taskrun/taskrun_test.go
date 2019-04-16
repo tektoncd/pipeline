@@ -23,7 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/pkg/apis"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/knative/pkg/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -56,7 +56,7 @@ const (
 
 var (
 	entrypointCache          *entrypoint.Cache
-	ignoreLastTransitionTime = cmpopts.IgnoreTypes(duckv1alpha1.Condition{}.LastTransitionTime.Inner.Time)
+	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
 	ignoreVolatileTime       = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
 	// Pods are created with a random 3-byte (6 hex character) suffix that we want to ignore in our diffs.
 	ignoreRandomPodNameSuffix = cmp.FilterPath(func(path cmp.Path) bool {
@@ -887,7 +887,7 @@ func TestReconcile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
 			}
-			condition := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
@@ -964,7 +964,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 				t.Errorf("expected no actions created by the reconciler, got %v", clients.Kube.Actions())
 			}
 			// Since the TaskRun is invalid, the status should say it has failed
-			condition := tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			condition := tc.taskRun.Status.GetCondition(apis.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected invalid TaskRun to have failed status, but had %v", condition)
 			}
@@ -1044,8 +1044,8 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), &duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
+	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), &apis.Condition{
+		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
 		Message: "Running",
 		Reason:  "Running",
@@ -1068,8 +1068,8 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), &duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), &apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionTrue,
 	}, ignoreLastTransitionTime); d != "" {
 		t.Errorf("Taskrun Status diff -got, +want: %v", d)
@@ -1105,8 +1105,8 @@ func TestCreateRedirectedTaskSpec(t *testing.T) {
 }
 
 func TestReconcileOnCompletedTaskRun(t *testing.T) {
-	taskSt := &duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
+	taskSt := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
 		Reason:  "Build succeeded",
 		Message: "Build succeeded",
@@ -1132,7 +1132,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), taskSt, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), taskSt, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 }
@@ -1141,8 +1141,8 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-run-cancelled", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name),
 		tb.TaskRunCancelled,
-	), tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown,
 	})))
 	d := test.Data{
@@ -1162,13 +1162,13 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
 
-	expectedStatus := &duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
+	expectedStatus := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunCancelled",
 		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 }
@@ -1179,8 +1179,8 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 			tb.TaskRunTaskRef(simpleTask.Name),
 			tb.TaskRunTimeout(10*time.Second),
 		),
-		tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		tb.TaskRunStatus(tb.Condition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown}),
 			tb.TaskRunStartTime(time.Now().Add(-15*time.Second))))
 
@@ -1201,30 +1201,30 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
 
-	expectedStatus := &duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
+	expectedStatus := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunTimeout",
 		Message: `TaskRun "test-taskrun-timeout" failed to finish within "10s"`,
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(duckv1alpha1.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
+	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), expectedStatus, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 }
 
 func TestUpdateStatusFromPod(t *testing.T) {
-	conditionRunning := duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
+	conditionRunning := apis.Condition{
+		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
 		Reason:  reasonRunning,
 		Message: reasonRunning,
 	}
-	conditionTrue := duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	conditionTrue := apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionTrue,
 	}
-	conditionBuilding := duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	conditionBuilding := apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown,
 		Reason: "Building",
 	}
@@ -1244,8 +1244,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		podStatus: corev1.PodStatus{},
 
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{conditionRunning},
-			Steps:      []v1alpha1.StepState{},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{conditionRunning},
+			},
+			Steps: []v1alpha1.StepState{},
 		},
 	}, {
 		desc: "ignore-creds-init",
@@ -1263,7 +1265,9 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}},
 		},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{conditionRunning},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{conditionRunning},
+			},
 			Steps: []v1alpha1.StepState{{
 				corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -1289,7 +1293,9 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}},
 		},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{conditionRunning},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{conditionRunning},
+			},
 			Steps: []v1alpha1.StepState{{
 				corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -1301,8 +1307,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		desc:      "success",
 		podStatus: corev1.PodStatus{Phase: corev1.PodSucceeded},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{conditionTrue},
-			Steps:      []v1alpha1.StepState{},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{conditionTrue},
+			},
+			Steps: []v1alpha1.StepState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
@@ -1310,8 +1318,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		desc:      "running",
 		podStatus: corev1.PodStatus{Phase: corev1.PodRunning},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{conditionBuilding},
-			Steps:      []v1alpha1.StepState{},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{conditionBuilding},
+			},
+			Steps: []v1alpha1.StepState{},
 		},
 	}, {
 		desc: "failure-terminated",
@@ -1331,11 +1341,13 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}},
 		},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Message: `build step "status-name" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c status-name`,
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Message: `build step "status-name" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c status-name`,
+				}},
+			},
 			Steps: []v1alpha1.StepState{{
 				corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -1352,11 +1364,13 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			Message: "boom",
 		},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Message: "boom",
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Message: "boom",
+				}},
+			},
 			Steps: []v1alpha1.StepState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
@@ -1365,11 +1379,13 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		desc:      "failure-unspecified",
 		podStatus: corev1.PodStatus{Phase: corev1.PodFailed},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Message: "build failed for unspecified reasons.",
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Message: "build failed for unspecified reasons.",
+				}},
+			},
 			Steps: []v1alpha1.StepState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
@@ -1391,12 +1407,14 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}},
 		},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionUnknown,
-				Reason:  "Pending",
-				Message: `build step "status-name" is pending with reason "i'm pending"`,
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  "Pending",
+					Message: `build step "status-name" is pending with reason "i'm pending"`,
+				}},
+			},
 			Steps: []v1alpha1.StepState{{
 				corev1.ContainerState{
 					Waiting: &corev1.ContainerStateWaiting{
@@ -1416,12 +1434,14 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}},
 		},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionUnknown,
-				Reason:  "Pending",
-				Message: `pod status "the type":"Unknown"; message: "the message"`,
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  "Pending",
+					Message: `pod status "the type":"Unknown"; message: "the message"`,
+				}},
+			},
 			Steps: []v1alpha1.StepState{},
 		},
 	}, {
@@ -1431,24 +1451,28 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			Message: "pod status message",
 		},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionUnknown,
-				Reason:  "Pending",
-				Message: "pod status message",
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  "Pending",
+					Message: "pod status message",
+				}},
+			},
 			Steps: []v1alpha1.StepState{},
 		},
 	}, {
 		desc:      "pending-no-message",
 		podStatus: corev1.PodStatus{Phase: corev1.PodPending},
 		want: v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionUnknown,
-				Reason:  "Pending",
-				Message: "Pending",
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  "Pending",
+					Message: "Pending",
+				}},
+			},
 			Steps: []v1alpha1.StepState{},
 		},
 	}} {

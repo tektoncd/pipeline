@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -31,8 +31,8 @@ import (
 
 // cancelPipelineRun makrs the PipelineRun as cancelled and any resolved taskrun too.
 func cancelPipelineRun(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask, clientSet clientset.Interface) error {
-	pr.Status.SetCondition(&duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
+	pr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "PipelineRunCancelled",
 		Message: fmt.Sprintf("PipelineRun %q was cancelled", pr.Name),

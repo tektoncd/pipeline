@@ -18,7 +18,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -140,7 +141,7 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 		),
 		tb.TaskRunStatus(
 			tb.PodName("my-pod-name"),
-			tb.Condition(duckv1alpha1.Condition{Type: duckv1alpha1.ConditionSucceeded}),
+			tb.Condition(apis.Condition{Type: apis.ConditionSucceeded}),
 			tb.StepState(tb.StateTerminated(127)),
 		),
 	)
@@ -188,8 +189,10 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 			},
 		},
 		Status: v1alpha1.TaskRunStatus{
-			PodName:    "my-pod-name",
-			Conditions: []duckv1alpha1.Condition{{Type: duckv1alpha1.ConditionSucceeded}},
+			PodName: "my-pod-name",
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
 			Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
 				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
 			}}},

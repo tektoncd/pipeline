@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -114,13 +114,11 @@ type TaskTrigger struct {
 	Name string `json:"name,omitempty"`
 }
 
-var taskRunCondSet = duckv1alpha1.NewBatchConditionSet()
+var taskRunCondSet = apis.NewBatchConditionSet()
 
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
-	// Conditions describes the set of conditions of this build.
-	// +optional
-	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
+	duckv1beta1.Status `json:",inline"`
 
 	// In #107 should be updated to hold the location logs have been uploaded to
 	// +optional
@@ -143,7 +141,7 @@ type TaskRunStatus struct {
 }
 
 // GetCondition returns the Condition matching the given type.
-func (tr *TaskRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
+func (tr *TaskRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 	return taskRunCondSet.Manage(tr).GetCondition(t)
 }
 func (tr *TaskRunStatus) InitializeConditions() {
@@ -155,7 +153,7 @@ func (tr *TaskRunStatus) InitializeConditions() {
 
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
-func (tr *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+func (tr *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
 		taskRunCondSet.Manage(tr).SetCondition(*newCond)
 	}
@@ -228,7 +226,7 @@ func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 
 // IsDone returns true if the TaskRun's status indicates that it is done.
 func (tr *TaskRun) IsDone() bool {
-	return !tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+	return !tr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
 }
 
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state

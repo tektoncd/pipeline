@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
@@ -222,8 +222,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 			Reason: ReasonCouldntGetPipeline,
 			Message: fmt.Sprintf("Pipeline %s can't be found:%s",
@@ -237,8 +237,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	d, err := v1alpha1.BuildDAG(p.Spec.Tasks)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 			Reason: ReasonInvalidGraph,
 			Message: fmt.Sprintf("PipelineRun %s's Pipeline DAG is invalid: %s",
@@ -249,8 +249,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	providedResources, err := resources.GetResourcesFromBindings(p, pr)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 			Reason: ReasonInvalidBindings,
 			Message: fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's PipelineResources correctly: %s",
@@ -286,24 +286,24 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		switch err := err.(type) {
 		case *resources.TaskNotFoundError:
-			pr.Status.SetCondition(&duckv1alpha1.Condition{
-				Type:   duckv1alpha1.ConditionSucceeded,
+			pr.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
 				Reason: ReasonCouldntGetTask,
 				Message: fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
 					fmt.Sprintf("%s/%s", p.Namespace, p.Name), err),
 			})
 		case *resources.ResourceNotFoundError:
-			pr.Status.SetCondition(&duckv1alpha1.Condition{
-				Type:   duckv1alpha1.ConditionSucceeded,
+			pr.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
 				Reason: ReasonCouldntGetResource,
 				Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
 					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
 			})
 		default:
-			pr.Status.SetCondition(&duckv1alpha1.Condition{
-				Type:   duckv1alpha1.ConditionSucceeded,
+			pr.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
 				Reason: ReasonFailedValidation,
 				Message: fmt.Sprintf("PipelineRun %s can't be Run; couldn't resolve all references: %s",
@@ -314,8 +314,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 	if err := resources.ValidateFrom(pipelineState); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 			Reason: ReasonFailedValidation,
 			Message: fmt.Sprintf("Pipeline %s can't be Run; it invalid input/output linkages: %s",
@@ -328,8 +328,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		err := taskrun.ValidateResolvedTaskResources(rprt.PipelineTask.Params, rprt.ResolvedTaskResources)
 		if err != nil {
 			c.Logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
-			pr.Status.SetCondition(&duckv1alpha1.Condition{
-				Type:    duckv1alpha1.ConditionSucceeded,
+			pr.Status.SetCondition(&apis.Condition{
+				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  ReasonFailedValidation,
 				Message: err.Error(),
@@ -371,7 +371,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			}
 		}
 	}
-	before := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 	c.timeoutHandler.StatusLock(pr)
 	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, pr.Spec.Timeout)
 	pr.Status.SetCondition(after)
@@ -380,7 +380,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	updateTaskRunsStatus(pr, pipelineState)
 
-	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
 }
 
@@ -472,7 +472,7 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	if err != nil {
 		return nil, fmt.Errorf("Error getting PipelineRun %s when updating status: %s", pr.Name, err)
 	}
-	succeeded := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	succeeded := pr.Status.GetCondition(apis.ConditionSucceeded)
 	if succeeded.Status == corev1.ConditionFalse || succeeded.Status == corev1.ConditionTrue {
 		// update pr completed time
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}

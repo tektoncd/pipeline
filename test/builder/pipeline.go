@@ -16,7 +16,7 @@ package builder
 import (
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -342,7 +342,7 @@ func PipelineRunStatus(ops ...PipelineRunStatusOp) PipelineRunOp {
 }
 
 // PipelineRunStatusCondition adds a Condition to the TaskRunStatus.
-func PipelineRunStatusCondition(condition duckv1alpha1.Condition) PipelineRunStatusOp {
+func PipelineRunStatusCondition(condition apis.Condition) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
 		s.Conditions = append(s.Conditions, condition)
 	}

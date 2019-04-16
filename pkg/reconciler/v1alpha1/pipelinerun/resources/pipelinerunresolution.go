@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -80,7 +80,7 @@ func (state PipelineRunState) SuccessfulPipelineTaskNames() []string {
 	done := []string{}
 	for _, t := range state {
 		if t.TaskRun != nil {
-			c := t.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 			if c.IsTrue() {
 				done = append(done, t.PipelineTask.Name)
 			}
@@ -252,7 +252,7 @@ func getTaskRunName(taskRunsStatus map[string]*v1alpha1.PipelineRunTaskRunStatus
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
 func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *zap.SugaredLogger, startTime *metav1.Time,
-	pipelineTimeout *metav1.Duration) *duckv1alpha1.Condition {
+	pipelineTimeout *metav1.Duration) *apis.Condition {
 	allFinished := true
 	if !startTime.IsZero() && pipelineTimeout != nil {
 		timeout := pipelineTimeout.Duration
@@ -261,8 +261,8 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 			logger.Infof("PipelineRun %q has timed out(runtime %s over %s)", prName, runtime, timeout)
 
 			timeoutMsg := fmt.Sprintf("PipelineRun %q failed to finish within %q", prName, timeout.String())
-			return &duckv1alpha1.Condition{
-				Type:    duckv1alpha1.ConditionSucceeded,
+			return &apis.Condition{
+				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  ReasonTimedOut,
 				Message: timeoutMsg,
@@ -275,7 +275,7 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 			allFinished = false
 			continue
 		}
-		c := rprt.TaskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := rprt.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 		if c == nil {
 			logger.Infof("TaskRun %s doesn't have a condition, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
 			allFinished = false
@@ -285,8 +285,8 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 		// If any TaskRuns have failed, we should halt execution and consider the run failed
 		if c.Status == corev1.ConditionFalse {
 			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed", rprt.TaskRunName, prName)
-			return &duckv1alpha1.Condition{
-				Type:    duckv1alpha1.ConditionSucceeded,
+			return &apis.Condition{
+				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  ReasonFailed,
 				Message: fmt.Sprintf("TaskRun %s has failed", rprt.TaskRun.Name),
@@ -299,16 +299,16 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 	}
 	if !allFinished {
 		logger.Infof("PipelineRun %s still has running TaskRuns so it isn't yet done", prName)
-		return &duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		return &apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
 			Reason:  ReasonRunning,
 			Message: "Not all Tasks in the Pipeline have finished executing",
 		}
 	}
 	logger.Infof("All TaskRuns have finished for PipelineRun %s so it has finished", prName)
-	return &duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
+	return &apis.Condition{
+		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
 		Reason:  ReasonSucceeded,
 		Message: "All Tasks have completed executing",

@@ -21,7 +21,8 @@ import (
 	"fmt"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -116,16 +117,20 @@ type PipelineTrigger struct {
 
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
-	Conditions duckv1alpha1.Conditions `json:"conditions"`
+	duckv1beta1.Status `json:",inline"`
+
 	// In #107 should be updated to hold the location logs have been uploaded to
 	// +optional
 	Results *Results `json:"results,omitempty"`
+
 	// StartTime is the time the PipelineRun is actually started.
 	// +optional
 	StartTime *metav1.Time `json:"startTime,omitempty"`
+
 	// CompletionTime is the time the PipelineRun completed.
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
 	// map of PipelineRunTaskRunStatus with the taskRun name as the key
 	// +optional
 	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
@@ -140,10 +145,10 @@ type PipelineRunTaskRunStatus struct {
 	Status *TaskRunStatus `json:"status,omitempty"`
 }
 
-var pipelineRunCondSet = duckv1alpha1.NewBatchConditionSet()
+var pipelineRunCondSet = apis.NewBatchConditionSet()
 
 // GetCondition returns the Condition matching the given type.
-func (pr *PipelineRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
+func (pr *PipelineRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 	return pipelineRunCondSet.Manage(pr).GetCondition(t)
 }
 
@@ -160,7 +165,7 @@ func (pr *PipelineRunStatus) InitializeConditions() {
 
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
-func (pr *PipelineRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+func (pr *PipelineRunStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
 		pipelineRunCondSet.Manage(pr).SetCondition(*newCond)
 	}
@@ -221,7 +226,7 @@ func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {
 
 // IsDone returns true if the PipelineRun's status indicates that it is done.
 func (pr *PipelineRun) IsDone() bool {
-	return !pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+	return !pr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
 }
 
 // HasStarted function check whether pipelinerun has valid start time set in its status

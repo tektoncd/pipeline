@@ -6,17 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
-	"k8s.io/apimachinery/pkg/util/wait"
-
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 var (
@@ -29,32 +27,32 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	taskRunTimedout := tb.TaskRun("test-taskrun-run-timedout", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunTimeout(1*time.Second),
-	), tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 		tb.TaskRunStartTime(time.Now().Add(-10*time.Second)),
 	))
 
 	taskRunRunning := tb.TaskRun("test-taskrun-running", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
-	), tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 		tb.TaskRunStartTime(time.Now()),
 	))
 
 	taskRunDone := tb.TaskRun("test-taskrun-completed", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
-	), tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionTrue}),
 	))
 
 	taskRunCancelled := tb.TaskRun("test-taskrun-run-cancelled", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name),
 		tb.TaskRunCancelled,
-	), tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 	))
 
@@ -139,16 +137,16 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 
 	prRunning := tb.PipelineRun("test-pipeline-running", testNs,
 		tb.PipelineRunSpec("test-pipeline"),
-		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown}),
 			tb.PipelineRunStartTime(time.Now()),
 		),
 	)
 	prDone := tb.PipelineRun("test-pipeline-done", testNs,
 		tb.PipelineRunSpec("test-pipeline"),
-		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue}),
 		),
 	)
@@ -156,8 +154,8 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa"),
 			tb.PipelineRunCancelled,
 		),
-		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown}),
 		),
 	)
@@ -231,8 +229,8 @@ func TestWithNoFunc(t *testing.T) {
 	taskRunRunning := tb.TaskRun("test-taskrun-running", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunTimeout(2*time.Second),
-	), tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 		tb.TaskRunStartTime(time.Now().Add(-10*time.Second)),
 	))

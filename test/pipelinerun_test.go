@@ -25,14 +25,13 @@ import (
 	"testing"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 var (
@@ -154,7 +153,7 @@ func TestPipelineRun(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 				}
-				if !r.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsTrue() {
+				if !r.Status.GetCondition(apis.ConditionSucceeded).IsTrue() {
 					t.Fatalf("Expected TaskRun %s to have succeeded but Status is %v", taskRunName, r.Status)
 				}
 
