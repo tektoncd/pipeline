@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	knativetest "github.com/knative/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -62,7 +62,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 	t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
 	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
-		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := pr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
 				return true, fmt.Errorf("pipelineRun %s already finished!", pipelineRun.Name)
@@ -87,7 +87,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 	for _, taskrunItem := range taskrunList.Items {
 		go func(name string) {
 			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
-				c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+				c := tr.Status.GetCondition(apis.ConditionSucceeded)
 				if c != nil {
 					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
 						return true, fmt.Errorf("taskRun %s already finished!", name)
@@ -113,7 +113,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
 	if err := WaitForPipelineRunState(c, pipelineRun.Name, timeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
-		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := pr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionFalse {
 				if c.Reason == resources.ReasonTimedOut {
@@ -136,7 +136,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		go func(name string) {
 			defer wg.Done()
 			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
-				cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+				cond := tr.Status.GetCondition(apis.ConditionSucceeded)
 				if cond != nil {
 					if cond.Status == corev1.ConditionFalse {
 						if cond.Reason == "TaskRunTimeout" {
@@ -201,7 +201,7 @@ func TestTaskRunTimeout(t *testing.T) {
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", "run-giraffe", namespace)
 	if err := WaitForTaskRunState(c, "run-giraffe", func(tr *v1alpha1.TaskRun) (bool, error) {
-		cond := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		cond := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if cond != nil {
 			if cond.Status == corev1.ConditionFalse {
 				if cond.Reason == "TaskRunTimeout" {

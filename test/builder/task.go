@@ -16,7 +16,7 @@ package builder
 import (
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
@@ -285,7 +285,7 @@ func PodName(name string) TaskRunStatusOp {
 }
 
 // Condition adds a Condition to the TaskRunStatus.
-func Condition(condition duckv1alpha1.Condition) TaskRunStatusOp {
+func Condition(condition apis.Condition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
 		s.Conditions = append(s.Conditions, condition)
 	}

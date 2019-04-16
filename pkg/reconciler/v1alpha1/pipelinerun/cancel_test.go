@@ -19,7 +19,7 @@ package pipelinerun
 import (
 	"testing"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test"
@@ -78,7 +78,7 @@ func TestCancelPipelineRun(t *testing.T) {
 				t.Fatal(err)
 			}
 			// This PipelineRun should still be complete and false, and the status should reflect that
-			cond := tc.pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			cond := tc.pipelineRun.Status.GetCondition(apis.ConditionSucceeded)
 			if cond.IsTrue() {
 				t.Errorf("Expected PipelineRun status to be complete and false, but was %v", cond)
 			}

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test"
@@ -37,8 +37,8 @@ func TestRecorderOptions(t *testing.T) {
 
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa")),
-		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionTrue,
 			Reason:  resources.ReasonSucceeded,
 			Message: "All Tasks have completed executing",

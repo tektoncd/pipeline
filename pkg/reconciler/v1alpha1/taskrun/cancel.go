@@ -19,7 +19,7 @@ package taskrun
 import (
 	"fmt"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,8 +34,8 @@ type logger interface {
 // cancelTaskRun marks the TaskRun as cancelled and delete pods linked to it.
 func cancelTaskRun(tr *v1alpha1.TaskRun, clientSet kubernetes.Interface, logger logger) error {
 	logger.Warn("task run %q has been cancelled", tr.Name)
-	tr.Status.SetCondition(&duckv1alpha1.Condition{
-		Type:    duckv1alpha1.ConditionSucceeded,
+	tr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunCancelled",
 		Message: fmt.Sprintf("TaskRun %q was cancelled", tr.Name),

@@ -20,13 +20,12 @@ import (
 	"sync"
 	"testing"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	knativetest "github.com/knative/pkg/test"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TestTaskRunPipelineRunCancel is an integration test that will
@@ -64,7 +63,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 
 	t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", "pear", namespace)
 	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
-		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := pr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
 				return true, fmt.Errorf("pipelineRun %s already finished", "pear")
@@ -89,7 +88,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		go func(name string) {
 			defer wg.Done()
 			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
-				if c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
+				if c := tr.Status.GetCondition(apis.ConditionSucceeded); c != nil {
 					if c.IsTrue() || c.IsFalse() {
 						return true, fmt.Errorf("taskRun %s already finished!", name)
 					} else if c.IsUnknown() && (c.Reason == "Running" || c.Reason == "Pending") {
@@ -117,7 +116,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", "pear", namespace)
 	if err := WaitForPipelineRunState(c, "pear", pipelineRunTimeout, func(pr *v1alpha1.PipelineRun) (bool, error) {
-		if c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
+		if c := pr.Status.GetCondition(apis.ConditionSucceeded); c != nil {
 			if c.IsFalse() {
 				if c.Reason == "PipelineRunCancelled" {
 					return true, nil
@@ -138,7 +137,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 		go func(name string) {
 			defer wg.Done()
 			err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
-				if c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded); c != nil {
+				if c := tr.Status.GetCondition(apis.ConditionSucceeded); c != nil {
 					if c.IsFalse() {
 						if c.Reason == "TaskRunCancelled" {
 							return true, nil

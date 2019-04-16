@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -35,18 +35,18 @@ func TestCancelTaskRun(t *testing.T) {
 		name           string
 		taskRun        *v1alpha1.TaskRun
 		pod            *corev1.Pod
-		expectedStatus duckv1alpha1.Condition
+		expectedStatus apis.Condition
 	}{{
 		name: "no-pod-scheduled",
 		taskRun: tb.TaskRun("test-taskrun-run-cancelled", "foo", tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name),
 			tb.TaskRunCancelled,
-		), tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		), tb.TaskRunStatus(tb.Condition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		}))),
-		expectedStatus: duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  "TaskRunCancelled",
 			Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
@@ -56,16 +56,16 @@ func TestCancelTaskRun(t *testing.T) {
 		taskRun: tb.TaskRun("test-taskrun-run-cancelled", "foo", tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name),
 			tb.TaskRunCancelled,
-		), tb.TaskRunStatus(tb.Condition(duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		), tb.TaskRunStatus(tb.Condition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		}), tb.PodName("foo-is-bar"))),
 		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-is-bar",
 		}},
-		expectedStatus: duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  "TaskRunCancelled",
 			Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
@@ -87,7 +87,7 @@ func TestCancelTaskRun(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if d := cmp.Diff(tc.taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded), &tc.expectedStatus, ignoreLastTransitionTime); d != "" {
+			if d := cmp.Diff(tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), &tc.expectedStatus, ignoreLastTransitionTime); d != "" {
 				t.Fatalf("-want, +got: %v", d)
 			}
 		})

@@ -6,18 +6,17 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPipelineRunStatusConditions(t *testing.T) {
 	p := &PipelineRun{}
-	foo := &duckv1alpha1.Condition{
+	foo := &apis.Condition{
 		Type:   "Foo",
 		Status: "True",
 	}
-	bar := &duckv1alpha1.Condition{
+	bar := &apis.Condition{
 		Type:   "Bar",
 		Status: "True",
 	}
@@ -91,8 +90,8 @@ func TestInitializeConditions(t *testing.T) {
 
 func TestPipelineRunIsDone(t *testing.T) {
 	pr := &PipelineRun{}
-	foo := &duckv1alpha1.Condition{
-		Type:   duckv1alpha1.ConditionSucceeded,
+	foo := &apis.Condition{
+		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionFalse,
 	}
 	pr.Status.SetCondition(foo)

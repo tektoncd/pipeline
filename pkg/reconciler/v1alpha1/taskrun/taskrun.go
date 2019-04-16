@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -212,9 +212,9 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) resources.GetTask {
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
 	// If the taskrun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
-		before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		before := tr.Status.GetCondition(apis.ConditionSucceeded)
 		err := cancelTaskRun(tr, c.KubeClientSet, c.Logger)
-		after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		after := tr.Status.GetCondition(apis.ConditionSucceeded)
 		reconciler.EmitEvent(c.Recorder, before, after, tr)
 		return err
 	}
@@ -223,8 +223,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	taskMeta, taskSpec, err := resources.GetTaskData(tr, getTaskFunc)
 	if err != nil {
 		c.Logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
-		tr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  reasonFailedResolution,
 			Message: err.Error(),
@@ -254,8 +254,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
-		tr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  reasonFailedResolution,
 			Message: err.Error(),
@@ -265,8 +265,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.Params, rtr); err != nil {
 		c.Logger.Errorf("Failed to validate taskrun %q: %v", tr.Name, err)
-		tr.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  reasonFailedValidation,
 			Message: err.Error(),
@@ -294,8 +294,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			} else {
 				msg = fmt.Sprintf("References a TaskSpec with missing information: ")
 			}
-			tr.Status.SetCondition(&duckv1alpha1.Condition{
-				Type:    duckv1alpha1.ConditionSucceeded,
+			tr.Status.SetCondition(&apis.Condition{
+				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  reasonCouldntGetTask,
 				Message: fmt.Sprintf("%s %v", msg, err),
@@ -311,13 +311,13 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return err
 	}
 
-	before := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	c.timeoutHandler.StatusLock(tr)
 	updateStatusFromPod(tr, pod)
 	c.timeoutHandler.StatusUnlock(tr)
 
-	after := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 
@@ -327,10 +327,10 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 }
 
 func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
-	if taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded) == nil || taskRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Status == corev1.ConditionUnknown {
+	if taskRun.Status.GetCondition(apis.ConditionSucceeded) == nil || taskRun.Status.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
-		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		taskRun.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
 			Reason:  reasonRunning,
 			Message: reasonRunning,
@@ -349,15 +349,15 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
-		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		taskRun.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 			Reason: "Building",
 		})
 	case corev1.PodFailed:
 		msg := getFailureMessage(pod)
-		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		taskRun.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Message: msg,
 		})
@@ -365,15 +365,15 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 		taskRun.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	case corev1.PodPending:
 		msg := getWaitingMessage(pod)
-		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:    duckv1alpha1.ConditionSucceeded,
+		taskRun.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
 			Reason:  "Pending",
 			Message: msg,
 		})
 	case corev1.PodSucceeded:
-		taskRun.Status.SetCondition(&duckv1alpha1.Condition{
-			Type:   duckv1alpha1.ConditionSucceeded,
+		taskRun.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		})
 		// update tr completed time
@@ -543,8 +543,8 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 			}
 
 			timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
-			tr.Status.SetCondition(&duckv1alpha1.Condition{
-				Type:    duckv1alpha1.ConditionSucceeded,
+			tr.Status.SetCondition(&apis.Condition{
+				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  reasonTimedOut,
 				Message: timeoutMsg,

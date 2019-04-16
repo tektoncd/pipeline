@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -31,8 +31,8 @@ const (
 )
 
 var (
-	success = duckv1alpha1.Condition{Type: duckv1alpha1.ConditionSucceeded, Status: corev1.ConditionTrue}
-	failure = duckv1alpha1.Condition{Type: duckv1alpha1.ConditionSucceeded, Status: corev1.ConditionFalse}
+	success = apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}
+	failure = apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}
 )
 
 func TestWaitForTaskRunStateSucceed(t *testing.T) {

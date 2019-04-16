@@ -21,7 +21,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/knative/pkg/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -239,7 +240,7 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// This PipelineRun is in progress now and the status should reflect that
-	condition := reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
 	if condition == nil || condition.Status != corev1.ConditionUnknown {
 		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
 	}
@@ -345,7 +346,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			}
 
 			// Since the PipelineRun is invalid, the status should say it has failed
-			condition := tc.pipelineRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+			condition := tc.pipelineRun.Status.GetCondition(apis.ConditionSucceeded)
 			if condition == nil || condition.Status != corev1.ConditionFalse {
 				t.Errorf("Expected status to be failed on invalid PipelineRun but was: %v", condition)
 			}
@@ -412,7 +413,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		tb.TaskRunTaskRef("unit-test-task"),
 		tb.TaskRunServiceAccount("test-sa"),
 	), tb.TaskRunStatus(
-		tb.Condition(duckv1alpha1.Condition{Type: duckv1alpha1.ConditionSucceeded}),
+		tb.Condition(apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.StepState(tb.StateTerminated(0)),
 	))
 
@@ -425,9 +426,9 @@ func TestUpdateTaskRunsState(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
 				},
 			}},
-			Conditions: []duckv1alpha1.Condition{{
-				Type: duckv1alpha1.ConditionSucceeded,
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
 		},
 	}
 	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
@@ -459,13 +460,12 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	}
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa")),
-		tb.PipelineRunStatus(
-			tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
-				Type:    duckv1alpha1.ConditionSucceeded,
-				Status:  corev1.ConditionTrue,
-				Reason:  resources.ReasonSucceeded,
-				Message: "All Tasks have completed executing",
-			}),
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionTrue,
+			Reason:  resources.ReasonSucceeded,
+			Message: "All Tasks have completed executing",
+		}),
 			tb.PipelineRunTaskRunsStatus(prtrs),
 		),
 	)}
@@ -479,8 +479,8 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world")),
 			tb.TaskRunStatus(
-				tb.Condition(duckv1alpha1.Condition{
-					Type: duckv1alpha1.ConditionSucceeded,
+				tb.Condition(apis.Condition{
+					Type: apis.ConditionSucceeded,
 				}),
 			),
 		),
@@ -520,17 +520,17 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	}
 
 	// This PipelineRun should still be complete and the status should reflect that
-	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun status to be complete, but was %v", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun status to be complete, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 
 	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
 	expectedTaskRunsStatus[taskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
 		PipelineTaskName: prtrs[taskRunName].PipelineTaskName,
 		Status: &v1alpha1.TaskRunStatus{
-			Conditions: []duckv1alpha1.Condition{{
-				Type: duckv1alpha1.ConditionSucceeded,
-			}},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
 		},
 	}
 
@@ -616,8 +616,8 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	}
 
 	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 }
 
@@ -664,8 +664,8 @@ func TestReconcileWithTimeout(t *testing.T) {
 	}
 
 	// The PipelineRun should be timed out.
-	if reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded).Reason != resources.ReasonTimedOut {
-		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(duckv1alpha1.ConditionSucceeded))
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != resources.ReasonTimedOut {
+		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 
 	// Check that the expected TaskRun was created

@@ -18,7 +18,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -93,8 +94,8 @@ func TestPipelineRun(t *testing.T) {
 		tb.PipelineRunParam("first-param", "first-value"),
 		tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
-	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(duckv1alpha1.Condition{
-		Type: duckv1alpha1.ConditionSucceeded,
+	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+		Type: apis.ConditionSucceeded,
 	}), tb.PipelineRunStartTime(startTime),
 	), tb.PipelineRunLabel("label-key", "label-value"))
 	expectedPipelineRun := &v1alpha1.PipelineRun{
@@ -122,8 +123,10 @@ func TestPipelineRun(t *testing.T) {
 			}},
 		},
 		Status: v1alpha1.PipelineRunStatus{
-			Conditions: []duckv1alpha1.Condition{{Type: duckv1alpha1.ConditionSucceeded}},
-			StartTime:  &metav1.Time{Time: startTime},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
+			},
+			StartTime: &metav1.Time{Time: startTime},
 		},
 	}
 	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {

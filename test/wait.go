@@ -48,7 +48,7 @@ import (
 	"fmt"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.opencensus.io/trace"
 	corev1 "k8s.io/api/core/v1"
@@ -143,7 +143,7 @@ func WaitForServiceExternalIPState(c *clients, namespace, name string, inState f
 // has successfully completed.
 func TaskRunSucceed(name string) TaskRunStateFn {
 	return func(tr *v1alpha1.TaskRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
 				return true, nil
@@ -159,7 +159,7 @@ func TaskRunSucceed(name string) TaskRunStateFn {
 // has failed.
 func TaskRunFailed(name string) TaskRunStateFn {
 	return func(tr *v1alpha1.TaskRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
 				return true, fmt.Errorf("task run %s succeeded!", name)
@@ -175,7 +175,7 @@ func TaskRunFailed(name string) TaskRunStateFn {
 // has successfully completed.
 func PipelineRunSucceed(name string) PipelineRunStateFn {
 	return func(pr *v1alpha1.PipelineRun) (bool, error) {
-		c := pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := pr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
 				return true, nil
@@ -191,7 +191,7 @@ func PipelineRunSucceed(name string) PipelineRunStateFn {
 // has failed.
 func PipelineRunFailed(name string) PipelineRunStateFn {
 	return func(tr *v1alpha1.PipelineRun) (bool, error) {
-		c := tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded)
+		c := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
 				return true, fmt.Errorf("task run %s succeeded!", name)

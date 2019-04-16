@@ -16,7 +16,7 @@ limitations under the License.
 package reconciler
 
 import (
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -24,7 +24,7 @@ import (
 
 // EmitEvent emits success or failed event for object
 // if afterCondition is different from beforeCondition
-func EmitEvent(c record.EventRecorder, beforeCondition *duckv1alpha1.Condition, afterCondition *duckv1alpha1.Condition, object runtime.Object) {
+func EmitEvent(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	if beforeCondition != afterCondition && afterCondition != nil {
 		// Create events when the obj result is in.
 		if afterCondition.Status == corev1.ConditionTrue {
