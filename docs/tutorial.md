@@ -351,20 +351,20 @@ spec:
         - name: pathToDockerFile
           value: Dockerfile
         - name: pathToContext
-          value: /workspace/examples/microservices/leeroy-web #configure: may change according to your source
+          value: /workspace/docker-source/examples/microservices/leeroy-web #configure: may change according to your source
       resources:
         inputs:
-          - name: workspace
+          - name: docker-source
             resource: source-repo
         outputs:
-          - name: image
+          - name: builtImage
             resource: web-image
     - name: deploy-web
       taskRef:
         name: deploy-using-kubectl
       resources:
         inputs:
-          - name: workspace
+          - name: source
             resource: source-repo
           - name: image
             resource: web-image
@@ -372,7 +372,7 @@ spec:
               - build-skaffold-web
       params:
         - name: path
-          value: /workspace/examples/microservices/leeroy-web/kubernetes/deployment.yaml #configure: may change according to your source
+          value: /workspace/source/examples/microservices/leeroy-web/kubernetes/deployment.yaml #configure: may change according to your source
         - name: yqArg
           value: "-d1"
         - name: yamlPathToImage
@@ -390,7 +390,7 @@ metadata:
 spec:
   inputs:
     resources:
-      - name: workspace
+      - name: source
         type: git
       - name: image
         type: image
