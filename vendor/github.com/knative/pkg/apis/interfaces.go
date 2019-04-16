@@ -19,7 +19,6 @@ package apis
 import (
 	"context"
 
-	authenticationv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -35,8 +34,19 @@ type Validatable interface {
 	Validate(context.Context) *FieldError
 }
 
+// Convertible indicates that a particular type supports conversions to/from
+// "higher" versions of the same type.
+type Convertible interface {
+	// ConvertUp up-converts the receiver into `to`.
+	ConvertUp(ctx context.Context, to Convertible) error
+
+	// ConvertDown down-converts from `from` into the receiver.
+	ConvertDown(ctx context.Context, from Convertible) error
+}
+
 // Immutable indicates that a particular type has fields that should
 // not change after creation.
+// DEPRECATED: Use WithinUpdate / GetBaseline from within Validatable instead.
 type Immutable interface {
 	// CheckImmutableFields checks that the current instance's immutable
 	// fields haven't changed from the provided original.
@@ -52,6 +62,7 @@ type Listable interface {
 }
 
 // Annotatable indicates that a particular type applies various annotations.
-type Annotatable interface {
-	AnnotateUserInfo(ctx context.Context, previous Annotatable, ui *authenticationv1.UserInfo)
-}
+// DEPRECATED: Use WithUserInfo / GetUserInfo from within SetDefaults instead.
+// The webhook functionality for this has been turned down, which is why this
+// interface is empty.
+type Annotatable interface{}

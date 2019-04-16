@@ -202,7 +202,7 @@ type PeerAuthenticationMethod struct {
 	// It is required to specify exactly one of the fields:
 	// Mtls or Jwt
 	// Set if mTLS is used.
-	Mtls *MutualTls `json:"mtls,omitempty"`
+	Mtls *MutualTLS `json:"mtls,omitempty"`
 
 	// Set if JWT is used. This option is not yet available.
 	Jwt *Jwt `json:"jwt,omitempty"`
@@ -220,7 +220,7 @@ const (
 )
 
 // TLS authentication params.
-type MutualTls struct {
+type MutualTLS struct {
 
 	// WILL BE DEPRECATED, if set, will translates to `TLS_PERMISSIVE` mode.
 	// Set this flag to true to allow regular TLS (i.e without client x509
@@ -228,7 +228,7 @@ type MutualTls struct {
 	// extracted and used (set to peer identity). Otherwise, peer identity will
 	// be left unset.
 	// When the flag is false (default), request must have client certificate.
-	AllowTls bool `json:"allowTls,omitempty"`
+	AllowTLS bool `json:"allowTls,omitempty"`
 
 	// Defines the mode of mTLS authentication.
 	Mode Mode `json:"mode,omitempty"`
@@ -284,7 +284,7 @@ type Jwt struct {
 	// Google service account).
 	//
 	// Example: https://www.googleapis.com/oauth2/v1/certs
-	JwksUri string `json:"jwksUri,omitempty"`
+	JwksURI string `json:"jwksUri,omitempty"`
 
 	// Two fields below define where to extract the JWT from an HTTP request.
 	//

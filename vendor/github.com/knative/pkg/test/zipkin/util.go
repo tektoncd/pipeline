@@ -19,6 +19,10 @@ limitations under the License.
 package zipkin
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"sync"
 
 	"github.com/knative/pkg/test/logging"
@@ -111,4 +115,31 @@ func CleanupZipkinTracingSetup(logf logging.FormatLogger) {
 // returns error if the port is not available.
 func CheckZipkinPortAvailability() error {
 	return monitoring.CheckPortAvailability(ZipkinPort)
+}
+
+// JSONTrace returns a trace for the given traceId in JSON format
+func JSONTrace(traceID string) (string, error) {
+	// Check if zipkin port forwarding is setup correctly
+	if err := CheckZipkinPortAvailability(); err == nil {
+		return "", err
+	}
+
+	resp, err := http.Get(ZipkinTraceEndpoint + traceID)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	trace, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, trace, "", "\t")
+	if err != nil {
+		return "", err
+	}
+
+	return prettyJSON.String(), nil
 }

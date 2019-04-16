@@ -134,13 +134,13 @@ type VirtualServiceSpec struct {
 
 	// An ordered list of route rules for HTTP traffic.
 	// The first rule matching an incoming request is used.
-	Http []HTTPRoute `json:"http,omitempty"`
+	HTTP []HTTPRoute `json:"http,omitempty"`
 
 	// An ordered list of route rules for TCP traffic.
 	// The first rule matching an incoming request is used.
-	Tcp []TCPRoute `json:"tcp,omitempty"`
+	TCP []TCPRoute `json:"tcp,omitempty"`
 
-	Tls []TLSRoute `json:"tls,omitempty"`
+	TLS []TLSRoute `json:"tls,omitempty"`
 }
 
 // Describes match conditions and actions for routing HTTP/1.1, HTTP2, and
@@ -240,7 +240,7 @@ type HTTPMatchRequest struct {
 	//
 	// - `regex: "value"` for ECMAscript style regex-based match
 	//
-	Uri *v1alpha1.StringMatch `json:"uri,omitempty"`
+	URI *v1alpha1.StringMatch `json:"uri,omitempty"`
 
 	// URI Scheme
 	// values are case-sensitive and formatted as follows:
@@ -616,7 +616,7 @@ type HTTPRedirect struct {
 	// On a redirect, overwrite the Path portion of the URL with this
 	// value. Note that the entire path will be replaced, irrespective of the
 	// request URI being matched as an exact path or prefix.
-	Uri string `json:"uri,omitempty"`
+	URI string `json:"uri,omitempty"`
 
 	// On a redirect, overwrite the Authority/Host portion of the URL with
 	// this value.
@@ -651,7 +651,7 @@ type HTTPRewrite struct {
 	// rewrite the path (or the prefix) portion of the URI with this
 	// value. If the original URI was matched based on prefix, the value
 	// provided in this field will replace the corresponding matched prefix.
-	Uri string `json:"uri,omitempty"`
+	URI string `json:"uri,omitempty"`
 
 	// rewrite the Authority/Host header with this value.
 	Authority string `json:"authority,omitempty"`
@@ -838,7 +838,7 @@ type InjectAbort struct {
 	Perecent int `json:"percent,omitempty"`
 
 	// REQUIRED. HTTP status code to use to abort the Http request.
-	HttpStatus int `json:"httpStatus"`
+	HTTPStatus int `json:"httpStatus"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
