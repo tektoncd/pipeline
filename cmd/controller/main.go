@@ -139,7 +139,7 @@ func main() {
 	}
 	timeoutHandler.SetTaskRunCallbackFunc(trc.Enqueue)
 	timeoutHandler.SetPipelineRunCallbackFunc(prc.Enqueue)
-	timeoutHandler.CheckTimeouts()
+	timeoutHandler.CheckTimeouts(logger)
 
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher.Watch(logging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logging.ControllerLogKey))
