@@ -118,11 +118,8 @@ func (s *ClusterResource) GetURL() string {
 	return s.URL
 }
 
-// GetParams returns the resoruce params
+// GetParams returns the resource params
 func (s ClusterResource) GetParams() []Param { return []Param{} }
-
-// GetSecrets returns an array with field name and the corresponding secret to populate it
-func (s ClusterResource) GetSecrets() []SecretParam { return s.Secrets }
 
 // Replacements is used for template replacement on a ClusterResource inside of a Taskrun.
 func (s *ClusterResource) Replacements() map[string]string {
