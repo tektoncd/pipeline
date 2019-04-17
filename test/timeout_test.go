@@ -193,30 +193,31 @@ func TestTaskRunTimeout(t *testing.T) {
 				tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 3000"))))); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
 			}
-			if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
+			trName := fmt.Sprintf("run-giraffe-%d", i)
+			if _, err := c.TaskRunClient.Create(tb.TaskRun(trName, namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
 				// Do not reduce this timeout. Taskrun e2e test is also verifying
 				// if reconcile is triggered from timeout handler and not by pod informers
 				tb.TaskRunTimeout(30*time.Second)))); err != nil {
-				t.Fatalf("Failed to create TaskRun `%s`: %s", "run-giraffe", err)
+				t.Fatalf("Failed to create TaskRun `%s`: %s", trName, err)
 			}
 
-			t.Logf("Waiting for TaskRun %s in namespace %s to complete", "run-giraffe", namespace)
-			if err := WaitForTaskRunState(c, "run-giraffe", func(tr *v1alpha1.TaskRun) (bool, error) {
+			t.Logf("Waiting for TaskRun %s in namespace %s to complete", trName, namespace)
+			if err := WaitForTaskRunState(c, trName, func(tr *v1alpha1.TaskRun) (bool, error) {
 				cond := tr.Status.GetCondition(apis.ConditionSucceeded)
 				if cond != nil {
 					if cond.Status == corev1.ConditionFalse {
 						if cond.Reason == "TaskRunTimeout" {
 							return true, nil
 						}
-						return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", "run-giraffe", cond.Reason)
+						return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", trName, cond.Reason)
 					} else if cond.Status == corev1.ConditionTrue {
-						return true, fmt.Errorf("taskRun %s completed successfully, should have been timed out", "run-giraffe")
+						return true, fmt.Errorf("taskRun %s completed successfully, should have been timed out", "trName")
 					}
 				}
 
 				return false, nil
 			}, "TaskRunTimeout"); err != nil {
-				t.Errorf("Error waiting for TaskRun %s to finish: %s", "run-giraffe", err)
+				t.Errorf("Error waiting for TaskRun %s to finish: %s", trName, err)
 			}
 		})
 	}
