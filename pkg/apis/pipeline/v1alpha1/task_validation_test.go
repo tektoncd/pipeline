@@ -105,7 +105,7 @@ func TestTaskSpec_Validate(t *testing.T) {
 				Name:       "mystep",
 				Image:      "${inputs.resources.foo.url}",
 				Args:       []string{"--flag=${inputs.params.baz} && ${input.params.foo-is-baz}"},
-				WorkingDir: "/foo/bar/${outputs.resources.source}",
+				WorkingDir: "/foo/bar/${outputs.resources.source.name}",
 			}},
 		},
 	}}
@@ -321,7 +321,46 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 			Message: `non-existent variable in "${inputs.params.foo} && ${inputs.params.inexistent}" for step arg[0]`,
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
-	}}
+	}, {
+		name: "invalid resource variable usage",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{{
+					Name: "foo",
+					Type: PipelineResourceTypeImage,
+				}},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"${inputs.resources.foo}"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "${inputs.resources.foo}" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	},
+		{
+			name: "inexistent output param variable",
+			fields: fields{
+				Inputs: &Inputs{
+					Resources: []TaskResource{{
+						Name: "foo",
+						Type: PipelineResourceTypeImage,
+					}},
+				},
+				BuildSteps: []corev1.Container{{
+					Name:  "mystep",
+					Image: "myimage",
+					Args:  []string{"${outputs.resources.foo.url}"},
+				}},
+			},
+			expectedError: apis.FieldError{
+				Message: `non-existent variable in "${outputs.resources.foo.url}" for step arg[0]`,
+				Paths:   []string{"taskspec.steps.arg[0]"},
+			},
+		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &TaskSpec{

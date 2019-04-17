@@ -132,58 +132,101 @@ func validateInputParameterVariables(steps []corev1.Container, inputs *Inputs) *
 			parameterNames[p.Name] = struct{}{}
 		}
 	}
-	return validateVariables(steps, "params", parameterNames)
+	return validateVariables(steps, "params", "inputs.", parameterNames)
 }
 
 func validateResourceVariables(steps []corev1.Container, inputs *Inputs, outputs *Outputs) *apis.FieldError {
-	resourceNames := map[string]struct{}{}
-	if inputs != nil {
-		for _, r := range inputs.Resources {
-			resourceNames[r.Name] = struct{}{}
-		}
+	inputVars, err := getInputResourceVariables(inputs)
+	if err != nil {
+		return err
 	}
-	if outputs != nil {
-		for _, r := range outputs.Resources {
-			resourceNames[r.Name] = struct{}{}
-		}
+	outputVars, err := getOutputResourceVariables(outputs)
+	if err != nil {
+		return err
 	}
-	return validateVariables(steps, "resources", resourceNames)
+	err = validateVariables(steps, "resources", "inputs.", inputVars)
+	if err != nil {
+		return err
+	}
+	return validateVariables(steps, "resources", "outputs.", outputVars)
 }
 
-func validateVariables(steps []corev1.Container, prefix string, vars map[string]struct{}) *apis.FieldError {
+func getInputResourceVariables(inputs *Inputs) (map[string]struct{}, *apis.FieldError) {
+	vars := map[string]struct{}{}
+	if inputs != nil {
+		for _, r := range inputs.Resources {
+			attrs, err := AttributesFromType(r.Type)
+			if err != nil {
+				return nil, &apis.FieldError{
+					Message: fmt.Sprintf("invalid resource type %s", r.Type),
+					Paths:   []string{"taskspec.inputs.resources." + r.Name},
+					Details: err.Error(),
+				}
+			}
+			for _, a := range attrs {
+				rv := r.Name + "." + a
+				vars[rv] = struct{}{}
+			}
+		}
+	}
+	return vars, nil
+}
+
+func getOutputResourceVariables(outputs *Outputs) (map[string]struct{}, *apis.FieldError) {
+	vars := map[string]struct{}{}
+	if outputs != nil {
+		for _, r := range outputs.Resources {
+			attrs, err := AttributesFromType(r.Type)
+			if err != nil {
+				return nil, &apis.FieldError{
+					Message: fmt.Sprintf("invalid resource type %s", r.Type),
+					Paths:   []string{"taskspec.outputs.resources." + r.Name},
+					Details: err.Error(),
+				}
+			}
+			for _, a := range attrs {
+				rv := r.Name + "." + a
+				vars[rv] = struct{}{}
+			}
+		}
+	}
+	return vars, nil
+}
+
+func validateVariables(steps []corev1.Container, prefix, contextPrefix string, vars map[string]struct{}) *apis.FieldError {
 	for _, step := range steps {
-		if err := validateTaskVariable("name", step.Name, prefix, vars); err != nil {
+		if err := validateTaskVariable("name", step.Name, prefix, contextPrefix, vars); err != nil {
 			return err
 		}
-		if err := validateTaskVariable("image", step.Image, prefix, vars); err != nil {
+		if err := validateTaskVariable("image", step.Image, prefix, contextPrefix, vars); err != nil {
 			return err
 		}
-		if err := validateTaskVariable("workingDir", step.WorkingDir, prefix, vars); err != nil {
+		if err := validateTaskVariable("workingDir", step.WorkingDir, prefix, contextPrefix, vars); err != nil {
 			return err
 		}
 		for i, cmd := range step.Command {
-			if err := validateTaskVariable(fmt.Sprintf("command[%d]", i), cmd, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("command[%d]", i), cmd, prefix, contextPrefix, vars); err != nil {
 				return err
 			}
 		}
 		for i, arg := range step.Args {
-			if err := validateTaskVariable(fmt.Sprintf("arg[%d]", i), arg, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("arg[%d]", i), arg, prefix, contextPrefix, vars); err != nil {
 				return err
 			}
 		}
 		for _, env := range step.Env {
-			if err := validateTaskVariable(fmt.Sprintf("env[%s]", env.Name), env.Value, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("env[%s]", env.Name), env.Value, prefix, contextPrefix, vars); err != nil {
 				return err
 			}
 		}
 		for i, v := range step.VolumeMounts {
-			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].Name", i), v.Name, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].Name", i), v.Name, prefix, contextPrefix, vars); err != nil {
 				return err
 			}
-			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].MountPath", i), v.MountPath, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].MountPath", i), v.MountPath, prefix, contextPrefix, vars); err != nil {
 				return err
 			}
-			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].SubPath", i), v.SubPath, prefix, vars); err != nil {
+			if err := validateTaskVariable(fmt.Sprintf("volumeMount[%d].SubPath", i), v.SubPath, prefix, contextPrefix, vars); err != nil {
 				return err
 			}
 		}
@@ -191,8 +234,8 @@ func validateVariables(steps []corev1.Container, prefix string, vars map[string]
 	return nil
 }
 
-func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return templating.ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
+func validateTaskVariable(name, value, prefix, contextPrefix string, vars map[string]struct{}) *apis.FieldError {
+	return templating.ValidateVariable(name, value, prefix, contextPrefix, "step", "taskspec.steps", vars)
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {

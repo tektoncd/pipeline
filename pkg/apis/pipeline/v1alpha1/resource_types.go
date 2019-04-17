@@ -164,3 +164,19 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }
+
+// AttributesFromType returns a list of available attributes that can be replaced
+// through templating.
+func AttributesFromType(prt PipelineResourceType) ([]string, error) {
+	r := &PipelineResource{}
+	r.Spec.Type = prt
+	resource, err := ResourceFromType(r)
+	if err != nil {
+		return nil, err
+	}
+	keys := []string{}
+	for k := range resource.Replacements() {
+		keys = append(keys, k)
+	}
+	return keys, nil
+}

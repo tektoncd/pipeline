@@ -47,10 +47,7 @@ func extractVariablesFromString(s, prefix string) ([]string, bool) {
 	vars := make([]string, len(matches))
 	for i, match := range matches {
 		groups := matchGroups(match, re)
-		// foo -> foo
-		// foo.bar -> foo
-		// foo.bar.baz -> foo
-		vars[i] = strings.SplitN(groups["var"], ".", 2)[0]
+		vars[i] = groups["var"]
 	}
 	return vars, true
 }
