@@ -120,7 +120,8 @@ func getTimeout(d *metav1.Duration) time.Duration {
 
 // checkPipelineRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
-func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string) {
+func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string, logger *zap.SugaredLogger) {
+	logger.Infof("TIMEOUT CHECK PIPELINE RUN TIMEOUTS")
 	pipelineRuns, err := t.pipelineclientset.TektonV1alpha1().PipelineRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get pipelinerun list in namespace %s: %s", namespace, err)
@@ -137,21 +138,22 @@ func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string) {
 
 // CheckTimeouts function iterates through all namespaces and calls corresponding
 // taskrun/pipelinerun timeout functions
-func (t *TimeoutSet) CheckTimeouts() {
+func (t *TimeoutSet) CheckTimeouts(logger *zap.SugaredLogger) {
 	namespaces, err := t.kubeclientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get namespaces list: %s", err)
 		return
 	}
 	for _, namespace := range namespaces.Items {
-		t.checkTaskRunTimeouts(namespace.GetName())
-		t.checkPipelineRunTimeouts(namespace.GetName())
+		t.checkTaskRunTimeouts(namespace.GetName(), logger)
+		t.checkPipelineRunTimeouts(namespace.GetName(), logger)
 	}
 }
 
 // checkTaskRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
-func (t *TimeoutSet) checkTaskRunTimeouts(namespace string) {
+func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, logger *zap.SugaredLogger) {
+	logger.Infof("TIMEOUT CHECK TASK RUN TIMEOUTS")
 	taskruns, err := t.pipelineclientset.TektonV1alpha1().TaskRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get taskrun list in namespace %s: %s", namespace, err)
@@ -162,13 +164,14 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string) {
 		if taskrun.IsDone() || taskrun.IsCancelled() {
 			continue
 		}
-		go t.WaitTaskRun(&taskrun)
+		go t.WaitTaskRun(logger, &taskrun)
 	}
 }
 
 // WaitTaskRun function creates a blocking function for taskrun to wait for
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out
-func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun) {
+func (t *TimeoutSet) WaitTaskRun(logger *zap.SugaredLogger, tr *v1alpha1.TaskRun) {
+	logger.Infof("TIMEOUT starting task run wait for %s", tr.Name)
 	timeout := getTimeout(tr.Spec.Timeout)
 	runtime := time.Duration(0)
 
@@ -177,19 +180,27 @@ func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun) {
 		runtime = time.Since(tr.Status.StartTime.Time)
 	}
 	t.StatusUnlock(tr)
+
+	logger.Infof("TIMEOUT runtime for %s is %s", tr.Name, runtime)
+
 	timeout -= runtime
 	finished := t.getOrCreateFinishedChan(tr)
+
+	logger.Infof("TIMEOUT teimout for %s is %s", tr.Name, timeout)
 
 	defer t.Release(tr)
 
 	select {
 	case <-t.stopCh:
 		// we're stopping, give up
+		logger.Infof("TIMEOUT stop for %s", tr.Name)
 		return
 	case <-finished:
 		// taskrun finished, we can stop watching
+		logger.Infof("TIMEOUT finished for %s", tr.Name)
 		return
 	case <-time.After(timeout):
+		logger.Infof("TIMEOUT timed out for %s", tr.Name)
 		t.StatusLock(tr)
 		defer t.StatusUnlock(tr)
 		if t.taskRunCallbackFunc != nil {
