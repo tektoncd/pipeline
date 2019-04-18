@@ -121,7 +121,7 @@ func getTimeout(d *metav1.Duration) time.Duration {
 // checkPipelineRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
 func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string, logger *zap.SugaredLogger) {
-	logger.Infof("TIMEOUT CHECK PIPELINE RUN TIMEOUTS")
+	logger.Infof("TIMEOUT HANDLER CHECK PIPELINE RUN TIMEOUT HANDLERS")
 	pipelineRuns, err := t.pipelineclientset.TektonV1alpha1().PipelineRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get pipelinerun list in namespace %s: %s", namespace, err)
@@ -153,7 +153,7 @@ func (t *TimeoutSet) CheckTimeouts(logger *zap.SugaredLogger) {
 // checkTaskRunTimeouts function creates goroutines to wait for pipelinerun to
 // finish/timeout in a given namespace
 func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, logger *zap.SugaredLogger) {
-	logger.Infof("TIMEOUT CHECK TASK RUN TIMEOUTS")
+	logger.Infof("TIMEOUT HANDLER CHECK TASK RUN TIMEOUT HANDLERS")
 	taskruns, err := t.pipelineclientset.TektonV1alpha1().TaskRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		t.logger.Errorf("Can't get taskrun list in namespace %s: %s", namespace, err)
@@ -171,7 +171,7 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, logger *zap.SugaredL
 // WaitTaskRun function creates a blocking function for taskrun to wait for
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out
 func (t *TimeoutSet) WaitTaskRun(logger *zap.SugaredLogger, tr *v1alpha1.TaskRun) {
-	logger.Infof("TIMEOUT starting task run wait for %s", tr.Name)
+	logger.Infof("TIMEOUT HANDLER starting task run wait for %s", tr.Name)
 	timeout := getTimeout(tr.Spec.Timeout)
 	runtime := time.Duration(0)
 
@@ -181,26 +181,26 @@ func (t *TimeoutSet) WaitTaskRun(logger *zap.SugaredLogger, tr *v1alpha1.TaskRun
 	}
 	t.StatusUnlock(tr)
 
-	logger.Infof("TIMEOUT runtime for %s is %s", tr.Name, runtime)
+	logger.Infof("TIMEOUT HANDLER runtime for %s is %s", tr.Name, runtime)
 
 	timeout -= runtime
 	finished := t.getOrCreateFinishedChan(tr)
 
-	logger.Infof("TIMEOUT teimout for %s is %s", tr.Name, timeout)
+	logger.Infof("TIMEOUT HANDLER teimout for %s is %s", tr.Name, timeout)
 
 	defer t.Release(tr)
 
 	select {
 	case <-t.stopCh:
 		// we're stopping, give up
-		logger.Infof("TIMEOUT stop for %s", tr.Name)
+		logger.Infof("TIMEOUT HANDLER stop for %s", tr.Name)
 		return
 	case <-finished:
 		// taskrun finished, we can stop watching
-		logger.Infof("TIMEOUT finished for %s", tr.Name)
+		logger.Infof("TIMEOUT HANDLER finished for %s", tr.Name)
 		return
 	case <-time.After(timeout):
-		logger.Infof("TIMEOUT timed out for %s", tr.Name)
+		logger.Infof("TIMEOUT HANDLER timed out for %s", tr.Name)
 		t.StatusLock(tr)
 		defer t.StatusUnlock(tr)
 		if t.taskRunCallbackFunc != nil {

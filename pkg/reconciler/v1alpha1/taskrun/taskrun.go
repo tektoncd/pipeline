@@ -245,7 +245,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
-	c.Logger.Infof("TIMEOUT about to check if timeout for %s", tr.Name)
+	c.Logger.Infof("TIMEOUT RECONCILER about to check if timeout for %s", tr.Name)
 	if timedOut, err := c.checkTimeout(tr, taskSpec, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete); err != nil {
 		return err
 	} else if timedOut {
@@ -528,19 +528,19 @@ func createRedirectedTaskSpec(kubeclient kubernetes.Interface, ts *v1alpha1.Task
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
 
 func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, dp DeletePod) (bool, error) {
-	c.Logger.Infof("TIMEOUT checking timeout for %s, starttime %s", tr.Name, tr.Status.StartTime)
+	c.Logger.Infof("TIMEOUT RECONCILER checking timeout for %s, starttime %s", tr.Name, tr.Status.StartTime)
 	// If tr has not started, startTime should be zero.
 	if tr.Status.StartTime.IsZero() {
 		return false, nil
 	}
 
-	c.Logger.Infof("TIMEOUT check if nil %s", tr.Name)
+	c.Logger.Infof("TIMEOUT RECONCILER check if nil %s", tr.Name)
 	if tr.Spec.Timeout != nil {
 		timeout := tr.Spec.Timeout.Duration
 		runtime := time.Since(tr.Status.StartTime.Time)
-		c.Logger.Infof("TIMEOUT not nil %s timeout %s runtime %s", tr.Name, timeout, runtime)
+		c.Logger.Infof("TIMEOUT RECONCILER not nil %s timeout %s runtime %s", tr.Name, timeout, runtime)
 		if runtime > timeout {
-			c.Logger.Infof("TIMEOUT greater for %s", tr.Name)
+			c.Logger.Infof("TIMEOUT RECONCILER greater for %s", tr.Name)
 			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
 			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
 				c.Logger.Errorf("Failed to terminate pod: %v", err)
