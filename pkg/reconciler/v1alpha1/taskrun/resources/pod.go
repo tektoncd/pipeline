@@ -39,6 +39,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/credentials"
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
+	"github.com/tektoncd/pipeline/pkg/merge"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
@@ -174,13 +175,13 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	if err != nil {
 		return nil, err
 	}
-
 	initContainers := []corev1.Container{*cred}
 	podContainers := []corev1.Container{}
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 
-	for i, step := range taskSpec.Steps {
+	for i := range taskSpec.Steps {
+		step := &taskSpec.Steps[i]
 		step.Env = append(implicitEnvVars, step.Env...)
 		// TODO(mattmoor): Check that volumeMounts match volumes.
 
@@ -206,10 +207,10 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 		}
 		// use the step name to add the entrypoint biary as an init container
 		if step.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
-			initContainers = append(initContainers, step)
+			initContainers = append(initContainers, *step)
 		} else {
-			zeroNonMaxResourceRequests(&step, i, maxIndicesByResource)
-			podContainers = append(podContainers, step)
+			zeroNonMaxResourceRequests(step, i, maxIndicesByResource)
+			podContainers = append(podContainers, *step)
 		}
 	}
 	// Add our implicit volumes and any volumes needed for secrets to the explicitly
@@ -231,6 +232,15 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger)
 	podContainers = append(podContainers, *nopContainer)
 
+	mergedInitContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, initContainers)
+	if err != nil {
+		return nil, err
+	}
+	mergedPodContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, podContainers)
+	if err != nil {
+		return nil, err
+	}
+
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			// We execute the build's pod in the same namespace as where the build was
@@ -249,10 +259,9 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
-			// If the build fails, don't restart it.
 			RestartPolicy:      corev1.RestartPolicyNever,
-			InitContainers:     initContainers,
-			Containers:         podContainers,
+			InitContainers:     mergedInitContainers,
+			Containers:         mergedPodContainers,
 			ServiceAccountName: taskRun.Spec.ServiceAccount,
 			Volumes:            volumes,
 			NodeSelector:       taskRun.Spec.NodeSelector,

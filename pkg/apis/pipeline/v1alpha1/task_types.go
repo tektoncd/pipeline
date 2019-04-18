@@ -49,6 +49,10 @@ type TaskSpec struct {
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// ContainerTemplate can be used as the basis for all step containers within the
+	// Task, so that the steps inherit settings on the base container.
+	ContainerTemplate *corev1.Container `json:"containerTemplate,omitempty"`
 }
 
 // Check that Task may be validated and defaulted.

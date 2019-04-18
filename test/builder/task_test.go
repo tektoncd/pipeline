@@ -49,6 +49,9 @@ func TestTask(t *testing.T) {
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 		})),
+		tb.TaskContainerTemplate(
+			tb.EnvVar("FRUIT", "BANANA"),
+		),
 	))
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
@@ -79,6 +82,12 @@ func TestTask(t *testing.T) {
 					HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 				},
 			}},
+			ContainerTemplate: &corev1.Container{
+				Env: []corev1.EnvVar{{
+					Name:  "FRUIT",
+					Value: "BANANA",
+				}},
+			},
 		},
 	}
 	if d := cmp.Diff(expectedTask, task); d != "" {

@@ -1478,6 +1478,15 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.ContainerTemplate != nil {
+		in, out := &in.ContainerTemplate, &out.ContainerTemplate
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(core_v1.Container)
+			(*in).DeepCopyInto(*out)
+		}
+	}
 	return
 }
 

@@ -82,6 +82,15 @@ var (
 
 	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("sa-step", "foo", tb.Command("/mycmd"))))
 
+	taskEnvTask = tb.Task("test-task-env", "foo", tb.TaskSpec(
+		tb.TaskContainerTemplate(
+			tb.EnvVar("FRUIT", "APPLE"),
+		),
+		tb.Step("env-step", "foo",
+			tb.EnvVar("ANOTHER", "VARIABLE"),
+			tb.EnvVar("FRUIT", "LEMON"),
+			tb.Command("/mycmd"))))
+
 	templatedTask = tb.Task("test-task-with-templating", "foo", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
@@ -134,25 +143,35 @@ var (
 		},
 	}
 
-	getCredentialsInitContainer = func(suffix string) tb.PodSpecOp {
-		return tb.PodInitContainer("build-step-credential-initializer-"+suffix, "override-with-creds:latest",
+	getCredentialsInitContainer = func(suffix string, ops ...tb.ContainerOp) tb.PodSpecOp {
+		actualOps := []tb.ContainerOp{
 			tb.Command("/ko-app/creds-init"),
 			tb.WorkingDir(workspaceDir),
 			tb.EnvVar("HOME", "/builder/home"),
 			tb.VolumeMount("workspace", workspaceDir),
 			tb.VolumeMount("home", "/builder/home"),
-		)
+		}
+
+		actualOps = append(actualOps, ops...)
+
+		return tb.PodInitContainer("build-step-credential-initializer-"+suffix, "override-with-creds:latest", actualOps...)
 	}
 
-	placeToolsInitContainer = tb.PodInitContainer("build-step-place-tools", "override-with-entrypoint:latest",
-		tb.Command("/bin/sh"),
-		tb.Args("-c", fmt.Sprintf("cp /ko-app/entrypoint %s", entrypointLocation)),
-		tb.WorkingDir(workspaceDir),
-		tb.EnvVar("HOME", "/builder/home"),
-		tb.VolumeMount("tools", "/builder/tools"),
-		tb.VolumeMount("workspace", workspaceDir),
-		tb.VolumeMount("home", "/builder/home"),
-	)
+	getPlaceToolsInitContainer = func(ops ...tb.ContainerOp) tb.PodSpecOp {
+		actualOps := []tb.ContainerOp{
+			tb.Command("/bin/sh"),
+			tb.Args("-c", fmt.Sprintf("cp /ko-app/entrypoint %s", entrypointLocation)),
+			tb.WorkingDir(workspaceDir),
+			tb.EnvVar("HOME", "/builder/home"),
+			tb.VolumeMount("tools", "/builder/tools"),
+			tb.VolumeMount("workspace", workspaceDir),
+			tb.VolumeMount("home", "/builder/home"),
+		}
+
+		actualOps = append(actualOps, ops...)
+
+		return tb.PodInitContainer("build-step-place-tools", "override-with-entrypoint:latest", actualOps...)
+	}
 )
 
 func getRunName(tr *v1alpha1.TaskRun) string {
@@ -197,6 +216,9 @@ func TestReconcile(t *testing.T) {
 	))
 	taskRunWithSaSuccess := tb.TaskRun("test-taskrun-with-sa-run-success", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")), tb.TaskRunServiceAccount("test-sa"),
+	))
+	taskRunTaskEnv := tb.TaskRun("test-taskrun-task-env", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskEnvTask.Name, tb.TaskRefAPIVersion("a1")),
 	))
 	taskRunTemplating := tb.TaskRun("test-taskrun-templating", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(templatedTask.Name, tb.TaskRefAPIVersion("a1")),
@@ -315,12 +337,12 @@ func TestReconcile(t *testing.T) {
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunTemplating, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
-		taskRunWithLabels, taskRunWithResourceRequests,
+		taskRunWithLabels, taskRunWithResourceRequests, taskRunTaskEnv,
 	}
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, outputTask},
+		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, outputTask, taskEnvTask},
 		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
 		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
 	}
@@ -341,7 +363,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("9l9zj"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-simple-step", "foo",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
@@ -377,7 +399,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("9l9zj"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-sa-step", "foo",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
@@ -418,7 +440,7 @@ func TestReconcile(t *testing.T) {
 				}, toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("mz4c7"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/git-init", "--",
@@ -493,7 +515,7 @@ func TestReconcile(t *testing.T) {
 				}, toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("vr6ds"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-create-dir-another-git-resource-78c5n", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/bash", "--",
@@ -621,7 +643,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("mz4c7"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/git-init", "--",
@@ -672,7 +694,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("9l9zj"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-simple-step", "foo",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
@@ -706,7 +728,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("mz4c7"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-git-source-workspace-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/ko-app/git-init", "--",
@@ -758,7 +780,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("9l9zj"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-simple-step", "foo",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
@@ -781,6 +803,44 @@ func TestReconcile(t *testing.T) {
 			),
 		),
 	}, {
+		name:    "task-env",
+		taskRun: taskRunTaskEnv,
+		wantPod: tb.Pod("test-taskrun-task-env-pod-311bc9", "foo",
+			tb.PodAnnotation("sidecar.istio.io/inject", "false"),
+			tb.PodLabel(taskNameLabelKey, "test-task-env"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-task-env"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-task-env",
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1")),
+			tb.PodSpec(
+				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getCredentialsInitContainer("9l9zj", tb.EnvVar("FRUIT", "APPLE")),
+				getPlaceToolsInitContainer(tb.EnvVar("FRUIT", "APPLE")),
+				tb.PodContainer("build-step-env-step", "foo", tb.Command(entrypointLocation),
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.EnvVar("ANOTHER", "VARIABLE"),
+					tb.EnvVar("FRUIT", "LEMON"),
+				),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+					tb.EnvVar("FRUIT", "APPLE"),
+				),
+			),
+		),
+	}, {
 		name:    "taskrun-with-resource-requests",
 		taskRun: taskRunWithResourceRequests,
 		wantPod: tb.Pod("test-taskrun-with-resource-requests-pod-123456", "foo",
@@ -792,7 +852,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("9l9zj"),
-				placeToolsInitContainer,
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("build-step-step1", "foo",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
