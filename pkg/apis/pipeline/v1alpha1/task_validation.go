@@ -136,58 +136,46 @@ func validateInputParameterVariables(steps []corev1.Container, inputs *Inputs) *
 }
 
 func validateResourceVariables(steps []corev1.Container, inputs *Inputs, outputs *Outputs) *apis.FieldError {
-	inputVars, err := getInputResourceVariables(inputs)
-	if err != nil {
-		return err
+	var err *apis.FieldError
+	inputVars := map[string]struct{}{}
+	outputVars := map[string]struct{}{}
+	if inputs != nil {
+		inputVars, err = getResourceVariables(inputs.Resources, "taskspec.inputs.resources.")
+		if err != nil {
+			return err
+		}
 	}
-	outputVars, err := getOutputResourceVariables(outputs)
-	if err != nil {
-		return err
+	if outputs != nil {
+		outputVars, err = getResourceVariables(outputs.Resources, "taskspec.outputs.resources.")
+		if err != nil {
+			return err
+		}
 	}
 	err = validateVariables(steps, "resources", "inputs.", inputVars)
 	if err != nil {
 		return err
 	}
-	return validateVariables(steps, "resources", "outputs.", outputVars)
+	err = validateVariables(steps, "resources", "outputs.", outputVars)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func getInputResourceVariables(inputs *Inputs) (map[string]struct{}, *apis.FieldError) {
+func getResourceVariables(resources []TaskResource, pathPrefix string) (map[string]struct{}, *apis.FieldError) {
 	vars := map[string]struct{}{}
-	if inputs != nil {
-		for _, r := range inputs.Resources {
-			attrs, err := AttributesFromType(r.Type)
-			if err != nil {
-				return nil, &apis.FieldError{
-					Message: fmt.Sprintf("invalid resource type %s", r.Type),
-					Paths:   []string{"taskspec.inputs.resources." + r.Name},
-					Details: err.Error(),
-				}
-			}
-			for _, a := range attrs {
-				rv := r.Name + "." + a
-				vars[rv] = struct{}{}
+	for _, r := range resources {
+		attrs, err := AttributesFromType(r.Type)
+		if err != nil {
+			return nil, &apis.FieldError{
+				Message: fmt.Sprintf("invalid resource type %s", r.Type),
+				Paths:   []string{pathPrefix + r.Name},
+				Details: err.Error(),
 			}
 		}
-	}
-	return vars, nil
-}
-
-func getOutputResourceVariables(outputs *Outputs) (map[string]struct{}, *apis.FieldError) {
-	vars := map[string]struct{}{}
-	if outputs != nil {
-		for _, r := range outputs.Resources {
-			attrs, err := AttributesFromType(r.Type)
-			if err != nil {
-				return nil, &apis.FieldError{
-					Message: fmt.Sprintf("invalid resource type %s", r.Type),
-					Paths:   []string{"taskspec.outputs.resources." + r.Name},
-					Details: err.Error(),
-				}
-			}
-			for _, a := range attrs {
-				rv := r.Name + "." + a
-				vars[rv] = struct{}{}
-			}
+		for _, a := range attrs {
+			rv := r.Name + "." + a
+			vars[rv] = struct{}{}
 		}
 	}
 	return vars, nil
