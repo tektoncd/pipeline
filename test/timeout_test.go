@@ -182,6 +182,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 func TestTaskRunTimeout(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("Timeout-%d", i), func(t *testing.T) {
+			index := i
 			c, namespace := setup(t)
 			t.Parallel()
 
@@ -193,7 +194,7 @@ func TestTaskRunTimeout(t *testing.T) {
 				tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 3000"))))); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
 			}
-			trName := fmt.Sprintf("run-giraffe-%d", i)
+			trName := fmt.Sprintf("run-giraffe-%d", index)
 			if _, err := c.TaskRunClient.Create(tb.TaskRun(trName, namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),
 				// Do not reduce this timeout. Taskrun e2e test is also verifying
 				// if reconcile is triggered from timeout handler and not by pod informers
