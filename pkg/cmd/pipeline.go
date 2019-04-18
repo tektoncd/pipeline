@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 )
 
@@ -26,9 +28,13 @@ var (
 var pipelinesCmd = &cobra.Command{
 	Use:     "pipelines",
 	Aliases: []string{"p", "pipeline"},
-
-	Short: "Handles pipelines",
-	Long:  `add long description`, // TODO(sthaha)
+	Short:   "Manage pipelines",
+	Run: func(cmd *cobra.Command, args []string) {
+		if len(args) == 0 {
+			cmd.Help()
+			os.Exit(0)
+		}
+	},
 }
 
 func init() {
