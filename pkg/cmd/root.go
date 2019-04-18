@@ -21,15 +21,13 @@ import (
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
-	cfgFile, kubeCfgFile string
-
-	kubeConfig *rest.Config
+	kubeCfgFile string
+	kubeConfig  *rest.Config
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -51,46 +49,12 @@ func Execute() error {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
 	cobra.OnInitialize(initKubeCfgFile)
 	cobra.OnInitialize(initKubeConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	rootCmd.PersistentFlags().StringVarP(
-		&cfgFile, "config", "c",
-		"", "config file (default: $HOME/.tekton.yaml)")
 	rootCmd.PersistentFlags().StringVarP(
 		&kubeCfgFile, "kubeconfig", "k",
 		"", "kubectl config file (default: $HOME/.kube/config)")
-
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".tektoncd-pipeline-client" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".tekton")
-	}
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-	}
 }
 
 func initKubeCfgFile() {
