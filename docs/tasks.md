@@ -86,7 +86,6 @@ kind: Task
 metadata:
   name: example-task-name
 spec:
-  serviceAccountName: task-auth-example
   inputs:
     resources:
       - name: workspace
@@ -104,7 +103,8 @@ spec:
       image: ubuntu
       args: ["ubuntu-build-example", "SECRETS-example.md"]
     - image: gcr.io/example-builders/build-example
-      args: ["echo", "${inputs.resources.params.pathToDockerFile}"]
+      command: ["echo"]
+      args: ["${inputs.resources.params.pathToDockerFile}"]
     - name: dockerfile-pushexample
       image: gcr.io/example-builders/push-example
       args: ["push", "${outputs.resources.builtImage.url}"]
