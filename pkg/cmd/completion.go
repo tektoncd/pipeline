@@ -50,6 +50,8 @@ Supported Shells:
 	},
 }
 
+// TODO: replace with cobra.ExactValidArgs(n int); may be in the next release 0.0.4
+// see: https://github.com/spf13/cobra/blob/67fc4837d267bc9bfd6e47f77783fcc3dffc68de/args.go#L84
 func exactValidArgs(n int) cobra.PositionalArgs {
 	nArgs := cobra.ExactArgs(n)
 
