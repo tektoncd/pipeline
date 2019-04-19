@@ -284,7 +284,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		}
 	} else {
 		// Pod is not present, create pod.
-		go c.timeoutHandler.WaitTaskRun(tr)
 		pod, err = c.createPod(tr, rtr.TaskSpec, rtr.TaskName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
