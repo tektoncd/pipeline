@@ -137,6 +137,8 @@ func validateInputParameterVariables(steps []corev1.Container, inputs *Inputs) *
 
 func validateResourceVariables(steps []corev1.Container, inputs *Inputs, outputs *Outputs) *apis.FieldError {
 	var err *apis.FieldError
+	// Keep track of input and output resources separately.
+	// This ensures we can validate against appropriate variables set.
 	inputVars := map[string]struct{}{}
 	outputVars := map[string]struct{}{}
 	if inputs != nil {
