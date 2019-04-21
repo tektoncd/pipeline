@@ -342,7 +342,7 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 		},
 	},
 		{
-			name: "inexistent output param variable",
+			name: "inexistent output resource variable",
 			fields: fields{
 				Inputs: &Inputs{
 					Resources: []TaskResource{{
