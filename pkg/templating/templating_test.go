@@ -79,6 +79,23 @@ func TestValidateVariables(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name: "nested variable",
+			args: args{
+				input:         "--flag=${inputs.resources.foo.url}",
+				prefix:        "resources",
+				contextPrefix: "inputs.",
+				locationName:  "step",
+				path:          "taskspec.steps",
+				vars: map[string]struct{}{
+					"foo.name":   {},
+					"foo.type":   {},
+					"foo.url":    {},
+					"foo.digest": {},
+				},
+			},
+			expectedError: nil,
+		},
+		{
 			name: "undefined variable",
 			args: args{
 				input:         "--flag=${inputs.params.baz}",
