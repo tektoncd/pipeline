@@ -19,6 +19,8 @@ type ClusterTaskExpansion interface{}
 
 type PipelineExpansion interface{}
 
+type PipelineListenerExpansion interface{}
+
 type PipelineResourceExpansion interface{}
 
 type PipelineRunExpansion interface{}

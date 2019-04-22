@@ -25,6 +25,8 @@ type Interface interface {
 	ClusterTasks() ClusterTaskInformer
 	// Pipelines returns a PipelineInformer.
 	Pipelines() PipelineInformer
+	// PipelineListeners returns a PipelineListenerInformer.
+	PipelineListeners() PipelineListenerInformer
 	// PipelineResources returns a PipelineResourceInformer.
 	PipelineResources() PipelineResourceInformer
 	// PipelineRuns returns a PipelineRunInformer.
@@ -54,6 +56,11 @@ func (v *version) ClusterTasks() ClusterTaskInformer {
 // Pipelines returns a PipelineInformer.
 func (v *version) Pipelines() PipelineInformer {
 	return &pipelineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// PipelineListeners returns a PipelineListenerInformer.
+func (v *version) PipelineListeners() PipelineListenerInformer {
+	return &pipelineListenerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // PipelineResources returns a PipelineResourceInformer.

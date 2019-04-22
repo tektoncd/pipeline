@@ -33,6 +33,10 @@ func (c *FakeTektonV1alpha1) Pipelines(namespace string) v1alpha1.PipelineInterf
 	return &FakePipelines{c, namespace}
 }
 
+func (c *FakeTektonV1alpha1) PipelineListeners(namespace string) v1alpha1.PipelineListenerInterface {
+	return &FakePipelineListeners{c, namespace}
+}
+
 func (c *FakeTektonV1alpha1) PipelineResources(namespace string) v1alpha1.PipelineResourceInterface {
 	return &FakePipelineResources{c, namespace}
 }
