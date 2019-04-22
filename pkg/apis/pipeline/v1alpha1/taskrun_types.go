@@ -144,9 +144,12 @@ type TaskRunStatus struct {
 func (tr *TaskRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 	return taskRunCondSet.Manage(tr).GetCondition(t)
 }
+
+// InitializeConditions will set all conditions in taskRunCondSet to unknown for the TaskRun
+// and set the started time to the current time
 func (tr *TaskRunStatus) InitializeConditions() {
 	if tr.StartTime.IsZero() {
-		tr.StartTime = &metav1.Time{time.Now()}
+		tr.StartTime = &metav1.Time{Time: time.Now()}
 	}
 	taskRunCondSet.Manage(tr).InitializeConditions()
 }
@@ -214,7 +217,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 	return ""
 }
 
-// HasPipeluneRunOwnerReference returns true of TaskRun has
+// HasPipelineRunOwnerReference returns true of TaskRun has
 // owner reference of type PipelineRun
 func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 	for _, ref := range tr.GetOwnerReferences() {
@@ -228,6 +231,11 @@ func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 // IsDone returns true if the TaskRun's status indicates that it is done.
 func (tr *TaskRun) IsDone() bool {
 	return !tr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
+}
+
+// HasStarted function check whether taskrun has valid start time set in its status
+func (tr *TaskRun) HasStarted() bool {
+	return tr.Status.StartTime != nil && !tr.Status.StartTime.IsZero()
 }
 
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state

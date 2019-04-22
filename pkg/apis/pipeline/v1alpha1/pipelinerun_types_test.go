@@ -136,7 +136,7 @@ func TestPipelineRunHasStarted(t *testing.T) {
 	}, {
 		name: "prWithStartTime",
 		prStatus: PipelineRunStatus{
-			StartTime: &metav1.Time{time.Now()},
+			StartTime: &metav1.Time{Time: time.Now()},
 		},
 		expectedValue: true,
 	}, {

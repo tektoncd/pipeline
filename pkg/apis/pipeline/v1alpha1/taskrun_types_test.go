@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
@@ -161,5 +162,43 @@ func TestTaskRunKey(t *testing.T) {
 	expectedKey := "TaskRun/testns/taskrunname"
 	if tr.GetRunKey() != expectedKey {
 		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, tr.GetRunKey())
+	}
+}
+
+func TestTaskRunHasStarted(t *testing.T) {
+	params := []struct {
+		name          string
+		trStatus      TaskRunStatus
+		expectedValue bool
+	}{{
+		name:          "trWithNoStartTime",
+		trStatus:      TaskRunStatus{},
+		expectedValue: false,
+	}, {
+		name: "trWithStartTime",
+		trStatus: TaskRunStatus{
+			StartTime: &metav1.Time{Time: time.Now()},
+		},
+		expectedValue: true,
+	}, {
+		name: "trWithZeroStartTime",
+		trStatus: TaskRunStatus{
+			StartTime: &metav1.Time{},
+		},
+		expectedValue: false,
+	}}
+	for _, tc := range params {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := &TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "prunname",
+					Namespace: "testns",
+				},
+				Status: tc.trStatus,
+			}
+			if tr.HasStarted() != tc.expectedValue {
+				t.Fatalf("Expected taskrun HasStarted() to return %t but got %t", tc.expectedValue, tr.HasStarted())
+			}
+		})
 	}
 }
