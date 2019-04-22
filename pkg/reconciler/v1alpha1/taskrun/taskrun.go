@@ -315,9 +315,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
-	c.timeoutHandler.StatusLock(tr)
 	updateStatusFromPod(tr, pod)
-	c.timeoutHandler.StatusUnlock(tr)
 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
