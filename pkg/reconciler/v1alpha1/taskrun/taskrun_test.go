@@ -978,6 +978,55 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
+func TestReconcile_SetsStartTime(t *testing.T) {
+	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(simpleTask.Name),
+	))
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{simpleTask},
+	}
+	testAssets := getTaskRunController(d)
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
+	}
+
+	if taskRun.Status.StartTime == nil || taskRun.Status.StartTime.IsZero() {
+		t.Errorf("expected startTime to be set by reconcile but was %q", taskRun.Status.StartTime)
+	}
+}
+
+func TestReconcile_DoesntChangeStartTime(t *testing.T) {
+	startTime := time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC)
+	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(simpleTask.Name)),
+		tb.TaskRunStatus(
+			tb.TaskRunStartTime(startTime),
+			tb.PodName("the-pod"),
+		),
+	)
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{simpleTask},
+		Pods: []*corev1.Pod{{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "the-pod",
+			},
+		}},
+	}
+	testAssets := getTaskRunController(d)
+
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
+	}
+
+	if taskRun.Status.StartTime.Time != startTime {
+		t.Errorf("expected startTime %q to be preserved by reconcile but was %q", startTime, taskRun.Status.StartTime)
+	}
+}
+
 func TestReconcileInvalidTaskRuns(t *testing.T) {
 	noTaskRun := tb.TaskRun("notaskrun", "foo", tb.TaskRunSpec(tb.TaskRunTaskRef("notask")))
 	withWrongRef := tb.TaskRun("taskrun-with-wrong-ref", "foo", tb.TaskRunSpec(
@@ -1288,13 +1337,6 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		Status: corev1.ConditionUnknown,
 		Reason: "Building",
 	}
-	// ignoreFields := cmpopts.IgnoreFields(v1alpha1.TaskRunStatus{}, "CompletionTime")
-	compareCompletionTime := cmp.Comparer(func(x, y *metav1.Time) bool {
-		if x == nil {
-			return y == nil
-		}
-		return y != nil
-	})
 	for _, c := range []struct {
 		desc      string
 		podStatus corev1.PodStatus
@@ -1329,7 +1371,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{conditionRunning},
 			},
 			Steps: []v1alpha1.StepState{{
-				corev1.ContainerState{
+				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
@@ -1357,7 +1399,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{conditionRunning},
 			},
 			Steps: []v1alpha1.StepState{{
-				corev1.ContainerState{
+				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
@@ -1409,7 +1451,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				}},
 			},
 			Steps: []v1alpha1.StepState{{
-				corev1.ContainerState{
+				ContainerState: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
@@ -1476,7 +1518,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				}},
 			},
 			Steps: []v1alpha1.StepState{{
-				corev1.ContainerState{
+				ContainerState: corev1.ContainerState{
 					Waiting: &corev1.ContainerStateWaiting{
 						Message: "i'm pending",
 					},
@@ -1546,15 +1588,25 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				},
 				Status: c.podStatus,
 			}
-			tr := tb.TaskRun("taskRun", "foo")
+			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
+			tr := tb.TaskRun("taskRun", "foo", tb.TaskRunStatus(tb.TaskRunStartTime(startTime)))
 			updateStatusFromPod(tr, p)
 
 			// Common traits, set for test case brevity.
 			c.want.PodName = "pod"
-			c.want.StartTime = &now
+			c.want.StartTime = &metav1.Time{Time: startTime}
 
-			if d := cmp.Diff(tr.Status, c.want, ignoreVolatileTime, compareCompletionTime); d != "" {
+			ensureTimeNotNil := cmp.Comparer(func(x, y *metav1.Time) bool {
+				if x == nil {
+					return y == nil
+				}
+				return y != nil
+			})
+			if d := cmp.Diff(tr.Status, c.want, ignoreVolatileTime, ensureTimeNotNil); d != "" {
 				t.Errorf("Diff:\n%s", d)
+			}
+			if tr.Status.StartTime.Time != c.want.StartTime.Time {
+				t.Errorf("Expected TaskRun startTime to be unchanged but was %s", tr.Status.StartTime)
 			}
 		})
 	}

@@ -153,6 +153,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	tr := original.DeepCopy()
+
+	// If the TaskRun is just starting, this will also set the starttime,
+	// from which the timeout will immediately begin counting down.
 	tr.Status.InitializeConditions()
 
 	if tr.IsDone() {
@@ -303,7 +306,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			c.Logger.Errorf("Failed to create build pod for task %q :%v", err, tr.Name)
 			return nil
 		}
-		go c.timeoutHandler.WaitTaskRun(tr)
+		go c.timeoutHandler.WaitTaskRun(tr, tr.Status.StartTime)
 	}
 	if err := c.tracker.Track(tr.GetBuildPodRef(), tr); err != nil {
 		c.Logger.Errorf("Failed to create tracker for build pod %q for taskrun %q: %v", tr.Name, tr.Name, err)
@@ -336,7 +339,6 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 		})
 	}
 
-	taskRun.Status.StartTime = &pod.CreationTimestamp
 	taskRun.Status.PodName = pod.Name
 
 	taskRun.Status.Steps = []v1alpha1.StepState{}
@@ -534,6 +536,8 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 	if tr.Spec.Timeout != nil {
 		timeout := tr.Spec.Timeout.Duration
 		runtime := time.Since(tr.Status.StartTime.Time)
+
+		c.Logger.Infof("Checking timeout for TaskRun %q (startTime %s, timeout %s, runtime %s)", tr.Name, tr.Status.StartTime, timeout, runtime)
 		if runtime > timeout {
 			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
 			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
