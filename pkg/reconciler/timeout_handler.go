@@ -93,23 +93,6 @@ func (t *TimeoutSet) getOrCreateFinishedChan(runObj StatusKey) chan bool {
 	return finished
 }
 
-// StatusLock function acquires lock for taskrun/pipelinerun status key
-func (t *TimeoutSet) StatusLock(runObj StatusKey) {
-	m, _ := t.statusMap.LoadOrStore(runObj.GetRunKey(), &sync.Mutex{})
-	mut := m.(*sync.Mutex)
-	mut.Lock()
-}
-
-// StatusUnlock function releases lock for taskrun/pipelinerun status key
-func (t *TimeoutSet) StatusUnlock(runObj StatusKey) {
-	m, ok := t.statusMap.Load(runObj.GetRunKey())
-	if !ok {
-		return
-	}
-	mut := m.(*sync.Mutex)
-	mut.Unlock()
-}
-
 func getTimeout(d *metav1.Duration) time.Duration {
 	timeout := defaultTimeout
 	if d != nil {

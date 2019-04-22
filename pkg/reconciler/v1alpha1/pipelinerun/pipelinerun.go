@@ -165,7 +165,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	// Don't modify the informer's copy.
 	pr := original.DeepCopy()
-	c.timeoutHandler.StatusLock(pr)
 	if !pr.HasStarted() {
 		pr.Status.InitializeConditions()
 		// start goroutine to track pipelinerun timeout only startTime is not set
@@ -173,7 +172,6 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	} else {
 		pr.Status.InitializeConditions()
 	}
-	c.timeoutHandler.StatusUnlock(original)
 
 	if pr.IsDone() {
 		c.timeoutHandler.Release(pr)
@@ -373,10 +371,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		}
 	}
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
-	c.timeoutHandler.StatusLock(pr)
 	after := resources.GetPipelineConditionStatus(pr.Name, pipelineState, c.Logger, pr.Status.StartTime, pr.Spec.Timeout)
 	pr.Status.SetCondition(after)
-	c.timeoutHandler.StatusUnlock(pr)
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
 	updateTaskRunsStatus(pr, pipelineState)
