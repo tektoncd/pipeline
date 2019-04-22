@@ -131,7 +131,9 @@ func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string) {
 		if pipelineRun.IsDone() || pipelineRun.IsCancelled() {
 			continue
 		}
-		go t.WaitPipelineRun(&pipelineRun)
+		if pipelineRun.HasStarted() {
+			go t.WaitPipelineRun(&pipelineRun, pipelineRun.Status.StartTime)
+		}
 	}
 }
 
@@ -162,74 +164,51 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string) {
 		if taskrun.IsDone() || taskrun.IsCancelled() {
 			continue
 		}
-		go t.WaitTaskRun(&taskrun)
-	}
-}
-
-// WaitTaskRun function creates a blocking function for taskrun to wait for
-// 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out
-func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun) {
-	timeout := getTimeout(tr.Spec.Timeout)
-	runtime := time.Duration(0)
-
-	t.StatusLock(tr)
-	if tr.Status.StartTime != nil && !tr.Status.StartTime.Time.IsZero() {
-		runtime = time.Since(tr.Status.StartTime.Time)
-	}
-	t.StatusUnlock(tr)
-	timeout -= runtime
-	finished := t.getOrCreateFinishedChan(tr)
-
-	defer t.Release(tr)
-
-	select {
-	case <-t.stopCh:
-		// we're stopping, give up
-		return
-	case <-finished:
-		// taskrun finished, we can stop watching
-		return
-	case <-time.After(timeout):
-		t.StatusLock(tr)
-		defer t.StatusUnlock(tr)
-		if t.taskRunCallbackFunc != nil {
-			t.taskRunCallbackFunc(tr)
-		} else {
-			defaultFunc(tr)
+		if taskrun.HasStarted() {
+			go t.WaitTaskRun(&taskrun, taskrun.Status.StartTime)
 		}
 	}
 }
 
+// WaitTaskRun function creates a blocking function for taskrun to wait for
+// 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out, which is
+// determined by checking if the tr's timeout has occurred since the startTime
+func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun, startTime *metav1.Time) {
+	t.waitRun(tr, getTimeout(tr.Spec.Timeout), startTime, t.taskRunCallbackFunc)
+}
+
 // WaitPipelineRun function creates a blocking function for pipelinerun to wait for
-// 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out
-func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun) {
-	timeout := getTimeout(pr.Spec.Timeout)
+// 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out which is
+// determined by checking if the tr's timeout has occurred since the startTime
+func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun, startTime *metav1.Time) {
+	t.waitRun(pr, getTimeout(pr.Spec.Timeout), startTime, t.pipelineRunCallbackFunc)
+}
 
-	runtime := time.Duration(0)
-	t.StatusLock(pr)
-	if pr.Status.StartTime != nil && !pr.Status.StartTime.Time.IsZero() {
-		runtime = time.Since(pr.Status.StartTime.Time)
+func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime *metav1.Time, callback func(interface{})) {
+	if startTime == nil {
+		t.logger.Errorf("startTime must be specified in order for a timeout to be calculated accurately for %s", runObj.GetRunKey())
+		return
 	}
-	t.StatusUnlock(pr)
-	timeout -= runtime
-	finished := t.getOrCreateFinishedChan(pr)
+	runtime := time.Since(startTime.Time)
+	finished := t.getOrCreateFinishedChan(runObj)
 
-	defer t.Release(pr)
+	defer t.Release(runObj)
+
+	t.logger.Infof("About to start timeout timer for %s. started at %s, timeout is %s, running for %s", runObj.GetRunKey(), startTime.Time, timeout, runtime)
 
 	select {
 	case <-t.stopCh:
-		// we're stopping, give up
+		t.logger.Info("Stopping timeout timer for %s", runObj.GetRunKey())
 		return
 	case <-finished:
-		// pipelinerun finished, we can stop watching
+		t.logger.Info("%s finished, stopping the timeout timer", runObj.GetRunKey())
 		return
-	case <-time.After(timeout):
-		t.StatusLock(pr)
-		defer t.StatusUnlock(pr)
-		if t.pipelineRunCallbackFunc != nil {
-			t.pipelineRunCallbackFunc(pr)
+	case <-time.After(timeout - runtime):
+		t.logger.Info("Timeout timer for %s has timed out (started at %s, timeout is %s, running for %s", runObj.GetRunKey(), startTime, timeout, time.Since(startTime.Time))
+		if callback != nil {
+			callback(runObj)
 		} else {
-			defaultFunc(pr)
+			defaultFunc(runObj)
 		}
 	}
 }

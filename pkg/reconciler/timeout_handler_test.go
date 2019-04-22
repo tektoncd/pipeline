@@ -114,7 +114,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 				}
 				return true, nil
 			}); err != nil {
-				t.Fatalf("Expected %s callback to be %t but got callback to be %#v", tc.name, tc.expectCallback, gotCallback)
+				t.Fatalf("Expected %s callback to be %t but got error: %s", tc.name, tc.expectCallback, err)
 			}
 		})
 	}
@@ -218,7 +218,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 				}
 				return true, nil
 			}); err != nil {
-				t.Fatalf("Expected %s callback to be %t but got callback to be %#+v", tc.name, tc.expectCallback, gotCallback)
+				t.Fatalf("Expected %s callback to be %t but got error: %s", tc.name, tc.expectCallback, err)
 			}
 		})
 	}

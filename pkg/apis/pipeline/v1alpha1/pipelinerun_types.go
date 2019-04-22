@@ -153,12 +153,13 @@ func (pr *PipelineRunStatus) GetCondition(t apis.ConditionType) *apis.Condition 
 }
 
 // InitializeConditions will set all conditions in pipelineRunCondSet to unknown for the PipelineRun
+// and set the started time to the current time
 func (pr *PipelineRunStatus) InitializeConditions() {
 	if pr.TaskRuns == nil {
 		pr.TaskRuns = make(map[string]*PipelineRunTaskRunStatus)
 	}
 	if pr.StartTime.IsZero() {
-		pr.StartTime = &metav1.Time{time.Now()}
+		pr.StartTime = &metav1.Time{Time: time.Now()}
 	}
 	pipelineRunCondSet.Manage(pr).InitializeConditions()
 }
