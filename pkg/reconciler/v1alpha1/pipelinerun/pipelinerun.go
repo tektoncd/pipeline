@@ -167,11 +167,12 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	pr := original.DeepCopy()
 	c.timeoutHandler.StatusLock(pr)
 	if !pr.HasStarted() {
+		pr.Status.InitializeConditions()
 		// start goroutine to track pipelinerun timeout only startTime is not set
-		go c.timeoutHandler.WaitPipelineRun(pr)
+		go c.timeoutHandler.WaitPipelineRun(pr, pr.Status.StartTime)
+	} else {
+		pr.Status.InitializeConditions()
 	}
-	pr.Status.InitializeConditions()
-
 	c.timeoutHandler.StatusUnlock(original)
 
 	if pr.IsDone() {
