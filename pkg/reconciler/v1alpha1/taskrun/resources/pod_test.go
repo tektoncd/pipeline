@@ -18,13 +18,16 @@ package resources
 
 import (
 	"crypto/rand"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -47,6 +50,68 @@ var (
 		}},
 	}
 )
+
+func TestTryGetPod(t *testing.T) {
+	err := fmt.Errorf("something went wrong")
+	for _, c := range []struct {
+		desc    string
+		trs     v1alpha1.TaskRunStatus
+		gp      GetPod
+		wantNil bool
+		wantErr error
+	}{{
+		desc: "no-pod",
+		trs:  v1alpha1.TaskRunStatus{},
+		gp: func(string, metav1.GetOptions) (*corev1.Pod, error) {
+			t.Errorf("Did not expect pod to be fetched")
+			return nil, nil
+		},
+		wantNil: true,
+		wantErr: nil,
+	}, {
+		desc: "non-existent-pod",
+		trs: v1alpha1.TaskRunStatus{
+			PodName: "no-longer-exist",
+		},
+		gp: func(name string, opts metav1.GetOptions) (*corev1.Pod, error) {
+			return nil, errors.NewNotFound(schema.GroupResource{}, name)
+		},
+		wantNil: true,
+		wantErr: nil,
+	}, {
+		desc: "existing-pod",
+		trs: v1alpha1.TaskRunStatus{
+			PodName: "exists",
+		},
+		gp: func(name string, opts metav1.GetOptions) (*corev1.Pod, error) {
+			return &corev1.Pod{}, nil
+		},
+		wantNil: false,
+		wantErr: nil,
+	}, {
+		desc: "pod-fetch-error",
+		trs: v1alpha1.TaskRunStatus{
+			PodName: "something-went-wrong",
+		},
+		gp: func(name string, opts metav1.GetOptions) (*corev1.Pod, error) {
+			return nil, err
+		},
+		wantNil: true,
+		wantErr: err,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			pod, err := TryGetPod(c.trs, c.gp)
+			if err != c.wantErr {
+				t.Fatalf("TryGetPod: %v", err)
+			}
+
+			wasNil := pod == nil
+			if wasNil != c.wantNil {
+				t.Errorf("Pod got %v, want %v", wasNil, c.wantNil)
+			}
+		})
+	}
+}
 
 func TestMakePod(t *testing.T) {
 	names.TestingSeed()

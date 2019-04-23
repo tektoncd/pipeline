@@ -275,14 +275,12 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
-	var pod *corev1.Pod
-	if tr.Status.PodName != "" {
-		pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
-		if err != nil {
-			c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
-			return err
-		}
-	} else {
+	pod, err := resources.TryGetPod(tr.Status, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get)
+	if err != nil {
+		c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
+		return err
+	}
+	if pod == nil {
 		// Pod is not present, create pod.
 		pod, err = c.createPod(tr, rtr.TaskSpec, rtr.TaskName)
 		if err != nil {

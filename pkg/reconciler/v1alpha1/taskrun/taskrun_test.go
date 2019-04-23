@@ -333,11 +333,16 @@ func TestReconcile(t *testing.T) {
 		),
 	)
 
+	taskRunWithPod := tb.TaskRun("test-taskrun-with-pod", "foo",
+		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTask.Name)),
+		tb.TaskRunStatus(tb.PodName("some-pod-that-no-longer-exists")),
+	)
+
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunTemplating, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
-		taskRunWithLabels, taskRunWithResourceRequests, taskRunTaskEnv,
+		taskRunWithLabels, taskRunWithResourceRequests, taskRunTaskEnv, taskRunWithPod,
 	}
 
 	d := test.Data{
@@ -907,6 +912,41 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("nop", "override-with-nop:latest",
 					tb.Command("/builder/tools/entrypoint"),
 					tb.Args("-wait_file", "/builder/tools/2", "-post_file", "/builder/tools/3", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
+			),
+		),
+	}, {
+		name:    "taskrun-with-pod",
+		taskRun: taskRunWithPod,
+		wantPod: tb.Pod("test-taskrun-with-pod-pod-123456", "foo",
+			tb.PodAnnotation("sidecar.istio.io/inject", "false"),
+			tb.PodLabel(taskNameLabelKey, "test-task"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-pod"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
+				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+			tb.PodSpec(
+				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getCredentialsInitContainer("9l9zj"),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("build-step-simple-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
+				),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"),
 					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
 				),
 			),
