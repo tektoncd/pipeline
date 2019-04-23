@@ -111,7 +111,7 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
    - For
      [the GCP service account `release-right-meow@tekton-releases.iam.gserviceaccount.com`](#production-service-account)
      which has the proper authorization to release the images and yamls in
-     [our `tekton-releases` GCP project](../infra/README.md#prow)
+     [our `tekton-releases` GCP project](https://github.com/tektoncd/plumbing#prow)
    - For
      [your own GCP service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts)
      if running against your own infrastructure
