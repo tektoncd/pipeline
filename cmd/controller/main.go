@@ -21,6 +21,7 @@ import (
 	"log"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -49,6 +50,7 @@ const (
 var (
 	masterURL  string
 	kubeconfig string
+	namespace  string
 )
 
 func main() {
@@ -100,8 +102,8 @@ func main() {
 		Logger:            logger,
 	}
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, opt.ResyncPeriod)
-	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactory(pipelineClient, opt.ResyncPeriod)
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(kubeClient, opt.ResyncPeriod, kubeinformers.WithNamespace(namespace))
+	pipelineInformerFactory := pipelineinformers.NewSharedInformerFactoryWithOptions(pipelineClient, opt.ResyncPeriod, pipelineinformers.WithNamespace(namespace))
 
 	taskInformer := pipelineInformerFactory.Tekton().V1alpha1().Tasks()
 	clusterTaskInformer := pipelineInformerFactory.Tekton().V1alpha1().ClusterTasks()
@@ -182,4 +184,5 @@ func main() {
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&namespace, "namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
 }
