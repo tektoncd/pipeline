@@ -93,9 +93,14 @@ const (
 	unnamedInitContainerPrefix = "build-step-unnamed-"
 	// Name of the credential initialization container.
 	credsInit = "credential-initializer"
+	// Name of the working dir initialization container.
+	workingDirInit = "working-dir-initializer"
 )
 
 var (
+	// The container used to initialize working directories before the build runs.
+	bashWorkingDirImage = flag.String("bash-working-dir-image", "override-with-bash-noop:latest",
+		"The container image for preparing our Build's working directories.")
 	// The container used to initialize credentials before the build runs.
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
@@ -162,6 +167,45 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 	}, volumes, nil
 }
 
+func makeWorkingDirScript(workingDirs map[string]bool) string {
+	script := ""
+	for wd := range workingDirs {
+		if wd != "" {
+			p := filepath.Clean(wd)
+			if rel, err := filepath.Rel(workspaceDir, p); err == nil && !strings.HasPrefix(rel, ".") {
+				if script == "" {
+					script = fmt.Sprintf("mkdir -p %s", p)
+				} else {
+					script = fmt.Sprintf("%s %s", script, p)
+				}
+			}
+		}
+	}
+
+	return script
+}
+
+func makeWorkingDirInitializer(steps []corev1.Container) *corev1.Container {
+	workingDirs := make(map[string]bool)
+	for _, step := range steps {
+		workingDirs[step.WorkingDir] = true
+	}
+
+	if script := makeWorkingDirScript(workingDirs); script != "" {
+		return &corev1.Container{
+			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + workingDirInit),
+			Image:        *bashWorkingDirImage,
+			Command:      []string{"/ko-app/bash"},
+			Args:         []string{"-args", script},
+			VolumeMounts: implicitVolumeMounts,
+			Env:          implicitEnvVars,
+			WorkingDir:   workspaceDir,
+		}
+	}
+
+	return nil
+}
+
 // GetPod returns the Pod for the given pod name
 type GetPod func(string, metav1.GetOptions) (*corev1.Pod, error)
 
@@ -196,6 +240,10 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}
 	initContainers := []corev1.Container{*cred}
 	podContainers := []corev1.Container{}
+
+	if workingDir := makeWorkingDirInitializer(taskSpec.Steps); workingDir != nil {
+		initContainers = append(initContainers, *workingDir)
+	}
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 
