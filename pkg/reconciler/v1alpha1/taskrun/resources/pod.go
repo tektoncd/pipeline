@@ -30,6 +30,7 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -159,6 +160,23 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 		Env:          implicitEnvVars,
 		WorkingDir:   workspaceDir,
 	}, volumes, nil
+}
+
+// GetPod returns the Pod for the given pod name
+type GetPod func(string, metav1.GetOptions) (*corev1.Pod, error)
+
+// TryGetPod fetches the TaskRun's pod, returning nil if it has not been created or it does not exist.
+func TryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp GetPod) (*corev1.Pod, error) {
+	if taskRunStatus.PodName == "" {
+		return nil, nil
+	}
+
+	pod, err := gp(taskRunStatus.PodName, metav1.GetOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		return pod, nil
+	}
+
+	return nil, err
 }
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
