@@ -109,7 +109,7 @@ func main() {
 	taskRunInformer := pipelineInformerFactory.Tekton().V1alpha1().TaskRuns()
 	resourceInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineResources()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
-	eventsListenerInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineListeners()
+	pipelineListenerInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineListeners()
 
 	pipelineInformer := pipelineInformerFactory.Tekton().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineRuns()
@@ -133,13 +133,17 @@ func main() {
 		resourceInformer,
 		timeoutHandler,
 	)
-	lrc := event
+	lrc := pipelinelistener.NewController(
+		kubeClient,
+		pipelineListenerInformer,
+	)
 
 	// Build all of our controllers, with the clients constructed above.
 	controllers := []*controller.Impl{
 		// Pipeline Controllers
 		trc,
 		prc,
+		lrc,
 	}
 	timeoutHandler.SetTaskRunCallbackFunc(trc.Enqueue)
 	timeoutHandler.SetPipelineRunCallbackFunc(prc.Enqueue)
@@ -162,6 +166,7 @@ func main() {
 		taskRunInformer.Informer().HasSynced,
 		resourceInformer.Informer().HasSynced,
 		podInformer.Informer().HasSynced,
+		pipelineInformer.Informer().HasSynced,
 	} {
 		if ok := cache.WaitForCacheSync(stopCh, synced); !ok {
 			logger.Fatalf("failed to wait for cache at index %v to sync", i)

@@ -28,9 +28,9 @@ var (
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineListenerSpec struct {
 	PipelineRef PipelineRef `json:"pipelineRef"`
-	// The port the listener will bind to,
-	Port int `json:"Poort"`
-	// The specific type of event the listener will handle.
+	// The port the listener will bind to
+	Port int `json:"Port"`
+	// The specific type of event the listener will handle
 	EventType string `json:"eventtype"`
 	// The mechanism the listener will use to handle messages; defaults to cloudevent
 	Event string `json:"event"`
@@ -63,10 +63,12 @@ type PipelineListenerSpecStatus string
 // PipelineListenerStatus defines the observed state of PipelineListenerStatus
 type PipelineListenerStatus struct {
 	duckv1beta1.Status `json:",inline"`
-
+	// namespace of the listener
+	Namespace string `json:"namespace"`
+	// statefulset name of the listeners set
+	StatefulSetName string `json:"statefulsetname"`
 	// +optional
 	Results *Results `json:"results,omitempty"`
-
 	// map of PipelineRunTaskRunStatus with the taskRun name as the key
 	// +optional
 	PipelineRuns map[string]*PipelineRunStatus `json:"pipelineRuns,omitempty"`

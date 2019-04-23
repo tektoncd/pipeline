@@ -32,6 +32,7 @@ type Config struct {
 	MasterURL        string `env:"MASTER_URL"`
 	Kubeconfig       string `env:"KUBECONFIG"`
 	Namespace        string `env:"NAMESPACE"`
+	ServiceAccount   string `env:"SERVICEACCOUNT"`
 	ListenerResource string `env:"LISTENER_RESOURCE"`
 	Port             int    `env:"PORT"`
 	SetBuildSha      bool   `env:"SETBUILDSHA"`
@@ -39,15 +40,16 @@ type Config struct {
 
 // EventListener boots cloudevent receiver and awaits a particular event to build
 type EventListener struct {
-	event       string
-	eventType   string
-	namespace   string
-	clientset   clientset.Interface
-	mux         *sync.Mutex
-	runSpec     v1alpha1.PipelineRunSpec
-	runName     string
-	port        int
-	setBuildSha bool
+	event          string
+	eventType      string
+	namespace      string
+	runName        string
+	serviceAccount string
+	clientset      clientset.Interface
+	mux            *sync.Mutex
+	runSpec        v1alpha1.PipelineRunSpec
+	port           int
+	setBuildSha    bool
 }
 
 func main() {
@@ -80,15 +82,16 @@ func main() {
 	}
 	listenerName := fmt.Sprintf("%s-%s", listener.Name, cfg.Port)
 	e := &EventListener{
-		event:       cfg.Event,
-		eventType:   cfg.EventType,
-		port:        cfg.Port,
-		namespace:   cfg.Namespace,
-		mux:         &sync.Mutex{},
-		clientset:   pipelineClient,
-		runName:     listenerName,
-		runSpec:     listener.Spec.PipelineRunSpec,
-		setBuildSha: cfg.SetBuildSha,
+		event:          cfg.Event,
+		eventType:      cfg.EventType,
+		port:           cfg.Port,
+		namespace:      cfg.Namespace,
+		mux:            &sync.Mutex{},
+		clientset:      pipelineClient,
+		runName:        listenerName,
+		runSpec:        listener.Spec.PipelineRunSpec,
+		setBuildSha:    cfg.SetBuildSha,
+		serviceAccount: cfg.ServiceAccount,
 	}
 
 	switch e.event {

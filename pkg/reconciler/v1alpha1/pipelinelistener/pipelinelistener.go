@@ -29,11 +29,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/knative/pkg/controller"
-	"github.com/kubernetes/apimachinery/pkg/util/json"
 	"github.com/tektoncd/pipeline/pkg/logging"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
@@ -52,10 +50,8 @@ var (
 type Reconciler struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
-	// buildclientset is a clientset for our own API group
-	clientset clientset.Interface
 	// Listing cloud event listeners
-	eventsListenerLister listers.PipelineListenerLister
+	pipelineListenerLister listers.PipelineListenerLister
 	// logger for inner info
 	logger *zap.SugaredLogger
 }
@@ -66,20 +62,18 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 // NewController returns a new cloud events listener controller
 func NewController(
 	kubeclientset kubernetes.Interface,
-	clientset clientset.Interface,
 	pipelineListenerInformer informers.PipelineListenerInformer,
 ) *controller.Impl {
 	// Enrich the logs with controller name
 	logger, _ := logging.NewLogger("", "pipeline-listener")
 
 	r := &Reconciler{
-		kubeclientset:        kubeclientset,
-		clientset:            clientset,
-		eventsListenerLister: pipelineListenerInformer.Lister(),
-		logger:               logger,
+		kubeclientset:          kubeclientset,
+		pipelineListenerLister: pipelineListenerInformer.Lister(),
+		logger:                 logger,
 	}
-	impl := controller.NewImpl(r, logger, "CloudEventsListener",
-		reconciler.MustNewStatsReporter("CloudEventsListener", r.logger))
+	impl := controller.NewImpl(r, logger, "PipelineListener",
+		reconciler.MustNewStatsReporter("PipelineListener", r.logger))
 
 	logger.Info("Setting up pipeline-listener event handler")
 	// Set up an event handler for when PipelineListener resources change
@@ -101,103 +95,68 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return nil
 	}
 
-	cel, err := c.eventsListenerLister.PipelineListeners(namespace).Get(name)
+	pl, err := c.pipelineListenerLister.PipelineListeners(namespace).Get(name)
 	if errors.IsNotFound(err) {
-		c.logger.Errorf("cloud event listener %q in work queue no longer exists", key)
+		c.logger.Errorf("listener %q in work queue no longer exists", key)
 		return nil
 	} else if err != nil {
 		return err
 	}
 
-	cel = cel.DeepCopy()
-	setName := cel.Name + "-statefulset"
-
-	buildData, err := json.Marshal(cel.Spec.Build)
-	if err != nil {
-		c.logger.Errorf("could not marshal cloudevent: %q", key)
-		return err
-
-	}
+	pl = pl.DeepCopy()
+	setName := pl.Name + "-statefulset"
 
 	containerEnv := []corev1.EnvVar{
 		{
 			Name:  "EVENT_TYPE",
-			Value: cel.Spec.CloudEventType,
+			Value: pl.Spec.EventType,
 		},
 		{
-			Name:  "BRANCH",
-			Value: cel.Spec.Branch,
+			Name:  "Event",
+			Value: pl.Spec.Event,
 		},
 		{
 			Name:  "NAMESPACE",
-			Value: cel.Spec.Namespace,
+			Value: pl.Spec.Namespace,
+		},
+		{
+			Name:  "LISTENER_RESOURCE",
+			Value: pl.Name,
+		},
+		{
+			Name:  "Port",
+			Value: string(pl.Spec.Port),
 		},
 	}
 
-	c.logger.Infof("launching listener with type: %s branch: %s namespace: %s service account %s",
-		cel.Spec.CloudEventType,
-		cel.Spec.Branch,
-		cel.Spec.Namespace,
-		cel.Spec.ServiceAccount,
+	c.logger.Infof("launching pipeline-listener %s with type: %s namespace: %s service account %s",
+		pl.Name,
+		pl.Spec.EventType,
+		pl.Spec.Namespace,
 	)
-
-	secretName := "knative-cloud-event-listener-secret-" + name
-
-	// mount a secret to house the desired build definition
-	secret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: cel.Namespace,
-		},
-		Data: map[string][]byte{
-			"build.json": []byte(buildData),
-		},
-	}
-
-	_, err = c.kubeclientset.Core().Secrets(cel.Namespace).Get(secretName, metav1.GetOptions{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			_, err = c.kubeclientset.Core().Secrets(cel.Namespace).Create(&secret)
-			if err != nil {
-				c.logger.Errorf("Unable to create build secret:", err)
-				return err
-			}
-
-		} else {
-			c.logger.Errorf("Unable to get build secret:", err)
-			return err
-		}
-	}
 
 	// Create a stateful set for the listener. It mounts a secret containing the build information.
 	// The build spec may contain sensetive data and therefore the whole thing seems safest/easiest as a secret
 	set := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      setName,
-			Namespace: cel.Namespace,
+			Namespace: pl.Namespace,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"statefulset": cel.Name + "-statefulset"},
+				MatchLabels: map[string]string{"statefulset": pl.Name + "-statefulset"},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
-					"statefulset": cel.Name + "-statefulset",
+					"statefulset": pl.Name + "-statefulset",
 				}},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: cel.Spec.ServiceAccount,
+					ServiceAccountName: pl.Spec.PipelineRunSpec.ServiceAccount,
 					Containers: []corev1.Container{
 						{
-							Name:  "cloud-events-listener",
+							Name:  "pipeline-listener",
 							Image: *listenerImage,
 							Env:   containerEnv,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "build-volume",
-									MountPath: "/root/builddata",
-									ReadOnly:  true,
-								},
-							},
 							Ports: []corev1.ContainerPort{
 								{
 									Name:          "listener-port",
@@ -207,27 +166,17 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 							},
 						},
 					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "build-volume",
-							VolumeSource: corev1.VolumeSource{
-								Secret: &corev1.SecretVolumeSource{
-									SecretName: secretName,
-								},
-							},
-						},
-					},
 				},
 			},
 		},
 	}
 
-	found, err := c.kubeclientset.AppsV1().StatefulSets(cel.Namespace).Get(setName, metav1.GetOptions{})
+	found, err := c.kubeclientset.AppsV1().StatefulSets(pl.Namespace).Get(setName, metav1.GetOptions{})
 	if err != nil && errors.IsNotFound(err) {
 		c.logger.Info("Creating StatefulSet", "namespace", set.Namespace, "name", set.Name)
-		created, err := c.kubeclientset.AppsV1().StatefulSets(cel.Namespace).Create(set)
-		cel.Status = v1alpha1.PipelineListenerStatus{
-			Namespace:       cel.Namespace,
+		created, err := c.kubeclientset.AppsV1().StatefulSets(pl.Namespace).Create(set)
+		pl.Status = v1alpha1.PipelineListenerStatus{
+			Namespace:       pl.Namespace,
 			StatefulSetName: created.Name,
 		}
 
@@ -239,12 +188,12 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	if !reflect.DeepEqual(set.Spec, found.Spec) {
 		found.Spec = set.Spec
 		c.logger.Info("Updating Stateful Set", "namespace", set.Namespace, "name", set.Name)
-		updated, err := c.kubeclientset.AppsV1().StatefulSets(cel.Namespace).Update(found)
+		updated, err := c.kubeclientset.AppsV1().StatefulSets(pl.Namespace).Update(found)
 		if err != nil {
 			return err
 		}
-		cel.Status = v1alpha1.PipelineListenerStatus{
-			Namespace:       cel.Namespace,
+		pl.Status = v1alpha1.PipelineListenerStatus{
+			Namespace:       pl.Namespace,
 			StatefulSetName: updated.Name,
 		}
 	}
