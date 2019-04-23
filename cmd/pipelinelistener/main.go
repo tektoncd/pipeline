@@ -38,7 +38,7 @@ type Config struct {
 	SetBuildSha      bool   `env:"SETBUILDSHA"`
 }
 
-// EventListener boots cloudevent receiver and awaits a particular event to build
+// EventListener starts an event receiver to accept data to trigger pipelineruns.
 type EventListener struct {
 	event          string
 	eventType      string

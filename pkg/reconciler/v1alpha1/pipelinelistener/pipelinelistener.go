@@ -21,6 +21,7 @@ import (
 	"flag"
 	"reflect"
 
+	"encoding/base64"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,7 +43,7 @@ const controllerAgentName = "cloudeventslistener-controller"
 
 var (
 	// The container used to accept cloud events and generate builds.
-	listenerImage = flag.String("cloud-events-listener-image", "override:latest",
+	listenerImage = flag.String("listener-image", "override:latest",
 		"The container image for the cloud event listener.")
 )
 
@@ -106,30 +107,35 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	pl = pl.DeepCopy()
 	setName := pl.Name + "-statefulset"
 
+	eventType := base64.StdEncoding.EncodeToString([]byte(pl.Spec.EventType))
+	event := base64.StdEncoding.EncodeToString([]byte(pl.Spec.Event))
+	ns := base64.StdEncoding.EncodeToString([]byte(pl.Spec.Namespace))
+	listenerName := base64.StdEncoding.EncodeToString([]byte(pl.Name))
+
 	containerEnv := []corev1.EnvVar{
 		{
 			Name:  "EVENT_TYPE",
-			Value: pl.Spec.EventType,
+			Value: eventType,
 		},
 		{
-			Name:  "Event",
-			Value: pl.Spec.Event,
+			Name:  "EVENT",
+			Value: event,
 		},
 		{
 			Name:  "NAMESPACE",
-			Value: pl.Spec.Namespace,
+			Value: ns,
 		},
 		{
 			Name:  "LISTENER_RESOURCE",
-			Value: pl.Name,
+			Value: listenerName,
 		},
 		{
-			Name:  "Port",
+			Name:  "PORT",
 			Value: string(pl.Spec.Port),
 		},
 	}
 
-	c.logger.Infof("launching pipeline-listener %s with type: %s namespace: %s service account %s",
+	c.logger.Infof("launching pipeline-listener %s with type: %s namespace: %s",
 		pl.Name,
 		pl.Spec.EventType,
 		pl.Spec.Namespace,
