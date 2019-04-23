@@ -73,7 +73,7 @@ kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  serviceAccount: buid-bot
+  serviceAccount: build-bot
   taskRef:
     name: build-push
 ```
