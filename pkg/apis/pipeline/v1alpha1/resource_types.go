@@ -170,6 +170,19 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 func AttributesFromType(prt PipelineResourceType) ([]string, error) {
 	r := &PipelineResource{}
 	r.Spec.Type = prt
+	if prt == PipelineResourceTypeStorage {
+		r.Spec.Params = []Param{
+
+			{
+				Name:  "type",
+				Value: string(PipelineResourceTypeGCS),
+			},
+			{
+				Name:  "Location",
+				Value: "/",
+			},
+		}
+	}
 	resource, err := ResourceFromType(r)
 	if err != nil {
 		return nil, err

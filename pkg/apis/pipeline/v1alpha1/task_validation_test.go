@@ -378,3 +378,62 @@ func TestTaskSpec_ValidateError(t *testing.T) {
 		})
 	}
 }
+
+func TestGetResourceVariables(t *testing.T) {
+	tests := []struct {
+		name         string
+		pathPrefix   string
+		resources    []TaskResource
+		expectedVars map[string]struct{}
+	}{
+		{
+			name:         "empty resources",
+			pathPrefix:   "taskspec.outputs.resources.",
+			resources:    []TaskResource{},
+			expectedVars: map[string]struct{}{},
+		},
+		{
+			name:       "single resource",
+			pathPrefix: "taskspec.outputs.resources.",
+			resources:  []TaskResource{validResource},
+			expectedVars: map[string]struct{}{
+				"source.name":     struct{}{},
+				"source.type":     struct{}{},
+				"source.url":      struct{}{},
+				"source.revision": struct{}{},
+			},
+		},
+		{
+			name:       "multiple resources",
+			pathPrefix: "taskspec.outputs.resources.",
+			resources: []TaskResource{
+				validResource,
+				TaskResource{
+					Name: "foo",
+					Type: PipelineResourceTypeImage,
+				},
+			},
+			expectedVars: map[string]struct{}{
+				"source.name":     struct{}{},
+				"source.type":     struct{}{},
+				"source.url":      struct{}{},
+				"source.revision": struct{}{},
+				"foo.name":        struct{}{},
+				"foo.type":        struct{}{},
+				"foo.url":         struct{}{},
+				"foo.digest":      struct{}{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vars, err := getResourceVariables(tt.resources, tt.pathPrefix)
+			if err != nil {
+				t.Errorf("getResourceVariables() = %v", err)
+			}
+			if d := cmp.Diff(tt.expectedVars, vars); d != "" {
+				t.Errorf("getResourceVariables results diff -want, +got: %v", d)
+			}
+		})
+	}
+}
