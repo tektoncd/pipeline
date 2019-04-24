@@ -26,11 +26,11 @@ type TektonV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClusterTasksGetter
 	PipelinesGetter
-	PipelineListenersGetter
 	PipelineResourcesGetter
 	PipelineRunsGetter
 	TasksGetter
 	TaskRunsGetter
+	TektonListenersGetter
 }
 
 // TektonV1alpha1Client is used to interact with features provided by the tekton.dev group.
@@ -44,10 +44,6 @@ func (c *TektonV1alpha1Client) ClusterTasks() ClusterTaskInterface {
 
 func (c *TektonV1alpha1Client) Pipelines(namespace string) PipelineInterface {
 	return newPipelines(c, namespace)
-}
-
-func (c *TektonV1alpha1Client) PipelineListeners(namespace string) PipelineListenerInterface {
-	return newPipelineListeners(c, namespace)
 }
 
 func (c *TektonV1alpha1Client) PipelineResources(namespace string) PipelineResourceInterface {
@@ -64,6 +60,10 @@ func (c *TektonV1alpha1Client) Tasks(namespace string) TaskInterface {
 
 func (c *TektonV1alpha1Client) TaskRuns(namespace string) TaskRunInterface {
 	return newTaskRuns(c, namespace)
+}
+
+func (c *TektonV1alpha1Client) TektonListeners(namespace string) TektonListenerInterface {
+	return newTektonListeners(c, namespace)
 }
 
 // NewForConfig creates a new TektonV1alpha1Client for the given config.

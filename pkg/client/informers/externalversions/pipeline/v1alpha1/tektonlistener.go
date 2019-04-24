@@ -28,59 +28,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// PipelineListenerInformer provides access to a shared informer and lister for
-// PipelineListeners.
-type PipelineListenerInformer interface {
+// TektonListenerInformer provides access to a shared informer and lister for
+// TektonListeners.
+type TektonListenerInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.PipelineListenerLister
+	Lister() v1alpha1.TektonListenerLister
 }
 
-type pipelineListenerInformer struct {
+type tektonListenerInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewPipelineListenerInformer constructs a new informer for PipelineListener type.
+// NewTektonListenerInformer constructs a new informer for TektonListener type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewPipelineListenerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredPipelineListenerInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewTektonListenerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredTektonListenerInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredPipelineListenerInformer constructs a new informer for PipelineListener type.
+// NewFilteredTektonListenerInformer constructs a new informer for TektonListener type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredPipelineListenerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredTektonListenerInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1alpha1().PipelineListeners(namespace).List(options)
+				return client.TektonV1alpha1().TektonListeners(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.TektonV1alpha1().PipelineListeners(namespace).Watch(options)
+				return client.TektonV1alpha1().TektonListeners(namespace).Watch(options)
 			},
 		},
-		&pipeline_v1alpha1.PipelineListener{},
+		&pipeline_v1alpha1.TektonListener{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *pipelineListenerInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredPipelineListenerInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *tektonListenerInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredTektonListenerInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *pipelineListenerInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pipeline_v1alpha1.PipelineListener{}, f.defaultInformer)
+func (f *tektonListenerInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&pipeline_v1alpha1.TektonListener{}, f.defaultInformer)
 }
 
-func (f *pipelineListenerInformer) Lister() v1alpha1.PipelineListenerLister {
-	return v1alpha1.NewPipelineListenerLister(f.Informer().GetIndexer())
+func (f *tektonListenerInformer) Lister() v1alpha1.TektonListenerLister {
+	return v1alpha1.NewTektonListenerLister(f.Informer().GetIndexer())
 }

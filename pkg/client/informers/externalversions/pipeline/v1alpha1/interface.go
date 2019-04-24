@@ -25,8 +25,6 @@ type Interface interface {
 	ClusterTasks() ClusterTaskInformer
 	// Pipelines returns a PipelineInformer.
 	Pipelines() PipelineInformer
-	// PipelineListeners returns a PipelineListenerInformer.
-	PipelineListeners() PipelineListenerInformer
 	// PipelineResources returns a PipelineResourceInformer.
 	PipelineResources() PipelineResourceInformer
 	// PipelineRuns returns a PipelineRunInformer.
@@ -35,6 +33,8 @@ type Interface interface {
 	Tasks() TaskInformer
 	// TaskRuns returns a TaskRunInformer.
 	TaskRuns() TaskRunInformer
+	// TektonListeners returns a TektonListenerInformer.
+	TektonListeners() TektonListenerInformer
 }
 
 type version struct {
@@ -58,11 +58,6 @@ func (v *version) Pipelines() PipelineInformer {
 	return &pipelineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// PipelineListeners returns a PipelineListenerInformer.
-func (v *version) PipelineListeners() PipelineListenerInformer {
-	return &pipelineListenerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
 // PipelineResources returns a PipelineResourceInformer.
 func (v *version) PipelineResources() PipelineResourceInformer {
 	return &pipelineResourceInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
@@ -81,4 +76,9 @@ func (v *version) Tasks() TaskInformer {
 // TaskRuns returns a TaskRunInformer.
 func (v *version) TaskRuns() TaskRunInformer {
 	return &taskRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TektonListeners returns a TektonListenerInformer.
+func (v *version) TektonListeners() TektonListenerInformer {
+	return &tektonListenerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

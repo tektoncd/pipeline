@@ -31,7 +31,7 @@ import (
 	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
 	"github.com/knative/pkg/controller"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinelistener"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/tektonlistener"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"
 	"github.com/tektoncd/pipeline/pkg/system"
@@ -109,7 +109,7 @@ func main() {
 	taskRunInformer := pipelineInformerFactory.Tekton().V1alpha1().TaskRuns()
 	resourceInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineResources()
 	podInformer := kubeInformerFactory.Core().V1().Pods()
-	pipelineListenerInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineListeners()
+	tektonListenerInformer := pipelineInformerFactory.Tekton().V1alpha1().TektonListeners()
 
 	pipelineInformer := pipelineInformerFactory.Tekton().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineRuns()
@@ -133,9 +133,9 @@ func main() {
 		resourceInformer,
 		timeoutHandler,
 	)
-	lrc := pipelinelistener.NewController(
+	lrc := tektonlistener.NewController(
 		kubeClient,
-		pipelineListenerInformer,
+		tektonListenerInformer,
 	)
 
 	// Build all of our controllers, with the clients constructed above.

@@ -22,11 +22,11 @@ import (
 )
 
 var (
-	pipelineListenerControllerName = "PipelineListener"
+	tektonListenerControllerName = "TektonListener"
 )
 
-// PipelineRunSpec defines the desired state of PipelineRun
-type PipelineListenerSpec struct {
+// TektonListenerSpec defines the desired state of PipelineRun
+type TektonListenerSpec struct {
 	PipelineRef PipelineRef `json:"pipelineRef"`
 	// The port the listener will bind to
 	Port int `json:"Port"`
@@ -37,31 +37,31 @@ type PipelineListenerSpec struct {
 	// The namespace the listener and pipelineruns should be created in
 	Namespace string `json:"namespace"`
 	// The spec of the desired pipeline run
-	PipelineRunSpec PipelineRunSpec `json:"pipelinerunspec"`
+	PipelineRunSpec *PipelineRunSpec `json:"pipelinerunspec"`
 	// The status of the listener
-	PipelineListenerSpecStatus string `json:"pipelinespecstatus"`
+	TektonListenerSpecStatus string `json:"pipelinespecstatus"`
 }
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// PipelineListener defines listener status.
+// TektonListener defines listener status.
 // +k8s:openapi-gen=true
-type PipelineListener struct {
+type TektonListener struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	// +optional
-	Spec PipelineListenerSpec `json:"spec,omitempty"`
+	Spec TektonListenerSpec `json:"spec,omitempty"`
 	// +optional
-	Status PipelineListenerStatus `json:"status,omitempty"`
+	Status TektonListenerStatus `json:"status,omitempty"`
 }
 
-// PipelineListenerSpecStatus defines the pipelinerun spec status the user can provide
-type PipelineListenerSpecStatus string
+// TektonListenerSpecStatus defines the pipelinerun spec status the user can provide
+type TektonListenerSpecStatus string
 
-// PipelineListenerStatus defines the observed state of PipelineListenerStatus
-type PipelineListenerStatus struct {
+// TektonListenerStatus defines the observed state of TektonListenerStatus
+type TektonListenerStatus struct {
 	duckv1beta1.Status `json:",inline"`
 	// namespace of the listener
 	Namespace string `json:"namespace"`
@@ -76,10 +76,10 @@ type PipelineListenerStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// PipelineRunList contains a list of PipelineRun
-type PipelineListenerList struct {
+// TektonListenerList contains a list of PipelineRun
+type TektonListenerList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PipelineListener `json:"items"`
+	Items           []TektonListener `json:"items"`
 }

@@ -435,14 +435,6 @@
   revision = "8c8ba71c83aa5ec7928c32fa6e4d9c07d18141b0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:f142cc9c8177a31661d789d8e45bbd172d1811cc48c5725cbcbe5e18dbb442cc"
-  name = "github.com/kubernetes/apimachinery"
-  packages = ["pkg/util/json"]
-  pruneopts = "NUT"
-  revision = "b874eabb9a4eb99cef27db5c8d06f16542580cec"
-
-[[projects]]
   digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
   name = "github.com/markbates/inflect"
   packages = ["."]
@@ -1262,7 +1254,6 @@
     "github.com/knative/pkg/webhook",
     "github.com/knative/test-infra/scripts",
     "github.com/knative/test-infra/tools/dep-collector",
-    "github.com/kubernetes/apimachinery/pkg/util/json",
     "github.com/mitchellh/go-homedir",
     "github.com/pkg/errors",
     "go.opencensus.io/trace",

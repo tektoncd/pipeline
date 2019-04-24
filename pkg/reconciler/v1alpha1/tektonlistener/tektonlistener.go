@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipelinelistener
+package tektonlistener
 
 import (
 	"context"
@@ -52,7 +52,7 @@ type Reconciler struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
 	// Listing cloud event listeners
-	pipelineListenerLister listers.PipelineListenerLister
+	tektonListenerLister listers.TektonListenerLister
 	// logger for inner info
 	logger *zap.SugaredLogger
 }
@@ -63,22 +63,22 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 // NewController returns a new cloud events listener controller
 func NewController(
 	kubeclientset kubernetes.Interface,
-	pipelineListenerInformer informers.PipelineListenerInformer,
+	tektonListenerInformer informers.TektonListenerInformer,
 ) *controller.Impl {
 	// Enrich the logs with controller name
 	logger, _ := logging.NewLogger("", "pipeline-listener")
 
 	r := &Reconciler{
-		kubeclientset:          kubeclientset,
-		pipelineListenerLister: pipelineListenerInformer.Lister(),
-		logger:                 logger,
+		kubeclientset:        kubeclientset,
+		tektonListenerLister: tektonListenerInformer.Lister(),
+		logger:               logger,
 	}
-	impl := controller.NewImpl(r, logger, "PipelineListener",
-		reconciler.MustNewStatsReporter("PipelineListener", r.logger))
+	impl := controller.NewImpl(r, logger, "TektonListener",
+		reconciler.MustNewStatsReporter("TektonListener", r.logger))
 
 	logger.Info("Setting up pipeline-listener event handler")
-	// Set up an event handler for when PipelineListener resources change
-	pipelineListenerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	// Set up an event handler for when TektonListener resources change
+	tektonListenerInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    impl.Enqueue,
 		UpdateFunc: controller.PassNew(impl.Enqueue),
 	})
@@ -96,7 +96,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return nil
 	}
 
-	pl, err := c.pipelineListenerLister.PipelineListeners(namespace).Get(name)
+	pl, err := c.tektonListenerLister.TektonListeners(namespace).Get(name)
 	if errors.IsNotFound(err) {
 		c.logger.Errorf("listener %q in work queue no longer exists", key)
 		return nil
@@ -181,7 +181,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	if err != nil && errors.IsNotFound(err) {
 		c.logger.Info("Creating StatefulSet", "namespace", set.Namespace, "name", set.Name)
 		created, err := c.kubeclientset.AppsV1().StatefulSets(pl.Namespace).Create(set)
-		pl.Status = v1alpha1.PipelineListenerStatus{
+		pl.Status = v1alpha1.TektonListenerStatus{
 			Namespace:       pl.Namespace,
 			StatefulSetName: created.Name,
 		}
@@ -198,7 +198,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		if err != nil {
 			return err
 		}
-		pl.Status = v1alpha1.PipelineListenerStatus{
+		pl.Status = v1alpha1.TektonListenerStatus{
 			Namespace:       pl.Namespace,
 			StatefulSetName: updated.Name,
 		}

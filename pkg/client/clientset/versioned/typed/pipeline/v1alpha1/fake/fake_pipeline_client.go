@@ -33,10 +33,6 @@ func (c *FakeTektonV1alpha1) Pipelines(namespace string) v1alpha1.PipelineInterf
 	return &FakePipelines{c, namespace}
 }
 
-func (c *FakeTektonV1alpha1) PipelineListeners(namespace string) v1alpha1.PipelineListenerInterface {
-	return &FakePipelineListeners{c, namespace}
-}
-
 func (c *FakeTektonV1alpha1) PipelineResources(namespace string) v1alpha1.PipelineResourceInterface {
 	return &FakePipelineResources{c, namespace}
 }
@@ -51,6 +47,10 @@ func (c *FakeTektonV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
 
 func (c *FakeTektonV1alpha1) TaskRuns(namespace string) v1alpha1.TaskRunInterface {
 	return &FakeTaskRuns{c, namespace}
+}
+
+func (c *FakeTektonV1alpha1) TektonListeners(namespace string) v1alpha1.TektonListenerInterface {
+	return &FakeTektonListeners{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

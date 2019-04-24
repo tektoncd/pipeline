@@ -76,7 +76,7 @@ func main() {
 		logger.Fatalf("Error building pipeline clientset: %v", err)
 	}
 
-	listener, err := pipelineClient.Tekton().PipelineListeners(cfg.Namespace).Get(cfg.ListenerResource, metav1.GetOptions{})
+	listener, err := pipelineClient.Tekton().TektonListeners(cfg.Namespace).Get(cfg.ListenerResource, metav1.GetOptions{})
 	if err != nil {
 		log.Fatalf("failed to get pipeline listener spec: %q", err)
 	}
@@ -89,7 +89,7 @@ func main() {
 		mux:            &sync.Mutex{},
 		clientset:      pipelineClient,
 		runName:        listenerName,
-		runSpec:        listener.Spec.PipelineRunSpec,
+		runSpec:        *listener.Spec.PipelineRunSpec,
 		setBuildSha:    cfg.SetBuildSha,
 		serviceAccount: cfg.ServiceAccount,
 	}

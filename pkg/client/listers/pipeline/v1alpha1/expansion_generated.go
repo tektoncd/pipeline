@@ -27,14 +27,6 @@ type PipelineListerExpansion interface{}
 // PipelineNamespaceLister.
 type PipelineNamespaceListerExpansion interface{}
 
-// PipelineListenerListerExpansion allows custom methods to be added to
-// PipelineListenerLister.
-type PipelineListenerListerExpansion interface{}
-
-// PipelineListenerNamespaceListerExpansion allows custom methods to be added to
-// PipelineListenerNamespaceLister.
-type PipelineListenerNamespaceListerExpansion interface{}
-
 // PipelineResourceListerExpansion allows custom methods to be added to
 // PipelineResourceLister.
 type PipelineResourceListerExpansion interface{}
@@ -66,3 +58,11 @@ type TaskRunListerExpansion interface{}
 // TaskRunNamespaceListerExpansion allows custom methods to be added to
 // TaskRunNamespaceLister.
 type TaskRunNamespaceListerExpansion interface{}
+
+// TektonListenerListerExpansion allows custom methods to be added to
+// TektonListenerLister.
+type TektonListenerListerExpansion interface{}
+
+// TektonListenerNamespaceListerExpansion allows custom methods to be added to
+// TektonListenerNamespaceLister.
+type TektonListenerNamespaceListerExpansion interface{}
