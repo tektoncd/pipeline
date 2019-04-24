@@ -18,13 +18,14 @@ require (
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/json-iterator/go v1.1.6 // indirect
 	github.com/knative/pkg v0.0.0-20190321174848-60fdcbcabd2f // indirect
+	github.com/knative/test-infra v0.0.0-20190423185229-691caf51f2bb
 	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/spf13/cobra v0.0.3
-	github.com/spf13/viper v1.3.2
+	github.com/spf13/viper v1.3.2 // indirect
 	github.com/tektoncd/pipeline v0.2.0
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect

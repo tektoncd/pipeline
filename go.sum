@@ -123,6 +123,8 @@ github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7V
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/knative/pkg v0.0.0-20190321174848-60fdcbcabd2f h1:dMlpsueKPezTonK6waWSZrIWiEZWTfVYfLxUQhA8O24=
 github.com/knative/pkg v0.0.0-20190321174848-60fdcbcabd2f/go.mod h1:7Ijfhw7rfB+H9VtosIsDYvZQ+qYTz7auK3fHW/5z4ww=
+github.com/knative/test-infra v0.0.0-20190423185229-691caf51f2bb h1:61HS8EA0seilwFczUuVtpT1dDkqlaBP88YNL73MAvLM=
+github.com/knative/test-infra v0.0.0-20190423185229-691caf51f2bb/go.mod h1:l77IWBscEV5T4sYb64/9iwRCVY4UXEIqMcAppsblHW4=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515/go.mod h1:+0opPa2QZZtGFBFZlji/RkVcI2GknAs/DXo4wKdlNEc=
 github.com/kr/pretty v0.1.0 h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=
