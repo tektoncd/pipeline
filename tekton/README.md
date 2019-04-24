@@ -156,18 +156,15 @@ that default service account is able to push to your image registry, you are
 good to go. Otherwise, you need to use
 [a secret annotated with your docker registry credentials](https://github.com/tektoncd/pipeline/blob/master/docs/auth.md#basic-authentication-docker).
 
-TODO(#631) Ensure that we are supporting folks using credentials other than the
-cluster defaults; not sure how this will play out with publishing to our prod
-registry!
-
 #### Production credentials
 
-TODO(dlorenc, bobcatfish): We need to setup a group which users can be added to,
-as well as guidelines around who should be added to this group.
+[Members of the Tekton governing board](https://github.com/tektoncd/community/blob/master/governance.md)
+[have access to the underlying resources](https://github.com/tektoncd/community/blob/master/governance.md#permissions-and-access).
 
-For now, users who need access to our production registry
+Users who need access to our production registry
 (`gcr.io/tekton-releases`) and production GCS bucket (`gs://tekton-releases`)
-should ping @bobcatfish or @dlorenc to get added to the authorized users.
+should ping [a member of the governing board](https://github.com/tektoncd/community/blob/master/governance.md)
+to request access to [the production service account](#production-service-account).
 
 ##### Production service account
 
@@ -179,6 +176,9 @@ The GCP service account for creating release is
 the role
 [`Storage Admin`](https://cloud.google.com/container-registry/docs/access-control)
 in order to be able to read and write buckets and images.
+
+Users who need access to this service account should ping
+[a member of the governing board](https://github.com/tektoncd/community/blob/master/governance.md).
 
 ## Supporting scripts
 
