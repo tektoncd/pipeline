@@ -2,6 +2,7 @@
 
 ## Getting started
 
+1. [Ramp up on kubernetes and CRDs](#ramp-up)
 1. Create [a GitHub account](https://github.com/join)
 1. Setup
    [GitHub access via SSH](https://help.github.com/articles/connecting-to-github-with-ssh/)
@@ -14,6 +15,24 @@
 
 Then you can [iterate](#iterating) (including
 [runing the controllers with `ko`](#install-pipeline)).
+
+### Ramp up
+
+Welcome to the project!! You may find these resources helpful to ramp
+up on some of the technology this project is built on. This project
+extends Kubernetes (aka `k8s`) with Custom Resource Definitions (CRDSs). To
+find out more:
+
+* [The Kubernetes docs on Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) - These will orient you on what words like "Resource" and "Controller" concretely mean
+* [Understanding Kubernetes objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/) - This will further solidify k8s nomenclature
+* [API conventions - Types(kinds)](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#types-kinds) - Another useful set of words describing words. "Objects" and "Lists" in k8s land
+* [Extend the Kubernetes API with CustomResourceDefinitions](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/)- A tutorial demonstrating how a Custom Resource Definition can be added to Kubernetes without anything actually "happening"  beyond being able to list Objects of that kind
+
+At this point, you may find it useful to return to these `Tekton Pipeline` docs:
+
+* [Tekton Pipeline README](https://github.com/tektoncd/pipeline/blob/master/docs/README.md) - Some of the terms here may make more sense!
+* Install via [official installation docs](https://github.com/tektoncd/pipeline/blob/master/docs/install.md) or continue though [getting started for development](#getting-started)
+* [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md) - Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when they are run
 
 ### Checkout your fork
 
