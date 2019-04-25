@@ -14,73 +14,21 @@ limitations under the License.
 package resources
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	fakeclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
-	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
+	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var (
-	outputpipelineImageResourceLister listers.PipelineResourceLister
-)
-
-func outputImageResourceSetup() {
-	logger, _ = logging.NewLogger("", "")
-	fakeClient := fakeclientset.NewSimpleClientset()
-	sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
-	pipelineResourceInformer := sharedInfomer.Tekton().V1alpha1().PipelineResources()
-	outputpipelineImageResourceLister = pipelineResourceInformer.Lister()
-
-	rs := []*v1alpha1.PipelineResource{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "source-image-1",
-			Namespace: "marshmallow",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "image",
-			Params: []v1alpha1.Param{{
-				Name:  "url",
-				Value: "gcr.io/some-image-1",
-			}, {
-				Name:  "digest",
-				Value: "",
-			}, {
-				Name:  "indexpath",
-				Value: "/workspace/source-image-1/index.json",
-			}},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "source-image-2",
-			Namespace: "marshmallow",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: "image",
-			Params: []v1alpha1.Param{{
-				Name:  "url",
-				Value: "gcr.io/some-image-2",
-			}, {
-				Name:  "digest",
-				Value: "",
-			}, {
-				Name:  "indexpath",
-				Value: "/workspace/source-image-2/index.json",
-			}},
-		},
-	}}
-
-	for _, r := range rs {
-		pipelineResourceInformer.Informer().GetIndexer().Add(r)
-	}
-}
-
 func TestExportingOutputImageResource(t *testing.T) {
+	currentDir, _ := os.Getwd()
 	for _, c := range []struct {
 		desc      string
 		task      *v1alpha1.Task
@@ -102,9 +50,14 @@ func TestExportingOutputImageResource(t *testing.T) {
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-image",
-						Type: "image",
+						Name:            "source-image",
+						Type:            "image",
+						OutputImagePath: currentDir,
 					}},
+				},
+				Steps: []corev1.Container{{
+					Name: "step1",
+				},
 				},
 			},
 		},
@@ -132,21 +85,361 @@ func TestExportingOutputImageResource(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []corev1.Container{{
-			Name:    "image-digest-exporter",
-			Image:   "override-with-imagedigest-exporter-image:latest",
-			Command: []string{"/ko-app/imagedigestexporter"},
-			Args:    []string{"-images", "[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"indexpath\":\"/workspace/source-image-1/index.json\"}]"},
-		}},
+		wantSteps: []corev1.Container{
+			{
+				Name: "step1",
+			},
+			{
+				Name:    "image-digest-exporter-step1-9l9zj",
+				Image:   "override-with-imagedigest-exporter-image:latest",
+				Command: []string{"/ko-app/imagedigestexporter"},
+				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImagePath\":\"%s\"}]", currentDir)},
+			}},
+	}, {
+		desc: "image resource in task with multiple steps",
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-image",
+						Type: "image",
+					}},
+				},
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name:            "source-image",
+						Type:            "image",
+						OutputImagePath: currentDir,
+					}},
+				},
+				Steps: []corev1.Container{{
+					Name: "step1",
+				}, {
+					Name: "step2",
+				}},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-image",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image-1",
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-image",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image-1",
+						},
+					}},
+				},
+			},
+		},
+		wantSteps: []corev1.Container{
+			{
+				Name: "step1",
+			},
+			{
+				Name:    "image-digest-exporter-step1-9l9zj",
+				Image:   "override-with-imagedigest-exporter-image:latest",
+				Command: []string{"/ko-app/imagedigestexporter"},
+				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImagePath\":\"%s\"}]", currentDir)},
+			}, {
+				Name: "step2",
+			}, {
+				Name:    "image-digest-exporter-step2-mz4c7",
+				Image:   "override-with-imagedigest-exporter-image:latest",
+				Command: []string{"/ko-app/imagedigestexporter"},
+				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImagePath\":\"%s\"}]", currentDir)},
+			},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			outputImageResourceSetup()
-			err := AddOutputImageDigestExporter(c.taskRun, &c.task.Spec, outputpipelineImageResourceLister, logger)
+			names.TestingSeed()
+			logger, _ := logging.NewLogger("", "")
+			gr := func(n string) (*v1alpha1.PipelineResource, error) {
+				return &v1alpha1.PipelineResource{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "source-image-1",
+						Namespace: "marshmallow",
+					},
+					Spec: v1alpha1.PipelineResourceSpec{
+						Type: "image",
+						Params: []v1alpha1.Param{{
+							Name:  "url",
+							Value: "gcr.io/some-image-1",
+						}, {
+							Name:  "digest",
+							Value: "",
+						}, {
+							Name:  "OutputImagePath",
+							Value: "/workspace/source-image-1/index.json",
+						}},
+					},
+				}, nil
+			}
+			err := AddOutputImageDigestExporter(c.taskRun, &c.task.Spec, gr, logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test %q: error %v", c.desc, err)
 			}
 
 			if d := cmp.Diff(c.task.Spec.Steps, c.wantSteps); d != "" {
+				t.Fatalf("post build steps mismatch: %s", d)
+			}
+		})
+	}
+}
+
+func TestUpdateTaskRunStatus(t *testing.T) {
+	for _, c := range []struct {
+		desc    string
+		podLog  []byte
+		taskRun *v1alpha1.TaskRun
+		want    []v1alpha1.PipelineResourceResult
+	}{{
+		desc:   "image resource updated",
+		podLog: []byte("[{\"name\":\"source-image\",\"digest\":\"sha256:1234\"}]"),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-image",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image-1",
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-image",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image-1",
+						},
+					}},
+				},
+			},
+		},
+		want: []v1alpha1.PipelineResourceResult{{
+			Name:   "source-image",
+			Digest: "sha256:1234",
+		}},
+	}, {
+		desc:   "image resource exporter with malformed json output",
+		podLog: []byte("extralogscamehere[{\"name\":\"source-image\",\"digest\":\"sha256:1234\"}]"),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-image",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image-1",
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-image",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image-1",
+						},
+					}},
+				},
+			},
+		},
+		want: nil,
+	}, {
+		desc:   "task with no image resource ",
+		podLog: []byte(""),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+		},
+		want: nil,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			names.TestingSeed()
+			c.taskRun.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			})
+			UpdateTaskRunStatusWithResourceResult(c.taskRun, c.podLog)
+			if d := cmp.Diff(c.taskRun.Status.ResourcesResult, c.want); d != "" {
+				t.Fatalf("post build steps mismatch: %s", d)
+			}
+		})
+	}
+}
+
+func TestTaskRunHasOutputImageResource(t *testing.T) {
+	for _, c := range []struct {
+		desc       string
+		task       *v1alpha1.Task
+		taskRun    *v1alpha1.TaskRun
+		wantResult bool
+	}{{
+		desc: "image resource as output",
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-image",
+						Type: "image",
+					}},
+				},
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-image",
+						Type: "image",
+					}},
+				},
+				Steps: []corev1.Container{{
+					Name: "step1",
+				}},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-image",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image-1",
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-image",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-image-1",
+						},
+					}},
+				},
+			},
+		},
+		wantResult: true,
+	}, {
+		desc: "task with no image resource",
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source",
+						Type: "git",
+					}},
+				},
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source",
+						Type: "git",
+					}},
+				},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git-1",
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-git-1",
+						},
+					}},
+				},
+			},
+		},
+		wantResult: false,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			gr := func(name string) (*v1alpha1.PipelineResource, error) {
+				var r *v1alpha1.PipelineResource
+				if name == "source-image-1" {
+					r = &v1alpha1.PipelineResource{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "source-image-1",
+							Namespace: "marshmallow",
+						},
+						Spec: v1alpha1.PipelineResourceSpec{
+							Type: "image",
+							Params: []v1alpha1.Param{{
+								Name:  "url",
+								Value: "gcr.io/some-image-1",
+							}, {
+								Name:  "digest",
+								Value: "",
+							}, {
+								Name:  "OutputImagePath",
+								Value: "/workspace/source-image-1/index.json",
+							}},
+						},
+					}
+				} else if name == "source-git-1" {
+					r = &v1alpha1.PipelineResource{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "source-git-1",
+							Namespace: "marshmallow",
+						},
+						Spec: v1alpha1.PipelineResourceSpec{
+							Type: "git",
+							Params: []v1alpha1.Param{{
+								Name:  "url",
+								Value: "github.com/repo",
+							},
+							},
+						},
+					}
+				}
+				return r, nil
+			}
+			result := TaskRunHasOutputImageResource(gr, c.taskRun)
+
+			if d := cmp.Diff(result, c.wantResult); d != "" {
 				t.Fatalf("post build steps mismatch: %s", d)
 			}
 		})

@@ -1,0 +1,103 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: skaffold-image-leeroy-web
+spec:
+  type: image
+  params:
+  - name: url
+    value: gcr.io/christiewilson-catfactory/leeroy-web # Replace this URL with ${KO_DOCKER_REPO}
+---
+# This demo modifies the cluster (deploys to it) you must use a service
+# account with permission to admin the cluster (or make your default user an admin
+# of the `default` namespace with default-cluster-admin.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: default-cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: skaffold-git
+spec:
+  type: git
+  params:
+  - name: revision
+    value: master
+  - name: url
+    value: https://github.com/GoogleContainerTools/skaffold
+---
+#Builds an image via kaniko and pushes it to registry.
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: build-push-kaniko
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  outputs:
+    resources:
+    - name: builtImage
+      type: image
+      outputImagePath: /workspace/workspace
+  steps:
+  - name: build-and-push
+    image: busybox
+    command:
+    - /bin/sh
+    args:
+    - -ce
+    - |
+      set -e
+      cat <<EOF > /workspace/workspace/index.json
+      {
+        "schemaVersion": 2,
+        "manifests": [
+          {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "size": 314,
+            "digest": "sha256:05f95b26ed10668b7183c1e2da98610e91372fa9f510046d4ce5812addad86b5"
+          }
+        ]
+      }
+      EOF
+  - name: echo
+    image: busybox
+    command:
+    - /bin/sh
+    args:
+    - -ce
+    - |
+      set -e
+      cat /workspace/workspace/index.json
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: build-push-run
+spec:
+  taskRef:
+    name: build-push-kaniko
+  trigger:
+    type: manual
+  inputs:
+    resources:
+    - name: workspace
+      resourceRef:
+        name: skaffold-git
+  outputs:
+    resources:
+    - name: builtImage
+      resourceRef:
+        name: skaffold-image-leeroy-web
