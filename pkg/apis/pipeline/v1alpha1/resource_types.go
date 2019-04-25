@@ -94,7 +94,9 @@ type TaskResource struct {
 	// +optional
 	// TargetPath is the path in workspace directory where the task resource will be copied.
 	TargetPath string `json:"targetPath"`
-	// Resource Value stuff
+	// +optional
+	// Path to the index.json file for output container images
+	OutputImagePath string `json:"outputImagePath"`
 }
 
 // +genclient

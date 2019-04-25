@@ -31,6 +31,13 @@ var (
 	images = flag.String("images", "", "List of images resources built by task in json format")
 )
 
+/* The input of this go program will be a JSON string with all the output PipelineResources of type
+Image, which will include the path to where the index.json file will be located. The program will
+read the related index.json file(s) and log another JSON string including the name of the image resource
+and the digests.
+The input is an array of ImageResource, ex: [{"name":"srcimg1","type":"image","url":"gcr.io/some-image-1","digest":"","OutputImagePath":"/path/image"}]
+The output is an array of PipelineResourceResult, ex: [{"name":"image","digest":"sha256:eed29..660"}]
+*/
 func main() {
 	flag.Parse()
 
@@ -42,7 +49,7 @@ func main() {
 
 	output := []v1alpha1.PipelineResourceResult{}
 	for _, imageResource := range imageResources {
-		ii, err := layout.ImageIndexFromPath(imageResource.IndexPath)
+		ii, err := layout.ImageIndexFromPath(imageResource.OutputImagePath)
 		if err != nil {
 			// if this image doesn't have a builder that supports index.josn file,
 			// then it will be skipped

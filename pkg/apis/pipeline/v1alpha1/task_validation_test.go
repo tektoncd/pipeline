@@ -31,6 +31,11 @@ var validResource = TaskResource{
 	Type: "git",
 }
 
+var validImageResource = TaskResource{
+	Name: "source",
+	Type: "image",
+}
+
 var validBuildSteps = []corev1.Container{{
 	Name:  "mystep",
 	Image: "myimage",
@@ -86,6 +91,17 @@ func TestTaskSpecValidate(t *testing.T) {
 			BuildSteps: validBuildSteps,
 		},
 	}, {
+		name: "output image resoure",
+		fields: fields{
+			Inputs: &Inputs{
+				Resources: []TaskResource{validImageResource},
+			},
+			Outputs: &Outputs{
+				Resources: []TaskResource{validImageResource},
+			},
+			BuildSteps: validBuildSteps,
+		},
+	}, {
 		name: "valid template variable",
 		fields: fields{
 			Inputs: &Inputs{
@@ -130,7 +146,9 @@ func TestTaskSpecValidate(t *testing.T) {
 				Steps:             tt.fields.BuildSteps,
 				ContainerTemplate: tt.fields.ContainerTemplate,
 			}
-			if err := ts.Validate(context.Background()); err != nil {
+			ctx := context.Background()
+			ts.SetDefaults(ctx)
+			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
 		})

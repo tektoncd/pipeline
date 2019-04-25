@@ -18,9 +18,9 @@ package taskrun
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/knative/pkg/apis"
@@ -323,9 +323,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
-	c.timeoutHandler.StatusLock(tr)
 	updateStatusFromPod(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
-	c.timeoutHandler.StatusUnlock(tr)
 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -334,21 +332,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
 
 	return nil
-}
-
-func taskRunHasOutputImageResource(resourceLister listers.PipelineResourceLister, taskRun *v1alpha1.TaskRun) bool {
-	if len(taskRun.Spec.Outputs.Resources) > 0 {
-		for _, r := range taskRun.Spec.Outputs.Resources {
-			resource, err := resourceLister.PipelineResources(taskRun.Namespace).Get(r.ResourceRef.Name)
-			if err != nil {
-				return false
-			}
-			if resource.Spec.Type == v1alpha1.PipelineResourceTypeImage {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) {
@@ -405,15 +388,19 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 		taskRun.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	}
 
-	if taskRunHasOutputImageResource(resourceLister, taskRun) && taskRun.IsSuccessful() {
-		req := kubeclient.CoreV1().Pods(taskRun.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: imageDigestExporterContainerName})
-		logContent, err := req.Do().Raw()
-		if err != nil {
-			logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
-		}
-		err = json.Unmarshal(logContent, &taskRun.Status.ResourcesResult)
-		if err != nil {
-			logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
+	if resources.TaskRunHasOutputImageResource(resourceLister.PipelineResources(taskRun.Namespace).Get, taskRun) && taskRun.IsSuccessful() {
+		for _, container := range pod.Spec.Containers {
+			if strings.HasPrefix(container.Name, imageDigestExporterContainerName) {
+				req := kubeclient.CoreV1().Pods(taskRun.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
+				logContent, err := req.Do().Raw()
+				if err != nil {
+					logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
+				}
+				err = resources.UpdateTaskRunStatusWithResourceResult(taskRun, logContent)
+				if err != nil {
+					logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
+				}
+			}
 		}
 	}
 }
@@ -491,7 +478,14 @@ func (c *Reconciler) updateLabels(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, erro
 // volumeMount
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
 	ts = ts.DeepCopy()
-	ts, err := resources.AddInputResource(c.KubeClientSet, taskName, ts, tr, c.resourceLister, c.Logger)
+
+	err := resources.AddOutputImageDigestExporter(tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get, c.Logger)
+	if err != nil {
+		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output image resource error %v", tr.Name, err)
+		return nil, err
+	}
+
+	ts, err = resources.AddInputResource(c.KubeClientSet, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
@@ -500,12 +494,6 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, task
 	err = resources.AddOutputResources(c.KubeClientSet, taskName, ts, tr, c.resourceLister, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
-		return nil, err
-	}
-
-	err = resources.AddOutputImageDigestExporter(tr, ts, c.resourceLister, c.Logger)
-	if err != nil {
-		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output image resource error %v", tr.Name, err)
 		return nil, err
 	}
 
