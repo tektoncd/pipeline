@@ -1628,6 +1628,7 @@ func (in *TektonListenerStatus) DeepCopyInto(out *TektonListenerStatus) {
 			}
 		}
 	}
+	out.Address = in.Address.DeepCopy()
 	return
 }
 

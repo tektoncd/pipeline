@@ -72,6 +72,9 @@ type TektonListenerStatus struct {
 	// map of PipelineRunTaskRunStatus with the taskRun name as the key
 	// +optional
 	PipelineRuns map[string]*PipelineRunStatus `json:"pipelineRuns,omitempty"`
+	// The listener is addressable
+	// +optional
+	Address duckv1alpha1.Addressable `json:"address,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
