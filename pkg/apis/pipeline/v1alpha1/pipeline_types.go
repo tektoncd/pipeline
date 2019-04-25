@@ -23,9 +23,9 @@ import (
 
 // PipelineSpec defines the desired state of PipeLine.
 type PipelineSpec struct {
-	Resources []PipelineDeclaredResource `json:"resources"`
-	Tasks     []PipelineTask             `json:"tasks"`
-	Params    []PipelineParam            `json:"params"`
+	Resources []PipelineDeclaredResource `json:"resources,omitempty"`
+	Tasks     []PipelineTask             `json:"tasks,omitempty"`
+	Params    []PipelineParam            `json:"params,omitempty"`
 }
 
 // PipelineStatus does not contain anything because Pipelines on their own
@@ -61,16 +61,16 @@ type Pipeline struct {
 
 	// Spec holds the desired state of the Pipeline from the client
 	// +optional
-	Spec PipelineSpec `json:"spec,omitempty"`
+	Spec PipelineSpec `json:"spec"`
 	// Status communicates the observed state of the Pipeline form the controller
 	// +optional
-	Status PipelineStatus `json:"status,omitempty"`
+	Status PipelineStatus `json:"status"`
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
 // Params and from the output of previous tasks.
 type PipelineTask struct {
-	Name    string  `json:"name"`
+	Name    string  `json:"name,omitempty"`
 	TaskRef TaskRef `json:"taskRef"`
 
 	// RunAfter is the list of PipelineTask names that should be executed before
@@ -118,10 +118,10 @@ type PipelineDeclaredResource struct {
 type PipelineTaskResources struct {
 	// Inputs holds the mapping from the PipelineResources declared in
 	// DeclaredPipelineResources to the input PipelineResources required by the Task.
-	Inputs []PipelineTaskInputResource `json:"inputs"`
+	Inputs []PipelineTaskInputResource `json:"inputs,omitempty"`
 	// Outputs holds the mapping from the PipelineResources declared in
 	// DeclaredPipelineResources to the input PipelineResources required by the Task.
-	Outputs []PipelineTaskOutputResource `json:"outputs"`
+	Outputs []PipelineTaskOutputResource `json:"outputs,omitempty"`
 }
 
 // PipelineTaskInputResource maps the name of a declared PipelineResource input
@@ -152,7 +152,7 @@ type PipelineTaskOutputResource struct {
 // Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
 type TaskRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	// TaskKind inficates the kind of the task, namespaced or cluster scoped.
 	Kind TaskKind `json:"kind,omitempty"`
 	// API version of the referent
