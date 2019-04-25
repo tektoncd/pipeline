@@ -80,7 +80,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to get pipeline listener spec: %q", err)
 	}
-	listenerName := fmt.Sprintf("%s-%s", listener.Name, cfg.Port)
+	listenerName := fmt.Sprintf("%s-%d", listener.Name, cfg.Port)
 	e := &EventListener{
 		event:          cfg.Event,
 		eventType:      cfg.EventType,
@@ -137,7 +137,7 @@ func (e *EventListener) HandleRequest(ctx context.Context, event cloudevents.Eve
 
 	}
 
-	log.Printf("Handling event ID: %q Type: %q", event.ID, event.Type())
+	log.Printf("Handling event ID: %q Type: %q", event.ID(), event.Type())
 
 	switch event.Type() {
 	case "com.github.checksuite":
