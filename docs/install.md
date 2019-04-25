@@ -59,7 +59,7 @@ You are now ready to create and run Tekton Pipelines:
 - Look at the
   [examples](https://github.com/tektoncd/pipeline/tree/master/examples)
 
-### Installing Tekton Pipelines on OpenShift
+### Installing Tekton Pipelines on OpenShift/MiniShift
 
 The `tekton-pipelines-controller` service account needs the `anyuid` security
 context constraint in order to run the webhook pod.
@@ -69,9 +69,10 @@ _See
 for more information_
 
 1. First, login as a user with `cluster-admin` privileges. The following example
-   uses the default `system:admin` user:
+   uses the default `system:admin` user (`admin:admin` for MiniShift):
 
    ```bash
+   # For MiniShift: oc login -u admin:admin
    oc login -u system:admin
    ```
 
