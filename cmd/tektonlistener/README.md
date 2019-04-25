@@ -59,3 +59,24 @@ spec:
       resourceRef:
         name: skaffold-image-leeroy-app
 ```
+
+And finally, you will need a service. Since the Service fullfills the [Addressable](https://github.com/knative/eventing/blob/master/docs/spec/interfaces.md#addressable) contract, the listener service can be used as a sink for [github source](https://knative.dev/docs/reference/eventing/eventing-sources-api/#GitHubSource), for example .
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-build-tekton-listener
+  labels:
+    role: test-build-tekton-listener
+  namespace: tekton-pipelines
+spec:
+  ports:
+    - name: listener
+      port: 8082
+      protocol: TCP
+      targetPort: 8082
+  selector:
+    role: test-build-tekton-listener
+```
+Also note that the listener itself implements the Addressable interface, as well.
