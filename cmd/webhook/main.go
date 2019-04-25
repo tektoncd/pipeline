@@ -91,9 +91,7 @@ func main() {
 		},
 		Logger: logger,
 	}
-	if err != nil {
-		logger.Fatal("Failed to create the admission controller", zap.Error(err))
-	}
+
 	if err := controller.Run(stopCh); err != nil {
 		logger.Fatal("Error running admission controller", zap.Error(err))
 	}
