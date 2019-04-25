@@ -385,11 +385,12 @@
   revision = "3fc06fd3c9880a9ebb5c401f4b20cf6666cc7bc0"
 
 [[projects]]
-  digest = "1:6a799504a074152e42ff00c6540e5960a920123fd4f57c3e4638f8fab72189e5"
+  digest = "1:61a9430796f3d87482a24b1547ebaf382e65be28319bb1136e4b0733f244bd06"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
     "apis/duck",
+    "apis/duck/v1alpha1",
     "apis/duck/v1beta1",
     "apis/istio",
     "apis/istio/authentication",
@@ -1240,6 +1241,7 @@
     "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/caching/pkg/client/clientset/versioned",
     "github.com/knative/pkg/apis",
+    "github.com/knative/pkg/apis/duck/v1alpha1",
     "github.com/knative/pkg/apis/duck/v1beta1",
     "github.com/knative/pkg/client/clientset/versioned",
     "github.com/knative/pkg/configmap",

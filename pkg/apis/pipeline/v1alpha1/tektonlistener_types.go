@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
+	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -62,7 +62,7 @@ type TektonListenerSpecStatus string
 
 // TektonListenerStatus defines the observed state of TektonListenerStatus
 type TektonListenerStatus struct {
-	duckv1beta1.Status `json:",inline"`
+	duckv1alpha1.Status `json:",inline"`
 	// namespace of the listener
 	Namespace string `json:"namespace"`
 	// statefulset name of the listeners set
