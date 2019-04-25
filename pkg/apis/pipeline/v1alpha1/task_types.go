@@ -68,11 +68,11 @@ var _ apis.Defaultable = (*Task)(nil)
 type Task struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metav1.ObjectMeta `json:"metadata"`
 
 	// Spec holds the desired state of the Task from the client
 	// +optional
-	Spec TaskSpec `json:"spec,omitempty"`
+	Spec TaskSpec `json:"spec"`
 }
 
 // Inputs are the requirements that a task needs to run a Build.

@@ -44,16 +44,16 @@ type PipelineRunSpec struct {
 	// Resources is a list of bindings specifying which actual instances of
 	// PipelineResources to use for the resources the Pipeline has declared
 	// it needs.
-	Resources []PipelineResourceBinding `json:"resources"`
+	Resources []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
-	Params []Param `json:"params"`
+	Params []Param `json:"params,omitempty"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
-	Status PipelineRunSpecStatus
+	Status PipelineRunSpecStatus `json:"status,omitempty"`
 	// Time after which the Pipeline times out. Defaults to never.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
@@ -83,7 +83,7 @@ const (
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
 type PipelineResourceRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
@@ -93,7 +93,7 @@ type PipelineResourceRef struct {
 // Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
 type PipelineRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
@@ -110,7 +110,7 @@ const (
 // PipelineTrigger describes what triggered this Pipeline to run. It could be triggered manually,
 // or it could have been some kind of external event (not yet designed).
 type PipelineTrigger struct {
-	Type PipelineTriggerType `json:"type"`
+	Type PipelineTriggerType `json:"type,omitempty"`
 	// +optional
 	Name string `json:"name,omitempty"`
 }
@@ -138,8 +138,8 @@ type PipelineRunStatus struct {
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
 type PipelineRunTaskRunStatus struct {
-	// PipelineTaskName is the name of the PipelineTask
-	PipelineTaskName string `json:"pipelineTaskName"`
+	// PipelineTaskName is the name of the PipelineTask.
+	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
 	// Status is the TaskRunStatus for the corresponding TaskRun
 	// +optional
 	Status *TaskRunStatus `json:"status,omitempty"`
@@ -195,14 +195,14 @@ type PipelineRunList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PipelineRun `json:"items"`
+	Items           []PipelineRun `json:"items,omitempty"`
 }
 
 // PipelineTaskRun reports the results of running a step in the Task. Each
 // task has the potential to succeed or fail (based on the exit code)
 // and produces logs.
 type PipelineTaskRun struct {
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 }
 
 // GetTaskRunRef for pipelinerun
