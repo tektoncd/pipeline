@@ -37,9 +37,9 @@ for test in taskrun pipelinerun; do
   header "Running YAML e2e tests for ${test}s"
   if ! run_yaml_tests ${test}; then
     echo "ERROR: one or more YAML tests failed"
-    failed=1
     output_yaml_test_results ${test}
     output_pods_logs ${test}
+    failed=1
   fi
 done
 
