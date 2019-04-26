@@ -164,9 +164,11 @@ spec:
       # Tag the images and put them in all the regions
       for IMAGE in "${BUILT_IMAGES[@]}"
       do
+        IMAGE_WITHOUT_SHA=${IMAGE%%@*}
+        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:latest
+        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:${inputs.params.versionTag}
         for REGION in "${REGIONS[@]}"
         do
-          IMAGE_WITHOUT_SHA=${IMAGE%%@*}
           for TAG in "latest" ${inputs.params.versionTag}
           do
             gcloud -q container images add-tag ${IMAGE} ${REGION}.${IMAGE_WITHOUT_SHA}:$TAG
