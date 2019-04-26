@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -48,10 +49,19 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 		return err
 	}
 	homeenv := os.Getenv("HOME")
-	if homeenv != "" && homeenv != homepath {
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+	if u.Name == "root" {
+		if err := os.Symlink(homeenv+"/.ssh", "/root/.ssh"); err != nil {
+			// Only do a warning, in case we don't have a real home
+			// directory writable in our image
+			logger.Warnf("Unexpected error: creating symlink: %v", err)
+		}
+	} else if homeenv != "" && homeenv != homepath {
 		if _, err := os.Stat(homepath + "/.ssh"); os.IsNotExist(err) {
-			err = os.Symlink(homeenv+"/.ssh", homepath+"/.ssh")
-			if err != nil {
+			if err := os.Symlink(homeenv+"/.ssh", homepath+"/.ssh"); err != nil {
 				// Only do a warning, in case we don't have a real home
 				// directory writable in our image
 				logger.Warnf("Unexpected error: creating symlink: %v", err)
