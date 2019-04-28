@@ -170,9 +170,13 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 func AttributesFromType(prt PipelineResourceType) ([]string, error) {
 	r := &PipelineResource{}
 	r.Spec.Type = prt
+	// Todo : The TaskResource struct lacks data to correctly infer the type of
+	// a PipelineResourceTypeStorage. While all the currently implemented types
+	// have the same attributes, this doesn't appear to be an explicit design
+	// choice. Future types could not fit this constraint. So we cannot safely
+	// make any assumptions about the attributes.
 	if prt == PipelineResourceTypeStorage {
 		r.Spec.Params = []Param{
-
 			{
 				Name:  "type",
 				Value: string(PipelineResourceTypeGCS),
