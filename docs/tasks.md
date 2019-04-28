@@ -74,7 +74,7 @@ following fields:
     by your `Task`
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your `Task`'s steps.
-  - [`containerTemplate`](#container-template) - Specifies a `Container` 
+  - [`containerTemplate`](#container-template) - Specifies a `Container`
     definition to use as the basis for all steps within your `Task`.
 
 [kubernetes-overview]:
@@ -332,7 +332,7 @@ configuration that will be used as the basis for all [`steps`](#steps) in your
 `Task`. Configuration in an individual step will override or merge with the
 container template's configuration.
 
-In the example below, the `Task` specifies a `containerTemplate` with the 
+In the example below, the `Task` specifies a `containerTemplate` with the
 environment variable `FOO` set to `bar`. The first step will use that value for
 `FOO`, but in the second step, `FOO` is overridden and set to `baz`.
 
@@ -344,12 +344,10 @@ containerTemplate:
 steps:
   - image: ubuntu
     command: [echo]
-    args:
-      ["FOO is ${FOO}"]
+    args: ["FOO is ${FOO}"]
   - image: ubuntu
     command: [echo]
-    args:
-      ["FOO is ${FOO}"]
+    args: ["FOO is ${FOO}"]
     env:
       - name: "FOO"
         value: "baz"

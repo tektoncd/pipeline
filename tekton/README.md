@@ -161,10 +161,11 @@ good to go. Otherwise, you need to use
 [Members of the Tekton governing board](https://github.com/tektoncd/community/blob/master/governance.md)
 [have access to the underlying resources](https://github.com/tektoncd/community/blob/master/governance.md#permissions-and-access).
 
-Users who need access to our production registry
-(`gcr.io/tekton-releases`) and production GCS bucket (`gs://tekton-releases`)
-should ping [a member of the governing board](https://github.com/tektoncd/community/blob/master/governance.md)
-to request access to [the production service account](#production-service-account).
+Users who need access to our production registry (`gcr.io/tekton-releases`) and
+production GCS bucket (`gs://tekton-releases`) should ping
+[a member of the governing board](https://github.com/tektoncd/community/blob/master/governance.md)
+to request access to
+[the production service account](#production-service-account).
 
 ##### Production service account
 
