@@ -33,7 +33,6 @@ type TimeoutSet struct {
 	taskRunCallbackFunc     func(interface{})
 	pipelineRunCallbackFunc func(interface{})
 	stopCh                  <-chan struct{}
-	statusMap               *sync.Map
 	done                    map[string]chan bool
 	doneMut                 sync.Mutex
 }
@@ -49,7 +48,6 @@ func NewTimeoutHandler(
 		kubeclientset:     kubeclientset,
 		pipelineclientset: pipelineclientset,
 		stopCh:            stopCh,
-		statusMap:         &sync.Map{},
 		done:              make(map[string]chan bool),
 		doneMut:           sync.Mutex{},
 		logger:            logger,
@@ -70,7 +68,6 @@ func (t *TimeoutSet) SetPipelineRunCallbackFunc(f func(interface{})) {
 func (t *TimeoutSet) Release(runObj StatusKey) {
 	key := runObj.GetRunKey()
 	t.doneMut.Lock()
-	defer t.statusMap.Delete(key)
 	defer t.doneMut.Unlock()
 
 	if finished, ok := t.done[key]; ok {
