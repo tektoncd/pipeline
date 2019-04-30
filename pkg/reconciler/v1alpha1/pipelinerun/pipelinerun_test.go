@@ -187,7 +187,9 @@ func TestReconcile(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success")
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success"); err != nil {
+		t.Fatalf("Error reconciling: %s", err)
+	}
 
 	// make sure there is no failed events
 	validateNoEvents(t, fr)
@@ -252,10 +254,10 @@ func TestReconcile(t *testing.T) {
 	if len(reconciledRun.Status.TaskRuns) != 2 {
 		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
 	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1-mz4c7"]; exists == false {
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1-mz4c7"]; !exists {
 		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
 	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task-78c5n"]; exists == false {
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task-78c5n"]; !exists {
 		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
 	}
 }
@@ -334,7 +336,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			testAssets := getPipelineRunController(d, fr)
 			c := testAssets.Controller
 
-			c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun))
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun)); err != nil {
+				t.Fatalf("Error reconciling: %s", err)
+			}
 			// When a PipelineRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
 			// and forget about the Run.
@@ -500,7 +504,9 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-completed")
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-completed"); err != nil {
+		t.Fatalf("Error reconciling: %s", err)
+	}
 
 	// make sure there is no failed events
 	validateNoEvents(t, fr)
@@ -558,20 +564,6 @@ func validateNoEvents(t *testing.T, r *record.FakeRecorder) {
 		t.Errorf("Expected no event but got %s", event)
 	case <-timer.C:
 		return
-	}
-}
-
-func validateEvents(t *testing.T, r *record.FakeRecorder) {
-	t.Helper()
-	timer := time.NewTimer(1 * time.Second)
-
-	select {
-	case event := <-r.Events:
-		if !strings.HasPrefix(event, corev1.EventTypeNormal) {
-			t.Errorf("Failed with error %s", event)
-		}
-	case <-timer.C:
-		t.Error("Failed.  No event was received")
 	}
 }
 

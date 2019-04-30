@@ -41,7 +41,6 @@ const (
 	BinaryLocation    = MountPoint + "/entrypoint"
 	JSONConfigEnvVar  = "ENTRYPOINT_OPTIONS"
 	InitContainerName = "place-tools"
-	digestSeparator   = "@"
 	cacheSize         = 1024
 )
 
@@ -178,8 +177,7 @@ func GetRemoteEntrypoint(cache *Cache, digest string, kubeclient kubernetes.Inte
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get config for image %s: %v", digest, err)
 	}
-	var command []string
-	command = cfg.Config.Entrypoint
+	command := cfg.Config.Entrypoint
 	if len(command) == 0 {
 		command = cfg.Config.Cmd
 	}

@@ -23,5 +23,4 @@ func (t *Task) SetDefaults(ctx context.Context) {
 }
 
 func (ts *TaskSpec) SetDefaults(ctx context.Context) {
-	return
 }

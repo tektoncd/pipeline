@@ -155,11 +155,10 @@ func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.P
 		return nil, nil, err
 	}
 
-	var buildVol, storageVol []corev1.Volume
+	var storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 	for _, volume := range taskSpec.Volumes {
 		mountedSecrets[volume.Name] = ""
-		buildVol = append(buildVol, volume)
 	}
 
 	for _, secretParam := range storageResource.GetSecretParams() {
@@ -175,7 +174,6 @@ func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.P
 		}
 
 		if _, ok := mountedSecrets[volName]; !ok {
-			buildVol = append(buildVol, gcsSecretVolume)
 			storageVol = append(storageVol, gcsSecretVolume)
 			mountedSecrets[volName] = ""
 		}

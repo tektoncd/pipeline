@@ -48,8 +48,6 @@ const (
 	EmptyArtifactType = ""
 )
 
-var validArtifactTypes = []string{string(GCSArchive), string(GCSManifest)}
-
 // BuildGCSResource describes a resource in the form of an archive,
 // or a source manifest describing files to fetch.
 // BuildGCSResource does incremental uploads for files in  directory.

@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -180,22 +179,6 @@ func TestApplyParameters(t *testing.T) {
 			}
 		})
 	}
-}
-
-type rg struct {
-	resources map[string]*v1alpha1.PipelineResource
-}
-
-func (rg *rg) Get(name string) (*v1alpha1.PipelineResource, error) {
-	if pr, ok := rg.resources[name]; ok {
-		return pr, nil
-	}
-	return nil, fmt.Errorf("resource %s does not exist", name)
-}
-
-func (rg *rg) With(name string, pr *v1alpha1.PipelineResource) *rg {
-	rg.resources[name] = pr
-	return rg
 }
 
 var mockGetter = func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }

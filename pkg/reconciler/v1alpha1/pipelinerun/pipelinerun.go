@@ -423,14 +423,15 @@ func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) erro
 
 func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
 	var taskRunTimeout = &metav1.Duration{Duration: 0 * time.Second}
+
 	if pr.Spec.Timeout != nil {
 		pTimeoutTime := pr.Status.StartTime.Add(pr.Spec.Timeout.Duration)
 		if time.Now().After(pTimeoutTime) {
 			// Just in case something goes awry and we're creating the TaskRun after it should have already timed out,
 			// set a timeout of 0.
-			taskRunTimeout := pTimeoutTime.Sub(time.Now())
-			if taskRunTimeout < 0 {
-				taskRunTimeout = 0
+			taskRunTimeout = &metav1.Duration{Duration: time.Until(pTimeoutTime)}
+			if taskRunTimeout.Duration < 0 {
+				taskRunTimeout = &metav1.Duration{Duration: 0 * time.Second}
 			}
 		} else {
 			taskRunTimeout = pr.Spec.Timeout

@@ -123,5 +123,7 @@ func NewBase(opt Options, controllerAgentName string) *Base {
 func init() {
 	// Add pipeline types to the default Kubernetes Scheme so Events can be
 	// logged for pipeline types.
-	pipelineScheme.AddToScheme(scheme.Scheme)
+	if err := pipelineScheme.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
 }
