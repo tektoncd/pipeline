@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -49,11 +48,9 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 		return err
 	}
 	homeenv := os.Getenv("HOME")
-	u, err := user.Current()
-	if err != nil {
-		return err
-	}
-	if u.Name == "root" {
+	euid := os.Geteuid()
+	// Special case the root user/directory
+	if euid == 0 {
 		if err := os.Symlink(homeenv+"/.ssh", "/root/.ssh"); err != nil {
 			// Only do a warning, in case we don't have a real home
 			// directory writable in our image
