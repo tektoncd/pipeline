@@ -23,5 +23,4 @@ func (t *PipelineResource) SetDefaults(ctx context.Context) {
 }
 
 func (ts *PipelineResourceSpec) SetDefaults(ctx context.Context) {
-	return
 }

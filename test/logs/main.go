@@ -40,9 +40,9 @@ var (
 
 func main() {
 	flag.Parse()
-	var out io.Writer
+
 	// set default output as std out
-	out = os.Stdout
+	out := os.Stdout
 
 	if (*pr == "" && *tr == "") || (*pr != "" && *tr != "") {
 		errorMsg(fmt.Sprintf("Usage: %s [-n NAMESPACE] [-pr PIPELINERUN-NAME] / [-tr TASKRUN_NAME] [-f FILE-NAME]", os.Args[0]), nil, out)

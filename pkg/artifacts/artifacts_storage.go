@@ -137,9 +137,8 @@ func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
 }
 
 func getPVCSpec(pr *v1alpha1.PipelineRun) *corev1.PersistentVolumeClaim {
-	var pvcSizeBytes int64
 	// TODO(shashwathi): make this value configurable
-	pvcSizeBytes = 5 * 1024 * 1024 * 1024 // 5 GBs
+	pvcSizeBytes := int64(5 * 1024 * 1024 * 1024) // 5 GBs
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       pr.Namespace,

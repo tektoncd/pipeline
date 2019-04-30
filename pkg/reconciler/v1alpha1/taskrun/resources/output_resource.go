@@ -169,12 +169,11 @@ func addStoreUploadStep(spec *v1alpha1.TaskSpec,
 	if err != nil {
 		return nil, nil, err
 	}
-	var totalBuildVol, storageVol []corev1.Volume
+	var storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 
 	for _, volume := range spec.Volumes {
 		mountedSecrets[volume.Name] = ""
-		totalBuildVol = append(totalBuildVol, volume)
 	}
 
 	// Map holds list of secrets that are mounted as volumes
@@ -191,7 +190,6 @@ func addStoreUploadStep(spec *v1alpha1.TaskSpec,
 		}
 
 		if _, ok := mountedSecrets[volName]; !ok {
-			totalBuildVol = append(totalBuildVol, gcsSecretVolume)
 			storageVol = append(storageVol, gcsSecretVolume)
 			mountedSecrets[volName] = ""
 		}

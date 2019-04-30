@@ -58,7 +58,3 @@ examples make that assumption.
 
 */
 package builder
-
-const (
-	defaultAPIVersion = "a1"
-)

@@ -674,12 +674,11 @@ func TestValidOutputResources(t *testing.T) {
 
 func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 	for _, c := range []struct {
-		name        string
-		desc        string
-		task        *v1alpha1.Task
-		taskRun     *v1alpha1.TaskRun
-		wantSteps   []corev1.Container
-		wantVolumes []corev1.Volume
+		name      string
+		desc      string
+		task      *v1alpha1.Task
+		taskRun   *v1alpha1.TaskRun
+		wantSteps []corev1.Container
 	}{{
 		name: "git resource in input and output with bucket storage",
 		desc: "git resource declared as both input and output with pipelinerun owner reference",
@@ -844,11 +843,10 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 
 func TestInValidOutputResources(t *testing.T) {
 	for _, c := range []struct {
-		desc      string
-		task      *v1alpha1.Task
-		taskRun   *v1alpha1.TaskRun
-		wantSteps []corev1.Container
-		wantErr   bool
+		desc    string
+		task    *v1alpha1.Task
+		taskRun *v1alpha1.TaskRun
+		wantErr bool
 	}{{
 		desc: "git declared in both resource spec and resource ref",
 		taskRun: &v1alpha1.TaskRun{
