@@ -108,7 +108,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		v1alpha1.BucketServiceAccountSecretName: bucketSecretName,
 		v1alpha1.BucketServiceAccountSecretKey:  bucketSecretKey,
 	}
-	c.KubeClient.UpdateConfigMap(systemNamespace, v1alpha1.BucketConfigName, configMapData)
+	updateConfigMap(c.KubeClient, systemNamespace, v1alpha1.BucketConfigName, configMapData)
 	defer resetConfigMap(c, systemNamespace, v1alpha1.BucketConfigName, originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
@@ -185,6 +185,26 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	}
 }
 
+// updateConfigMap updates the config map for specified @name with values. We can't use the one from knativetest because
+// it assumes that Data is already a non-nil map, and by default, it isn't!
+func updateConfigMap(client *knativetest.KubeClient, name string, configName string, values map[string]string) error {
+	configMap, err := client.GetConfigMap(name).Get(configName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	if configMap.Data == nil {
+		configMap.Data = make(map[string]string)
+	}
+
+	for key, value := range values {
+		configMap.Data[key] = value
+	}
+
+	_, err = client.GetConfigMap(name).Update(configMap)
+	return err
+}
+
 func getBucketSecret(t *testing.T, configFilePath, namespace string) *corev1.Secret {
 	t.Helper()
 	f, err := ioutil.ReadFile(configFilePath)
@@ -209,7 +229,7 @@ func deleteBucketSecret(c *clients, t *testing.T, namespace string) {
 }
 
 func resetConfigMap(c *clients, namespace, configName string, values map[string]string) error {
-	return c.KubeClient.UpdateConfigMap(namespace, configName, values)
+	return updateConfigMap(c.KubeClient, namespace, configName, values)
 }
 
 func runTaskToDeleteBucket(c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
