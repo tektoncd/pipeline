@@ -38,7 +38,7 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 		Args:    []string{"-args", "cp -r src-path/. /workspace/destination"},
 	}}
 
-	got := pvc.GetCopyFromContainerSpec("workspace", "src-path", "/workspace/destination")
+	got := pvc.GetCopyFromStorageToContainerSpec("workspace", "src-path", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
@@ -64,7 +64,7 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 	}}
 
-	got := pvc.GetCopyToContainerSpec("workspace", "src-path", "/workspace/destination")
+	got := pvc.GetCopyToStorageFromContainerSpec("workspace", "src-path", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}

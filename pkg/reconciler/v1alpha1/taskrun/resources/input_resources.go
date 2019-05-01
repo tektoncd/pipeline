@@ -91,7 +91,7 @@ func AddInputResource(
 		// to the desired destination directory, as long as the resource exports output to be copied
 		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
-				cpContainers := as.GetCopyFromContainerSpec(boundResource.Name, path, dPath)
+				cpContainers := as.GetCopyFromStorageToContainerSpec(boundResource.Name, path, dPath)
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 
 					mountPVC = true

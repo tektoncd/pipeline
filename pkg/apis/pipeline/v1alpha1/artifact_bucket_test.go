@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -24,16 +25,26 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestBucketGetCopyFromContainerSpec(t *testing.T) {
-	names.TestingSeed()
-	bucket := ArtifactBucket{
+const (
+	secretName = "secret1"
+)
+
+var (
+	expectedVolumeName = fmt.Sprintf("volume-bucket-%s", secretName)
+
+	bucket = ArtifactBucket{
 		Location: "gs://fake-bucket",
 		Secrets: []SecretParam{{
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-			SecretName: "secret1",
+			SecretName: secretName,
 			SecretKey:  "serviceaccount",
 		}},
 	}
+)
+
+func TestBucketGetCopyFromContainerSpec(t *testing.T) {
+	names.TestingSeed()
+
 	want := []corev1.Container{{
 		Name:    "artifact-dest-mkdir-workspace-9l9zj",
 		Image:   "override-with-bash-noop:latest",
@@ -44,11 +55,11 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 		Image:        "override-with-gsutil-image:latest",
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         []string{"-args", "cp -r gs://fake-bucket/src-path/* /workspace/destination"},
-		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
-		VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-secret1", MountPath: "/var/bucketsecret/secret1"}},
+		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: fmt.Sprintf("/var/bucketsecret/%s/serviceaccount", secretName)}},
+		VolumeMounts: []corev1.VolumeMount{{Name: expectedVolumeName, MountPath: fmt.Sprintf("/var/bucketsecret/%s", secretName)}},
 	}}
 
-	got := bucket.GetCopyFromContainerSpec("workspace", "src-path", "/workspace/destination")
+	got := bucket.GetCopyFromStorageToContainerSpec("workspace", "src-path", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
@@ -56,24 +67,16 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 
 func TestBucketGetCopyToContainerSpec(t *testing.T) {
 	names.TestingSeed()
-	bucket := ArtifactBucket{
-		Location: "gs://fake-bucket",
-		Secrets: []SecretParam{{
-			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-			SecretName: "secret1",
-			SecretKey:  "serviceaccount",
-		}},
-	}
 	want := []corev1.Container{{
 		Name:         "artifact-copy-to-workspace-9l9zj",
 		Image:        "override-with-gsutil-image:latest",
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         []string{"-args", "cp -r src-path gs://fake-bucket/workspace/destination"},
-		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/bucketsecret/secret1/serviceaccount"}},
-		VolumeMounts: []corev1.VolumeMount{{Name: "volume-bucket-secret1", MountPath: "/var/bucketsecret/secret1"}},
+		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: fmt.Sprintf("/var/bucketsecret/%s/serviceaccount", secretName)}},
+		VolumeMounts: []corev1.VolumeMount{{Name: expectedVolumeName, MountPath: fmt.Sprintf("/var/bucketsecret/%s", secretName)}},
 	}}
 
-	got := bucket.GetCopyToContainerSpec("workspace", "src-path", "workspace/destination")
+	got := bucket.GetCopyToStorageFromContainerSpec("workspace", "src-path", "workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
@@ -81,19 +84,11 @@ func TestBucketGetCopyToContainerSpec(t *testing.T) {
 
 func TestGetSecretsVolumes(t *testing.T) {
 	names.TestingSeed()
-	bucket := ArtifactBucket{
-		Location: "gs://fake-bucket",
-		Secrets: []SecretParam{{
-			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-			SecretName: "secret1",
-			SecretKey:  "serviceaccount",
-		}},
-	}
 	want := []corev1.Volume{{
-		Name: "bucket-secret-secret1-9l9zj",
+		Name: expectedVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
-				SecretName: "secret1",
+				SecretName: secretName,
 			},
 		},
 	}}
