@@ -46,8 +46,8 @@ func (p *ArtifactPVC) StorageBasePath(pr *PipelineRun) string {
 	return pvcDir
 }
 
-// GetCopyFromContainerSpec returns a container used to download artifacts from temporary storage
-func (p *ArtifactPVC) GetCopyFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
+// GetCopyFromStorageToContainerSpec returns a container used to download artifacts from temporary storage
+func (p *ArtifactPVC) GetCopyFromStorageToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
 	return []corev1.Container{{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
 		Image:   *bashNoopImage,
@@ -56,8 +56,8 @@ func (p *ArtifactPVC) GetCopyFromContainerSpec(name, sourcePath, destinationPath
 	}}
 }
 
-// GetCopyToContainerSpec returns a container used to upload artifacts for temporary storage
-func (p *ArtifactPVC) GetCopyToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
+// GetCopyToStorageFromContainerSpec returns a container used to upload artifacts for temporary storage
+func (p *ArtifactPVC) GetCopyToStorageFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
 	return []corev1.Container{{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-mkdir-%s", name)),
 		Image:   *bashNoopImage,

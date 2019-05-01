@@ -132,7 +132,7 @@ func AddOutputResources(
 		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []corev1.Container
 			for _, dPath := range boundResource.Paths {
-				containers := as.GetCopyToContainerSpec(resource.GetName(), sourcePath, dPath)
+				containers := as.GetCopyToStorageFromContainerSpec(resource.GetName(), sourcePath, dPath)
 				newSteps = append(newSteps, containers...)
 			}
 			resourceContainers = append(resourceContainers, newSteps...)

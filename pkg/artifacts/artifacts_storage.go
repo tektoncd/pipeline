@@ -33,8 +33,8 @@ import (
 // ArtifactStorageInterface is an interface to define the steps to copy
 // an pipeline artifact to/from temporary storage
 type ArtifactStorageInterface interface {
-	GetCopyToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
-	GetCopyFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
+	GetCopyToStorageFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
+	GetCopyFromStorageToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
 	GetSecretsVolumes() []corev1.Volume
 	GetType() string
 	StorageBasePath(pr *v1alpha1.PipelineRun) string
