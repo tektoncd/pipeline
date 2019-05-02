@@ -21,7 +21,8 @@ import (
 	"fmt"
 	"time"
 
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	"github.com/knative/pkg/apis"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -43,16 +44,16 @@ type PipelineRunSpec struct {
 	// Resources is a list of bindings specifying which actual instances of
 	// PipelineResources to use for the resources the Pipeline has declared
 	// it needs.
-	Resources []PipelineResourceBinding `json:"resources"`
+	Resources []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
-	Params []Param `json:"params"`
+	Params []Param `json:"params,omitempty"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
-	Status PipelineRunSpecStatus
+	Status PipelineRunSpecStatus `json:"status,omitempty"`
 	// Time after which the Pipeline times out. Defaults to never.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
@@ -62,6 +63,9 @@ type PipelineRunSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// If specified, the pod's tolerations.
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// If specified, the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -79,7 +83,7 @@ const (
 // PipelineResourceRef can be used to refer to a specific instance of a Resource
 type PipelineResourceRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
@@ -89,7 +93,7 @@ type PipelineResourceRef struct {
 // Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
 type PipelineRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
@@ -106,23 +110,27 @@ const (
 // PipelineTrigger describes what triggered this Pipeline to run. It could be triggered manually,
 // or it could have been some kind of external event (not yet designed).
 type PipelineTrigger struct {
-	Type PipelineTriggerType `json:"type"`
+	Type PipelineTriggerType `json:"type,omitempty"`
 	// +optional
 	Name string `json:"name,omitempty"`
 }
 
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
-	Conditions duckv1alpha1.Conditions `json:"conditions"`
+	duckv1beta1.Status `json:",inline"`
+
 	// In #107 should be updated to hold the location logs have been uploaded to
 	// +optional
 	Results *Results `json:"results,omitempty"`
+
 	// StartTime is the time the PipelineRun is actually started.
 	// +optional
 	StartTime *metav1.Time `json:"startTime,omitempty"`
+
 	// CompletionTime is the time the PipelineRun completed.
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
 	// map of PipelineRunTaskRunStatus with the taskRun name as the key
 	// +optional
 	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
@@ -130,34 +138,35 @@ type PipelineRunStatus struct {
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
 type PipelineRunTaskRunStatus struct {
-	// PipelineTaskName is the name of the PipelineTask
-	PipelineTaskName string `json:"pipelineTaskName"`
+	// PipelineTaskName is the name of the PipelineTask.
+	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
 	// Status is the TaskRunStatus for the corresponding TaskRun
 	// +optional
 	Status *TaskRunStatus `json:"status,omitempty"`
 }
 
-var pipelineRunCondSet = duckv1alpha1.NewBatchConditionSet()
+var pipelineRunCondSet = apis.NewBatchConditionSet()
 
 // GetCondition returns the Condition matching the given type.
-func (pr *PipelineRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
+func (pr *PipelineRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 	return pipelineRunCondSet.Manage(pr).GetCondition(t)
 }
 
 // InitializeConditions will set all conditions in pipelineRunCondSet to unknown for the PipelineRun
+// and set the started time to the current time
 func (pr *PipelineRunStatus) InitializeConditions() {
 	if pr.TaskRuns == nil {
 		pr.TaskRuns = make(map[string]*PipelineRunTaskRunStatus)
 	}
 	if pr.StartTime.IsZero() {
-		pr.StartTime = &metav1.Time{time.Now()}
+		pr.StartTime = &metav1.Time{Time: time.Now()}
 	}
 	pipelineRunCondSet.Manage(pr).InitializeConditions()
 }
 
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
-func (pr *PipelineRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+func (pr *PipelineRunStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
 		pipelineRunCondSet.Manage(pr).SetCondition(*newCond)
 	}
@@ -186,14 +195,14 @@ type PipelineRunList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PipelineRun `json:"items"`
+	Items           []PipelineRun `json:"items,omitempty"`
 }
 
 // PipelineTaskRun reports the results of running a step in the Task. Each
 // task has the potential to succeed or fail (based on the exit code)
 // and produces logs.
 type PipelineTaskRun struct {
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 }
 
 // GetTaskRunRef for pipelinerun
@@ -218,7 +227,7 @@ func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {
 
 // IsDone returns true if the PipelineRun's status indicates that it is done.
 func (pr *PipelineRun) IsDone() bool {
-	return !pr.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+	return !pr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
 }
 
 // HasStarted function check whether pipelinerun has valid start time set in its status

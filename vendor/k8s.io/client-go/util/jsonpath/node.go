@@ -130,9 +130,8 @@ func (f *IdentifierNode) String() string {
 
 // ParamsEntry holds param information for ArrayNode
 type ParamsEntry struct {
-	Value   int
-	Known   bool // whether the value is known when parse it
-	Derived bool
+	Value int
+	Known bool // whether the value is known when parse it
 }
 
 // ArrayNode holds start, end, step information for array index selection

@@ -119,10 +119,10 @@ type PipelineResource struct {
 // with a PipelineResource dependency that the Pipeline has declared
 type PipelineResourceBinding struct {
 	// Name is the name of the PipelineResource in the Pipeline's declaration
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	// ResourceRef is a reference to the instance of the actual PipelineResource
 	// that should be used
-	ResourceRef PipelineResourceRef `json:"resourceRef"`
+	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
 }
 
 // TaskResourceBinding points to the PipelineResource that
@@ -133,11 +133,11 @@ type TaskResourceBinding struct {
 	Name string `json:"name"`
 	// no more than one of the ResourceRef and ResourceSpec may be specified.
 	// +optional
-	ResourceRef PipelineResourceRef `json:"resourceRef"`
+	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
 	// +optional
-	ResourceSpec *PipelineResourceSpec `json:"resourceSpec"`
+	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
 	// +optional
-	Paths []string `json:"paths"`
+	Paths []string `json:"paths,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2019 The Knative Authors
+# Copyright 2018 The Knative Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,15 +38,9 @@ function build_resource_name() {
 # Test cluster parameters
 
 # Configurable parameters
-# export E2E_CLUSTER_REGION and E2E_CLUSTER_ZONE as they're used in the cluster setup subprocess
-export E2E_CLUSTER_REGION=${E2E_CLUSTER_REGION:-us-central1}
+readonly E2E_CLUSTER_REGION=${E2E_CLUSTER_REGION:-us-central1}
 # By default we use regional clusters.
-export E2E_CLUSTER_ZONE=${E2E_CLUSTER_ZONE:-}
-
-# Default backup regions in case of stockouts; by default we don't fall back to a different zone in the same region
-readonly E2E_CLUSTER_BACKUP_REGIONS=${E2E_CLUSTER_BACKUP_REGIONS:-us-west1 us-east1}
-readonly E2E_CLUSTER_BACKUP_ZONES=${E2E_CLUSTER_BACKUP_ZONES:-}
-
+readonly E2E_CLUSTER_ZONE=${E2E_CLUSTER_ZONE:-}
 readonly E2E_CLUSTER_MACHINE=${E2E_CLUSTER_MACHINE:-n1-standard-4}
 readonly E2E_GKE_ENVIRONMENT=${E2E_GKE_ENVIRONMENT:-prod}
 readonly E2E_GKE_COMMAND_GROUP=${E2E_GKE_COMMAND_GROUP:-beta}
@@ -67,8 +61,6 @@ IS_BOSKOS=0
 
 # Tear down the test resources.
 function teardown_test_resources() {
-  # On boskos, save time and don't teardown as the cluster will be destroyed anyway.
-  (( IS_BOSKOS )) && return
   header "Tearing down test environment"
   function_exists test_teardown && test_teardown
   (( ! SKIP_KNATIVE_SETUP )) && function_exists knative_teardown && knative_teardown
@@ -115,7 +107,8 @@ function save_metadata() {
     geo_key="Zone"
     geo_value="${E2E_CLUSTER_REGION}-${E2E_CLUSTER_ZONE}"
   fi
-  local cluster_version="$(gcloud container clusters list --project=${E2E_PROJECT_ID} --format='value(currentMasterVersion)')"
+  local gcloud_project="$(gcloud config get-value project)"
+  local cluster_version="$(gcloud container clusters list --project=${gcloud_project} --format='value(currentMasterVersion)')"
   cat << EOF > ${ARTIFACTS}/metadata.json
 {
   "E2E:${geo_key}": "${geo_value}",
@@ -127,50 +120,26 @@ function save_metadata() {
 EOF
 }
 
-# Delete target pools and health checks that might have leaked.
-# See https://github.com/knative/serving/issues/959 for details.
-# TODO(adrcunha): Remove once the leak issue is resolved.
-function delete_leaked_network_resources() {
-  # On boskos, don't bother with leaks as the janitor will delete everything in the project.
-  (( IS_BOSKOS )) && return
-  # Ensure we're using the GCP project used by kubetest
-  local gcloud_project="$(gcloud config get-value project)"
-  local http_health_checks="$(gcloud compute target-pools list \
-    --project=${gcloud_project} --format='value(healthChecks)' --filter="instances~-${E2E_CLUSTER_NAME}-" | \
-    grep httpHealthChecks | tr '\n' ' ')"
-  local target_pools="$(gcloud compute target-pools list \
-    --project=${gcloud_project} --format='value(name)' --filter="instances~-${E2E_CLUSTER_NAME}-" | \
-    tr '\n' ' ')"
-  if [[ -n "${target_pools}" ]]; then
-    echo "Found leaked target pools, deleting"
-    gcloud compute forwarding-rules delete -q --project=${gcloud_project} --region=${E2E_CLUSTER_REGION} ${target_pools}
-    gcloud compute target-pools delete -q --project=${gcloud_project} --region=${E2E_CLUSTER_REGION} ${target_pools}
-  fi
-  if [[ -n "${http_health_checks}" ]]; then
-    echo "Found leaked health checks, deleting"
-    gcloud compute http-health-checks delete -q --project=${gcloud_project} ${http_health_checks}
-  fi
-}
-
 # Create a test cluster with kubetest and call the current script again.
 function create_test_cluster() {
   # Fail fast during setup.
   set -o errexit
   set -o pipefail
 
-  if function_exists cluster_setup; then
-    cluster_setup || fail_test "cluster setup failed"
-  fi
+  header "Creating test cluster"
 
   echo "Cluster will have a minimum of ${E2E_MIN_CLUSTER_NODES} and a maximum of ${E2E_MAX_CLUSTER_NODES} nodes."
 
   # Smallest cluster required to run the end-to-end-tests
+  local geoflag="--gcp-region=${E2E_CLUSTER_REGION}"
+  [[ -n "${E2E_CLUSTER_ZONE}" ]] && geoflag="--gcp-zone=${E2E_CLUSTER_REGION}-${E2E_CLUSTER_ZONE}"
   local CLUSTER_CREATION_ARGS=(
     --gke-create-command="container clusters create --quiet --enable-autoscaling --min-nodes=${E2E_MIN_CLUSTER_NODES} --max-nodes=${E2E_MAX_CLUSTER_NODES} --scopes=cloud-platform --enable-basic-auth --no-issue-client-certificate ${EXTRA_CLUSTER_CREATION_FLAGS[@]}"
     --gke-shape={\"default\":{\"Nodes\":${E2E_MIN_CLUSTER_NODES}\,\"MachineType\":\"${E2E_CLUSTER_MACHINE}\"}}
     --provider=gke
     --deployment=gke
     --cluster="${E2E_CLUSTER_NAME}"
+    ${geoflag}
     --gcp-network="${E2E_NETWORK_NAME}"
     --gke-environment="${E2E_GKE_ENVIRONMENT}"
     --gke-command-group="${E2E_GKE_COMMAND_GROUP}"
@@ -198,69 +167,46 @@ function create_test_cluster() {
   (( SKIP_KNATIVE_SETUP )) && test_cmd_args+=" --skip-knative-setup"
   [[ -n "${GCP_PROJECT}" ]] && test_cmd_args+=" --gcp-project ${GCP_PROJECT}"
   [[ -n "${E2E_SCRIPT_CUSTOM_FLAGS[@]}" ]] && test_cmd_args+=" ${E2E_SCRIPT_CUSTOM_FLAGS[@]}"
-  local extra_flags=()
-  # If using boskos, save time and let it tear down the cluster
-  (( ! IS_BOSKOS )) && extra_flags+=(--down)
-  create_test_cluster_with_retries "${CLUSTER_CREATION_ARGS[@]}" \
+  # Don't fail test for kubetest, as it might incorrectly report test failure
+  # if teardown fails (for details, see success() below)
+  set +o errexit
+  run_go_tool k8s.io/test-infra/kubetest \
+    kubetest "${CLUSTER_CREATION_ARGS[@]}" \
     --up \
+    --down \
     --extract "${E2E_CLUSTER_VERSION}" \
     --gcp-node-image "${SERVING_GKE_IMAGE}" \
     --test-cmd "${E2E_SCRIPT}" \
     --test-cmd-args "${test_cmd_args}" \
-    ${extra_flags[@]} \
     ${EXTRA_KUBETEST_FLAGS[@]}
   echo "Test subprocess exited with code $?"
   # Ignore any errors below, this is a best-effort cleanup and shouldn't affect the test result.
   set +o errexit
-  function_exists cluster_teardown && cluster_teardown
-  delete_leaked_network_resources
-  local result=$(get_test_return_code)
+  # Ensure we're using the GCP project used by kubetest
+  gcloud_project="$(gcloud config get-value project)"
+  # Delete target pools and health checks that might have leaked.
+  # See https://github.com/knative/serving/issues/959 for details.
+  # TODO(adrcunha): Remove once the leak issue is resolved.
+  local http_health_checks="$(gcloud compute target-pools list \
+    --project=${gcloud_project} --format='value(healthChecks)' --filter="instances~-${E2E_CLUSTER_NAME}-" | \
+    grep httpHealthChecks | tr '\n' ' ')"
+  local target_pools="$(gcloud compute target-pools list \
+    --project=${gcloud_project} --format='value(name)' --filter="instances~-${E2E_CLUSTER_NAME}-" | \
+    tr '\n' ' ')"
+  if [[ -n "${target_pools}" ]]; then
+    echo "Found leaked target pools, deleting"
+    gcloud compute forwarding-rules delete -q --project=${gcloud_project} --region=${E2E_CLUSTER_REGION} ${target_pools}
+    gcloud compute target-pools delete -q --project=${gcloud_project} --region=${E2E_CLUSTER_REGION} ${target_pools}
+  fi
+  if [[ -n "${http_health_checks}" ]]; then
+    echo "Found leaked health checks, deleting"
+    gcloud compute http-health-checks delete -q --project=${gcloud_project} ${http_health_checks}
+  fi
+  local result="$(cat ${TEST_RESULT_FILE})"
   echo "Artifacts were written to ${ARTIFACTS}"
   echo "Test result code is ${result}"
+
   exit ${result}
-}
-
-# Retry backup regions/zones if cluster creations failed due to stockout.
-# Parameters: $1..$n - any kubetest flags other than geo flag.
-function create_test_cluster_with_retries() {
-  local cluster_creation_log=/tmp/${E2E_BASE_NAME}-cluster_creation-log
-  # zone_not_provided is a placeholder for e2e_cluster_zone to make for loop below work
-  local zone_not_provided="zone_not_provided"
-
-  local e2e_cluster_regions=(${E2E_CLUSTER_REGION})
-  local e2e_cluster_zones=(${E2E_CLUSTER_ZONE})
-
-  if [[ -n "${E2E_CLUSTER_BACKUP_ZONES}" ]]; then
-    e2e_cluster_zones+=(${E2E_CLUSTER_BACKUP_ZONES})
-  elif [[ -n "${E2E_CLUSTER_BACKUP_REGIONS}" ]]; then
-    e2e_cluster_regions+=(${E2E_CLUSTER_BACKUP_REGIONS})
-    e2e_cluster_zones=(${zone_not_provided})
-  else
-    echo "No backup region/zone set, cluster creation will fail in case of stockout"
-  fi
-
-  for e2e_cluster_region in "${e2e_cluster_regions[@]}"; do
-    for e2e_cluster_zone in "${e2e_cluster_zones[@]}"; do
-      E2E_CLUSTER_REGION=${e2e_cluster_region}
-      E2E_CLUSTER_ZONE=${e2e_cluster_zone}
-      [[ "${E2E_CLUSTER_ZONE}" == "${zone_not_provided}" ]] && E2E_CLUSTER_ZONE=""
-
-      local geoflag="--gcp-region=${E2E_CLUSTER_REGION}"
-      [[ -n "${E2E_CLUSTER_ZONE}" ]] && geoflag="--gcp-zone=${E2E_CLUSTER_REGION}-${E2E_CLUSTER_ZONE}"
-
-      header "Creating test cluster in $E2E_CLUSTER_REGION $E2E_CLUSTER_ZONE"
-      # Don't fail test for kubetest, as it might incorrectly report test failure
-      # if teardown fails (for details, see success() below)
-      set +o errexit
-      { run_go_tool k8s.io/test-infra/kubetest \
-        kubetest "$@" ${geoflag}; } 2>&1 | tee ${cluster_creation_log}
-
-      # Exit if test succeeded
-      [[ "$(get_test_return_code)" == "0" ]] && return
-      # If test failed not because of cluster creation stockout, return
-      [[ -z "$(grep -Eio 'does not have enough resources to fulfill the request' ${cluster_creation_log})" ]] && return
-    done
-  done
 }
 
 # Setup the test cluster for running the tests.
@@ -270,11 +216,6 @@ function setup_test_cluster() {
   set -o pipefail
 
   header "Setting up test cluster"
-
-  # Set the actual project the test cluster resides in
-  # It will be a project assigned by Boskos if test is running on Prow, 
-  # otherwise will be ${GCP_PROJECT} set up by user.
-  readonly export E2E_PROJECT_ID="$(gcloud config get-value project)"
 
   # Save some metadata about cluster creation for using in prow and testgrid
   save_metadata
@@ -287,10 +228,9 @@ function setup_test_cluster() {
   if [[ -z "$(kubectl get clusterrolebinding cluster-admin-binding 2> /dev/null)" ]]; then
     acquire_cluster_admin_role ${k8s_user} ${E2E_CLUSTER_NAME} ${E2E_CLUSTER_REGION} ${E2E_CLUSTER_ZONE}
     kubectl config set-context ${k8s_cluster} --namespace=default
-    export KO_DOCKER_REPO=gcr.io/${E2E_PROJECT_ID}/${E2E_BASE_NAME}-e2e-img
+    export KO_DOCKER_REPO=gcr.io/$(gcloud config get-value project)/${E2E_BASE_NAME}-e2e-img
   fi
 
-  echo "- Project is ${E2E_PROJECT_ID}"
   echo "- Cluster is ${k8s_cluster}"
   echo "- User is ${k8s_user}"
   echo "- Docker is ${KO_DOCKER_REPO}"
@@ -309,12 +249,6 @@ function setup_test_cluster() {
   if function_exists test_setup; then
     test_setup || fail_test "test setup failed"
   fi
-}
-
-# Gets the exit of the test script.
-# For more details, see set_test_return_code().
-function get_test_return_code() {
-  echo $(cat ${TEST_RESULT_FILE})
 }
 
 # Set the return code that the test script will return.

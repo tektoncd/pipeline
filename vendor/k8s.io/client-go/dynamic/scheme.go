@@ -43,8 +43,6 @@ func init() {
 
 var watchJsonSerializerInfo = runtime.SerializerInfo{
 	MediaType:        "application/json",
-	MediaTypeType:    "application",
-	MediaTypeSubType: "json",
 	EncodesAsText:    true,
 	Serializer:       json.NewSerializer(json.DefaultMetaFactory, watchScheme, watchScheme, false),
 	PrettySerializer: json.NewSerializer(json.DefaultMetaFactory, watchScheme, watchScheme, true),
@@ -79,8 +77,6 @@ func (s basicNegotiatedSerializer) SupportedMediaTypes() []runtime.SerializerInf
 	return []runtime.SerializerInfo{
 		{
 			MediaType:        "application/json",
-			MediaTypeType:    "application",
-			MediaTypeSubType: "json",
 			EncodesAsText:    true,
 			Serializer:       json.NewSerializer(json.DefaultMetaFactory, basicScheme, basicScheme, false),
 			PrettySerializer: json.NewSerializer(json.DefaultMetaFactory, basicScheme, basicScheme, true),

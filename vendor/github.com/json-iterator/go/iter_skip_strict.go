@@ -2,22 +2,12 @@
 
 package jsoniter
 
-import (
-	"fmt"
-	"io"
-)
+import "fmt"
 
 func (iter *Iterator) skipNumber() {
 	if !iter.trySkipNumber() {
 		iter.unreadByte()
-		if iter.Error != nil && iter.Error != io.EOF {
-			return
-		}
-		iter.ReadFloat64()
-		if iter.Error != nil && iter.Error != io.EOF {
-			iter.Error = nil
-			iter.ReadBigFloat()
-		}
+		iter.ReadFloat32()
 	}
 }
 

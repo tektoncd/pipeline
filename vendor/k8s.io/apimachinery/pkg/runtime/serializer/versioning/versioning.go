@@ -18,7 +18,6 @@ package versioning
 
 import (
 	"io"
-	"reflect"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -91,22 +90,13 @@ func (c *codec) Decode(data []byte, defaultGVK *schema.GroupVersionKind, into ru
 		into = versioned.Last()
 	}
 
-	// If the into object is unstructured and expresses an opinion about its group/version,
-	// create a new instance of the type so we always exercise the conversion path (skips short-circuiting on `into == obj`)
-	decodeInto := into
-	if into != nil {
-		if _, ok := into.(runtime.Unstructured); ok && !into.GetObjectKind().GroupVersionKind().GroupVersion().Empty() {
-			decodeInto = reflect.New(reflect.TypeOf(into).Elem()).Interface().(runtime.Object)
-		}
-	}
-
-	obj, gvk, err := c.decoder.Decode(data, defaultGVK, decodeInto)
+	obj, gvk, err := c.decoder.Decode(data, defaultGVK, into)
 	if err != nil {
 		return nil, gvk, err
 	}
 
 	if d, ok := obj.(runtime.NestedObjectDecoder); ok {
-		if err := d.DecodeNestedObjects(runtime.WithoutVersionDecoder{c.decoder}); err != nil {
+		if err := d.DecodeNestedObjects(DirectDecoder{c.decoder}); err != nil {
 			return nil, gvk, err
 		}
 	}
@@ -201,7 +191,7 @@ func (c *codec) Encode(obj runtime.Object, w io.Writer) error {
 
 	if c.encodeVersion == nil || isUnversioned {
 		if e, ok := obj.(runtime.NestedObjectEncoder); ok {
-			if err := e.EncodeNestedObjects(runtime.WithVersionEncoder{Encoder: c.encoder, ObjectTyper: c.typer}); err != nil {
+			if err := e.EncodeNestedObjects(DirectEncoder{Encoder: c.encoder, ObjectTyper: c.typer}); err != nil {
 				return err
 			}
 		}
@@ -222,7 +212,7 @@ func (c *codec) Encode(obj runtime.Object, w io.Writer) error {
 	}
 
 	if e, ok := out.(runtime.NestedObjectEncoder); ok {
-		if err := e.EncodeNestedObjects(runtime.WithVersionEncoder{Version: c.encodeVersion, Encoder: c.encoder, ObjectTyper: c.typer}); err != nil {
+		if err := e.EncodeNestedObjects(DirectEncoder{Version: c.encodeVersion, Encoder: c.encoder, ObjectTyper: c.typer}); err != nil {
 			return err
 		}
 	}
@@ -234,10 +224,49 @@ func (c *codec) Encode(obj runtime.Object, w io.Writer) error {
 	return err
 }
 
-// DirectEncoder was moved and renamed to runtime.WithVersionEncoder in 1.15.
-// TODO: remove in 1.16.
-type DirectEncoder = runtime.WithVersionEncoder
+// DirectEncoder serializes an object and ensures the GVK is set.
+type DirectEncoder struct {
+	Version runtime.GroupVersioner
+	runtime.Encoder
+	runtime.ObjectTyper
+}
 
-// DirectDecoder was moved and renamed to runtime.WithoutVersionDecoder in 1.15.
-// TODO: remove in 1.16.
-type DirectDecoder = runtime.WithoutVersionDecoder
+// Encode does not do conversion. It sets the gvk during serialization.
+func (e DirectEncoder) Encode(obj runtime.Object, stream io.Writer) error {
+	gvks, _, err := e.ObjectTyper.ObjectKinds(obj)
+	if err != nil {
+		if runtime.IsNotRegisteredError(err) {
+			return e.Encoder.Encode(obj, stream)
+		}
+		return err
+	}
+	kind := obj.GetObjectKind()
+	oldGVK := kind.GroupVersionKind()
+	gvk := gvks[0]
+	if e.Version != nil {
+		preferredGVK, ok := e.Version.KindForGroupVersionKinds(gvks)
+		if ok {
+			gvk = preferredGVK
+		}
+	}
+	kind.SetGroupVersionKind(gvk)
+	err = e.Encoder.Encode(obj, stream)
+	kind.SetGroupVersionKind(oldGVK)
+	return err
+}
+
+// DirectDecoder clears the group version kind of a deserialized object.
+type DirectDecoder struct {
+	runtime.Decoder
+}
+
+// Decode does not do conversion. It removes the gvk during deserialization.
+func (d DirectDecoder) Decode(data []byte, defaults *schema.GroupVersionKind, into runtime.Object) (runtime.Object, *schema.GroupVersionKind, error) {
+	obj, gvk, err := d.Decoder.Decode(data, defaults, into)
+	if obj != nil {
+		kind := obj.GetObjectKind()
+		// clearing the gvk is just a convention of a codec
+		kind.SetGroupVersionKind(schema.GroupVersionKind{})
+	}
+	return obj, gvk, err
+}

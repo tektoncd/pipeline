@@ -39,11 +39,7 @@ func encoderOfMap(ctx *ctx, typ reflect2.Type) ValEncoder {
 }
 
 func decoderOfMapKey(ctx *ctx, typ reflect2.Type) ValDecoder {
-	decoder := ctx.decoderExtension.CreateMapKeyDecoder(typ)
-	if decoder != nil {
-		return decoder
-	}
-	for _, extension := range ctx.extraExtensions {
+	for _, extension := range ctx.extensions {
 		decoder := extension.CreateMapKeyDecoder(typ)
 		if decoder != nil {
 			return decoder
@@ -64,26 +60,14 @@ func decoderOfMapKey(ctx *ctx, typ reflect2.Type) ValDecoder {
 		return &numericMapKeyDecoder{decoderOfType(ctx, typ)}
 	default:
 		ptrType := reflect2.PtrTo(typ)
-		if ptrType.Implements(unmarshalerType) {
-			return &referenceDecoder{
-				&unmarshalerDecoder{
-					valType: ptrType,
-				},
-			}
-		}
-		if typ.Implements(unmarshalerType) {
-			return &unmarshalerDecoder{
-				valType: typ,
-			}
-		}
-		if ptrType.Implements(textUnmarshalerType) {
+		if ptrType.Implements(textMarshalerType) {
 			return &referenceDecoder{
 				&textUnmarshalerDecoder{
 					valType: ptrType,
 				},
 			}
 		}
-		if typ.Implements(textUnmarshalerType) {
+		if typ.Implements(textMarshalerType) {
 			return &textUnmarshalerDecoder{
 				valType: typ,
 			}
@@ -93,11 +77,7 @@ func decoderOfMapKey(ctx *ctx, typ reflect2.Type) ValDecoder {
 }
 
 func encoderOfMapKey(ctx *ctx, typ reflect2.Type) ValEncoder {
-	encoder := ctx.encoderExtension.CreateMapKeyEncoder(typ)
-	if encoder != nil {
-		return encoder
-	}
-	for _, extension := range ctx.extraExtensions {
+	for _, extension := range ctx.extensions {
 		encoder := extension.CreateMapKeyEncoder(typ)
 		if encoder != nil {
 			return encoder

@@ -1,0 +1,2 @@
+NAME	TYPE	STATUS START
+.metadata.name	.status.conditions[*].type	.status.conditions[*].status .status.startTime

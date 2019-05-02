@@ -21,7 +21,7 @@ import (
 	"k8s.io/client-go/discovery"
 )
 
-// CategoryExpander maps category strings to GroupResources.
+// CategoryExpander maps category strings to GroupResouces.
 // Categories are classification or 'tag' of a group of resources.
 type CategoryExpander interface {
 	Expand(category string) ([]schema.GroupResource, bool)

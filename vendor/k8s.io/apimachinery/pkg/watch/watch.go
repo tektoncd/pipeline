@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"k8s.io/klog"
+	"github.com/golang/glog"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -44,7 +44,6 @@ const (
 	Added    EventType = "ADDED"
 	Modified EventType = "MODIFIED"
 	Deleted  EventType = "DELETED"
-	Bookmark EventType = "BOOKMARK"
 	Error    EventType = "ERROR"
 
 	DefaultChanSize int32 = 100
@@ -58,10 +57,6 @@ type Event struct {
 	// Object is:
 	//  * If Type is Added or Modified: the new state of the object.
 	//  * If Type is Deleted: the state of the object immediately before deletion.
-	//  * If Type is Bookmark: the object (instance of a type being watched) where
-	//    only ResourceVersion field is set. On successful restart of watch from a
-	//    bookmark resourceVersion, client is guaranteed to not get repeat event
-	//    nor miss any events.
 	//  * If Type is Error: *api.Status is recommended; other types may make sense
 	//    depending on context.
 	Object runtime.Object
@@ -111,7 +106,7 @@ func (f *FakeWatcher) Stop() {
 	f.Lock()
 	defer f.Unlock()
 	if !f.Stopped {
-		klog.V(4).Infof("Stopping fake watcher.")
+		glog.V(4).Infof("Stopping fake watcher.")
 		close(f.result)
 		f.Stopped = true
 	}
@@ -178,7 +173,7 @@ func (f *RaceFreeFakeWatcher) Stop() {
 	f.Lock()
 	defer f.Unlock()
 	if !f.Stopped {
-		klog.V(4).Infof("Stopping fake watcher.")
+		glog.V(4).Infof("Stopping fake watcher.")
 		close(f.result)
 		f.Stopped = true
 	}

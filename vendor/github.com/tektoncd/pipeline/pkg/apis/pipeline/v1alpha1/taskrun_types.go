@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
-	duckv1alpha1 "github.com/knative/pkg/apis/duck/v1alpha1"
+	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,7 +32,7 @@ var _ apis.Defaultable = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
-	Trigger TaskTrigger `json:"trigger"`
+	Trigger TaskTrigger `json:"trigger,omitempty"`
 	// +optional
 	Inputs TaskRunInputs `json:"inputs,omitempty"`
 	// +optional
@@ -48,7 +48,7 @@ type TaskRunSpec struct {
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 	// Used for cancelling a taskrun (and maybe more later on)
 	// +optional
-	Status TaskRunSpecStatus
+	Status TaskRunSpecStatus `json:"status,omitempty"`
 	// Time after which the build times out. Defaults to 10 minutes.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
@@ -59,6 +59,9 @@ type TaskRunSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// If specified, the pod's tolerations.
+	// +optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// If specified, the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
@@ -108,16 +111,14 @@ const (
 type TaskTrigger struct {
 	Type TaskTriggerType `json:"type"`
 	// +optional
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty,omitempty"`
 }
 
-var taskRunCondSet = duckv1alpha1.NewBatchConditionSet()
+var taskRunCondSet = apis.NewBatchConditionSet()
 
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
-	// Conditions describes the set of conditions of this build.
-	// +optional
-	Conditions duckv1alpha1.Conditions `json:"conditions,omitempty"`
+	duckv1beta1.Status `json:",inline"`
 
 	// In #107 should be updated to hold the location logs have been uploaded to
 	// +optional
@@ -140,19 +141,22 @@ type TaskRunStatus struct {
 }
 
 // GetCondition returns the Condition matching the given type.
-func (tr *TaskRunStatus) GetCondition(t duckv1alpha1.ConditionType) *duckv1alpha1.Condition {
+func (tr *TaskRunStatus) GetCondition(t apis.ConditionType) *apis.Condition {
 	return taskRunCondSet.Manage(tr).GetCondition(t)
 }
+
+// InitializeConditions will set all conditions in taskRunCondSet to unknown for the TaskRun
+// and set the started time to the current time
 func (tr *TaskRunStatus) InitializeConditions() {
 	if tr.StartTime.IsZero() {
-		tr.StartTime = &metav1.Time{time.Now()}
+		tr.StartTime = &metav1.Time{Time: time.Now()}
 	}
 	taskRunCondSet.Manage(tr).InitializeConditions()
 }
 
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
-func (tr *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
+func (tr *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
 		taskRunCondSet.Manage(tr).SetCondition(*newCond)
 	}
@@ -161,6 +165,7 @@ func (tr *TaskRunStatus) SetCondition(newCond *duckv1alpha1.Condition) {
 // StepState reports the results of running a step in the Task.
 type StepState struct {
 	corev1.ContainerState
+	Name string `json:"name,omitempty"`
 }
 
 // +genclient
@@ -212,7 +217,7 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 	return ""
 }
 
-// HasPipeluneRunOwnerReference returns true of TaskRun has
+// HasPipelineRunOwnerReference returns true of TaskRun has
 // owner reference of type PipelineRun
 func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 	for _, ref := range tr.GetOwnerReferences() {
@@ -225,7 +230,12 @@ func (tr *TaskRun) HasPipelineRunOwnerReference() bool {
 
 // IsDone returns true if the TaskRun's status indicates that it is done.
 func (tr *TaskRun) IsDone() bool {
-	return !tr.Status.GetCondition(duckv1alpha1.ConditionSucceeded).IsUnknown()
+	return !tr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
+}
+
+// HasStarted function check whether taskrun has valid start time set in its status
+func (tr *TaskRun) HasStarted() bool {
+	return tr.Status.StartTime != nil && !tr.Status.StartTime.IsZero()
 }
 
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state

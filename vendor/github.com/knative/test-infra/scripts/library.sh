@@ -146,26 +146,6 @@ function wait_until_pods_running() {
   return 1
 }
 
-# Waits until all batch jobs complete in the given namespace.
-# Parameters: $1 - namespace.
-function wait_until_batch_job_complete() {
-  echo -n "Waiting until all batch jobs in namespace $1 run to completion."
-  for i in {1..150}; do  # timeout after 5 minutes
-    local jobs=$(kubectl get jobs -n $1 --no-headers \
-                 -ocustom-columns='n:{.metadata.name},c:{.spec.completions},s:{.status.succeeded}')
-    # All jobs must be complete
-    local not_complete=$(echo "${jobs}" | awk '{if ($2!=$3) print $0}' | wc -l)
-    if [[ ${not_complete} -eq 0 ]]; then
-      echo -e "\nAll jobs are complete:\n${jobs}"
-      return 0
-    fi
-    echo -n "."
-    sleep 2
-  done
-  echo -e "\n\nERROR: timeout waiting for jobs to complete\n${jobs}"
-  return 1
-}
-
 # Waits until the given service has an external address (IP/hostname).
 # Parameters: $1 - namespace.
 #             $2 - service name.
@@ -198,7 +178,7 @@ function wait_until_routable() {
   for i in {1..150}; do  # timeout after 5 minutes
     local val=$(curl -H "Host: $2" "http://$1" 2>/dev/null)
     if [[ -n "$val" ]]; then
-      echo -e "\nEndpoint is now routable"
+      echo "\nEndpoint is now routable"
       return 0
     fi
     echo -n "."
@@ -322,9 +302,8 @@ function report_go_test() {
 function start_latest_knative_serving() {
   header "Starting Knative Serving"
   subheader "Installing Istio"
-  echo "Running Istio CRD from ${KNATIVE_ISTIO_CRD_YAML}"
+  echo "Installing Istio CRD from ${KNATIVE_ISTIO_CRD_YAML}"
   kubectl apply -f ${KNATIVE_ISTIO_CRD_YAML} || return 1
-  wait_until_batch_job_complete istio-system || return 1
   echo "Installing Istio from ${KNATIVE_ISTIO_YAML}"
   kubectl apply -f ${KNATIVE_ISTIO_YAML} || return 1
   wait_until_pods_running istio-system || return 1
@@ -333,6 +312,15 @@ function start_latest_knative_serving() {
   echo "Installing Serving from ${KNATIVE_SERVING_RELEASE}"
   kubectl apply -f ${KNATIVE_SERVING_RELEASE} || return 1
   wait_until_pods_running knative-serving || return 1
+}
+
+# Install the latest stable Knative/build in the current cluster.
+function start_latest_knative_build() {
+  header "Starting Knative Build"
+  subheader "Installing Knative Build"
+  echo "Installing Build from ${KNATIVE_BUILD_RELEASE}"
+  kubectl apply -f ${KNATIVE_BUILD_RELEASE} || return 1
+  wait_until_pods_running knative-build || return 1
 }
 
 # Run a go tool, installing it first if necessary.
@@ -418,33 +406,6 @@ function is_int() {
 # Parameters: $1 - full GCR name, e.g. gcr.io/knative-foo-bar
 function is_protected_gcr() {
   [[ -n $1 && "$1" =~ "^gcr.io/knative-(releases|nightly)/?$" ]]
-}
-
-# Remove symlinks in a path that are broken or lead outside the repo.
-# Parameters: $1 - path name, e.g. vendor
-function remove_broken_symlinks() {
-  for link in $(find $1 -type l); do
-    # Remove broken symlinks
-    if [[ ! -e ${link} ]]; then
-      unlink ${link}
-      continue
-    fi
-    # Get canonical path to target, remove if outside the repo
-    local target="$(ls -l ${link})"
-    target="${target##* -> }"
-    [[ ${target} == /* ]] || target="./${target}"
-    target="$(cd `dirname ${link}` && cd ${target%/*} && echo $PWD/${target##*/})"
-    if [[ ${target} != *github.com/knative/* ]]; then
-      unlink ${link}
-      continue
-    fi
-  done
-}
-
-# Return whether the given parameter is knative-tests.
-# Parameters: $1 - project name
-function is_protected_project() {
-  [[ -n "$1" && "$1" == "knative-tests" ]]
 }
 
 # Returns the canonical path of a filesystem object.

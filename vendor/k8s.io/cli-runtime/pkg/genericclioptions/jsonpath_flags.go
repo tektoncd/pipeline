@@ -19,12 +19,11 @@ package genericclioptions
 import (
 	"fmt"
 	"io/ioutil"
-	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"k8s.io/cli-runtime/pkg/printers"
+	"k8s.io/cli-runtime/pkg/genericclioptions/printers"
 )
 
 // templates are logically optional for specifying a format.
@@ -50,7 +49,6 @@ func (f *JSONPathPrintFlags) AllowedFormats() []string {
 	for format := range jsonFormats {
 		formats = append(formats, format)
 	}
-	sort.Strings(formats)
 	return formats
 }
 

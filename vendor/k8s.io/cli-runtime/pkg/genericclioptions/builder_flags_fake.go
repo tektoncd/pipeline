@@ -17,7 +17,7 @@ limitations under the License.
 package genericclioptions
 
 import (
-	"k8s.io/cli-runtime/pkg/resource"
+	"k8s.io/cli-runtime/pkg/genericclioptions/resource"
 )
 
 // NewSimpleResourceFinder builds a super simple ResourceFinder that just iterates over the objects you provided

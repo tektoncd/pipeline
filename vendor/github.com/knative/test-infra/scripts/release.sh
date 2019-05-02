@@ -22,10 +22,6 @@ source $(dirname ${BASH_SOURCE})/library.sh
 # GitHub upstream.
 readonly KNATIVE_UPSTREAM="https://github.com/knative/${REPO_NAME}"
 
-# GCRs for Knative releases.
-readonly NIGHTLY_GCR="gcr.io/knative-nightly/github.com/knative/${REPO_NAME}"
-readonly RELEASE_GCR="gcr.io/knative-releases/github.com/knative/${REPO_NAME}"
-
 # Georeplicate images to {us,eu,asia}.gcr.io
 readonly GEO_REPLICATION=(us eu asia)
 
@@ -62,21 +58,17 @@ function publish_yamls() {
     local DEST="gs://${RELEASE_GCS_BUCKET}/$1/"
     shift
     echo "Publishing [$@] to ${DEST}"
-    gsutil -m cp $@ ${DEST}
+    gsutil cp $@ ${DEST}
   }
-  # Before publishing the YAML files, cleanup the `latest` dir if it exists.
-  local latest_dir="gs://${RELEASE_GCS_BUCKET}/latest"
-  if [[ -n "$(gsutil ls ${latest_dir} 2> /dev/null)" ]]; then
-    echo "Cleaning up '${latest_dir}' first"
-    gsutil -m rm ${latest_dir}/**
-  fi
+  # Before publishing the YAML files, cleanup the `latest` dir.
+  echo "Cleaning up the `latest` directory first"
+  gsutil -m rm gs://${RELEASE_GCS_BUCKET}/latest/**
   verbose_gsutil_cp latest $@
   [[ -n ${TAG} ]] && verbose_gsutil_cp previous/${TAG} $@
 }
 
 # These are global environment variables.
 SKIP_TESTS=0
-PRESUBMIT_TEST_FAIL_FAST=1
 TAG_RELEASE=0
 PUBLISH_RELEASE=0
 PUBLISH_TO_GITHUB=0
@@ -88,8 +80,6 @@ RELEASE_GCS_BUCKET=""
 KO_FLAGS=""
 VALIDATION_TESTS="./test/presubmit-tests.sh"
 YAMLS_TO_PUBLISH=""
-FROM_NIGHTLY_RELEASE=""
-FROM_NIGHTLY_RELEASE_GCS=""
 export KO_DOCKER_REPO=""
 export GITHUB_TOKEN=""
 
@@ -97,14 +87,6 @@ export GITHUB_TOKEN=""
 # Parameters: $1..$n - arguments to hub.
 function hub_tool() {
   run_go_tool github.com/github/hub hub $@
-}
-
-# Shortcut to "git push" that handles authentication.
-# Parameters: $1..$n - arguments to "git push <repo>".
-function git_push() {
-  local repo_url="${KNATIVE_UPSTREAM}"
-  [[ -n "${GITHUB_TOKEN}}" ]] && repo_url="${repo_url/:\/\//:\/\/${GITHUB_TOKEN}@}"
-  git push ${repo_url} $@
 }
 
 # Return the master version of a release.
@@ -122,13 +104,6 @@ function master_version() {
 function release_build_number() {
   local tokens=(${1//\./ })
   echo "${tokens[2]}"
-}
-
-# Return the short commit SHA from a release tag.
-# For example, "v20010101-deadbeef" returns "deadbeef".
-function hash_from_tag() {
-  local tokens=(${1//-/ })
-  echo "${tokens[1]}"
 }
 
 # Setup the repository upstream, if not set.
@@ -235,86 +210,6 @@ function prepare_dot_release() {
   fi
 }
 
-# Setup source nightly image for a release.
-function prepare_from_nightly_release() {
-  echo "Release from nightly requested"
-  SKIP_TESTS=1
-  if [[ "${FROM_NIGHTLY_RELEASE}" == "latest" ]]; then
-    echo "Finding the latest nightly release"
-    find_latest_nightly "${NIGHTLY_GCR}" || abort "cannot find the latest nightly release"
-    echo "Latest nightly is ${FROM_NIGHTLY_RELEASE}"
-  fi
-  readonly FROM_NIGHTLY_RELEASE_GCS="gs://knative-nightly/${REPO_NAME}/previous/${FROM_NIGHTLY_RELEASE}"
-  gsutil ls -d "${FROM_NIGHTLY_RELEASE_GCS}" > /dev/null \
-      || abort "nightly release ${FROM_NIGHTLY_RELEASE} doesn't exist"
-}
-
-# Build a release from an existing nightly one.
-function build_from_nightly_release() {
-  banner "Building the release"
-  echo "Fetching manifests from nightly"
-  local yamls_dir="$(mktemp -d)"
-  gsutil -m cp -r "${FROM_NIGHTLY_RELEASE_GCS}/*" "${yamls_dir}" || abort "error fetching manifests"
-  # Update references to release GCR
-  for yaml in ${yamls_dir}/*.yaml; do
-    sed -i -e "s#${NIGHTLY_GCR}#${RELEASE_GCR}#" "${yaml}"
-  done
-  YAMLS_TO_PUBLISH="$(find ${yamls_dir} -name '*.yaml' -printf '%p ')"
-  echo "Copying nightly images"
-  copy_nightly_images_to_release_gcr "${NIGHTLY_GCR}" "${FROM_NIGHTLY_RELEASE}"
-  # Create a release branch from the nightly release tag.
-  local commit="$(hash_from_tag ${FROM_NIGHTLY_RELEASE})"
-  echo "Creating release branch ${RELEASE_BRANCH} at commit ${commit}"
-  git checkout -b ${RELEASE_BRANCH} ${commit} || abort "cannot create branch"
-  git_push upstream ${RELEASE_BRANCH} || abort "cannot push branch"
-}
-
-# Build a release from source.
-function build_from_source() {
-  run_validation_tests ${VALIDATION_TESTS}
-  banner "Building the release"
-  build_release
-  # Do not use `||` above or any error will be swallowed.
-  if [[ $? -ne 0 ]]; then
-    abort "error building the release"
-  fi
-}
-
-# Copy tagged images from the nightly GCR to the release GCR, tagging them 'latest'.
-# This is a recursive function, first call must pass $NIGHTLY_GCR as first parameter.
-# Parameters: $1 - GCR to recurse into.
-#             $2 - tag to be used to select images to copy.
-function copy_nightly_images_to_release_gcr() {
-  for entry in $(gcloud --format="value(name)" container images list --repository="$1"); do
-    copy_nightly_images_to_release_gcr "${entry}" "$2"
-    # Copy each image with the given nightly tag
-    for x in $(gcloud --format="value(tags)" container images list-tags "${entry}" --filter="tags=$2" --limit=1); do
-      local path="${entry/${NIGHTLY_GCR}}"  # Image "path" (remove GCR part)
-      local dst="${RELEASE_GCR}${path}:latest"
-      gcloud container images add-tag "${entry}:$2" "${dst}" || abort "error copying image"
-    done
-  done
-}
-
-# Recurse into GCR and find the nightly tag of the first `latest` image found.
-# Parameters: $1 - GCR to recurse into.
-function find_latest_nightly() {
-  for entry in $(gcloud --format="value(name)" container images list --repository="$1"); do
-    find_latest_nightly "${entry}" && return 0
-    for tag in $(gcloud --format="value(tags)" container images list-tags "${entry}" \
-        --filter="tags=latest" --limit=1); do
-      local tags=( ${tag//,/ } )
-      # Skip if more than one nightly tag, as we don't know what's the latest.
-      if [[ ${#tags[@]} -eq 2 ]]; then
-        local nightly_tag="${tags[@]/latest}"  # Remove 'latest' tag
-        FROM_NIGHTLY_RELEASE="${nightly_tag// /}"  # Remove spaces
-        return 0
-      fi
-    done
-  done
-  return 1
-}
-
 # Parses flags and sets environment variables accordingly.
 function parse_flags() {
   TAG=""
@@ -325,7 +220,6 @@ function parse_flags() {
   KO_DOCKER_REPO="gcr.io/knative-nightly"
   RELEASE_GCS_BUCKET="knative-nightly/${REPO_NAME}"
   GITHUB_TOKEN=""
-  FROM_NIGHTLY_RELEASE=""
   local has_gcr_flag=0
   local has_gcs_flag=0
   local is_dot_release=0
@@ -342,7 +236,6 @@ function parse_flags() {
       --nopublish) PUBLISH_RELEASE=0 ;;
       --dot-release) is_dot_release=1 ;;
       --auto-release) is_auto_release=1 ;;
-      --from-latest-nightly) FROM_NIGHTLY_RELEASE=latest ;;
       *)
         [[ $# -ge 2 ]] || abort "missing parameter after $1"
         shift
@@ -373,10 +266,6 @@ function parse_flags() {
             [[ ! -f "$1" ]] && abort "file $1 doesn't exist"
             RELEASE_NOTES=$1
             ;;
-          --from-nightly)
-            [[ $1 =~ ^v[0-9]+-[0-9a-f]+$ ]] || abort "nightly tag must be 'vYYYYMMDD-commithash'"
-            FROM_NIGHTLY_RELEASE=$1
-            ;;
           *) abort "unknown option ${parameter}" ;;
         esac
     esac
@@ -385,24 +274,14 @@ function parse_flags() {
 
   # Do auto release unless release is forced
   if (( is_auto_release )); then
+
     (( is_dot_release )) && abort "cannot have both --dot-release and --auto-release set simultaneously"
-    [[ -n "${RELEASE_VERSION}" ]] && abort "cannot have both --version and --auto-release set simultaneously"
-    [[ -n "${RELEASE_BRANCH}" ]] && abort "cannot have both --branch and --auto-release set simultaneously"
-    [[ -n "${FROM_NIGHTLY_RELEASE}" ]] && abort "cannot have --auto-release with a nightly source"
+    [[ -n "${RELEASE_VERSION}" ]] &&  abort "cannot have both --version and --auto-release set simultaneously"
+    [[ -n "${RELEASE_BRANCH}" ]] &&  abort "cannot have both --branch and --auto-release set simultaneously"
+
     setup_upstream
     prepare_auto_release
-  fi
 
-  # Setup source nightly image
-  if [[ -n "${FROM_NIGHTLY_RELEASE}" ]]; then
-    (( is_dot_release )) && abort "dot releases are built from source"
-    [[ -z "${RELEASE_VERSION}" ]] && abort "release version must be specified with --version"
-    # TODO(adrcunha): "dot" releases from release branches require releasing nightlies
-    # for such branches, which we don't do yet.
-    [[ "${RELEASE_VERSION}" =~ ^[0-9]+\.[0-9]+\.0$ ]] || abort "version format must be 'X.Y.0'"
-    RELEASE_BRANCH="release-$(master_version ${RELEASE_VERSION})"
-    prepare_from_nightly_release
-    setup_upstream
   fi
 
   # Setup dot releases
@@ -423,7 +302,7 @@ function parse_flags() {
   if (( TAG_RELEASE )); then
     # Get the commit, excluding any tags but keeping the "dirty" flag
     local commit="$(git describe --always --dirty --match '^$')"
-    [[ -n "${commit}" ]] || abort "error getting the current commit"
+    [[ -n "${commit}" ]] || abort "Error getting the current commit"
     # Like kubernetes, image tag is vYYYYMMDD-commit
     TAG="v$(date +%Y%m%d)-${commit}"
   fi
@@ -445,7 +324,6 @@ function parse_flags() {
   readonly RELEASE_GCS_BUCKET
   readonly KO_DOCKER_REPO
   readonly VALIDATION_TESTS
-  readonly FROM_NIGHTLY_RELEASE
 }
 
 # Run tests (unless --skip-tests was passed). Conveniently displays a banner indicating so.
@@ -468,9 +346,6 @@ function main() {
   parse_flags $@
   # Log what will be done and where.
   banner "Release configuration"
-  echo "- gcloud user: $(gcloud config get-value core/account)"
-  echo "- Go path: ${GOPATH}"
-  echo "- Repository root: ${REPO_ROOT_DIR}"
   echo "- Destination GCR: ${KO_DOCKER_REPO}"
   (( SKIP_TESTS )) && echo "- Tests will NOT be run" || echo "- Tests will be run"
   if (( TAG_RELEASE )); then
@@ -486,16 +361,11 @@ function main() {
   if (( PUBLISH_TO_GITHUB )); then
     echo "- Release WILL BE published to GitHub"
   fi
-  if [[ -n "${FROM_NIGHTLY_RELEASE}" ]]; then
-    echo "- Release will be A COPY OF '${FROM_NIGHTLY_RELEASE}' nightly"
-  else
-    echo "- Release will be BUILT FROM SOURCE"
-    [[ -n "${RELEASE_BRANCH}" ]] && echo "- Release will be built from branch '${RELEASE_BRANCH}'"
-  fi
+  [[ -n "${RELEASE_BRANCH}" ]] && echo "- Release will be built from branch '${RELEASE_BRANCH}'"
   [[ -n "${RELEASE_NOTES}" ]] && echo "- Release notes are generated from '${RELEASE_NOTES}'"
 
   # Checkout specific branch, if necessary
-  if [[ -n "${RELEASE_BRANCH}" && -z "${FROM_NIGHTLY_RELEASE}" ]]; then
+  if [[ -n "${RELEASE_BRANCH}" ]]; then
     setup_upstream
     setup_branch
     git checkout upstream/${RELEASE_BRANCH} || abort "cannot checkout branch ${RELEASE_BRANCH}"
@@ -504,22 +374,20 @@ function main() {
   set -o errexit
   set -o pipefail
 
-  if [[ -n "${FROM_NIGHTLY_RELEASE}" ]]; then
-    build_from_nightly_release
-  else
-    build_from_source
+  run_validation_tests ${VALIDATION_TESTS}
+  banner "Building the release"
+  build_release
+  # Do not use `||` above or any error will be swallowed.
+  if [[ $? -ne 0 ]]; then
+    abort "error building the release"
   fi
   [[ -z "${YAMLS_TO_PUBLISH}" ]] && abort "no manifests were generated"
-  # Ensure no empty YAML file will be published.
-  for yaml in ${YAMLS_TO_PUBLISH}; do
-    [[ -s ${yaml} ]] || abort "YAML file ${yaml} is empty"
-  done
   echo "New release built successfully"
   if (( PUBLISH_RELEASE )); then
     tag_images_in_yamls ${YAMLS_TO_PUBLISH}
     publish_yamls ${YAMLS_TO_PUBLISH}
     publish_to_github ${YAMLS_TO_PUBLISH}
-    banner "New release published successfully"
+    echo "New release published successfully"
   fi
 }
 
@@ -542,7 +410,9 @@ function publish_to_github() {
     cat ${RELEASE_NOTES} >> ${description}
   fi
   git tag -a ${TAG} -m "${title}"
-  git_push tag ${TAG}
+  local repo_url="${KNATIVE_UPSTREAM}"
+  [[ -n "${GITHUB_TOKEN}}" ]] && repo_url="${repo_url/:\/\//:\/\/${GITHUB_TOKEN}@}"
+  hub_tool push ${repo_url} tag ${TAG}
 
   [[ -n "${RELEASE_BRANCH}" ]] && commitish="--commitish=${RELEASE_BRANCH}"
   hub_tool release create \
