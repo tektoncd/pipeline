@@ -21,7 +21,7 @@ require (
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3 // indirect
-	github.com/knative/pkg v0.0.0-20190409220258-28cfa161499b // indirect
+	github.com/knative/pkg v0.0.0-20190409220258-28cfa161499b
 	github.com/knative/test-infra v0.0.0-20190228033549-8c8ba71c83aa
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
