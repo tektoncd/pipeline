@@ -39,7 +39,7 @@ func ListCommand(p cli.Params) *cobra.Command {
 			ps, err := List(p)
 
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to list pipelines from namespace %s  %s", p.Namespace(), err)
+				fmt.Fprintf(os.Stderr, "Failed to list pipelines from %s namespace\n", p.Namespace())
 				return err
 			}
 

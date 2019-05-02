@@ -15,7 +15,7 @@
 package pipeline
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -34,8 +34,7 @@ func Command(p cli.Params) *cobra.Command {
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				cmd.Help()
-				os.Exit(1)
+				return fmt.Errorf("pipeline requires a subcommand; see help")
 			}
 			return nil
 		},
