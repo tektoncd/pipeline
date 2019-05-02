@@ -15,11 +15,11 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -38,31 +38,28 @@ func (p *TektonParams) SetKubeConfigPath(path string) {
 	p.kubeConfigPath = path
 }
 
-func (p *TektonParams) Clientset() versioned.Interface {
+func (p *TektonParams) Clientset() (versioned.Interface, error) {
 	if p.clientset != nil {
-		return p.clientset
+		return p.clientset, nil
 	}
 
 	kcPath, err := resolveKubeConfigPath(p.kubeConfigPath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return nil, errors.Wrap(err, "failed to resolve kubeconfig path")
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kcPath)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return nil, errors.Wrapf(err, "Parsing kubeconfig failed")
 	}
 
 	cs, err := versioned.NewForConfig(config)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create client from config %s  %s", p.kubeConfigPath, err)
-		// TODO: deal this in a better way
-		os.Exit(1)
+		return nil, err
 	}
+
 	p.clientset = cs
-	return p.clientset
+	return p.clientset, nil
 }
 
 func resolveKubeConfigPath(kcPath string) (string, error) {

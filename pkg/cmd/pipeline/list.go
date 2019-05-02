@@ -56,7 +56,11 @@ func ListCommand(p cli.Params) *cobra.Command {
 }
 
 func List(p cli.Params) (*v1alpha1.PipelineList, error) {
-	cs := p.Clientset()
+	cs, err := p.Clientset()
+	if err != nil {
+		return nil, err
+	}
+
 	c := cs.TektonV1alpha1().Pipelines(p.Namespace())
 	return c.List(v1.ListOptions{})
 }

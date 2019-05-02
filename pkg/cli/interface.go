@@ -21,7 +21,7 @@ type Params interface {
 	// SetKubeConfigPath uses the kubeconfig path to instantiate clientset
 	// returned by Clientset function
 	SetKubeConfigPath(string)
-	Clientset() versioned.Interface
+	Clientset() (versioned.Interface, error)
 
 	// SetNamespace can be used to store the namespace parameter that is needed
 	// by most commands
