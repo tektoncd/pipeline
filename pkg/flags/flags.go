@@ -26,12 +26,12 @@ const (
 
 // AddTektonOptions amends command to add flags required to initialise a cli.Param
 func AddTektonOptions(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringP(kubeConfig, "k", "",
+	cmd.PersistentFlags().StringP(
+		kubeConfig, "k", "",
 		"kubectl config file (default: $HOME/.kube/config)")
 
 	cmd.PersistentFlags().StringP(
-		namespace, "n",
-		"",
+		namespace, "n", "",
 		"namespace to use (mandatory)")
 
 	cmd.MarkPersistentFlagRequired(namespace)
@@ -39,13 +39,22 @@ func AddTektonOptions(cmd *cobra.Command) {
 
 // InitParams initialises cli.Params based on flags defined in command
 func InitParams(p cli.Params, cmd *cobra.Command) error {
-	kcPath, err := cmd.PersistentFlags().GetString(kubeConfig)
+	// NOTE: breaks symmetry with AddTektonOptions as this uses Flags instead of
+	// PersistentFlags as it could be the sub command that is trying to access
+	// the flags defined by the parent and hence need to use `Flag` instead
+	// e.g. `list` accessing kubeconfig defined by `pipeline`
+	kcPath, err := cmd.Flags().GetString(kubeConfig)
 	if err != nil {
 		return err
 	}
 	p.SetKubeConfigPath(kcPath)
 
-	ns, err := cmd.PersistentFlags().GetString(namespace)
+	// ensure that the config is valid by creating a client
+	if _, err := p.Clientset(); err != nil {
+		return err
+	}
+
+	ns, err := cmd.Flags().GetString(namespace)
 	if err != nil {
 		return err
 	}
