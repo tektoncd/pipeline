@@ -12,26 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package pipeline
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/cmd/completion"
-	"github.com/tektoncd/cli/pkg/cmd/pipeline"
+	"github.com/tektoncd/cli/pkg/flags"
 )
 
-func Root(p cli.Params) *cobra.Command {
-	var cmd = &cobra.Command{
-		Use:   "tkn",
-		Short: "CLI for tekton pipelines",
-		Long: `
-	`,
+func Command(p cli.Params) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "pipeline",
+		Aliases: []string{"p", "pipelines"},
+		Short:   "Manage pipelines",
+
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return flags.InitParams(p, cmd)
+		},
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				cmd.Help()
+				os.Exit(1)
+			}
+			return nil
+		},
 	}
 
-	cmd.AddCommand(
-		pipeline.Command(p),
-		completion.Command(p),
-	)
+	flags.AddTektonOptions(cmd)
+	cmd.AddCommand(ListCommand(p))
 	return cmd
 }

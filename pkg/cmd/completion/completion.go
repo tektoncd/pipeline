@@ -12,42 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package completion
 
 import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/tektoncd/cli/pkg/cli"
 )
 
-var completionCmd = &cobra.Command{
-	Use:   "completion SHELL",
-	Short: "Prints shell completion scripts",
-	Long: `
-This command prints shell completion code which must be evaluated to provide interactive completion
+func Command(cli.Params) *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:   "completion SHELL",
+		Short: "Prints shell completion scripts",
+		Long: `
+	This command prints shell completion code which must be evaluated to provide interactive completion
 
-Supported Shells:
-  - bash
-`,
-	Args:      exactValidArgs(1),
-	ValidArgs: []string{"bash"},
-	Example: `
-  # generate completion code for bash
-  tkn completion bash > bash_completion.sh
-  source bash_completion.sh
+	Supported Shells:
+		- bash
 	`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+		Args:      exactValidArgs(1),
+		ValidArgs: []string{"bash"},
+		Example: `
+		# generate completion code for bash
+		tkn completion bash > bash_completion.sh
+		source bash_completion.sh
+		`,
+		RunE: func(cmd *cobra.Command, args []string) error {
 
-		switch args[0] {
-		case "bash":
-			return rootCmd.GenBashCompletion(os.Stdout)
-			// TODO add zsh completion
-			// case "zsh":
-			// return rootCmd.GenZshCompletion(os.Stdout)
-			// NOTE: cobra v0.0.3 zsh completion seems fail on zsh 5.5.1
-		}
-		return nil
-	},
+			switch args[0] {
+			case "bash":
+				return cmd.Root().GenBashCompletion(os.Stdout)
+				// TODO add zsh completion
+				// case "zsh":
+				// return cmd.Root().GenZshCompletion(os.Stdout)
+				// NOTE: cobra v0.0.3 zsh completion seems fail on zsh 5.5.1
+			}
+			return nil
+		},
+	}
+	return cmd
 }
 
 // TODO: replace with cobra.ExactValidArgs(n int); may be in the next release 0.0.4
@@ -61,8 +65,4 @@ func exactValidArgs(n int) cobra.PositionalArgs {
 		}
 		return cobra.OnlyValidArgs(cmd, args)
 	}
-}
-
-func init() {
-	rootCmd.AddCommand(completionCmd)
 }

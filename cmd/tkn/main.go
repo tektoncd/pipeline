@@ -18,11 +18,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd"
 )
 
 func main() {
-	if err := cmd.Execute(); err != nil {
+	tp := &cli.TektonParams{}
+	tkn := cmd.Root(tp)
+
+	if err := tkn.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}

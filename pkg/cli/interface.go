@@ -12,38 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package cli
 
-import (
-	"os"
+import "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
-	"github.com/spf13/cobra"
-)
+// Params interface provides
+type Params interface {
+	// SetKubeConfigPath uses the kubeconfig path to instantiate clientset
+	// returned by Clientset function
+	SetKubeConfigPath(string)
+	Clientset() versioned.Interface
 
-var (
-	namespace string
-)
-
-// pipelinesCmd represents the pipelines command
-var pipelinesCmd = &cobra.Command{
-	Use:     "pipelines",
-	Aliases: []string{"p", "pipeline"},
-	Short:   "Manage pipelines",
-	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			cmd.Help()
-			os.Exit(0)
-		}
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(pipelinesCmd)
-
-	pipelinesCmd.PersistentFlags().StringVarP(
-		&namespace,
-		"namespace", "n",
-		"",
-		"namespace to use (mandatory)")
-	pipelinesCmd.MarkPersistentFlagRequired("namespace")
+	// SetNamespace can be used to store the namespace parameter that is needed
+	// by most commands
+	SetNamespace(string)
+	Namespace() string
 }
