@@ -28,7 +28,7 @@ func Command(p cli.Params) *cobra.Command {
 		Aliases: []string{"p", "pipelines"},
 		Short:   "Manage pipelines",
 
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
 		},
 
