@@ -36,7 +36,7 @@ func ListCommand(p cli.Params) *cobra.Command {
 		Short:   "Lists pipelines in a namespace",
 		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ps, err := List(p)
+			ps, err := list(p)
 
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to list pipelines from %s namespace\n", p.Namespace())
@@ -55,7 +55,7 @@ func ListCommand(p cli.Params) *cobra.Command {
 	return c
 }
 
-func List(p cli.Params) (*v1alpha1.PipelineList, error) {
+func list(p cli.Params) (*v1alpha1.PipelineList, error) {
 	cs, err := p.Clientset()
 	if err != nil {
 		return nil, err
