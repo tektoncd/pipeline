@@ -14,6 +14,7 @@ require (
 	github.com/evanphx/json-patch v4.1.0+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
+	github.com/google/go-cmp v0.2.0
 	github.com/google/go-containerregistry v0.0.0-20190320210540-8d4083db9aa0 // indirect
 	github.com/google/gofuzz v0.0.0-20161122191042-44d81051d367 // indirect
 	github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d // indirect
@@ -29,7 +30,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/pkg/errors v0.8.1 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573 // indirect
 	github.com/spf13/cobra v0.0.3
