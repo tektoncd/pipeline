@@ -18,7 +18,6 @@ package test
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -49,29 +48,6 @@ func getGitResource(namespace string) *v1alpha1.PipelineResource {
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/pivotal-nader-ziada/gohelloworld"),
 	))
-}
-
-func createSecret(c *knativetest.KubeClient, namespace string) (bool, error) {
-	// when running e2e in cluster, this will not be set so just hop out early
-	file := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")
-	if file == "" {
-		return false, nil
-	}
-
-	sec := &corev1.Secret{}
-	sec.Name = "kaniko-secret"
-	sec.Namespace = namespace
-
-	bs, err := ioutil.ReadFile(file)
-	if err != nil {
-		return false, fmt.Errorf("couldn't read kaniko secret json: %v", err)
-	}
-
-	sec.Data = map[string][]byte{
-		"config.json": bs,
-	}
-	_, err = c.Kube.CoreV1().Secrets(namespace).Create(sec)
-	return true, err
 }
 
 func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
@@ -119,14 +95,9 @@ func TestKanikoTaskRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
 
-	hasSecretConfig, err := createSecret(c.KubeClient, namespace)
+	hasSecretConfig, err := CreateGCPServiceAccountSecret(t, c.KubeClient, namespace, "kaniko-secret")
 	if err != nil {
 		t.Fatalf("Expected to create kaniko creds: %v", err)
-	}
-	if hasSecretConfig {
-		t.Log("Creating service account secret")
-	} else {
-		t.Log("Not creating service account secret. This could cause the test to fail locally!")
 	}
 
 	t.Logf("Creating Git PipelineResource %s", kanikoResourceName)
