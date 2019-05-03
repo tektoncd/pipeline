@@ -43,9 +43,10 @@ var invalidBuildSteps = []corev1.Container{{
 
 func TestTaskSpecValidate(t *testing.T) {
 	type fields struct {
-		Inputs     *Inputs
-		Outputs    *Outputs
-		BuildSteps []corev1.Container
+		Inputs            *Inputs
+		Outputs           *Outputs
+		BuildSteps        []corev1.Container
+		ContainerTemplate *corev1.Container
 	}
 	tests := []struct {
 		name   string
@@ -108,13 +109,26 @@ func TestTaskSpecValidate(t *testing.T) {
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
 			}},
 		},
+	}, {
+		name: "container template included in validation",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:    "astep",
+				Command: []string{"echo"},
+				Args:    []string{"hello"},
+			}},
+			ContainerTemplate: &corev1.Container{
+				Image: "some-image",
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &TaskSpec{
-				Inputs:  tt.fields.Inputs,
-				Outputs: tt.fields.Outputs,
-				Steps:   tt.fields.BuildSteps,
+				Inputs:            tt.fields.Inputs,
+				Outputs:           tt.fields.Outputs,
+				Steps:             tt.fields.BuildSteps,
+				ContainerTemplate: tt.fields.ContainerTemplate,
 			}
 			if err := ts.Validate(context.Background()); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
