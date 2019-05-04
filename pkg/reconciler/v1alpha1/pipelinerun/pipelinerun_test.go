@@ -892,3 +892,65 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 		})
 	}
 }
+
+func TestReconcilePropagateAnnotations(t *testing.T) {
+	names.TestingSeed()
+
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world"),
+	))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-annotations", "foo",
+		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccount("test-sa"),
+		),
+	)}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	// create fake recorder for testing
+	fr := record.NewFakeRecorder(2)
+
+	testAssets := getPipelineRunController(t, d, fr)
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-annotations")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-annotations", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// Check that the expected TaskRun was created
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
+	if actual == nil {
+		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
+	}
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-with-annotations-hello-world-1-9l9zj", "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-annotations",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-annotations"),
+		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("hello-world"),
+			tb.TaskRunServiceAccount("test-sa"),
+		),
+	)
+
+	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+	}
+}

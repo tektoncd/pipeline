@@ -266,8 +266,9 @@ func ParamDefault(value string) TaskParamOp {
 func TaskRun(name, namespace string, ops ...TaskRunOp) *v1alpha1.TaskRun {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Namespace:   namespace,
+			Name:        name,
+			Annotations: map[string]string{},
 		},
 	}
 
@@ -392,6 +393,15 @@ func TaskRunLabel(key, value string) TaskRunOp {
 			tr.ObjectMeta.Labels = map[string]string{}
 		}
 		tr.ObjectMeta.Labels[key] = value
+	}
+}
+
+func TaskRunAnnotation(key, value string) TaskRunOp {
+	return func(tr *v1alpha1.TaskRun) {
+		if tr.ObjectMeta.Annotations == nil {
+			tr.ObjectMeta.Annotations = map[string]string{}
+		}
+		tr.ObjectMeta.Annotations[key] = value
 	}
 }
 

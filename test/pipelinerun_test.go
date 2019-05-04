@@ -162,6 +162,8 @@ func TestPipelineRun(t *testing.T) {
 
 				t.Logf("Checking that labels were propagated correctly for TaskRun %s", r.Name)
 				checkLabelPropagation(t, c, namespace, prName, r)
+				t.Logf("Checking that annotations were propagated correctly for TaskRun %s", r.Name)
+				checkAnnotationPropagation(t, c, namespace, prName, r)
 			}
 
 			matchKinds := map[string][]string{"PipelineRun": {prName}, "TaskRun": expectedTaskRunNames}
@@ -427,6 +429,45 @@ func checkLabelPropagation(t *testing.T, c *clients, namespace string, pipelineR
 	}
 }
 
+// checkAnnotationPropagation checks that annotations are correctly propagating from
+// Pipelines, PipelineRuns, and Tasks to TaskRuns and Pods.
+func checkAnnotationPropagation(t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1alpha1.TaskRun) {
+	annotations := make(map[string]string)
+
+	// Check annotation propagation to PipelineRuns.
+	pr, err := c.PipelineRunClient.Get(pipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected PipelineRun for %s: %s", tr.Name, err)
+	}
+	p, err := c.PipelineClient.Get(pr.Spec.PipelineRef.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected Pipeline for %s: %s", pr.Name, err)
+	}
+	for key, val := range p.ObjectMeta.Annotations {
+		annotations[key] = val
+	}
+	assertAnnotationsMatch(t, annotations, pr.ObjectMeta.Annotations)
+
+	// Check annotation propagation to TaskRuns.
+	for key, val := range pr.ObjectMeta.Annotations {
+		annotations[key] = val
+	}
+	if tr.Spec.TaskRef != nil {
+		task, err := c.TaskClient.Get(tr.Spec.TaskRef.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Couldn't get expected Task for %s: %s", tr.Name, err)
+		}
+		for key, val := range task.ObjectMeta.Annotations {
+			annotations[key] = val
+		}
+	}
+	assertAnnotationsMatch(t, annotations, tr.ObjectMeta.Annotations)
+
+	// Check annotation propagation to Pods.
+	pod := getPodForTaskRun(t, c.KubeClient, namespace, tr)
+	assertAnnotationsMatch(t, annotations, pod.ObjectMeta.Annotations)
+}
+
 func getPodForTaskRun(t *testing.T, kubeClient *knativetest.KubeClient, namespace string, tr *v1alpha1.TaskRun) *corev1.Pod {
 	// The Pod name has a random suffix, so we filter by label to find the one we care about.
 	pods, err := kubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{
@@ -445,6 +486,14 @@ func assertLabelsMatch(t *testing.T, expectedLabels, actualLabels map[string]str
 	for key, expectedVal := range expectedLabels {
 		if actualVal := actualLabels[key]; actualVal != expectedVal {
 			t.Errorf("Expected labels containing %s=%s but labels were %v", key, expectedVal, actualLabels)
+		}
+	}
+}
+
+func assertAnnotationsMatch(t *testing.T, expectedAnnotations, actualAnnotations map[string]string) {
+	for key, expectedVal := range expectedAnnotations {
+		if actualVal := actualAnnotations[key]; actualVal != expectedVal {
+			t.Errorf("Expected annotations containing %s=%s but annotations were %v", key, expectedVal, actualAnnotations)
 		}
 	}
 }
