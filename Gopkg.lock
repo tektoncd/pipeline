@@ -710,6 +710,17 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:e3ebabeeb2580fc1e003cda75abd6993a9f6b38219c9b8b84ec336b473aaa2cf"
+  name = "golang.org/x/xerrors"
+  packages = [
+    ".",
+    "internal",
+  ]
+  pruneopts = "NUT"
+  revision = "1f06c39b43733b74392b1972507822714ced3242"
+
+[[projects]]
+  branch = "master"
   digest = "1:fdd1061b45ecea22574736d7c379a3adbb4e5bf80d5485a7621e22015123f804"
   name = "google.golang.org/api"
   packages = [
@@ -1217,6 +1228,7 @@
     "go.opencensus.io/trace",
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest/observer",
+    "golang.org/x/xerrors",
     "k8s.io/api/core/v1",
     "k8s.io/api/rbac/v1beta1",
     "k8s.io/apimachinery/pkg/api/equality",
