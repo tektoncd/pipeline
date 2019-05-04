@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -83,12 +84,12 @@ func AddOutputResources(
 	for _, output := range taskSpec.Outputs.Resources {
 		boundResource, err := getBoundResource(output.Name, taskRun.Spec.Outputs.Resources)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get bound resource: %s", err)
+			return nil, xerrors.Errorf("failed to get bound resource: %w", err)
 		}
 
 		resource, ok := outputResources[boundResource.Name]
 		if !ok || resource == nil {
-			return nil, fmt.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)
+			return nil, xerrors.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)
 		}
 		var (
 			resourceContainers []corev1.Container
@@ -110,14 +111,14 @@ func AddOutputResources(
 			{
 				storageResource, ok := resource.(v1alpha1.PipelineStorageResourceInterface)
 				if !ok {
-					return nil, fmt.Errorf("task %q invalid storage Pipeline Resource: %q",
+					return nil, xerrors.Errorf("task %q invalid storage Pipeline Resource: %q",
 						taskName,
 						boundResource.ResourceRef.Name,
 					)
 				}
 				resourceContainers, resourceVolumes, err = addStoreUploadStep(taskSpec, storageResource)
 				if err != nil {
-					return nil, fmt.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %v",
+					return nil, xerrors.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %w",
 						taskName, boundResource.ResourceRef.Name, err)
 				}
 			}
@@ -125,7 +126,7 @@ func AddOutputResources(
 			{
 				resourceContainers, err = resource.GetUploadContainerSpec()
 				if err != nil {
-					return nil, fmt.Errorf("task %q invalid download spec: %q; error %s", taskName, boundResource.ResourceRef.Name, err.Error())
+					return nil, xerrors.Errorf("task %q invalid download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 				}
 			}
 		}

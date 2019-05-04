@@ -24,6 +24,7 @@ import (
 	TektonV1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/logs/color"
 	"github.com/tektoncd/pipeline/test/logs/pod"
+	"golang.org/x/xerrors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -50,7 +51,7 @@ func TailLogs(ctx context.Context, cfg *rest.Config, name, namespace string, out
 
 	client, err := corev1.NewForConfig(cfg)
 	if err != nil {
-		return fmt.Errorf("getting corev1 kubernetes client: %v", err)
+		return xerrors.Errorf("getting corev1 kubernetes client: %w", err)
 	}
 
 	podName := tr.Status.PodName
@@ -60,7 +61,7 @@ func TailLogs(ctx context.Context, cfg *rest.Config, name, namespace string, out
 		Name: podName,
 	}
 	if err := watcher.Start(ctx); err != nil {
-		return fmt.Errorf("watching pod: %v", err)
+		return xerrors.Errorf("watching pod: %w", err)
 	}
 
 	pod, err := watcher.WaitForPod(ctx, func(p *v1.Pod) bool {
@@ -117,20 +118,20 @@ func waitAndLog(ctx context.Context, out io.Writer, watcher pod.Watcher, pods co
 		return false
 	})
 	if err != nil {
-		return nil, fmt.Errorf("waiting for container: %v", err)
+		return nil, xerrors.Errorf("waiting for container: %w", err)
 	}
 
 	container := getStatusesFn(pod)[i]
 	followContainer := container.State.Terminated == nil
 	if err := printContainerLogs(ctx, out, pods, pod.Name, container.Name, followContainer, taskRunName); err != nil {
-		return nil, fmt.Errorf("printing logs: %v", err)
+		return nil, xerrors.Errorf("printing logs: %w", err)
 	}
 
 	pod, err = watcher.WaitForPod(ctx, func(p *v1.Pod) bool {
 		return getStatusesFn(p)[i].State.Terminated != nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("waiting for container termination: %v", err)
+		return nil, xerrors.Errorf("waiting for container termination: %w", err)
 	}
 
 	container = getStatusesFn(pod)[i]

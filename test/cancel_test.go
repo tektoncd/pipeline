@@ -16,7 +16,6 @@ limitations under the License.
 package test
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 
@@ -24,6 +23,7 @@ import (
 	knativetest "github.com/knative/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -91,7 +91,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				c := pr.Status.GetCondition(apis.ConditionSucceeded)
 				if c != nil {
 					if c.Status == corev1.ConditionTrue || c.Status == corev1.ConditionFalse {
-						return true, fmt.Errorf("pipelineRun %s already finished", "pear")
+						return true, xerrors.Errorf("pipelineRun %s already finished", "pear")
 					} else if c.Status == corev1.ConditionUnknown && (c.Reason == "Running" || c.Reason == "Pending") {
 						return true, nil
 					}
@@ -115,7 +115,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 					err := WaitForTaskRunState(c, name, func(tr *v1alpha1.TaskRun) (bool, error) {
 						if c := tr.Status.GetCondition(apis.ConditionSucceeded); c != nil {
 							if c.IsTrue() || c.IsFalse() {
-								return true, fmt.Errorf("taskRun %s already finished!", name)
+								return true, xerrors.Errorf("taskRun %s already finished!", name)
 							} else if c.IsUnknown() && (c.Reason == "Running" || c.Reason == "Pending") {
 								return true, nil
 							}
@@ -146,9 +146,9 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 						if c.Reason == "PipelineRunCancelled" {
 							return true, nil
 						}
-						return true, fmt.Errorf("pipelineRun %s completed with the wrong reason: %s", "pear", c.Reason)
+						return true, xerrors.Errorf("pipelineRun %s completed with the wrong reason: %s", "pear", c.Reason)
 					} else if c.IsTrue() {
-						return true, fmt.Errorf("pipelineRun %s completed successfully, should have been cancelled", "pear")
+						return true, xerrors.Errorf("pipelineRun %s completed successfully, should have been cancelled", "pear")
 					}
 				}
 				return false, nil
@@ -167,9 +167,9 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 								if c.Reason == "TaskRunCancelled" {
 									return true, nil
 								}
-								return true, fmt.Errorf("taskRun %s completed with the wrong reason: %s", name, c.Reason)
+								return true, xerrors.Errorf("taskRun %s completed with the wrong reason: %s", name, c.Reason)
 							} else if c.IsTrue() {
-								return true, fmt.Errorf("taskRun %s completed successfully, should have been cancelled", name)
+								return true, xerrors.Errorf("taskRun %s completed successfully, should have been cancelled", name)
 							}
 						}
 						return false, nil

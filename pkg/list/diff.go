@@ -16,7 +16,7 @@ limitations under the License.
 
 package list
 
-import "fmt"
+import "golang.org/x/xerrors"
 
 // IsSame will return an error indicating if there are extra or missing strings
 // between the required and provided strings, or will return no error if the two
@@ -24,11 +24,11 @@ import "fmt"
 func IsSame(required, provided []string) error {
 	missing := DiffLeft(required, provided)
 	if len(missing) > 0 {
-		return fmt.Errorf("Didn't provide required values: %s", missing)
+		return xerrors.Errorf("Didn't provide required values: %s", missing)
 	}
 	extra := DiffLeft(provided, required)
 	if len(extra) > 0 {
-		return fmt.Errorf("Provided extra values: %s", extra)
+		return xerrors.Errorf("Provided extra values: %s", extra)
 	}
 	return nil
 }

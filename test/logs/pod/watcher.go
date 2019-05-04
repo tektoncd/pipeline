@@ -18,8 +18,8 @@ package pod
 import (
 	"context"
 	"errors"
-	"fmt"
 
+	"golang.org/x/xerrors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -45,7 +45,7 @@ func (w *Watcher) Start(ctx context.Context) error {
 		FieldSelector:        fields.OneTermEqualSelector("metadata.name", w.Name).String(),
 	})
 	if err != nil {
-		return fmt.Errorf("watching pod: %v", err)
+		return xerrors.Errorf("watching pod: %w", err)
 	}
 
 	go func() {

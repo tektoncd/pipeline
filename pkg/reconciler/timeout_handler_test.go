@@ -1,7 +1,6 @@
 package reconciler
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -110,7 +110,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 				}
 				// not expecting callback
 				if _, ok := gotCallback.Load(tc.taskRun.Name); ok {
-					return false, fmt.Errorf("did not expect call back for %s why", tc.taskRun.Name)
+					return false, xerrors.Errorf("did not expect call back for %s why", tc.taskRun.Name)
 				}
 				return true, nil
 			}); err != nil {
@@ -214,7 +214,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 				}
 				// not expecting callback
 				if _, ok := gotCallback.Load(tc.pr.Name); ok {
-					return false, fmt.Errorf("did not expect call back for %s why", tc.pr.Name)
+					return false, xerrors.Errorf("did not expect call back for %s why", tc.pr.Name)
 				}
 				return true, nil
 			}); err != nil {
