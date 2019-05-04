@@ -41,7 +41,6 @@ const (
 	kanikoTaskName     = "kanikotask"
 	kanikoTaskRunName  = "kanikotask-run"
 	kanikoResourceName = "go-example-git"
-	kanikoBuildOutput  = "Task completed successfully"
 )
 
 func getGitResource(namespace string) *v1alpha1.PipelineResource {
@@ -133,10 +132,6 @@ func TestKanikoTaskRun(t *testing.T) {
 	logs, err := getAllLogsFromPod(c.KubeClient.Kube, podName, namespace)
 	if err != nil {
 		t.Fatalf("Expected to get logs from pod %s: %v", podName, err)
-	}
-	// check the logs contain our success criteria
-	if !strings.Contains(logs, kanikoBuildOutput) {
-		t.Fatalf("Expected output %s from pod %s but got %s", kanikoBuildOutput, podName, logs)
 	}
 	// make sure the pushed digest matches the one we pushed
 	re := regexp.MustCompile(`digest: (sha256:\w+)`)

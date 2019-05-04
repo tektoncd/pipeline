@@ -93,8 +93,9 @@ func TestGetArgs(t *testing.T) {
 		commands: []string{"echo"},
 		args:     []string{"hello", "world"},
 		expectedArgs: []string{
-			"-wait_file", "",
+			"-wait_file", "/builder/downward/ready",
 			"-post_file", "/builder/tools/0",
+			"-wait_file_content",
 			"-entrypoint", "echo",
 			"--",
 			"hello", "world",

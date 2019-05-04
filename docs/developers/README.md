@@ -137,6 +137,7 @@ manage the execution order of the containers. The `entrypoint` binary has the
 following arguments:
 
 - `wait_file` - If specified, file to wait for
+- `wait_file_content` - If specified, wait until the file has non-zero size
 - `post_file` - If specified, file to write upon completion
 - `entrypoint` - The command to run in the image being wrapped
 
@@ -155,3 +156,32 @@ such as the following:
 - The environment variable HOME is set to `/builder/home`, used by the builder
   tools and injected on into all of the step containers
 - Default location for output-images `/builder/output-images`
+
+## Handling of injected sidecars
+
+Tekton has to take some special steps to support sidecars that are injected into
+TaskRun Pods. Without intervention sidecars will typically run for the entire
+lifetime of a Pod but in Tekton's case it's desirable for the sidecars to run
+only as long as Steps take to complete. There's also a need for Tekton to
+schedule the sidecars to start before a Task's Steps begin, just in case the
+Steps rely on a sidecars behaviour, for example to join an Istio service mesh.
+To handle all of this, Tekton Pipelines implements the following lifecycle
+for sidecar containers:
+
+First, the [Downward API](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api)
+is used to project an annotation on the TaskRun's Pod into the `entrypoint`
+container as a file. The annotation starts as an empty string, so the file
+projected by the downward API has zero length. The entrypointer spins, waiting
+for that file to have non-zero size.
+
+The sidecar containers start up. Once they're all in a ready state, the
+annotation is populated with string "READY", which in turn populates the
+Downward API projected file. The entrypoint binary recognizes
+that the projected file has a non-zero size and allows the Task's steps to
+begin.
+
+On completion of all steps in a Task the TaskRun reconciler stops any
+sidecar containers. The `Image` field of any sidecar containers is swapped
+to the nop image. Kubernetes observes the change and relaunches the container
+with updated container image. The nop container image exits. The container
+is considered `Terminated` by Kubernetes and the TaskRun's Pod stops.

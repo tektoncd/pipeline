@@ -14,6 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// The nop command is a no-op, it simply prints a message and exits. Nop
+// is used to stop sidecar containers in TaskRun Pods. When a Task's Steps
+// are complete any sidecars running alongside the Step containers need
+// to be terminated. Whatever image the sidecars are running is replaced
+// with nop and the sidecar quickly exits.
+
 package main
 
 import "fmt"
