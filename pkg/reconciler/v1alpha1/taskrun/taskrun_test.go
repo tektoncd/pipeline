@@ -304,6 +304,13 @@ func TestReconcile(t *testing.T) {
 		),
 	)
 
+	taskRunWithAnnotations := tb.TaskRun("test-taskrun-with-annotations", "foo",
+		tb.TaskRunAnnotation("TaskRunAnnotation", "TaskRunValue"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name),
+		),
+	)
+
 	taskRunWithResourceRequests := tb.TaskRun("test-taskrun-with-resource-requests", "foo",
 		tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(
@@ -347,7 +354,7 @@ func TestReconcile(t *testing.T) {
 		taskRunSuccess, taskRunWithSaSuccess,
 		taskRunTemplating, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
-		taskRunWithLabels, taskRunWithResourceRequests, taskRunTaskEnv, taskRunWithPod,
+		taskRunWithLabels, taskRunWithAnnotations, taskRunWithResourceRequests, taskRunTaskEnv, taskRunWithPod,
 	}
 
 	d := test.Data{
@@ -818,6 +825,42 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-labels"),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-labels",
+				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+			tb.PodSpec(
+				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getCredentialsInitContainer("9l9zj"),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("build-step-simple-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "", "-post_file", "/builder/tools/0", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
+				),
+				tb.PodContainer("nop", "override-with-nop:latest",
+					tb.Command("/builder/tools/entrypoint"),
+					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/nop", "--"),
+					tb.VolumeMount(entrypoint.MountName, entrypoint.MountPoint),
+				),
+			),
+		),
+	}, {
+		name:    "taskrun-with-annotations",
+		taskRun: taskRunWithAnnotations,
+		wantPod: tb.Pod("test-taskrun-with-annotations-pod-123456", "foo",
+			tb.PodAnnotation("sidecar.istio.io/inject", "false"),
+			tb.PodAnnotation("TaskRunAnnotation", "TaskRunValue"),
+			tb.PodLabel(taskNameLabelKey, "test-task"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-annotations"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-with-annotations",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, workspaceVolume, homeVolume),

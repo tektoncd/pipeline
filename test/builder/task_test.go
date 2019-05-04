@@ -117,7 +117,7 @@ func TestClusterTask(t *testing.T) {
 	}
 }
 
-func TestTaskRunWitTaskRef(t *testing.T) {
+func TestTaskRunWithTaskRef(t *testing.T) {
 	var trueB = true
 	taskRun := tb.TaskRun("test-taskrun", "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test",
@@ -164,7 +164,8 @@ func TestTaskRunWitTaskRef(t *testing.T) {
 				Controller:         &trueB,
 				BlockOwnerDeletion: &trueB,
 			}},
-			Labels: map[string]string{"label": "label-value"},
+			Labels:      map[string]string{"label": "label-value"},
+			Annotations: map[string]string{},
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			Inputs: v1alpha1.TaskRunInputs{
@@ -223,6 +224,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-taskrun", Namespace: "foo",
+			Annotations: map[string]string{},
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{

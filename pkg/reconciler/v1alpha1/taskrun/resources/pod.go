@@ -231,14 +231,6 @@ func TryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp GetPod) (*corev1.Pod, er
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
 func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*corev1.Pod, error) {
-	// Copy annotations on the build through to the underlying pod to allow users
-	// to specify pod annotations.
-	annotations := map[string]string{}
-	for key, val := range taskRun.Annotations {
-		annotations[key] = val
-	}
-	annotations["sidecar.istio.io/inject"] = "false"
-
 	cred, secrets, err := makeCredentialInitializer(taskRun.Spec.ServiceAccount, taskRun.Namespace, kubeclient)
 	if err != nil {
 		return nil, err
@@ -329,7 +321,7 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
-			Annotations: annotations,
+			Annotations: makeAnnotations(taskRun),
 			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
@@ -353,6 +345,16 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	}
 	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
 	return labels
+}
+
+// makeAnnotations constructs the annotations we will propagate from TaskRuns to Pods.
+func makeAnnotations(s *v1alpha1.TaskRun) map[string]string {
+	annotations := make(map[string]string, len(s.ObjectMeta.Annotations)+1)
+	for k, v := range s.ObjectMeta.Annotations {
+		annotations[k] = v
+	}
+	annotations["sidecar.istio.io/inject"] = "false"
+	return annotations
 }
 
 // zeroNonMaxResourceRequests zeroes out the container's cpu, memory, or

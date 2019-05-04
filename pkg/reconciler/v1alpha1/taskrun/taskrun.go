@@ -197,10 +197,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		return err
 	}
 	// Since we are using the status subresource, it is not possible to update
-	// the status and labels simultaneously.
+	// the status and labels/annotations simultaneously.
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) {
-		if _, err := c.updateLabels(tr); err != nil {
-			c.Logger.Warn("Failed to update TaskRun labels", zap.Error(err))
+		if _, err := c.updateLabelsAndAnnotations(tr); err != nil {
+			c.Logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
 			return err
 		}
 	}
@@ -262,6 +262,14 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 	if tr.Spec.TaskRef != nil {
 		tr.ObjectMeta.Labels[pipeline.GroupName+pipeline.TaskLabelKey] = taskMeta.Name
+	}
+
+	// Propagate annotations from Task to TaskRun.
+	if tr.ObjectMeta.Annotations == nil {
+		tr.ObjectMeta.Annotations = make(map[string]string, len(taskMeta.Annotations))
+	}
+	for key, value := range taskMeta.Annotations {
+		tr.ObjectMeta.Annotations[key] = value
 	}
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
@@ -491,13 +499,14 @@ func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun,
 	return newtaskrun, nil
 }
 
-func (c *Reconciler) updateLabels(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting TaskRun %s when updating labels: %s", tr.Name, err)
+		return nil, fmt.Errorf("Error getting TaskRun %s when updating labels/annotations: %s", tr.Name, err)
 	}
-	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) {
+	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
 		newTr.ObjectMeta.Labels = tr.ObjectMeta.Labels
+		newTr.ObjectMeta.Annotations = tr.ObjectMeta.Annotations
 		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(tr.Namespace).Update(newTr)
 	}
 	return newTr, nil

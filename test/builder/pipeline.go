@@ -270,6 +270,16 @@ func PipelineRunLabel(key, value string) PipelineRunOp {
 	}
 }
 
+// PipelineRunAnnotations adds a annotation to the PipelineRun.
+func PipelineRunAnnotation(key, value string) PipelineRunOp {
+	return func(pr *v1alpha1.PipelineRun) {
+		if pr.ObjectMeta.Annotations == nil {
+			pr.ObjectMeta.Annotations = map[string]string{}
+		}
+		pr.ObjectMeta.Annotations[key] = value
+	}
+}
+
 // PipelineRunResourceBinding adds bindings from actual instances to a Pipeline's declared resources.
 func PipelineRunResourceBinding(name string, ops ...PipelineResourceBindingOp) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
