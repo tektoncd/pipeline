@@ -22,6 +22,7 @@ import (
 
 	TektonV1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	trlogs "github.com/tektoncd/pipeline/test/logs/taskrun"
+	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 )
@@ -46,7 +47,7 @@ func TailLogs(ctx context.Context, cfg *rest.Config, out io.Writer, name, namesp
 
 	pipelineName := pipelineRun.Spec.PipelineRef.Name
 	if pipelineName == "" {
-		return fmt.Errorf("Expected pipeline ref to be set")
+		return xerrors.New("Expected pipeline ref to be set")
 	}
 
 	pp, err := pclient.Pipelines(namespace).Get(pipelineName, metav1.GetOptions{IncludeUninitialized: true})

@@ -17,10 +17,10 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -169,7 +169,7 @@ func TestResolveTaskRun_missingOutput(t *testing.T) {
 			Name: "another-git-repo",
 		}}}
 
-	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("nope") }
+	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, xerrors.New("nope") }
 	_, err := ResolveTaskResources(&v1alpha1.TaskSpec{}, "orchestrate", []v1alpha1.TaskResourceBinding{}, outputs, gr)
 	if err == nil {
 		t.Fatalf("Expected to get error because output resource couldn't be resolved")
@@ -182,7 +182,7 @@ func TestResolveTaskRun_missingInput(t *testing.T) {
 		ResourceRef: v1alpha1.PipelineResourceRef{
 			Name: "git-repo",
 		}}}
-	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("nope") }
+	gr := func(n string) (*v1alpha1.PipelineResource, error) { return nil, xerrors.New("nope") }
 
 	_, err := ResolveTaskResources(&v1alpha1.TaskSpec{}, "orchestrate", inputs, []v1alpha1.TaskResourceBinding{}, gr)
 	if err == nil {

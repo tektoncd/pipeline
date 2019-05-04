@@ -17,13 +17,13 @@ package git
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"go.uber.org/zap"
+	"golang.org/x/xerrors"
 )
 
 func run(logger *zap.SugaredLogger, cmd string, args ...string) error {
@@ -74,7 +74,7 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 			return err
 		}
 		if err := os.Chdir(path); err != nil {
-			return fmt.Errorf("Failed to change directory with path %s; err %v", path, err)
+			return xerrors.Errorf("Failed to change directory with path %s; err: %w", path, err)
 		}
 	} else {
 		if err := run(logger, "git", "init"); err != nil {

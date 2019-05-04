@@ -18,16 +18,16 @@ package v1alpha1
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // NewImageResource creates a new ImageResource from a PipelineResource.
 func NewImageResource(r *PipelineResource) (*ImageResource, error) {
 	if r.Spec.Type != PipelineResourceTypeImage {
-		return nil, fmt.Errorf("ImageResource: Cannot create an Image resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, xerrors.Errorf("ImageResource: Cannot create an Image resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	ir := &ImageResource{
 		Name: r.Name,

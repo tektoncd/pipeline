@@ -23,6 +23,7 @@ import (
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/templating"
+	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 
@@ -54,7 +55,7 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 	}
 	err := list.IsSame(required, provided)
 	if err != nil {
-		return fmt.Errorf("Pipeline declared resources didn't match usage in Tasks: %s", err)
+		return xerrors.Errorf("Pipeline declared resources didn't match usage in Tasks: %w", err)
 	}
 	return nil
 }
@@ -86,10 +87,10 @@ func validateFrom(tasks []PipelineTask) error {
 				for _, pb := range rd.From {
 					outputs, found := taskOutputs[pb]
 					if !found {
-						return fmt.Errorf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pb, pb)
+						return xerrors.Errorf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pb, pb)
 					}
 					if !isOutput(outputs, rd.Resource) {
-						return fmt.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pb)
+						return xerrors.Errorf("the resource %s from %s must be an output but is an input", rd.Resource, pb)
 					}
 				}
 			}

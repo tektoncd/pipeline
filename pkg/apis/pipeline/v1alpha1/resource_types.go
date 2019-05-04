@@ -17,9 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
-
 	"github.com/knative/pkg/apis"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -172,5 +171,5 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 	case PipelineResourceTypeStorage:
 		return NewStorageResource(r)
 	}
-	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
+	return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

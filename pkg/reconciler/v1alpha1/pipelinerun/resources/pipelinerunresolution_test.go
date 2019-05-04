@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -31,6 +30,7 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -962,7 +962,9 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		return nil, xerrors.New("should not get called")
+	}
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun",
@@ -1007,7 +1009,9 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("taskrun"), name)
 	}
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("should not get called") }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		return nil, xerrors.New("should not get called")
+	}
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun",
@@ -1051,7 +1055,9 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return nil, fmt.Errorf("shouldnt be called") }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		return nil, xerrors.New("shouldnt be called")
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

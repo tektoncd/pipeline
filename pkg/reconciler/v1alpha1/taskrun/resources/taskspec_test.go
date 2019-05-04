@@ -17,10 +17,10 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -75,7 +75,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, fmt.Errorf("shouldn't be called") }
+	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("shouldn't be called") }
 	taskMeta, taskSpec, err := GetTaskData(tr, gt)
 
 	if err != nil {
@@ -97,7 +97,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, fmt.Errorf("shouldn't be called") }
+	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("shouldn't be called") }
 	_, _, err := GetTaskData(tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
@@ -115,7 +115,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, fmt.Errorf("something went wrong") }
+	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("something went wrong") }
 	_, _, err := GetTaskData(tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")

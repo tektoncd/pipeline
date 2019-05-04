@@ -16,12 +16,12 @@ limitations under the License.
 package test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	knativetest "github.com/knative/pkg/test"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -47,7 +47,7 @@ func CreateGCPServiceAccountSecret(t *testing.T, c *knativetest.KubeClient, name
 
 	bs, err := ioutil.ReadFile(file)
 	if err != nil {
-		return false, fmt.Errorf("couldn't read secret json from %s: %v", file, err)
+		return false, xerrors.Errorf("couldn't read secret json from %s: %w", file, err)
 	}
 
 	sec.Data = map[string][]byte{

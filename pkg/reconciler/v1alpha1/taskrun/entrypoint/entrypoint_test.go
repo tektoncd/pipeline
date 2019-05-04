@@ -16,6 +16,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
@@ -153,7 +154,7 @@ func (i *image) MediaType() (types.MediaType, error) {
 
 // LayerByDiffID implements partial.UncompressedImageCore
 func (i *image) LayerByDiffID(diffID v1.Hash) (partial.UncompressedLayer, error) {
-	return nil, fmt.Errorf("unknown diff_id: %v", diffID)
+	return nil, xerrors.Errorf("unknown diff_id: %v", diffID)
 }
 
 func mustRawManifest(t *testing.T, img v1.Image) []byte {

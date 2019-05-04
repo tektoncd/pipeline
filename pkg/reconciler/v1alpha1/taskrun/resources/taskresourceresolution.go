@@ -17,9 +17,8 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"golang.org/x/xerrors"
 )
 
 // ResolvedTaskResources contains all the data that is needed to execute
@@ -52,7 +51,7 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, inputs []v1alp
 	for _, r := range inputs {
 		rr, err := getResource(&r, gr)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't retrieve referenced input PipelineResource %q: %s", r.ResourceRef.Name, err)
+			return nil, xerrors.Errorf("couldn't retrieve referenced input PipelineResource %q: %w", r.ResourceRef.Name, err)
 		}
 
 		rtr.Inputs[r.Name] = rr
@@ -62,7 +61,7 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, inputs []v1alp
 		rr, err := getResource(&r, gr)
 
 		if err != nil {
-			return nil, fmt.Errorf("couldn't retrieve referenced output PipelineResource %q: %s", r.ResourceRef.Name, err)
+			return nil, xerrors.Errorf("couldn't retrieve referenced output PipelineResource %q: %w", r.ResourceRef.Name, err)
 		}
 
 		rtr.Outputs[r.Name] = rr

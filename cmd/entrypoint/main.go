@@ -18,7 +18,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -26,6 +25,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
+	"golang.org/x/xerrors"
 )
 
 var (
@@ -84,7 +84,7 @@ func (*RealWaiter) Wait(file string) error {
 		if _, err := os.Stat(file); err == nil {
 			return nil
 		} else if !os.IsNotExist(err) {
-			return fmt.Errorf("Waiting for %q: %v", file, err)
+			return xerrors.Errorf("Waiting for %q: %w", file, err)
 		}
 		// Watch for the post error file
 		if _, err := os.Stat(file + ".err"); err == nil {
