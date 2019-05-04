@@ -175,7 +175,7 @@ func TestEntrypointer(t *testing.T) {
 
 type fakeWaiter struct{ waited *string }
 
-func (f *fakeWaiter) Wait(file string) error {
+func (f *fakeWaiter) Wait(file string, expectContent bool) error {
 	f.waited = &file
 	return nil
 }
@@ -193,7 +193,7 @@ func (f *fakePostWriter) Write(file string) { f.wrote = &file }
 
 type fakeErrorWaiter struct{ waited *string }
 
-func (f *fakeErrorWaiter) Wait(file string) error {
+func (f *fakeErrorWaiter) Wait(file string, expectContent bool) error {
 	f.waited = &file
 	return xerrors.New("waiter failed")
 }

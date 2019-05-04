@@ -29,22 +29,26 @@ import (
 )
 
 var (
-	ep       = flag.String("entrypoint", "", "Original specified entrypoint to execute")
-	waitFile = flag.String("wait_file", "", "If specified, file to wait for")
-	postFile = flag.String("post_file", "", "If specified, file to write upon completion")
+	ep              = flag.String("entrypoint", "", "Original specified entrypoint to execute")
+	waitFile        = flag.String("wait_file", "", "If specified, file to wait for")
+	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
+	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
+
+	waitPollingInterval = time.Second
 )
 
 func main() {
 	flag.Parse()
 
 	e := entrypoint.Entrypointer{
-		Entrypoint: *ep,
-		WaitFile:   *waitFile,
-		PostFile:   *postFile,
-		Args:       flag.Args(),
-		Waiter:     &RealWaiter{},
-		Runner:     &RealRunner{},
-		PostWriter: &RealPostWriter{},
+		Entrypoint:      *ep,
+		WaitFile:        *waitFile,
+		WaitFileContent: *waitFileContent,
+		PostFile:        *postFile,
+		Args:            flag.Args(),
+		Waiter:          &RealWaiter{},
+		Runner:          &RealRunner{},
+		PostWriter:      &RealPostWriter{},
 	}
 	if err := e.Go(); err != nil {
 		switch err.(type) {
@@ -75,18 +79,27 @@ type RealWaiter struct{}
 
 var _ entrypoint.Waiter = (*RealWaiter)(nil)
 
-func (*RealWaiter) Wait(file string) error {
+// Wait watches a file and returns when either a) the file exists and, if
+// the expectContent argument is true, the file has non-zero size or b) there
+// is an error polling the file.
+//
+// If the passed-in file is an empty string then this function returns
+// immediately.
+//
+// If a file of the same name with a ".err" extension exists then this Wait
+// will end with a skipError.
+func (*RealWaiter) Wait(file string, expectContent bool) error {
 	if file == "" {
 		return nil
 	}
-	for ; ; time.Sleep(time.Second) {
-		// Watch for the post file
-		if _, err := os.Stat(file); err == nil {
-			return nil
+	for ; ; time.Sleep(waitPollingInterval) {
+		if info, err := os.Stat(file); err == nil {
+			if !expectContent || info.Size() > 0 {
+				return nil
+			}
 		} else if !os.IsNotExist(err) {
 			return xerrors.Errorf("Waiting for %q: %w", file, err)
 		}
-		// Watch for the post error file
 		if _, err := os.Stat(file + ".err"); err == nil {
 			return skipError("error file present, bail and skip the step")
 		}

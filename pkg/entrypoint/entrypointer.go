@@ -30,6 +30,9 @@ type Entrypointer struct {
 	// WaitFile is the file to wait for. If not specified, execution begins
 	// immediately.
 	WaitFile string
+	// WaitFileContent indicates the WaitFile should have non-zero size
+	// before continuing with execution.
+	WaitFileContent bool
 	// PostFile is the file to write when complete. If not specified, no
 	// file is written.
 	PostFile string
@@ -45,7 +48,7 @@ type Entrypointer struct {
 // Waiter encapsulates waiting for files to exist.
 type Waiter interface {
 	// Wait blocks until the specified file exists.
-	Wait(file string) error
+	Wait(file string, expectContent bool) error
 }
 
 // Runner encapsulates running commands.
@@ -63,7 +66,7 @@ type PostWriter interface {
 // post file.
 func (e Entrypointer) Go() error {
 	if e.WaitFile != "" {
-		if err := e.Waiter.Wait(e.WaitFile); err != nil {
+		if err := e.Waiter.Wait(e.WaitFile, e.WaitFileContent); err != nil {
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too
 			e.WritePostFile(e.PostFile, err)

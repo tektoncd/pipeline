@@ -87,22 +87,21 @@ var (
 )
 
 const (
-	// Prefixes to add to the name of the containers.
+	// Prefixes to add to the name of the init containers.
 	containerPrefix            = "step-"
 	unnamedInitContainerPrefix = "step-unnamed-"
 	// Name of the credential initialization container.
 	credsInit = "credential-initializer"
 	// Name of the working dir initialization container.
-	workingDirInit = "working-dir-initializer"
+	workingDirInit       = "working-dir-initializer"
+	ReadyAnnotation      = "tekton.dev/ready"
+	readyAnnotationValue = "READY"
 )
 
 var (
 	// The container used to initialize credentials before the build runs.
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
-	// The container that just prints Task completed successfully.
-	nopImage = flag.String("nop-image", "override-with-nop:latest",
-		"The container image run at the end of the build to log task success")
 )
 
 func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*corev1.Container, []corev1.Volume, error) {
@@ -290,12 +289,6 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}
 	gibberish := hex.EncodeToString(b)
 
-	nopContainer := &corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}}
-	if err := entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger); err != nil {
-		return nil, err
-	}
-	podContainers = append(podContainers, *nopContainer)
-
 	mergedInitContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, initContainers)
 	if err != nil {
 		return nil, err
@@ -335,6 +328,28 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}, nil
 }
 
+type UpdatePod func(*corev1.Pod) (*corev1.Pod, error)
+
+// AddReadyAnnotation adds the ready annotation if it is not present.
+// Returns any error that comes back from the passed-in update func.
+func AddReadyAnnotation(p *corev1.Pod, update UpdatePod) error {
+	if p.ObjectMeta.Annotations == nil {
+		p.ObjectMeta.Annotations = make(map[string]string)
+	}
+	if p.ObjectMeta.Annotations[ReadyAnnotation] != readyAnnotationValue {
+		p.ObjectMeta.Annotations[ReadyAnnotation] = readyAnnotationValue
+		_, err := update(p)
+
+		return err
+	}
+
+	return nil
+}
+
+func IsContainerStep(name string) bool {
+	return strings.HasPrefix(name, containerPrefix)
+}
+
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
 func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
@@ -345,13 +360,14 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	return labels
 }
 
-// makeAnnotations constructs the annotations we will propagate from TaskRuns to Pods.
+// makeAnnotations constructs the annotations we will propagate from TaskRuns to Pods
+// and adds any other annotations that will be needed to initialize a Pod.
 func makeAnnotations(s *v1alpha1.TaskRun) map[string]string {
 	annotations := make(map[string]string, len(s.ObjectMeta.Annotations)+1)
 	for k, v := range s.ObjectMeta.Annotations {
 		annotations[k] = v
 	}
-	annotations["sidecar.istio.io/inject"] = "false"
+	annotations[ReadyAnnotation] = ""
 	return annotations
 }
 
