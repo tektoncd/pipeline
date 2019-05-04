@@ -7,4 +7,4 @@ ENV PATH="${PATH}:/usr/local/go/bin"
 
 # Install ko
 ENV GOBIN=/usr/local/go/bin
-RUN go get github.com/google/go-containerregistry/cmd/ko
+RUN go get github.com/google/ko/cmd/ko
