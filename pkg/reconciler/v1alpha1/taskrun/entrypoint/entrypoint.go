@@ -36,17 +36,24 @@ import (
 const (
 	// MountName is the name of the pvc being mounted (which
 	// will contain the entrypoint binary and eventually the logs)
-	MountName         = "tools"
-	MountPoint        = "/builder/tools"
-	BinaryLocation    = MountPoint + "/entrypoint"
-	JSONConfigEnvVar  = "ENTRYPOINT_OPTIONS"
-	InitContainerName = "place-tools"
-	cacheSize         = 1024
+	MountName              = "tools"
+	MountPoint             = "/builder/tools"
+	DownwardMountName      = "downward"
+	DownwardMountPoint     = "/builder/downward"
+	DownwardMountReadyFile = "ready"
+	BinaryLocation         = MountPoint + "/entrypoint"
+	JSONConfigEnvVar       = "ENTRYPOINT_OPTIONS"
+	InitContainerName      = "place-tools"
+	cacheSize              = 1024
 )
 
 var toolsMount = corev1.VolumeMount{
 	Name:      MountName,
 	MountPath: MountPoint,
+}
+var downwardMount = corev1.VolumeMount{
+	Name:      DownwardMountName,
+	MountPath: DownwardMountPoint,
 }
 var (
 	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
@@ -134,16 +141,16 @@ func RedirectStep(cache *Cache, stepNum int, step *corev1.Container, kubeclient 
 	step.Args = GetArgs(stepNum, step.Command, step.Args)
 	step.Command = []string{BinaryLocation}
 	step.VolumeMounts = append(step.VolumeMounts, toolsMount)
+	if stepNum == 0 {
+		step.VolumeMounts = append(step.VolumeMounts, downwardMount)
+	}
 	return nil
 }
 
 // GetArgs returns the arguments that should be specified for the step which has been wrapped
 // such that it will execute our custom entrypoint instead of the user provided Command and Args.
 func GetArgs(stepNum int, commands, args []string) []string {
-	waitFile := fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum-1))
-	if stepNum == 0 {
-		waitFile = ""
-	}
+	waitFile := getWaitFile(stepNum)
 	// The binary we want to run must be separated from its arguments by --
 	// so if commands has more than one value, we'll move the other values
 	// into the arg list so we can separate them
@@ -151,15 +158,26 @@ func GetArgs(stepNum int, commands, args []string) []string {
 		args = append(commands[1:], args...)
 		commands = commands[:1]
 	}
-	argsForEntrypoint := append([]string{
+	argsForEntrypoint := []string{
 		"-wait_file", waitFile,
-		"-post_file", fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum)),
-		"-entrypoint"},
-		commands...,
-	)
+		"-post_file", getWaitFile(stepNum + 1),
+	}
+	if stepNum == 0 {
+		argsForEntrypoint = append(argsForEntrypoint, "-wait_file_content")
+	}
+	argsForEntrypoint = append(argsForEntrypoint, "-entrypoint")
+	argsForEntrypoint = append(argsForEntrypoint, commands...)
 	// TODO: what if Command has multiple elements, do we need "--" between command and args?
 	argsForEntrypoint = append(argsForEntrypoint, "--")
 	return append(argsForEntrypoint, args...)
+}
+
+func getWaitFile(stepNum int) string {
+	if stepNum == 0 {
+		return fmt.Sprintf("%s/%s", DownwardMountPoint, DownwardMountReadyFile)
+	}
+
+	return fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum-1))
 }
 
 // GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
