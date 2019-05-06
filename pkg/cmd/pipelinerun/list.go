@@ -20,9 +20,11 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/knative/pkg/apis"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
@@ -126,12 +128,27 @@ func print(prs *v1alpha1.PipelineRunList, cmd *cobra.Command, f *cliopts.PrintFl
 	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(writer, "NAME\tSTATUS\tSTARTED\tDURATION\t")
 	for _, pr := range prs.Items {
-		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t\n", pr.Name, pr.Status.Conditions[0].Reason, 
-		age(pr.Status.StartTime),
-		timeBetween(pr.Status.StartTime, pr.Status.CompletionTime))
+		fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t\n", 
+			pr.Name, 
+			status(pr.Status.Conditions[0]), 
+			age(pr.Status.StartTime),
+			timeBetween(pr.Status.StartTime, pr.Status.CompletionTime),
+		)
 	}
 
 	return writer.Flush()
+}
+
+func status(c apis.Condition) string {
+	if c.Status == corev1.ConditionFalse {
+		s := "Failed"
+		if c.Reason != "" {
+			s = s + "(" + c.Reason + ")" 
+		} 
+		return s
+	}
+
+	return c.Reason
 }
 
 func age(t *v1.Time) string {
@@ -139,8 +156,7 @@ func age(t *v1.Time) string {
 		return "---"
 	}
 
-	//TODO: confirm print format and trim seconds
-	return since(t.Time).String()
+	return since(t.Time).Round(time.Second).String()
 }
 
 func timeBetween(t1, t2 *v1.Time) string {

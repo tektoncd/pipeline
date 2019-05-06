@@ -44,7 +44,7 @@ require (
 	google.golang.org/grpc v1.19.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/yaml.v2 v2.2.2 // indirect
-	k8s.io/api v0.0.0-20190226173710-145d52631d00 // indirect
+	k8s.io/api v0.0.0-20190226173710-145d52631d00
 	k8s.io/apimachinery v0.0.0-20190221084156-01f179d85dbc
 	k8s.io/cli-runtime v0.0.0-20190221101700-11047e25a94a
 	k8s.io/client-go v0.0.0-20190226174127-78295b709ec6

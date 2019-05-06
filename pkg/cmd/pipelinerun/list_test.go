@@ -22,8 +22,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/testutil"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -50,16 +52,18 @@ func TestListPipelineRuns(t *testing.T) {
 			name: "all in namespace",
 			command: command(t, prs),
 			args: []string{"list", "-n", "foo"},
-			want: "NAME    STATUS      STARTED    DURATION   \n"+
-				  "pr1-1   Succeeded   2h30m50s   1m0s       \n"+
-				  "pr2-1   Running     2h30m50s   ---        \n",
+			want: "NAME    STATUS           STARTED    DURATION   \n"+
+				  "pr1-1   Succeeded        2h30m50s   1m0s       \n"+
+				  "pr2-1   Running          2h30m50s   ---        \n"+
+				  "pr2-2   Failed(Failed)   2h30m50s   1m0s       \n",
 		},
 		{
 			name: "print by template",
 			command: command(t, prs),
 			args: []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
-			want: "pr1-1\n" +
-				  "pr2-1\n",
+			want: "pr1-1\n"+
+				  "pr2-1\n"+
+				  "pr2-2\n",
 		},
 		{
 			name: "empty list",
@@ -101,7 +105,8 @@ func pipelineRuns(t *testing.T) []*v1alpha1.PipelineRun {
 		name string
 		ns string
 		pipeline string
-		status string
+		status corev1.ConditionStatus
+		reason string
 		startTime time.Time
 		finishTime time.Time
 
@@ -110,7 +115,8 @@ func pipelineRuns(t *testing.T) []*v1alpha1.PipelineRun {
 			name: "pr1-1",
 			ns: "foo",
 			pipeline: "bar",
-			status: "Succeeded",
+			status: corev1.ConditionTrue,
+			reason: resources.ReasonSucceeded,
 			startTime: start,
 			finishTime: start.Add(aMinute),
 		},
@@ -118,8 +124,18 @@ func pipelineRuns(t *testing.T) []*v1alpha1.PipelineRun {
 			name: "pr2-1",
 			ns: "foo",
 			pipeline: "random",
-			status: "Running",
+			status: corev1.ConditionTrue,
+			reason: resources.ReasonRunning,
 			startTime: start,
+		},
+		{
+			name: "pr2-2",
+			ns: "foo",
+			pipeline: "random",
+			status: corev1.ConditionFalse,
+			reason: resources.ReasonFailed,
+			startTime: start,
+			finishTime: start.Add(aMinute),
 		},
 	}
 
@@ -129,7 +145,8 @@ func pipelineRuns(t *testing.T) []*v1alpha1.PipelineRun {
 				tb.PipelineRunLabel("tekton.dev/pipeline", data.pipeline),
 				tb.PipelineRunStatus(
 					tb.PipelineRunStatusCondition(apis.Condition{
-						Reason:  data.status,
+						Status: data.status,
+						Reason:  data.reason,
 					}),
 					tb.PipelineRunStartTime(data.startTime),
 				),
