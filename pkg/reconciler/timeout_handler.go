@@ -181,13 +181,13 @@ func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime 
 
 	select {
 	case <-t.stopCh:
-		t.logger.Info("Stopping timeout timer for %s", runObj.GetRunKey())
+		t.logger.Infof("Stopping timeout timer for %s", runObj.GetRunKey())
 		return
 	case <-finished:
-		t.logger.Info("%s finished, stopping the timeout timer", runObj.GetRunKey())
+		t.logger.Infof("%s finished, stopping the timeout timer", runObj.GetRunKey())
 		return
 	case <-time.After(timeout - runtime):
-		t.logger.Info("Timeout timer for %s has timed out (started at %s, timeout is %s, running for %s", runObj.GetRunKey(), startTime, timeout, time.Since(startTime.Time))
+		t.logger.Infof("Timeout timer for %s has timed out (started at %s, timeout is %s, running for %s", runObj.GetRunKey(), startTime, timeout, time.Since(startTime.Time))
 		if callback != nil {
 			callback(runObj)
 		} else {
