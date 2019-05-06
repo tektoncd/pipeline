@@ -1,0 +1,153 @@
+// Copyright © 2019 The tektoncd Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package pipelinerun
+
+import (
+	"testing"
+	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/knative/pkg/apis"
+	"github.com/spf13/cobra"
+	"github.com/tektoncd/cli/pkg/testutil"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test"
+	tb "github.com/tektoncd/pipeline/test/builder"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const timeDuration = "2h30m50s"
+
+func TestListPipelineRuns(t *testing.T) {
+	initMocks(t)
+	prs := pipelineRuns(t)
+
+	tests := []struct {
+		name string
+		command *cobra.Command
+		args []string
+		want string
+	} {
+		{
+			name: "by pipeline name",
+			command: command(t, prs),
+			args: []string{"list", "bar", "-n", "foo"},
+			want: "NAME    STATUS      STARTED    DURATION   \n"+
+				  "pr1-1   Succeeded   2h30m50s   1m0s       \n",
+		},
+		{
+			name: "all in namespace",
+			command: command(t, prs),
+			args: []string{"list", "-n", "foo"},
+			want: "NAME    STATUS      STARTED    DURATION   \n"+
+				  "pr1-1   Succeeded   2h30m50s   1m0s       \n"+
+				  "pr2-1   Running     2h30m50s   ---        \n",
+		},
+		{
+			name: "print by template",
+			command: command(t, prs),
+			args: []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
+			want: "pr1-1\n" +
+				  "pr2-1\n",
+		},
+		{
+			name: "empty list",
+			command: command(t, prs),
+			args: []string{"list", "-n", "random"},
+			want: msgNoPRsFound + "\n",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := testutil.ExecuteCommand(test.command, test.args...)
+			
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+			}
+			if d := cmp.Diff(test.want, got); d != "" {
+				t.Errorf("Unexpected output mismatch: \n%s\n", d)
+			}
+		})
+	}
+}
+
+func command(t *testing.T, prs []*v1alpha1.PipelineRun)  *cobra.Command {
+	t.Helper()
+
+	cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs})
+	p := &testutil.TestParams{Client: cs.Pipeline}
+	return Command(p)
+}
+
+func pipelineRuns(t *testing.T) []*v1alpha1.PipelineRun {
+	t.Helper()
+
+	start := time.Now()
+	aMinute, _ := time.ParseDuration("1m")
+
+	prsData := [] struct {
+		name string
+		ns string
+		pipeline string
+		status string
+		startTime time.Time
+		finishTime time.Time
+
+	}{
+		{
+			name: "pr1-1",
+			ns: "foo",
+			pipeline: "bar",
+			status: "Succeeded",
+			startTime: start,
+			finishTime: start.Add(aMinute),
+		},
+		{
+			name: "pr2-1",
+			ns: "foo",
+			pipeline: "random",
+			status: "Running",
+			startTime: start,
+		},
+	}
+
+	prs := []*v1alpha1.PipelineRun {}
+	for _, data := range prsData {
+		pr := tb.PipelineRun(data.name, data.ns,
+				tb.PipelineRunLabel("tekton.dev/pipeline", data.pipeline),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Reason:  data.status,
+					}),
+					tb.PipelineRunStartTime(data.startTime),
+				),
+			)
+		
+		pr.Status.CompletionTime = &metav1.Time{Time: data.finishTime}
+		prs = append(prs, pr)
+	}
+
+	return prs
+}
+
+func initMocks(t *testing.T) {
+	t.Helper()
+	
+	// mock time.since function
+	since = func(t time.Time) time.Duration {
+		d, _ := time.ParseDuration(timeDuration)
+		return d
+	}
+}

@@ -19,6 +19,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/completion"
 	"github.com/tektoncd/cli/pkg/cmd/pipeline"
+	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 )
 
 func Root(p cli.Params) *cobra.Command {
@@ -30,8 +31,9 @@ func Root(p cli.Params) *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		pipeline.Command(p),
 		completion.Command(p),
+		pipeline.Command(p),
+		pipelinerun.Command(p),
 	)
 	return cmd
 }
