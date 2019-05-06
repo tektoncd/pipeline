@@ -24,6 +24,15 @@ go test ./...
 By default `go test` will not run [the end to end tests](#end-to-end-tests),
 which need `-tags=e2e` to be enabled.
 
+### Code coverage
+
+Coverage information is reported to [codecov.io](https://codecov.io) by:
+
+* Running `go test` with `-covermode=atomic` and `-coverprofile=coverage.txt`
+* Injecting the `codecov` token via `pull-tekton-pipeline-unit-tests` in
+  [the prow job configuration](https://github.com/tektoncd/plumbing/blob/master/prow/config.yaml)
+* Invoking [codecov-bash](`https://github.com/codecov/codecov-bash`) to upload the results
+
 ### Unit testing Controllers
 
 Kubernetes [client-go](https://godoc.org/k8s.io/client-go) provides a number of

@@ -25,8 +25,20 @@
 # in a net-negative contributor experience.
 export DISABLE_MD_LINTING=1
 
+# I probably shouldn't hardcode this here, but only viable alternatives at the moment are
+# to hardcode it in tektoncd/plumbing, which doesn't seem much better, or to put it into
+# a secret in the Prow cluster, which we could do later if this becomes a problem
+export CODECOV_TOKEN="ccdc8320-3d8d-4e0c-b88c-ee54ec95d25d"
+
 source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/presubmit-tests.sh
 
-# We use the default build, unit and integration test runners.
+# Override the default unit test runner so we can add arguments to produce coverage
+# reporting and report it to codecov.io
+function unit_tests() {
+  report_go_test -coverprofile=coverage.txt -covermode=atomic ./...
+  bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
+}
+
+# We use the default build, integration test runners.
 
 main $@
