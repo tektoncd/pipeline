@@ -48,10 +48,10 @@ import (
 	"fmt"
 	"time"
 
-  "golang.org/x/xerrors"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
