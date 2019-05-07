@@ -20,6 +20,7 @@ require (
 	github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jonboulle/clockwork v0.1.1-0.20190114141812-62fb9bc030d1
 	github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3 // indirect
 	github.com/knative/pkg v0.0.0-20190409220258-28cfa161499b
 	github.com/knative/test-infra v0.0.0-20190228033549-8c8ba71c83aa

@@ -121,6 +121,8 @@ github.com/imdario/mergo
 github.com/inconshreveable/mousetrap
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
+# github.com/jonboulle/clockwork v0.1.1-0.20190114141812-62fb9bc030d1
+github.com/jonboulle/clockwork
 # github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3
 github.com/json-iterator/go
 # github.com/knative/pkg v0.0.0-20190409220258-28cfa161499b

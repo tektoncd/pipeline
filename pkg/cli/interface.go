@@ -14,7 +14,10 @@
 
 package cli
 
-import "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+import (
+	"github.com/jonboulle/clockwork"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+)
 
 // Params interface provides
 type Params interface {
@@ -27,4 +30,6 @@ type Params interface {
 	// by most commands
 	SetNamespace(string)
 	Namespace() string
+
+	Time() clockwork.Clock
 }

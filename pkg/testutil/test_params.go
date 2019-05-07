@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 )
@@ -8,6 +9,7 @@ import (
 type TestParams struct {
 	ns, kc string
 	Client versioned.Interface
+	Clock clockwork.Clock
 }
 
 var _ cli.Params = &TestParams{}
@@ -29,4 +31,12 @@ func (p *TestParams) KubeConfigPath() string {
 
 func (p *TestParams) Clientset() (versioned.Interface, error) {
 	return p.Client, nil
+}
+
+func (p *TestParams) Time() clockwork.Clock {
+	if p.Clock != nil {
+		return p.Clock
+	}
+
+	return clockwork.NewFakeClock()
 }

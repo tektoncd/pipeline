@@ -1,4 +1,4 @@
-// Copyright © 2019 The tektoncd Authors.
+// Copyright © 2019 The Knative Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,6 +41,6 @@ func Command(p cli.Params) *cobra.Command {
 	}
 
 	flags.AddTektonOptions(c)
-	c.AddCommand(listCMD(p))
+	c.AddCommand(listCommand(p))
 	return c
 }

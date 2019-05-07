@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jonboulle/clockwork"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -85,4 +86,9 @@ func (p *TektonParams) SetNamespace(ns string) {
 
 func (p *TektonParams) Namespace() string {
 	return p.namespace
+}
+
+
+func (p *TektonParams) Time() clockwork.Clock {
+	return clockwork.NewRealClock()
 }
