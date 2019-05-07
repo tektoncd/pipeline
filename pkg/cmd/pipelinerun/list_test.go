@@ -32,7 +32,7 @@ import (
 
 func TestListPipelineRuns(t *testing.T) {
 	now := time.Now()
-	prs := pipelineRuns(t, now)
+	prs := pipelineRuns(now)
 
 	tests := []struct {
 		name    string
@@ -42,14 +42,14 @@ func TestListPipelineRuns(t *testing.T) {
 	}{
 		{
 			name:    "by pipeline name",
-			command: command(t, prs, now),
+			command: command(prs, now),
 			args:    []string{"list", "bar", "-n", "foo"},
 			want: "NAME    STATUS      STARTED   DURATION   \n" +
 				"pr1-1   Succeeded   1h0m0s    1m0s       \n",
 		},
 		{
 			name:    "all in namespace",
-			command: command(t, prs, now),
+			command: command(prs, now),
 			args:    []string{"list", "-n", "foo"},
 			want: "NAME    STATUS           STARTED   DURATION   \n" +
 				"pr1-1   Succeeded        1h0m0s    1m0s       \n" +
@@ -58,7 +58,7 @@ func TestListPipelineRuns(t *testing.T) {
 		},
 		{
 			name:    "print by template",
-			command: command(t, prs, now),
+			command: command(prs, now),
 			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			want: "pr1-1\n" +
 				"pr2-1\n" +
@@ -66,7 +66,7 @@ func TestListPipelineRuns(t *testing.T) {
 		},
 		{
 			name:    "empty list",
-			command: command(t, prs, now),
+			command: command(prs, now),
 			args:    []string{"list", "-n", "random"},
 			want:    msgNoPRsFound + "\n",
 		},
@@ -86,9 +86,7 @@ func TestListPipelineRuns(t *testing.T) {
 	}
 }
 
-func command(t *testing.T, prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Command {
-	t.Helper()
-
+func command(prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Command {
 	// fake clock advanced by 1 hour
 	clock := clockwork.NewFakeClockAt(now)
 	clock.Advance(time.Duration(60) * time.Minute)
@@ -100,9 +98,7 @@ func command(t *testing.T, prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Co
 	return Command(p)
 }
 
-func pipelineRuns(t *testing.T, start time.Time) []*v1alpha1.PipelineRun {
-	t.Helper()
-
+func pipelineRuns(start time.Time) []*v1alpha1.PipelineRun {
 	aMinute, _ := time.ParseDuration("1m")
 
 	prsData := []struct {

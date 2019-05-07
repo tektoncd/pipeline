@@ -108,8 +108,8 @@ func list(p cli.Params, pipeline string) (v1alpha1.PipelineRunList, error) {
 		return empty, err
 	}
 
-	// NOTE: this is require for -o json|yaml to work properly since
-	// teckon go client fails to set these; probably a bug
+	// NOTE: this is required for -o json|yaml to work properly since
+	// tektoncd go client fails to set these; probably a bug
 	prs.GetObjectKind().SetGroupVersionKind(
 		schema.GroupVersionKind{
 			Version: "tekton.dev/v1alpha1",
@@ -129,7 +129,6 @@ func printObject(out io.Writer, prs *v1alpha1.PipelineRunList, f *cliopts.PrintF
 }
 
 func printFormatted(out io.Writer, prs *v1alpha1.PipelineRunList, c clockwork.Clock) error {
-
 	//NOTE: no null checks for prs; caller needs to ensure it is not null
 	if len(prs.Items) == 0 {
 		fmt.Fprintln(out, msgNoPRsFound)

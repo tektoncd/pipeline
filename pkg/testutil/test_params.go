@@ -34,9 +34,9 @@ func (p *TestParams) Clientset() (versioned.Interface, error) {
 }
 
 func (p *TestParams) Time() clockwork.Clock {
-	if p.Clock != nil {
-		return p.Clock
+	if p.Clock == nil {
+		p.Clock = clockwork.NewFakeClock()
 	}
-
-	return clockwork.NewFakeClock()
+	
+	return p.Clock
 }
