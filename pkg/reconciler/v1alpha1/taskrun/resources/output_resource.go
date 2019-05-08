@@ -97,7 +97,11 @@ func AddOutputResources(
 		// To build copy step it needs source path(which is targetpath of input resourcemap) from task input source
 		sourcePath := inputResourceMap[boundResource.Name]
 		if sourcePath == "" {
-			sourcePath = filepath.Join(outputDir, boundResource.Name)
+			if output.TargetPath == "" {
+				sourcePath = filepath.Join(outputDir, boundResource.Name)
+			} else {
+				sourcePath = output.TargetPath
+			}
 		}
 
 		switch resource.Spec.Type {

@@ -67,6 +67,23 @@ expected in directory path `/workspace/output/resource_name`.
         - name: gcs-workspace
           type: storage
   ```
+- If the resource is declared only in output but not in input for task and the resource defined with `TargetPath` then the
+  copy step includes resource being copied to PVC to path
+  `/pvc/task_name/resource_name` from `/workspace/outputstuff` like the
+  following example.
+
+  ```yaml
+  kind: Task
+  metadata:
+    name: get-gcs-task
+    namespace: default
+  spec:
+    outputs:
+      resources:
+        - name: gcs-workspace
+          type: storage
+          targetPath: /workspace/outputstuff
+  ```
 
 - If the resource is declared both in input and output for task the then copy
   step includes resource being copied to PVC to path
