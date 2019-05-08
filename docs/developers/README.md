@@ -93,7 +93,7 @@ expected in directory path `/workspace/output/resource_name`.
 
   - If resource is declared both in input and output for task without custom
     target directory then copy step includes resource being copied to PVC to
-    path `/pvc/task_name/resource_name` from `/workspace/random-space/` like the
+    path `/pvc/task_name/resource_name` from `/workspace/resource_name/` like the
     following example.
 
   ```yaml
