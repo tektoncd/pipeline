@@ -18,6 +18,7 @@ require (
 	github.com/google/go-containerregistry v0.0.0-20190320210540-8d4083db9aa0 // indirect
 	github.com/google/gofuzz v0.0.0-20161122191042-44d81051d367 // indirect
 	github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d // indirect
+	github.com/hako/durafmt v0.0.0-20180520121703-7b7ae1e72ead
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.1-0.20190114141812-62fb9bc030d1

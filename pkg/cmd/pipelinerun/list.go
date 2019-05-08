@@ -19,14 +19,12 @@ import (
 	"io"
 	"os"
 	"text/tabwriter"
-	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
@@ -71,10 +69,10 @@ tkn pr list -n foo \n",
 			}
 
 			if output != "" {
-				return printObject(cmd.OutOrStdout(), &prs, f)
+				return printObject(cmd.OutOrStdout(), prs, f)
 			}
 
-			err = printFormatted(cmd.OutOrStdout(), &prs, p.Time())
+			err = printFormatted(cmd.OutOrStdout(), prs, p.Time())
 			if err != nil {
 				fmt.Fprint(os.Stderr, "Failed to print Pipelineruns \n")
 				return err
@@ -88,11 +86,10 @@ tkn pr list -n foo \n",
 	return c
 }
 
-func list(p cli.Params, pipeline string) (v1alpha1.PipelineRunList, error) {
-	var empty = v1alpha1.PipelineRunList{}
+func list(p cli.Params, pipeline string) (*v1alpha1.PipelineRunList, error) {
 	cs, err := p.Clientset()
 	if err != nil {
-		return empty, err
+		return nil, err
 	}
 
 	options := v1.ListOptions{}
@@ -105,7 +102,7 @@ func list(p cli.Params, pipeline string) (v1alpha1.PipelineRunList, error) {
 	prc := cs.TektonV1alpha1().PipelineRuns(p.Namespace())
 	prs, err := prc.List(options)
 	if err != nil {
-		return empty, err
+		return nil, err
 	}
 
 	// NOTE: this is required for -o json|yaml to work properly since
@@ -116,7 +113,7 @@ func list(p cli.Params, pipeline string) (v1alpha1.PipelineRunList, error) {
 			Kind:    "PipelineRunList",
 		})
 
-	return *prs, nil
+	return prs, nil
 }
 
 func printObject(out io.Writer, prs *v1alpha1.PipelineRunList, f *cliopts.PrintFlags) error {
@@ -137,42 +134,14 @@ func printFormatted(out io.Writer, prs *v1alpha1.PipelineRunList, c clockwork.Cl
 
 	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	defer w.Flush()
-	fmt.Fprintln(w, "NAME\tSTATUS\tSTARTED\tDURATION\t")
+	fmt.Fprintln(w, "NAME\tSTARTED\tDURATION\tSTATUS\t")
 	for _, pr := range prs.Items {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n",
 			pr.Name,
-			statusForCondition(pr.Status.Conditions[0]),
-			age(pr.Status.StartTime, c),
-			duration(pr.Status.StartTime, pr.Status.CompletionTime),
+			formatted.Age(*pr.Status.StartTime, c),
+			formatted.Duration(pr.Status.StartTime, pr.Status.CompletionTime),
+			formatted.Condition(pr.Status.Conditions[0]),
 		)
 	}
 	return nil
-}
-
-func statusForCondition(c apis.Condition) string {
-	if c.Status == corev1.ConditionFalse {
-		s := "Failed"
-		if c.Reason != "" {
-			s = s + "(" + c.Reason + ")"
-		}
-		return s
-	}
-
-	return c.Reason
-}
-
-func age(t *v1.Time, c clockwork.Clock) string {
-	if t.IsZero() {
-		return "---"
-	}
-
-	return c.Since(t.Time).Round(time.Second).String()
-}
-
-func duration(t1, t2 *v1.Time) string {
-	if t1.IsZero() || t2.IsZero() {
-		return "---"
-	}
-
-	return t2.Time.Sub(t1.Time).String()
 }

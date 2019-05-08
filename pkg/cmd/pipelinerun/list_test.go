@@ -14,6 +14,7 @@
 package pipelinerun
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -35,40 +36,49 @@ func TestListPipelineRuns(t *testing.T) {
 	prs := pipelineRuns(now)
 
 	tests := []struct {
-		name    string
-		command *cobra.Command
-		args    []string
-		want    string
+		name     string
+		command  *cobra.Command
+		args     []string
+		expected []string
 	}{
 		{
 			name:    "by pipeline name",
 			command: command(prs, now),
 			args:    []string{"list", "bar", "-n", "foo"},
-			want: "NAME    STATUS      STARTED   DURATION   \n" +
-				"pr1-1   Succeeded   1h0m0s    1m0s       \n",
+			expected: []string{
+				"NAME    STARTED      DURATION   STATUS      ",
+				"pr1-1   1 hour ago   1 minute   Succeeded   ",
+				"",
+			},
 		},
 		{
 			name:    "all in namespace",
 			command: command(prs, now),
 			args:    []string{"list", "-n", "foo"},
-			want: "NAME    STATUS           STARTED   DURATION   \n" +
-				"pr1-1   Succeeded        1h0m0s    1m0s       \n" +
-				"pr2-1   Running          1h0m0s    ---        \n" +
-				"pr2-2   Failed(Failed)   1h0m0s    1m0s       \n",
+			expected: []string{
+				"NAME    STARTED      DURATION   STATUS               ",
+				"pr1-1   1 hour ago   1 minute   Succeeded            ",
+				"pr2-1   1 hour ago   ---        Succeeded(Running)   ",
+				"pr2-2   1 hour ago   1 minute   Failed               ",
+				"",
+			},
 		},
 		{
 			name:    "print by template",
 			command: command(prs, now),
 			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
-			want: "pr1-1\n" +
-				"pr2-1\n" +
-				"pr2-2\n",
+			expected: []string{
+				"pr1-1",
+				"pr2-1",
+				"pr2-2",
+				"",
+			},
 		},
 		{
-			name:    "empty list",
-			command: command(prs, now),
-			args:    []string{"list", "-n", "random"},
-			want:    msgNoPRsFound + "\n",
+			name:     "empty list",
+			command:  command(prs, now),
+			args:     []string{"list", "-n", "random"},
+			expected: []string{msgNoPRsFound, ""},
 		},
 	}
 
@@ -79,7 +89,7 @@ func TestListPipelineRuns(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
-			if d := cmp.Diff(test.want, got); d != "" {
+			if d := cmp.Diff(strings.Join(test.expected, "\n"), got); d != "" {
 				t.Errorf("Unexpected output mismatch: \n%s\n", d)
 			}
 		})
