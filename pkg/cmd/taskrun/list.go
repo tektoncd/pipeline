@@ -88,7 +88,7 @@ tkn pr list -n foo \n",
 }
 
 func list(p cli.Params, task string) (*v1alpha1.TaskRunList, error) {
-	cs, err := p.Clientset()
+	cs, err := p.Clients()
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func list(p cli.Params, task string) (*v1alpha1.TaskRunList, error) {
 		}
 	}
 
-	trc := cs.TektonV1alpha1().TaskRuns(p.Namespace())
+	trc := cs.Tekton.TektonV1alpha1().TaskRuns(p.Namespace())
 	trs, err := trc.List(options)
 	if err != nil {
 		return nil, err

@@ -35,7 +35,6 @@ const (
 	emptyMsg = "No tasks found"
 	header   = "NAME\tAGE"
 	body     = "%s\t%s\n"
-	blank    = "---"
 )
 
 func listCommand(p cli.Params) *cobra.Command {
@@ -67,12 +66,12 @@ func listCommand(p cli.Params) *cobra.Command {
 
 func printTaskDetails(out io.Writer, p cli.Params) error {
 
-	cs, err := p.Clientset()
+	cs, err := p.Clients()
 	if err != nil {
 		return err
 	}
 
-	tasks, err := listTaskDetails(cs, p.Namespace())
+	tasks, err := listTaskDetails(cs.Tekton, p.Namespace())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to list tasks from %s namespace\n", p.Namespace())
 		return err
@@ -97,12 +96,12 @@ func printTaskDetails(out io.Writer, p cli.Params) error {
 }
 
 func printTaskListObj(w io.Writer, p cli.Params, f *cliopts.PrintFlags) error {
-	cs, err := p.Clientset()
+	cs, err := p.Clients()
 	if err != nil {
 		return err
 	}
 
-	tasks, err := listAllTasks(cs, p.Namespace())
+	tasks, err := listAllTasks(cs.Tekton, p.Namespace())
 
 	if err != nil {
 		return err

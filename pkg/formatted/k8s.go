@@ -5,7 +5,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Condition returns a human readable text based on the Status of the Condition
+// Condition returns a human readable text based on the status of the Condition
 func Condition(c apis.Condition) string {
 	var status string
 	switch c.Status {

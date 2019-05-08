@@ -17,14 +17,20 @@ package cli
 import (
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	k8s "k8s.io/client-go/kubernetes"
 )
+
+type Clients struct {
+	Tekton versioned.Interface
+	Kube   k8s.Interface
+}
 
 // Params interface provides
 type Params interface {
-	// SetKubeConfigPath uses the kubeconfig path to instantiate clientset
+	// SetKubeConfigPath uses the kubeconfig path to instantiate tekton
 	// returned by Clientset function
 	SetKubeConfigPath(string)
-	Clientset() (versioned.Interface, error)
+	Clients() (*Clients, error)
 
 	// SetNamespace can be used to store the namespace parameter that is needed
 	// by most commands

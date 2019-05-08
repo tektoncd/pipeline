@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package taskrun
 
 import (
@@ -141,7 +142,7 @@ func command(trs []*v1alpha1.TaskRun, now time.Time) *cobra.Command {
 
 	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{TaskRuns: trs})
 
-	p := &test.Params{Client: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 
 	return Command(p)
 }

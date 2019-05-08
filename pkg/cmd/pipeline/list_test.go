@@ -21,7 +21,7 @@ import (
 func TestPipelinesList_empty(t *testing.T) {
 
 	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
-	p := &test.Params{Client: cs.Pipeline}
+	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
 	output, err := test.ExecuteCommand(pipeline, "list", "-n", "foo")
@@ -43,7 +43,7 @@ func TestPipelineList_only_pipelines(t *testing.T) {
 
 	clock := clockwork.NewFakeClock()
 	cs, _ := seedPipelines(clock, pipelines, "namespace")
-	p := &test.Params{Client: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 
 	pipeline := Command(p)
 	output, err := test.ExecuteCommand(pipeline, "list", "-n", "namespace")
@@ -95,7 +95,7 @@ func TestPipelinesList_with_single_run(t *testing.T) {
 		},
 	})
 
-	p := &test.Params{Client: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 	pipeline := Command(p)
 
 	// -5 : pipeline created
@@ -182,7 +182,7 @@ func TestPipelinesList_latest_run(t *testing.T) {
 		},
 	})
 
-	p := &test.Params{Client: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 	pipeline := Command(p)
 
 	clock.Advance(30 * time.Minute)

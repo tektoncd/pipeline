@@ -1,4 +1,4 @@
-// Copyright © 2019 The tektoncd Authors.
+// Copyright © 2019 The Tekton Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package pipelinerun
 
 import (
@@ -132,7 +133,7 @@ func TestListPipelineRuns(t *testing.T) {
 
 func TestListPipeline_empty(t *testing.T) {
 	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
-	p := &tu.Params{Client: cs.Pipeline}
+	p := &tu.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
 	output, err := tu.ExecuteCommand(pipeline, "list", "-n", "ns")
@@ -153,7 +154,7 @@ func command(prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Command {
 
 	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{PipelineRuns: prs})
 
-	p := &test.Params{Client: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 
 	return Command(p)
 }

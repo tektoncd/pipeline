@@ -88,7 +88,7 @@ tkn pr list -n foo \n",
 }
 
 func list(p cli.Params, pipeline string) (*v1alpha1.PipelineRunList, error) {
-	cs, err := p.Clientset()
+	cs, err := p.Clients()
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func list(p cli.Params, pipeline string) (*v1alpha1.PipelineRunList, error) {
 		}
 	}
 
-	prc := cs.TektonV1alpha1().PipelineRuns(p.Namespace())
+	prc := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace())
 	prs, err := prc.List(options)
 	if err != nil {
 		return nil, err

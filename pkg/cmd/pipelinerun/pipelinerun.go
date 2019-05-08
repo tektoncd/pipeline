@@ -25,9 +25,10 @@ import (
 //Command instantiates the pipelinerun command
 func Command(p cli.Params) *cobra.Command {
 	c := &cobra.Command{
-		Use:     "pipelineruns",
-		Aliases: []string{"pr", "pipelinerun"},
-		Short:   "Manage pipelineruns",
+		Use:                   "pipelineruns",
+		DisableFlagsInUseLine: true,
+		Aliases:               []string{"pr", "pipelinerun"},
+		Short:                 "Manage pipelineruns",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
 		},
@@ -42,5 +43,7 @@ func Command(p cli.Params) *cobra.Command {
 
 	flags.AddTektonOptions(c)
 	c.AddCommand(listCommand(p))
+	c.AddCommand(logCommand(p))
+
 	return c
 }

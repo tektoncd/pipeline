@@ -67,12 +67,12 @@ func listCommand(p cli.Params) *cobra.Command {
 
 func printPipelineDetails(out io.Writer, p cli.Params) error {
 
-	cs, err := p.Clientset()
+	cs, err := p.Clients()
 	if err != nil {
 		return err
 	}
 
-	ps, prs, err := listPipelineDetails(cs, p.Namespace())
+	ps, prs, err := listPipelineDetails(cs.Tekton, p.Namespace())
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to list pipelines from %s namespace\n", p.Namespace())
@@ -115,12 +115,12 @@ func printPipelineDetails(out io.Writer, p cli.Params) error {
 }
 
 func printPipelineListObj(w io.Writer, p cli.Params, f *cliopts.PrintFlags) error {
-	cs, err := p.Clientset()
+	cs, err := p.Clients()
 	if err != nil {
 		return err
 	}
 
-	ps, err := listAllPipelines(cs, p.Namespace())
+	ps, err := listAllPipelines(cs.Tekton, p.Namespace())
 	if err != nil {
 		return err
 	}

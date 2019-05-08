@@ -14,3 +14,10 @@ func TaskRunCompletionTime(ct time.Time) tb.TaskRunStatusOp {
 		s.CompletionTime = &metav1.Time{Time: ct}
 	}
 }
+
+// StepName adds a state to stepstate of TaskRunStatus.
+func StepName(name string) tb.StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.Name = name
+	}
+}

@@ -50,7 +50,7 @@ func InitParams(p cli.Params, cmd *cobra.Command) error {
 	p.SetKubeConfigPath(kcPath)
 
 	// ensure that the config is valid by creating a client
-	if _, err := p.Clientset(); err != nil {
+	if _, err := p.Clients(); err != nil {
 		return err
 	}
 

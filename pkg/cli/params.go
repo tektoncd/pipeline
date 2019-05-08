@@ -15,21 +15,27 @@
 package cli
 
 import (
+	"k8s.io/client-go/rest"
 	"os"
 	"path/filepath"
 
 	"github.com/jonboulle/clockwork"
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type TektonParams struct {
-	kubeConfigPath string
-	clientset      *versioned.Clientset
+const (
+	DEFAUL_CONFIG_DIR   = ".kube"
+	DEFAULT_CONFIG_FILE = "config"
+)
 
-	namespace string
+type TektonParams struct {
+	clients        *Clients
+	kubeConfigPath string
+	namespace      string
 }
 
 // ensure that TektonParams complies with cli.Params interface
@@ -39,45 +45,81 @@ func (p *TektonParams) SetKubeConfigPath(path string) {
 	p.kubeConfigPath = path
 }
 
-func (p *TektonParams) Clientset() (versioned.Interface, error) {
-	if p.clientset != nil {
-		return p.clientset, nil
+func (p *TektonParams) tektonClient(config *rest.Config) (versioned.Interface, error) {
+	cs, err := versioned.NewForConfig(config)
+	if err != nil {
+		return nil, err
 	}
 
-	kcPath, err := resolveKubeConfigPath(p.kubeConfigPath)
+	return cs, nil
+}
+
+func (p *TektonParams) kubeClient(config *rest.Config) (k8s.Interface, error) {
+	k8scs, err := k8s.NewForConfig(config)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to resolve kubeconfig path")
+		return nil, errors.Wrapf(err, "Failed to create ks8 client from config")
+	}
+
+	return k8scs, nil
+}
+
+func (p *TektonParams) Clients() (*Clients, error) {
+	if p.clients != nil {
+		return p.clients, nil
+	}
+
+	config, err := p.config()
+	if err != nil {
+		return nil, err
+	}
+
+	tekton, err := p.tektonClient(config)
+	if err != nil {
+		return nil, err
+	}
+
+	kube, err := p.kubeClient(config)
+	if err != nil {
+		return nil, err
+	}
+
+	p.clients = &Clients{
+		Tekton: tekton,
+		Kube:   kube,
+	}
+
+	return p.clients, nil
+}
+
+func (p *TektonParams) config() (*rest.Config, error) {
+	kcPath, err := p.resolveKubeConfigPath()
+
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to resolve kubeconfig path")
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kcPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Parsing kubeconfig failed")
 	}
-
-	cs, err := versioned.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	p.clientset = cs
-	return p.clientset, nil
+	return config, err
 }
 
-func resolveKubeConfigPath(kcPath string) (string, error) {
-	if kcPath != "" {
-		return kcPath, nil
+func (p *TektonParams) resolveKubeConfigPath() (string, error) {
+	if p.kubeConfigPath != "" {
+		return p.kubeConfigPath, nil
 	}
 
 	if kubeEnvConf, ok := os.LookupEnv("KUBECONFIG"); ok {
 		return kubeEnvConf, nil
 	}
 
-	// deduce from ~/.kube/config
 	home, err := homedir.Dir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".kube", "config"), nil
+
+	return filepath.Join(home, DEFAUL_CONFIG_DIR, DEFAULT_CONFIG_FILE), nil
 }
 
 func (p *TektonParams) SetNamespace(ns string) {
@@ -87,7 +129,6 @@ func (p *TektonParams) SetNamespace(ns string) {
 func (p *TektonParams) Namespace() string {
 	return p.namespace
 }
-
 
 func (p *TektonParams) Time() clockwork.Clock {
 	return clockwork.NewRealClock()
