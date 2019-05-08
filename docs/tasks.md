@@ -70,8 +70,8 @@ following fields:
 - Optional:
   - [`inputs`](#inputs) - Specifies parameters and
     [`PipelineResources`](resources.md) needed by your `Task`
-  - [`outputs`](#outputs) - Specifies [`PipelineResources`](resources.md) needed
-    by your `Task`
+  - [`outputs`](#outputs) - Specifies [`PipelineResources`](resources.md)
+    created by your `Task`
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your `Task`'s steps.
   - [`containerTemplate`](#container-template) - Specifies a `Container`
