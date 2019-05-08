@@ -26,6 +26,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"go.uber.org/zap"
@@ -169,15 +170,22 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 
 func makeWorkingDirScript(workingDirs map[string]bool) string {
 	script := ""
+	var orderedDirs []string
+
 	for wd := range workingDirs {
 		if wd != "" {
-			p := filepath.Clean(wd)
-			if rel, err := filepath.Rel(workspaceDir, p); err == nil && !strings.HasPrefix(rel, ".") {
-				if script == "" {
-					script = fmt.Sprintf("mkdir -p %s", p)
-				} else {
-					script = fmt.Sprintf("%s %s", script, p)
-				}
+			orderedDirs = append(orderedDirs, wd)
+		}
+	}
+	sort.Strings(orderedDirs)
+
+	for _, wd := range orderedDirs {
+		p := filepath.Clean(wd)
+		if rel, err := filepath.Rel(workspaceDir, p); err == nil && !strings.HasPrefix(rel, ".") {
+			if script == "" {
+				script = fmt.Sprintf("mkdir -p %s", p)
+			} else {
+				script = fmt.Sprintf("%s %s", script, p)
 			}
 		}
 	}
