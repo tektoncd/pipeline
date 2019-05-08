@@ -120,9 +120,9 @@ Environment variables used by end to end tests:
 - In GCS taskrun test, GCP service account JSON key file at path
   `GCP_SERVICE_ACCOUNT_KEY_PATH`, if present, is used to generate Kubernetes
   secret to access GCS bucket.
-- In Storage artifact bucket test, the `GCP_SERVICE_ACCOUNT_KEY_PATH`
-  JSON key is used to create/delete a bucket which will be used for output to
-  input linking by the `PipelineRun` controller.
+- In Storage artifact bucket test, the `GCP_SERVICE_ACCOUNT_KEY_PATH` JSON key
+  is used to create/delete a bucket which will be used for output to input
+  linking by the `PipelineRun` controller.
 
 To create a service account usable in the e2e tests:
 

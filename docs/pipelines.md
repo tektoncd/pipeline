@@ -42,7 +42,9 @@ following fields:
       - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-task)
         should be executed after another Pipeline Task, but there is no
         [output linking](#from) required
-      - [`retries`](#retries) - Used when the task is wanted to be executed if it fails. Could a network error or a missing dependency. It does not apply to cancellations.      
+      - [`retries`](#retries) - Used when the task is wanted to be executed if
+        it fails. Could a network error or a missing dependency. It does not
+        apply to cancellations.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -259,9 +261,12 @@ spec.
 
 #### retries
 
-Sometimes is needed some policy for retrying tasks for various reasons such as network errors, missing dependencies or upload problems. 
-Any of those issue must be reflected as False (corev1.ConditionFalse) within the TaskRun Status Succeeded Condition. 
-For that reason there is an optional attribute called `retries` which declares how many times that task should be retried in case of failure,
+Sometimes is needed some policy for retrying tasks for various reasons such as
+network errors, missing dependencies or upload problems. Any of those issue must
+be reflected as False (corev1.ConditionFalse) within the TaskRun Status
+Succeeded Condition. For that reason there is an optional attribute called
+`retries` which declares how many times that task should be retried in case of
+failure,
 
 By default and in its absence there are no retries; its value is 0.
 
@@ -273,7 +278,9 @@ tasks:
       name: build-push
 ```
 
-In this example, the task "build-the-image" will be executed and if the first run fails a second one would triggered. But, if that fails no more would triggered: a max of two executions.  
+In this example, the task "build-the-image" will be executed and if the first
+run fails a second one would triggered. But, if that fails no more would
+triggered: a max of two executions.
 
 ## Ordering
 
