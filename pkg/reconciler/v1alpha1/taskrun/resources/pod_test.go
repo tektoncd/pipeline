@@ -336,7 +336,7 @@ func TestMakePod(t *testing.T) {
 				WorkingDir:   workspaceDir,
 			}, {
 				Name:         containerPrefix + workingDirInit + "-mz4c7",
-				Image:        *bashWorkingDirImage,
+				Image:        *v1alpha1.BashNoopImage,
 				Command:      []string{"/ko-app/bash"},
 				Args:         []string{"-args", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
 				Env:          implicitEnvVars,
