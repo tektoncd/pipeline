@@ -48,7 +48,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		t.Skip("GCP_SERVICE_ACCOUNT_KEY_PATH variable is not set.")
 	}
 	c, namespace := setup(t)
-	t.Parallel()
+	// Bucket tests can't run in parallel without causing issues with other tests.
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)

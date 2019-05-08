@@ -434,7 +434,7 @@ func TestMakeWorkingDirScript(t *testing.T) {
 	}, {
 		desc:        "simple",
 		workingDirs: map[string]bool{"/workspace/foo": true, "/workspace/bar": true, "/baz": true},
-		want:        "mkdir -p /workspace/foo /workspace/bar",
+		want:        "mkdir -p /workspace/bar /workspace/foo",
 	}, {
 		desc:        "empty",
 		workingDirs: map[string]bool{"/workspace": true, "": true, "/baz": true, "/workspacedir": true},
