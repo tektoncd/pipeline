@@ -100,7 +100,7 @@ const (
 
 var (
 	// The container used to initialize working directories before the build runs.
-	bashWorkingDirImage = flag.String("bash-working-dir-image", "override-with-bash-noop:latest",
+	bashWorkingDirImage = flag.String("bash-noop-image", "override-with-bash-noop:latest",
 		"The container image for preparing our Build's working directories.")
 	// The container used to initialize credentials before the build runs.
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
