@@ -894,7 +894,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 			}
 
 			if status := reconciledRun.Status.TaskRuns["hello-world-1"].Status.GetCondition(apis.ConditionSucceeded).Status; status != tc.conditionSucceeded {
-				t.Fatalf("Succedded expected to be %s but is %s", tc.conditionSucceeded, status)
+				t.Fatalf("Succeeded expected to be %s but is %s", tc.conditionSucceeded, status)
 			}
 
 		})
