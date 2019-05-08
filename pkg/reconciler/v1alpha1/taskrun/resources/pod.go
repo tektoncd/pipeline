@@ -99,9 +99,6 @@ const (
 )
 
 var (
-	// The container used to initialize working directories before the build runs.
-	bashWorkingDirImage = flag.String("bash-noop-image", "override-with-bash-noop:latest",
-		"The container image for preparing our Build's working directories.")
 	// The container used to initialize credentials before the build runs.
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
@@ -202,7 +199,7 @@ func makeWorkingDirInitializer(steps []corev1.Container) *corev1.Container {
 	if script := makeWorkingDirScript(workingDirs); script != "" {
 		return &corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + workingDirInit),
-			Image:        *bashWorkingDirImage,
+			Image:        *v1alpha1.BashNoopImage,
 			Command:      []string{"/ko-app/bash"},
 			Args:         []string{"-args", script},
 			VolumeMounts: implicitVolumeMounts,

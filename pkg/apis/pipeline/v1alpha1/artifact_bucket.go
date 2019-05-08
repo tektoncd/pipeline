@@ -83,7 +83,7 @@ func (b *ArtifactBucket) GetCopyFromStorageToContainerSpec(name, sourcePath, des
 
 	return []corev1.Container{{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
-		Image:   *bashNoopImage,
+		Image:   *BashNoopImage,
 		Command: []string{"/ko-app/bash"},
 		Args: []string{
 			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),
