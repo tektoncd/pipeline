@@ -10,7 +10,7 @@ spec:
 ---
 # This demo modifies the cluster (deploys to it) you must use a service
 # account with permission to admin the cluster (or make your default user an admin
-# of the `default` namespace with default-cluster-admin.
+# of the `default` namespace with default-cluster-admin).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -44,13 +44,13 @@ metadata:
 spec:
   inputs:
     resources:
-    - name: workspace
+    - name: sourcerepo
       type: git
   outputs:
     resources:
     - name: builtImage
       type: image
-      outputImagePath: /workspace/workspace
+      outputImageDir: /workspace/sourcerepo
   steps:
   - name: build-and-push
     image: busybox
@@ -60,7 +60,7 @@ spec:
     - -ce
     - |
       set -e
-      cat <<EOF > /workspace/workspace/index.json
+      cat <<EOF > /workspace/sourcerepo/index.json
       {
         "schemaVersion": 2,
         "manifests": [
@@ -80,7 +80,7 @@ spec:
     - -ce
     - |
       set -e
-      cat /workspace/workspace/index.json
+      cat /workspace/sourcerepo/index.json
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
@@ -93,7 +93,7 @@ spec:
     type: manual
   inputs:
     resources:
-    - name: workspace
+    - name: sourcerepo
       resourceRef:
         name: skaffold-git
   outputs:

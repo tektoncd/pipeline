@@ -388,6 +388,10 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 		taskRun.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	}
 
+	updateTaskRunResourceResult(taskRun, pod, resourceLister, kubeclient, logger)
+}
+
+func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) {
 	if resources.TaskRunHasOutputImageResource(resourceLister.PipelineResources(taskRun.Namespace).Get, taskRun) && taskRun.IsSuccessful() {
 		for _, container := range pod.Spec.Containers {
 			if strings.HasPrefix(container.Name, imageDigestExporterContainerName) {

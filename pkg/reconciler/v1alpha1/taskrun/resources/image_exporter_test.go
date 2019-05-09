@@ -52,7 +52,7 @@ func TestExportingOutputImageResource(t *testing.T) {
 					Resources: []v1alpha1.TaskResource{{
 						Name:            "source-image",
 						Type:            "image",
-						OutputImagePath: currentDir,
+						OutputImageDir: currentDir,
 					}},
 				},
 				Steps: []corev1.Container{{
@@ -93,7 +93,7 @@ func TestExportingOutputImageResource(t *testing.T) {
 				Name:    "image-digest-exporter-step1-9l9zj",
 				Image:   "override-with-imagedigest-exporter-image:latest",
 				Command: []string{"/ko-app/imagedigestexporter"},
-				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImagePath\":\"%s\"}]", currentDir)},
+				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir)},
 			}},
 	}, {
 		desc: "image resource in task with multiple steps",
@@ -113,7 +113,7 @@ func TestExportingOutputImageResource(t *testing.T) {
 					Resources: []v1alpha1.TaskResource{{
 						Name:            "source-image",
 						Type:            "image",
-						OutputImagePath: currentDir,
+						OutputImageDir: currentDir,
 					}},
 				},
 				Steps: []corev1.Container{{
@@ -155,14 +155,14 @@ func TestExportingOutputImageResource(t *testing.T) {
 				Name:    "image-digest-exporter-step1-9l9zj",
 				Image:   "override-with-imagedigest-exporter-image:latest",
 				Command: []string{"/ko-app/imagedigestexporter"},
-				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImagePath\":\"%s\"}]", currentDir)},
+				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir)},
 			}, {
 				Name: "step2",
 			}, {
 				Name:    "image-digest-exporter-step2-mz4c7",
 				Image:   "override-with-imagedigest-exporter-image:latest",
 				Command: []string{"/ko-app/imagedigestexporter"},
-				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImagePath\":\"%s\"}]", currentDir)},
+				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir)},
 			},
 		},
 	}} {
@@ -184,7 +184,7 @@ func TestExportingOutputImageResource(t *testing.T) {
 							Name:  "digest",
 							Value: "",
 						}, {
-							Name:  "OutputImagePath",
+							Name:  "OutputImageDir",
 							Value: "/workspace/source-image-1/index.json",
 						}},
 					},
@@ -414,7 +414,7 @@ func TestTaskRunHasOutputImageResource(t *testing.T) {
 								Name:  "digest",
 								Value: "",
 							}, {
-								Name:  "OutputImagePath",
+								Name:  "OutputImageDir",
 								Value: "/workspace/source-image-1/index.json",
 							}},
 						},
