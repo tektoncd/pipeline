@@ -96,7 +96,7 @@ type TaskResource struct {
 	TargetPath string `json:"targetPath"`
 	// +optional
 	// Path to the index.json file for output container images
-	OutputImagePath string `json:"outputImagePath"`
+	OutputImageDir string `json:"outputImageDir"`
 }
 
 // +genclient

@@ -30,8 +30,8 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 	if ts.Outputs != nil && len(ts.Outputs.Resources) > 0 {
 		for i, o := range ts.Outputs.Resources {
 			if o.Type == PipelineResourceTypeImage {
-				if o.OutputImagePath == "" {
-					ts.Outputs.Resources[i].OutputImagePath = fmt.Sprintf("/tools/image-outputs/%s", o.Name)
+				if o.OutputImageDir == "" {
+					ts.Outputs.Resources[i].OutputImageDir = fmt.Sprintf("/tools/image-outputs/%s", o.Name)
 				}
 			}
 		}

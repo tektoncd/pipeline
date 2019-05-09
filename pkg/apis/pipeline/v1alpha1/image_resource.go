@@ -52,7 +52,7 @@ type ImageResource struct {
 	Type            PipelineResourceType `json:"type"`
 	URL             string               `json:"url"`
 	Digest          string               `json:"digest"`
-	OutputImagePath string
+	OutputImageDir string
 }
 
 // GetName returns the name of the resource
@@ -92,9 +92,9 @@ func (s *ImageResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 func (s *ImageResource) SetDestinationDirectory(path string) {
 }
 
-// GetOutputImagePath return the path to get the index.json file
-func (s *ImageResource) GetOutputImagePath() string {
-	return s.OutputImagePath
+// GetOutputImageDir return the path to get the index.json file
+func (s *ImageResource) GetOutputImageDir() string {
+	return s.OutputImageDir
 }
 
 func (s ImageResource) String() string {

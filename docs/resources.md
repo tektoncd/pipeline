@@ -164,9 +164,9 @@ spec:
 
 #### Surfacing the image digest built in a task
 
-To surface the image digest in the output of the `taskRun` the builder tool should produce this information in a [oci-layout-image](https://github.com/opencontainers/image-spec/blob/master/image-layout.md) `index.json` file. This file should be placed on a location as specified in the task definition under the resource `outputImagePath`
+To surface the image digest in the output of the `taskRun` the builder tool should produce this information in a [OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/image-layout.md) `index.json` file. This file should be placed on a location as specified in the task definition under the resource `outputImageDir`.
 
-for example this build-push task defines the `outputImagePath` for the `buildImage` resource in `/worksapce/buildImage`
+For example this build-push task defines the `outputImageDir` for the `buildImage` resource in `/worksapce/buildImage`
 ```yaml
 apiVersion: tekton.dev/v1alpha1
 kind: Task
@@ -181,10 +181,10 @@ spec:
     resources:
     - name: builtImage
       type: image
-      outputImagePath: /workspace/builtImage
+      outputImageDir: /workspace/builtImage
   steps: ...
 ```
-If no value is specified for `outputImagePath`, it will default to `/tools/image-outputs/{resource-name}`.
+If no value is specified for `outputImageDir`, it will default to `/tools/image-outputs/{resource-name}`.
 
 *Please check the builder tool used on how to pass this path to create the output file.*  
 
@@ -194,24 +194,11 @@ for example:
 
 ```yaml
 status:
-    completionTime: 2019-04-29T14:20:41Z
-    conditions:
-    - lastTransitionTime: 2019-04-29T14:20:41Z
-      status: "True"
-      type: Succeeded
-    podName: build-push-run-pod-0a1777
+    ...
     resourcesResult:
     - digest: sha256:eed29cd0b6feeb1a92bc3c4f977fd203c63b376a638731c88cacefe3adb1c660
       name: skaffold-image-leeroy-web
-    startTime: 2019-04-29T14:20:30Z
-    steps:
-    - name: build-and-push
-      terminated:
-        containerID: docker://140fbe0d923bd0196e0ef1edbf088731ff1e8d37bfa9b04307701ccbdae77426
-        exitCode: 0
-        finishedAt: 2019-04-29T14:20:39Z
-        reason: Completed
-        startedAt: 2019-04-29T14:20:36Z
+    ...
 ```
 
 If the `index.json` file is not produced, the image digest will not be included in the `taskRun` output.

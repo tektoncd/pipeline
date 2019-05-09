@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2018 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ var (
 Image, which will include the path to where the index.json file will be located. The program will
 read the related index.json file(s) and log another JSON string including the name of the image resource
 and the digests.
-The input is an array of ImageResource, ex: [{"name":"srcimg1","type":"image","url":"gcr.io/some-image-1","digest":"","OutputImagePath":"/path/image"}]
+The input is an array of ImageResource, ex: [{"name":"srcimg1","type":"image","url":"gcr.io/some-image-1","digest":"","OutputImageDir":"/path/image"}]
 The output is an array of PipelineResourceResult, ex: [{"name":"image","digest":"sha256:eed29..660"}]
 */
 func main() {
@@ -49,9 +49,9 @@ func main() {
 
 	output := []v1alpha1.PipelineResourceResult{}
 	for _, imageResource := range imageResources {
-		ii, err := layout.ImageIndexFromPath(imageResource.OutputImagePath)
+		ii, err := layout.ImageIndexFromPath(imageResource.OutputImageDir)
 		if err != nil {
-			// if this image doesn't have a builder that supports index.josn file,
+			// if this image doesn't have a builder that supports index.json file,
 			// then it will be skipped
 			continue
 		}
