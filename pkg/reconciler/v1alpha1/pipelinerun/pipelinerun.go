@@ -81,7 +81,6 @@ type configStore interface {
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	*reconciler.Base
-
 	// listers index properties about resources
 	pipelineRunLister listers.PipelineRunLister
 	pipelineLister    listers.PipelineLister
@@ -167,6 +166,11 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	pr := original.DeepCopy()
 	if !pr.HasStarted() {
 		pr.Status.InitializeConditions()
+                // In case node time was not synchronized, when controller has been scheduled to other nodes.
+		if pr.Status.StartTime.Sub(pr.CreationTimestamp.Time) < 0 {
+			c.Logger.Warnf("PipelineRun %s createTimestamp %s is after the pipelineRun started %s", pr.GetRunKey(), pr.CreationTimestamp, pr.Status.StartTime)
+			pr.Status.StartTime = &pr.CreationTimestamp
+		}
 		// start goroutine to track pipelinerun timeout only startTime is not set
 		go c.timeoutHandler.WaitPipelineRun(pr, pr.Status.StartTime)
 	} else {
