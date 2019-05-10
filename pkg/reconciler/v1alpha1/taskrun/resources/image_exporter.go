@@ -19,10 +19,10 @@ package resources
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -35,7 +35,6 @@ func AddOutputImageDigestExporter(
 	tr *v1alpha1.TaskRun,
 	taskSpec *v1alpha1.TaskSpec,
 	gr GetResource,
-	logger *zap.SugaredLogger,
 ) error {
 
 	output := []*v1alpha1.ImageResource{}
@@ -43,20 +42,17 @@ func AddOutputImageDigestExporter(
 		for _, trb := range tr.Spec.Outputs.Resources {
 			boundResource, err := getBoundResource(trb.Name, tr.Spec.Outputs.Resources)
 			if err != nil {
-				logger.Errorf("Failed to get bound resource: %s", err)
-				return err
+				return fmt.Errorf("Failed to get bound resource: %s while adding output image digest exporter", err)
 			}
 
 			resource, err := getResource(boundResource, gr)
 			if err != nil {
-				logger.Errorf("Failed to get output pipeline Resource for taskRun %q resource %v; error: %s", tr.Name, boundResource, err.Error())
-				return err
+				return fmt.Errorf("Failed to get output pipeline Resource for taskRun %q resource %v; error: %s while adding output image digest exporter", tr.Name, boundResource, err.Error())
 			}
 			if resource.Spec.Type == v1alpha1.PipelineResourceTypeImage {
 				imageResource, err := v1alpha1.NewImageResource(resource)
 				if err != nil {
-					logger.Errorf("Invalid Image Resource for taskRun %q resource %v; error: %s", tr.Name, boundResource, err.Error())
-					return err
+					return fmt.Errorf("Invalid Image Resource for taskRun %q resource %v; error: %s", tr.Name, boundResource, err.Error())
 				}
 				for _, o := range taskSpec.Outputs.Resources {
 					if o.Name == boundResource.Name {
@@ -74,7 +70,7 @@ func AddOutputImageDigestExporter(
 			augmentedSteps := []corev1.Container{}
 			imagesJSON, err := json.Marshal(output)
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to format image resource data for output image exporter: %s", err)
 			}
 
 			for _, s := range taskSpec.Steps {
@@ -93,7 +89,7 @@ func AddOutputImageDigestExporter(
 func UpdateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
 	err := json.Unmarshal(logContent, &taskRun.Status.ResourcesResult)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to unmarshal output image exporter JSON output: %s", err)
 	}
 	return nil
 }
