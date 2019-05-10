@@ -460,6 +460,63 @@ func TestAddResourceToTask(t *testing.T) {
 			}},
 		},
 	}, {
+		desc: "multiple git resource as input from previous task",
+		task: task,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-git",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "the-git",
+						},
+						Name:  "gitspace",
+						Paths: []string{"/pvc/step-1/workdir", "/pvc/step-2/workdir"},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: gitInputs,
+			Steps: []corev1.Container{{
+				Name:    "create-dir-gitspace-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gitspace/step-1"},
+			}, {
+				Name:         "source-copy-gitspace-9l9zj",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "cp -r /pvc/step-1/workdir/. /workspace/gitspace/step-1"},
+				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+			}, {
+				Name:    "create-dir-gitspace-78c5n",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/gitspace/step-2"},
+			}, {
+				Name:         "source-copy-gitspace-mssqb",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "cp -r /pvc/step-2/workdir/. /workspace/gitspace/step-2"},
+				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "pipelinerun-pvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
+				},
+			}},
+		},
+	}, {
 		desc: "storage resource as input with target path",
 		task: taskWithTargetPath,
 		taskRun: &v1alpha1.TaskRun{

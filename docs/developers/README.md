@@ -40,6 +40,8 @@ Input resources, like source code (git) or artifacts, are dumped at path
 target directory. If `targetPath` is mentioned in task input then the
 controllers are responsible for adding container definitions to create
 directories and also to fetch the versioned artifacts into that directory.
+If an input resource includes more than one `from` condition then the a sub directory named of previous_task will be addend to the original directory, like this:
+/workspace/task_resource_name/previous_task or /targetPath/previous_task
 
 ## How are outputs handled
 
