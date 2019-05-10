@@ -483,7 +483,7 @@ func (c *Reconciler) updateLabels(tr *v1alpha1.TaskRun) (*v1alpha1.TaskRun, erro
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
 	ts = ts.DeepCopy()
 
-	err := resources.AddOutputImageDigestExporter(tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get, c.Logger)
+	err := resources.AddOutputImageDigestExporter(tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output image resource error %v", tr.Name, err)
 		return nil, err

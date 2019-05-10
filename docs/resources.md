@@ -164,9 +164,9 @@ spec:
 
 #### Surfacing the image digest built in a task
 
-To surface the image digest in the output of the `taskRun` the builder tool should produce this information in a [OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/image-layout.md) `index.json` file. This file should be placed on a location as specified in the task definition under the resource `outputImageDir`.
+To surface the image digest in the output of the `taskRun` the builder tool should produce this information in a [OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/image-layout.md) `index.json` file. This file should be placed on a location as specified in the task definition under the resource `outputImageDir`. Annotations in `index.json` will be ignored, and if there are multiple versions of the image, the latest will be used.
 
-For example this build-push task defines the `outputImageDir` for the `buildImage` resource in `/worksapce/buildImage`
+For example this build-push task defines the `outputImageDir` for the `builtImage` resource in `/workspace/buildImage`
 ```yaml
 apiVersion: tekton.dev/v1alpha1
 kind: Task

@@ -48,10 +48,10 @@ func NewImageResource(r *PipelineResource) (*ImageResource, error) {
 
 // ImageResource defines an endpoint where artifacts can be stored, such as images.
 type ImageResource struct {
-	Name            string               `json:"name"`
-	Type            PipelineResourceType `json:"type"`
-	URL             string               `json:"url"`
-	Digest          string               `json:"digest"`
+	Name           string               `json:"name"`
+	Type           PipelineResourceType `json:"type"`
+	URL            string               `json:"url"`
+	Digest         string               `json:"digest"`
 	OutputImageDir string
 }
 
@@ -98,6 +98,9 @@ func (s *ImageResource) GetOutputImageDir() string {
 }
 
 func (s ImageResource) String() string {
+	// the String() func works as a toString func to return the contents as a string
+	// and has to follow the interface and therefore cannot return an error
+	// if the Marshal func gives an error, the returned string will be empty
 	json, _ := json.Marshal(s)
 	return string(json)
 }

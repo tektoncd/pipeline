@@ -21,13 +21,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestExportingOutputImageResource(t *testing.T) {
+func TestAddOutputImageDigestExporter(t *testing.T) {
 	currentDir, _ := os.Getwd()
 	for _, c := range []struct {
 		desc      string
@@ -50,8 +49,8 @@ func TestExportingOutputImageResource(t *testing.T) {
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name:            "source-image",
-						Type:            "image",
+						Name:           "source-image",
+						Type:           "image",
 						OutputImageDir: currentDir,
 					}},
 				},
@@ -111,8 +110,8 @@ func TestExportingOutputImageResource(t *testing.T) {
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name:            "source-image",
-						Type:            "image",
+						Name:           "source-image",
+						Type:           "image",
 						OutputImageDir: currentDir,
 					}},
 				},
@@ -168,7 +167,6 @@ func TestExportingOutputImageResource(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			logger, _ := logging.NewLogger("", "")
 			gr := func(n string) (*v1alpha1.PipelineResource, error) {
 				return &v1alpha1.PipelineResource{
 					ObjectMeta: metav1.ObjectMeta{
@@ -190,7 +188,7 @@ func TestExportingOutputImageResource(t *testing.T) {
 					},
 				}, nil
 			}
-			err := AddOutputImageDigestExporter(c.taskRun, &c.task.Spec, gr, logger)
+			err := AddOutputImageDigestExporter(c.taskRun, &c.task.Spec, gr)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test %q: error %v", c.desc, err)
 			}
