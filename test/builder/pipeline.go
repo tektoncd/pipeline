@@ -368,6 +368,13 @@ func PipelineRunStartTime(startTime time.Time) PipelineRunStatusOp {
 	}
 }
 
+// PipelineRunCompletionTime sets the completion time  to the PipelineRunStatus.
+func PipelineRunCompletionTime(t time.Time) PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		s.CompletionTime = &metav1.Time{Time: t}
+	}
+}
+
 // PipelineRunTaskRunsStatus sets the TaskRuns of the PipelineRunStatus.
 func PipelineRunTaskRunsStatus(taskRuns map[string]*v1alpha1.PipelineRunTaskRunStatus) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
