@@ -26,6 +26,8 @@ import (
 )
 
 func TestPipeline(t *testing.T) {
+	creationTime := time.Now()
+
 	pipeline := tb.Pipeline("tomatoes", "foo", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
 		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
@@ -41,9 +43,14 @@ func TestPipeline(t *testing.T) {
 		tb.PipelineTask("never-gonna", "give-you-up",
 			tb.RunAfter("foo"),
 		),
-	))
+	),
+		tb.PipelineCreationTimestamp(creationTime),
+	)
 	expectedPipeline := &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "tomatoes", Namespace: "foo"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "tomatoes", Namespace: "foo",
+			CreationTimestamp: metav1.Time{Time: creationTime},
+		},
 		Spec: v1alpha1.PipelineSpec{
 			Resources: []v1alpha1.PipelineDeclaredResource{{
 				Name: "my-only-git-resource",

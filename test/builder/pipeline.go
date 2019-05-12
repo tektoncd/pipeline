@@ -86,6 +86,13 @@ func PipelineSpec(ops ...PipelineSpecOp) PipelineOp {
 	}
 }
 
+// PipelineCreationTimestamp sets the creation time of the pipeline
+func PipelineCreationTimestamp(t time.Time) PipelineOp {
+	return func(p *v1alpha1.Pipeline) {
+		p.CreationTimestamp = metav1.Time{Time: t}
+	}
+}
+
 // PipelineRunCancelled sets the status to cancel to the TaskRunSpec.
 func PipelineRunCancelled(spec *v1alpha1.PipelineRunSpec) {
 	spec.Status = v1alpha1.PipelineRunSpecStatusCancelled
