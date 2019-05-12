@@ -96,14 +96,17 @@ func TestPipeline(t *testing.T) {
 
 func TestPipelineRun(t *testing.T) {
 	startTime := time.Now()
+	completedTime := startTime.Add(5 * time.Minute)
+
 	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccount("sa"),
 		tb.PipelineRunParam("first-param", "first-value"),
 		tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
-	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
-		Type: apis.ConditionSucceeded,
-	}), tb.PipelineRunStartTime(startTime),
+	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(
+		apis.Condition{Type: apis.ConditionSucceeded}),
+		tb.PipelineRunStartTime(startTime),
+		tb.PipelineRunCompletionTime(completedTime),
 	), tb.PipelineRunLabel("label-key", "label-value"))
 	expectedPipelineRun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -133,7 +136,8 @@ func TestPipelineRun(t *testing.T) {
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			StartTime: &metav1.Time{Time: startTime},
+			StartTime:      &metav1.Time{Time: startTime},
+			CompletionTime: &metav1.Time{Time: completedTime},
 		},
 	}
 	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {
