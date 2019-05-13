@@ -58,28 +58,10 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					Name: "pipelinelineName",
 				},
 				Spec: PipelineRunSpec{
-					Trigger: PipelineTrigger{
-						Type: PipelineTriggerTypeManual,
-					},
+					ServiceAccount: "foo",
 				},
 			},
 			want: apis.ErrMissingField("pipelinerun.spec.Pipelineref.Name"),
-		}, {
-			name: "invalid trigger reference",
-			pr: PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinelineName",
-				},
-				Spec: PipelineRunSpec{
-					PipelineRef: PipelineRef{
-						Name: "prname",
-					},
-					Trigger: PipelineTrigger{
-						Type: "badtype",
-					},
-				},
-			},
-			want: apis.ErrInvalidValue("badtype", "pipelinerun.spec.trigger.type"),
 		}, {
 			name: "negative pipeline timeout",
 			pr: PipelineRun{
@@ -89,9 +71,6 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 				Spec: PipelineRunSpec{
 					PipelineRef: PipelineRef{
 						Name: "prname",
-					},
-					Trigger: PipelineTrigger{
-						Type: PipelineTriggerTypeManual,
 					},
 					Timeout: &metav1.Duration{Duration: -48 * time.Hour},
 				},
@@ -118,9 +97,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 		Spec: PipelineRunSpec{
 			PipelineRef: PipelineRef{
 				Name: "prname",
-			},
-			Trigger: PipelineTrigger{
-				Type: "manual",
 			},
 			Results: &Results{
 				URL:  "http://www.google.com",

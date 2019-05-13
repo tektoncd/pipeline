@@ -15,8 +15,6 @@ spec:
       image: ubuntu
       command: ["/bin/bash"]
       args: ['-c', 'cat /workspace/skaffold/README.md'] # tests that resource spec and task spec can be defined in taskrun
-  trigger:
-    type: manual
   inputs:
     resources:
     - name: workspace

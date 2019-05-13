@@ -27,8 +27,6 @@ metadata:
 spec:
   taskRef:
     name: publish-ci-images
-  trigger:
-    type: manual
   inputs:
     resources:
     - name: source

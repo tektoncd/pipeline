@@ -90,8 +90,6 @@ metadata:
 spec:
   pipelineRef:
     name: output-pipeline
-  trigger:
-    type: manual
   serviceAccount: 'default'
   resources:
   - name: source-repo

@@ -263,8 +263,6 @@ metadata:
 spec:
   taskRef:
     name: read-task
-  trigger:
-    type: manual
   inputs:
     resources:
       - name: workspace
@@ -322,8 +320,6 @@ kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  trigger:
-    type: manual
   inputs:
     resources:
       - name: workspace
@@ -356,8 +352,6 @@ metadata:
 spec:
   taskRef:
     name: read-task
-  trigger:
-    type: manual
   inputs:
     resources:
       - name: workspace

@@ -118,7 +118,6 @@ func TestPipelineRun(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineRunSpec{
 			PipelineRef:    v1alpha1.PipelineRef{Name: "tomatoes"},
-			Trigger:        v1alpha1.PipelineTrigger{Type: v1alpha1.PipelineTriggerTypeManual},
 			ServiceAccount: "sa",
 			Params: []v1alpha1.Param{{
 				Name:  "first-param",

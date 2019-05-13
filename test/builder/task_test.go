@@ -217,7 +217,6 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		tb.TaskRunTaskSpec(
 			tb.Step("step", "image", tb.Command("/mycmd")),
 		),
-		tb.TaskTrigger("mytrigger", v1alpha1.TaskTriggerTypeManual),
 		tb.TaskRunServiceAccount("sa"),
 		tb.TaskRunTimeout(2*time.Minute),
 	))
@@ -232,10 +231,6 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 					Image:   "image",
 					Command: []string{"/mycmd"},
 				}},
-			},
-			Trigger: v1alpha1.TaskTrigger{
-				Name: "mytrigger",
-				Type: v1alpha1.TaskTriggerTypeManual,
 			},
 			ServiceAccount: "sa",
 			Timeout:        &metav1.Duration{Duration: 2 * time.Minute},

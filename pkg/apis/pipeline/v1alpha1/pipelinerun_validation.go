@@ -41,9 +41,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	if ps.PipelineRef.Name == "" {
 		return apis.ErrMissingField("pipelinerun.spec.Pipelineref.Name")
 	}
-	if ps.Trigger.Type != PipelineTriggerTypeManual {
-		return apis.ErrInvalidValue(string(ps.Trigger.Type), "pipelinerun.spec.trigger.type")
-	}
+
 	// check for results
 	if ps.Results != nil {
 		if err := ps.Results.Validate(ctx, "spec.results"); err != nil {

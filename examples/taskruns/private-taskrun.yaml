@@ -49,5 +49,3 @@ spec:
       image: quay.io/rhpipeline/skopeo:alpine
       command: ["skopeo"]
       args: ["copy", "docker://gcr.io/build-crd-testing/secret-sauce", "dir:///tmp/"]
-  trigger:
-    type: manual

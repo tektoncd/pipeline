@@ -132,8 +132,6 @@ spec:
   serviceAccount: release-right-meow
   taskRef:
     name: publish-tekton-pipelines
-  trigger:
-    type: manual
   inputs:
     resources:
     - name: source

@@ -32,7 +32,6 @@ var _ apis.Defaultable = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
-	Trigger TaskTrigger `json:"trigger,omitempty"`
 	// +optional
 	Inputs TaskRunInputs `json:"inputs,omitempty"`
 	// +optional
@@ -90,28 +89,6 @@ type TaskRunOutputs struct {
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 	// +optional
 	Params []Param `json:"params,omitempty"`
-}
-
-// TaskTriggerType indicates the mechanism by which this TaskRun was created.
-type TaskTriggerType string
-
-const (
-	// TaskTriggerTypeManual indicates that this TaskRun was invoked manually by a user.
-	TaskTriggerTypeManual TaskTriggerType = "manual"
-
-	// TaskTriggerTypePipelineRun indicates that this TaskRun was created by a controller
-	// attempting to realize a PipelineRun. In this case the `name` will refer to the name
-	// of the PipelineRun.
-	TaskTriggerTypePipelineRun TaskTriggerType = "pipelineRun"
-)
-
-// TaskTrigger describes what triggered this Task to run. It could be triggered manually,
-// or it may have been part of a PipelineRun in which case this ref would refer
-// to the corresponding PipelineRun.
-type TaskTrigger struct {
-	Type TaskTriggerType `json:"type"`
-	// +optional
-	Name string `json:"name,omitempty,omitempty"`
 }
 
 var taskRunCondSet = apis.NewBatchConditionSet()
