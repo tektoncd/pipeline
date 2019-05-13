@@ -301,7 +301,9 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	gibberish := hex.EncodeToString(b)
 
 	nopContainer := &corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}}
-	entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger)
+	if err := entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger); err != nil {
+		return nil, err
+	}
 	podContainers = append(podContainers, *nopContainer)
 
 	mergedInitContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, initContainers)
