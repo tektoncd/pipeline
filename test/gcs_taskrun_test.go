@@ -16,7 +16,6 @@ limitations under the License.
 package test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,8 +23,6 @@ import (
 	knativetest "github.com/knative/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TestStorageTaskRun is an integration test that will verify GCS input resource runtime contract
@@ -100,25 +97,6 @@ func getResources(namespace, name, secretName, configFile string) *v1alpha1.Pipe
 		tb.PipelineResourceSpecSecretParam("GOOGLE_APPLICATION_CREDENTIALS", secretName, jsonKeyFilename)(&res.Spec)
 	}
 	return res
-}
-
-func createGCSSecret(t *testing.T, namespace, authFilePath string) *corev1.Secret {
-	t.Helper()
-
-	f, err := ioutil.ReadFile(authFilePath)
-	if err != nil {
-		t.Fatalf("Failed to read json key file %s at path %s", err, authFilePath)
-	}
-
-	data := map[string][]byte{filepath.Base(authFilePath): f}
-
-	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "auth-secret",
-		},
-		Data: data,
-	}
 }
 
 type GCPProject struct {

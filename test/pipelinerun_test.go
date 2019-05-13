@@ -329,12 +329,6 @@ func getName(namespace string, suffix int) string {
 	return fmt.Sprintf("%s%d", namespace, suffix)
 }
 
-func newHostPathType(pathType string) *corev1.HostPathType {
-	hostPathType := new(corev1.HostPathType)
-	*hostPathType = corev1.HostPathType(pathType)
-	return hostPathType
-}
-
 // collectMatchingEvents collects list of events under 5 seconds that match
 // 1. matchKinds which is a map of Kind of Object with name of objects
 // 2. reason which is the expected reason of event

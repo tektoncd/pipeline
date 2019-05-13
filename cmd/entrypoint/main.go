@@ -71,7 +71,7 @@ func main() {
 // stdout/stderr are collected -- needs e2e tests.
 
 // RealWaiter actually waits for files, by polling.
-type RealWaiter struct{ waitFile string }
+type RealWaiter struct{}
 
 var _ entrypoint.Waiter = (*RealWaiter)(nil)
 

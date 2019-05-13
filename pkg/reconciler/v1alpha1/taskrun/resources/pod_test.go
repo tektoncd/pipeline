@@ -116,19 +116,6 @@ func TestTryGetPod(t *testing.T) {
 
 func TestMakePod(t *testing.T) {
 	names.TestingSeed()
-	subPath := "subpath"
-	implicitVolumeMountsWithSubPath := []corev1.VolumeMount{}
-	for _, vm := range implicitVolumeMounts {
-		if vm.Name == "workspace" {
-			implicitVolumeMountsWithSubPath = append(implicitVolumeMountsWithSubPath, corev1.VolumeMount{
-				Name:      vm.Name,
-				MountPath: vm.MountPath,
-				SubPath:   subPath,
-			})
-		} else {
-			implicitVolumeMountsWithSubPath = append(implicitVolumeMountsWithSubPath, vm)
-		}
-	}
 
 	implicitVolumeMountsWithSecrets := append(implicitVolumeMounts, corev1.VolumeMount{
 		Name:      "secret-volume-multi-creds-9l9zj",

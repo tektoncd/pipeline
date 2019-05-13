@@ -248,36 +248,6 @@ var allFinishedState = PipelineRunState{{
 	},
 }}
 
-var oneTaskFailedToRetry = PipelineRunState{{
-	PipelineTask: &pts[3],
-	TaskRunName:  "pipelinerun-mytask-failed",
-	TaskRun:      makeFailed(trs[0]),
-	ResolvedTaskResources: &resources.ResolvedTaskResources{
-		TaskSpec: &task.Spec,
-	},
-}, {
-	PipelineTask: &pts[0],
-	TaskRunName:  "pipelinerun-mytask1",
-	TaskRun:      nil,
-	ResolvedTaskResources: &resources.ResolvedTaskResources{
-		TaskSpec: &task.Spec,
-	},
-}}
-var oneTaskFailedWithRetry = PipelineRunState{{
-	PipelineTask: &pts[3],
-	TaskRunName:  "pipelinerun-mytask-failed",
-	TaskRun:      makeRetried(*makeFailed(trs[0])),
-	ResolvedTaskResources: &resources.ResolvedTaskResources{
-		TaskSpec: &task.Spec,
-	},
-}, {
-	PipelineTask: &pts[0],
-	TaskRunName:  "pipelinerun-mytask1",
-	TaskRun:      nil,
-	ResolvedTaskResources: &resources.ResolvedTaskResources{
-		TaskSpec: &task.Spec,
-	},
-}}
 var taskCancelled = PipelineRunState{{
 	PipelineTask: &pts[4],
 	TaskRunName:  "pipelinerun-mytask1",
