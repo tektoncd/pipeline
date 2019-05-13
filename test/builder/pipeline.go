@@ -234,11 +234,7 @@ func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.Pipelin
 			Namespace: namespace,
 			Name:      name,
 		},
-		Spec: v1alpha1.PipelineRunSpec{
-			Trigger: v1alpha1.PipelineTrigger{
-				Type: v1alpha1.PipelineTriggerTypeManual,
-			},
-		},
+		Spec: v1alpha1.PipelineRunSpec{},
 	}
 
 	for _, op := range ops {

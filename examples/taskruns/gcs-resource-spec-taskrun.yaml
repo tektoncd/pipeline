@@ -13,8 +13,6 @@ spec:
       image: ubuntu
       command: ["/bin/bash"]
       args: ['-c', 'ls -al /workspace/rules/rules_docker-master'] # tests build-gcs resource
-  trigger:
-    type: manual
   inputs:
     resources:
     - name: workspace

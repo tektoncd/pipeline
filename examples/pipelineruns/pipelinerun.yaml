@@ -245,8 +245,6 @@ metadata:
 spec:
   pipelineRef:
     name: demo-pipeline
-  trigger:
-    type: manual
   serviceAccount: 'default'
   resources:
   - name: source-repo

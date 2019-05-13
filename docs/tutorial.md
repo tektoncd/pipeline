@@ -50,8 +50,6 @@ metadata:
 spec:
   taskRef:
     name: echo-hello-world
-  trigger:
-    type: manual
 ```
 
 To apply the yaml files use the following command:
@@ -86,8 +84,6 @@ spec:
   taskRef:
     name: echo-hello-world
   taskSpec: null
-  trigger:
-    type: manual
 status:
   conditions:
     - lastTransitionTime: 2018-12-11T15:50:09Z
@@ -206,8 +202,6 @@ metadata:
 spec:
   taskRef:
     name: build-docker-image-from-git-source
-  trigger:
-    type: manual
   inputs:
     resources:
       - name: docker-source
@@ -294,8 +288,6 @@ spec:
   taskRef:
     name: build-docker-image-from-git-source
   taskSpec: null
-  trigger:
-    type: manual
 status:
   conditions:
     - lastTransitionTime: 2018-12-11T18:15:09Z
@@ -434,8 +426,6 @@ metadata:
 spec:
   pipelineRef:
     name: tutorial-pipeline
-  trigger:
-    type: manual
   resources:
     - name: source-repo
       resourceRef:
@@ -489,8 +479,6 @@ spec:
       resourceRef:
         name: skaffold-image-leeroy-web
   serviceAccount: ""
-  trigger:
-    type: manual
 status:
   conditions:
     - lastTransitionTime: 2018-12-11T20:32:41Z

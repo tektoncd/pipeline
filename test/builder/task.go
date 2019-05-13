@@ -450,16 +450,6 @@ func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
 	}
 }
 
-// TaskTrigger set the TaskTrigger, with specified name and type, to the TaskRunSpec.
-func TaskTrigger(name string, triggerType v1alpha1.TaskTriggerType) TaskRunSpecOp {
-	return func(trs *v1alpha1.TaskRunSpec) {
-		trs.Trigger = v1alpha1.TaskTrigger{
-			Name: name,
-			Type: triggerType,
-		}
-	}
-}
-
 // TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
 func TaskRunServiceAccount(sa string) TaskRunSpecOp {
 	return func(trs *v1alpha1.TaskRunSpec) {
