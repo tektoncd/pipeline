@@ -169,7 +169,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	pr := original.DeepCopy()
 	if !pr.HasStarted() {
 		pr.Status.InitializeConditions()
-                // In case node time was not synchronized, when controller has been scheduled to other nodes.
+		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if pr.Status.StartTime.Sub(pr.CreationTimestamp.Time) < 0 {
 			c.Logger.Warnf("PipelineRun %s createTimestamp %s is after the pipelineRun started %s", pr.GetRunKey(), pr.CreationTimestamp, pr.Status.StartTime)
 			pr.Status.StartTime = &pr.CreationTimestamp
