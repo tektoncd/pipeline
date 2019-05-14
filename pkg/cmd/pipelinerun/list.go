@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
+	"github.com/tektoncd/cli/pkg/printer"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -69,7 +70,7 @@ tkn pr list -n foo \n",
 			}
 
 			if output != "" {
-				return printObject(cmd.OutOrStdout(), prs, f)
+				return printer.PrintObject(cmd.OutOrStdout(), prs, f)
 			}
 
 			err = printFormatted(cmd.OutOrStdout(), prs, p.Time())
@@ -116,24 +117,13 @@ func list(p cli.Params, pipeline string) (*v1alpha1.PipelineRunList, error) {
 	return prs, nil
 }
 
-func printObject(out io.Writer, prs *v1alpha1.PipelineRunList, f *cliopts.PrintFlags) error {
-	//NOTE: no null checks for prs; caller needs to ensure it is not null
-	printer, err := f.ToPrinter()
-	if err != nil {
-		return err
-	}
-	return printer.PrintObj(prs, out)
-}
-
 func printFormatted(out io.Writer, prs *v1alpha1.PipelineRunList, c clockwork.Clock) error {
-	//NOTE: no null checks for prs; caller needs to ensure it is not null
 	if len(prs.Items) == 0 {
 		fmt.Fprintln(out, msgNoPRsFound)
 		return nil
 	}
 
 	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
-	defer w.Flush()
 	fmt.Fprintln(w, "NAME\tSTARTED\tDURATION\tSTATUS\t")
 	for _, pr := range prs.Items {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n",
@@ -143,5 +133,6 @@ func printFormatted(out io.Writer, prs *v1alpha1.PipelineRunList, c clockwork.Cl
 			formatted.Condition(pr.Status.Conditions[0]),
 		)
 	}
-	return nil
+
+	return w.Flush()
 }
