@@ -1,4 +1,4 @@
-// Copyright © 2019 The Knative Authors.
+// Copyright © 2019 The Tekton Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,30 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package task
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/cmd/completion"
-	"github.com/tektoncd/cli/pkg/cmd/pipeline"
-	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
-	"github.com/tektoncd/cli/pkg/cmd/task"
+	"github.com/tektoncd/cli/pkg/flags"
 )
 
-func Root(p cli.Params) *cobra.Command {
-	var cmd = &cobra.Command{
-		Use:   "tkn",
-		Short: "CLI for tekton pipelines",
-		Long: `
-	`,
+func Command(p cli.Params) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "task",
+		Aliases: []string{"t", "tasks"},
+		Short:   "Manage tasks",
+
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return flags.InitParams(p, cmd)
+		},
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 {
+				return fmt.Errorf("task requires a subcommand; see help")
+			}
+			return nil
+		},
 	}
 
-	cmd.AddCommand(
-		completion.Command(p),
-		pipeline.Command(p),
-		pipelinerun.Command(p),
-		task.Command(p),
-	)
+	flags.AddTektonOptions(cmd)
+	cmd.AddCommand(listCommand(p))
 	return cmd
 }
