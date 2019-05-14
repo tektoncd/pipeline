@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 var (
