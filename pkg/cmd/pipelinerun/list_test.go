@@ -150,9 +150,15 @@ func TestListPipelineRuns(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 func TestListPipeline_empty(t *testing.T) {
 	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
 	p := &tu.Params{Client: cs.Pipeline}
+=======
+func TestListPipelineRuns_empty(t *testing.T) {
+	cs, _ := test.SeedTestData(test.Data{})
+	p := &tu.TestParams{Client: cs.Pipeline}
+>>>>>>> fixes testcase function name
 
 	pipeline := Command(p)
 	output, err := tu.ExecuteCommand(pipeline, "list", "-n", "ns")
