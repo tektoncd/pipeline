@@ -13,7 +13,7 @@ on path `/pvc` by PipelineRun.
   `/pvc/task_name/resource_name`.
 
 - If an input resource includes `from` condition then the `TaskRun` controller
-  adds a step to copy from PVC to directory path
+  adds a step to copy from PVC directory path:
   `/pvc/previous_task/resource_name`.
 
 Another alternatives is to use a GCS storage bucket to share the artifacts. This
