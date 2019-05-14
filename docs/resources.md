@@ -184,7 +184,7 @@ spec:
       outputImageDir: /workspace/builtImage
   steps: ...
 ```
-If no value is specified for `outputImageDir`, it will default to `/tools/image-outputs/{resource-name}`.
+If no value is specified for `outputImageDir`, it will default to `/builder/image-outputs/{resource-name}`.
 
 *Please check the builder tool used on how to pass this path to create the output file.*  
 

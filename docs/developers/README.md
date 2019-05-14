@@ -146,3 +146,10 @@ with the binary and file(s) is mounted.
 
 If the image is a private registry, the service account should include an
 [ImagePullSecret](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account)
+
+## Builder namespace on containers
+
+The `/builder/` namespace is reserved on containers for various system tools, such as the following:
+
+ - The environment variable HOME is set to `/builder/home`, used by the builder tools and injected on into all of the step containers
+ - Default location for output-images `/builder/output-images` 
