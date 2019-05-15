@@ -21,19 +21,19 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
-	"github.com/tektoncd/cli/pkg/testutil"
+	"github.com/tektoncd/cli/pkg/test"
+	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/test"
+	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestTaskListEmpty(t *testing.T) {
-	cs, _ := test.SeedTestData(test.Data{})
-	p := &testutil.TestParams{Client: cs.Pipeline}
+	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
+	p := &test.Params{Client: cs.Pipeline}
 
 	task := Command(p)
-	output, err := testutil.ExecuteCommand(task, "list", "-n", "foo")
+	output, err := test.ExecuteCommand(task, "list", "-n", "foo")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -46,16 +46,16 @@ func TestTaskListEmpty(t *testing.T) {
 func TestTaskListOnlyTasks(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 	tasks := []*v1alpha1.Task{
-		tb.Task("tomatoes", "namespace", creationTime(clock.Now().Add(-1*time.Minute))),
-		tb.Task("mangoes", "namespace", creationTime(clock.Now().Add(-20*time.Second))),
-		tb.Task("bananas", "namespace", creationTime(clock.Now().Add(-512*time.Hour))),
+		tb.Task("tomatoes", "namespace", cb.TaskCreationTime(clock.Now().Add(-1*time.Minute))),
+		tb.Task("mangoes", "namespace", cb.TaskCreationTime(clock.Now().Add(-20*time.Second))),
+		tb.Task("bananas", "namespace", cb.TaskCreationTime(clock.Now().Add(-512*time.Hour))),
 	}
 
-	cs, _ := test.SeedTestData(test.Data{Tasks: tasks})
-	p := &testutil.TestParams{Client: cs.Pipeline, Clock: clock}
+	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{Tasks: tasks})
+	p := &test.Params{Client: cs.Pipeline, Clock: clock}
 
 	task := Command(p)
-	output, err := testutil.ExecuteCommand(task, "list", "-n", "namespace")
+	output, err := test.ExecuteCommand(task, "list", "-n", "namespace")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -71,12 +71,5 @@ func TestTaskListOnlyTasks(t *testing.T) {
 	text := strings.Join(expected, "\n")
 	if d := cmp.Diff(text, output); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
-	}
-}
-
-// TODO(vdemeester): push upstream
-func creationTime(t time.Time) tb.TaskOp {
-	return func(task *v1alpha1.Task) {
-		task.CreationTimestamp = metav1.Time{Time: t}
 	}
 }

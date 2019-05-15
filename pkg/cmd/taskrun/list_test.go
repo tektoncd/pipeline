@@ -22,10 +22,10 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/testutil"
+	"github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
-	"github.com/tektoncd/pipeline/test"
+	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -120,14 +120,14 @@ func TestListTaskRuns(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			got, err := testutil.ExecuteCommand(test.command, test.args...)
+	for _, td := range tests {
+		t.Run(td.name, func(t *testing.T) {
+			got, err := test.ExecuteCommand(td.command, td.args...)
 
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
-			if d := cmp.Diff(strings.Join(test.expected, "\n"), got); d != "" {
+			if d := cmp.Diff(strings.Join(td.expected, "\n"), got); d != "" {
 				t.Errorf("Unexpected output mismatch: \n%s\n", d)
 			}
 		})
@@ -139,9 +139,9 @@ func command(trs []*v1alpha1.TaskRun, now time.Time) *cobra.Command {
 	clock := clockwork.NewFakeClockAt(now)
 	clock.Advance(time.Duration(60) * time.Minute)
 
-	cs, _ := test.SeedTestData(test.Data{TaskRuns: trs})
+	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{TaskRuns: trs})
 
-	p := &testutil.TestParams{Client: cs.Pipeline, Clock: clock}
+	p := &test.Params{Client: cs.Pipeline, Clock: clock}
 
 	return Command(p)
 }
