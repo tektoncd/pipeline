@@ -30,6 +30,18 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	// PvcConfigName is the name of the configmap containing all
+	// customizations for the storage PVC.
+	PvcConfigName = "config-artifact-pvc"
+
+	// PvcSizeKey is the name of the configmap entry that specifies the size of the PVC to create
+	PvcSizeKey = "size"
+
+	// DefaultPvcSize is the default size of the PVC to create
+	DefaultPvcSize = "5Gi"
+)
+
 // ArtifactStorageInterface is an interface to define the steps to copy
 // an pipeline artifact to/from temporary storage
 type ArtifactStorageInterface interface {
@@ -49,11 +61,11 @@ func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface,
 		return nil, err
 	}
 	if shouldCreatePVC {
-		err = createPVC(pr, c)
+		pvc, err := createPVC(pr, c)
 		if err != nil {
 			return nil, err
 		}
-		return &v1alpha1.ArtifactPVC{Name: pr.Name}, nil
+		return &v1alpha1.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc}, nil
 	}
 
 	return NewArtifactBucketConfigFromConfigMap(configMap)
@@ -141,18 +153,35 @@ func NewArtifactBucketConfigFromConfigMap(configMap *corev1.ConfigMap) (*v1alpha
 	return c, nil
 }
 
-func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
+func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (*corev1.PersistentVolumeClaim, error) {
 	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(GetPVCName(pr), metav1.GetOptions{}); err != nil {
 		if errors.IsNotFound(err) {
-			pvc := GetPVCSpec(pr)
-			if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvc); err != nil {
-				return fmt.Errorf("failed to claim Persistent Volume %q due to error: %s", pr.Name, err)
+
+			configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(PvcConfigName, metav1.GetOptions{})
+			if err != nil && !errors.IsNotFound(err) {
+				return nil, fmt.Errorf("failed to get PVC ConfigMap %s for %q due to error: %s", PvcConfigName, pr.Name, err)
 			}
-			return nil
+			var pvcSizeStr string
+			if configMap != nil {
+				pvcSizeStr = configMap.Data[PvcSizeKey]
+			}
+			if pvcSizeStr == "" {
+				pvcSizeStr = DefaultPvcSize
+			}
+			pvcSize, err := resource.ParseQuantity(pvcSizeStr)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create Persistent Volume spec for %q due to error: %s", pr.Name, err)
+			}
+			pvcSpec := GetPVCSpec(pr, pvcSize)
+			pvc, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvcSpec)
+			if err != nil {
+				return nil, fmt.Errorf("failed to claim Persistent Volume %q due to error: %s", pr.Name, err)
+			}
+			return pvc, nil
 		}
-		return fmt.Errorf("failed to get claim Persistent Volume %q due to error: %s", pr.Name, err)
+		return nil, fmt.Errorf("failed to get claim Persistent Volume %q due to error: %s", pr.Name, err)
 	}
-	return nil
+	return nil, nil
 }
 
 func deletePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
@@ -167,9 +196,7 @@ func deletePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
 }
 
 // GetPVCSpec returns the PVC to create for a given PipelineRun
-func GetPVCSpec(pr *v1alpha1.PipelineRun) *corev1.PersistentVolumeClaim {
-	// TODO(shashwathi): make this value configurable
-	pvcSizeBytes := int64(5 * 1024 * 1024 * 1024) // 5 GBs
+func GetPVCSpec(pr *v1alpha1.PipelineRun, pvcSize resource.Quantity) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       pr.Namespace,
@@ -180,7 +207,7 @@ func GetPVCSpec(pr *v1alpha1.PipelineRun) *corev1.PersistentVolumeClaim {
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources: corev1.ResourceRequirements{
 				Requests: map[corev1.ResourceName]resource.Quantity{
-					corev1.ResourceStorage: *resource.NewQuantity(pvcSizeBytes, resource.BinarySI),
+					corev1.ResourceStorage: pvcSize,
 				},
 			},
 		},

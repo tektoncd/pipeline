@@ -104,8 +104,13 @@ Pipelines need a way to share resources between tasks. The alternatives are a
 [Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 or a [GCS storage bucket](https://cloud.google.com/storage/)
 
-The PVC option does not require any configuration, but the GCS storage bucket
-can be configured using a ConfigMap with the name `config-artifact-bucket` with
+The PVC option can be configured using a ConfigMap with the name
+`config-artifact-pvc` and the following attributes:
+
+- size: the size of the volume (5Gi by default)
+ 
+The GCS storage bucket can be configured
+using a ConfigMap with the name `config-artifact-bucket` with
 the following attributes:
 
 - location: the address of the bucket (for example gs://mybucket)
