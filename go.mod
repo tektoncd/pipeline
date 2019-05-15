@@ -24,7 +24,6 @@ require (
 	github.com/jonboulle/clockwork v0.1.1-0.20190114141812-62fb9bc030d1
 	github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3 // indirect
 	github.com/knative/pkg v0.0.0-20190409220258-28cfa161499b
-	github.com/knative/test-infra v0.0.0-20190228033549-8c8ba71c83aa
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
@@ -38,6 +37,7 @@ require (
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/tektoncd/pipeline v0.3.1
+	github.com/tektoncd/plumbing v0.0.0-20190515135757-19ac801cfcf2
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v0.0.0-20180814183419-67bc79d13d15 // indirect
