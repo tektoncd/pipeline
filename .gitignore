@@ -1,0 +1,40 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# kn binary itself, if you want to `go build cmd/kn` in the top dir.
+/tkn
+/tkn-*
+
+# emacs tempfiles
+\#*
+*~
+
+# vim swap
+[._]*.s[a-w][a-z].
+[._]s[a-w][a-z].
+
+# session
+Session.vim
+
+# temporary
+.netrwhist
+*~
+
+# auto-generated tag files
+tags
+
+# IntelliJ IDE specific
+.idea
+
+# VSCode specific
+.vscode
