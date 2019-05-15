@@ -389,13 +389,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:596dbca2d6004d1a8e779891d5513a01d851948f710d82081574ad3e80636664"
+  digest = "1:dabd27a263906435d198a5fa9237ff2b14383a1e29964b7006e6dc975134f5e6"
   name = "github.com/knative/test-infra"
-  packages = [
-    "scripts",
-    "tools/dep-collector",
-  ]
-  pruneopts = "UT"
+  packages = ["tools/dep-collector"]
+  pruneopts = "NUT"
   revision = "8c8ba71c83aa5ec7928c32fa6e4d9c07d18141b0"
 
 [[projects]]
@@ -543,6 +540,14 @@
   pruneopts = "NUT"
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
+
+[[projects]]
+  branch = "master"
+  digest = "1:763dd91fe87b6bcfcab06caebe135d7e1fb8414c01828ae2b4d62f031706585f"
+  name = "github.com/tektoncd/plumbing"
+  packages = ["scripts"]
+  pruneopts = "UT"
+  revision = "19ac801cfcf2b7fa3c4efc46c4c38932d5b78a33"
 
 [[projects]]
   digest = "1:e65b395598ef96d96c1df34e3fd3ec4dabe629edb1511de33a59efd9931df0e8"
@@ -1204,9 +1209,9 @@
     "github.com/knative/pkg/test/logging",
     "github.com/knative/pkg/tracker",
     "github.com/knative/pkg/webhook",
-    "github.com/knative/test-infra/scripts",
     "github.com/knative/test-infra/tools/dep-collector",
     "github.com/mitchellh/go-homedir",
+    "github.com/tektoncd/plumbing/scripts",
     "go.opencensus.io/trace",
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest/observer",
