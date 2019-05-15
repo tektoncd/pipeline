@@ -33,7 +33,8 @@ var (
 // ArtifactPVC represents the pvc created by the pipelinerun
 // for artifacts temporary storage
 type ArtifactPVC struct {
-	Name string
+	Name                  string
+	PersistentVolumeClaim *corev1.PersistentVolumeClaim
 }
 
 // GetType returns the type of the artifact storage
