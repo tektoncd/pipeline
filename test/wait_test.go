@@ -43,7 +43,7 @@ func TestWaitForTaskRunStateSucceed(t *testing.T) {
 			)),
 		},
 	}
-	c := fakeClients(d)
+	c := fakeClients(t, d)
 	err := WaitForTaskRunState(c, "foo", TaskRunSucceed("foo"), "TestTaskRunSucceed")
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestWaitForTaskRunStateFailed(t *testing.T) {
 			)),
 		},
 	}
-	c := fakeClients(d)
+	c := fakeClients(t, d)
 	err := WaitForTaskRunState(c, "foo", TaskRunFailed("foo"), "TestTaskRunFailed")
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +72,7 @@ func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 			)),
 		},
 	}
-	c := fakeClients(d)
+	c := fakeClients(t, d)
 	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunSucceed("bar"), "TestWaitForPipelineRunSucceed")
 	if err != nil {
 		t.Fatal(err)
@@ -87,15 +87,15 @@ func TestWaitForPipelineRunStateFailed(t *testing.T) {
 			)),
 		},
 	}
-	c := fakeClients(d)
+	c := fakeClients(t, d)
 	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunFailed("bar"), "TestWaitForPipelineRunFailed")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func fakeClients(d Data) *clients {
-	fakeClients, _ := SeedTestData(d)
+func fakeClients(t *testing.T, d Data) *clients {
+	fakeClients, _ := SeedTestData(t, d)
 	// 	c.KubeClient = fakeClients.Kube
 	return &clients{
 		PipelineClient:         fakeClients.Pipeline.TektonV1alpha1().Pipelines(waitNamespace),

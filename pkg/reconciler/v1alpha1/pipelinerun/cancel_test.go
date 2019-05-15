@@ -72,7 +72,7 @@ func TestCancelPipelineRun(t *testing.T) {
 				PipelineRuns: []*v1alpha1.PipelineRun{tc.pipelineRun},
 				TaskRuns:     tc.taskRuns,
 			}
-			c, _ := test.SeedTestData(d)
+			c, _ := test.SeedTestData(t, d)
 			err := cancelPipelineRun(tc.pipelineRun, tc.pipelineState, c.Pipeline)
 			if err != nil {
 				t.Fatal(err)

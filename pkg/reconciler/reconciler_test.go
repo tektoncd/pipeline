@@ -53,7 +53,7 @@ func TestRecorderOptions(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	c, _ := test.SeedTestData(d)
+	c, _ := test.SeedTestData(t, d)
 
 	observer, _ := observer.New(zap.InfoLevel)
 

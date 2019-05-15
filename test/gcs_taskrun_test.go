@@ -98,10 +98,3 @@ func getResources(namespace, name, secretName, configFile string) *v1alpha1.Pipe
 	}
 	return res
 }
-
-type GCPProject struct {
-	GCPconfig `json:"core"`
-}
-type GCPconfig struct {
-	Name string `json:"project"`
-}

@@ -35,7 +35,7 @@ var (
 	outputpipelineResourceLister listers.PipelineResourceLister
 )
 
-func outputResourceSetup() {
+func outputResourceSetup(t *testing.T) {
 	logger, _ = logging.NewLogger("", "")
 	fakeClient := fakeclientset.NewSimpleClientset()
 	sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
@@ -99,7 +99,9 @@ func outputResourceSetup() {
 	}}
 
 	for _, r := range rs {
-		pipelineResourceInformer.Informer().GetIndexer().Add(r)
+		if err := pipelineResourceInformer.Informer().GetIndexer().Add(r); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 func TestValidOutputResources(t *testing.T) {
@@ -680,7 +682,7 @@ func TestValidOutputResources(t *testing.T) {
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()
-			outputResourceSetup()
+			outputResourceSetup(t)
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if err != nil {
@@ -855,7 +857,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 		},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
-			outputResourceSetup()
+			outputResourceSetup(t)
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
@@ -1108,7 +1110,7 @@ func TestInValidOutputResources(t *testing.T) {
 		wantErr: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			outputResourceSetup()
+			outputResourceSetup(t)
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {

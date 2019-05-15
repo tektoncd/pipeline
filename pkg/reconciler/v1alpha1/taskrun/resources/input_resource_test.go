@@ -63,7 +63,7 @@ var (
 	}
 )
 
-func setUp() {
+func setUp(t *testing.T) {
 	logger, _ = logging.NewLogger("", "")
 	fakeClient := fakeclientset.NewSimpleClientset()
 	sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
@@ -195,7 +195,9 @@ func setUp() {
 		},
 	}}
 	for _, r := range rs {
-		pipelineResourceInformer.Informer().GetIndexer().Add(r)
+		if err := pipelineResourceInformer.Informer().GetIndexer().Add(r); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -694,7 +696,7 @@ func TestAddResourceToTask(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			setUp()
+			setUp(t)
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			got, err := AddInputResource(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
@@ -901,7 +903,7 @@ func TestStorageInputResource(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			setUp()
+			setUp(t)
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			got, err := AddInputResource(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, pipelineResourceLister, logger)
 			if (err != nil) != c.wantErr {
@@ -1017,7 +1019,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			setUp()
+			setUp(t)
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{

@@ -54,11 +54,8 @@ func (w *Watcher) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				watcher.Stop()
 				return
-			case evt, ok := <-watcher.ResultChan():
-				if !ok {
-					// TODO: reconnect watch
-				}
-
+			case evt := <-watcher.ResultChan():
+				// TODO: reconnect watch
 				w.versions <- evt.Object.(*v1.Pod)
 			}
 		}

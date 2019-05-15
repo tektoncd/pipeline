@@ -215,12 +215,16 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 			if r.Method != http.MethodGet {
 				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
 			}
-			w.Write(mustRawConfigFile(t, img))
+			if _, err := w.Write(mustRawConfigFile(t, img)); err != nil {
+				t.Fatal(err)
+			}
 		case manifestPath:
 			if r.Method != http.MethodGet {
 				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
 			}
-			w.Write(mustRawManifest(t, img))
+			if _, err := w.Write(mustRawManifest(t, img)); err != nil {
+				t.Fatal(err)
+			}
 		default:
 			t.Fatalf("Unexpected path: %v", r.URL.Path)
 		}
@@ -284,12 +288,16 @@ func TestGetRemoteEntrypointWithNonDefaultSA(t *testing.T) {
 			if r.Method != http.MethodGet {
 				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
 			}
-			w.Write(mustRawConfigFile(t, img))
+			if _, err := w.Write(mustRawConfigFile(t, img)); err != nil {
+				t.Fatal(err)
+			}
 		case manifestPath:
 			if r.Method != http.MethodGet {
 				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
 			}
-			w.Write(mustRawManifest(t, img))
+			if _, err := w.Write(mustRawManifest(t, img)); err != nil {
+				t.Fatal(err)
+			}
 		default:
 			t.Fatalf("Unexpected path: %v", r.URL.Path)
 		}

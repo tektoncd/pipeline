@@ -110,7 +110,10 @@ var (
 		)),
 		tb.TaskVolume("volume-configmap", tb.VolumeSource(corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
-				corev1.LocalObjectReference{"${inputs.params.configmapname}"}, nil, nil, nil},
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "${inputs.params.configmapname}",
+				},
+			},
 		})),
 	))
 
@@ -180,9 +183,9 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func getTaskRunController(d test.Data) test.TestAssets {
+func getTaskRunController(t *testing.T, d test.Data) test.TestAssets {
 	entrypointCache, _ = entrypoint.NewCache()
-	c, i := test.SeedTestData(d)
+	c, i := test.SeedTestData(t, d)
 	observer, logs := observer.New(zap.InfoLevel)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	stopCh := make(chan struct{})
@@ -440,7 +443,10 @@ func TestReconcile(t *testing.T) {
 					Name: "volume-configmap",
 					VolumeSource: corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							corev1.LocalObjectReference{"configbar"}, nil, nil, nil},
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "configbar",
+							},
+						},
 					},
 				}, toolsVolume, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
@@ -954,19 +960,21 @@ func TestReconcile(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
-			testAssets := getTaskRunController(d)
+			testAssets := getTaskRunController(t, d)
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			saName := tc.taskRun.Spec.ServiceAccount
 			if saName == "" {
 				saName = "default"
 			}
-			clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
+			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      saName,
 					Namespace: tc.taskRun.Namespace,
 				},
-			})
+			}); err != nil {
+				t.Fatal(err)
+			}
 
 			entrypoint.AddToEntrypointCache(entrypointCache, "override-with-git:latest", []string{"/ko-app/git-init"})
 			entrypoint.AddToEntrypointCache(entrypointCache, "override-with-bash-noop:latest", []string{"/ko-app/bash"})
@@ -1026,7 +1034,7 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 		TaskRuns: []*v1alpha1.TaskRun{taskRun},
 		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
-	testAssets := getTaskRunController(d)
+	testAssets := getTaskRunController(t, d)
 
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -1056,7 +1064,7 @@ func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 			},
 		}},
 	}
-	testAssets := getTaskRunController(d)
+	testAssets := getTaskRunController(t, d)
 
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -1099,7 +1107,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := getTaskRunController(d)
+			testAssets := getTaskRunController(t, d)
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
@@ -1135,7 +1143,7 @@ func TestReconcilePodFetchError(t *testing.T) {
 		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := getTaskRunController(d)
+	testAssets := getTaskRunController(t, d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1182,7 +1190,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		Pods:     []*corev1.Pod{pod},
 	}
 
-	testAssets := getTaskRunController(d)
+	testAssets := getTaskRunController(t, d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1270,7 +1278,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		Tasks: []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := getTaskRunController(d)
+	testAssets := getTaskRunController(t, d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1299,7 +1307,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := getTaskRunController(d)
+	testAssets := getTaskRunController(t, d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1338,7 +1346,7 @@ func TestReconcileOnTimedOutTaskRun(t *testing.T) {
 		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := getTaskRunController(d)
+	testAssets := getTaskRunController(t, d)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 

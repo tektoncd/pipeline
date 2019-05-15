@@ -82,7 +82,7 @@ func TestCancelTaskRun(t *testing.T) {
 			}
 
 			observer, _ := observer.New(zap.InfoLevel)
-			c, _ := test.SeedTestData(d)
+			c, _ := test.SeedTestData(t, d)
 			err := cancelTaskRun(tc.taskRun, c.Kube, zap.New(observer).Sugar())
 			if err != nil {
 				t.Fatal(err)

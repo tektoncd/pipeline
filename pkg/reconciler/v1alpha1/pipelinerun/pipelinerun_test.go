@@ -49,8 +49,8 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 // getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 // recorder can be a fake recorder that is used for testing
-func getPipelineRunController(d test.Data, recorder record.EventRecorder) test.TestAssets {
-	c, i := test.SeedTestData(d)
+func getPipelineRunController(t *testing.T, d test.Data, recorder record.EventRecorder) test.TestAssets {
+	c, i := test.SeedTestData(t, d)
 	observer, logs := observer.New(zap.InfoLevel)
 	stopCh := make(chan struct{})
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
@@ -183,7 +183,7 @@ func TestReconcile(t *testing.T) {
 	// create fake recorder for testing
 	fr := record.NewFakeRecorder(1)
 
-	testAssets := getPipelineRunController(d, fr)
+	testAssets := getPipelineRunController(t, d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -333,7 +333,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := getPipelineRunController(d, fr)
+			testAssets := getPipelineRunController(t, d, fr)
 			c := testAssets.Controller
 
 			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.pipelineRun)); err != nil {
@@ -387,7 +387,7 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := getPipelineRunController(test.Data{}, fr)
+			testAssets := getPipelineRunController(t, test.Data{}, fr)
 			c := testAssets.Controller
 			logs := testAssets.Logs
 
@@ -500,7 +500,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// create fake recorder for testing
 	fr := record.NewFakeRecorder(1)
 
-	testAssets := getPipelineRunController(d, fr)
+	testAssets := getPipelineRunController(t, d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -598,7 +598,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	// create fake recorder for testing
 	fr := record.NewFakeRecorder(1)
 
-	testAssets := getPipelineRunController(d, fr)
+	testAssets := getPipelineRunController(t, d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -646,7 +646,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 	// create fake recorder for testing
 	fr := record.NewFakeRecorder(2)
 
-	testAssets := getPipelineRunController(d, fr)
+	testAssets := getPipelineRunController(t, d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -701,7 +701,7 @@ func TestReconcileCancelledPipelineRun(t *testing.T) {
 	// create fake recorder for testing
 	fr := record.NewFakeRecorder(2)
 
-	testAssets := getPipelineRunController(d, fr)
+	testAssets := getPipelineRunController(t, d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -755,7 +755,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	// create fake recorder for testing
 	fr := record.NewFakeRecorder(2)
 
-	testAssets := getPipelineRunController(d, fr)
+	testAssets := getPipelineRunController(t, d, fr)
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -866,7 +866,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 
 			fr := record.NewFakeRecorder(2)
 
-			testAssets := getPipelineRunController(d, fr)
+			testAssets := getPipelineRunController(t, d, fr)
 			c := testAssets.Controller
 			clients := testAssets.Clients
 

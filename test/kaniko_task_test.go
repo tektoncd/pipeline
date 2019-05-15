@@ -138,7 +138,7 @@ func TestKanikoTaskRun(t *testing.T) {
 		t.Fatalf("Expected output %s from pod %s but got %s", kanikoBuildOutput, podName, logs)
 	}
 	// make sure the pushed digest matches the one we pushed
-	re := regexp.MustCompile("digest: (sha256:\\w+)")
+	re := regexp.MustCompile(`digest: (sha256:\w+)`)
 	match := re.FindStringSubmatch(logs)
 	// make sure we found a match and it has the capture group
 	if len(match) != 2 {
