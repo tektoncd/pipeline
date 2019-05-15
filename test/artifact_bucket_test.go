@@ -108,8 +108,10 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		v1alpha1.BucketServiceAccountSecretName: bucketSecretName,
 		v1alpha1.BucketServiceAccountSecretKey:  bucketSecretKey,
 	}
-	updateConfigMap(c.KubeClient, systemNamespace, v1alpha1.BucketConfigName, configMapData)
-	defer resetConfigMap(c, systemNamespace, v1alpha1.BucketConfigName, originalConfigMapData)
+	if err := updateConfigMap(c.KubeClient, systemNamespace, v1alpha1.BucketConfigName, configMapData); err != nil {
+		t.Fatal(err)
+	}
+	defer resetConfigMap(t, c, systemNamespace, v1alpha1.BucketConfigName, originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
 	helloworldResource := tb.PipelineResource(helloworldResourceName, namespace, tb.PipelineResourceSpec(
@@ -228,8 +230,10 @@ func deleteBucketSecret(c *clients, t *testing.T, namespace string) {
 	}
 }
 
-func resetConfigMap(c *clients, namespace, configName string, values map[string]string) error {
-	return updateConfigMap(c.KubeClient, namespace, configName, values)
+func resetConfigMap(t *testing.T, c *clients, namespace, configName string, values map[string]string) {
+	if err := updateConfigMap(c.KubeClient, namespace, configName, values); err != nil {
+		t.Log(err)
+	}
 }
 
 func runTaskToDeleteBucket(c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {

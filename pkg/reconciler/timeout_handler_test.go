@@ -67,7 +67,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	c, _ := test.SeedTestData(d)
+	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
 	th := NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
@@ -169,7 +169,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 			},
 		}},
 	}
-	c, _ := test.SeedTestData(d)
+	c, _ := test.SeedTestData(t, d)
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)
 	th := NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, zap.New(observer).Sugar())
@@ -245,7 +245,7 @@ func TestWithNoFunc(t *testing.T) {
 		}},
 	}
 	stopCh := make(chan struct{})
-	c, _ := test.SeedTestData(d)
+	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
 	testHandler := NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, zap.New(observer).Sugar())
 	defer func() {

@@ -278,10 +278,9 @@ func TestVolumeReplacement(t *testing.T) {
 				Name: "${name}",
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
-						corev1.LocalObjectReference{"${configmapname}"},
-						nil,
-						nil,
-						nil,
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "${configmapname}",
+						},
 					},
 				}},
 			},
@@ -295,10 +294,9 @@ func TestVolumeReplacement(t *testing.T) {
 				Name: "myname",
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
-						corev1.LocalObjectReference{"cfgmapname"},
-						nil,
-						nil,
-						nil,
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "cfgmapname",
+						},
 					},
 				}},
 			},
@@ -310,10 +308,7 @@ func TestVolumeReplacement(t *testing.T) {
 				Name: "${name}",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						"${secretname}",
-						nil,
-						nil,
-						nil,
+						SecretName: "${secretname}",
 					},
 				}},
 			},
@@ -327,10 +322,7 @@ func TestVolumeReplacement(t *testing.T) {
 				Name: "mysecret",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						"totallysecure",
-						nil,
-						nil,
-						nil,
+						SecretName: "totallysecure",
 					},
 				}},
 			},
