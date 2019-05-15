@@ -34,63 +34,43 @@ import (
 
 func TestListPipelineRuns(t *testing.T) {
 	clock := clockwork.NewFakeClock()
+	runDuration := 1 * time.Minute
 
-	var (
-		ns          = "namespace"
-		runDuration = 1 * time.Minute
-
-		pr1name         = "pr1-1"
-		pr1Pipeline     = "pipeline"
-		pr1Status       = corev1.ConditionTrue
-		pr1StatusReason = resources.ReasonSucceeded
-		pr1Started      = clock.Now().Add(10 * time.Second)
-		pr1Finished     = pr1Started.Add(runDuration)
-
-		pr2name         = "pr2-1"
-		pr2Pipeline     = "random"
-		pr2Status       = corev1.ConditionTrue
-		pr2StatusReason = resources.ReasonRunning
-		pr2Started      = clock.Now().Add(-2 * time.Hour)
-
-		pr3name         = "pr2-2"
-		pr3Pipeline     = "random"
-		pr3Status       = corev1.ConditionFalse
-		pr3StatusReason = resources.ReasonFailed
-		pr3Started      = clock.Now().Add(-450 * time.Hour)
-		pr3Finished     = pr3Started.Add(runDuration)
-	)
+	pr1Started := clock.Now().Add(10 * time.Second)
+	pr2Started := clock.Now().Add(-2 * time.Hour)
+	pr3Started := clock.Now().Add(-450 * time.Hour)
 
 	prs := []*v1alpha1.PipelineRun{
-		tb.PipelineRun(pr1name, ns,
-			tb.PipelineRunLabel("tekton.dev/pipeline", pr1Pipeline),
+		tb.PipelineRun("pr1-1", "namespace",
+			tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
 			tb.PipelineRunStatus(
 				tb.PipelineRunStatusCondition(apis.Condition{
-					Status: pr1Status,
-					Reason: pr1StatusReason,
+					Status: corev1.ConditionTrue,
+					Reason: resources.ReasonSucceeded,
 				}),
 				tb.PipelineRunStartTime(pr1Started),
-				cb.PipelineRunCompletionTime(pr1Finished),
+				cb.PipelineRunCompletionTime(pr1Started.Add(runDuration)),
 			),
 		),
-		tb.PipelineRun(pr2name, ns,
-			tb.PipelineRunLabel("tekton.dev/pipeline", pr2Pipeline),
+		tb.PipelineRun("pr2-1", "namespace",
+			tb.PipelineRunLabel("tekton.dev/pipeline", "random"),
 			tb.PipelineRunStatus(
 				tb.PipelineRunStatusCondition(apis.Condition{
-					Status: pr2Status,
-					Reason: pr2StatusReason,
+					Status: corev1.ConditionTrue,
+					Reason: resources.ReasonRunning,
 				}),
 				tb.PipelineRunStartTime(pr2Started),
 			),
 		),
-		tb.PipelineRun(pr3name, ns,
-			tb.PipelineRunLabel("tekton.dev/pipeline", pr3Pipeline),
+		tb.PipelineRun("pr2-2", "namespace",
+			tb.PipelineRunLabel("tekton.dev/pipeline", "random"),
 			tb.PipelineRunStatus(
 				tb.PipelineRunStatusCondition(apis.Condition{
-					Status: pr3Status,
-					Reason: pr3StatusReason,
+					Status: corev1.ConditionFalse,
+					Reason: resources.ReasonFailed,
 				}),
 				tb.PipelineRunStartTime(pr3Started),
-				cb.PipelineRunCompletionTime(pr3Finished),
+				cb.PipelineRunCompletionTime(pr3Started.Add(runDuration)),
 			),
 		),
 	}
@@ -104,7 +84,7 @@ func TestListPipelineRuns(t *testing.T) {
 		{
 			name:    "by pipeline name",
 			command: command(prs, clock.Now()),
-			args:    []string{"list", pr1Pipeline, "-n", ns},
+			args:    []string{"list", "pipeline", "-n", "namespace"},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS      ",
 				"pr1-1   59 minutes ago   1 minute   Succeeded   ",
@@ -114,7 +94,7 @@ func TestListPipelineRuns(t *testing.T) {
 		{
 			name:    "all in namespace",
 			command: command(prs, clock.Now()),
-			args:    []string{"list", "-n", ns},
+			args:    []string{"list", "-n", "namespace"},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS               ",
 				"pr1-1   59 minutes ago   1 minute   Succeeded            ",
@@ -126,7 +106,7 @@ func TestListPipelineRuns(t *testing.T) {
 		{
 			name:    "by template",
 			command: command(prs, clock.Now()),
-			args:    []string{"list", "-n", ns, "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
+			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
 				"pr1-1",
 				"pr2-1",
@@ -150,15 +130,9 @@ func TestListPipelineRuns(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
 func TestListPipeline_empty(t *testing.T) {
 	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
 	p := &tu.Params{Client: cs.Pipeline}
-=======
-func TestListPipelineRuns_empty(t *testing.T) {
-	cs, _ := test.SeedTestData(test.Data{})
-	p := &tu.TestParams{Client: cs.Pipeline}
->>>>>>> fixes testcase function name
 
 	pipeline := Command(p)
 	output, err := tu.ExecuteCommand(pipeline, "list", "-n", "ns")
