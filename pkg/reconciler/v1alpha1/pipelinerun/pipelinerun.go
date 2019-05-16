@@ -181,6 +181,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	if pr.IsDone() {
+		if err := artifacts.CleanupArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
+			c.Logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
+			return err
+		}
 		c.timeoutHandler.Release(pr)
 		if err := c.updateTaskRunsStatusDirectly(pr); err != nil {
 			c.Logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
