@@ -1686,6 +1686,26 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			},
 			Steps: []v1alpha1.StepState{},
 		},
+	}, {
+		desc: "pending-not-enough-node-resources",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodPending,
+			Conditions: []corev1.PodCondition{{
+				Reason:  corev1.PodReasonUnschedulable,
+				Message: "0/1 nodes are available: 1 Insufficient cpu.",
+			}},
+		},
+		want: v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Reason:  reasonExceededNodeResources,
+					Message: `TaskRun pod "taskRun" exceeded available resources`,
+				}},
+			},
+			Steps: []v1alpha1.StepState{},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			now := metav1.Now()
