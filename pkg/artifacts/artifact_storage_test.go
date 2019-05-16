@@ -17,6 +17,7 @@ limitations under the License.
 package artifacts
 
 import (
+	"k8s.io/apimachinery/pkg/api/errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -27,6 +28,87 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
+
+func TestNeedsPVC(t *testing.T) {
+	logger := logtesting.TestLogger(t)
+	for _, c := range []struct {
+		desc      string
+		configMap *corev1.ConfigMap
+		pvcNeeded bool
+	}{{
+		desc: "valid bucket",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketLocationKey:              "gs://fake-bucket",
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+			},
+		},
+		pvcNeeded: false,
+	}, {
+		desc: "location empty",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketLocationKey:              "",
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+			},
+		},
+		pvcNeeded: true,
+	}, {
+		desc: "missing location",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+			},
+		},
+		pvcNeeded: true,
+	}, {
+		desc: "no config map data",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+		},
+		pvcNeeded: true,
+	}, {
+		desc: "no secret",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketLocationKey: "gs://fake-bucket",
+			},
+		},
+		pvcNeeded: false,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			needed, err := NeedsPVC(c.configMap, nil, logger)
+			if err != nil {
+				t.Fatalf("Somehow had error checking if PVC was needed run: %s", err)
+			}
+			if needed != c.pvcNeeded {
+				t.Fatalf("Expected that NeedsPVC would be %t, but was %t", c.pvcNeeded, needed)
+			}
+		})
+	}
+}
 
 func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 	logger := logtesting.TestLogger(t)
@@ -155,11 +237,100 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
+			// If the expected storage type is PVC, make sure we're actually creating that PVC.
+			if c.storagetype == "pvc" {
+				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(c.pipelinerun.Namespace).Get(GetPVCName(c.pipelinerun), metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(c.pipelinerun), c.pipelinerun.Name, err)
+				}
+			}
+			// Make sure we don't get any errors running CleanupArtifactStorage against the resulting storage, whether it's
+			// a bucket or a PVC.
+			if err := CleanupArtifactStorage(c.pipelinerun, fakekubeclient, logger); err != nil {
+				t.Fatalf("Error cleaning up artifact storage: %s", err)
+			}
 			if diff := cmp.Diff(bucket.GetType(), c.storagetype); diff != "" {
 				t.Fatalf("want %v, but got %v", c.storagetype, bucket.GetType())
 			}
 			if diff := cmp.Diff(bucket, c.expectedArtifactStorage); diff != "" {
 				t.Fatalf("want %v, but got %v", c.expectedArtifactStorage, bucket)
+			}
+		})
+	}
+}
+
+func TestCleanupArtifactStorage(t *testing.T) {
+	logger := logtesting.TestLogger(t)
+	for _, c := range []struct {
+		desc        string
+		configMap   *corev1.ConfigMap
+		pipelinerun *v1alpha1.PipelineRun
+	}{{
+		desc: "location empty",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketLocationKey:              "",
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+			},
+		},
+		pipelinerun: &v1alpha1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "pipelineruntest",
+			},
+		},
+	}, {
+		desc: "missing location",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+			},
+		},
+		pipelinerun: &v1alpha1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "pipelineruntest",
+			},
+		},
+	}, {
+		desc: "no config map data",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+		},
+		pipelinerun: &v1alpha1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "pipelineruntest",
+			},
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap, GetPVCSpec(c.pipelinerun))
+			_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(c.pipelinerun.Namespace).Get(GetPVCName(c.pipelinerun), metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(c.pipelinerun), c.pipelinerun.Name, err)
+			}
+			if err := CleanupArtifactStorage(c.pipelinerun, fakekubeclient, logger); err != nil {
+				t.Fatalf("Error cleaning up artifact storage: %s", err)
+			}
+			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(c.pipelinerun.Namespace).Get(GetPVCName(c.pipelinerun), metav1.GetOptions{})
+			if err == nil {
+				t.Fatalf("Found PVC %s for PipelineRun %s after it should have been cleaned up", GetPVCName(c.pipelinerun), c.pipelinerun.Name)
+			} else if !errors.IsNotFound(err) {
+				t.Fatalf("Error checking if PVC %s for PipelineRun %s has been cleaned up: %s", GetPVCName(c.pipelinerun), c.pipelinerun.Name, err)
 			}
 		})
 	}

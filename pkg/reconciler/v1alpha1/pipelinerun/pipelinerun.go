@@ -169,7 +169,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	pr := original.DeepCopy()
 	if !pr.HasStarted() {
 		pr.Status.InitializeConditions()
-                // In case node time was not synchronized, when controller has been scheduled to other nodes.
+		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if pr.Status.StartTime.Sub(pr.CreationTimestamp.Time) < 0 {
 			c.Logger.Warnf("PipelineRun %s createTimestamp %s is after the pipelineRun started %s", pr.GetRunKey(), pr.CreationTimestamp, pr.Status.StartTime)
 			pr.Status.StartTime = &pr.CreationTimestamp
@@ -181,6 +181,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	if pr.IsDone() {
+		if err := artifacts.CleanupArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
+			c.Logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
+			return err
+		}
 		c.timeoutHandler.Release(pr)
 		if err := c.updateTaskRunsStatusDirectly(pr); err != nil {
 			c.Logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
