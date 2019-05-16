@@ -49,7 +49,8 @@ following fields:
   - [`inputs`] - Specifies [input parameters](#input-parameters) and
     [input resources](#providing-resources)
   - [`outputs`] - Specifies [output resources](#providing-resources)
-  - `timeout` - Specifies timeout after which the `TaskRun` will fail.
+  - `timeout` - Specifies timeout after which the `TaskRun` will fail. Defaults
+    to ten minutes.
   - [`nodeSelector`] - a selector which must be true for the pod to fit on a
     node. The selector which must match a node's labels for the pod to be
     scheduled on that node. More info:

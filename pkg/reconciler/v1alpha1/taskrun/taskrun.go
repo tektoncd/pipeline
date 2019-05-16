@@ -535,30 +535,27 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 		return false, nil
 	}
 
-	if tr.Spec.Timeout != nil {
-		timeout := tr.Spec.Timeout.Duration
-		runtime := time.Since(tr.Status.StartTime.Time)
-
-		c.Logger.Infof("Checking timeout for TaskRun %q (startTime %s, timeout %s, runtime %s)", tr.Name, tr.Status.StartTime, timeout, runtime)
-		if runtime > timeout {
-			c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
-			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-				c.Logger.Errorf("Failed to terminate pod: %v", err)
-				return true, err
-			}
-
-			timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
-			tr.Status.SetCondition(&apis.Condition{
-				Type:    apis.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Reason:  reasonTimedOut,
-				Message: timeoutMsg,
-			})
-			// update tr completed time
-			tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-
-			return true, nil
+	timeout := reconciler.GetTimeout(tr.Spec.Timeout)
+	runtime := time.Since(tr.Status.StartTime.Time)
+	c.Logger.Infof("Checking timeout for TaskRun %q (startTime %s, timeout %s, runtime %s)", tr.Name, tr.Status.StartTime, timeout, runtime)
+	if runtime > timeout {
+		c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
+		if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			c.Logger.Errorf("Failed to terminate pod: %v", err)
+			return true, err
 		}
+
+		timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  reasonTimedOut,
+			Message: timeoutMsg,
+		})
+		// update tr completed time
+		tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+		return true, nil
 	}
 	return false, nil
 }

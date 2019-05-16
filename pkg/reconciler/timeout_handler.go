@@ -90,7 +90,10 @@ func (t *TimeoutSet) getOrCreateFinishedChan(runObj StatusKey) chan bool {
 	return finished
 }
 
-func getTimeout(d *metav1.Duration) time.Duration {
+// GetTimeout takes a kubernetes Duration representing the timeout period for a
+// resource and returns it as a time.Duration. If the provided duration is nil
+// then fallback behaviour is to return a default timeout period.
+func GetTimeout(d *metav1.Duration) time.Duration {
 	timeout := defaultTimeout
 	if d != nil {
 		timeout = d.Duration
@@ -154,14 +157,14 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string) {
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out, which is
 // determined by checking if the tr's timeout has occurred since the startTime
 func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun, startTime *metav1.Time) {
-	t.waitRun(tr, getTimeout(tr.Spec.Timeout), startTime, t.taskRunCallbackFunc)
+	t.waitRun(tr, GetTimeout(tr.Spec.Timeout), startTime, t.taskRunCallbackFunc)
 }
 
 // WaitPipelineRun function creates a blocking function for pipelinerun to wait for
 // 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out which is
 // determined by checking if the tr's timeout has occurred since the startTime
 func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun, startTime *metav1.Time) {
-	t.waitRun(pr, getTimeout(pr.Spec.Timeout), startTime, t.pipelineRunCallbackFunc)
+	t.waitRun(pr, GetTimeout(pr.Spec.Timeout), startTime, t.pipelineRunCallbackFunc)
 }
 
 func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime *metav1.Time, callback func(interface{})) {
