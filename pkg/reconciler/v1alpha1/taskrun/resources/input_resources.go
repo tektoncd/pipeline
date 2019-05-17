@@ -115,7 +115,7 @@ func AddInputResource(
 				{
 					storageResource, ok := resource.(v1alpha1.PipelineStorageResourceInterface)
 					if !ok {
-						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource: %q: %s", taskName, boundResource.ResourceRef.Name, err.Error())
+						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource: %q", taskName, boundResource.ResourceRef.Name)
 					}
 					resourceContainers, resourceVolumes, err = addStorageFetchStep(taskSpec, storageResource)
 					if err != nil {

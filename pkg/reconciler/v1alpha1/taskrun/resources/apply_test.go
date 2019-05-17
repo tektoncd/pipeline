@@ -191,7 +191,6 @@ func TestApplyResources(t *testing.T) {
 		name    string
 		args    args
 		want    *v1alpha1.TaskSpec
-		wantErr bool
 	}{{
 		name: "no replacements specified",
 		args: args{
