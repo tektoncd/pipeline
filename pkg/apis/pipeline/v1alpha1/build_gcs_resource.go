@@ -119,6 +119,7 @@ func (s *BuildGCSResource) Replacements() map[string]string {
 		"name":     s.Name,
 		"type":     string(s.Type),
 		"location": s.Location,
+		"path":     s.DestinationDir,
 	}
 }
 

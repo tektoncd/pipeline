@@ -32,6 +32,7 @@ var simpleTaskSpec = &v1alpha1.TaskSpec{
 	}, {
 		Name:  "baz",
 		Image: "bat",
+		WorkingDir: "${inputs.resources.workspace.path}",
 		Args:  []string{"${inputs.resources.workspace.url}"},
 	}, {
 		Name:  "qux",
@@ -107,6 +108,10 @@ func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.
 	ts = ts.DeepCopy()
 	f(ts)
 	return ts
+}
+
+func setup() {
+	inputs["workspace"].SetDestinationDirectory("/workspace/workspace")
 }
 
 func TestApplyParameters(t *testing.T) {
@@ -203,6 +208,7 @@ func TestApplyResources(t *testing.T) {
 			rStr:   "inputs",
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[1].Args = []string{"https://git-repo"}
 		}),
 	}, {
@@ -218,6 +224,7 @@ func TestApplyResources(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			setup()
 			got := ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyResources() diff %s", d)

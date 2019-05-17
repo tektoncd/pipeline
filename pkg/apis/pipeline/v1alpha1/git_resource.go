@@ -91,11 +91,13 @@ func (s GitResource) GetParams() []Param { return []Param{} }
 
 // Replacements is used for template replacement on a GitResource inside of a Taskrun.
 func (s *GitResource) Replacements() map[string]string {
+
 	return map[string]string{
 		"name":     s.Name,
 		"type":     string(s.Type),
 		"url":      s.URL,
 		"revision": s.Revision,
+		"path":     s.TargetPath,
 	}
 }
 
@@ -103,14 +105,8 @@ func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	args := []string{"-url", s.URL,
 		"-revision", s.Revision,
 	}
-	var dPath string
-	if s.TargetPath != "" {
-		dPath = s.TargetPath
-	} else {
-		dPath = s.Name
-	}
 
-	args = append(args, []string{"-path", dPath}...)
+	args = append(args, []string{"-path", s.TargetPath}...)
 
 	return []corev1.Container{{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
