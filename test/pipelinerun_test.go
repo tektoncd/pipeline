@@ -21,11 +21,12 @@ package test
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tektoncd/pipeline/pkg/artifacts"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/knative/pkg/apis"
 	knativetest "github.com/knative/pkg/test"
