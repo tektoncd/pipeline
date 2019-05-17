@@ -5,11 +5,11 @@ metadata:
   name: read-file
 spec:
   taskSpec:
-   inputs:
-    resources:
-    - name: workspace
-      type: git
-      targetPath: skaffold
+    inputs:
+      resources:
+      - name: workspace
+        type: git
+        targetPath: skaffold
     steps:
     - name: read
       image: ubuntu
