@@ -22,8 +22,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +49,7 @@ func AddInputResource(
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
-	pipelineResourceLister listers.PipelineResourceLister,
+	inputResources map[string]v1alpha1.PipelineResourceInterface,
 	logger *zap.SugaredLogger,
 ) (*v1alpha1.TaskSpec, error) {
 
@@ -74,12 +73,11 @@ func AddInputResource(
 	for _, input := range taskSpec.Inputs.Resources {
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to get bound resource: %s", err)
+			return nil, fmt.Errorf("failed to get bound resource: %s", err)
 		}
-
-		resource, err := getResource(boundResource, pipelineResourceLister.PipelineResources(taskRun.Namespace).Get)
-		if err != nil {
-			return nil, fmt.Errorf("task %q failed to Get Pipeline Resource: %v: error: %s", taskName, boundResource, err.Error())
+		resource, ok := inputResources[boundResource.Name]
+		if !ok || resource == nil {
+			return nil, fmt.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
 		}
 		var (
 			resourceContainers     []corev1.Container
@@ -87,9 +85,10 @@ func AddInputResource(
 			copyStepsFromPrevTasks []corev1.Container
 			dPath                  = destinationPath(input.Name, input.TargetPath)
 		)
+		resource.SetDestinationDirectory(dPath)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
-		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
+		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
 				cpContainers := as.GetCopyFromStorageToContainerSpec(boundResource.Name, path, dPath)
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
@@ -111,26 +110,21 @@ func AddInputResource(
 			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
 			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
 		} else {
-			switch resource.Spec.Type {
+			switch resource.GetType() {
 			case v1alpha1.PipelineResourceTypeStorage:
 				{
-					storageResource, err := v1alpha1.NewStorageResource(resource)
-					if err != nil {
+					storageResource, ok := resource.(v1alpha1.PipelineStorageResourceInterface)
+					if !ok {
 						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource: %q: %s", taskName, boundResource.ResourceRef.Name, err.Error())
 					}
-					resourceContainers, resourceVolumes, err = addStorageFetchStep(taskSpec, storageResource, dPath)
+					resourceContainers, resourceVolumes, err = addStorageFetchStep(taskSpec, storageResource)
 					if err != nil {
 						return nil, fmt.Errorf("task %q invalid gcs Pipeline Resource download steps: %q: %s", taskName, boundResource.ResourceRef.Name, err.Error())
 					}
 				}
 			default:
 				{
-					resSpec, err := v1alpha1.ResourceFromType(resource)
-					if err != nil {
-						return nil, err
-					}
-					resSpec.SetDestinationDirectory(dPath)
-					resourceContainers, err = resSpec.GetDownloadContainerSpec()
+					resourceContainers, err = resource.GetDownloadContainerSpec()
 					if err != nil {
 						return nil, fmt.Errorf("task %q invalid resource download spec: %q; error %s", taskName, boundResource.ResourceRef.Name, err.Error())
 					}
@@ -148,8 +142,7 @@ func AddInputResource(
 	return taskSpec, nil
 }
 
-func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.PipelineStorageResourceInterface, destPath string) ([]corev1.Container, []corev1.Volume, error) {
-	storageResource.SetDestinationDirectory(destPath)
+func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.PipelineStorageResourceInterface,) ([]corev1.Container, []corev1.Volume, error) {
 	gcsContainers, err := storageResource.GetDownloadContainerSpec()
 	if err != nil {
 		return nil, nil, err
