@@ -33,7 +33,7 @@ func Root(p cli.Params) *cobra.Command {
 	}
 
 	cmd.AddCommand(
-		completion.Command(p),
+		completion.Command(),
 		pipeline.Command(p),
 		pipelinerun.Command(p),
 		task.Command(p),

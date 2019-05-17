@@ -18,28 +18,31 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/cli"
 )
 
-func Command(cli.Params) *cobra.Command {
-	var cmd = &cobra.Command{
-		Use:   "completion SHELL",
-		Short: "Prints shell completion scripts",
-		Long: `
-	This command prints shell completion code which must be evaluated to provide interactive completion
+const(
+	desc = `
+This command prints shell completion code which must be evaluatedto provide 
+interactive completion
 
-	Supported Shells:
-		- bash
-	`,
+Supported Shells:
+	- bash
+`
+	eg = `
+  # generate completion code for bash
+  tkn completion bash > bash_completion.sh
+  source bash_completion.sh
+`
+)
+func Command() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:       "completion SHELL",
+		Short:     "Prints shell completion scripts",
+		Long:      desc,
 		Args:      exactValidArgs(1),
 		ValidArgs: []string{"bash"},
-		Example: `
-		# generate completion code for bash
-		tkn completion bash > bash_completion.sh
-		source bash_completion.sh
-		`,
+		Example:   eg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			switch args[0] {
 			case "bash":
 				return cmd.Root().GenBashCompletion(os.Stdout)
