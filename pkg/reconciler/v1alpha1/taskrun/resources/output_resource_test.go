@@ -1019,7 +1019,7 @@ func resolveOutputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pipel
 	for _, r := range taskRun.Spec.Outputs.Resources {
 		var i v1alpha1.PipelineResourceInterface
 		if name := r.ResourceRef.Name; name != "" {
-			i,_ = outputResources[name]
+			i = outputResources[name]
 			resolved[r.Name] = i
 		} else if r.ResourceSpec != nil {
 			i, _ =v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
