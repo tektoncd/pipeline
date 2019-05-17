@@ -65,21 +65,15 @@ var paramTaskRun = &v1alpha1.TaskRun{
 	},
 }
 
-var inputs = []v1alpha1.TaskResourceBinding{{
-	ResourceRef: v1alpha1.PipelineResourceRef{
-		Name: "git-resource",
-	},
-	Name: "workspace",
-}}
+var inputs = map[string]v1alpha1.PipelineResourceInterface{
+	"workspace": gitResource,
+}
 
-var outputs = []v1alpha1.TaskResourceBinding{{
-	ResourceRef: v1alpha1.PipelineResourceRef{
-		Name: "image-resource",
-	},
-	Name: "imageToUse",
-}}
+var outputs = map[string]v1alpha1.PipelineResourceInterface{
+	"imageToUse": imageResource,
+}
 
-var gitResource = &v1alpha1.PipelineResource{
+var gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "git-resource",
 	},
@@ -92,9 +86,9 @@ var gitResource = &v1alpha1.PipelineResource{
 			},
 		},
 	},
-}
+})
 
-var imageResource = &v1alpha1.PipelineResource{
+var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "image-resource",
 	},
@@ -107,7 +101,7 @@ var imageResource = &v1alpha1.PipelineResource{
 			},
 		},
 	},
-}
+})
 
 func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.TaskSpec {
 	ts = ts.DeepCopy()
@@ -181,15 +175,11 @@ func TestApplyParameters(t *testing.T) {
 	}
 }
 
-var mockGetter = func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
-var gitResourceGetter = func(n string) (*v1alpha1.PipelineResource, error) { return gitResource, nil }
-var imageResourceGetter = func(n string) (*v1alpha1.PipelineResource, error) { return imageResource, nil }
 
 func TestApplyResources(t *testing.T) {
 	type args struct {
 		ts     *v1alpha1.TaskSpec
-		r      []v1alpha1.TaskResourceBinding
-		getter GetResource
+		r map[string]v1alpha1.PipelineResourceInterface
 		rStr   string
 	}
 	tests := []struct {
@@ -201,8 +191,7 @@ func TestApplyResources(t *testing.T) {
 		name: "no replacements specified",
 		args: args{
 			ts:     simpleTaskSpec,
-			r:      []v1alpha1.TaskResourceBinding{},
-			getter: mockGetter,
+			r:     	make(map[string]v1alpha1.PipelineResourceInterface),
 			rStr:   "inputs",
 		},
 		want: simpleTaskSpec,
@@ -211,7 +200,6 @@ func TestApplyResources(t *testing.T) {
 		args: args{
 			ts:     simpleTaskSpec,
 			r:      inputs,
-			getter: gitResourceGetter,
 			rStr:   "inputs",
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
@@ -222,29 +210,15 @@ func TestApplyResources(t *testing.T) {
 		args: args{
 			ts:     simpleTaskSpec,
 			r:      outputs,
-			getter: imageResourceGetter,
 			rStr:   "outputs",
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
 		}),
-	}, {
-		name: "resource does not exist",
-		args: args{
-			ts:     simpleTaskSpec,
-			r:      inputs,
-			getter: mockGetter,
-			rStr:   "inputs",
-		},
-		wantErr: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ApplyResources(tt.args.ts, tt.args.r, tt.args.getter, tt.args.rStr)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ApplyResources() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got := ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyResources() diff %s", d)
 			}

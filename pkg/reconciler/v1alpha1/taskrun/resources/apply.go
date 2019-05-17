@@ -43,24 +43,14 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 
 // ApplyResources applies the templating from values in resources which are referenced in spec as subitems
 // of the replacementStr. It retrieves the referenced resources via the getter.
-func ApplyResources(spec *v1alpha1.TaskSpec, resources []v1alpha1.TaskResourceBinding, getter GetResource, replacementStr string) (*v1alpha1.TaskSpec, error) {
+func ApplyResources(spec *v1alpha1.TaskSpec, resolvedResources map[string]v1alpha1.PipelineResourceInterface, replacementStr string) *v1alpha1.TaskSpec {
 	replacements := map[string]string{}
-
-	for _, r := range resources {
-		pr, err := getResource(&r, getter)
-		if err != nil {
-			return nil, err
-		}
-
-		resource, err := v1alpha1.ResourceFromType(pr)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range resource.Replacements() {
-			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, r.Name, k)] = v
+	for name, r := range resolvedResources {
+		for k, v := range r.Replacements() {
+			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, name, k)] = v
 		}
 	}
-	return ApplyReplacements(spec, replacements), nil
+	return ApplyReplacements(spec, replacements)
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.

@@ -21,9 +21,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	fakeclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
-	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -32,15 +29,11 @@ import (
 )
 
 var (
-	outputpipelineResourceLister listers.PipelineResourceLister
+	outputResources map[string]v1alpha1.PipelineResourceInterface
 )
 
 func outputResourceSetup(t *testing.T) {
 	logger, _ = logging.NewLogger("", "")
-	fakeClient := fakeclientset.NewSimpleClientset()
-	sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
-	pipelineResourceInformer := sharedInfomer.Tekton().V1alpha1().PipelineResources()
-	outputpipelineResourceLister = pipelineResourceInformer.Lister()
 
 	rs := []*v1alpha1.PipelineResource{{
 		ObjectMeta: metav1.ObjectMeta{
@@ -98,10 +91,10 @@ func outputResourceSetup(t *testing.T) {
 		},
 	}}
 
+	outputResources = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
-		if err := pipelineResourceInformer.Informer().GetIndexer().Add(r); err != nil {
-			t.Fatal(err)
-		}
+		ri,_ := v1alpha1.ResourceFromType(r)
+		outputResources[r.Name] = ri
 	}
 }
 func TestValidOutputResources(t *testing.T) {
@@ -684,30 +677,32 @@ func TestValidOutputResources(t *testing.T) {
 			names.TestingSeed()
 			outputResourceSetup(t)
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			got, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
 
-			if d := cmp.Diff(c.task.Spec.Steps, c.wantSteps); d != "" {
-				t.Fatalf("post build steps mismatch: %s", d)
-			}
-			if c.taskRun.GetPipelineRunPVCName() != "" {
-				c.wantVolumes = append(
-					c.wantVolumes,
-					corev1.Volume{
-						Name: c.taskRun.GetPipelineRunPVCName(),
-						VolumeSource: corev1.VolumeSource{
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: c.taskRun.GetPipelineRunPVCName(),
+			if got != nil {
+				if d := cmp.Diff(got.Steps, c.wantSteps); d != "" {
+					t.Fatalf("post build steps mismatch: %s", d)
+				}
+
+				if c.taskRun.GetPipelineRunPVCName() != "" {
+					c.wantVolumes = append(
+						c.wantVolumes,
+						corev1.Volume{
+							Name: c.taskRun.GetPipelineRunPVCName(),
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: c.taskRun.GetPipelineRunPVCName(),
+								},
 							},
 						},
-					},
-				)
-			}
-
-			if d := cmp.Diff(c.task.Spec.Volumes, c.wantVolumes); d != "" {
-				t.Fatalf("post build steps volumes mismatch: %s", d)
+					)
+				}
+				if d := cmp.Diff(got.Volumes, c.wantVolumes); d != "" {
+					t.Fatalf("post build steps volumes mismatch: %s", d)
+				}
 			}
 		})
 	}
@@ -870,127 +865,26 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 					},
 				},
 			)
-			err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			got, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
-
-			if d := cmp.Diff(c.task.Spec.Steps, c.wantSteps); d != "" {
-				t.Fatalf("post build steps mismatch: %s", d)
+			if got != nil {
+				if d := cmp.Diff(got.Steps, c.wantSteps); d != "" {
+					t.Fatalf("post build steps mismatch: %s", d)
+				}
 			}
 		})
 	}
 }
 
-func TestInValidOutputResources(t *testing.T) {
+func TestInvalidOutputResources(t *testing.T) {
 	for _, c := range []struct {
 		desc    string
 		task    *v1alpha1.Task
 		taskRun *v1alpha1.TaskRun
 		wantErr bool
 	}{{
-		desc: "git declared in both resource spec and resource ref",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
-						},
-						ResourceSpec: &v1alpha1.PipelineResourceSpec{
-							Type: v1alpha1.PipelineResourceTypeGit,
-						},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
-				},
-			},
-		},
-		wantErr: true,
-	}, {
-		desc: "git declared in output both in resource ref and spec",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
-						},
-						ResourceSpec: &v1alpha1.PipelineResourceSpec{
-							Type: v1alpha1.PipelineResourceTypeGit,
-						},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
-				},
-			},
-		},
-		wantErr: true,
-	}, {
-		desc: "git declared in neither resource ref and spec",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
-				},
-			},
-		},
-		wantErr: true,
-	}, {
 		desc: "no outputs defined",
 		task: &v1alpha1.Task{
 			ObjectMeta: metav1.ObjectMeta{
@@ -1112,10 +1006,30 @@ func TestInValidOutputResources(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			outputResourceSetup(t)
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, outputpipelineResourceLister, logger)
+			_, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if (err != nil) != c.wantErr {
 				t.Fatalf("Test AddOutputResourceSteps %v : error%v", c.desc, err)
 			}
 		})
 	}
+}
+
+func resolveOutputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.PipelineResourceInterface {
+	resolved := make(map[string]v1alpha1.PipelineResourceInterface)
+	for _, r := range taskRun.Spec.Outputs.Resources {
+		var i v1alpha1.PipelineResourceInterface
+		if name := r.ResourceRef.Name; name != "" {
+			i,_ = outputResources[name]
+			resolved[r.Name] = i
+		} else if r.ResourceSpec != nil {
+			i, _ =v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: r.Name,
+				},
+				Spec: *r.ResourceSpec,
+			})
+			resolved[r.Name] = i
+		}
+	}
+	return resolved
 }

@@ -311,7 +311,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 	if pod == nil {
 		// Pod is not present, create pod.
-		pod, err = c.createPod(tr, rtr.TaskSpec, rtr.TaskName)
+		pod, err = c.createPod(tr, rtr)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			var reason, msg string
@@ -512,24 +512,37 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1
 	return newTr, nil
 }
 
-// createPod creates a Pod based on the Task's configuration, with pvcName as a
-// volumeMount
-func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, taskName string) (*corev1.Pod, error) {
-	ts = ts.DeepCopy()
 
-	err := resources.AddOutputImageDigestExporter(tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
+// createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
+// TODO(dibyom): Refactor resource setup/templating logic to its own function in the resources package
+func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
+	ts := rtr.TaskSpec.DeepCopy()
+	inputResources, err := resourceImplBinding(rtr.Inputs)
+	if err != nil {
+		c.Logger.Errorf("Failed to initialize input resources: %v", err)
+		return nil, err
+	}
+	outputResources, err := resourceImplBinding(rtr.Outputs)
+	if err != nil {
+		c.Logger.Errorf("Failed to initialize output resources: %v", err)
+		return nil, err
+	}
+
+	// Get actual resource
+
+	err = resources.AddOutputImageDigestExporter(tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output image resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	ts, err = resources.AddInputResource(c.KubeClientSet, taskName, ts, tr, c.resourceLister, c.Logger)
+	ts, err = resources.AddInputResource(c.KubeClientSet, rtr.TaskName, ts, tr, inputResources, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	err = resources.AddOutputResources(c.KubeClientSet, taskName, ts, tr, c.resourceLister, c.Logger)
+	ts, err = resources.AddOutputResources(c.KubeClientSet, rtr.TaskName, ts, tr, outputResources, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
@@ -548,14 +561,8 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, task
 	ts = resources.ApplyParameters(ts, tr, defaults...)
 
 	// Apply bound resource templating from the taskrun.
-	ts, err = resources.ApplyResources(ts, tr.Spec.Inputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get, "inputs")
-	if err != nil {
-		return nil, fmt.Errorf("couldnt apply input resource templating: %s", err)
-	}
-	ts, err = resources.ApplyResources(ts, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get, "outputs")
-	if err != nil {
-		return nil, fmt.Errorf("couldnt apply output resource templating: %s", err)
-	}
+	ts = resources.ApplyResources(ts, inputResources, "inputs")
+	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
 	pod, err := resources.MakePod(tr, *ts, c.KubeClientSet, c.cache, c.Logger)
 	if err != nil {
@@ -641,4 +648,16 @@ func isExceededResourceQuotaError(err error) bool {
 
 func getExceededResourcesMessage(tr *v1alpha1.TaskRun) string {
 	return fmt.Sprintf("TaskRun pod %q exceeded available resources", tr.Name)
+}
+// resourceImplBinding maps pipeline resource names to the actual resource type implementations
+func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource) (map[string]v1alpha1.PipelineResourceInterface, error) {
+	p := make(map[string]v1alpha1.PipelineResourceInterface)
+	for rName, r := range resources {
+		i, err := v1alpha1.ResourceFromType(r)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create resource %s : %v with error: %v", rName, r, err)
+		}
+		p[rName] = i
+	}
+	return p, nil
 }
