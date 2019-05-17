@@ -17,8 +17,9 @@ limitations under the License.
 package artifacts
 
 import (
-	"k8s.io/apimachinery/pkg/api/errors"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/google/go-cmp/cmp"
 	logtesting "github.com/knative/pkg/logging/testing"
