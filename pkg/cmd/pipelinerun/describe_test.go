@@ -114,7 +114,7 @@ Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
-	if d := cmp.Diff(expected, actual ); d != "" {
+	if d := cmp.Diff(expected, actual); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
 	}
 
@@ -129,8 +129,8 @@ func TestPipelineRunDescribe_failed(t *testing.T) {
 				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
 				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
 				tb.Condition(apis.Condition{
-					Status: corev1.ConditionFalse,
-					Reason: resources.ReasonFailed,
+					Status:  corev1.ConditionFalse,
+					Reason:  resources.ReasonFailed,
 					Message: "Testing tr failed",
 				}),
 			),
@@ -153,8 +153,8 @@ func TestPipelineRunDescribe_failed(t *testing.T) {
 						},
 					}),
 					tb.PipelineRunStatusCondition(apis.Condition{
-						Status: corev1.ConditionFalse,
-						Reason: "Resource not found",
+						Status:  corev1.ConditionFalse,
+						Reason:  "Resource not found",
 						Message: "Resource test-resource not found in the pipelinerun",
 					}),
 					tb.PipelineRunStartTime(clock.Now()),
@@ -194,12 +194,11 @@ Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Failed
 `
-	if d := cmp.Diff(expected, actual ); d != "" {
+	if d := cmp.Diff(expected, actual); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
 	}
 
 }
-
 
 func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
 	clock := clockwork.NewFakeClock()
@@ -224,7 +223,7 @@ func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
 				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
 				tb.PipelineRunSpec("pipeline",
 					tb.PipelineRunServiceAccount("test-sa"),
-					tb.PipelineRunParam("test-param","param-value"),
+					tb.PipelineRunParam("test-param", "param-value"),
 					tb.PipelineRunResourceBinding("test-resource",
 						tb.PipelineResourceBindingRef("test-resource-ref"),
 					),
@@ -276,7 +275,7 @@ Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
-	if d := cmp.Diff(expected, actual ); d != "" {
+	if d := cmp.Diff(expected, actual); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
 	}
 

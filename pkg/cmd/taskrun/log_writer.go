@@ -15,26 +15,36 @@
 package taskrun
 
 import (
-	"github.com/spf13/cobra"
+	"fmt"
+
 	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/flags"
 )
 
-func Command(p cli.Params) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "taskrun",
-		Aliases: []string{"tr", "taskruns"},
-		Short:   "Manage taskruns",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return flags.InitParams(p, cmd)
-		},
+type LogWriter struct{}
+
+func (lw *LogWriter) Write(s *cli.Stream, logC <-chan Log, errC <-chan error) {
+	for logC != nil || errC != nil {
+		select {
+		case l, ok := <-logC:
+			if !ok {
+				logC = nil
+				continue
+			}
+
+			if l.Log == "LOGEOF" {
+				fmt.Fprintf(s.Out, "\n")
+				break
+			}
+
+			// TODO: formatting statement header
+			fmt.Fprintf(s.Out, "[%s] %s\n", l.Step, l.Log)
+
+		case e, ok := <-errC:
+			if !ok {
+				errC = nil
+				continue
+			}
+			fmt.Fprintf(s.Err, "%s\n", e)
+		}
 	}
-
-	flags.AddTektonOptions(cmd)
-	cmd.AddCommand(
-		listCommand(p),
-		logCommand(p),
-	)
-
-	return cmd
 }

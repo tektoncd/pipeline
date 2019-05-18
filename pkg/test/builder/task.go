@@ -8,8 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TODO(vdemeester): push upstream
-// TaskCreationTime sets CreationTimestamp of the Task
+// TaskCreationTime sets CreationTimestamp of the task
 func TaskCreationTime(t time.Time) tb.TaskOp {
 	return func(task *v1alpha1.Task) {
 		task.CreationTimestamp = metav1.Time{Time: t}

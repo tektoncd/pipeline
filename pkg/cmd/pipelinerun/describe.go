@@ -22,21 +22,21 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
-	corev1 "k8s.io/api/core/v1"
 	"text/tabwriter"
 )
 
 const (
-	statusHeader = "STARTED\tDURATION\tSTATUS\n"
-	statusBody = "%s\t%s\t%s\n"
+	statusHeader   = "STARTED\tDURATION\tSTATUS\n"
+	statusBody     = "%s\t%s\t%s\n"
 	resourceHeader = "NAME\tRESOURCE REF\n"
-	resourceBody = "%s\t%s\n"
-	paramHeader = "NAME\tVALUE\n"
-	paramBody = "%s\t%s\n"
-	taskrunHeader = "NAME\tTASK NAME\tSTARTED\tDURATION\tSTATUS\n"
-	taskrunBody = "%s\t%s\t%s\t%s\t%s\n"
+	resourceBody   = "%s\t%s\n"
+	paramHeader    = "NAME\tVALUE\n"
+	paramBody      = "%s\t%s\n"
+	taskrunHeader  = "NAME\tTASK NAME\tSTARTED\tDURATION\tSTATUS\n"
+	taskrunBody    = "%s\t%s\t%s\t%s\t%s\n"
 )
 
 func describeCommand(p cli.Params) *cobra.Command {
@@ -49,11 +49,11 @@ tkn pr desc foo -n bar",
 `
 
 	c := &cobra.Command{
-		Use:     "describe",
-		Aliases: []string{"desc"},
-		Short:   "Describe a pipelinerun in a namespace",
-		Example: eg,
-		Args: cobra.MinimumNArgs(1),
+		Use:          "describe",
+		Aliases:      []string{"desc"},
+		Short:        "Describe a pipelinerun in a namespace",
+		Example:      eg,
+		Args:         cobra.MinimumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return printPipelineRunDescription(cmd.OutOrStdout(), args[0], p)

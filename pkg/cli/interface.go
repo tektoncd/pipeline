@@ -15,10 +15,17 @@
 package cli
 
 import (
+	"io"
+
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	k8s "k8s.io/client-go/kubernetes"
 )
+
+type Stream struct {
+	Out io.Writer
+	Err io.Writer
+}
 
 type Clients struct {
 	Tekton versioned.Interface

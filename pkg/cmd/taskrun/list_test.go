@@ -50,7 +50,7 @@ func TestListTaskRuns(t *testing.T) {
 			),
 		),
 		tb.TaskRun("tr2-1", "foo",
-			tb.TaskRunLabel("tekton.dev/task", "random"),
+			tb.TaskRunLabel("tekton.dev/Task", "random"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
 			tb.TaskRunStatus(
 				tb.Condition(apis.Condition{
@@ -61,7 +61,7 @@ func TestListTaskRuns(t *testing.T) {
 			),
 		),
 		tb.TaskRun("tr2-2", "foo",
-			tb.TaskRunLabel("tekton.dev/task", "random"),
+			tb.TaskRunLabel("tekton.dev/Task", "random"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
 			tb.TaskRunStatus(
 				tb.Condition(apis.Condition{
@@ -81,7 +81,7 @@ func TestListTaskRuns(t *testing.T) {
 		expected []string
 	}{
 		{
-			name:    "by task name",
+			name:    "by Task name",
 			command: command(trs, now),
 			args:    []string{"list", "bar", "-n", "foo"},
 			expected: []string{

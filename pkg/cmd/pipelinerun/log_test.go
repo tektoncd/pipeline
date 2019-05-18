@@ -20,13 +20,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/cli/pkg/cmd/taskrun"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/logs"
+	"github.com/tektoncd/cli/pkg/helper/pods/fake"
+	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -36,7 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func Test_command_has_pipelinerun_arg(t *testing.T) {
+func TestLog_no_pipelinerun_argument(t *testing.T) {
 	c := Command(&tu.Params{})
 
 	_, err := tu.ExecuteCommand(c, "logs", "-n", "ns")
@@ -46,7 +45,7 @@ func Test_command_has_pipelinerun_arg(t *testing.T) {
 	}
 }
 
-func Test_pipelinerun_not_found(t *testing.T) {
+func TestLog_missing_pipelinerun(t *testing.T) {
 	pr := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("output-pipeline-1", "ns",
 			tb.PipelineRunLabel("tekton.dev/pipeline", "output-pipeline-1"),
@@ -62,15 +61,15 @@ func Test_pipelinerun_not_found(t *testing.T) {
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	got, _ := tu.ExecuteCommand(c, "logs", "output-pipeline-2", "-n", "ns")
-	expected := msgPRNotFoundErr + " : pipelineruns.tekton.dev \"output-pipeline-2\" not found \n"
+	_, err := tu.ExecuteCommand(c, "logs", "output-pipeline-2", "-n", "ns")
+	expected := msgPRNotFoundErr + " : pipelineruns.tekton.dev \"output-pipeline-2\" not found"
 
-	if d := cmp.Diff(expected, got); d != "" {
+	if d := cmp.Diff(expected, err.Error()); d != "" {
 		t.Errorf("Unexpected output mismatch: \n%s\n", d)
 	}
 }
 
-func Test_print_pipelinerun_logs(t *testing.T) {
+func TestPipelinerunLogs(t *testing.T) {
 	var (
 		pipelineName = "output-pipeline"
 		prName       = "output-pipeline-1"
@@ -83,7 +82,7 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 		tr1Pod       = "output-task-pod-123456"
 		tr1Step1Name = "writefile-step"
 		tr1InitStep1 = "credential-initializer-mdzbr"
-		pr2InitStep2 = "place-tools"
+		tr1InitStep2 = "place-tools"
 
 		task2Name    = "read-task"
 		tr2Name      = "read-task-1"
@@ -96,6 +95,9 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun(tr1Name, ns,
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(task1Name),
+			),
 			tb.TaskRunStatus(
 				tb.PodName(tr1Pod),
 				tb.TaskRunStartTime(tr1StartTime),
@@ -117,6 +119,9 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 			),
 		),
 		tb.TaskRun(tr2Name, ns,
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(task2Name),
+			),
 			tb.TaskRunStatus(
 				tb.PodName(tr2Pod),
 				tb.TaskRunStartTime(tr2StartTime),
@@ -174,51 +179,39 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 		),
 	}
 
-	pods := []*corev1.Pod{
+	p := []*corev1.Pod{
 		tb.Pod(tr1Pod, ns,
 			tb.PodLabel("tekton.dev/task", pipelineName),
 			tb.PodSpec(
-				tb.PodInitContainer(taskrun.ContainerNameForStep(tr1InitStep1), "override-with-creds:latest"),
-				tb.PodInitContainer(taskrun.ContainerNameForStep(pr2InitStep2), "override-with-tools:latest"),
-				tb.PodContainer(taskrun.ContainerNameForStep(tr1Step1Name), tr1Step1Name+":latest"),
+				tb.PodInitContainer(tr1InitStep1, "override-with-creds:latest"),
+				tb.PodInitContainer(tr1InitStep2, "override-with-tools:latest"),
+				tb.PodContainer(tr1Step1Name, tr1Step1Name+":latest"),
 				tb.PodContainer(nopStep, "override-with-nop:latest"),
 			),
 			cb.PodStatus(
-				cb.PodInitContainerStatus(taskrun.ContainerNameForStep(tr1InitStep1), "override-with-creds:latest"),
-				cb.PodInitContainerStatus(taskrun.ContainerNameForStep(pr2InitStep2), "override-with-tools:latest"),
+				cb.PodInitContainerStatus(tr1InitStep1, "override-with-creds:latest"),
+				cb.PodInitContainerStatus(tr1InitStep2, "override-with-tools:latest"),
 			),
 		),
 		tb.Pod(tr2Pod, ns,
 			tb.PodLabel("tekton.dev/task", pipelineName),
 			tb.PodSpec(
-				tb.PodContainer(taskrun.ContainerNameForStep(tr2Step1Name), tr1Step1Name+":latest"),
+				tb.PodContainer(tr2Step1Name, tr1Step1Name+":latest"),
 				tb.PodContainer(nopStep, "override-with-nop:latest"),
 			),
 		),
 	}
 
-	fakeLogStream := logs.Pipeline(
-		logs.Task(task1Name, tr1Pod,
-			logs.Step(tr1InitStep1, taskrun.ContainerNameForStep(tr1InitStep1),
-				"initialized the credentials",
-			),
-			logs.Step(pr2InitStep2, taskrun.ContainerNameForStep(pr2InitStep2),
-				"place tools log",
-			),
-			logs.Step(tr1Step1Name, taskrun.ContainerNameForStep(tr1Step1Name),
-				"written a file",
-			),
-			logs.Step(nopStep, nopStep,
-				"Build successful",
-			),
+	fakeLogs := fake.Logs(
+		fake.Task(tr1Pod,
+			fake.Step(tr1InitStep1, "initialized the credentials"),
+			fake.Step(tr1InitStep2, "place tools log"),
+			fake.Step(tr1Step1Name, "written a file"),
+			fake.Step(nopStep, "Build successful"),
 		),
-		logs.Task(task2Name, tr2Pod,
-			logs.Step(tr2Step1Name, taskrun.ContainerNameForStep(tr2Step1Name),
-				"able to read a file",
-			),
-			logs.Step(nopStep, nopStep,
-				"Build successful",
-			),
+		fake.Task(tr2Pod,
+			fake.Step(tr2Step1Name, "able to read a file"),
+			fake.Step(nopStep, "Build successful"),
 		),
 	)
 
@@ -229,7 +222,7 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 		expectedLogs []string
 	}{
 		{
-			name:     "all task logs",
+			name:     "for all tasks",
 			allSteps: false,
 			expectedLogs: []string{
 				"[output-task : writefile-step] written a file",
@@ -238,7 +231,7 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 				"[read-task : nop] Build successful",
 			},
 		}, {
-			name:     "task1 logs only",
+			name:     "for task1 only",
 			allSteps: false,
 			tasks:    []string{task1Name},
 			expectedLogs: []string{
@@ -246,7 +239,7 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 				"[output-task : nop] Build successful",
 			},
 		}, {
-			name:     "all steps logs",
+			name:     "including init steps",
 			allSteps: true,
 			expectedLogs: []string{
 				"[output-task : credential-initializer-mdzbr] initialized the credentials",
@@ -261,22 +254,20 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 
 	for _, s := range scenarios {
 		t.Run(s.name, func(t *testing.T) {
-			cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: pods})
+			cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
 
-			plr := fakePipelineRunLogs(prName, ns, cs)
-			output := fetchLogs(plr, LogOpts(s.allSteps, s.tasks...), logs.FakeLogFetcher(cs.Kube, fakeLogStream))
+			prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogs), s.allSteps, false, s.tasks...)
+			output, _ := fetchLogs(prlo)
 
 			expected := strings.Join(s.expectedLogs, "\n") + "\n"
 
-			if d := cmp.Diff(output, expected); d != "" {
-				t.Errorf("Unexpected output mismatch: \n%s\n", d)
-			}
+			tu.AssertOutput(t, expected, output)
 		})
 	}
 }
 
 // scenario, print logs for 1 completed taskruns out of 4 pipeline tasks
-func Test_print_valid_taskrun_logs(t *testing.T) {
+func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 	var (
 		pipelineName = "output-pipeline"
 		prName       = "output-pipeline-1"
@@ -300,6 +291,9 @@ func Test_print_valid_taskrun_logs(t *testing.T) {
 
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun(tr1Name, ns,
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(task1Name),
+			),
 			tb.TaskRunStatus(
 				tb.PodName(tr1Pod),
 				tb.TaskRunStartTime(tr1StartTime),
@@ -355,65 +349,172 @@ func Test_print_valid_taskrun_logs(t *testing.T) {
 		),
 	}
 
-	pods := []*corev1.Pod{
+	p := []*corev1.Pod{
 		tb.Pod(tr1Pod, ns,
 			tb.PodLabel("tekton.dev/task", pipelineName),
 			tb.PodSpec(
-				tb.PodContainer(taskrun.ContainerNameForStep(tr1Step1Name), tr1Step1Name+":latest"),
+				tb.PodContainer(tr1Step1Name, tr1Step1Name+":latest"),
 				tb.PodContainer("nop", "override-with-nop:latest"),
 			),
 		),
 	}
 
-	fakeLogStream := logs.Pipeline(
-		logs.Task(task1Name, tr1Pod,
-			logs.Step(tr1Step1Name, taskrun.ContainerNameForStep(tr1Step1Name),
-				"written a file",
-			),
-			logs.Step("nop", "nop",
-				"Build successful",
-			),
+	fakeLogStream := fake.Logs(
+		fake.Task(tr1Pod,
+			fake.Step(tr1Step1Name, "wrote a file"),
+			fake.Step("nop", "Build successful"),
 		),
 	)
 
-	cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: pods})
-	plr := fakePipelineRunLogs(prName, ns, cs)
+	cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+	prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogStream), false, false)
+	output, _ := fetchLogs(prlo)
 
-	output := fetchLogs(plr, LogOpts(false), logs.FakeLogFetcher(cs.Kube, fakeLogStream))
 	expectedLogs := []string{
-		"[output-task : writefile-step] written a file",
+		"[output-task : writefile-step] wrote a file",
 		"[output-task : nop] Build successful",
 	}
-
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
-	if d := cmp.Diff(output, expected); d != "" {
-		t.Errorf("Unexpected output mismatch: \n%s\n", d)
-	}
-
+	tu.AssertOutput(t, expected, output)
 }
 
-func LogOpts(allSteps bool, tasks ...string) LogOptions {
-	return LogOptions{
-		LogOptions: taskrun.LogOptions{
-			AllSteps: allSteps,
+func TestPipelinerunLog_follow_mode(t *testing.T) {
+	var (
+		pipelineName = "output-pipeline"
+		prName       = "output-pipeline-1"
+		prstart      = clockwork.NewFakeClock()
+		ns           = "namespace"
+
+		task1Name    = "output-task"
+		tr1Name      = "output-task-1"
+		tr1StartTime = prstart.Now().Add(20 * time.Second)
+		tr1Pod       = "output-task-pod-123456"
+		tr1Step1Name = "writefile-step"
+	)
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(tr1Name, ns,
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(task1Name),
+			),
+			tb.TaskRunStatus(
+				tb.PodName(tr1Pod),
+				tb.TaskRunStartTime(tr1StartTime),
+				tb.Condition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+				tb.StepState(
+					cb.StepName(tr1Step1Name),
+					tb.StateTerminated(0),
+				),
+				tb.StepState(
+					cb.StepName("nop"),
+					tb.StateTerminated(0),
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(task1Name),
+			),
+		),
+	}
+
+	prtrs := map[string]*v1alpha1.PipelineRunTaskRunStatus{
+		tr1Name: {
+			PipelineTaskName: task1Name,
+			Status:           &trs[0].Status,
 		},
-		Tasks: tasks,
 	}
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, ns,
+			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(apis.Condition{
+					Status: corev1.ConditionTrue,
+					Reason: resources.ReasonRunning,
+				}),
+				tb.PipelineRunTaskRunsStatus(
+					prtrs,
+				),
+			),
+		),
+	}
+
+	pps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, ns,
+			tb.PipelineSpec(
+				tb.PipelineTask(task1Name, task1Name),
+			),
+		),
+	}
+
+	p := []*corev1.Pod{
+		tb.Pod(tr1Pod, ns,
+			tb.PodLabel("tekton.dev/task", pipelineName),
+			tb.PodSpec(
+				tb.PodContainer(tr1Step1Name, tr1Step1Name+":latest"),
+				tb.PodContainer("nop", "override-with-nop:latest"),
+			),
+			cb.PodStatus(
+				cb.PodPhase(corev1.PodSucceeded),
+			),
+		),
+	}
+
+	fakeLogStream := fake.Logs(
+		fake.Task(tr1Pod,
+			fake.Step(tr1Step1Name,
+				"wrote a file1",
+				"wrote a file2",
+				"wrote a file3",
+				"wrote a file4",
+			),
+			fake.Step("nop", "Build successful"),
+		),
+	)
+
+	cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+	prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogStream), false, true)
+	output, _ := fetchLogs(prlo)
+
+	expectedLogs := []string{
+		"[output-task : writefile-step] wrote a file1",
+		"[output-task : writefile-step] wrote a file2",
+		"[output-task : writefile-step] wrote a file3",
+		"[output-task : writefile-step] wrote a file4",
+		"[output-task : nop] Build successful",
+	}
+	expected := strings.Join(expectedLogs, "\n") + "\n"
+
+	tu.AssertOutput(t, expected, output)
 }
 
-func fakePipelineRunLogs(name string, ns string, cs test.Clients) *PipelineRunLogs {
-	return NewPipelineRunLogs(name, ns,
-		&cli.Clients{
-			Tekton: cs.Pipeline,
-			Kube:   cs.Kube,
-		})
+func logOpts(name string, ns string, cs test.Clients, streamer stream.NewStreamerFunc, allSteps bool, follow bool, onlyTasks ...string) *LogOptions {
+	p := tu.Params{
+		Kube:   cs.Kube,
+		Tekton: cs.Pipeline,
+	}
+	p.SetNamespace(ns)
+
+	logOptions := LogOptions{
+		pipelinerunName: name,
+		tasks:           onlyTasks,
+		allSteps:        allSteps,
+		follow:          follow,
+		params:          &p,
+		streamer:        streamer,
+	}
+
+	return &logOptions
 }
 
-func fetchLogs(plr *PipelineRunLogs, opt LogOptions, fetcher *logs.LogFetcher) string {
+func fetchLogs(lo *LogOptions) (string, error) {
 	out := new(bytes.Buffer)
+	lo.stream = &cli.Stream{Out: out, Err: out}
 
-	plr.Fetch(logs.Streams{Out: out, Err: out}, opt, fetcher)
+	err := lo.run()
 
-	return out.String()
+	return out.String(), err
 }

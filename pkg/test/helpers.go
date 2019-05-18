@@ -12,29 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package taskrun
+package test
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/flags"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
-func Command(p cli.Params) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "taskrun",
-		Aliases: []string{"tr", "taskruns"},
-		Short:   "Manage taskruns",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return flags.InitParams(p, cmd)
-		},
+func AssertOutput(t *testing.T, expected, actual interface{}) {
+	t.Helper()
+	diff := cmp.Diff(actual, expected)
+	if diff == "" {
+		return
 	}
 
-	flags.AddTektonOptions(cmd)
-	cmd.AddCommand(
-		listCommand(p),
-		logCommand(p),
-	)
+	t.Errorf(`
+Unexpected output:
+%s
 
-	return cmd
+Expected
+%s
+
+Actual
+%s
+`, diff, expected, actual)
 }

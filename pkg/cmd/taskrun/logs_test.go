@@ -20,17 +20,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/logs"
+	"github.com/tektoncd/cli/pkg/helper/pods/fake"
+	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/watch"
+	k8stest "k8s.io/client-go/testing"
 )
 
 func TestLog_no_taskrun_arg(t *testing.T) {
@@ -47,18 +49,18 @@ func TestLog_missing_taskrun(t *testing.T) {
 		tb.TaskRun("output-taskrun-1", "ns"),
 	}
 	cs, _ := test.SeedTestData(test.Data{TaskRuns: tr})
+	watcher := watch.NewFake()
+	cs.Kube.PrependWatchReactor("pods", k8stest.DefaultWatchReactor(watcher, nil))
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
 	got, _ := tu.ExecuteCommand(c, "logs", "output-taskrun-2", "-n", "ns")
-	expected := msgTRNotFoundErr + " : taskruns.tekton.dev \"output-taskrun-2\" not found \n"
+	expected := "Error: " + msgTRNotFoundErr + " : taskruns.tekton.dev \"output-taskrun-2\" not found\n"
 
-	if d := cmp.Diff(expected, got); d != "" {
-		t.Errorf("Unexpected output mismatch: \n%s\n", d)
-	}
+	tu.AssertOutput(t, expected, got)
 }
 
-func TestLog_valid_taskrun_logs(t *testing.T) {
+func TestLog_taskrun_logs(t *testing.T) {
 	var (
 		ns          = "namespace"
 		taskName    = "output-task"
@@ -66,7 +68,9 @@ func TestLog_valid_taskrun_logs(t *testing.T) {
 		trStartTime = clockwork.NewFakeClock().Now().Add(20 * time.Second)
 		trPod       = "output-task-pod-123456"
 		trStep1Name = "writefile-step"
+		nopStep     = "nop"
 	)
+
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun(trName, ns,
 			tb.TaskRunStatus(
@@ -81,7 +85,7 @@ func TestLog_valid_taskrun_logs(t *testing.T) {
 					tb.StateTerminated(0),
 				),
 				tb.StepState(
-					cb.StepName("nop"),
+					cb.StepName(nopStep),
 					tb.StateTerminated(0),
 				),
 			),
@@ -90,42 +94,119 @@ func TestLog_valid_taskrun_logs(t *testing.T) {
 			),
 		),
 	}
-	pods := []*corev1.Pod{
+	ps := []*corev1.Pod{
 		tb.Pod(trPod, ns,
 			tb.PodSpec(
-				tb.PodContainer(ContainerNameForStep(trStep1Name), trStep1Name+":latest"),
-				tb.PodContainer("nop", "override-with-nop:latest"),
+				tb.PodContainer(trStep1Name, trStep1Name+":latest"),
+				tb.PodContainer(nopStep, "override-with-nop:latest"),
+			),
+			cb.PodStatus(
+				cb.PodPhase(corev1.PodSucceeded),
 			),
 		),
 	}
-	fakeLogStream := logs.TaskRun(
-		logs.Task(taskName, trPod,
-			logs.Step(trStep1Name, ContainerNameForStep(trStep1Name),
-				"written a file",
-			),
-			logs.Step("nop", "nop",
-				"Build successful",
-			),
+
+	logs := fake.Logs(
+		fake.Task(trPod,
+			fake.Step(trStep1Name, "wrote a file"),
+			fake.Step(nopStep, "Build successful"),
 		),
 	)
 
-	cs, _ := test.SeedTestData(test.Data{TaskRuns: trs, Pods: pods})
-	tr := fakeLogs(trName, ns, cs)
+	cs, _ := test.SeedTestData(test.Data{TaskRuns: trs, Pods: ps})
+	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, false)
+	output, _ := fetchLogs(trlo)
 
-	output := fetchLogs(LogOptions{}, tr, logs.FakeLogFetcher(cs.Kube, fakeLogStream))
 	expectedLogs := []string{
-		"[output-task : writefile-step] written a file",
-		"[output-task : nop] Build successful",
+		"[writefile-step] wrote a file",
+		"[nop] Build successful",
 	}
-
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
-	if d := cmp.Diff(output, expected); d != "" {
-		t.Errorf("Unexpected output mismatch: \n%s\n", d)
-	}
+	tu.AssertOutput(t, expected, output)
 }
 
-func TestLog_taskrun_logs(t *testing.T) {
+func TestLog_taskrun_all_steps(t *testing.T) {
+	var (
+		prstart  = clockwork.NewFakeClock()
+		ns       = "namespace"
+		taskName = "output-task"
+
+		trName      = "output-task-run"
+		trStartTime = prstart.Now().Add(20 * time.Second)
+		trPod       = "output-task-pod-123456"
+		trInitStep1 = "credential-initializer-mdzbr"
+		trInitStep2 = "place-tools"
+		trStep1Name = "writefile-step"
+		nopStep     = "nop"
+	)
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(trName, ns,
+			tb.TaskRunStatus(
+				tb.PodName(trPod),
+				tb.TaskRunStartTime(trStartTime),
+				tb.Condition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+				tb.StepState(
+					cb.StepName(trStep1Name),
+					tb.StateTerminated(0),
+				),
+				tb.StepState(
+					cb.StepName(nopStep),
+					tb.StateTerminated(0),
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(taskName),
+			),
+		),
+	}
+
+	p := []*corev1.Pod{
+		tb.Pod(trPod, ns,
+			tb.PodSpec(
+				tb.PodInitContainer(trInitStep1, "override-with-creds:latest"),
+				tb.PodInitContainer(trInitStep2, "override-with-tools:latest"),
+				tb.PodContainer(trStep1Name, trStep1Name+":latest"),
+				tb.PodContainer(nopStep, "override-with-nop:latest"),
+			),
+			cb.PodStatus(
+				cb.PodPhase(corev1.PodSucceeded),
+				cb.PodInitContainerStatus(trInitStep1, "override-with-creds:latest"),
+				cb.PodInitContainerStatus(trInitStep2, "override-with-tools:latest"),
+			),
+		),
+	}
+
+	logs := fake.Logs(
+		fake.Task(trPod,
+			fake.Step(trInitStep1, "initialized the credentials"),
+			fake.Step(trInitStep2, "place tools log"),
+			fake.Step(trStep1Name, "written a file"),
+			fake.Step(nopStep, "Build successful"),
+		),
+	)
+
+	cs, _ := test.SeedTestData(test.Data{TaskRuns: trs, Pods: p})
+
+	trl := logOpts(trName, ns, cs, fake.Streamer(logs), true, false)
+	output, _ := fetchLogs(trl)
+
+	expectedLogs := []string{
+		"[credential-initializer-mdzbr] initialized the credentials",
+		"[place-tools] place tools log",
+		"[writefile-step] written a file",
+		"[nop] Build successful",
+	}
+	expected := strings.Join(expectedLogs, "\n") + "\n"
+
+	tu.AssertOutput(t, expected, output)
+}
+
+func TestLog_taskrun_follow_mode(t *testing.T) {
 	var (
 		prstart     = clockwork.NewFakeClock()
 		ns          = "namespace"
@@ -163,91 +244,66 @@ func TestLog_taskrun_logs(t *testing.T) {
 		),
 	}
 
-	pods := []*corev1.Pod{
+	p := []*corev1.Pod{
 		tb.Pod(trPod, ns,
 			tb.PodSpec(
-				tb.PodInitContainer(ContainerNameForStep(trInitStep1), "override-with-creds:latest"),
-				tb.PodInitContainer(ContainerNameForStep(trInitStep2), "override-with-tools:latest"),
-				tb.PodContainer(ContainerNameForStep(trStep1Name), trStep1Name+":latest"),
+				tb.PodInitContainer(trInitStep1, "override-with-creds:latest"),
+				tb.PodInitContainer(trInitStep2, "override-with-tools:latest"),
+				tb.PodContainer(trStep1Name, trStep1Name+":latest"),
 				tb.PodContainer(nopStep, "override-with-nop:latest"),
 			),
 			cb.PodStatus(
-				cb.PodInitContainerStatus(ContainerNameForStep(trInitStep1), "override-with-creds:latest"),
-				cb.PodInitContainerStatus(ContainerNameForStep(trInitStep2), "override-with-tools:latest"),
+				cb.PodPhase(corev1.PodSucceeded),
+				cb.PodInitContainerStatus(trInitStep1, "override-with-creds:latest"),
+				cb.PodInitContainerStatus(trInitStep2, "override-with-tools:latest"),
 			),
 		),
 	}
 
-	fakeLogStream := logs.TaskRun(
-		logs.Task(taskName, trPod,
-			logs.Step(trInitStep1, ContainerNameForStep(trInitStep1),
-				"initialized the credentials",
-			),
-			logs.Step(trInitStep2, ContainerNameForStep(trInitStep2),
-				"place tools log",
-			),
-			logs.Step(trStep1Name, ContainerNameForStep(trStep1Name),
-				"written a file",
-			),
-			logs.Step(nopStep, nopStep,
-				"Build successful",
-			),
+	logs := fake.Logs(
+		fake.Task(trPod,
+			fake.Step(trInitStep1, "initialized the credentials"),
+			fake.Step(trInitStep2, "place tools log"),
+			fake.Step(trStep1Name, "wrote a file"),
+			fake.Step(nopStep, "Build successful"),
 		),
 	)
 
-	scenarios := []struct {
-		name         string
-		allSteps     bool
-		expectedLogs []string
-	}{
-		{
-			name:     "task logs only",
-			allSteps: false,
-			expectedLogs: []string{
-				"[output-task : writefile-step] written a file",
-				"[output-task : nop] Build successful",
-			},
-		}, {
-			name:     "all steps logs",
-			allSteps: true,
-			expectedLogs: []string{
-				"[output-task : credential-initializer-mdzbr] initialized the credentials",
-				"[output-task : place-tools] place tools log",
-				"[output-task : writefile-step] written a file",
-				"[output-task : nop] Build successful",
-			},
-		},
+	cs, _ := test.SeedTestData(test.Data{TaskRuns: trs, Pods: p})
+
+	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, true)
+	output, _ := fetchLogs(trlo)
+
+	expectedLogs := []string{
+		"[writefile-step] wrote a file",
+		"[nop] Build successful",
 	}
+	expected := strings.Join(expectedLogs, "\n") + "\n"
 
-	for _, s := range scenarios {
-		t.Run(s.name, func(t *testing.T) {
-			cs, _ := test.SeedTestData(test.Data{TaskRuns: trs, Pods: pods})
+	tu.AssertOutput(t, expected, output)
+}
 
-			trl := fakeLogs(trName, ns, cs)
-			opts := LogOptions{AllSteps: s.allSteps}
-			output := fetchLogs(opts, trl, logs.FakeLogFetcher(cs.Kube, fakeLogStream))
-			expected := strings.Join(s.expectedLogs, "\n") + "\n"
+func logOpts(run, ns string, cs test.Clients, streamer stream.NewStreamerFunc, allSteps bool, follow bool) *LogOptions {
+	p := tu.Params{
+		Kube:   cs.Kube,
+		Tekton: cs.Pipeline,
+	}
+	p.SetNamespace(ns)
 
-			if d := cmp.Diff(output, expected); d != "" {
-				t.Errorf("Unexpected output mismatch: \n%s\n", d)
-			}
-		})
+	return &LogOptions{
+		taskrunName: run,
+		allSteps:    allSteps,
+		follow:      follow,
+		params:      &p,
+		streamer:    streamer,
 	}
 }
 
-func fakeLogs(run, ns string, cs test.Clients) *Logs {
-	return &Logs{
-		Run: run,
-		Ns:  ns,
-		Clients: &cli.Clients{
-			Tekton: cs.Pipeline,
-			Kube:   cs.Kube,
-		},
-	}
-}
-
-func fetchLogs(opt LogOptions, trl *Logs, fetcher *logs.LogFetcher) string {
+func fetchLogs(lo *LogOptions) (string, error) {
 	out := new(bytes.Buffer)
-	trl.Fetch(opt, logs.Streams{Out: out, Err: out}, fetcher)
-	return out.String()
+	lo.stream = &cli.Stream{Out: out, Err: out}
+
+	err := lo.run()
+
+	return out.String(), err
 }

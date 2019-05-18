@@ -17,9 +17,12 @@ package builder
 import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type PodStatusOp func(*corev1.PodStatus)
+
+type ConditionOp func(*corev1.PodCondition)
 
 // PodStatus creates a Status with default values.
 // Any number of PodStatus modifiers can be passed to transform it.
@@ -33,7 +36,14 @@ func PodStatus(ops ...PodStatusOp) tb.PodOp {
 	}
 }
 
-// PodInitContainerStatus creates new ContainerStatus
+// PodDeletionTime adds DeletionTimestamp
+func PodDeletionTime(time *metav1.Time) tb.PodOp {
+	return func(pod *corev1.Pod) {
+		pod.DeletionTimestamp = time
+	}
+}
+
+// PodInitContainerStatus creates new Status
 func PodInitContainerStatus(name, image string) PodStatusOp {
 	return func(status *corev1.PodStatus) {
 		cs := corev1.ContainerStatus{
@@ -41,5 +51,28 @@ func PodInitContainerStatus(name, image string) PodStatusOp {
 			Image: image,
 		}
 		status.InitContainerStatuses = append(status.InitContainerStatuses, cs)
+	}
+}
+
+// PodPhase creates updates pod status phase
+func PodPhase(phase corev1.PodPhase) PodStatusOp {
+	return func(status *corev1.PodStatus) {
+		status.Phase = phase
+	}
+}
+
+// PodCondition creates updates pod conditions
+func PodCondition(typ corev1.PodConditionType, status corev1.ConditionStatus, ops ...ConditionOp) PodStatusOp {
+	return func(s *corev1.PodStatus) {
+		c := &corev1.PodCondition{
+			Type:   typ,
+			Status: status,
+		}
+
+		for _, op := range ops {
+			op(c)
+		}
+
+		s.Conditions = append(s.Conditions, *c)
 	}
 }

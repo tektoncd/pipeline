@@ -16,13 +16,12 @@ package pipelinerun
 
 import (
 	"fmt"
+	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/cmd/taskrun"
-	"github.com/tektoncd/cli/pkg/logs"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tektoncd/cli/pkg/errors"
+	"github.com/tektoncd/cli/pkg/helper/pods"
 )
 
 const (
@@ -30,29 +29,19 @@ const (
 	msgPRNotFoundErr       = "Error in retrieving PipelineRun"
 )
 
-type taskRunMap map[string]*v1alpha1.PipelineRunTaskRunStatus
-
-type PipelineRunLogs struct {
-	Name    string
-	Ns      string
-	Clients *cli.Clients
-}
-
-type taskRun struct {
-	name string
-	task string
-}
-
 type LogOptions struct {
-	taskrun.LogOptions
-	Tasks []string
+	pipelinerunName string
+	tasks           []string
+	allSteps        bool
+	follow          bool
+	stream          *cli.Stream
+	params          cli.Params
+	streamer        stream.NewStreamerFunc
 }
 
 func logCommand(p cli.Params) *cobra.Command {
-	var (
-		allSteps  bool
-		onlyTasks []string
-		eg        = `
+	opts := &LogOptions{params: p}
+	eg := `
   # show the logs of PipelineRun named "foo" from the namesspace "bar"
     tkn pipelinerun logs foo -n bar
 
@@ -63,7 +52,6 @@ func logCommand(p cli.Params) *cobra.Command {
     from the namespace "foo"
     tkn pr logs microservice-1 -a -n foo
    `
-	)
 
 	c := &cobra.Command{
 		Use:                   "logs",
@@ -72,134 +60,55 @@ func logCommand(p cli.Params) *cobra.Command {
 		Example:               eg,
 		Args:                  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prName := args[0]
-
-			cs, err := p.Clients()
-			if err != nil {
-				return err
-			}
-
-			prLogs := NewPipelineRunLogs(prName, p.Namespace(), cs)
-
-			opt := LogOptions{
-				LogOptions: taskrun.LogOptions{
-					AllSteps: allSteps,
-				},
-				Tasks: onlyTasks,
-			}
-
-			s := logs.Streams{
-				Out: cmd.OutOrStderr(),
+			opts.pipelinerunName = args[0]
+			opts.stream = &cli.Stream{
+				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
+			opts.streamer = pods.NewStream
 
-			//TODO: put log fetcher as pipelinerun dependency
-			prLogs.Fetch(s, opt, logs.DefaultLogFetcher(cs.Kube))
-
-			return nil
+			return opts.run()
 		},
 	}
 
-	c.Flags().BoolVarP(&allSteps, "all", "a", false, "show all logs including init steps injected by tekton")
-	c.Flags().StringSliceVarP(&onlyTasks, "only-tasks", "t", []string{}, "show the logs for mentioned task only")
+	c.Flags().BoolVarP(&opts.allSteps, "all", "a", false, "show all logs including init steps injected by tekton")
+	c.Flags().BoolVarP(&opts.follow, "follow", "f", false, "stream the live logs")
+	c.Flags().StringSliceVarP(&opts.tasks, "only-tasks", "t", []string{}, "show logs for mentioned tasks only")
 
 	return c
 }
 
-//NewPipelineRunLogs create a new instance of PipelineRunLogs.
-func NewPipelineRunLogs(pipelineRunName string, namespace string, clients *cli.Clients) *PipelineRunLogs {
-	return &PipelineRunLogs{
-		Name:    pipelineRunName,
-		Ns:      namespace,
-		Clients: clients,
+func (lo *LogOptions) run() error {
+	if lo.pipelinerunName == "" {
+		return fmt.Errorf("missing mandatory argument taskrun")
 	}
-}
 
-//Fetch To fetch the PipelineRun's logs.
-//Stream provides output and error stream to print the logs and error messages.
-//LogOptions provide way to print all(init) steps or specified task logs
-func (p *PipelineRunLogs) Fetch(s logs.Streams, opts LogOptions, r *logs.LogFetcher) {
-	var (
-		tkn = p.Clients.Tekton
-	)
-
-	pr, err := tkn.TektonV1alpha1().
-		PipelineRuns(p.Ns).
-		Get(p.Name, metav1.GetOptions{})
-
+	cs, err := lo.params.Clients()
 	if err != nil {
-		fmt.Fprintf(s.Err, "%s : %s \n", msgPRNotFoundErr, err)
-		return
+		return err
 	}
 
-	if failed, msg := hasFailed(pr); failed {
-		fmt.Fprintf(s.Out, "PipelineRun is failed: %s \n", msg)
+	lr := &LogReader{
+		Run:      lo.pipelinerunName,
+		Ns:       lo.params.Namespace(),
+		Clients:  cs,
+		Streamer: lo.streamer,
+		follow:   lo.follow,
+		allSteps: lo.allSteps,
+		tasks:    lo.tasks,
 	}
 
-	pl, err := tkn.TektonV1alpha1().
-		Pipelines(p.Ns).
-		Get(pr.Spec.PipelineRef.Name, metav1.GetOptions{})
-
-	if err != nil {
-		fmt.Fprintf(s.Err, "%s : %s \n", msgPipelineNotFoundErr, err)
-		return
+	logC, errC, err := lr.Read()
+	switch e := err.(type) {
+	case *errors.WarningError:
+		fmt.Fprintf(lo.stream.Err, "%s \n", e.Error())
+	case nil: // ignore nil
+	default:
+		return err
 	}
 
-	//Sort taskruns, to display the taskrun logs as per pipeline tasks order
-	ordered := orderBy(pl.Spec.Tasks, pr.Status.TaskRuns)
-	taskRuns := filterBy(opts.Tasks, ordered)
+	lw := &LogWriter{}
+	lw.Write(lo.stream, logC, errC)
 
-	for _, tr := range taskRuns {
-		trl := tr.toTaskRunLogs(p.Ns, p.Clients)
-		trl.Fetch(opts.LogOptions, s, r)
-	}
-}
-
-func orderBy(pipelineTasks []v1alpha1.PipelineTask, pipelinesTaskRuns taskRunMap) []taskRun {
-	trNames := map[string]string{}
-
-	for name, t := range pipelinesTaskRuns {
-		trNames[t.PipelineTaskName] = name
-	}
-
-	trs := []taskRun{}
-	for _, ts := range pipelineTasks {
-		if n, ok := trNames[ts.Name]; ok {
-			trs = append(trs, taskRun{
-				task: ts.Name,
-				name: n,
-			})
-		}
-	}
-
-	return trs
-}
-
-func filterBy(ts []string, trs []taskRun) []taskRun {
-	if len(ts) == 0 {
-		return trs
-	}
-
-	filter := map[string]bool{}
-	for _, t := range ts {
-		filter[t] = true
-	}
-
-	filtered := []taskRun{}
-	for _, tr := range trs {
-		if filter[tr.task] {
-			filtered = append(filtered, tr)
-		}
-	}
-
-	return filtered
-}
-
-func (t taskRun) toTaskRunLogs(namespae string, clientSet *cli.Clients) *taskrun.Logs {
-	return &taskrun.Logs{
-		Run:     t.name,
-		Task:    t.task,
-		Ns:      namespae,
-		Clients: clientSet,
-	}
+	return nil
 }

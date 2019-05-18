@@ -12,29 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package taskrun
+package fake
 
-import (
-	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/flags"
-)
-
-func Command(p cli.Params) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "taskrun",
-		Aliases: []string{"tr", "taskruns"},
-		Short:   "Manage taskruns",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return flags.InitParams(p, cmd)
-		},
+func PodLog(name string, containers ...Container) Log {
+	return Log{
+		PodName:    name,
+		Containers: containers,
 	}
+}
 
-	flags.AddTektonOptions(cmd)
-	cmd.AddCommand(
-		listCommand(p),
-		logCommand(p),
-	)
+type Container struct {
+	Name string
+	Logs []string
+}
 
-	return cmd
+func NewContainer(name string, logs ...string) Container {
+	return Container{
+		Name: name,
+		Logs: logs,
+	}
 }

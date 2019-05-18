@@ -19,38 +19,35 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/logs"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tektoncd/cli/pkg/errors"
+	"github.com/tektoncd/cli/pkg/helper/pods"
+	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 )
 
 const (
-	msgTRNotFoundErr = "Error in retrieving Taskrun"
+	msgTRNotFoundErr = "Unable to get Taskrun"
 )
-
-// Logs fetches logs of a taskrun
-type Logs struct {
-	Task    string
-	Run     string
-	Ns      string
-	Clients *cli.Clients
-}
 
 // LogOptions provides options on what logs to fetch. An empty LogOptions
 // implies fetching all logs including init steps
 type LogOptions struct {
-	AllSteps bool
+	taskrunName string
+	allSteps    bool
+	follow      bool
+	stream      *cli.Stream
+	params      cli.Params
+	streamer    stream.NewStreamerFunc
 }
 
 func logCommand(p cli.Params) *cobra.Command {
-	opts := LogOptions{}
+	opts := LogOptions{params: p}
 	eg := `
 # show the logs of TaskRun named "foo" from the namespace "bar"
 tkn taskrun logs foo -n bar
-`
 
+# show the live logs of TaskRun named "foo" from the namespace "bar" 
+tkn taskrun logs -f foo -n bar
+`
 	c := &cobra.Command{
 		Use:          "logs",
 		Short:        "Show taskruns logs",
@@ -58,127 +55,53 @@ tkn taskrun logs foo -n bar
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			cs, err := p.Clients()
-			if err != nil {
-				return err
-			}
-
-			trl := &Logs{
-				Run:     args[0],
-				Ns:      p.Namespace(),
-				Clients: cs,
-			}
-
-			s := logs.Streams{
+			opts.taskrunName = args[0]
+			opts.stream = &cli.Stream{
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
+			opts.streamer = pods.NewStream
 
-			trl.Fetch(opts, s, logs.DefaultLogFetcher(cs.Kube))
-			return nil
+			return opts.run()
 		},
 	}
 
-	c.Flags().BoolVarP(
-		&opts.AllSteps,
-		"all", "a", false,
-		"show all logs including init steps injected by tekton")
+	c.Flags().BoolVarP(&opts.allSteps, "all", "a", false, "show all logs including init steps injected by tekton")
+	c.Flags().BoolVarP(&opts.follow, "follow", "f", false, "follow live logs")
+
 	return c
 }
 
-//Fetch To fetch the TaskRun's logs.
-//Stream provides output and error stream to print the logs and error messages.
-//LogOptions provide way to print all(init) steps
-func (trl *Logs) Fetch(opts LogOptions, stream logs.Streams, reader *logs.LogFetcher) {
-	var (
-		kube   = trl.Clients.Kube
-		tekton = trl.Clients.Tekton
-	)
+func (lo *LogOptions) run() error {
+	if lo.taskrunName == "" {
+		return fmt.Errorf("missing mandatory argument taskrun")
+	}
 
-	tr, err := tekton.TektonV1alpha1().TaskRuns(trl.Ns).Get(trl.Run, metav1.GetOptions{})
+	cs, err := lo.params.Clients()
 	if err != nil {
-		fmt.Fprintf(stream.Err, "%s : %s \n", msgTRNotFoundErr, err)
-		return
+		return err
 	}
 
-	trl.Task = tr.Spec.TaskRef.Name
-	trStatus := tr.Status
-	if !taskRunHasStarted(trStatus) {
-		fmt.Fprintf(stream.Out, "Task %s has not started yet \n", trl.Task)
-		return
+	lr := &LogReader{
+		Run:      lo.taskrunName,
+		Ns:       lo.params.Namespace(),
+		Clients:  cs,
+		Streamer: lo.streamer,
+		Follow:   lo.follow,
+		AllSteps: lo.allSteps,
 	}
 
-	pod, err := kube.CoreV1().
-		Pods(trl.Ns).
-		Get(trStatus.PodName, metav1.GetOptions{})
-	if err != nil {
-		fmt.Fprintf(stream.Err, "Error in getting pod: %s \n", err)
-		return
-	}
-
-	if !podHasStarted(pod) {
-		fmt.Fprintf(stream.Out, "Task %s pod %s has not started yet \n", trl.Task, trStatus.PodName)
-		return
-	}
-
-	steps := filterSteps(trStatus, pod, opts.AllSteps)
-
-	for _, step := range steps {
-		if !stepHasStarted(step) {
-			fmt.Fprintf(stream.Out, "Step %s has not started yet \n", trl.Task)
-			continue
-		}
-
-		pl := logs.NewPodLogs(trStatus.PodName, trl.Ns, reader)
-		err := pl.Fetch(stream, ContainerNameForStep(step.Name), func(s string) string {
-			return fmt.Sprintf("[%s : %s] %s", trl.Task, step.Name, s)
-		})
-
-		if err != nil {
-			fmt.Fprintf(stream.Err, "Error in printing logs for the %s : %s \n", step.Name, err)
-		}
-
-		fmt.Fprint(stream.Out, "\n")
-	}
-}
-
-func podHasStarted(pod *corev1.Pod) bool {
-	return !(pod.Status.Phase == corev1.PodPending || pod.Status.Phase == corev1.PodUnknown)
-}
-
-func taskRunHasStarted(trStatus v1alpha1.TaskRunStatus) bool {
-	return trStatus.StartTime != nil && !trStatus.StartTime.IsZero()
-}
-
-func filterSteps(trStatus v1alpha1.TaskRunStatus, pod *corev1.Pod, allSteps bool) []v1alpha1.StepState {
-	if !allSteps {
-		return trStatus.Steps
-	}
-
-	initSteps := []v1alpha1.StepState{}
-	for _, ics := range pod.Status.InitContainerStatuses {
-		initSteps = append(initSteps, v1alpha1.StepState{
-			ContainerState: *ics.State.DeepCopy(),
-			Name:           resources.TrimContainerNamePrefix(ics.Name),
-		})
-	}
-	//append normal steps to preserve the order
-	initSteps = append(initSteps, trStatus.Steps...)
-
-	return initSteps
-}
-
-func stepHasStarted(stepState v1alpha1.StepState) bool {
-	return stepState.ContainerState.Waiting == nil
-}
-
-//TODO: anonymous steps?
-func ContainerNameForStep(name string) string {
-	switch name {
-	case "nop":
-		return "nop"
+	logC, errC, err := lr.Read()
+	switch e := err.(type) {
+	// ignore log warnings
+	case *errors.WarningError:
+		fmt.Fprintf(lo.stream.Err, "%s \n", e.Error())
+	case nil: // ignore nil
 	default:
-		return "build-step-" + name
+		return err
 	}
+
+	lw := &LogWriter{}
+	lw.Write(lo.stream, logC, errC)
+	return nil
 }
