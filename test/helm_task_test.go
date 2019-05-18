@@ -163,7 +163,7 @@ func getCreateImageTask(namespace string) *v1alpha1.Task {
 	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource("builtimage", v1alpha1.PipelineResourceTypeImage)),
-		tb.Step("kaniko", "gcr.io/kaniko-project/executor", tb.Args(
+		tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.9.0", tb.Args(
 			"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
 			"--context=/workspace/gitsource/",
 			"--destination=${outputs.resources.builtimage.url}",
