@@ -33,8 +33,6 @@ func AddTektonOptions(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringP(
 		namespace, "n", "",
 		"namespace to use (mandatory)")
-
-	cmd.MarkPersistentFlagRequired(namespace)
 }
 
 // InitParams initialises cli.Params based on flags defined in command
@@ -58,6 +56,8 @@ func InitParams(p cli.Params, cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	p.SetNamespace(ns)
+	if ns != "" {
+		p.SetNamespace(ns)
+	}
 	return nil
 }

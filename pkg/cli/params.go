@@ -16,11 +16,8 @@ package cli
 
 import (
 	"k8s.io/client-go/rest"
-	"os"
-	"path/filepath"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	k8s "k8s.io/client-go/kubernetes"
@@ -92,34 +89,24 @@ func (p *TektonParams) Clients() (*Clients, error) {
 }
 
 func (p *TektonParams) config() (*rest.Config, error) {
-	kcPath, err := p.resolveKubeConfigPath()
-
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to resolve kubeconfig path")
-	}
-
-	config, err := clientcmd.BuildConfigFromFlags("", kcPath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Parsing kubeconfig failed")
-	}
-	return config, err
-}
-
-func (p *TektonParams) resolveKubeConfigPath() (string, error) {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	if p.kubeConfigPath != "" {
-		return p.kubeConfigPath, nil
+		loadingRules.ExplicitPath = p.kubeConfigPath
 	}
-
-	if kubeEnvConf, ok := os.LookupEnv("KUBECONFIG"); ok {
-		return kubeEnvConf, nil
+	configOverrides := &clientcmd.ConfigOverrides{}
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	if p.namespace == "" {
+		namespace, _, err := kubeConfig.Namespace()
+		if err != nil {
+			return nil, errors.Wrap(err, "Couldn't get kubeConfiguration namespace")
+		}
+		p.namespace = namespace
 	}
-
-	home, err := homedir.Dir()
+	config, err := kubeConfig.ClientConfig()
 	if err != nil {
-		return "", err
+		return nil, errors.Wrap(err, "Parsing kubeconfig failed")
 	}
-
-	return filepath.Join(home, DEFAUL_CONFIG_DIR, DEFAULT_CONFIG_FILE), nil
+	return config, nil
 }
 
 func (p *TektonParams) SetNamespace(ns string) {
