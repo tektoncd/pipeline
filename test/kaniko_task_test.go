@@ -72,7 +72,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 			},
 		})))
 	}
-	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor", stepOps...)
+	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.9.0", stepOps...)
 	taskSpecOps = append(taskSpecOps, step)
 
 	return tb.Task(kanikoTaskName, namespace, tb.TaskSpec(taskSpecOps...))
