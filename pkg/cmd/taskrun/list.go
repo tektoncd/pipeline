@@ -48,7 +48,7 @@ tkn pr list -n foo \n",
 	c := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List the taskruns",
+		Short:   "Lists taskruns in a namespace",
 		Example: eg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var task string

@@ -25,9 +25,9 @@ import (
 //Command instantiates the pipelinerun command
 func Command(p cli.Params) *cobra.Command {
 	c := &cobra.Command{
-		Use:                   "pipelineruns",
+		Use:                   "pipelinerun",
 		DisableFlagsInUseLine: true,
-		Aliases:               []string{"pr", "pipelinerun"},
+		Aliases:               []string{"pr", "pipelineruns"},
 		Short:                 "Manage pipelineruns",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
