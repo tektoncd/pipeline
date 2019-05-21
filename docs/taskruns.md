@@ -91,8 +91,8 @@ spec:
         image: gcr.io/kaniko-project/executor
         # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
         env:
-        - name: "DOCKER_CONFIG"
-          value: "/builder/home/.docker/"
+          - name: "DOCKER_CONFIG"
+            value: "/builder/home/.docker/"
         command:
           - /kaniko/executor
         args:
@@ -340,8 +340,8 @@ spec:
         image: gcr.io/kaniko-project/executor
         # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
         env:
-        - name: "DOCKER_CONFIG"
-          value: "/builder/home/.docker/"
+          - name: "DOCKER_CONFIG"
+            value: "/builder/home/.docker/"
         command:
           - /kaniko/executor
         args:
