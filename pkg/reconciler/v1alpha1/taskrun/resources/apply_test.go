@@ -53,6 +53,14 @@ var volumeMountTaskSpec = &v1alpha1.TaskSpec{
 	}},
 }
 
+var gcsTaskSpec = &v1alpha1.TaskSpec{
+	Steps: []corev1.Container{{
+		Name:  "foobar",
+		Image: "someImage",
+		Args:  []string{"${outputs.resources.bucket.path}"},
+	}},
+}
+
 var paramTaskRun = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
@@ -72,6 +80,7 @@ var inputs = map[string]v1alpha1.PipelineResourceInterface{
 
 var outputs = map[string]v1alpha1.PipelineResourceInterface{
 	"imageToUse": imageResource,
+	"bucket":     gcsResource,
 }
 
 var gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
@@ -104,6 +113,25 @@ var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 })
 
+var gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "gcs-resource",
+	},
+	Spec: v1alpha1.PipelineResourceSpec{
+		Type: v1alpha1.PipelineResourceTypeStorage,
+		Params: []v1alpha1.Param{
+			{
+				Name:  "type",
+				Value: "gcs",
+			},
+			{
+				Name:  "location",
+				Value: "theCloud?",
+			},
+		},
+	},
+})
+
 func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.TaskSpec {
 	ts = ts.DeepCopy()
 	f(ts)
@@ -112,6 +140,7 @@ func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.
 
 func setup() {
 	inputs["workspace"].SetDestinationDirectory("/workspace/workspace")
+	outputs["bucket"].SetDestinationDirectory("/workspace/outputs/bucket")
 }
 
 func TestApplyParameters(t *testing.T) {
@@ -219,7 +248,18 @@ func TestApplyResources(t *testing.T) {
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
 		}),
-	}}
+	}, {
+		name: "output resource specified with path replacement",
+		args: args{
+			ts:   gcsTaskSpec,
+			r:    outputs,
+			rStr: "outputs",
+		},
+		want: applyMutation(gcsTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[0].Args = []string{"/workspace/outputs/bucket"}
+		}),
+	},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			setup()
