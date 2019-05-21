@@ -89,6 +89,10 @@ spec:
     steps:
       - name: build-and-push
         image: gcr.io/kaniko-project/executor
+        # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
+        env:
+        - name: "DOCKER_CONFIG"
+          value: "/builder/home/.docker/"
         command:
           - /kaniko/executor
         args:
@@ -334,6 +338,10 @@ spec:
     steps:
       - name: build-and-push
         image: gcr.io/kaniko-project/executor
+        # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
+        env:
+        - name: "DOCKER_CONFIG"
+          value: "/builder/home/.docker/"
         command:
           - /kaniko/executor
         args:
