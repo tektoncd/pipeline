@@ -36,5 +36,4 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 			}
 		}
 	}
-	return
 }
