@@ -159,7 +159,8 @@ kubectl create clusterrolebinding cluster-admin-binding \
    - modify the `subjects.namespace`
      [here](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/201-clusterrolebinding.yaml#L21)
      value to the desired namespace
-   - look up all the lines with the namespace `namespace: tekton-pipelines`, and set the value to the desired namespace 
+   - look up all the lines with the namespace `namespace: tekton-pipelines`, and
+     set the value to the desired namespace
    - add `downwardapi` entry to webhook and controller `deployment` resources.
      E.g. add the environment variable section from the code snippet below to
      [controller](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/controller.yaml#L29)
