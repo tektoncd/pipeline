@@ -640,6 +640,7 @@ func isExceededResourceQuotaError(err error) bool {
 func getExceededResourcesMessage(tr *v1alpha1.TaskRun) string {
 	return fmt.Sprintf("TaskRun pod %q exceeded available resources", tr.Name)
 }
+
 // resourceImplBinding maps pipeline resource names to the actual resource type implementations
 func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource) (map[string]v1alpha1.PipelineResourceInterface, error) {
 	p := make(map[string]v1alpha1.PipelineResourceInterface)
