@@ -30,10 +30,10 @@ var simpleTaskSpec = &v1alpha1.TaskSpec{
 		Name:  "foo",
 		Image: "${inputs.params.myimage}",
 	}, {
-		Name:  "baz",
-		Image: "bat",
+		Name:       "baz",
+		Image:      "bat",
 		WorkingDir: "${inputs.resources.workspace.path}",
-		Args:  []string{"${inputs.resources.workspace.url}"},
+		Args:       []string{"${inputs.resources.workspace.url}"},
 	}, {
 		Name:  "qux",
 		Image: "quux",
@@ -180,31 +180,30 @@ func TestApplyParameters(t *testing.T) {
 	}
 }
 
-
 func TestApplyResources(t *testing.T) {
 	type args struct {
-		ts     *v1alpha1.TaskSpec
-		r map[string]v1alpha1.PipelineResourceInterface
-		rStr   string
+		ts   *v1alpha1.TaskSpec
+		r    map[string]v1alpha1.PipelineResourceInterface
+		rStr string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    *v1alpha1.TaskSpec
+		name string
+		args args
+		want *v1alpha1.TaskSpec
 	}{{
 		name: "no replacements specified",
 		args: args{
-			ts:     simpleTaskSpec,
-			r:     	make(map[string]v1alpha1.PipelineResourceInterface),
-			rStr:   "inputs",
+			ts:   simpleTaskSpec,
+			r:    make(map[string]v1alpha1.PipelineResourceInterface),
+			rStr: "inputs",
 		},
 		want: simpleTaskSpec,
 	}, {
 		name: "input resource specified",
 		args: args{
-			ts:     simpleTaskSpec,
-			r:      inputs,
-			rStr:   "inputs",
+			ts:   simpleTaskSpec,
+			r:    inputs,
+			rStr: "inputs",
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
@@ -213,9 +212,9 @@ func TestApplyResources(t *testing.T) {
 	}, {
 		name: "output resource specified",
 		args: args{
-			ts:     simpleTaskSpec,
-			r:      outputs,
-			rStr:   "outputs",
+			ts:   simpleTaskSpec,
+			r:    outputs,
+			rStr: "outputs",
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}

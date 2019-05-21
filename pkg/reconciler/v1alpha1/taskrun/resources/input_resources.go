@@ -142,7 +142,7 @@ func AddInputResource(
 	return taskSpec, nil
 }
 
-func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.PipelineStorageResourceInterface,) ([]corev1.Container, []corev1.Volume, error) {
+func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.PipelineStorageResourceInterface) ([]corev1.Container, []corev1.Volume, error) {
 	gcsContainers, err := storageResource.GetDownloadContainerSpec()
 	if err != nil {
 		return nil, nil, err

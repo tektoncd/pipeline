@@ -201,7 +201,7 @@ func Test_BuildGCSGetReplacements(t *testing.T) {
 		"name":     "gcs-resource",
 		"type":     "build-gcs",
 		"location": "gs://fake-bucket",
-		"path": "",
+		"path":     "",
 	}
 	if d := cmp.Diff(r.Replacements(), expectedReplacementMap); d != "" {
 		t.Errorf("BuildGCS Replacement map mismatch: %s", d)
