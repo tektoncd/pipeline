@@ -103,6 +103,7 @@ func TestPipelineRun(t *testing.T) {
 		tb.PipelineRunParam("first-param", "first-value"),
 		tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
+		tb.PipelineRunServiceAccountTask("foo", "sa-2"),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
@@ -117,8 +118,9 @@ func TestPipelineRun(t *testing.T) {
 			},
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef:    v1alpha1.PipelineRef{Name: "tomatoes"},
-			ServiceAccount: "sa",
+			PipelineRef:     v1alpha1.PipelineRef{Name: "tomatoes"},
+			ServiceAccount:  "sa",
+			ServiceAccounts: []v1alpha1.PipelineRunSpecServiceAccount{{TaskName: "foo", ServiceAccount: "sa-2"}},
 			Params: []v1alpha1.Param{{
 				Name:  "first-param",
 				Value: "first-value",

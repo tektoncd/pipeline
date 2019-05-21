@@ -49,6 +49,8 @@ type PipelineRunSpec struct {
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
+	ServiceAccounts []PipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
+	// +optional
 	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
@@ -145,6 +147,12 @@ func (pr *PipelineRunStatus) InitializeConditions() {
 		pr.StartTime = &metav1.Time{Time: time.Now()}
 	}
 	pipelineRunCondSet.Manage(pr).InitializeConditions()
+}
+
+// PipelineRunSpecServiceAccount can be used to configure specific ServiceAccount for a concrete Task
+type PipelineRunSpecServiceAccount struct {
+	TaskName       string `json:"taskName,omitempty"`
+	ServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // SetCondition sets the condition, unsetting previous conditions with the same

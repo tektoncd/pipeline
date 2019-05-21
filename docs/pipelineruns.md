@@ -39,6 +39,8 @@ following fields:
   - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
     information.
+  - [`serviceAccounts`](#service-accounts) - Specifies a list of `ServiceAccount` 
+    and `PipelineTask` pairs that enable you to overwrite `ServiceAccount` for concrete `PipelineTask`.
   - `timeout` - Specifies timeout after which the `PipelineRun` will fail.
   - [`nodeSelector`] - A selector which must be true for the pod to fit on a
     node. The selector which must match a node's labels for the pod to be
@@ -97,6 +99,34 @@ of the `TaskRun` resource object.
 
 For examples and more information about specifying service accounts, see the
 [`ServiceAccount`](./auth.md) reference topic.
+
+### Service Accounts
+
+Specifies the list of `ServiceAccount` and `PipelineTask` pairs. Specified 
+`PipelineTask` will be run with configured `ServiceAccount`, 
+overwriting [`serviceAccount`](#service-account) configuration, for example:
+
+```yaml
+spec:
+  serviceAccount: sa-1
+  serviceAccounts:
+    - taskName: build-task
+      serviceAccount: sa-for-build
+```
+If used with this `Pipeline`, `test-task` will use the `ServiceAccount` `sa-1`, while `build-task` will use `sa-for-build`.
+
+```yaml
+kind: Pipeline
+spec:
+  tasks:
+    - name: build-task
+      taskRef:
+        name: build-push
+  tasks:
+    - name: test-task
+      taskRef:
+        name: test
+```
 
 ## Cancelling a PipelineRun
 
