@@ -310,6 +310,16 @@ func PipelineRunServiceAccount(sa string) PipelineRunSpecOp {
 	}
 }
 
+// PipelineRunServiceAccountTask configures the service account for given Task in PipelineRun.
+func PipelineRunServiceAccountTask(taskName, sa string) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.ServiceAccounts = append(prs.ServiceAccounts, v1alpha1.PipelineRunSpecServiceAccount{
+			TaskName:       taskName,
+			ServiceAccount: sa,
+		})
+	}
+}
+
 // PipelineRunParam add a param, with specified name and value, to the PipelineRunSpec.
 func PipelineRunParam(name, value string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {

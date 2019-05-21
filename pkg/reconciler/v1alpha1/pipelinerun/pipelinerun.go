@@ -457,6 +457,14 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 		taskRunTimeout = nil
 	}
 
+	// If service account is configured for a given PipelineTask, override PipelineRun's seviceAccount
+	serviceAccount := pr.Spec.ServiceAccount
+	for _, sa := range pr.Spec.ServiceAccounts {
+		if sa.TaskName == rprt.PipelineTask.Name {
+			serviceAccount = sa.ServiceAccount
+		}
+	}
+
 	// Propagate labels from PipelineRun to TaskRun.
 	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
 	for key, val := range pr.ObjectMeta.Labels {
@@ -500,7 +508,7 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: rprt.PipelineTask.Params,
 			},
-			ServiceAccount: pr.Spec.ServiceAccount,
+			ServiceAccount: serviceAccount,
 			Timeout:        taskRunTimeout,
 			NodeSelector:   pr.Spec.NodeSelector,
 			Tolerations:    pr.Spec.Tolerations,
