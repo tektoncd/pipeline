@@ -1703,7 +1703,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}}
 
 			for _, r := range rs {
-				pipelineResourceInformer.Informer().GetIndexer().Add(r)
+				err := pipelineResourceInformer.Informer().GetIndexer().Add(r)
+				if err != nil {
+					t.Errorf("pipelineResourceInformer.Informer().GetIndexer().Add(r) failed with err: %s", err)
+				}
 			}
 
 			now := metav1.Now()

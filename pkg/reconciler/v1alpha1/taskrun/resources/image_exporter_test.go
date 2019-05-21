@@ -200,7 +200,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 	}
 }
 
-func TestUpdateTaskRunStatus(t *testing.T) {
+func TestUpdateTaskRunStatus_withValidJson(t *testing.T) {
 	for _, c := range []struct {
 		desc    string
 		podLog  []byte
@@ -237,7 +237,31 @@ func TestUpdateTaskRunStatus(t *testing.T) {
 			Name:   "source-image",
 			Digest: "sha256:1234",
 		}},
-	}, {
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			names.TestingSeed()
+			c.taskRun.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			})
+			err := UpdateTaskRunStatusWithResourceResult(c.taskRun, c.podLog)
+			if err != nil {
+				t.Errorf("UpdateTaskRunStatusWithResourceResult failed with error: %s", err)
+			}
+			if d := cmp.Diff(c.taskRun.Status.ResourcesResult, c.want); d != "" {
+				t.Errorf("post build steps mismatch: %s", d)
+			}
+		})
+	}
+}
+
+func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
+	for _, c := range []struct {
+		desc    string
+		podLog  []byte
+		taskRun *v1alpha1.TaskRun
+		want    []v1alpha1.PipelineResourceResult
+	}{{
 		desc:   "image resource exporter with malformed json output",
 		podLog: []byte("extralogscamehere[{\"name\":\"source-image\",\"digest\":\"sha256:1234\"}]"),
 		taskRun: &v1alpha1.TaskRun{
@@ -282,9 +306,12 @@ func TestUpdateTaskRunStatus(t *testing.T) {
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
 			})
-			UpdateTaskRunStatusWithResourceResult(c.taskRun, c.podLog)
+			err := UpdateTaskRunStatusWithResourceResult(c.taskRun, c.podLog)
+			if err == nil {
+				t.Error("UpdateTaskRunStatusWithResourceResult expected to fail with error")
+			}
 			if d := cmp.Diff(c.taskRun.Status.ResourcesResult, c.want); d != "" {
-				t.Fatalf("post build steps mismatch: %s", d)
+				t.Errorf("post build steps mismatch: %s", d)
 			}
 		})
 	}
