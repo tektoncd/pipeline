@@ -164,9 +164,17 @@ spec:
 
 #### Surfacing the image digest built in a task
 
-To surface the image digest in the output of the `taskRun` the builder tool should produce this information in a [OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/image-layout.md) `index.json` file. This file should be placed on a location as specified in the task definition under the resource `outputImageDir`. Annotations in `index.json` will be ignored, and if there are multiple versions of the image, the latest will be used.
+To surface the image digest in the output of the `taskRun` the builder tool
+should produce this information in a
+[OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/image-layout.md)
+`index.json` file. This file should be placed on a location as specified in the
+task definition under the resource `outputImageDir`. Annotations in `index.json`
+will be ignored, and if there are multiple versions of the image, the latest
+will be used.
 
-For example this build-push task defines the `outputImageDir` for the `builtImage` resource in `/workspace/buildImage`
+For example this build-push task defines the `outputImageDir` for the
+`builtImage` resource in `/workspace/buildImage`
+
 ```yaml
 apiVersion: tekton.dev/v1alpha1
 kind: Task
@@ -175,20 +183,24 @@ metadata:
 spec:
   inputs:
     resources:
-    - name: workspace
-      type: git
+      - name: workspace
+        type: git
   outputs:
     resources:
-    - name: builtImage
-      type: image
-      outputImageDir: /workspace/builtImage
+      - name: builtImage
+        type: image
+        outputImageDir: /workspace/builtImage
   steps: ...
 ```
-If no value is specified for `outputImageDir`, it will default to `/builder/image-outputs/{resource-name}`.
 
-*Please check the builder tool used on how to pass this path to create the output file.*  
+If no value is specified for `outputImageDir`, it will default to
+`/builder/image-outputs/{resource-name}`.
 
-The `taskRun` will include the image digest in the `resourcesResult` field that is part of the `taskRun.Status` 
+_Please check the builder tool used on how to pass this path to create the
+output file._
+
+The `taskRun` will include the image digest in the `resourcesResult` field that
+is part of the `taskRun.Status`
 
 for example:
 
@@ -201,7 +213,8 @@ status:
     ...
 ```
 
-If the `index.json` file is not produced, the image digest will not be included in the `taskRun` output.
+If the `index.json` file is not produced, the image digest will not be included
+in the `taskRun` output.
 
 ### Cluster Resource
 
