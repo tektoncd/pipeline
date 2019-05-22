@@ -211,7 +211,8 @@ Input resources, like source code (git) or artifacts, are dumped at path
 `/workspace/task_resource_name` within a mounted
 [volume](https://kubernetes.io/docs/concepts/storage/volumes/) and is available
 to all [`steps`](#steps) of your `Task`. The path that the resources are mounted
-at can be overridden with the `targetPath` value.
+at can be overridden with the `targetPath` value. Steps can use the `path`
+ [template](#Templating) key to refer to the local path to the mounted resource.
 
 ### Outputs
 
@@ -370,6 +371,13 @@ Or for an output resource:
 
 ```shell
 ${outputs.resources.<name>.<key>}
+```
+
+The local path to a resource on the mounted volume can be accessed using the
+`path` key:
+
+```shell
+${inputs.resouces.<name>.path}
 ```
 
 To access an input parameter, replace `resources` with `params`.

@@ -48,7 +48,7 @@ spec:
   - name: dump-workspace
     image: ubuntu
     command: ["cat"]
-    args: ["/workspace/gitspace/WORKSPACE"]
+    args: ["${inputs.resources.gitspace.path}/WORKSPACE"]
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
