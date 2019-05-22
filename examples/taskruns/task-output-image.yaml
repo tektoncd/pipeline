@@ -60,7 +60,7 @@ spec:
     - -ce
     - |
       set -e
-      cat <<EOF > /workspace/sourcerepo/index.json
+      cat <<EOF > ${inputs.resources.sourcerepo.path}/index.json
       {
         "schemaVersion": 2,
         "manifests": [
@@ -80,7 +80,7 @@ spec:
     - -ce
     - |
       set -e
-      cat /workspace/sourcerepo/index.json
+      cat ${inputs.resources.sourcerepo.path}/index.json
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun

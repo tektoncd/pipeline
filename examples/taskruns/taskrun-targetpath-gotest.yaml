@@ -35,7 +35,7 @@ spec:
       - '-v'
       - '-count=1'
       - './...'
-      workingDir: "/workspace/go/src/github.com/tektoncd/pipeline"
+      workingDir: "${inputs.resources.gitspace.path}"
       env:
       - name: GOPATH
         value: /workspace/go
