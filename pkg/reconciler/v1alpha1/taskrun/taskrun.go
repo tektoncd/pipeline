@@ -313,9 +313,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			} else {
 				reason = reasonCouldntGetTask
 				if tr.Spec.TaskRef != nil {
-					msg = fmt.Sprintf("References a Task %s/%s that doesn't exist", tr.Namespace, tr.Spec.TaskRef.Name)
+					msg = fmt.Sprintf("Missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
 				} else {
-					msg = fmt.Sprintf("References a TaskSpec with missing information")
+					msg = fmt.Sprintf("Invalid TaskSpec")
 				}
 			}
 			tr.Status.SetCondition(&apis.Condition{
