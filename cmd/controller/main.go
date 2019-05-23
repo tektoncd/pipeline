@@ -113,7 +113,7 @@ func main() {
 
 	pipelineInformer := pipelineInformerFactory.Tekton().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineRuns()
-	timeoutHandler := reconciler.NewTimeoutHandler(kubeClient, pipelineClient, stopCh, logger)
+	timeoutHandler := reconciler.NewTimeoutHandler(stopCh, logger)
 
 	trc := taskrun.NewController(opt,
 		taskRunInformer,
@@ -141,7 +141,7 @@ func main() {
 	}
 	timeoutHandler.SetTaskRunCallbackFunc(trc.Enqueue)
 	timeoutHandler.SetPipelineRunCallbackFunc(prc.Enqueue)
-	timeoutHandler.CheckTimeouts()
+	timeoutHandler.CheckTimeouts(kubeClient, pipelineClient)
 
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher.Watch(logging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logging.ControllerLogKey))

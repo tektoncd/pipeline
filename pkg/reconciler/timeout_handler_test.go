@@ -69,7 +69,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	defer close(stopCh)
 	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
-	th := NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, zap.New(observer).Sugar())
+	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
 	f := func(tr interface{}) {
 		trNew := tr.(*v1alpha1.TaskRun)
@@ -77,7 +77,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	}
 
 	th.SetTaskRunCallbackFunc(f)
-	th.CheckTimeouts()
+	th.CheckTimeouts(c.Kube, c.Pipeline)
 
 	for _, tc := range []struct {
 		name           string
@@ -172,7 +172,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	c, _ := test.SeedTestData(t, d)
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)
-	th := NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, zap.New(observer).Sugar())
+	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	defer close(stopCh)
 
 	gotCallback := sync.Map{}
@@ -182,7 +182,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	}
 
 	th.SetPipelineRunCallbackFunc(f)
-	th.CheckTimeouts()
+	th.CheckTimeouts(c.Kube, c.Pipeline)
 	for _, tc := range []struct {
 		name           string
 		pr             *v1alpha1.PipelineRun
@@ -247,7 +247,7 @@ func TestWithNoFunc(t *testing.T) {
 	stopCh := make(chan struct{})
 	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
-	testHandler := NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, zap.New(observer).Sugar())
+	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	defer func() {
 		// this delay will ensure there is no race condition between stopCh/ timeout channel getting triggered
 		time.Sleep(10 * time.Millisecond)
@@ -256,6 +256,98 @@ func TestWithNoFunc(t *testing.T) {
 			t.Fatal("Expected CheckTimeouts function not to panic")
 		}
 	}()
-	testHandler.CheckTimeouts()
+	testHandler.CheckTimeouts(c.Kube, c.Pipeline)
 
+}
+
+// TestGetTimeout checks that the timeout calculated for a given taskrun falls
+// back to the default taskrun timeout when none is provided.
+func TestGetTimeout(t *testing.T) {
+	testCases := []struct {
+		description      string
+		inputDuration    *metav1.Duration
+		expectedDuration time.Duration
+	}{
+		{
+			description:      "returns same duration as input when input is not nil",
+			inputDuration:    &metav1.Duration{Duration: 2 * time.Second},
+			expectedDuration: 2 * time.Second,
+		},
+		{
+			description:      "returns an end time using the default timeout if a TaskRun's timeout is nil",
+			inputDuration:    nil,
+			expectedDuration: defaultTimeout,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			receivedDuration := GetTimeout(tc.inputDuration)
+			if receivedDuration != tc.expectedDuration {
+				t.Errorf("expected %q received %q", tc.expectedDuration.String(), receivedDuration.String())
+			}
+		})
+	}
+}
+
+// TestSetTaskRunTimer checks that the SetTaskRunTimer method correctly calls the TaskRun
+// callback after a set amount of time.
+func TestSetTaskRunTimer(t *testing.T) {
+	taskRun := tb.TaskRun("test-taskrun-arbitrary-timer", testNs, tb.TaskRunSpec(
+		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
+		tb.TaskRunTimeout(2*time.Second),
+	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionUnknown}),
+		tb.TaskRunStartTime(time.Now().Add(-10*time.Second)),
+	))
+
+	stopCh := make(chan struct{})
+	observer, _ := observer.New(zap.InfoLevel)
+	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	timerDuration := 50 * time.Millisecond
+	timerFailDeadline := 100 * time.Millisecond
+	doneCh := make(chan struct{})
+	callback := func(_ interface{}) {
+		close(doneCh)
+	}
+	testHandler.SetTaskRunCallbackFunc(callback)
+	go testHandler.SetTaskRunTimer(taskRun, timerDuration)
+	select {
+	case <-doneCh:
+		// The task run timer executed before the failure deadline
+	case <-time.After(timerFailDeadline):
+		t.Errorf("timer did not execute task run callback func within expected time")
+	}
+}
+
+// TestBackoffDuration asserts that the backoffDuration func returns Durations
+// within the timeout handler's bounds.
+func TestBackoffDuration(t *testing.T) {
+	testcases := []struct {
+		description      string
+		inputCount       uint
+		jitterFunc       func(int) int
+		expectedDuration time.Duration
+	}{
+		{
+			description:      "an input count that is too large is rounded to the maximum allowed exponent",
+			inputCount:       uint(maxBackoffExponent + 1),
+			jitterFunc:       func(in int) int { return in },
+			expectedDuration: maxBackoffSeconds * time.Second,
+		},
+		{
+			description:      "a jittered number of seconds that is above the maximum allowed is constrained",
+			inputCount:       1,
+			jitterFunc:       func(in int) int { return maxBackoffSeconds + 1 },
+			expectedDuration: maxBackoffSeconds * time.Second,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.description, func(t *testing.T) {
+			result := backoffDuration(tc.inputCount, tc.jitterFunc)
+			if result != tc.expectedDuration {
+				t.Errorf("expected %q received %q", tc.expectedDuration.String(), result.String())
+			}
+		})
+	}
 }

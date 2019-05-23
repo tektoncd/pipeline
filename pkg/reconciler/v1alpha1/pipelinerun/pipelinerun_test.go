@@ -55,7 +55,7 @@ func getPipelineRunController(t *testing.T, d test.Data, recorder record.EventRe
 	stopCh := make(chan struct{})
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	logger := zap.New(observer).Sugar()
-	th := reconciler.NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, logger)
+	th := reconciler.NewTimeoutHandler(stopCh, logger)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
