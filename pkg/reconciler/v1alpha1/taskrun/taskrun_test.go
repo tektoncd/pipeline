@@ -15,6 +15,7 @@ package taskrun
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -40,9 +41,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
+	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8sruntimeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
@@ -192,7 +195,7 @@ func getTaskRunController(t *testing.T, d test.Data) test.TestAssets {
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	stopCh := make(chan struct{})
 	logger := zap.New(observer).Sugar()
-	th := reconciler.NewTimeoutHandler(c.Kube, c.Pipeline, stopCh, logger)
+	th := reconciler.NewTimeoutHandler(stopCh, logger)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
@@ -1836,6 +1839,69 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}
 			if tr.Status.StartTime.Time != c.want.StartTime.Time {
 				t.Errorf("Expected TaskRun startTime to be unchanged but was %s", tr.Status.StartTime)
+			}
+		})
+	}
+}
+
+func TestHandlePodCreationError(t *testing.T) {
+	taskRun := tb.TaskRun("test-taskrun-pod-creation-failed", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(simpleTask.Name),
+	), tb.TaskRunStatus(
+		tb.TaskRunStartTime(time.Now()),
+		tb.Condition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		}),
+	))
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{simpleTask},
+	}
+	testAssets := getTaskRunController(t, d)
+	c, ok := testAssets.Controller.Reconciler.(*Reconciler)
+	if !ok {
+		t.Errorf("failed to construct instance of taskrun reconciler")
+		return
+	}
+
+	// Prevent backoff timer from starting
+	c.timeoutHandler.SetTaskRunCallbackFunc(nil)
+
+	testcases := []struct {
+		description    string
+		err            error
+		expectedType   apis.ConditionType
+		expectedStatus corev1.ConditionStatus
+		expectedReason string
+	}{
+		{
+			description:    "exceeded quota errors are surfaced in taskrun condition but do not fail taskrun",
+			err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionUnknown,
+			expectedReason: reasonExceededResourceQuota,
+		},
+		{
+			description:    "errors other than exceeded quota fail the taskrun",
+			err:            errors.New("this is a fatal error"),
+			expectedType:   apis.ConditionSucceeded,
+			expectedStatus: corev1.ConditionFalse,
+			expectedReason: reasonCouldntGetTask,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.description, func(t *testing.T) {
+			c.handlePodCreationError(taskRun, tc.err)
+			foundCondition := false
+			for _, cond := range taskRun.Status.Conditions {
+				if cond.Type == tc.expectedType && cond.Status == tc.expectedStatus && cond.Reason == tc.expectedReason {
+					foundCondition = true
+					break
+				}
+			}
+			if !foundCondition {
+				t.Errorf("expected to find condition type %q, status %q and reason %q", tc.expectedType, tc.expectedStatus, tc.expectedReason)
 			}
 		})
 	}

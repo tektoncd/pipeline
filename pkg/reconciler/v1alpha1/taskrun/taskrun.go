@@ -310,30 +310,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return err
 	}
 	if pod == nil {
-		// Pod is not present, create pod.
 		pod, err = c.createPod(tr, rtr)
 		if err != nil {
-			// This Run has failed, so we need to mark it as failed and stop reconciling it
-			var reason, msg string
-			if isExceededResourceQuotaError(err) {
-				reason = reasonExceededResourceQuota
-				msg = getExceededResourcesMessage(tr)
-			} else {
-				reason = reasonCouldntGetTask
-				if tr.Spec.TaskRef != nil {
-					msg = fmt.Sprintf("Missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
-				} else {
-					msg = fmt.Sprintf("Invalid TaskSpec")
-				}
-			}
-			tr.Status.SetCondition(&apis.Condition{
-				Type:    apis.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Reason:  reason,
-				Message: fmt.Sprintf("%s: %v", msg, err),
-			})
-			c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build pod %q: %v", tr.Name, err)
-			c.Logger.Errorf("Failed to create build pod for task %q :%v", err, tr.Name)
+			c.handlePodCreationError(tr, err)
 			return nil
 		}
 		go c.timeoutHandler.WaitTaskRun(tr, tr.Status.StartTime)
@@ -424,6 +403,36 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 	updateTaskRunResourceResult(taskRun, pod, resourceLister, kubeclient, logger)
 }
 
+func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
+	var reason, msg string
+	var succeededStatus corev1.ConditionStatus
+	if isExceededResourceQuotaError(err) {
+		succeededStatus = corev1.ConditionUnknown
+		reason = reasonExceededResourceQuota
+		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
+		if !currentlyBackingOff {
+			go c.timeoutHandler.SetTaskRunTimer(tr, time.Until(backoff.NextAttempt))
+		}
+		msg = fmt.Sprintf("%s, reattempted %d times", getExceededResourcesMessage(tr), backoff.NumAttempts)
+	} else {
+		succeededStatus = corev1.ConditionFalse
+		reason = reasonCouldntGetTask
+		if tr.Spec.TaskRef != nil {
+			msg = fmt.Sprintf("Missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
+		} else {
+			msg = fmt.Sprintf("Invalid TaskSpec")
+		}
+	}
+	tr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  succeededStatus,
+		Reason:  reason,
+		Message: fmt.Sprintf("%s: %v", msg, err),
+	})
+	c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build pod %q: %v", tr.Name, err)
+	c.Logger.Errorf("Failed to create build pod for task %q: %v", tr.Name, err)
+}
+
 func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) {
 	if resources.TaskRunHasOutputImageResource(resourceLister.PipelineResources(taskRun.Namespace).Get, taskRun) && taskRun.IsSuccessful() {
 		for _, container := range pod.Spec.Containers {
@@ -511,7 +520,6 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1
 	}
 	return newTr, nil
 }
-
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/templating logic to its own function in the resources package
@@ -613,9 +621,14 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 	c.Logger.Infof("Checking timeout for TaskRun %q (startTime %s, timeout %s, runtime %s)", tr.Name, tr.Status.StartTime, timeout, runtime)
 	if runtime > timeout {
 		c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
-		if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-			c.Logger.Errorf("Failed to terminate pod: %v", err)
-			return true, err
+		// tr.Status.PodName will be empty if the pod was never successfully created. This condition
+		// can be reached, for example, by the pod never being schedulable due to limits imposed by
+		// a namespace's ResourceQuota.
+		if tr.Status.PodName != "" {
+			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+				c.Logger.Errorf("Failed to terminate pod: %v", err)
+				return true, err
+			}
 		}
 
 		timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
