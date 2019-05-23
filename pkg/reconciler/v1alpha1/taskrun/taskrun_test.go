@@ -1567,7 +1567,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 	}, {
 		desc: "failure-terminated",
 		podStatus: corev1.PodStatus{
-			Phase: corev1.PodFailed,
+			Phase:                 corev1.PodFailed,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
 			}},
@@ -1635,7 +1635,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 	}, {
 		desc: "pending-waiting-message",
 		podStatus: corev1.PodStatus{
-			Phase: corev1.PodPending,
+			Phase:                 corev1.PodPending,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
 			}},
