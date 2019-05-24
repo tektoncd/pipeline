@@ -30,6 +30,10 @@ import (
 // - places files in expected place
 
 func TestStorageTaskRun(t *testing.T) {
+	configFilePath := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")
+	if configFilePath == "" {
+		t.Skip("GCP_SERVICE_ACCOUNT_KEY_PATH variable is not set.")
+	}
 	t.Parallel()
 
 	c, namespace := setup(t)
@@ -43,8 +47,7 @@ func TestStorageTaskRun(t *testing.T) {
 	}
 
 	resName := "gcs-resource"
-	configFile := os.Getenv("GCP_SERVICE_ACCOUNT_KEY_PATH")
-	if _, err := c.PipelineResourceClient.Create(getResources(namespace, resName, secretName, configFile)); err != nil {
+	if _, err := c.PipelineResourceClient.Create(getResources(namespace, resName, secretName, configFilePath)); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", resName, err)
 	}
 
