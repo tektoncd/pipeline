@@ -42,10 +42,11 @@ func listCommand(p cli.Params) *cobra.Command {
 	f := cliopts.NewPrintFlags("list")
 
 	c := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Short:   "Lists pipelines in a namespace",
-		Long:    ``,
+		Use:          "list",
+		Aliases:      []string{"ls"},
+		Short:        "Lists pipelines in a namespace",
+		Long:         ``,
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output, err := cmd.LocalFlags().GetString("output")
 			if err != nil {
@@ -80,8 +81,7 @@ func printPipelineDetails(out io.Writer, p cli.Params) error {
 	}
 
 	if len(ps.Items) == 0 {
-		fmt.Fprintln(out, emptyMsg)
-		return nil
+		return fmt.Errorf(emptyMsg)
 	}
 
 	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)

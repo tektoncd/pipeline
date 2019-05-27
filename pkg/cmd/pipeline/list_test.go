@@ -24,12 +24,12 @@ func TestPipelinesList_empty(t *testing.T) {
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
-	output, err := test.ExecuteCommand(pipeline, "list", "-n", "foo")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+	_, err := test.ExecuteCommand(pipeline, "list", "-n", "foo")
+	if err == nil {
+		t.Errorf("No errors was defined")
 	}
-	expected := emptyMsg + "\n"
-	if d := cmp.Diff(expected, output); d != "" {
+
+	if d := cmp.Diff(emptyMsg, err.Error()); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
 	}
 }

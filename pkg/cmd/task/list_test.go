@@ -33,12 +33,11 @@ func TestTaskListEmpty(t *testing.T) {
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	task := Command(p)
-	output, err := test.ExecuteCommand(task, "list", "-n", "foo")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+	_, err := test.ExecuteCommand(task, "list", "-n", "foo")
+	if err == nil {
+		t.Errorf("No errors was defined")
 	}
-	expected := emptyMsg + "\n"
-	if d := cmp.Diff(expected, output); d != "" {
+	if d := cmp.Diff(emptyMsg, err.Error()); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
 	}
 }

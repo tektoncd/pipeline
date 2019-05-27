@@ -78,8 +78,7 @@ func printTaskDetails(out io.Writer, p cli.Params) error {
 	}
 
 	if len(tasks.Items) == 0 {
-		fmt.Fprintln(out, emptyMsg)
-		return nil
+		return fmt.Errorf(emptyMsg)
 	}
 
 	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
