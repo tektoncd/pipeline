@@ -14,7 +14,7 @@ review them:
 - [ ] Includes [docs](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if user facing)
 - [ ] Commit messages follow [commit message best practices](https://github.com/tektoncd/community/blob/master/standards.md#commit-messages)
 
-_See [the contribution guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md)
+_See [the contribution guide](https://github.com/tektoncd/cli/blob/master/CONTRIBUTING.md)
 for more details._
 
 # Release Notes

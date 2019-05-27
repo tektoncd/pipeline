@@ -16,7 +16,7 @@ Then you can [iterate](#iterating) (including
 ### Checkout your fork
 
 The Go tools require that you clone the repository to the
-`src/github.com/tektoncd/pipeline` directory in your
+`src/github.com/tektoncd/cli` directory in your
 [`GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
 
 To check out this repository:
@@ -112,7 +112,7 @@ You can stand up a version of this controller on-cluster (to your
 `kubectl config current-context`):
 
 - using a `release.yaml` file from the Tekton pipelines
-  [releases](https://github.com/tektoncd/pipeline/releases) 
-- using [tektoncd/pipeline](https://github.com/tektoncd/pipeline)
+  [releases](https://github.com/tektoncd/cli/releases)
+- using [tektoncd/cli](https://github.com/tektoncd/cli)
   sources, following
-  [DEVELOPMENT.md](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md).
+  [DEVELOPMENT.md](https://github.com/tektoncd/cli/blob/master/DEVELOPMENT.md).
