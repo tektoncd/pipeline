@@ -6,30 +6,30 @@ import unittest
 import koparse
 
 
-IMAGE_BASE = "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/"
+IMAGE_BASE = "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/"
 PATH_TO_TEST_RELEASE_YAML = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), "test_release.yaml")
 PATH_TO_WRONG_FILE = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), "koparse.py")
 BUILT_IMAGES = [
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/kubeconfigwriter@sha256:68453f5bb4b76c0eab98964754114d4f79d3a50413872520d8919a6786ea2b35",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/creds-init@sha256:67448da79e4731ab534b91df08da547bc434ab08e41d905858f2244e70290f48",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/git-init@sha256:7d5520efa2d55e1346c424797988c541327ee52ef810a840b5c6f278a9de934a",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/nop@sha256:3784d6b8f73043a29d2c1d6196801bee46fe808fbb94ba4fd21ca52dce503183",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/bash@sha256:d55917ef5c92627027e3755bfc577fbfa2fb783cccfb13a98632cb6ba6088cd6",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/gsutil@sha256:421a261436e16af4057b4a069fdae8a5aca6e37269952209ad9932a774aa0003",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/controller@sha256:bdc6f22a44944c829983c30213091b60f490b41f89577e8492f6a2936be0df41",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/webhook@sha256:cca7069a11aaf0d9d214306d456bc40b2e33e5839429bf07c123ad964d495d8a",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter@sha256:68453f5bb4b76c0eab98964754114d4f79d3a50413872520d8919a6786ea2b35",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/creds-init@sha256:67448da79e4731ab534b91df08da547bc434ab08e41d905858f2244e70290f48",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init@sha256:7d5520efa2d55e1346c424797988c541327ee52ef810a840b5c6f278a9de934a",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/nop@sha256:3784d6b8f73043a29d2c1d6196801bee46fe808fbb94ba4fd21ca52dce503183",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/bash@sha256:d55917ef5c92627027e3755bfc577fbfa2fb783cccfb13a98632cb6ba6088cd6",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/gsutil@sha256:421a261436e16af4057b4a069fdae8a5aca6e37269952209ad9932a774aa0003",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller@sha256:bdc6f22a44944c829983c30213091b60f490b41f89577e8492f6a2936be0df41",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook@sha256:cca7069a11aaf0d9d214306d456bc40b2e33e5839429bf07c123ad964d495d8a",
 ]
 EXPECTED_IMAGES = [
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/kubeconfigwriter",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/creds-init",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/git-init",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/nop",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/bash",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/gsutil",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/controller",
-    "gcr.io/knative-releases/github.com/knative/build-pipeline/cmd/webhook",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/creds-init",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/nop",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/bash",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/gsutil",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller",
+    "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook",
 ]
 
 

@@ -182,7 +182,7 @@ go test -v -tags=e2e -count=1 ./test --kubeconfig ~/special/kubeconfig --cluster
 ```
 
 Tests importing
-[`github.com/knative/build-pipline/test`](#adding-integration-tests) recognize
+[`github.com/tektoncd/pipeline/test`](#adding-integration-tests) recognize
 the
 [flags added by `knative/pkg/test`](https://github.com/knative/pkg/tree/master/test#flags).
 
