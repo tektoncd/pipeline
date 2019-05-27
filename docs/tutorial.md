@@ -114,10 +114,9 @@ In more common scenarios, a Task needs multiple steps with input and output
 resources to process. For example a Task could fetch source code from a GitHub
 repository and build a Docker image from it.
 
-[`PipelineResources`](resources.md) are used to define the artifacts that can
-be passed in and out of a task. There are a few system defined resource types
-ready to use, and the following are two examples of the resources commonly
-needed.
+[`PipelineResources`](resources.md) are used to define the artifacts that can be
+passed in and out of a task. There are a few system defined resource types ready
+to use, and the following are two examples of the resources commonly needed.
 
 The [`git` resource](resources.md#git-resource) represents a git repository with
 a specific revision:

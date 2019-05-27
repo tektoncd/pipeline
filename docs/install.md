@@ -108,10 +108,9 @@ The PVC option can be configured using a ConfigMap with the name
 `config-artifact-pvc` and the following attributes:
 
 - size: the size of the volume (5Gi by default)
- 
-The GCS storage bucket can be configured
-using a ConfigMap with the name `config-artifact-bucket` with
-the following attributes:
+
+The GCS storage bucket can be configured using a ConfigMap with the name
+`config-artifact-bucket` with the following attributes:
 
 - location: the address of the bucket (for example gs://mybucket)
 - bucket.service.account.secret.name: the name of the secret that will contain
