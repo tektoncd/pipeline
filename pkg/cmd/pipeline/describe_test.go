@@ -36,12 +36,12 @@ func TestPipelineDescribe_Empty(t *testing.T) {
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
-	output, err := test.ExecuteCommand(pipeline, "desc", "bar")
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+	_, err := test.ExecuteCommand(pipeline, "desc", "bar")
+	if err == nil {
+		t.Errorf("Error expected here")
 	}
-	expected := "Error : pipelines.tekton.dev \"bar\" not found\n"
-	if d := cmp.Diff(expected, output); d != "" {
+	expected := "pipelines.tekton.dev \"bar\" not found"
+	if d := cmp.Diff(expected, err.Error()); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
 	}
 }

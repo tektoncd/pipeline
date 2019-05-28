@@ -37,27 +37,25 @@ const (
 	runsBody   = "%s\t%s\t%s\t%s\n"
 )
 
-var pname string
-
 func describeCommand(p cli.Params) *cobra.Command {
 	f := cliopts.NewPrintFlags("describe")
 
 	c := &cobra.Command{
-		Use:     "describe",
-		Aliases: []string{"desc"},
-		Short:   "Describes a pipeline in a namespace",
-		Long:    ``,
-		Args:    cobra.MinimumNArgs(1),
+		Use:          "describe",
+		Aliases:      []string{"desc"},
+		Short:        "Describes a pipeline in a namespace",
+		Long:         ``,
+		Args:         cobra.MinimumNArgs(1),
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pname = args[0]
-			return printPipelineDescription(cmd.OutOrStdout(), p)
+			return printPipelineDescription(cmd.OutOrStdout(), p, args[0])
 		},
 	}
 	f.AddFlags(c)
 	return c
 }
 
-func printPipelineDescription(out io.Writer, p cli.Params) error {
+func printPipelineDescription(out io.Writer, p cli.Params, pname string) error {
 	cs, err := p.Clients()
 	if err != nil {
 		return err
@@ -65,15 +63,14 @@ func printPipelineDescription(out io.Writer, p cli.Params) error {
 
 	pipeline, err := cs.Tekton.TektonV1alpha1().Pipelines(p.Namespace()).Get(pname, metav1.GetOptions{})
 	if err != nil {
-		fmt.Fprintln(out, "Error :", err)
-		return nil
+		return err
 	}
 
 	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintf(out, "Name: %s\n", pname)
 	printResources(w, pipeline)
 	printTasks(w, pipeline)
-	printRuns(w, cs, p)
+	printRuns(w, cs, p, pname)
 
 	return w.Flush()
 }
@@ -111,7 +108,7 @@ func printTasks(w *tabwriter.Writer, pipeline *v1alpha1.Pipeline) {
 	}
 }
 
-func printRuns(w *tabwriter.Writer, cs *cli.Clients, p cli.Params) {
+func printRuns(w *tabwriter.Writer, cs *cli.Clients, p cli.Params, pname string) {
 	fmt.Fprintln(w, "\nRuns")
 	opts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pname),
