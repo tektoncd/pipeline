@@ -156,7 +156,10 @@ type StepState struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// TaskRun is the Schema for the taskruns API
+// TaskRun represents a single execution of a Task. TaskRuns are how the steps
+// specified in a Task are executed; they specify the parameters and resources
+// used to run the steps in a Task.
+//
 // +k8s:openapi-gen=true
 type TaskRun struct {
 	metav1.TypeMeta `json:",inline"`
