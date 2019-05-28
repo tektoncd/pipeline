@@ -31,8 +31,6 @@ following fields:
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     your `PipelineRun` resource object.
     - `pipelineRef` - Specifies the [`Pipeline`](pipelines.md) you want to run.
-    - `trigger` - Provides data about what created this `PipelineRun`. The only
-      type at this time is `manual`.
 - Optional:
 
   - [`resources`](#resources) - Specifies which

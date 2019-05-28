@@ -37,10 +37,6 @@ following fields:
     your `TaskRun` resource object.
     - [`taskRef` or `taskSpec`](#specifying-a-task) - Specifies the details of
       the [`Task`](tasks.md) you want to run
-    - `trigger` - Provides data about what created this `TaskRun`. Can be
-      `manual` if you are creating this manually, or has a value of
-      `PipelineRun` if it is created as part of a
-      [`PipelineRun`](pipelineruns.md)
 - Optional:
 
   - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource

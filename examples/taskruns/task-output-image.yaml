@@ -89,8 +89,6 @@ metadata:
 spec:
   taskRef:
     name: build-push-kaniko
-  trigger:
-    type: manual
   inputs:
     resources:
     - name: sourcerepo
