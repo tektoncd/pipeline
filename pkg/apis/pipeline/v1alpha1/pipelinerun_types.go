@@ -54,7 +54,7 @@ type PipelineRunSpec struct {
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
 	// Time after which the Pipeline times out. Defaults to never.
-	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
