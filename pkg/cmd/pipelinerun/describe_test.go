@@ -15,6 +15,9 @@
 package pipelinerun
 
 import (
+	"testing"
+	"time"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
@@ -25,8 +28,6 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
-	"testing"
-	"time"
 )
 
 func TestPipelineRunDescribe_not_found(t *testing.T) {
