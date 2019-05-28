@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PipelineSpec defines the desired state of PipeLine.
+// PipelineSpec defines the desired state of Pipeline.
 type PipelineSpec struct {
 	Resources []PipelineDeclaredResource `json:"resources,omitempty"`
 	Tasks     []PipelineTask             `json:"tasks,omitempty"`
@@ -94,7 +94,7 @@ type PipelineTaskParam struct {
 	Value string `json:"value"`
 }
 
-// PipelineParam defines arbitrary parameters needed by a pipeline beyond typed inputs
+// PipelineParam defines arbitrary parameters needed by a Pipeline beyond typed inputs
 // such as resources.
 type PipelineParam struct {
 	Name string `json:"name"`
