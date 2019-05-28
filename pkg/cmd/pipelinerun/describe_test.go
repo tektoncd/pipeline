@@ -1,0 +1,194 @@
+// Copyright © 2019 The Tekton Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package pipelinerun
+
+import (
+	"github.com/google/go-cmp/cmp"
+	"github.com/jonboulle/clockwork"
+	"github.com/knative/pkg/apis"
+	"github.com/tektoncd/cli/pkg/test"
+	cb "github.com/tektoncd/cli/pkg/test/builder"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	pipelinetest "github.com/tektoncd/pipeline/test"
+	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	"testing"
+	"time"
+)
+
+func TestPipelineRunDescribe_not_found(t *testing.T) {
+	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
+	p := &test.Params{Tekton: cs.Pipeline}
+
+	pipelinerun := Command(p)
+	_, err := test.ExecuteCommand(pipelinerun, "desc", "bar", "-n", "ns")
+	if err == nil {
+		t.Errorf("Expected error, did not get any")
+	}
+	expected := "Failed to find pipelinerun \"bar\""
+	if d := cmp.Diff(expected, err.Error()); d != "" {
+		t.Errorf("Unexpected error mismatch: %s", d)
+	}
+}
+
+func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
+				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				tb.Condition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+			),
+		),
+	}
+
+	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("pipeline-run", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunSpec("pipeline",
+					tb.PipelineRunServiceAccount("test-sa"),
+				),
+				tb.PipelineRunStatus(
+					tb.PipelineRunTaskRunsStatus(map[string]*v1alpha1.PipelineRunTaskRunStatus{
+						"tr-1": {
+							PipelineTaskName: "t-1",
+							Status:           &trs[0].Status,
+						},
+					}),
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					tb.PipelineRunStartTime(clock.Now()),
+					cb.PipelineRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				),
+			),
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+
+	pipelinerun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := "" +
+		"Name:              pipeline-run\n" +
+		"Namespace:         ns\n" +
+		"Pipeline Ref:      pipeline\n" +
+		"Service Account:   test-sa\n\n" +
+		"Status\n" +
+		"STARTED          DURATION    STATUS\n" +
+		"10 minutes ago   5 minutes   Succeeded\n\n" +
+		"Resources\n" +
+		"No resources\n\n" +
+		"Params\n" +
+		"No params\n\n" +
+		"Taskruns\n" +
+		"NAME   STARTED         DURATION    STATUS\n" +
+		"tr-1   8 minutes ago   3 minutes   Succeeded\n"
+	if d := cmp.Diff(expected, actual ); d != "" {
+		t.Errorf("Unexpected output mismatch: %s", d)
+	}
+
+}
+
+
+func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
+				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				tb.Condition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+			),
+		),
+	}
+
+	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("pipeline-run", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunSpec("pipeline",
+					tb.PipelineRunServiceAccount("test-sa"),
+					tb.PipelineRunParam("test-param","param-value"),
+					tb.PipelineRunResourceBinding("test-resource",
+						tb.PipelineResourceBindingRef("test-resource-ref"),
+					),
+				),
+				tb.PipelineRunStatus(
+					tb.PipelineRunTaskRunsStatus(map[string]*v1alpha1.PipelineRunTaskRunStatus{
+						"tr-1": {
+							PipelineTaskName: "t-1",
+							Status:           &trs[0].Status,
+						},
+					}),
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					tb.PipelineRunStartTime(clock.Now()),
+					cb.PipelineRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				),
+			),
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+
+	pipelinerun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := "" +
+		"Name:              pipeline-run\n" +
+		"Namespace:         ns\n" +
+		"Pipeline Ref:      pipeline\n" +
+		"Service Account:   test-sa\n\n" +
+		"Status\n" +
+		"STARTED          DURATION    STATUS\n" +
+		"10 minutes ago   5 minutes   Succeeded\n\n" +
+		"Resources\n" +
+		"NAME            RESOURCE REF\n" +
+		"test-resource   test-resource-ref\n\n" +
+		"Params\n" +
+		"NAME         VALUE\n" +
+		"test-param   param-value\n\n" +
+		"Taskruns\n" +
+		"NAME   STARTED         DURATION    STATUS\n" +
+		"tr-1   8 minutes ago   3 minutes   Succeeded\n"
+	if d := cmp.Diff(expected, actual ); d != "" {
+		t.Errorf("Unexpected output mismatch: %s", d)
+	}
+
+}
