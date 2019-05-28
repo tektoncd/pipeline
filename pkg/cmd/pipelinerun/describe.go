@@ -16,11 +16,12 @@ package pipelinerun
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 	"text/tabwriter"
@@ -43,7 +44,7 @@ func describeCommand(p cli.Params) *cobra.Command {
 # Describe a PipelineRun of name 'foo' in namespace 'bar'
 tkn pipelinerun describe foo -n bar
 
-tkn pr desc foo -n bar \n",
+tkn pr desc foo -n bar",
 `
 
 	c := &cobra.Command{

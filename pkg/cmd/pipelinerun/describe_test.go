@@ -94,21 +94,25 @@ func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	expected := "" +
-		"Name:              pipeline-run\n" +
-		"Namespace:         ns\n" +
-		"Pipeline Ref:      pipeline\n" +
-		"Service Account:   test-sa\n\n" +
-		"Status\n" +
-		"STARTED          DURATION    STATUS\n" +
-		"10 minutes ago   5 minutes   Succeeded\n\n" +
-		"Resources\n" +
-		"No resources\n\n" +
-		"Params\n" +
-		"No params\n\n" +
-		"Taskruns\n" +
-		"NAME   STARTED         DURATION    STATUS\n" +
-		"tr-1   8 minutes ago   3 minutes   Succeeded\n"
+	expected := `Name:              pipeline-run
+Namespace:         ns
+Pipeline Ref:      pipeline
+Service Account:   test-sa
+
+Status
+STARTED          DURATION    STATUS
+10 minutes ago   5 minutes   Succeeded
+
+Resources
+No resources
+
+Params
+No params
+
+Taskruns
+NAME   STARTED         DURATION    STATUS
+tr-1   8 minutes ago   3 minutes   Succeeded
+`
 	if d := cmp.Diff(expected, actual ); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
 	}
@@ -170,23 +174,27 @@ func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	expected := "" +
-		"Name:              pipeline-run\n" +
-		"Namespace:         ns\n" +
-		"Pipeline Ref:      pipeline\n" +
-		"Service Account:   test-sa\n\n" +
-		"Status\n" +
-		"STARTED          DURATION    STATUS\n" +
-		"10 minutes ago   5 minutes   Succeeded\n\n" +
-		"Resources\n" +
-		"NAME            RESOURCE REF\n" +
-		"test-resource   test-resource-ref\n\n" +
-		"Params\n" +
-		"NAME         VALUE\n" +
-		"test-param   param-value\n\n" +
-		"Taskruns\n" +
-		"NAME   STARTED         DURATION    STATUS\n" +
-		"tr-1   8 minutes ago   3 minutes   Succeeded\n"
+	expected := `Name:              pipeline-run
+Namespace:         ns
+Pipeline Ref:      pipeline
+Service Account:   test-sa
+
+Status
+STARTED          DURATION    STATUS
+10 minutes ago   5 minutes   Succeeded
+
+Resources
+NAME            RESOURCE REF
+test-resource   test-resource-ref
+
+Params
+NAME         VALUE
+test-param   param-value
+
+Taskruns
+NAME   STARTED         DURATION    STATUS
+tr-1   8 minutes ago   3 minutes   Succeeded
+`
 	if d := cmp.Diff(expected, actual ); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
 	}
