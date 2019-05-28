@@ -27,6 +27,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/knative/pkg/apis"
 	knativetest "github.com/knative/pkg/test"
@@ -177,14 +178,22 @@ func TestPipelineRun(t *testing.T) {
 			if len(events) != td.expectedNumberOfEvents {
 				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), events)
 			}
-			// Check to make sure the PipelineRun's artifact storage PVC has been "deleted" at the end of the run.
-			pvc, err := c.KubeClient.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(artifacts.GetPVCName(pipelineRun), metav1.GetOptions{})
-			if err != nil {
-				if !errors.IsNotFound(err) {
-					t.Fatalf("Error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, err)
+
+			// Wait for up to 10 minutes and restart every second to check if
+			// the PersistentVolumeClaims has the DeletionTimestamp
+			if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
+				// Check to make sure the PipelineRun's artifact storage PVC has been "deleted" at the end of the run.
+				pvc, errWait := c.KubeClient.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(artifacts.GetPVCName(pipelineRun), metav1.GetOptions{})
+				if errWait != nil && !errors.IsNotFound(errWait) {
+					return true, fmt.Errorf("Error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, errWait)
 				}
-			} else if pvc.DeletionTimestamp == nil {
-				t.Fatalf("PVC %s still exists after PipelineRun %s has completed: %v", artifacts.GetPVCName(pipelineRun), prName, pvc)
+				// If we are not found then we are okay since it got cleaned up
+				if errors.IsNotFound(errWait) {
+					return true, nil
+				}
+				return pvc.DeletionTimestamp != nil, nil
+			}); err != nil {
+				t.Fatalf("Error while waiting for the PVC to be set as deleted: %s: %s: %s", artifacts.GetPVCName(pipelineRun), err, prName)
 			}
 			t.Logf("Successfully finished test %q", td.name)
 		})
