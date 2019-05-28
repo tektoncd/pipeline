@@ -102,7 +102,9 @@ type TaskResource struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// PipelineResource is the Schema for the pipelineResources API
+// PipelineResource describes a resource that is an input to or output from a
+// Task.
+//
 // +k8s:openapi-gen=true
 type PipelineResource struct {
 	metav1.TypeMeta `json:",inline"`
