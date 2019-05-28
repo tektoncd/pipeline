@@ -1,7 +1,6 @@
 baseImageOverrides:
-  # TODO(christiewilson): Use our built base image
-  github.com/tektoncd/pipeline/cmd/creds-init: gcr.io/knative-release/github.com/knative/build/build-base:latest
-  github.com/tektoncd/pipeline/cmd/git-init: gcr.io/knative-release/github.com/knative/build/build-base:latest
+  github.com/tektoncd/pipeline/cmd/creds-init: gcr.io/tektoncd-release/github.com/tektoncd/pipeline/build-base:latest
+  github.com/tektoncd/pipeline/cmd/git-init: gcr.io/tektoncd-release/github.com/tektoncd/pipeline/build-base:latest
   github.com/tektoncd/pipeline/cmd/bash: busybox # image should have shell in $PATH
   github.com/tektoncd/pipeline/cmd/entrypoint: busybox # image should have shell in $PATH
   github.com/tektoncd/pipeline/cmd/gsutil: google/cloud-sdk:alpine # image should have gsutil in $PATH
