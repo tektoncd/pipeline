@@ -87,11 +87,9 @@ var (
 )
 
 const (
-	// Prefixes to add to the name of the init containers.
-	// IMPORTANT: Changing these values without changing fluentd collection configuration
-	// will break log collection for init containers.
-	containerPrefix            = "build-step-"
-	unnamedInitContainerPrefix = "build-step-unnamed-"
+	// Prefixes to add to the name of the containers.
+	containerPrefix            = "step-"
+	unnamedInitContainerPrefix = "step-unnamed-"
 	// Name of the credential initialization container.
 	credsInit = "credential-initializer"
 	// Name of the working dir initialization container.
@@ -102,9 +100,9 @@ var (
 	// The container used to initialize credentials before the build runs.
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
-	// The container that just prints build successful.
+	// The container that just prints Task completed successfully.
 	nopImage = flag.String("nop-image", "override-with-nop:latest",
-		"The container image run at the end of the build to log build success")
+		"The container image run at the end of the build to log task success")
 )
 
 func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*corev1.Container, []corev1.Volume, error) {

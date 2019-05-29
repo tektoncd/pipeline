@@ -79,7 +79,7 @@ const (
 
 	// imageDigestExporterContainerName defines the name of the container that will collect the
 	// built images digest
-	imageDigestExporterContainerName = "build-step-image-digest-exporter"
+	imageDigestExporterContainerName = "step-image-digest-exporter"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -366,7 +366,7 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 		taskRun.Status.SetCondition(&apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
-			Reason: "Building",
+			Reason: reasonRunning,
 		})
 	case corev1.PodFailed:
 		msg := getFailureMessage(pod)

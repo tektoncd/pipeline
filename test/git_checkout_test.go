@@ -115,7 +115,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 				}
 
 				for _, stat := range p.Status.ContainerStatuses {
-					if strings.HasPrefix(stat.Name, "build-step-git-source-"+gitSourceResourceName) {
+					if strings.HasPrefix(stat.Name, "step-git-source-"+gitSourceResourceName) {
 						if stat.State.Terminated != nil {
 							req := c.KubeClient.Kube.CoreV1().Pods(namespace).GetLogs(p.Name, &corev1.PodLogOptions{Container: stat.Name})
 							logContent, err := req.Do().Raw()
