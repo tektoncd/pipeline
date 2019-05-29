@@ -27,6 +27,9 @@ The `Tasks` which make up our release `Pipeline` are:
   [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko) to
   build all of the container images we release and generate the `release.yaml`
 
+The official releases are performed from the `prow` cluster in the `tekton-releases`
+GCP project.
+
 ### Running
 
 To run these `Pipelines` and `Tasks`, you must have Tekton Pipelines installed
@@ -105,7 +108,8 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
      value: gs://tekton-releases # REPLACE with your own bucket
    ```
 
-4. Setup the required credentials for the `release-right-meow` service acount,
+4. To run against your own infrastructure (not needed for the actual releases),
+also setup the required credentials for the `release-right-meow` service acount,
    either:
 
    - For
@@ -134,6 +138,12 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
     kubectl patch serviceaccount $ACCOUNT \
      -p "{\"secrets\": [{\"name\": \"$GENERIC_SECRET\"}]}"
    ```
+
+4. To run an official release using the shared cluster:
+
+  ```bash
+  gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
+  ```
 
 5. Run the `publish-tekton-pipelines` `Task`:
 
