@@ -125,6 +125,16 @@ spec:
      value: cmd/webhook # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: digest-exporter-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/imagedigestexporter # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
   name: publish-run
@@ -142,7 +152,7 @@ spec:
         name: tekton-bucket
     params:
     - name: versionTag
-      value: v0.0.0 # REPLACE with the version you want to release, for nightly releases, we might want to use `vYYYYMMDD-commit`
+      value: 0.0.0 # REPLACE with the version you want to release, for nightly releases, we might want to use `vYYYYMMDD-commit`
     - name: imageRegistry
       value: gcr.io/tekton-releases # REPLACE with your own registry
     - name: pathToProject
@@ -182,3 +192,6 @@ spec:
     - name: builtWebhookImage
       resourceRef:
         name: webhook-image
+    - name: builtDigestExporterImage
+      resourceRef:
+        name: digest-exporter-image
