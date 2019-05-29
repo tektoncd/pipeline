@@ -20,9 +20,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
-// CombineStepsWithContainerTemplate takes a possibly nil container template and a list of step containers, merging each
+// CombineStepsWithStepTemplate takes a possibly nil container template and a list of step containers, merging each
 // of the step containers onto the container template, if it's not nil, and returning the resulting list.
-func CombineStepsWithContainerTemplate(template *v1.Container, steps []v1.Container) ([]v1.Container, error) {
+func CombineStepsWithStepTemplate(template *v1.Container, steps []v1.Container) ([]v1.Container, error) {
 	if template == nil {
 		return steps, nil
 	}

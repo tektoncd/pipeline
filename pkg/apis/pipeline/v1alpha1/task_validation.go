@@ -47,11 +47,20 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
 		return err
 	}
-	mergedSteps, err := merge.CombineStepsWithContainerTemplate(ts.ContainerTemplate, ts.Steps)
+	mergedSteps, err := merge.CombineStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
 	if err != nil {
 		return &apis.FieldError{
-			Message: fmt.Sprintf("error merging container template and steps: %s", err),
-			Paths:   []string{"containerTemplate"},
+			Message: fmt.Sprintf("error merging step template and steps: %s", err),
+			Paths:   []string{"stepTemplate"},
+		}
+	}
+
+	// The ContainerTemplate field is deprecated (#977)
+	mergedSteps, err = merge.CombineStepsWithStepTemplate(ts.ContainerTemplate, mergedSteps)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("error merging containerTemplate and steps: %s", err),
+			Paths:   []string{"stepTemplate"},
 		}
 	}
 

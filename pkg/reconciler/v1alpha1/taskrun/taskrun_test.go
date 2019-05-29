@@ -97,7 +97,11 @@ var (
 	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("sa-step", "foo", tb.Command("/mycmd"))))
 
 	taskEnvTask = tb.Task("test-task-env", "foo", tb.TaskSpec(
+		// The ContainerTemplate field is deprecated (#977)
 		tb.TaskContainerTemplate(
+			tb.EnvVar("BREAD", "PUMPERNICKEL"),
+		),
+		tb.TaskStepTemplate(
 			tb.EnvVar("FRUIT", "APPLE"),
 		),
 		tb.Step("env-step", "foo",
@@ -891,8 +895,8 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj", tb.EnvVar("FRUIT", "APPLE")),
-				getPlaceToolsInitContainer(tb.EnvVar("FRUIT", "APPLE")),
+				getCredentialsInitContainer("9l9zj", tb.EnvVar("FRUIT", "APPLE"), tb.EnvVar("BREAD", "PUMPERNICKEL")),
+				getPlaceToolsInitContainer(tb.EnvVar("FRUIT", "APPLE"), tb.EnvVar("BREAD", "PUMPERNICKEL")),
 				tb.PodContainer("step-env-step", "foo", tb.Command(entrypointLocation),
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/builder/downward/ready", "-post_file", "/builder/tools/0", "-wait_file_content", "-entrypoint", "/mycmd", "--"),
@@ -909,6 +913,7 @@ func TestReconcile(t *testing.T) {
 					tb.VolumeMount("home", "/builder/home"),
 					tb.EnvVar("ANOTHER", "VARIABLE"),
 					tb.EnvVar("FRUIT", "LEMON"),
+					tb.EnvVar("BREAD", "PUMPERNICKEL"),
 				),
 			),
 		),

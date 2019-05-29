@@ -153,7 +153,20 @@ func Step(name, image string, ops ...ContainerOp) TaskSpecOp {
 	}
 }
 
-// TaskContainerTemplate adds a base container for all steps in the task.
+// TaskStepTemplate adds a base container for all steps in the task.
+func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		base := &corev1.Container{}
+
+		for _, op := range ops {
+			op(base)
+		}
+		spec.StepTemplate = base
+	}
+}
+
+// TaskContainerTemplate adds the deprecated (#977) base container for
+// all steps in the task. ContainerTemplate is now StepTemplate.
 func TaskContainerTemplate(ops ...ContainerOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
 		base := &corev1.Container{}

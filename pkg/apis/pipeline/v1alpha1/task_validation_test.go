@@ -51,6 +51,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		Inputs            *Inputs
 		Outputs           *Outputs
 		BuildSteps        []corev1.Container
+		StepTemplate      *corev1.Container
 		ContainerTemplate *corev1.Container
 	}
 	tests := []struct {
@@ -126,13 +127,43 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "container template included in validation",
+		name: "step template included in validation",
 		fields: fields{
 			BuildSteps: []corev1.Container{{
 				Name:    "astep",
 				Command: []string{"echo"},
 				Args:    []string{"hello"},
 			}},
+			StepTemplate: &corev1.Container{
+				Image: "some-image",
+			},
+		},
+	}, {
+		name: "deprecated (#977) container template included in validation",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:    "astep",
+				Command: []string{"echo"},
+				Args:    []string{"hello"},
+			}},
+			ContainerTemplate: &corev1.Container{
+				Image: "some-image",
+			},
+		},
+	}, {
+		name: "deprecated (#977) container template supported with step template",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:    "astep",
+				Command: []string{"echo"},
+				Args:    []string{"hello"},
+			}},
+			StepTemplate: &corev1.Container{
+				Env: []corev1.EnvVar{{
+					Name:  "somevar",
+					Value: "someval",
+				}},
+			},
 			ContainerTemplate: &corev1.Container{
 				Image: "some-image",
 			},
@@ -144,6 +175,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Inputs:            tt.fields.Inputs,
 				Outputs:           tt.fields.Outputs,
 				Steps:             tt.fields.BuildSteps,
+				StepTemplate:      tt.fields.StepTemplate,
 				ContainerTemplate: tt.fields.ContainerTemplate,
 			}
 			ctx := context.Background()
