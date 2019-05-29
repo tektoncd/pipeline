@@ -181,9 +181,8 @@ against, i.e. override
 go test -v -tags=e2e -count=1 ./test --kubeconfig ~/special/kubeconfig --cluster myspecialcluster
 ```
 
-Tests importing
-[`github.com/tektoncd/pipeline/test`](#adding-integration-tests) recognize
-the
+Tests importing [`github.com/tektoncd/pipeline/test`](#adding-integration-tests)
+recognize the
 [flags added by `knative/pkg/test`](https://github.com/knative/pkg/tree/master/test#flags).
 
 ### One test case
