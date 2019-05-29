@@ -19,5 +19,5 @@ package main
 import "fmt"
 
 func main() {
-	fmt.Println("Build successful")
+	fmt.Println("Task completed successfully")
 }
