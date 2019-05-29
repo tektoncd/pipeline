@@ -49,8 +49,12 @@ func TestTask(t *testing.T) {
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 		})),
-		tb.TaskContainerTemplate(
+		tb.TaskStepTemplate(
 			tb.EnvVar("FRUIT", "BANANA"),
+		),
+		// The ContainerTemplate field is deprecated (#977)
+		tb.TaskContainerTemplate(
+			tb.EnvVar("JUICE", "MELON"),
 		),
 	))
 	expectedTask := &v1alpha1.Task{
@@ -82,10 +86,17 @@ func TestTask(t *testing.T) {
 					HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
 				},
 			}},
-			ContainerTemplate: &corev1.Container{
+			StepTemplate: &corev1.Container{
 				Env: []corev1.EnvVar{{
 					Name:  "FRUIT",
 					Value: "BANANA",
+				}},
+			},
+			// The ContainerTemplate field is deprecated (#977)
+			ContainerTemplate: &corev1.Container{
+				Env: []corev1.EnvVar{{
+					Name:  "JUICE",
+					Value: "MELON",
 				}},
 			},
 		},

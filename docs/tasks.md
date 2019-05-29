@@ -22,7 +22,8 @@ entire Kubernetes cluster.
   - [Outputs](#outputs)
   - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
   - [Volumes](#volumes)
-  - [Container Template](#container-template)
+  - [Container Template **deprecated**](#step-template)
+  - [Step Template](#step-template)
   - [Templating](#templating)
 - [Examples](#examples)
 
@@ -74,8 +75,9 @@ following fields:
     created by your `Task`
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your `Task`'s steps.
-  - [`containerTemplate`](#container-template) - Specifies a `Container`
+  - [`stepTemplate`](#step-template) - Specifies a `Container` step
     definition to use as the basis for all steps within your `Task`.
+  - [`containerTemplate`](#step-template) - **deprecated** Previous name of `stepTemplate`.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -329,19 +331,19 @@ For example, use volumes to accomplish one of the following common tasks:
   unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
   This is used only for the purposes of demonstration.
 
-### Container Template
+### Step Template
 
 Specifies a [`Container`](https://kubernetes.io/docs/concepts/containers/)
 configuration that will be used as the basis for all [`steps`](#steps) in your
 `Task`. Configuration in an individual step will override or merge with the
 container template's configuration.
 
-In the example below, the `Task` specifies a `containerTemplate` with the
+In the example below, the `Task` specifies a `stepTemplate` with the
 environment variable `FOO` set to `bar`. The first step will use that value for
 `FOO`, but in the second step, `FOO` is overridden and set to `baz`.
 
 ```yaml
-containerTemplate:
+stepTemplate:
   env:
     - name: "FOO"
       value: "bar"
@@ -356,6 +358,9 @@ steps:
       - name: "FOO"
         value: "baz"
 ```
+
+_The field `containerTemplate` provides the same functionality but is **deprecated**
+and will be removed in a future release ([#977](https://github.com/tektoncd/pipeline/issues/977))._
 
 ### Templating
 

@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func TestCombineStepsWithContainerTemplate(t *testing.T) {
+func TestCombineStepsWithStepTemplate(t *testing.T) {
 	resourceQuantityCmp := cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
@@ -105,7 +105,7 @@ func TestCombineStepsWithContainerTemplate(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := CombineStepsWithContainerTemplate(tc.template, tc.steps)
+			result, err := CombineStepsWithStepTemplate(tc.template, tc.steps)
 			if err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}

@@ -54,8 +54,12 @@ type TaskSpec struct {
 	// steps of the build.
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
-	// ContainerTemplate can be used as the basis for all step containers within the
+	// StepTemplate can be used as the basis for all step containers within the
 	// Task, so that the steps inherit settings on the base container.
+	StepTemplate *corev1.Container `json:"stepTemplate,omitempty"`
+
+	// ContainerTemplate is the deprecated previous name of the StepTemplate
+	// field (#977).
 	ContainerTemplate *corev1.Container `json:"containerTemplate,omitempty"`
 }
 

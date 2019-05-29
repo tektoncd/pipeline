@@ -289,11 +289,21 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}
 	gibberish := hex.EncodeToString(b)
 
-	mergedInitContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, initContainers)
+	mergedInitContainers, err := merge.CombineStepsWithStepTemplate(taskSpec.StepTemplate, initContainers)
 	if err != nil {
 		return nil, err
 	}
-	mergedPodContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, podContainers)
+	mergedPodContainers, err := merge.CombineStepsWithStepTemplate(taskSpec.StepTemplate, podContainers)
+	if err != nil {
+		return nil, err
+	}
+
+	// The ContainerTemplate field is deprecated (#977)
+	mergedInitContainers, err = merge.CombineStepsWithStepTemplate(taskSpec.ContainerTemplate, mergedInitContainers)
+	if err != nil {
+		return nil, err
+	}
+	mergedPodContainers, err = merge.CombineStepsWithStepTemplate(taskSpec.ContainerTemplate, mergedPodContainers)
 	if err != nil {
 		return nil, err
 	}
