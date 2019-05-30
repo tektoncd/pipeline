@@ -112,6 +112,9 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 					tb.StateTerminated(0),
 				),
 			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(task1Name),
+			),
 		),
 		tb.TaskRun(tr2Name, ns,
 			tb.TaskRunStatus(
@@ -129,6 +132,9 @@ func Test_print_pipelinerun_logs(t *testing.T) {
 					cb.StepName(nopStep),
 					tb.StateTerminated(0),
 				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(task2Name),
 			),
 		),
 	}
@@ -309,6 +315,9 @@ func Test_print_valid_taskrun_logs(t *testing.T) {
 					cb.StepName("nop"),
 					tb.StateTerminated(0),
 				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(task1Name),
 			),
 		),
 	}

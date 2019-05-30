@@ -205,8 +205,8 @@ func filterBy(ts []string, trs []taskRun) []taskRun {
 	return filtered
 }
 
-func (t taskRun) toTaskRunLogs(namespae string, clientSet *cli.Clients) *taskrun.TaskRunLogs {
-	return &taskrun.TaskRunLogs{
+func (t taskRun) toTaskRunLogs(namespae string, clientSet *cli.Clients) *taskrun.Logs {
+	return &taskrun.Logs{
 		Run:     t.name,
 		Task:    t.task,
 		Ns:      namespae,

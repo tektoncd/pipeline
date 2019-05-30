@@ -98,3 +98,15 @@ func Step(name string, container string, logs ...string) step {
 		logs:      logs,
 	}
 }
+
+func TaskRun(ts ...task) FakePodStream {
+	logs := logs{}
+
+	for _, t := range ts {
+		logs = append(logs, t)
+	}
+
+	return FakePodStream{
+		logs: logs,
+	}
+}
