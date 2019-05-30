@@ -32,7 +32,7 @@ func AddTektonOptions(cmd *cobra.Command) {
 
 	cmd.PersistentFlags().StringP(
 		namespace, "n", "",
-		"namespace to use (mandatory)")
+		"namespace to use (default: from $KUBECONFIG)")
 }
 
 // InitParams initialises cli.Params based on flags defined in command
