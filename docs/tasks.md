@@ -212,7 +212,7 @@ Input resources, like source code (git) or artifacts, are dumped at path
 [volume](https://kubernetes.io/docs/concepts/storage/volumes/) and is available
 to all [`steps`](#steps) of your `Task`. The path that the resources are mounted
 at can be overridden with the `targetPath` value. Steps can use the `path`
- [template](#Templating) key to refer to the local path to the mounted resource.
+[template](#Templating) key to refer to the local path to the mounted resource.
 
 ### Outputs
 
