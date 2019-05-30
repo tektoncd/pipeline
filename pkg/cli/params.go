@@ -24,11 +24,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const (
-	DEFAUL_CONFIG_DIR   = ".kube"
-	DEFAULT_CONFIG_FILE = "config"
-)
-
 type TektonParams struct {
 	clients        *Clients
 	kubeConfigPath string

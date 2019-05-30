@@ -16,10 +16,11 @@ package pipelinerun
 
 import (
 	"bytes"
-	"github.com/tektoncd/cli/pkg/cmd/taskrun"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tektoncd/cli/pkg/cmd/taskrun"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
@@ -403,7 +404,7 @@ func fakePipelineRunLogs(name string, ns string, cs test.Clients) *PipelineRunLo
 func fetchLogs(plr *PipelineRunLogs, opt LogOptions, fetcher *logs.LogFetcher) string {
 	out := new(bytes.Buffer)
 
-	plr.Fetch(logs.Streams{out, out}, opt, fetcher)
+	plr.Fetch(logs.Streams{Out: out, Err: out}, opt, fetcher)
 
 	return out.String()
 }

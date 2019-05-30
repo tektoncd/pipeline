@@ -118,7 +118,7 @@ func (p *PodLogs) Fetch(s Streams, container string, format func(s string) strin
 			if len(line) > 0 {
 				fmt.Fprint(s.Out, format(line))
 			}
-			return nil
+			break
 		}
 
 		if err != nil {

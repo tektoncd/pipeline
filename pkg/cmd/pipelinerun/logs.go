@@ -16,6 +16,7 @@ package pipelinerun
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/taskrun"
@@ -132,7 +133,7 @@ func (p *PipelineRunLogs) Fetch(s logs.Streams, opts LogOptions, r *logs.LogFetc
 		return
 	}
 
-	if r, msg := pipelineRunFailed(pr.Status); r == true {
+	if failed, msg := pipelineRunFailed(pr.Status); failed {
 		fmt.Fprintf(s.Out, "PipelineRun is failed: %s \n", msg)
 	}
 
@@ -153,8 +154,6 @@ func (p *PipelineRunLogs) Fetch(s logs.Streams, opts LogOptions, r *logs.LogFetc
 		trl := tr.toTaskRunLogs(p.Ns, p.Clients)
 		trl.Fetch(opts.LogOptions, s, r)
 	}
-
-	return
 }
 
 func pipelineRunFailed(status v1alpha1.PipelineRunStatus) (bool, string) {
