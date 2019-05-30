@@ -19,6 +19,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Service Account](#service-account)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
 - [Examples](#examples)
+- [Logs](logs.md)
 
 ---
 

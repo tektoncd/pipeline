@@ -16,6 +16,7 @@ Creation of a `PipelineRun` will trigger the creation of
   - [Service account](#service-account)
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
 - [Examples](#examples)
+- [Logs](logs.md)
 
 ## Syntax
 

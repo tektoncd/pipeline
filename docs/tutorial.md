@@ -583,6 +583,7 @@ Tekton Pipelines is known to work with:
 
 - Logs can remain in-memory only as opposed to sent to a service such as
   [Stackdriver](https://cloud.google.com/logging/).
+- See [docs on getting logs from Runs](logs.md)
 
 Elasticsearch, Beats and Kibana can be deployed locally as a means to view logs:
 an example is provided at
