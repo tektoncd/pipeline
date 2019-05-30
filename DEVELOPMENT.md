@@ -104,7 +104,8 @@ To setup a cluster with GKE:
    (You may find it useful to save the ID of the project in an environment
    variable (e.g. `PROJECT_ID`).
 
-1. Create a GKE cluster (with `--cluster-version=latest` but you can use any version 1.11 or later):
+1. Create a GKE cluster (with `--cluster-version=latest` but you can use any
+   version 1.11 or later):
 
    ```bash
    export PROJECT_ID=my-gcp-project
@@ -127,8 +128,8 @@ To setup a cluster with GKE:
 
    Note that
    [the `--scopes` argument to `gcloud container cluster create`](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create#--scopes)
-   controls what GCP resources the cluster's default service account has access to;
-   for example to give the default service account full access to your GCR
+   controls what GCP resources the cluster's default service account has access
+   to; for example to give the default service account full access to your GCR
    registry, you can add `storage-full` to your `--scopes` arg.
 
 1. Grant cluster-admin permissions to the current user:
