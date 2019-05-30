@@ -270,6 +270,10 @@ function main() {
     fi
   fi
 
+  if function_exists extra_initialization; then
+     extra_initialization
+  fi
+
   [[ -z $1 ]] && set -- "--all-tests"
 
   local TEST_TO_RUN=""

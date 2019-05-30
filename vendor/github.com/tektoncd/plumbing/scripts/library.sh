@@ -297,7 +297,7 @@ function report_go_test() {
   local xml=$(mktemp ${ARTIFACTS}/junit_XXXXXXXX.xml)
   cat ${report} \
       | go-junit-report \
-      | sed -e "s#\"github.com/tekton/${REPO_NAME}/#\"#g" \
+      | sed -e "s#\"github.com/tektoncd/${REPO_NAME}/#\"#g" \
       > ${xml}
   echo "XML report written to ${xml}"
   if (( ! IS_PROW )); then
@@ -349,7 +349,7 @@ function update_licenses() {
   cd ${REPO_ROOT_DIR} || return 1
   local dst=$1
   shift
-  run_go_tool ./vendor/github.com/tekton/test-infra/tools/dep-collector dep-collector $@ > ./${dst}
+  run_go_tool ./vendor/github.com/tektoncd/test-infra/tools/dep-collector dep-collector $@ > ./${dst}
 }
 
 # Run dep-collector to check for forbidden liceses.
@@ -358,7 +358,7 @@ function check_licenses() {
   # Fetch the google/licenseclassifier for its license db
   go get -u github.com/google/licenseclassifier
   # Check that we don't have any forbidden licenses in our images.
-  run_go_tool ./vendor/github.com/tekton/test-infra/tools/dep-collector dep-collector -check $@
+  run_go_tool ./vendor/github.com/knative/test-infra/tools/dep-collector dep-collector -check $@
 }
 
 # Run the given linter on the given files, checking it exists first.
@@ -426,7 +426,7 @@ function remove_broken_symlinks() {
     target="${target##* -> }"
     [[ ${target} == /* ]] || target="./${target}"
     target="$(cd `dirname ${link}` && cd ${target%/*} && echo $PWD/${target##*/})"
-    if [[ ${target} != *github.com/tekton/* ]]; then
+    if [[ ${target} != *github.com/tektoncd/* ]]; then
       unlink ${link}
       continue
     fi
