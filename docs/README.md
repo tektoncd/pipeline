@@ -34,6 +34,7 @@ High level details of this design:
 - [How do I control auth?](auth.md)
 - [How do I run a Pipeline?](pipelineruns.md)
 - [How do I run a Task on its own?](taskruns.md)
+- [How do I get logs?](logs.md)
 
 ## Learn more
 
@@ -49,6 +50,7 @@ components:
 Additional reference topics not related to a specific component:
 
 - [Labels](labels.md)
+- [Logs](logs.md)
 
 ## Try it out
 

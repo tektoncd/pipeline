@@ -14,7 +14,7 @@
 1. [Set up a docker repository you can push to](https://github.com/knative/serving/blob/master/docs/setting-up-a-docker-registry.md)
 
 Then you can [iterate](#iterating) (including
-[runing the controllers with `ko`](#install-pipeline)).
+[running the controllers with `ko`](#install-pipeline)).
 
 ### Ramp up
 
@@ -270,6 +270,9 @@ To look at the webhook logs, run:
 ```shell
 kubectl -n tekton-pipelines logs $(kubectl -n tekton-pipelines get pods -l app=tekton-pipelines-webhook -o name)
 ```
+
+To look at the logs for individual `TaskRuns` or `PipelineRuns`, see
+[docs on accessing logs](docs/logs.md).
 
 ## Adding new types
 
