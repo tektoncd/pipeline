@@ -3,12 +3,12 @@
 Logs for [`PipelineRuns`](pipelineruns.md) and [`TaskRuns`](taskruns.md) are
 associated with the underlying pod.
 
-_In [#107](https://github.com/tektoncd/pipeline/issues/107)
-we will add a solution to persist logs outside of your kubernetes cluster._
+_In [#107](https://github.com/tektoncd/pipeline/issues/107) we will add a
+solution to persist logs outside of your kubernetes cluster._
 
 To access these logs currently you have a few options:
 
-* [You can get the logs from the pod](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)
+- [You can get the logs from the pod](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)
   e.g. using `kubectl`:
 
   ```bash
@@ -26,7 +26,10 @@ To access these logs currently you have a few options:
   kubectl logs $POD_NAME -c step-run-kubectl
   ```
 
-* You can use [the `tkn` cli tool](https://github.com/tektoncd/cli) to access logs
-* You can use [the dashboard web interface](https://github.com/tektoncd/dashboard) to access logs
-* You can setup an external service to consume and display logs, for example
+- You can use [the `tkn` cli tool](https://github.com/tektoncd/cli) to access
+  logs
+- You can use
+  [the dashboard web interface](https://github.com/tektoncd/dashboard) to access
+  logs
+- You can setup an external service to consume and display logs, for example
   [Elasticsearch, Beats and Kibana](https://github.com/mgreau/tekton-pipelines-elastic-tutorials)
