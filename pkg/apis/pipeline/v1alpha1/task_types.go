@@ -67,6 +67,11 @@ type TaskSpec struct {
 var _ apis.Validatable = (*Task)(nil)
 var _ apis.Defaultable = (*Task)(nil)
 
+const (
+	// TaskOutputImageDefaultDir is the default directory for output image resource,
+	TaskOutputImageDefaultDir = "/builder/home/image-outputs"
+)
+
 // +genclient
 // +genclient:noStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

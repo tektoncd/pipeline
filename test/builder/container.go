@@ -128,3 +128,17 @@ func EphemeralStorage(val string) ResourceListOp {
 		r[corev1.ResourceEphemeralStorage] = resource.MustParse(val)
 	}
 }
+
+// TerminationMessagePath sets the source of the termination message.
+func TerminationMessagePath(terminationMessagePath string) ContainerOp {
+	return func(c *corev1.Container) {
+		c.TerminationMessagePath = terminationMessagePath
+	}
+}
+
+// TerminationMessagePolicy sets the policy of the termination message.
+func TerminationMessagePolicy(terminationMessagePolicy corev1.TerminationMessagePolicy) ContainerOp {
+	return func(c *corev1.Container) {
+		c.TerminationMessagePolicy = terminationMessagePolicy
+	}
+}

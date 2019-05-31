@@ -31,7 +31,7 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 		for i, o := range ts.Outputs.Resources {
 			if o.Type == PipelineResourceTypeImage {
 				if o.OutputImageDir == "" {
-					ts.Outputs.Resources[i].OutputImageDir = fmt.Sprintf("/builder/image-outputs/%s", o.Name)
+					ts.Outputs.Resources[i].OutputImageDir = fmt.Sprintf("%s/%s", TaskOutputImageDefaultDir, o.Name)
 				}
 			}
 		}
