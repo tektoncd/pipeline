@@ -4,47 +4,56 @@ kind: Task
 metadata:
   name: task-env-merge
 spec:
+  # This template will be applied to all steps
+  stepTemplate:
+    env:
+      - name: QUX
+        value: original
   inputs:
     params:
-    - name: FOO
-      description: FOO variable
-    - name: BAR
-      description: BAR variable
-    - name: FOOBAR
-      description: FOODBAR variable
-      default: foobar
+      - name: FOO
+        description: FOO variable
+      - name: BAR
+        description: BAR variable
+      - name: FOOBAR
+        description: FOODBAR variable
+        default: foobar
   steps:
-  # Test the environment variables are set in the task
-  # using this template
-  - name: foo
-    image: ubuntu
-    command: ['bash']
-    args: ['-c', '[[ ${FOO} == "foo" ]]']
-    env:
-    - name: FOO
-      value: ${inputs.params.FOO}
-  - name: foobar
-    image: ubuntu
-    command: ['bash']
-    args: ['-c', '[[ ${FOOBAR} == "foobar" ]]']
-    env:
-    - name: FOOBAR
-      value: ${inputs.params.FOOBAR}
-  - name: bar
-    image: ubuntu
-    command: ['bash']
-    args: ['-c', '[[ ${BAR} == "bar" ]]']
-    env:
-    - name: BAR
-      value: ${inputs.params.BAR}
-  # Use the taskrun's declared env value, overriding the template's
-  - name: foo-override
-    image: ubuntu
-    command: ['bash']
-    args: ['-c', '[[ ${FOO} == "bazzzzz" ]]']
-    env:
-    - name: FOO
-      value: bazzzzz
+    # Test the environment variables are set in the task
+    - name: foo
+      image: ubuntu
+      command: ["bash"]
+      args: ["-c", '[[ ${FOO} == "foo" ]]']
+      env:
+        - name: FOO
+          value: ${inputs.params.FOO}
+    - name: foobar
+      image: ubuntu
+      command: ["bash"]
+      args: ["-c", '[[ ${FOOBAR} == "foobar" ]]']
+      env:
+        - name: FOOBAR
+          value: ${inputs.params.FOOBAR}
+    - name: bar
+      image: ubuntu
+      command: ["bash"]
+      args: ["-c", '[[ ${BAR} == "bar" ]]']
+      env:
+        - name: BAR
+          value: ${inputs.params.BAR}
+    # Use the env var from the stepTemplate
+    - name: qux-no-override
+      image: ubuntu
+      command: ["bash"]
+      args: ["-c", '[[ ${QUX} == "original" ]]']
+    # Override the env var in the stepTemplate
+    - name: qux-override
+      image: ubuntu
+      command: ["bash"]
+      args: ["-c", '[[ ${QUX} == "override" ]]']
+      env:
+        - name: QUX
+          value: override
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
@@ -53,9 +62,9 @@ metadata:
 spec:
   inputs:
     params:
-    - name: FOO
-      value: foo
-    - name: BAR
-      value: bar
+      - name: FOO
+        value: foo
+      - name: BAR
+        value: bar
   taskRef:
     name: task-env-merge
