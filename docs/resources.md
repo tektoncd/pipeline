@@ -291,7 +291,7 @@ spec:
 ```
 
 If no value is specified for `outputImageDir`, it will default to
-`/builder/image-outputs/{resource-name}`.
+`/builder/home/image-outputs/{resource-name}`.
 
 _Please check the builder tool used on how to pass this path to create the
 output file._

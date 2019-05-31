@@ -80,12 +80,13 @@ func AddOutputImageDigestExporter(
 
 			taskSpec.Steps = augmentedSteps
 		}
+
 	}
 
 	return nil
 }
 
-// UpdateTaskRunStatusWithResourceResult if there an update to the outout image resource, add to taskrun status result
+// UpdateTaskRunStatusWithResourceResult if there is an update to the outout image resource, add to taskrun status result
 func UpdateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
 	err := json.Unmarshal(logContent, &taskRun.Status.ResourcesResult)
 	if err != nil {
@@ -102,6 +103,8 @@ func imageDigestExporterContainer(stepName string, imagesJSON []byte) corev1.Con
 		Args: []string{
 			"-images", string(imagesJSON),
 		},
+		TerminationMessagePath:   "/workspace/builder/termination-log",
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 }
 

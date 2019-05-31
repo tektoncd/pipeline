@@ -208,6 +208,26 @@ func makeWorkingDirInitializer(steps []corev1.Container) *corev1.Container {
 	return nil
 }
 
+// initOutputResourcesDefaultDir checks if there are any output image resources expecting a default path
+// and creates an init container to create that folder
+func initOutputResourcesDefaultDir(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec) []corev1.Container {
+	makeDirSteps := []corev1.Container{}
+	if len(taskRun.Spec.Outputs.Resources) > 0 {
+		for _, r := range taskRun.Spec.Outputs.Resources {
+			for _, o := range taskSpec.Outputs.Resources {
+				if o.Name == r.Name {
+					if strings.HasPrefix(o.OutputImageDir, v1alpha1.TaskOutputImageDefaultDir) {
+						cn := v1alpha1.CreateDirContainer("default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name))
+						cn.VolumeMounts = append(cn.VolumeMounts, implicitVolumeMounts...)
+						makeDirSteps = append(makeDirSteps, cn)
+					}
+				}
+			}
+		}
+	}
+	return makeDirSteps
+}
+
 // GetPod returns the Pod for the given pod name
 type GetPod func(string, metav1.GetOptions) (*corev1.Pod, error)
 
@@ -238,6 +258,8 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	if workingDir := makeWorkingDirInitializer(taskSpec.Steps); workingDir != nil {
 		initContainers = append(initContainers, *workingDir)
 	}
+
+	initContainers = append(initContainers, initOutputResourcesDefaultDir(taskRun, taskSpec)...)
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 

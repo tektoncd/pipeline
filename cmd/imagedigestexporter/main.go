@@ -19,8 +19,8 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
+	"os"
 
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -41,8 +41,7 @@ func main() {
 	flag.Parse()
 
 	imageResources := []*v1alpha1.ImageResource{}
-	err := json.Unmarshal([]byte(*images), &imageResources)
-	if err != nil {
+	if err := json.Unmarshal([]byte(*images), &imageResources); err != nil {
 		log.Fatalf("Error reading images array: %v", err)
 	}
 
@@ -52,6 +51,7 @@ func main() {
 		if err != nil {
 			// if this image doesn't have a builder that supports index.json file,
 			// then it will be skipped
+			log.Printf("ImageResource %s doesn't have an index.json file: %s", imageResource.Name, err)
 			continue
 		}
 		digest, err := ii.Digest()
@@ -65,5 +65,18 @@ func main() {
 	if err != nil {
 		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
 	}
-	fmt.Println(string(imagesJSON))
+	log.Printf("Image digest exporter output: %s ", string(imagesJSON))
+	f, err := os.OpenFile("/workspace/builder/termination-log", os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
+	}
+	defer f.Close()
+
+	_, err = f.Write(imagesJSON)
+	if err != nil {
+		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
+	}
+	if err := f.Sync(); err != nil {
+		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
+	}
 }

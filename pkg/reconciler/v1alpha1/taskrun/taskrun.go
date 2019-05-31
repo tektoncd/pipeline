@@ -368,14 +368,9 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 
 func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) {
 	if resources.TaskRunHasOutputImageResource(resourceLister.PipelineResources(taskRun.Namespace).Get, taskRun) && taskRun.IsSuccessful() {
-		for _, container := range pod.Spec.Containers {
-			if strings.HasPrefix(container.Name, imageDigestExporterContainerName) {
-				req := kubeclient.CoreV1().Pods(taskRun.Namespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: container.Name})
-				logContent, err := req.Do().Raw()
-				if err != nil {
-					logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
-				}
-				err = resources.UpdateTaskRunStatusWithResourceResult(taskRun, logContent)
+		for _, cs := range pod.Status.ContainerStatuses {
+			if strings.HasPrefix(cs.Name, imageDigestExporterContainerName) {
+				err := resources.UpdateTaskRunStatusWithResourceResult(taskRun, []byte(cs.State.Terminated.Message))
 				if err != nil {
 					logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
 				}

@@ -93,6 +93,8 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Image:   "override-with-imagedigest-exporter-image:latest",
 				Command: []string{"/ko-app/imagedigestexporter"},
 				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir)},
+				TerminationMessagePath:   "/workspace/builder/termination-log",
+				TerminationMessagePolicy: "FallbackToLogsOnError",
 			}},
 	}, {
 		desc: "image resource in task with multiple steps",
@@ -155,6 +157,8 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Image:   "override-with-imagedigest-exporter-image:latest",
 				Command: []string{"/ko-app/imagedigestexporter"},
 				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir)},
+				TerminationMessagePath:   "/workspace/builder/termination-log",
+				TerminationMessagePolicy: "FallbackToLogsOnError",
 			}, {
 				Name: "step2",
 			}, {
@@ -162,6 +166,8 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Image:   "override-with-imagedigest-exporter-image:latest",
 				Command: []string{"/ko-app/imagedigestexporter"},
 				Args:    []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir)},
+				TerminationMessagePath:   "/workspace/builder/termination-log",
+				TerminationMessagePolicy: "FallbackToLogsOnError",
 			},
 		},
 	}} {
