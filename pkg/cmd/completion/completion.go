@@ -70,7 +70,9 @@ func Command() *cobra.Command {
 func runCompletionZsh(out io.Writer, tkn *cobra.Command) error {
 	zsh_head := "#compdef tkn\n"
 
-	out.Write([]byte(zsh_head))
+	if _, err := out.Write([]byte(zsh_head)); err != nil {
+		return err
+	}
 
 	zsh_initialization := `
 __tkn_bash_source() {
@@ -213,11 +215,17 @@ __tkn_convert_bash_to_zsh() {
 	-e "s/\\\$(type${RWORD}/\$(__tkn_type/g" \
 	<<'BASH_COMPLETION_EOF'
 `
-	out.Write([]byte(zsh_initialization))
+	if _, err := out.Write([]byte(zsh_initialization)); err != nil {
+		return err
+	}
 
 	buf := new(bytes.Buffer)
-	tkn.GenBashCompletion(buf)
-	out.Write(buf.Bytes())
+	if err := tkn.GenBashCompletion(buf); err != nil {
+		return err
+	}
+	if _, err := out.Write(buf.Bytes()); err != nil {
+		return err
+	}
 
 	zsh_tail := `
 BASH_COMPLETION_EOF
@@ -226,7 +234,8 @@ BASH_COMPLETION_EOF
 __tkn_bash_source <(__tkn_convert_bash_to_zsh)
 _complete tkn 2>/dev/null
 `
-	out.Write([]byte(zsh_tail))
+	if _, err := out.Write([]byte(zsh_tail)); err != nil {
+	}
 	return nil
 }
 
