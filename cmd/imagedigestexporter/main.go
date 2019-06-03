@@ -28,6 +28,7 @@ import (
 
 var (
 	images = flag.String("images", "", "List of images resources built by task in json format")
+	terminationMessagePath = flag.String("terminationMessagePath", "", "Location of file containing termination message")
 )
 
 /* The input of this go program will be a JSON string with all the output PipelineResources of type
@@ -66,7 +67,7 @@ func main() {
 		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
 	}
 	log.Printf("Image digest exporter output: %s ", string(imagesJSON))
-	f, err := os.OpenFile("/workspace/builder/termination-log", os.O_WRONLY|os.O_CREATE, 0666)
+	f, err := os.OpenFile(*terminationMessagePath, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
 	}

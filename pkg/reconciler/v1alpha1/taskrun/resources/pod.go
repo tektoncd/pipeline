@@ -47,7 +47,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
 
-const workspaceDir = "/workspace"
+const (
+	workspaceDir = "/workspace"
+	homeDir      = "/builder/home"
+)
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
@@ -62,14 +65,14 @@ var (
 	// These are injected into all of the source/step containers.
 	implicitEnvVars = []corev1.EnvVar{{
 		Name:  "HOME",
-		Value: "/builder/home",
+		Value: homeDir,
 	}}
 	implicitVolumeMounts = []corev1.VolumeMount{{
 		Name:      "workspace",
 		MountPath: workspaceDir,
 	}, {
 		Name:      "home",
-		MountPath: "/builder/home",
+		MountPath: homeDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "workspace",

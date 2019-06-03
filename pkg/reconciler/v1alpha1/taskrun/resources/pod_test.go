@@ -395,32 +395,6 @@ func TestMakePod(t *testing.T) {
 	}
 }
 
-func TestMakeWorkingDirScript(t *testing.T) {
-	for _, c := range []struct {
-		desc        string
-		workingDirs map[string]bool
-		want        string
-	}{{
-		desc:        "default",
-		workingDirs: map[string]bool{"/workspace": true},
-		want:        "",
-	}, {
-		desc:        "simple",
-		workingDirs: map[string]bool{"/workspace/foo": true, "/workspace/bar": true, "/baz": true},
-		want:        "mkdir -p /workspace/bar /workspace/foo",
-	}, {
-		desc:        "empty",
-		workingDirs: map[string]bool{"/workspace": true, "": true, "/baz": true, "/workspacedir": true},
-		want:        "",
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			if script := makeWorkingDirScript(c.workingDirs); script != c.want {
-				t.Errorf("Expected `%v`, got `%v`", c.want, script)
-			}
-		})
-	}
-}
-
 func TestAddReadyAnnotation(t *testing.T) {
 	type testcase struct {
 		desc       string
@@ -534,7 +508,6 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 						Name: "outputimage",
 					},
 				}},
-				Params: []v1alpha1.Param{},
 			},
 		},
 		ts: v1alpha1.TaskSpec{
@@ -642,6 +615,32 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 			}
 			if d := cmp.Diff(got.Annotations, wantAnnotations); d != "" {
 				t.Errorf("Diff annotations:\n%s", d)
+			}
+		})
+	}
+}
+
+func TestMakeWorkingDirScript(t *testing.T) {
+	for _, c := range []struct {
+		desc        string
+		workingDirs map[string]bool
+		want        string
+	}{{
+		desc:        "default",
+		workingDirs: map[string]bool{"/workspace": true},
+		want:        "",
+	}, {
+		desc:        "simple",
+		workingDirs: map[string]bool{"/workspace/foo": true, "/workspace/bar": true, "/baz": true},
+		want:        "mkdir -p /workspace/bar /workspace/foo",
+	}, {
+		desc:        "empty",
+		workingDirs: map[string]bool{"/workspace": true, "": true, "/baz": true, "/workspacedir": true},
+		want:        "",
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			if script := makeWorkingDirScript(c.workingDirs); script != c.want {
+				t.Errorf("Expected `%v`, got `%v`", c.want, script)
 			}
 		})
 	}
