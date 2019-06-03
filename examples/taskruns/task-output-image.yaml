@@ -36,11 +36,13 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-#Builds an image via kaniko and pushes it to registry.
+# This task is currently hardcoding a index.json file instead of 
+# building an image since kaniko and other easy to use tools don't
+# support exporting this file yet
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: build-push-kaniko
+  name: build-push-kaniko-output-image
 spec:
   inputs:
     resources:
@@ -85,10 +87,10 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: build-push-run
+  name: build-push-run-output-image
 spec:
   taskRef:
-    name: build-push-kaniko
+    name: build-push-kaniko-output-image
   inputs:
     resources:
     - name: sourcerepo

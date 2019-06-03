@@ -26,6 +26,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const TerminationMessagePath = "/builder/home/image-outputs/termination-log"
+
 var (
 	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "override-with-imagedigest-exporter-image:latest", "The container image containing our image digest exporter binary.")
 )
@@ -102,8 +104,9 @@ func imageDigestExporterContainer(stepName string, imagesJSON []byte) corev1.Con
 		Command: []string{"/ko-app/imagedigestexporter"},
 		Args: []string{
 			"-images", string(imagesJSON),
+			"-terminationMessagePath", TerminationMessagePath,
 		},
-		TerminationMessagePath:   "/workspace/builder/termination-log",
+		TerminationMessagePath:   TerminationMessagePath,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 }
