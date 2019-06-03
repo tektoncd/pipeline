@@ -15,8 +15,6 @@
 package taskrun
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/flags"
@@ -27,16 +25,9 @@ func Command(p cli.Params) *cobra.Command {
 		Use:     "taskrun",
 		Aliases: []string{"tr", "taskruns"},
 		Short:   "Manage taskruns",
-
+		Args:    cobra.NoArgs,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
-		},
-
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return fmt.Errorf("taskrun requires a subcommand; see help")
-			}
-			return nil
 		},
 	}
 

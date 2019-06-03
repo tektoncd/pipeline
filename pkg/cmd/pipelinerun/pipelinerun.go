@@ -15,8 +15,6 @@
 package pipelinerun
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/flags"
@@ -25,19 +23,12 @@ import (
 //Command instantiates the pipelinerun command
 func Command(p cli.Params) *cobra.Command {
 	c := &cobra.Command{
-		Use:                   "pipelinerun",
-		DisableFlagsInUseLine: true,
-		Aliases:               []string{"pr", "pipelineruns"},
-		Short:                 "Manage pipelineruns",
+		Use:     "pipelinerun",
+		Aliases: []string{"pr", "pipelineruns"},
+		Short:   "Manage pipelineruns",
+		Args:    cobra.NoArgs,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return fmt.Errorf("pipelinerun requires a subcommand; see help and examples")
-			}
-
-			return nil
 		},
 	}
 
