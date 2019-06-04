@@ -1,6 +1,6 @@
 // +build e2e
 
-// Copyright © 2018 The Knative Authors
+// Copyright © 2018 The Tekton Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
