@@ -17,6 +17,7 @@ limitations under the License.
 package test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -26,24 +27,25 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// CollectBuildLogs will get the build logs for a task run
-func CollectBuildLogs(c *clients, podName, namespace string, logf logging.FormatLogger) {
-	logs, err := getInitContainerLogsFromPod(c.KubeClient.Kube, podName, namespace)
+// CollectPodLogs will get the logs for all containers in a Pod
+func CollectPodLogs(c *clients, podName, namespace string, logf logging.FormatLogger) {
+	logs, err := getContainerLogsFromPod(c.KubeClient.Kube, podName, namespace)
 	if err != nil {
-		logf("Expected there to be logs from build helm-deploy-pipeline-run-helm-deploy %s", err)
+		logf("Expected there to be logs for pod %s: %s", podName, err)
 	}
 	logf("build logs %s", logs)
 }
 
-func getInitContainerLogsFromPod(c kubernetes.Interface, pod, namespace string) (string, error) {
+func getContainerLogsFromPod(c kubernetes.Interface, pod, namespace string) (string, error) {
 	p, err := c.CoreV1().Pods(namespace).Get(pod, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 
 	sb := strings.Builder{}
-	for _, initContainer := range p.Spec.InitContainers {
-		req := c.CoreV1().Pods(namespace).GetLogs(pod, &corev1.PodLogOptions{Follow: true, Container: initContainer.Name})
+	for _, container := range p.Spec.Containers {
+		sb.WriteString(fmt.Sprintf("\n>>> Container %s:\n", container.Name))
+		req := c.CoreV1().Pods(namespace).GetLogs(pod, &corev1.PodLogOptions{Follow: true, Container: container.Name})
 		rc, err := req.Stream()
 		if err != nil {
 			return "", err
