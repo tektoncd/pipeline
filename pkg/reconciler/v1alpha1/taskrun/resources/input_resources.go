@@ -197,7 +197,7 @@ func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1
 
 func destinationPath(name, path string) string {
 	if path == "" {
-		return filepath.Join(workspaceDir, name)
+		return filepath.Join(WorkspaceDir, name)
 	}
-	return filepath.Join(workspaceDir, path)
+	return filepath.Join(WorkspaceDir, path)
 }

@@ -47,7 +47,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
 
-const workspaceDir = "/workspace"
+// The working directory of step containers
+const WorkspaceDir = "/workspace"
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
@@ -59,19 +60,21 @@ var (
 	emptyVolumeSource = corev1.VolumeSource{
 		EmptyDir: &corev1.EmptyDirVolumeSource{},
 	}
-	// These are injected into all of the source/step containers.
-	implicitEnvVars = []corev1.EnvVar{{
+	// EnvVar injected into all source/step containers.
+	ImplicitEnvVars = []corev1.EnvVar{{
 		Name:  "HOME",
 		Value: "/builder/home",
 	}}
-	implicitVolumeMounts = []corev1.VolumeMount{{
+	// VolumeMounts injected into all source/step containers.
+	ImplicitVolumeMounts = []corev1.VolumeMount{{
 		Name:      "workspace",
-		MountPath: workspaceDir,
+		MountPath: WorkspaceDir,
 	}, {
 		Name:      "home",
 		MountPath: "/builder/home",
 	}}
-	implicitVolumes = []corev1.Volume{{
+	// Volumes injected into all source/step containers.
+	ImplicitVolumes = []corev1.Volume{{
 		Name:         "workspace",
 		VolumeSource: emptyVolumeSource,
 	}, {
@@ -87,21 +90,22 @@ var (
 )
 
 const (
-	// Prefixes to add to the name of the containers.
-	containerPrefix            = "step-"
-	unnamedInitContainerPrefix = "step-unnamed-"
+	// Prefix to add to the name of the containers.
+	ContainerPrefix            = "step-"
+	// Prefix to add to the name of unnamed initialization containers.
+	UnnamedInitContainerPrefix = "step-unnamed-"
 	// Name of the credential initialization container.
-	credsInit = "credential-initializer"
+	CredsInit = "credential-initializer"
 	// Name of the working dir initialization container.
-	workingDirInit = "working-dir-initializer"
+	WorkingDirInit = "working-dir-initializer"
 )
 
 var (
 	// The container used to initialize credentials before the build runs.
-	credsImage = flag.String("creds-image", "override-with-creds:latest",
+	CredsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
 	// The container that just prints Task completed successfully.
-	nopImage = flag.String("nop-image", "override-with-nop:latest",
+	NopImage = flag.String("nop-image", "override-with-nop:latest",
 		"The container image run at the end of the build to log task success")
 )
 
@@ -119,7 +123,7 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 
 	// Collect the volume declarations, there mounts into the cred-init container, and the arguments to it.
 	volumes := []corev1.Volume{}
-	volumeMounts := implicitVolumeMounts
+	volumeMounts := ImplicitVolumeMounts
 	args := []string{}
 	for _, secretEntry := range sa.Secrets {
 		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(secretEntry.Name, metav1.GetOptions{})
@@ -153,13 +157,13 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 	}
 
 	return &corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + credsInit),
-		Image:        *credsImage,
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(ContainerPrefix + CredsInit),
+		Image:        *CredsImage,
 		Command:      []string{"/ko-app/creds-init"},
 		Args:         args,
 		VolumeMounts: volumeMounts,
-		Env:          implicitEnvVars,
-		WorkingDir:   workspaceDir,
+		Env:          ImplicitEnvVars,
+		WorkingDir:   WorkspaceDir,
 	}, volumes, nil
 }
 
@@ -176,7 +180,7 @@ func makeWorkingDirScript(workingDirs map[string]bool) string {
 
 	for _, wd := range orderedDirs {
 		p := filepath.Clean(wd)
-		if rel, err := filepath.Rel(workspaceDir, p); err == nil && !strings.HasPrefix(rel, ".") {
+		if rel, err := filepath.Rel(WorkspaceDir, p); err == nil && !strings.HasPrefix(rel, ".") {
 			if script == "" {
 				script = fmt.Sprintf("mkdir -p %s", p)
 			} else {
@@ -196,13 +200,13 @@ func makeWorkingDirInitializer(steps []corev1.Container) *corev1.Container {
 
 	if script := makeWorkingDirScript(workingDirs); script != "" {
 		return &corev1.Container{
-			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + workingDirInit),
+			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(ContainerPrefix + WorkingDirInit),
 			Image:        *v1alpha1.BashNoopImage,
 			Command:      []string{"/ko-app/bash"},
 			Args:         []string{"-args", script},
-			VolumeMounts: implicitVolumeMounts,
-			Env:          implicitEnvVars,
-			WorkingDir:   workspaceDir,
+			VolumeMounts: ImplicitVolumeMounts,
+			Env:          ImplicitEnvVars,
+			WorkingDir:   WorkspaceDir,
 		}
 	}
 
@@ -244,7 +248,7 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 
 	for i := range taskSpec.Steps {
 		step := &taskSpec.Steps[i]
-		step.Env = append(implicitEnvVars, step.Env...)
+		step.Env = append(ImplicitEnvVars, step.Env...)
 		// TODO(mattmoor): Check that volumeMounts match volumes.
 
 		// Add implicit volume mounts, unless the user has requested
@@ -253,22 +257,22 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 		for _, vm := range step.VolumeMounts {
 			requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
 		}
-		for _, imp := range implicitVolumeMounts {
+		for _, imp := range ImplicitVolumeMounts {
 			if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
 				step.VolumeMounts = append(step.VolumeMounts, imp)
 			}
 		}
 
 		if step.WorkingDir == "" {
-			step.WorkingDir = workspaceDir
+			step.WorkingDir = WorkspaceDir
 		}
 		if step.Name == "" {
-			step.Name = fmt.Sprintf("%v%d", unnamedInitContainerPrefix, i)
+			step.Name = fmt.Sprintf("%v%d", UnnamedInitContainerPrefix, i)
 		} else {
-			step.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, step.Name))
+			step.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", ContainerPrefix, step.Name))
 		}
 		// use the step name to add the entrypoint biary as an init container
-		if step.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
+		if step.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", ContainerPrefix, entrypoint.InitContainerName)) {
 			initContainers = append(initContainers, *step)
 		} else {
 			zeroNonMaxResourceRequests(step, i, maxIndicesByResource)
@@ -277,7 +281,7 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}
 	// Add our implicit volumes and any volumes needed for secrets to the explicitly
 	// declared user volumes.
-	volumes := append(taskSpec.Volumes, implicitVolumes...)
+	volumes := append(taskSpec.Volumes, ImplicitVolumes...)
 	volumes = append(volumes, secrets...)
 	if err := v1alpha1.ValidateVolumes(volumes); err != nil {
 		return nil, err
@@ -290,7 +294,7 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}
 	gibberish := hex.EncodeToString(b)
 
-	nopContainer := &corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}}
+	nopContainer := &corev1.Container{Name: "nop", Image: *NopImage, Command: []string{"/ko-app/nop"}}
 	if err := entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger); err != nil {
 		return nil, err
 	}
@@ -397,5 +401,5 @@ func findMaxResourceRequest(containers []corev1.Container, resourceNames ...core
 
 // TrimContainerNamePrefix trim the container name prefix to get the corresponding step name
 func TrimContainerNamePrefix(containerName string) string {
-	return strings.TrimPrefix(containerName, containerPrefix)
+	return strings.TrimPrefix(containerName, ContainerPrefix)
 }
