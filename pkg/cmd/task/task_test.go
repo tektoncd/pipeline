@@ -20,7 +20,7 @@ import (
 	"github.com/tektoncd/cli/pkg/test"
 )
 
-func TestPipelines_invalid(t *testing.T) {
+func TestTask_invalid(t *testing.T) {
 
 	p := &test.Params{}
 
