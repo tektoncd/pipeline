@@ -112,21 +112,6 @@ type PipelineResourceBinding struct {
 	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
 }
 
-// TaskResourceBinding points to the PipelineResource that
-// will be used for the Task input or output called Name. The optional Path field
-// corresponds to a path on disk at which the Resource can be found (used when providing
-// the resource via mounted volume, overriding the default logic to fetch the Resource).
-type TaskResourceBinding struct {
-	Name string `json:"name"`
-	// no more than one of the ResourceRef and ResourceSpec may be specified.
-	// +optional
-	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
-	// +optional
-	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
-	// +optional
-	Paths []string `json:"paths,omitempty"`
-}
-
 // PipelineResourceResult used to export the image name and digest as json
 type PipelineResourceResult struct {
 	Name   string `json:"name"`

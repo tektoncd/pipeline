@@ -83,6 +83,21 @@ type TaskRunInputs struct {
 	Params []Param `json:"params,omitempty"`
 }
 
+// TaskResourceBinding points to the PipelineResource that
+// will be used for the Task input or output called Name. The optional Path field
+// corresponds to a path on disk at which the Resource can be found (used when providing
+// the resource via mounted volume, overriding the default logic to fetch the Resource).
+type TaskResourceBinding struct {
+	Name string `json:"name"`
+	// no more than one of the ResourceRef and ResourceSpec may be specified.
+	// +optional
+	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
+	// +optional
+	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
+	// +optional
+	Paths []string `json:"paths,omitempty"`
+}
+
 // TaskRunOutputs holds the output values that this task was invoked with.
 type TaskRunOutputs struct {
 	// +optional
