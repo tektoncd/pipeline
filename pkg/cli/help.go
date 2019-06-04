@@ -12,30 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pipeline
+package cli
 
 import (
-	"os"
+	"io"
 
 	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/flags"
 )
 
-func Command(p cli.Params) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "pipeline",
-		Aliases: []string{"p", "pipelines"},
-		Short:   "Manage pipelines",
-		Args:    cobra.NoArgs,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return flags.InitParams(p, cmd)
-		},
-		RunE: cli.ShowHelp(os.Stderr),
+// ShowHelp shows the command help.
+func ShowHelp(err io.Writer) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		cmd.SetOutput(err)
+		cmd.HelpFunc()(cmd, args)
+		return nil
 	}
-
-	flags.AddTektonOptions(cmd)
-	cmd.AddCommand(listCommand(p))
-	cmd.AddCommand(describeCommand(p))
-	return cmd
 }

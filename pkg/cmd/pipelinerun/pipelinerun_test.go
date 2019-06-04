@@ -12,30 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pipeline
+package pipelinerun
 
 import (
-	"os"
+	"testing"
 
-	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/flags"
+	"github.com/tektoncd/cli/pkg/test"
 )
 
-func Command(p cli.Params) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "pipeline",
-		Aliases: []string{"p", "pipelines"},
-		Short:   "Manage pipelines",
-		Args:    cobra.NoArgs,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return flags.InitParams(p, cmd)
-		},
-		RunE: cli.ShowHelp(os.Stderr),
-	}
+func TestPipelines_invalid(t *testing.T) {
 
-	flags.AddTektonOptions(cmd)
-	cmd.AddCommand(listCommand(p))
-	cmd.AddCommand(describeCommand(p))
-	return cmd
+	p := &test.Params{}
+
+	pipelinerun := Command(p)
+	out, err := test.ExecuteCommand(pipelinerun, "foobar")
+	if err == nil {
+		t.Errorf("No errors was defined. Output: %s", out)
+	}
 }
