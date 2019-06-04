@@ -20,17 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var (
-	pvcDir = "/pvc"
-)
-
-func getPvcMount(name string) corev1.VolumeMount {
-	return corev1.VolumeMount{
-		Name:      name,   // taskrun pvc name
-		MountPath: pvcDir, // nothing should be mounted here
-	}
-}
-
 // GetPVCVolume gets pipelinerun pvc volume
 func GetPVCVolume(name string) corev1.Volume {
 	return corev1.Volume{

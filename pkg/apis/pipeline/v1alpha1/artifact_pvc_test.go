@@ -70,6 +70,21 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 	}
 }
 
+func TestPVCGetPvcMount(t *testing.T) {
+	names.TestingSeed()
+	name := "pipelinerun-pvc"
+	pvcDir := "/pvc"
+
+	want := corev1.VolumeMount{
+		Name:      name,
+		MountPath: pvcDir,
+	}
+	got := GetPvcMount(name)
+	if d := cmp.Diff(got, want); d != "" {
+		t.Errorf("Diff:\n%s", d)
+	}
+}
+
 func TestPVCGetMakeDirContainerSpec(t *testing.T) {
 	names.TestingSeed()
 

@@ -96,7 +96,7 @@ func AddInputResource(
 
 					mountPVC = true
 					for _, ct := range cpContainers {
-						ct.VolumeMounts = []corev1.VolumeMount{getPvcMount(pvcName)}
+						ct.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
 						createAndCopyContainers := []corev1.Container{v1alpha1.CreateDirContainer(boundResource.Name, dPath), ct}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, createAndCopyContainers...)
 					}
