@@ -98,7 +98,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 		}
 		for _, tr := range taskruns.Items {
 			if tr.Status.PodName != "" {
-				CollectBuildLogs(c, tr.Status.PodName, namespace, t.Logf)
+				CollectPodLogs(c, tr.Status.PodName, namespace, t.Logf)
 			}
 		}
 		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
