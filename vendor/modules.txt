@@ -204,7 +204,7 @@ github.com/tektoncd/pipeline/pkg/system
 github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1/fake
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions/internalinterfaces
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline
-# github.com/tektoncd/plumbing v0.0.0-20190515135757-19ac801cfcf2
+# github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a
 github.com/tektoncd/plumbing/scripts
 # go.opencensus.io v0.19.2
 go.opencensus.io/trace

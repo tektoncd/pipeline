@@ -181,6 +181,8 @@ github.com/tektoncd/pipeline v0.3.1 h1:LZ0U+HJ3jg3o7e5A7+8nRDEt0G5yJ5seb/uoTxHtB
 github.com/tektoncd/pipeline v0.3.1/go.mod h1:IZzJdiX9EqEMuUcgdnElozdYYRh0/ZRC+NKMLj1K3Yw=
 github.com/tektoncd/plumbing v0.0.0-20190515135757-19ac801cfcf2 h1:F2DzJ7AOA5y6tDBKPL/vwsDgAWQGI67ph+aKThl8rkI=
 github.com/tektoncd/plumbing v0.0.0-20190515135757-19ac801cfcf2/go.mod h1:dvZoTaPGpr3ZDqOUR1sc8VOhh/7OzYncVnbQETJTqvQ=
+github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a h1:4HMTW2uHdQIm8XabCE6P4z/ikCx9eqK8Tvo3noR5RV4=
+github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a/go.mod h1:dvZoTaPGpr3ZDqOUR1sc8VOhh/7OzYncVnbQETJTqvQ=
 go.opencensus.io v0.15.0/go.mod h1:UffZAU+4sDEINUGP/B7UfBBkq4fqLu9zXAX7ke6CHW0=
 go.opencensus.io v0.17.0/go.mod h1:mp1VrMQxhlqqDpKvH4UcQUa4YwlzNmymAjPrDdfxNpI=
 go.opencensus.io v0.18.0/go.mod h1:vKdFvxhtzZ9onBp9VKHK8z/sRpBMnKAsufL7wlDrCOA=

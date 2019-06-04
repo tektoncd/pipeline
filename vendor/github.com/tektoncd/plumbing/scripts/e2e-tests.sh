@@ -128,7 +128,7 @@ EOF
 }
 
 # Delete target pools and health checks that might have leaked.
-# See https://github.com/tekton/serving/issues/959 for details.
+# See https://github.com/knative/serving/issues/959 for details.
 # TODO(adrcunha): Remove once the leak issue is resolved.
 function delete_leaked_network_resources() {
   # On boskos, don't bother with leaks as the janitor will delete everything in the project.
