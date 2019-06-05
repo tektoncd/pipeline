@@ -18,6 +18,9 @@ spec:
   taskRef:
     name: unit-tests
   inputs:
+    params:
+    - name: flags
+      value: -race -cover -v
     resources:
     - name: source
       resourceRef:

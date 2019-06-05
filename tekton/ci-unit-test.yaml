@@ -8,18 +8,22 @@ spec:
     - name: package
       description: package (and its children) under test
       default: github.com/tektoncd/pipeline
+    - name: flags
+      description: flags to use for the test command
+      default: -race -cover
     resources:
     - name: source
       type: git
       targetPath: src/${inputs.params.package}
-  #outputs: # coverage file
   steps:
   - name: unit-test
     image: golang:1.12
     workingdir: /workspace/src/${inputs.params.package}
     command:
-    - go 
-    args: ["test", "-v", "-cover", "./..."]
+    - /bin/bash
+    args:
+    - -c
+    - "go test ${inputs.params.flags} ./..."
     env:
     - name: GOPATH
       value: /workspace
