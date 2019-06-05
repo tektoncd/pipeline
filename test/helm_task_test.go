@@ -92,15 +92,6 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	// Verify status of PipelineRun (wait for it)
 	if err := WaitForPipelineRunState(c, helmDeployPipelineRunName, timeout, PipelineRunSucceed(helmDeployPipelineRunName), "PipelineRunCompleted"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
-		taskruns, err := c.TaskRunClient.List(metav1.ListOptions{})
-		if err != nil {
-			t.Errorf("Error getting TaskRun list for PipelineRun %s %s", helmDeployPipelineRunName, err)
-		}
-		for _, tr := range taskruns.Items {
-			if tr.Status.PodName != "" {
-				CollectPodLogs(c, tr.Status.PodName, namespace, t.Logf)
-			}
-		}
 		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
 	}
 
