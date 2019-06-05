@@ -31,7 +31,7 @@ import (
 func CollectPodLogs(c *clients, podName, namespace string, logf logging.FormatLogger) {
 	logs, err := getContainerLogsFromPod(c.KubeClient.Kube, podName, namespace)
 	if err != nil {
-		logf("Expected there to be logs for pod %s: %s", podName, err)
+		logf("Could not get logs for pod %s: %s", podName, err)
 	}
 	logf("build logs %s", logs)
 }

@@ -77,6 +77,16 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 		} else {
 			t.Log(string(bs))
 		}
+		header(t.Logf, fmt.Sprintf("Dumping logs from Pods in the %s", namespace))
+		taskruns, err := cs.TaskRunClient.List(metav1.ListOptions{})
+		if err != nil {
+			t.Errorf("Error getting TaskRun list %s", err)
+		}
+		for _, tr := range taskruns.Items {
+			if tr.Status.PodName != "" {
+				CollectPodLogs(cs, tr.Status.PodName, namespace, t.Logf)
+			}
+		}
 	}
 
 	t.Logf("Deleting namespace %s", namespace)
