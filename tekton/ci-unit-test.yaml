@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: unit-tests
+spec:
+  inputs:
+    params:
+    - name: package
+      description: package (and its children) under test
+      default: github.com/tektoncd/pipeline
+    resources:
+    - name: source
+      type: git
+      targetPath: src/${inputs.params.package}
+  #outputs: # coverage file
+  steps:
+  - name: unit-test
+    image: golang:1.12
+    workingdir: /workspace/src/${inputs.params.package}
+    command:
+    - go 
+    args: ["test", "-v", "-cover", "./..."]
+    env:
+    - name: GOPATH
+      value: /workspace
+
