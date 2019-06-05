@@ -5,9 +5,8 @@ repo. Users should be able to build on the APIs in these projects with a clear
 idea of what they can rely on and what should be considered in progress and
 therefore likely to change.
 
-For these purposes the CRDs are divided into three groups:
+For these purposes the CRDs are divided into two groups:
 
-- [`Build` and `BuildTemplate`] - from <https://github.com/knative/build>
 - [`TaskRun`, `Task`, and `ClusterTask`] - "more stable"
 - [`PipelineRun`, `Pipeline` and `PipelineResource`] - "less stable"
 
@@ -41,17 +40,6 @@ The API is considered to consist of:
 - The spec if the CRDs
 - The order that `PipelineResources` declared within a `Task` are applied in
 
-## `Build` and `BuildTemplate`
-
-The CRD types
-[`Build`](https://github.com/knative/docs/blob/master/docs/build/builds.md) and
-[`BuildTemplate`](https://github.com/knative/docs/blob/master/docs/build/build-templates.md)
-should be considered frozen at beta and only additive changes should be allowed.
-
-Support will continue for the `Build` type for the foreseeable future,
-particularly to support embedding of Build resources within
-[`knative/serving`](https://github.com/knative/serving) objects.
-
 ## `TaskRun`, `Task`, and `ClusterTask`
 
 The CRD types
@@ -74,10 +62,8 @@ incompatible change is made.
 
 There are two reasons for this:
 
-- `Task` and `TaskRun` are considered upgraded versions of `Build`, meaning that
-  the APIs benefit from a significant amount of user feedback and iteration
-- Going forward users should use `TaskRun` and `Task` instead of `Build` and
-  `BuildTemplate`, those users should not expect the API to be changed on them
+- `Task` and `TaskRun` are considered upgraded versions of [Build](https://github.com/knative/docs/blob/master/docs/build/builds.md#source) and [BuildTemplate](https://github.com/knative/docs/blob/master/docs/build/build-templates.md), meaning that the APIs benefit from a significant amount of user feedback and iteration
+- Going forward users should use `TaskRun` and `Task` instead of `Build` and `BuildTemplate`, those users should not expect the API to be changed on them
   without warning
 
 The exception to this is that `PipelineResource` definitions can be embedded in

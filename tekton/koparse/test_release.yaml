@@ -85,20 +85,6 @@ rules:
   - delete
   - patch
   - watch
-- apiGroups:
-  - build.knative.dev
-  resources:
-  - builds
-  - buildtemplates
-  - clusterbuildtemplates
-  verbs:
-  - get
-  - list
-  - create
-  - update
-  - delete
-  - patch
-  - watch
 ---
 apiVersion: v1
 kind: ServiceAccount
