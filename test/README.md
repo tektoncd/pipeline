@@ -187,8 +187,9 @@ recognize the
 
 ### Running specific test cases
 
-To run all the test cases with their names starting with the same letters, e.g. TestTaskRun,
-use [the `-run` flag with `go test`](https://golang.org/cmd/go/#hdr-Testing_flags):
+To run all the test cases with their names starting with the same letters, e.g.
+TestTaskRun, use
+[the `-run` flag with `go test`](https://golang.org/cmd/go/#hdr-Testing_flags):
 
 ```bash
 go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun
