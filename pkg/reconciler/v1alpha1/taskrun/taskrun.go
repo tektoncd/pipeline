@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/status"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -331,6 +332,10 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	updateStatusFromPod(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
 
+	status.SortTaskRunStepOrder(tr.Status.Steps, taskSpec.Steps)
+
+	updateTaskRunResourceResult(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
+
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
@@ -400,8 +405,6 @@ func updateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 		// update tr completed time
 		taskRun.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	}
-
-	updateTaskRunResourceResult(taskRun, pod, resourceLister, kubeclient, logger)
 }
 
 func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {

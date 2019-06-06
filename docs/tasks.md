@@ -124,6 +124,9 @@ spec:
 The `steps` field is required. You define one or more `steps` fields to define
 the body of a `Task`.
 
+If multiple `steps` are defined, they will be executed in the same order as they
+are defined, if the `Task` is invoked by a [TaskRun](taskruns.md).
+
 Each `steps` in a `Task` must specify a container image that adheres to the
 [container contract](./container-contract.md). For each of the `steps` fields,
 or container images that you define:
