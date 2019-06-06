@@ -17,6 +17,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Providing resources](#providing-resources)
   - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
   - [Service Account](#service-account)
+- [Steps](#steps)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
 - [Examples](#examples)
 - [Logs](logs.md)
@@ -228,6 +229,13 @@ spec:
     - name: custom-volume
       emptyDir: {}
 ```
+
+## Steps
+
+If multiple `steps` are defined in the `Task` invoked by the `TaskRun`, we will see the
+`status.steps` of the `TaskRun` displayed in the same order as they are defined in
+`spec.steps` of the `Task`, when the `TaskRun` is accessed by the `get` command, e.g.
+`kubectl get taskrun <name> -o yaml`. Replace \<name\> with the name of the `TaskRun`.
 
 ## Cancelling a TaskRun
 

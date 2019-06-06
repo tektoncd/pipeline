@@ -76,6 +76,17 @@ var (
 
 	simpleStep  = tb.Step("simple-step", "foo", tb.Command("/mycmd"))
 	simpleTask  = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
+	taskMultipleSteps = tb.Task("test-task-multi-steps", "foo", tb.TaskSpec(
+		tb.Step("z-step", "foo",
+			tb.Command("/mycmd"),
+		),
+		tb.Step("v-step", "foo",
+			tb.Command("/mycmd"),
+		),
+		tb.Step("x-step", "foo",
+			tb.Command("/mycmd"),
+		),
+	))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
 
 	outputTask = tb.Task("test-output-task", "foo", tb.TaskSpec(
@@ -1121,6 +1132,82 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 
 	if taskRun.Status.StartTime == nil || taskRun.Status.StartTime.IsZero() {
 		t.Errorf("expected startTime to be set by reconcile but was %q", taskRun.Status.StartTime)
+	}
+}
+
+func TestReconcile_SortTaskRunStatusSteps(t *testing.T)  {
+	taskRun := tb.TaskRun("test-taskrun", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskMultipleSteps.Name)),
+		tb.TaskRunStatus(
+			tb.PodName("the-pod"),
+		),
+	)
+
+	// The order of the container statuses has been shuffled, not aligning with the order of the
+	// spec steps of the Task any more. After Reconcile is called, we should see the order of status
+	// steps in TaksRun has been converted to the same one as in spec steps of the Task.
+	d := test.Data{
+		TaskRuns: []*v1alpha1.TaskRun{taskRun},
+		Tasks:    []*v1alpha1.Task{taskMultipleSteps},
+		Pods: []*corev1.Pod{{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "the-pod",
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodSucceeded,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-nop",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+						},
+					},
+				}, {
+					Name: "step-x-step",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+						},
+					},
+				}, {
+					Name: "step-v-step",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+						},
+					},
+				}, {
+					Name: "step-z-step",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 0,
+						},
+					},
+				}},
+			},
+		}},
+	}
+	testAssets := getTaskRunController(t, d)
+	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
+	}
+	verify_TaskRunStatusStep(t, taskRun, taskMultipleSteps)
+}
+
+func verify_TaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) {
+	actualStepOrder := []string{}
+	for _, state :=  range(taskRun.Status.Steps) {
+		actualStepOrder = append(actualStepOrder, state.Name)
+	}
+	expectedStepOrder := []string{}
+	for _, state :=  range(taskMultipleSteps.Spec.Steps) {
+		expectedStepOrder = append(expectedStepOrder, state.Name)
+	}
+	// Add a nop in the end. This may be removed in future.
+	expectedStepOrder = append(expectedStepOrder, "nop")
+	if d := cmp.Diff(actualStepOrder, expectedStepOrder); d != "" {
+		t.Errorf("The status steps in TaksRun doesn't match the spec steps in Task, diff: %s", d)
 	}
 }
 
