@@ -431,6 +431,7 @@ k8s.io/cli-runtime/pkg/genericclioptions/printers
 k8s.io/cli-runtime/pkg/genericclioptions/resource
 # k8s.io/client-go v0.0.0-20190226174127-78295b709ec6
 k8s.io/client-go/plugin/pkg/client/auth/gcp
+k8s.io/client-go/plugin/pkg/client/auth/oidc
 k8s.io/client-go/kubernetes
 k8s.io/client-go/rest
 k8s.io/client-go/tools/clientcmd
