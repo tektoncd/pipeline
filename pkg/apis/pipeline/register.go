@@ -23,4 +23,5 @@ const (
 	TaskRunLabelKey     = "/taskRun"
 	PipelineLabelKey    = "/pipeline"
 	PipelineRunLabelKey = "/pipelineRun"
+	PipelineTaskLabelKey = "/pipelineTask"
 )
