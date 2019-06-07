@@ -12,33 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package version
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
-	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/cmd/completion"
-	"github.com/tektoncd/cli/pkg/cmd/pipeline"
-	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
-	"github.com/tektoncd/cli/pkg/cmd/task"
-	"github.com/tektoncd/cli/pkg/cmd/taskrun"
-	"github.com/tektoncd/cli/pkg/cmd/version"
 )
 
-func Root(p cli.Params) *cobra.Command {
-	var cmd = &cobra.Command{
-		Use:   "tkn",
-		Short: "CLI for tekton pipelines",
-		Long:  ``,
-	}
+// NOTE: use go build -ldflags "-X github.com/tektoncd/cli/pkg/cmd/version.clientVersion=$(git describe)"
+var clientVersion = "dev"
 
-	cmd.AddCommand(
-		completion.Command(),
-		pipeline.Command(p),
-		pipelinerun.Command(p),
-		task.Command(p),
-		taskrun.Command(p),
-		version.Command(),
-	)
+// Command returns version command
+func Command() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:   "version",
+		Short: "Prints version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Fprintf(cmd.OutOrStdout(), "Client version: %s\n", clientVersion)
+		},
+	}
 	return cmd
 }
