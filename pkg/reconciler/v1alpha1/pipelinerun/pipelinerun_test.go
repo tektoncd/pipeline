@@ -213,6 +213,7 @@ func TestReconcile(t *testing.T) {
 		),
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
+		tb.TaskRunLabel(pipeline.GroupName + pipeline.PipelineTaskLabelKey, "unit-test-1"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("unit-test-task"),
 			tb.TaskRunServiceAccount("test-sa"),
@@ -734,63 +735,94 @@ func TestReconcileCancelledPipelineRun(t *testing.T) {
 func TestReconcilePropagateLabels(t *testing.T) {
 	names.TestingSeed()
 
-	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
-		tb.PipelineTask("hello-world-1", "hello-world"),
-	))}
-	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-labels", "foo",
-		tb.PipelineRunLabel("PipelineRunLabel", "PipelineRunValue"),
-		tb.PipelineRunLabel("tekton.dev/pipeline", "WillNotBeUsed"),
-		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa"),
-		),
-	)}
-	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
+	tests := []struct {
+		name     string
+		taskName string
+		expected *v1alpha1.TaskRun
+	}{
+		{
+			name: "with pipelinetask name",
+			taskName: "hello-world-1",
+			expected: tb.TaskRun("test-pipeline-run-with-labels-hello-world-1-9l9zj", "foo",
+					tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
+					tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+					tb.Controller, tb.BlockOwnerDeletion,
+				),
+					tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+					tb.TaskRunLabel(pipeline.GroupName + pipeline.PipelineTaskLabelKey , "hello-world-1"),
+					tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
+					tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
+					tb.TaskRunSpec(
+					tb.TaskRunTaskRef("hello-world"),
+					tb.TaskRunServiceAccount("test-sa"),
+				),
+			),
+		},{
+			name: "without pipelinetask name",
+			expected: tb.TaskRun("test-pipeline-run-with-labels--mz4c7", "foo",
+					tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
+					tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+					tb.Controller, tb.BlockOwnerDeletion,
+				),
+					tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+					tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
+					tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
+					tb.TaskRunSpec(
+					tb.TaskRunTaskRef("hello-world"),
+					tb.TaskRunServiceAccount("test-sa"),
+				),
+			),
+		},
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(2)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+				tb.PipelineTask(tt.taskName, "hello-world"),
+			))}
+			prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-labels", "foo",
+				tb.PipelineRunLabel("PipelineRunLabel", "PipelineRunValue"),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "WillNotBeUsed"),
+				tb.PipelineRunSpec("test-pipeline",
+					tb.PipelineRunServiceAccount("test-sa"),
+				),
+			)}
+			ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
 
-	testAssets := getPipelineRunController(t, d, fr)
-	c := testAssets.Controller
-	clients := testAssets.Clients
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+			}
 
-	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-labels")
-	if err != nil {
-		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
-	}
+			// create fake recorder for testing
+			fr := record.NewFakeRecorder(2)
 
-	// Check that the PipelineRun was reconciled correctly
-	_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-labels", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
-	}
+			testAssets := getPipelineRunController(t, d, fr)
+			c := testAssets.Controller
+			clients := testAssets.Clients
 
-	// Check that the expected TaskRun was created
-	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
-	if actual == nil {
-		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
-	}
-	expectedTaskRun := tb.TaskRun("test-pipeline-run-with-labels-hello-world-1-9l9zj", "foo",
-		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
-			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
-			tb.Controller, tb.BlockOwnerDeletion,
-		),
-		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
-		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
-		tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef("hello-world"),
-			tb.TaskRunServiceAccount("test-sa"),
-		),
-	)
+			err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-labels")
+			if err != nil {
+				t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+			}
 
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+			// Check that the PipelineRun was reconciled correctly
+			_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-labels", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+			}
+
+			// Check that the expected TaskRun was created
+			actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
+			if actual == nil {
+				t.Errorf("Expected a TaskRun to be created, but it wasn't.")
+			}
+
+			if d := cmp.Diff(actual, tt.expected); d != "" {
+				t.Errorf("expected to see TaskRun %v created. Diff %s", tt.expected, d)
+			}
+		})
 	}
 }
 
@@ -942,6 +974,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 			tb.Controller, tb.BlockOwnerDeletion,
 		),
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel(pipeline.GroupName + pipeline.PipelineTaskLabelKey , "hello-world-1"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-annotations"),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(

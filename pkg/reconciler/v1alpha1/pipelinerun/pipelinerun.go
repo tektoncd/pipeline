@@ -463,6 +463,9 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 		labels[key] = val
 	}
 	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
+	if rprt.PipelineTask.Name != "" {
+		labels[pipeline.GroupName+pipeline.PipelineTaskLabelKey] = rprt.PipelineTask.Name
+	}
 
 	// Propagate annotations from PipelineRun to TaskRun.
 	annotations := make(map[string]string, len(pr.ObjectMeta.Annotations)+1)
