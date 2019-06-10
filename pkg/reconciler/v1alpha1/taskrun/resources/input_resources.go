@@ -71,6 +71,8 @@ func AddInputResource(
 		return nil, err
 	}
 
+	allResourceContainers := []corev1.Container{}
+
 	for _, input := range taskSpec.Inputs.Resources {
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
 		if err != nil {
@@ -132,10 +134,11 @@ func AddInputResource(
 				}
 			}
 
-			taskSpec.Steps = append(resourceContainers, taskSpec.Steps...)
+			allResourceContainers = append(allResourceContainers, resourceContainers...)
 			taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
 		}
 	}
+	taskSpec.Steps = append(allResourceContainers, taskSpec.Steps...)
 
 	if mountPVC {
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
