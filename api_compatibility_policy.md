@@ -36,9 +36,10 @@ The current process would look something like:
 
 TODO(bobcatfish): This policy really _should_ include the entire API.
 
-_This policy does not yet cover other functionality which could be considered
-part of the API, but isn’t part of the CRD definition (e.g. a contract re. files
-expected to be written in certain locations by a resulting pod)._
+The API is considered to consist of:
+
+- The spec if the CRDs
+- The order that `PipelineResources` declared within a `Task` are applied in
 
 ## `Build` and `BuildTemplate`
 

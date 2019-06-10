@@ -299,7 +299,7 @@ func TestAddResourceToTask(t *testing.T) {
 			}},
 		},
 	}, {
-		desc: "same git input resource for task with diff resource name",
+		desc: "reuse git input resource and verify order",
 		task: taskWithMultipleGitSources,
 		taskRun: &v1alpha1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -329,16 +329,16 @@ func TestAddResourceToTask(t *testing.T) {
 		want: &v1alpha1.TaskSpec{
 			Inputs: multipleGitInputs,
 			Steps: []corev1.Container{{
-				Name:       "git-source-the-git-with-branch-mz4c7",
-				Image:      "override-with-git:latest",
-				Command:    []string{"/ko-app/git-init"},
-				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/git-duplicate-space"},
-				WorkingDir: "/workspace",
-			}, {
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
+				WorkingDir: "/workspace",
+			}, {
+				Name:       "git-source-the-git-with-branch-mz4c7",
+				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/git-duplicate-space"},
 				WorkingDir: "/workspace",
 			}},
 		},
