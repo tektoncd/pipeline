@@ -4,7 +4,8 @@ Use this page to add the component to an existing Kubernetes cluster.
 
 ## Pre-requisites
 
-1. A Kubernetes cluster version 1.11 or later (_if you don't have an existing cluster_):
+1. A Kubernetes cluster version 1.11 or later (_if you don't have an existing
+   cluster_):
 
    ```bash
    # Example cluster creation command on GKE
