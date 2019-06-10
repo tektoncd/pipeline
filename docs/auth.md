@@ -73,7 +73,7 @@ kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  serviceAccount: buid-bot
+  serviceAccount: build-bot
   taskRef:
     name: build-push
 ```
@@ -145,7 +145,7 @@ to authenticate when retrieving any `PipelineResources`.
    metadata:
      name: build-push-task-run-2
    spec:
-     serviceAccount: buid-bot
+     serviceAccount: build-bot
      taskRef:
        name: build-push
    ```
@@ -218,7 +218,7 @@ kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  serviceAccount: buid-bot
+  serviceAccount: build-bot
   taskRef:
     name: build-push
 ```
