@@ -185,28 +185,19 @@ kubectl create clusterrolebinding cluster-admin-binding \
 
 ### Install in custom namespace
 
-1. To install into a different namespace you will need to modify resources in
-   the `./config` folder
-   - modify the `metadata.name`
-     [here](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/100-namespace.yaml)
-     value to the desired namespace
-   - modify the `subjects.namespace`
-     [here](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/201-clusterrolebinding.yaml#L21)
-     value to the desired namespace
-   - look up all the lines with the namespace `namespace: tekton-pipelines`, and
-     set the value to the desired namespace
-   - add `downwardapi` entry to webhook and controller `deployment` resources.
-     E.g. add the environment variable section from the code snippet below to
-     [controller](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/controller.yaml#L29)
-     and
-     [webhook](https://github.com/tektoncd/pipeline/blob/c1500fab83b09edadefb38bb8920a0c837d8f32b/config/webhook.yaml#L32)
+1. To install into a different namespace you can use this script :
 
-```yaml
-env:
-  - name: SYSTEM_NAMESPACE
-    valueFrom:
-      fieldRef:
-        fieldPath: metadata.namespace
+```shell
+#!/usr/bin/env bash
+set -e
+
+# Set your target namespace here
+TARGET_NAMESPACE=new-target-namespace
+
+ko resolve -f config | sed -e '/kind: Namespace/!b;n;n;s/:.*/: '"${TARGET_NAMESPACE}"'/' | \
+    sed "s/namespace: tekton-pipelines$/namespace: ${TARGET_NAMESPACE}/" | \
+    kubectl apply -f-
+kubectl set env deployments --all SYSTEM_NAMESPACE=${TARGET_NAMESPACE} -n ${TARGET_NAMESPACE}
 ```
 
 ## Iterating
