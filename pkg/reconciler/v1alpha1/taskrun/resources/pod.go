@@ -331,6 +331,7 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			NodeSelector:       taskRun.Spec.NodeSelector,
 			Tolerations:        taskRun.Spec.Tolerations,
 			Affinity:           taskRun.Spec.Affinity,
+			HostNetwork:        taskSpec.HostNetwork,
 		},
 	}, nil
 }

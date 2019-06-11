@@ -57,6 +57,10 @@ type TaskSpec struct {
 	// ContainerTemplate can be used as the basis for all step containers within the
 	// Task, so that the steps inherit settings on the base container.
 	ContainerTemplate *corev1.Container `json:"containerTemplate,omitempty"`
+
+	// Host networking requested for this task. Use the host's network namespace.
+	// Default to false.
+	HostNetwork bool `json:"hostNetwork,omitempty"`
 }
 
 // Check that Task may be validated and defaulted.
