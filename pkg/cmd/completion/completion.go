@@ -42,7 +42,7 @@ Supported Shells:
 
 func Command() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:       "completion SHELL",
+		Use:       "completion [SHELL]",
 		Short:     "Prints shell completion scripts",
 		Long:      desc,
 		Args:      exactValidArgs(1),
