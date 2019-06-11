@@ -213,7 +213,7 @@ func TestReconcile(t *testing.T) {
 		),
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
-		tb.TaskRunLabel(pipeline.GroupName + pipeline.PipelineTaskLabelKey, "unit-test-1"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-1"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("unit-test-task"),
 			tb.TaskRunServiceAccount("test-sa"),
@@ -741,33 +741,33 @@ func TestReconcilePropagateLabels(t *testing.T) {
 		expected *v1alpha1.TaskRun
 	}{
 		{
-			name: "with pipelinetask name",
+			name:     "with pipelinetask name",
 			taskName: "hello-world-1",
 			expected: tb.TaskRun("test-pipeline-run-with-labels-hello-world-1-9l9zj", "foo",
-					tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
+				tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
 					tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
 					tb.Controller, tb.BlockOwnerDeletion,
 				),
-					tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
-					tb.TaskRunLabel(pipeline.GroupName + pipeline.PipelineTaskLabelKey , "hello-world-1"),
-					tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
-					tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
-					tb.TaskRunSpec(
+				tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+				tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
+				tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
+				tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
+				tb.TaskRunSpec(
 					tb.TaskRunTaskRef("hello-world"),
 					tb.TaskRunServiceAccount("test-sa"),
 				),
 			),
-		},{
+		}, {
 			name: "without pipelinetask name",
 			expected: tb.TaskRun("test-pipeline-run-with-labels--mz4c7", "foo",
-					tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
+				tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
 					tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
 					tb.Controller, tb.BlockOwnerDeletion,
 				),
-					tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
-					tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
-					tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
-					tb.TaskRunSpec(
+				tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+				tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
+				tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
+				tb.TaskRunSpec(
 					tb.TaskRunTaskRef("hello-world"),
 					tb.TaskRunServiceAccount("test-sa"),
 				),
@@ -974,7 +974,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 			tb.Controller, tb.BlockOwnerDeletion,
 		),
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
-		tb.TaskRunLabel(pipeline.GroupName + pipeline.PipelineTaskLabelKey , "hello-world-1"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-annotations"),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
