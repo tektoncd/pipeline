@@ -13,6 +13,23 @@ TODO(#538): In #538 or #537 we will update
 to invoke these `Pipelines` automatically, but for now we will have to invoke
 them manually.
 
+## Pull Request Pipeline
+
+The `Tasks` which are going to make up our Pull Request Pipeline are:
+
+- [`ci-unit-test.yaml`](ci-unit-test.yaml) — This `Task` uses `go
+  test` to run the Pipeline unit tests.
+- [`ci-lint.yaml`](ci-lint.yaml) — This `Task` uses
+  [`golangci-lint`](https://github.com/golangci/golangci-lint) to
+  validate the code based on common best practices.
+
+TODO(#922) & TODO(#860): Add the Pipeline and hook it up with Prow,
+for now all we have are `Tasks` which we can invoke individually by
+creating
+[`TaskRuns`](https://github.com/tektoncd/pipeline/blob/master/docs/taskruns.md)
+and
+[`PipelineResources`](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md).
+
 ## Release Pipeline
 
 The `Tasks` which make up our release `Pipeline` are:
