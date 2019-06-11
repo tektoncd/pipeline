@@ -15,7 +15,7 @@ Creation of a `PipelineRun` will trigger the creation of
   - [Resources](#resources)
   - [Service account](#service-account)
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
-- [Examples](#examples)
+- [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
 - [Logs](logs.md)
 
 ## Syntax
