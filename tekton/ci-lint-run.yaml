@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: tekton-pipelines
+spec:
+  type: git
+  params:
+  - name: url
+    value: https://github.com/tektoncd/pipeline # REPLACE with your own fork
+  - name: revision
+    value: master # REPLACE with your own commit
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: golangci-lint-run
+spec:
+  taskRef:
+    name: golangci-lint
+  inputs:
+    resources:
+    - name: source
+      resourceRef:
+        name: tekton-pipelines
+

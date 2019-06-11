@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: golangci-lint
+spec:
+  inputs:
+    params:
+    - name: package
+      description: package (and its children) under test
+      default: github.com/tektoncd/pipeline
+    - name: flags
+      description: flags to use for the lint command
+      default: --verbose
+    - name: version
+      description: golangci-lint version to use
+      default: v1.16
+    resources:
+    - name: source
+      type: git
+      targetPath: src/${inputs.params.package}
+  steps:
+  - name: lint
+    image: golangci/golangci-lint:${inputs.params.version}
+    workingdir: /workspace/src/${inputs.params.package}
+    command:
+    - /bin/bash
+    args:
+    - -c
+    - "golangci-lint run ${inputs.params.flags}"
+    env:
+    - name: GOPATH
+      value: /workspace
+
