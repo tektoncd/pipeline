@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
+	corev1 "k8s.io/api/core/v1"
 	"text/tabwriter"
 )
 
@@ -97,6 +98,11 @@ func printPipelineRunStatus(w *tabwriter.Writer, pr *v1alpha1.PipelineRun, p cli
 	fmt.Fprintf(w, statusBody, formatted.Age(*pr.Status.StartTime, p.Time()),
 		formatted.Duration(pr.Status.StartTime, pr.Status.CompletionTime),
 		formatted.Condition(pr.Status.Conditions[0]))
+
+	if failed, msg := hasFailed(pr); failed && msg != "" {
+		fmt.Fprintln(w, "\nMessage")
+		fmt.Fprintln(w, msg)
+	}
 }
 
 func printPipelineRunResources(w *tabwriter.Writer, pr *v1alpha1.PipelineRun) {
@@ -138,4 +144,11 @@ func printPipelineRunTaskruns(w *tabwriter.Writer, pr *v1alpha1.PipelineRun, p c
 			formatted.Duration(taskrun.Status.StartTime, taskrun.Status.CompletionTime),
 			formatted.Condition(taskrun.Status.Conditions[0]))
 	}
+}
+
+func hasFailed(pr *v1alpha1.PipelineRun) (bool, string) {
+	if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+		return true, pr.Status.Conditions[0].Message
+	}
+	return false, ""
 }

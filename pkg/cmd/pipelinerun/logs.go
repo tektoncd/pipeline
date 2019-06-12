@@ -22,7 +22,6 @@ import (
 	"github.com/tektoncd/cli/pkg/cmd/taskrun"
 	"github.com/tektoncd/cli/pkg/logs"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -133,7 +132,7 @@ func (p *PipelineRunLogs) Fetch(s logs.Streams, opts LogOptions, r *logs.LogFetc
 		return
 	}
 
-	if failed, msg := pipelineRunFailed(pr.Status); failed {
+	if failed, msg := hasFailed(pr); failed {
 		fmt.Fprintf(s.Out, "PipelineRun is failed: %s \n", msg)
 	}
 
@@ -154,15 +153,6 @@ func (p *PipelineRunLogs) Fetch(s logs.Streams, opts LogOptions, r *logs.LogFetc
 		trl := tr.toTaskRunLogs(p.Ns, p.Clients)
 		trl.Fetch(opts.LogOptions, s, r)
 	}
-}
-
-func pipelineRunFailed(status v1alpha1.PipelineRunStatus) (bool, string) {
-	c := status.Conditions[0]
-	if c.Status == corev1.ConditionFalse {
-		return true, c.Message
-	}
-
-	return false, ""
 }
 
 func orderBy(pipelineTasks []v1alpha1.PipelineTask, pipelinesTaskRuns taskRunMap) []taskRun {
