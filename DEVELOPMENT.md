@@ -10,8 +10,7 @@
 1. Install [requirements](#requirements)
 1. [Set up a Kubernetes cluster](#kubernetes-cluster)
 
-Then you can [iterate](#iterating) (including
-[runing the controllers with `ko`](#install-pipeline)).
+Then you can [iterate](#iterating).
 
 ### Checkout your fork
 
@@ -88,10 +87,29 @@ While iterating on the project, you may need to:
 **Building:**
 
 ```sh
-$ go build ./cmd/...
+go build ./cmd/...
 ```
 
-It builds `tkn` binary in your current directory. You can start playing with it.
+It builds `tkn` binary in your current directory. You can start playing with
+it.
+
+If you want this `tkn` binary in your `$PATH`, a couple options are:
+
+
+1. Use `go install ./cmd/` to install the binary into your `$GOBIN`. Rerun
+   `go install` when you want to update the binary:
+
+   ```bash
+   go install ./cmd/
+   ```
+
+2. Add a soft link to the binary into your `$PATH`. Rerun `go build` when
+   you want to update the binary.
+
+   ```bash
+   go build ./cmd/...
+   ln -s $PWD/tkn $GOPATH/bin/tkn
+   ```
 
 **Notes:**
 
