@@ -111,8 +111,8 @@ Params
 No params
 
 Taskruns
-NAME   STARTED         DURATION    STATUS
-tr-1   8 minutes ago   3 minutes   Succeeded
+NAME   TASK NAME   STARTED         DURATION    STATUS
+tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
 	if d := cmp.Diff(expected, actual ); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
@@ -191,8 +191,8 @@ Params
 No params
 
 Taskruns
-NAME   STARTED         DURATION    STATUS
-tr-1   8 minutes ago   3 minutes   Failed
+NAME   TASK NAME   STARTED         DURATION    STATUS
+tr-1   t-1         8 minutes ago   3 minutes   Failed
 `
 	if d := cmp.Diff(expected, actual ); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
@@ -273,8 +273,8 @@ NAME         VALUE
 test-param   param-value
 
 Taskruns
-NAME   STARTED         DURATION    STATUS
-tr-1   8 minutes ago   3 minutes   Succeeded
+NAME   TASK NAME   STARTED         DURATION    STATUS
+tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
 	if d := cmp.Diff(expected, actual ); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)

@@ -35,8 +35,8 @@ const (
 	resourceBody = "%s\t%s\n"
 	paramHeader = "NAME\tVALUE\n"
 	paramBody = "%s\t%s\n"
-	taskrunHeader = "NAME\tSTARTED\tDURATION\tSTATUS\n"
-	taskrunBody = "%s\t%s\t%s\t%s\n"
+	taskrunHeader = "NAME\tTASK NAME\tSTARTED\tDURATION\tSTATUS\n"
+	taskrunBody = "%s\t%s\t%s\t%s\t%s\n"
 )
 
 func describeCommand(p cli.Params) *cobra.Command {
@@ -140,7 +140,7 @@ func printPipelineRunTaskruns(w *tabwriter.Writer, pr *v1alpha1.PipelineRun, p c
 
 	fmt.Fprintf(w, taskrunHeader)
 	for taskrunname, taskrun := range pr.Status.TaskRuns {
-		fmt.Fprintf(w, taskrunBody, taskrunname, formatted.Age(*taskrun.Status.StartTime, p.Time()),
+		fmt.Fprintf(w, taskrunBody, taskrunname, taskrun.PipelineTaskName, formatted.Age(*taskrun.Status.StartTime, p.Time()),
 			formatted.Duration(taskrun.Status.StartTime, taskrun.Status.CompletionTime),
 			formatted.Condition(taskrun.Status.Conditions[0]))
 	}
