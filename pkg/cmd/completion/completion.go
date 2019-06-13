@@ -235,6 +235,7 @@ __tkn_bash_source <(__tkn_convert_bash_to_zsh)
 _complete tkn 2>/dev/null
 `
 	if _, err := out.Write([]byte(zsh_tail)); err != nil {
+		return err
 	}
 	return nil
 }

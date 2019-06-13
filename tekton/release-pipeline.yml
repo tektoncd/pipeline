@@ -23,7 +23,7 @@ spec:
         - name: package
           value: ${params.package}
         - name: flags
-          value: -v --issues-exit-code=0
+          value: -v
       resources:
         inputs:
           - name: source
