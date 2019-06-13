@@ -1,0 +1,65 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: cli-release-pipeline
+spec:
+  params:
+  - name: package
+    description: package to release
+    default: github.com/tektoncd/cli
+  # FIXME(vdemeester): this is not yet used and need to be fixed upstream
+  - name: github-token-secret
+    description: name of the secret holding the github-token
+    default: bot-token-github
+  resources:
+  - name: source-repo
+    type: git
+  tasks:
+    - name: lint
+      taskRef:
+        name: golangci-lint
+      params:
+        - name: package
+          value: ${params.package}
+        - name: flags
+          value: -v --issues-exit-code=0
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+    - name: unit-tests
+      runAfter: [lint]
+      taskRef:
+        name: golang-test
+      params:
+        - name: package
+          value: ${params.package}
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+    - name: build
+      runAfter: [lint]
+      taskRef:
+        name: golang-build
+      params:
+        - name: package
+          value: ${params.package}
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo
+    - name: release
+      runAfter: [build, unit-tests]
+      taskRef:
+        name: goreleaser
+      params:
+        - name: package
+          value: ${params.package}
+        - name: github-token-secret
+          value: ${params.github-token-secret}
+      resources:
+        inputs:
+          - name: source
+            resource: source-repo    

@@ -1,0 +1,24 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: tektoncd-cli-git
+spec:
+  type: git
+  params:
+  - name: revision
+    value: master
+  - name: url
+    value: https://github.com/tektoncd/cli
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  generateName: cli-release-pipeline-run
+spec:
+  pipelineRef:
+    name: cli-release-pipeline
+  resources:
+    - name: source-repo
+      resourceRef:
+        name: tektoncd-cli-git

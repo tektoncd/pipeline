@@ -1,0 +1,47 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: goreleaser
+spec:
+  inputs:
+    params:
+    - name: package
+      description: base package to build in
+    # FIXME(vdemeester): this is not yet used (see below)
+    - name: github-token-secret
+      description: name of the secret holding the github-token
+      default: github-token
+    - name: flags
+      description: flags to use for the test command
+      default: --timeout=30m
+    resources:
+    - name: source
+      type: git
+      targetPath: src/${inputs.params.package}
+  steps:
+  - name: pull
+    image: goreleaser/goreleaser
+    workingdir: /workspace/src/${inputs.params.package}
+    command:
+    - /bin/bash
+    args:
+    - -c
+    - "git status; git fetch -p --all"
+  - name: release
+    image: goreleaser/goreleaser
+    workingdir: /workspace/src/${inputs.params.package}
+    command:
+    - /bin/bash
+    args:
+    - -c
+    - "goreleaser release ${inputs.params.flags}"
+    env:
+    - name: GOPATH
+      value: /workspace
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          # FIXME(vdemeester): this need to be fixed upstream, template should work there
+          #name: ${inputs.params.github-token-secret}
+          name: bot-token-github
+          key: bot-token
