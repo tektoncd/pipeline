@@ -124,7 +124,7 @@ function run_yaml_tests() {
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  ko apply -f config/ || fail_test "Build pipeline installation failed"
+  kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.4.0/release.yaml || fail_test "Build pipeline installation failed"
 
   # Make sure thateveything is cleaned up in the current namespace.
   for res in pipelineresources tasks pipelines taskruns pipelineruns; do
