@@ -67,6 +67,25 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, replacements map[string]string) 
 		}
 		for ie, e := range steps[i].Env {
 			steps[i].Env[ie].Value = templating.ApplyReplacements(e.Value, replacements)
+			if steps[i].Env[ie].ValueFrom != nil {
+				if e.ValueFrom.SecretKeyRef != nil {
+					steps[i].Env[ie].ValueFrom.SecretKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, replacements)
+					steps[i].Env[ie].ValueFrom.SecretKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, replacements)
+				}
+				if e.ValueFrom.ConfigMapKeyRef != nil {
+					steps[i].Env[ie].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, replacements)
+					steps[i].Env[ie].ValueFrom.ConfigMapKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, replacements)
+				}
+			}
+		}
+		for ie, e := range steps[i].EnvFrom {
+			steps[i].EnvFrom[ie].Prefix = templating.ApplyReplacements(e.Prefix, replacements)
+			if e.ConfigMapRef != nil {
+				steps[i].EnvFrom[ie].ConfigMapRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ConfigMapRef.LocalObjectReference.Name, replacements)
+			}
+			if e.SecretRef != nil {
+				steps[i].EnvFrom[ie].SecretRef.LocalObjectReference.Name = templating.ApplyReplacements(e.SecretRef.LocalObjectReference.Name, replacements)
+			}
 		}
 		steps[i].WorkingDir = templating.ApplyReplacements(steps[i].WorkingDir, replacements)
 		for ic, c := range steps[i].Command {
