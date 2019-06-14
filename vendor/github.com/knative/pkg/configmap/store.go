@@ -44,7 +44,7 @@ type Constructors map[string]interface{}
 // An UntypedStore is a responsible for storing and
 // constructing configs from Kubernetes ConfigMaps
 //
-// WatchConfigs should be used with a configmap,Watcher
+// WatchConfigs should be used with a configmap.Watcher
 // in order for this store to remain up to date
 type UntypedStore struct {
 	name   string

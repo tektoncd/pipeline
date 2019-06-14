@@ -25,6 +25,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+	"go.uber.org/zap"
 )
 
 var (
@@ -101,6 +102,16 @@ func NewStatsReporter(reconciler string) (StatsReporter, error) {
 	}
 
 	return &reporter{reconciler: reconciler, globalCtx: ctx}, nil
+}
+
+// MustNewStatsReporter creates a new instance of StatsReporter.
+// Logs fatally if creation fails.
+func MustNewStatsReporter(reconciler string, logger *zap.SugaredLogger) StatsReporter {
+	stats, err := NewStatsReporter(reconciler)
+	if err != nil {
+		logger.Fatalw("Failed to initialize the stats reporter", zap.Error(err))
+	}
+	return stats
 }
 
 // ReportQueueDepth reports the queue depth metric

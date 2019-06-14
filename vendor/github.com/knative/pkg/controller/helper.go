@@ -19,6 +19,7 @@ package controller
 import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/knative/pkg/kmeta"
 )
@@ -48,5 +49,19 @@ func EnsureTypeMeta(f Callback, gvk schema.GroupVersionKind) Callback {
 
 		// Pass in the mutated copy (accessor is not just a type cast)
 		f(copy)
+	}
+}
+
+// SendGlobalUpdates triggers an update event for all objects from the
+// passed SharedInformer.
+//
+// Since this is triggered not by a real update of these objects
+// themselves, we have no way of knowing the change to these objects
+// if any, so we call handler.OnUpdate(obj, obj) for all of them
+// regardless if they have changes or not.
+func SendGlobalUpdates(si cache.SharedInformer, handler cache.ResourceEventHandler) {
+	store := si.GetStore()
+	for _, obj := range store.List() {
+		handler.OnUpdate(obj, obj)
 	}
 }

@@ -20,6 +20,9 @@ import (
 	"flag"
 	"log"
 
+	"github.com/knative/pkg/logging"
+	tklogging "github.com/tektoncd/pipeline/pkg/logging"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 
 	"go.uber.org/zap"
@@ -28,12 +31,14 @@ import (
 	"github.com/knative/pkg/logging/logkey"
 	"github.com/knative/pkg/signals"
 	"github.com/knative/pkg/webhook"
-	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
+
+// WebhookLogKey is the name of the logger for the webhook cmd
+const WebhookLogKey = "webhook"
 
 func main() {
 	flag.Parse()
@@ -45,7 +50,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error parsing logging configuration: %v", err)
 	}
-	logger, atomicLevel := logging.NewLoggerFromConfig(config, logging.WebhookLogKey)
+	logger, atomicLevel := logging.NewLoggerFromConfig(config, WebhookLogKey)
 	defer logger.Sync()
 	logger = logger.With(zap.String(logkey.ControllerType, "webhook"))
 
@@ -65,7 +70,7 @@ func main() {
 	}
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.GetNamespace())
-	configMapWatcher.Watch(logging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, logging.WebhookLogKey))
+	configMapWatcher.Watch(tklogging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, WebhookLogKey))
 	if err = configMapWatcher.Start(stopCh); err != nil {
 		logger.Fatalf("failed to start configuration manager: %v", err)
 	}

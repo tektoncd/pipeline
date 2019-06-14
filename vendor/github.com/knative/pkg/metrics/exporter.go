@@ -27,6 +27,11 @@ var (
 	metricsMux         sync.Mutex
 )
 
+type flushable interface {
+	// Flush waits for metrics to be uploaded.
+	Flush()
+}
+
 // newMetricsExporter gets a metrics exporter based on the config.
 func newMetricsExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, error) {
 	// If there is a Prometheus Exporter server running, stop it.
@@ -82,4 +87,20 @@ func setCurMetricsConfig(c *metricsConfig) {
 		view.SetReportingPeriod(0)
 	}
 	curMetricsConfig = c
+}
+
+// FlushExporter waits for exported data to be uploaded.
+// This should be called before the process shuts down or exporter is replaced.
+// Return value indicates whether the exporter is flushable or not.
+func FlushExporter() bool {
+	e := getCurMetricsExporter()
+	if e == nil {
+		return false
+	}
+
+	if f, ok := e.(flushable); ok {
+		f.Flush()
+		return true
+	}
+	return false
 }

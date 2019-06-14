@@ -18,7 +18,6 @@ package logging
 
 import (
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/knative/pkg/logging"
 )
@@ -26,13 +25,7 @@ import (
 const (
 	// ConfigName is the name of the ConfigMap that the logging config will be stored in
 	ConfigName = "config-logging"
-	// ControllerLogKey is the name of the logger for the controller cmd
-	ControllerLogKey = "controller"
-	// WebhookLogKey is the name of the logger for the webhook cmd
-	WebhookLogKey = "webhook"
 )
-
-var components = []string{ControllerLogKey, WebhookLogKey}
 
 // NewLogger creates a logger with the supplied configuration.
 // In addition to the logger, it returns AtomicLevel that can
@@ -47,20 +40,4 @@ func NewLogger(configJSON string, levelOverride string) (*zap.SugaredLogger, zap
 // NewLoggerFromConfig creates a logger using the provided Config
 func NewLoggerFromConfig(config *logging.Config, name string) (*zap.SugaredLogger, zap.AtomicLevel) {
 	return logging.NewLoggerFromConfig(config, name)
-}
-
-// NewConfigFromMap creates a LoggingConfig from the supplied map
-func NewConfigFromMap(data map[string]string) (*logging.Config, error) {
-	return logging.NewConfigFromMap(data, components...)
-}
-
-// NewConfigFromConfigMap creates a LoggingConfig from the supplied ConfigMap
-func NewConfigFromConfigMap(configMap *corev1.ConfigMap) (*logging.Config, error) {
-	return logging.NewConfigFromConfigMap(configMap, components...)
-}
-
-// UpdateLevelFromConfigMap returns a helper func that can be used to update the logging level
-// when a config map is updated
-func UpdateLevelFromConfigMap(logger *zap.SugaredLogger, atomicLevel zap.AtomicLevel, levelKey string) func(configMap *corev1.ConfigMap) {
-	return logging.UpdateLevelFromConfigMap(logger, atomicLevel, levelKey, components...)
 }

@@ -244,7 +244,7 @@ func (se *statsExporter) makeReq(vds []*view.Data, limit int) []*monitoringpb.Cr
 	return reqs
 }
 
-func (e *statsExporter) viewToMetricDescriptor(ctx context.Context, v *view.View) (*monitoringpb.CreateMetricDescriptorRequest, error) {
+func (e *statsExporter) viewToMetricDescriptor(ctx context.Context, v *view.View) (*metricpb.MetricDescriptor, error) {
 	m := v.Measure
 	agg := v.Aggregation
 	viewName := v.Name
@@ -289,20 +289,30 @@ func (e *statsExporter) viewToMetricDescriptor(ctx context.Context, v *view.View
 		displayName = e.o.GetMetricDisplayName(v)
 	}
 
-	res := &monitoringpb.CreateMetricDescriptorRequest{
-		Name: fmt.Sprintf("projects/%s", e.o.ProjectID),
-		MetricDescriptor: &metricpb.MetricDescriptor{
-			Name:        fmt.Sprintf("projects/%s/metricDescriptors/%s", e.o.ProjectID, metricType),
-			DisplayName: displayName,
-			Description: v.Description,
-			Unit:        unit,
-			Type:        metricType,
-			MetricKind:  metricKind,
-			ValueType:   valueType,
-			Labels:      newLabelDescriptors(e.defaultLabels, v.TagKeys),
-		},
+	res := &metricpb.MetricDescriptor{
+		Name:        fmt.Sprintf("projects/%s/metricDescriptors/%s", e.o.ProjectID, metricType),
+		DisplayName: displayName,
+		Description: v.Description,
+		Unit:        unit,
+		Type:        metricType,
+		MetricKind:  metricKind,
+		ValueType:   valueType,
+		Labels:      newLabelDescriptors(e.defaultLabels, v.TagKeys),
 	}
 	return res, nil
+}
+
+func (e *statsExporter) viewToCreateMetricDescriptorRequest(ctx context.Context, v *view.View) (*monitoringpb.CreateMetricDescriptorRequest, error) {
+	inMD, err := e.viewToMetricDescriptor(ctx, v)
+	if err != nil {
+		return nil, err
+	}
+
+	cmrdesc := &monitoringpb.CreateMetricDescriptorRequest{
+		Name:             fmt.Sprintf("projects/%s", e.o.ProjectID),
+		MetricDescriptor: inMD,
+	}
+	return cmrdesc, nil
 }
 
 // createMeasure creates a MetricDescriptor for the given view data in Stackdriver Monitoring.
@@ -315,15 +325,31 @@ func (e *statsExporter) createMeasure(ctx context.Context, v *view.View) error {
 	viewName := v.Name
 
 	if md, ok := e.createdViews[viewName]; ok {
+		// [TODO:rghetia] Temporary fix for https://github.com/census-ecosystem/opencensus-go-exporter-stackdriver/issues/76#issuecomment-459459091
+		if builtinMetric(md.Type) {
+			return nil
+		}
 		return e.equalMeasureAggTagKeys(md, v.Measure, v.Aggregation, v.TagKeys)
 	}
 
-	pmd, err := e.viewToMetricDescriptor(ctx, v)
+	inMD, err := e.viewToMetricDescriptor(ctx, v)
 	if err != nil {
 		return err
 	}
 
-	dmd, err := createMetricDescriptor(ctx, e.c, pmd)
+	var dmd *metric.MetricDescriptor
+	if builtinMetric(inMD.Type) {
+		gmrdesc := &monitoringpb.GetMetricDescriptorRequest{
+			Name: inMD.Name,
+		}
+		dmd, err = getMetricDescriptor(ctx, e.c, gmrdesc)
+	} else {
+		cmrdesc := &monitoringpb.CreateMetricDescriptorRequest{
+			Name:             fmt.Sprintf("projects/%s", e.o.ProjectID),
+			MetricDescriptor: inMD,
+		}
+		dmd, err = createMetricDescriptor(ctx, e.c, cmrdesc)
+	}
 	if err != nil {
 		return err
 	}
@@ -526,4 +552,20 @@ var getMetricDescriptor = func(ctx context.Context, c *monitoring.MetricClient, 
 
 var createTimeSeries = func(ctx context.Context, c *monitoring.MetricClient, ts *monitoringpb.CreateTimeSeriesRequest) error {
 	return c.CreateTimeSeries(ctx, ts)
+}
+
+var knownExternalMetricPrefixes = []string{
+	"custom.googleapis.com/",
+	"external.googleapis.com/",
+}
+
+// builtinMetric returns true if a MetricType is a heuristically known
+// built-in Stackdriver metric
+func builtinMetric(metricType string) bool {
+	for _, knownExternalMetric := range knownExternalMetricPrefixes {
+		if strings.HasPrefix(metricType, knownExternalMetric) {
+			return false
+		}
+	}
+	return true
 }

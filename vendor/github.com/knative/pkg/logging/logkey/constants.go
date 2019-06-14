@@ -23,6 +23,9 @@ const (
 	// Key is the key (namespace/name) being reconciled.
 	Key = "knative.dev/key"
 
+	// TraceId is the key used to track an asynchronous or long running operation.
+	TraceId = "knative.dev/traceid"
+
 	// Namespace is the key used for namespace in structured logs
 	Namespace = "knative.dev/namespace"
 

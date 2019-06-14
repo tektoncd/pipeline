@@ -120,7 +120,7 @@ func NewController(
 		timeoutHandler:    timeoutHandler,
 	}
 
-	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName, reconciler.MustNewStatsReporter(pipelineRunControllerName, r.Logger))
+	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
 
 	r.Logger.Info("Setting up event handlers")
 	pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

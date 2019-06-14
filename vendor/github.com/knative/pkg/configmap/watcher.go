@@ -26,7 +26,7 @@ import (
 // contents).
 type Observer func(*corev1.ConfigMap)
 
-// Watcher defined the interface that a configmap implementation must implement.
+// Watcher defines the interface that a configmap implementation must implement.
 type Watcher interface {
 	// Watch is called to register a callback to be notified when a named ConfigMap changes.
 	Watch(string, Observer)
@@ -35,4 +35,15 @@ type Watcher interface {
 	// stop watching.  When Start returns, all registered Observers will be called with the
 	// initial state of the ConfigMaps they are watching.
 	Start(<-chan struct{}) error
+}
+
+// DefaultingWatcher is similar to Watcher, but if a ConfigMap is absent, then a code provided
+// default will be used.
+type DefaultingWatcher interface {
+	Watcher
+
+	// WatchWithDefault is called to register a callback to be notified when a named ConfigMap
+	// changes. The provided default value is always observed before any real ConfigMap with that
+	// name is. If the real ConfigMap with that name is deleted, then the default value is observed.
+	WatchWithDefault(cm corev1.ConfigMap, o Observer)
 }
