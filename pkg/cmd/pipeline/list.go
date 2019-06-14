@@ -57,8 +57,11 @@ func listCommand(p cli.Params) *cobra.Command {
 			if output != "" {
 				return printPipelineListObj(cmd.OutOrStdout(), p, f)
 			}
-
-			return printPipelineDetails(cmd.OutOrStdout(), p)
+			stream := &cli.Stream{
+				Out: cmd.OutOrStdout(),
+				Err: cmd.OutOrStderr(),
+			}
+			return printPipelineDetails(stream, p)
 		},
 	}
 	f.AddFlags(c)
@@ -66,7 +69,7 @@ func listCommand(p cli.Params) *cobra.Command {
 	return c
 }
 
-func printPipelineDetails(out io.Writer, p cli.Params) error {
+func printPipelineDetails(s *cli.Stream, p cli.Params) error {
 
 	cs, err := p.Clients()
 	if err != nil {
@@ -76,15 +79,16 @@ func printPipelineDetails(out io.Writer, p cli.Params) error {
 	ps, prs, err := listPipelineDetails(cs.Tekton, p.Namespace())
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to list pipelines from %s namespace\n", p.Namespace())
+		fmt.Fprintf(s.Err, "Failed to list pipelines from %s namespace\n", p.Namespace())
 		return err
 	}
 
 	if len(ps.Items) == 0 {
-		return fmt.Errorf(emptyMsg)
+		fmt.Fprintln(s.Err, emptyMsg)
+		return nil
 	}
 
-	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
+	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(w, header)
 
 	for _, pipeline := range ps.Items {

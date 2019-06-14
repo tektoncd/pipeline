@@ -117,7 +117,7 @@ func TestListTaskRuns(t *testing.T) {
 			name:     "empty list",
 			command:  command(trs, now),
 			args:     []string{"list", "-n", "random"},
-			expected: []string{msgNoTRsFound, ""},
+			expected: []string{emptyMsg, ""},
 		},
 	}
 

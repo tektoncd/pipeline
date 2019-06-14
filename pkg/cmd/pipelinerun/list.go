@@ -16,7 +16,6 @@ package pipelinerun
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"text/tabwriter"
 
@@ -32,7 +31,7 @@ import (
 )
 
 const (
-	msgNoPRsFound = "No pipelineruns found."
+	emptyMsg = "No pipelineruns found"
 )
 
 func listCommand(p cli.Params) *cobra.Command {
@@ -72,8 +71,11 @@ tkn pr list -n foo",
 			if output != "" {
 				return printer.PrintObject(cmd.OutOrStdout(), prs, f)
 			}
-
-			err = printFormatted(cmd.OutOrStdout(), prs, p.Time())
+			stream := &cli.Stream{
+				Out: cmd.OutOrStdout(),
+				Err: cmd.OutOrStderr(),
+			}
+			err = printFormatted(stream, prs, p.Time())
 			if err != nil {
 				fmt.Fprint(os.Stderr, "Failed to print Pipelineruns \n")
 				return err
@@ -117,13 +119,13 @@ func list(p cli.Params, pipeline string) (*v1alpha1.PipelineRunList, error) {
 	return prs, nil
 }
 
-func printFormatted(out io.Writer, prs *v1alpha1.PipelineRunList, c clockwork.Clock) error {
+func printFormatted(s *cli.Stream, prs *v1alpha1.PipelineRunList, c clockwork.Clock) error {
 	if len(prs.Items) == 0 {
-		fmt.Fprintln(out, msgNoPRsFound)
+		fmt.Fprintln(s.Err, emptyMsg)
 		return nil
 	}
 
-	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
+	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(w, "NAME\tSTARTED\tDURATION\tSTATUS\t")
 	for _, pr := range prs.Items {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n",

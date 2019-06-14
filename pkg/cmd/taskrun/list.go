@@ -16,7 +16,6 @@ package taskrun
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"text/tabwriter"
 
@@ -32,7 +31,7 @@ import (
 )
 
 const (
-	msgNoTRsFound = "No taskruns found."
+	emptyMsg = "No taskruns found"
 )
 
 func listCommand(p cli.Params) *cobra.Command {
@@ -72,8 +71,11 @@ tkn pr list -n foo \n",
 			if output != "" {
 				return printer.PrintObject(cmd.OutOrStdout(), trs, f)
 			}
-
-			err = printFormatted(cmd.OutOrStdout(), trs, p.Time())
+			stream := &cli.Stream{
+				Out: cmd.OutOrStdout(),
+				Err: cmd.OutOrStderr(),
+			}
+			err = printFormatted(stream, trs, p.Time())
 			if err != nil {
 				fmt.Fprint(os.Stderr, "Failed to print Taskruns \n")
 				return err
@@ -117,13 +119,13 @@ func list(p cli.Params, task string) (*v1alpha1.TaskRunList, error) {
 	return trs, nil
 }
 
-func printFormatted(out io.Writer, trs *v1alpha1.TaskRunList, c clockwork.Clock) error {
+func printFormatted(s *cli.Stream, trs *v1alpha1.TaskRunList, c clockwork.Clock) error {
 	if len(trs.Items) == 0 {
-		fmt.Fprintln(out, msgNoTRsFound)
+		fmt.Fprintln(s.Err, emptyMsg)
 		return nil
 	}
 
-	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
+	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(w, "NAME\tSTARTED\tDURATION\tSTATUS\t")
 	for _, tr := range trs.Items {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n",

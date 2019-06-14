@@ -23,6 +23,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/test"
+	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -41,9 +42,7 @@ func TestPipelineDescribe_Empty(t *testing.T) {
 		t.Errorf("Error expected here")
 	}
 	expected := "pipelines.tekton.dev \"bar\" not found"
-	if d := cmp.Diff(expected, err.Error()); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
+	tu.AssertOutput(t, expected, err.Error())
 }
 
 func TestPipelinesDescribe_with_run(t *testing.T) {

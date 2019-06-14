@@ -124,7 +124,8 @@ function run_yaml_tests() {
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.4.0/release.yaml || fail_test "Build pipeline installation failed"
+  kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.4.0/release.yaml ||
+    fail_test "Build pipeline installation failed"
 
   # Make sure thateveything is cleaned up in the current namespace.
   for res in pipelineresources tasks pipelines taskruns pipelineruns; do
@@ -133,4 +134,83 @@ function install_pipeline_crd() {
 
   # Wait for pods to be running in the namespaces we are deploying to
   wait_until_pods_running tekton-pipelines || fail_test "Tekton Pipeline did not come up"
+}
+
+
+wait_until_ready(){
+  local timeout="$1"; shift
+  local obj="$1"; shift
+
+  echo "Waiting for $obj to be ready; timeout: $timeout"
+
+  local waited=0
+  while [[ $waited -lt $timeout ]]; do
+
+    local status=$(kubectl get $obj -o json | jq -r .status.conditions[0].status)
+
+    case "$status" in
+      True) return 0 ;;
+      False) return  1 ;;
+
+      *)
+        waited=$(( $waited + 2 ))
+        echo "   ... [$waited] status is $status "
+        sleep 2
+        ;;
+    esac
+  done
+
+  # timeout is an error
+  return 1
+}
+
+
+# ci_run allows certain steps to be skipped when running locally
+# usage:
+# ci_run && {
+#   commands to be run in CI
+# }
+#
+ci_run()  {
+  ${LOCAL_CI_RUN:-false} || return 0
+  return 1
+}
+
+# skips the test if it fails unless NO_SKIP is set to true
+# to skip a test:
+#   run_test "list pipelines" skip ./tkn pipeline list -n default
+# to turn off skipping:
+#   NO_SKIP=true ./e2e-tests.sh ...
+SKIP() {
+  ${NO_SKIP:-false} && {
+      $@
+      return $?
+  }
+
+  $@ || {
+    echo "SKIPPING: $@ returned $?"
+    return 0
+  }
+}
+
+run_test() {
+  local desc="$1"; shift
+
+  echo "Running $@"
+  $@ || fail_test "failed to $desc"
+  echo
+}
+
+# runs the test which should fail
+# to run a fail test
+#   must_fail "describe pipeline" ./tkn pipeline describe foo -n default
+must_fail() {
+  local desc="$1"; shift
+
+  echo "Running fail $@"
+
+  local failed=0
+  $@ || failed=1
+  (( failed )) || fail_test "failed to $desc"
+  echo
 }

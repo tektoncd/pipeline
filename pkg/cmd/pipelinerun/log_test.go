@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -63,10 +62,7 @@ func TestLog_missing_pipelinerun(t *testing.T) {
 	c := Command(p)
 	_, err := tu.ExecuteCommand(c, "logs", "output-pipeline-2", "-n", "ns")
 	expected := msgPRNotFoundErr + " : pipelineruns.tekton.dev \"output-pipeline-2\" not found"
-
-	if d := cmp.Diff(expected, err.Error()); d != "" {
-		t.Errorf("Unexpected output mismatch: \n%s\n", d)
-	}
+	tu.AssertOutput(t, expected, err.Error())
 }
 
 func TestPipelinerunLogs(t *testing.T) {

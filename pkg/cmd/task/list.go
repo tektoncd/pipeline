@@ -55,8 +55,11 @@ func listCommand(p cli.Params) *cobra.Command {
 			if output != "" {
 				return printTaskListObj(cmd.OutOrStdout(), p, f)
 			}
-
-			return printTaskDetails(cmd.OutOrStdout(), p)
+			stream := &cli.Stream{
+				Out: cmd.OutOrStdout(),
+				Err: cmd.OutOrStderr(),
+			}
+			return printTaskDetails(stream, p)
 		},
 	}
 	f.AddFlags(c)
@@ -64,7 +67,7 @@ func listCommand(p cli.Params) *cobra.Command {
 	return c
 }
 
-func printTaskDetails(out io.Writer, p cli.Params) error {
+func printTaskDetails(s *cli.Stream, p cli.Params) error {
 
 	cs, err := p.Clients()
 	if err != nil {
@@ -73,15 +76,16 @@ func printTaskDetails(out io.Writer, p cli.Params) error {
 
 	tasks, err := listTaskDetails(cs.Tekton, p.Namespace())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to list tasks from %s namespace\n", p.Namespace())
+		fmt.Fprintln(s.Err, emptyMsg)
 		return err
 	}
 
 	if len(tasks.Items) == 0 {
-		return fmt.Errorf(emptyMsg)
+		fmt.Fprintln(s.Err, emptyMsg)
+		return nil
 	}
 
-	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
+	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(w, header)
 
 	for _, task := range tasks.Items {
@@ -89,7 +93,6 @@ func printTaskDetails(out io.Writer, p cli.Params) error {
 			task.Name,
 			formatted.Age(task.CreationTimestamp, p.Time()),
 		)
-
 	}
 	return w.Flush()
 }

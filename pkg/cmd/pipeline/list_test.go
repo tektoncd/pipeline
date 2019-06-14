@@ -9,6 +9,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/test"
+	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -24,14 +25,11 @@ func TestPipelinesList_empty(t *testing.T) {
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
-	_, err := test.ExecuteCommand(pipeline, "list", "-n", "foo")
-	if err == nil {
-		t.Errorf("No errors was defined")
+	output, err := test.ExecuteCommand(pipeline, "list", "-n", "foo")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
 	}
-
-	if d := cmp.Diff(emptyMsg, err.Error()); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
+	tu.AssertOutput(t, emptyMsg+"\n", output)
 }
 
 func TestPipelineList_only_pipelines(t *testing.T) {

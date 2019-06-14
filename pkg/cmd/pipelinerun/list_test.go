@@ -141,10 +141,7 @@ func TestListPipeline_empty(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	expected := msgNoPRsFound + "\n"
-	if d := cmp.Diff(expected, output); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
+	tu.AssertOutput(t, emptyMsg+"\n", output)
 }
 
 func command(prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Command {

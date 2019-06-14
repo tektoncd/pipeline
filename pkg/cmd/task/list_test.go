@@ -22,24 +22,23 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/test"
+	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
-func TestTaskListEmpty(t *testing.T) {
+func TestTaskList_Empty(t *testing.T) {
 	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	task := Command(p)
-	_, err := test.ExecuteCommand(task, "list", "-n", "foo")
-	if err == nil {
-		t.Errorf("No errors was defined")
+	output, err := test.ExecuteCommand(task, "list", "-n", "foo")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
 	}
-	if d := cmp.Diff(emptyMsg, err.Error()); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
+	tu.AssertOutput(t, emptyMsg+"\n", output)
 }
 
 func TestTaskListOnlyTasks(t *testing.T) {
