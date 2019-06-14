@@ -94,44 +94,36 @@ func AsStructuredWatcher(wf cache.WatchFunc, obj runtime.Object) cache.WatchFunc
 		go func() {
 			defer close(structuredCh)
 			unstructuredCh := uw.ResultChan()
-			for {
-				select {
-				case ue, ok := <-unstructuredCh:
-					if !ok {
-						// Channel is closed.
-						return
-					}
+			for ue := range unstructuredCh {
+				unstructuredObj, ok := ue.Object.(*unstructured.Unstructured)
+				if !ok {
+					// If it isn't an unstructured object, then forward the
+					// event as-is.  This is likely to happen when the event's
+					// Type is an Error.
+					structuredCh <- ue
+					continue
+				}
+				structuredObj := obj.DeepCopyObject()
 
-					unstructuredObj, ok := ue.Object.(*unstructured.Unstructured)
-					if !ok {
-						// If it isn't an unstructured object, then forward the
-						// event as-is.  This is likely to happen when the event's
-						// Type is an Error.
-						structuredCh <- ue
-						continue
-					}
-					structuredObj := obj.DeepCopyObject()
-
-					err := FromUnstructured(unstructuredObj, structuredObj)
-					if err != nil {
-						// Pass back an error indicating that the object we got
-						// was invalid.
-						structuredCh <- watch.Event{
-							Type: watch.Error,
-							Object: &metav1.Status{
-								Status:  metav1.StatusFailure,
-								Code:    http.StatusUnprocessableEntity,
-								Reason:  metav1.StatusReasonInvalid,
-								Message: err.Error(),
-							},
-						}
-						continue
-					}
-					// Send the structured event.
+				err := FromUnstructured(unstructuredObj, structuredObj)
+				if err != nil {
+					// Pass back an error indicating that the object we got
+					// was invalid.
 					structuredCh <- watch.Event{
-						Type:   ue.Type,
-						Object: structuredObj,
+						Type: watch.Error,
+						Object: &metav1.Status{
+							Status:  metav1.StatusFailure,
+							Code:    http.StatusUnprocessableEntity,
+							Reason:  metav1.StatusReasonInvalid,
+							Message: err.Error(),
+						},
 					}
+					continue
+				}
+				// Send the structured event.
+				structuredCh <- watch.Event{
+					Type:   ue.Type,
+					Object: structuredObj,
 				}
 			}
 		}()

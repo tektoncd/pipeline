@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -28,6 +30,8 @@ import (
 	"github.com/knative/pkg/changeset"
 	"github.com/knative/pkg/logging/logkey"
 )
+
+const ConfigMapNameEnv = "CONFIG_LOGGING_NAME"
 
 // NewLogger creates a logger with the supplied configuration.
 // In addition to the logger, it returns AtomicLevel that can
@@ -128,7 +132,7 @@ const defaultZLC = `{
 
 // NewConfigFromMap creates a LoggingConfig from the supplied map,
 // expecting the given list of components.
-func NewConfigFromMap(data map[string]string, components ...string) (*Config, error) {
+func NewConfigFromMap(data map[string]string) (*Config, error) {
 	lc := &Config{}
 	if zlc, ok := data["zap-logger-config"]; ok {
 		lc.LoggingConfig = zlc
@@ -137,16 +141,15 @@ func NewConfigFromMap(data map[string]string, components ...string) (*Config, er
 	}
 
 	lc.LoggingLevel = make(map[string]zapcore.Level)
-	for _, component := range components {
-		if ll := data["loglevel."+component]; len(ll) > 0 {
-			level, err := levelFromString(ll)
-			if err != nil {
-				return nil, err
+	for k, v := range data {
+		if component := strings.TrimPrefix(k, "loglevel."); component != k && component != "" {
+			if len(v) > 0 {
+				level, err := levelFromString(v)
+				if err != nil {
+					return nil, err
+				}
+				lc.LoggingLevel[component] = *level
 			}
-			lc.LoggingLevel[component] = *level
-		} else {
-			// We default components to INFO
-			lc.LoggingLevel[component] = zapcore.InfoLevel
 		}
 	}
 	return lc, nil
@@ -154,8 +157,8 @@ func NewConfigFromMap(data map[string]string, components ...string) (*Config, er
 
 // NewConfigFromConfigMap creates a LoggingConfig from the supplied ConfigMap,
 // expecting the given list of components.
-func NewConfigFromConfigMap(configMap *corev1.ConfigMap, components ...string) (*Config, error) {
-	return NewConfigFromMap(configMap.Data, components...)
+func NewConfigFromConfigMap(configMap *corev1.ConfigMap) (*Config, error) {
+	return NewConfigFromMap(configMap.Data)
 }
 
 func levelFromString(level string) (*zapcore.Level, error) {
@@ -169,19 +172,27 @@ func levelFromString(level string) (*zapcore.Level, error) {
 // UpdateLevelFromConfigMap returns a helper func that can be used to update the logging level
 // when a config map is updated
 func UpdateLevelFromConfigMap(logger *zap.SugaredLogger, atomicLevel zap.AtomicLevel,
-	levelKey string, components ...string) func(configMap *corev1.ConfigMap) {
+	levelKey string) func(configMap *corev1.ConfigMap) {
 	return func(configMap *corev1.ConfigMap) {
-		loggingConfig, err := NewConfigFromConfigMap(configMap, components...)
+		loggingConfig, err := NewConfigFromConfigMap(configMap)
 		if err != nil {
 			logger.Errorw("Failed to parse the logging configmap. Previous config map will be used.", zap.Error(err))
 			return
 		}
 
-		if level, ok := loggingConfig.LoggingLevel[levelKey]; ok {
-			if atomicLevel.Level() != level {
-				logger.Infof("Updating logging level for %v from %v to %v.", levelKey, atomicLevel.Level(), level)
-				atomicLevel.SetLevel(level)
-			}
+		level := loggingConfig.LoggingLevel[levelKey]
+		if atomicLevel.Level() != level {
+			logger.Infof("Updating logging level for %v from %v to %v.", levelKey, atomicLevel.Level(), level)
+			atomicLevel.SetLevel(level)
 		}
 	}
+}
+
+// ConfigMapName gets the name of the logging ConfigMap
+func ConfigMapName() string {
+	cm := os.Getenv(ConfigMapNameEnv)
+	if cm == "" {
+		return "config-logging"
+	}
+	return cm
 }

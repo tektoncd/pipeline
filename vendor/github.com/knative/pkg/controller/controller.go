@@ -22,11 +22,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/knative/pkg/kmeta"
@@ -37,6 +40,10 @@ import (
 const (
 	falseString = "false"
 	trueString  = "true"
+
+	// DefaultResyncPeriod is the default duration that is used when no
+	// resync period is associated with a controllers initialization context.
+	DefaultResyncPeriod = 10 * time.Hour
 )
 
 var (
@@ -63,6 +70,17 @@ func PassNew(f func(interface{})) func(interface{}, interface{}) {
 	}
 }
 
+// HandleAll wraps the provided handler function into a cache.ResourceEventHandler
+// that sends all events to the given handler.  For Updates, only the new object
+// is forwarded.
+func HandleAll(h func(interface{})) cache.ResourceEventHandler {
+	return cache.ResourceEventHandlerFuncs{
+		AddFunc:    h,
+		UpdateFunc: PassNew(h),
+		DeleteFunc: h,
+	}
+}
+
 // Filter makes it simple to create FilterFunc's for use with
 // cache.FilteringResourceEventHandler that filter based on the
 // schema.GroupVersionKind of the controlling resources.
@@ -73,6 +91,18 @@ func Filter(gvk schema.GroupVersionKind) func(obj interface{}) bool {
 			return owner != nil &&
 				owner.APIVersion == gvk.GroupVersion().String() &&
 				owner.Kind == gvk.Kind
+		}
+		return false
+	}
+}
+
+// FilterWithNameAndNamespace makes it simple to create FilterFunc's for use with
+// cache.FilteringResourceEventHandler that filter based on a namespace and a name.
+func FilterWithNameAndNamespace(namespace, name string) func(obj interface{}) bool {
+	return func(obj interface{}) bool {
+		if object, ok := obj.(metav1.Object); ok {
+			return name == object.GetName() &&
+				namespace == object.GetNamespace()
 		}
 		return false
 	}
@@ -105,7 +135,11 @@ type Impl struct {
 
 // NewImpl instantiates an instance of our controller that will feed work to the
 // provided Reconciler as it is enqueued.
-func NewImpl(r Reconciler, logger *zap.SugaredLogger, workQueueName string, reporter StatsReporter) *Impl {
+func NewImpl(r Reconciler, logger *zap.SugaredLogger, workQueueName string) *Impl {
+	return NewImplWithStats(r, logger, workQueueName, MustNewStatsReporter(workQueueName, logger))
+}
+
+func NewImplWithStats(r Reconciler, logger *zap.SugaredLogger, workQueueName string, reporter StatsReporter) *Impl {
 	return &Impl{
 		Reconciler: r,
 		WorkQueue: workqueue.NewNamedRateLimitingQueue(
@@ -115,6 +149,17 @@ func NewImpl(r Reconciler, logger *zap.SugaredLogger, workQueueName string, repo
 		logger:        logger,
 		statsReporter: reporter,
 	}
+}
+
+// EnqueueAfter takes a resource, converts it into a namespace/name string,
+// and passes it to EnqueueKey.
+func (c *Impl) EnqueueAfter(obj interface{}, after time.Duration) {
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
+	if err != nil {
+		c.logger.Errorw("Enqueue", zap.Error(err))
+		return
+	}
+	c.EnqueueKeyAfter(key, after)
 }
 
 // Enqueue takes a resource, converts it into a namespace/name string,
@@ -212,6 +257,12 @@ func (c *Impl) EnqueueKey(key string) {
 	c.WorkQueue.Add(key)
 }
 
+// EnqueueKeyAfter takes a namespace/name string and schedules its execution in
+// the work queue after given delay.
+func (c *Impl) EnqueueKeyAfter(key string, delay time.Duration) {
+	c.WorkQueue.AddAfter(key, delay)
+}
+
 // Run starts the controller's worker threads, the number of which is threadiness.
 // It then blocks until stopCh is closed, at which point it shuts down its internal
 // work queue and waits for workers to finish processing their current work items.
@@ -271,7 +322,7 @@ func (c *Impl) processNextWorkItem() bool {
 
 	// Embed the key into the logger and attach that to the context we pass
 	// to the Reconciler.
-	logger := c.logger.With(zap.String(logkey.Key, key))
+	logger := c.logger.With(zap.String(logkey.TraceId, uuid.New().String()), zap.String(logkey.Key, key))
 	ctx := logging.WithLogger(context.TODO(), logger)
 
 	// Run Reconcile, passing it the namespace/name string of the
@@ -376,4 +427,48 @@ func StartAll(stopCh <-chan struct{}, controllers ...*Impl) {
 		}(ctrlr)
 	}
 	wg.Wait()
+}
+
+// This is attached to contexts passed to controller constructors to associate
+// a resync period.
+type resyncPeriodKey struct{}
+
+// WithResyncPeriod associates the given resync period with the given context in
+// the context that is returned.
+func WithResyncPeriod(ctx context.Context, resync time.Duration) context.Context {
+	return context.WithValue(ctx, resyncPeriodKey{}, resync)
+}
+
+// GetResyncPeriod returns the resync period associated with the given context.
+// When none is specified a default resync period is used.
+func GetResyncPeriod(ctx context.Context) time.Duration {
+	rp := ctx.Value(resyncPeriodKey{})
+	if rp == nil {
+		return DefaultResyncPeriod
+	}
+	return rp.(time.Duration)
+}
+
+// GetTrackerLease fetches the tracker lease from the controller context.
+func GetTrackerLease(ctx context.Context) time.Duration {
+	return 3 * GetResyncPeriod(ctx)
+}
+
+// erKey is used to associate record.EventRecorders with contexts.
+type erKey struct{}
+
+// WithEventRecorder attaches the given record.EventRecorder to the provided context
+// in the returned context.
+func WithEventRecorder(ctx context.Context, er record.EventRecorder) context.Context {
+	return context.WithValue(ctx, erKey{}, er)
+}
+
+// GetEventRecorder attempts to look up the record.EventRecorder on a given context.
+// It may return null if none is found.
+func GetEventRecorder(ctx context.Context) record.EventRecorder {
+	untyped := ctx.Value(erKey{})
+	if untyped == nil {
+		return nil
+	}
+	return untyped.(record.EventRecorder)
 }

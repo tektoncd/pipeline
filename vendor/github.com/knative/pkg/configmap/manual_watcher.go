@@ -29,7 +29,6 @@ type ManualWatcher struct {
 	// Guards mutations to defaultImpl fields
 	m sync.Mutex
 
-	started   bool
 	observers map[string][]Observer
 }
 

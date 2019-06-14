@@ -156,7 +156,7 @@ type HTTPRoute struct {
 	// forwarding target can be one of several versions of a service (see
 	// glossary in beginning of document). Weights associated with the
 	// service version determine the proportion of traffic it receives.
-	Route []DestinationWeight `json:"route,omitempty"`
+	Route []HTTPRouteDestination `json:"route,omitempty"`
 
 	// A http rule can either redirect or forward (default) traffic. If
 	// traffic passthrough option is specified in the rule,
@@ -196,13 +196,40 @@ type HTTPRoute struct {
 
 	// Additional HTTP headers to add before forwarding a request to the
 	// destination service.
-	AppendHeaders map[string]string `json:"appendHeaders,omitempty"`
+	DeprecatedAppendHeaders map[string]string `json:"appendHeaders,omitempty"`
+
+	// Header manipulation rules
+	Headers *Headers `json:"headers,omitempty"`
 
 	// Http headers to remove before returning the response to the caller
 	RemoveResponseHeaders map[string]string `json:"removeResponseHeaders,omitempty"`
 
 	// Cross-Origin Resource Sharing policy
 	CorsPolicy *CorsPolicy `json:"corsPolicy,omitempty"`
+}
+
+// Headers describes header manipulation rules.
+type Headers struct {
+	// Header manipulation rules to apply before forwarding a request
+	// to the destination service
+	Request *HeaderOperations `json:"request,omitempty"`
+
+	// Header manipulation rules to apply before returning a response
+	// to the caller
+	Response *HeaderOperations `json:"response,omitempty"`
+}
+
+// HeaderOperations Describes the header manipulations to apply
+type HeaderOperations struct {
+	// Overwrite the headers specified by key with the given values
+	Set map[string]string `json:"set,omitempty"`
+
+	// Append the given values to the headers specified by keys
+	// (will create a comma-separated list of values)
+	Add map[string]string `json:"add,omitempty"`
+
+	// Remove a the specified headers
+	Remove []string `json:"remove,omitempty"`
 }
 
 // HttpMatchRequest specifies a set of criterion to be met in order for the
@@ -306,7 +333,7 @@ type HTTPMatchRequest struct {
 	Gateways []string `json:"gateways,omitempty"`
 }
 
-type DestinationWeight struct {
+type HTTPRouteDestination struct {
 	// REQUIRED. Destination uniquely identifies the instances of a service
 	// to which the request/connection should be forwarded to.
 	Destination Destination `json:"destination"`
@@ -316,6 +343,9 @@ type DestinationWeight struct {
 	// If there is only destination in a rule, the weight value is assumed to
 	// be 100.
 	Weight int `json:"weight"`
+
+	// Header manipulation rules
+	Headers *Headers `json:"headers,omitempty"`
 }
 
 // Destination indicates the network addressable service to which the
@@ -493,7 +523,7 @@ type TCPRoute struct {
 
 	// The destinations to which the connection should be forwarded to. Weights
 	// must add to 100%.
-	Route []DestinationWeight `json:"route"`
+	Route []HTTPRouteDestination `json:"route"`
 }
 
 // Describes match conditions and actions for routing unterminated TLS
@@ -534,7 +564,7 @@ type TLSRoute struct {
 	Match []TLSMatchAttributes `json:"match"`
 
 	// The destination to which the connection should be forwarded to.
-	Route []DestinationWeight `json:"route"`
+	Route []HTTPRouteDestination `json:"route"`
 }
 
 // L4 connection match attributes. Note that L4 connection matching support
@@ -625,7 +655,7 @@ type HTTPRedirect struct {
 
 // HTTPRewrite can be used to rewrite specific parts of a HTTP request
 // before forwarding the request to the destination. Rewrite primitive can
-// be used only with the DestinationWeights. The following example
+// be used only with the HTTPRouteDestinations. The following example
 // demonstrates how to rewrite the URL prefix for api call (/ratings) to
 // ratings service before making the actual API call.
 //
@@ -737,7 +767,7 @@ type CorsPolicy struct {
 	// access. Serialized into Access-Control-Expose-Headers header.
 	ExposeHeaders []string `json:"exposeHeaders,omitempty"`
 
-	// Specifies how long the the results of a preflight request can be
+	// Specifies how long the results of a preflight request can be
 	// cached. Translates to the Access-Control-Max-Age header.
 	MaxAge string `json:"maxAge,omitempty"`
 
@@ -835,7 +865,7 @@ type InjectDelay struct {
 // not specified, all requests are aborted.
 type InjectAbort struct {
 	// Percentage of requests to be aborted with the error code provided (0-100).
-	Perecent int `json:"percent,omitempty"`
+	Percent int `json:"percent,omitempty"`
 
 	// REQUIRED. HTTP status code to use to abort the Http request.
 	HTTPStatus int `json:"httpStatus"`

@@ -29,6 +29,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	DomainEnv        = "METRICS_DOMAIN"
+	ConfigMapNameEnv = "CONFIG_OBSERVABILITY_NAME"
+)
+
 // metricsBackend specifies the backend to use for metrics
 type metricsBackend string
 
@@ -201,8 +206,8 @@ func getMetricsConfig(ops ExporterOptions, logger *zap.SugaredLogger) (*metricsC
 
 // UpdateExporterFromConfigMap returns a helper func that can be used to update the exporter
 // when a config map is updated.
-// DEPRECATED. Use UpdateExporter instead.
-func UpdateExporterFromConfigMap(domain string, component string, logger *zap.SugaredLogger) func(configMap *corev1.ConfigMap) {
+func UpdateExporterFromConfigMap(component string, logger *zap.SugaredLogger) func(configMap *corev1.ConfigMap) {
+	domain := Domain()
 	return func(configMap *corev1.ConfigMap) {
 		UpdateExporter(ExporterOptions{
 			Domain:    domain,
@@ -226,6 +231,8 @@ func UpdateExporter(ops ExporterOptions, logger *zap.SugaredLogger) error {
 	}
 
 	if isNewExporterRequired(newConfig) {
+		logger.Info("Flushing the existing exporter before setting up the new exporter.")
+		FlushExporter()
 		e, err := newMetricsExporter(newConfig, logger)
 		if err != nil {
 			logger.Errorf("Failed to update a new metrics exporter based on metric config %v. error: %v", newConfig, err)
@@ -251,4 +258,36 @@ func isNewExporterRequired(newConfig *metricsConfig) bool {
 	}
 
 	return false
+}
+
+// ConfigMapName gets the name of the metrics ConfigMap
+func ConfigMapName() string {
+	cm := os.Getenv(ConfigMapNameEnv)
+	if cm == "" {
+		return "config-observability"
+	}
+	return cm
+}
+
+// Domain holds the metrics domain to use for surfacing metrics.
+func Domain() string {
+	if domain := os.Getenv(DomainEnv); domain != "" {
+		return domain
+	}
+
+	panic(fmt.Sprintf(`The environment variable %q is not set
+
+If this is a process running on Kubernetes, then it should be specifying
+this via:
+
+  env:
+  - name: %s
+    value: knative.dev/some-repository
+
+If this is a Go unit test consuming metric.Domain() then it should add the
+following import:
+
+import (
+	_ "github.com/knative/pkg/metrics/testing"
+)`, DomainEnv, DomainEnv))
 }

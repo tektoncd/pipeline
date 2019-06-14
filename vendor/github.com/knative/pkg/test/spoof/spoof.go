@@ -106,7 +106,7 @@ func New(kubeClientset *kubernetes.Clientset, logf logging.FormatLogger, domain 
 		if endpointOverride == "" {
 			var err error
 			// If the domain that the Route controller is configured to assign to Route.Status.Domain
-			// (the domainSuffix) is not resolvable, we need to retrieve the the endpoint and spoof
+			// (the domainSuffix) is not resolvable, we need to retrieve the endpoint and spoof
 			// the Host in our requests.
 			e, err = ingress.GetIngressEndpoint(kubeClientset)
 			if err != nil {

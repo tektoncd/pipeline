@@ -119,7 +119,7 @@ func NewController(
 		resourceLister:    resourceInformer.Lister(),
 		timeoutHandler:    timeoutHandler,
 	}
-	impl := controller.NewImpl(c, c.Logger, taskRunControllerName, reconciler.MustNewStatsReporter(taskRunControllerName, c.Logger))
+	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
 	c.Logger.Info("Setting up event handlers")
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

@@ -29,7 +29,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 
-	monitoring "cloud.google.com/go/monitoring/apiv3"
+	"cloud.google.com/go/monitoring/apiv3"
 	distributionpb "google.golang.org/genproto/googleapis/api/distribution"
 	labelpb "google.golang.org/genproto/googleapis/api/label"
 	googlemetricpb "google.golang.org/genproto/googleapis/api/metric"
@@ -273,11 +273,20 @@ func (se *statsExporter) createMetricDescriptor(ctx context.Context, metric *met
 		return err
 	}
 
-	cmrdesc := &monitoringpb.CreateMetricDescriptorRequest{
-		Name:             fmt.Sprintf("projects/%s", se.o.ProjectID),
-		MetricDescriptor: inMD,
+	var md *googlemetricpb.MetricDescriptor
+	if builtinMetric(inMD.Type) {
+		gmrdesc := &monitoringpb.GetMetricDescriptorRequest{
+			Name: inMD.Name,
+		}
+		md, err = getMetricDescriptor(ctx, se.c, gmrdesc)
+	} else {
+
+		cmrdesc := &monitoringpb.CreateMetricDescriptorRequest{
+			Name:             fmt.Sprintf("projects/%s", se.o.ProjectID),
+			MetricDescriptor: inMD,
+		}
+		md, err = createMetricDescriptor(ctx, se.c, cmrdesc)
 	}
-	md, err := createMetricDescriptor(ctx, se.c, cmrdesc)
 
 	if err == nil {
 		// Now record the metric as having been created.

@@ -206,18 +206,12 @@ func getOrGenerateKeyCertsFromSecret(ctx context.Context, client kubernetes.Inte
 	return serverKey, serverCert, caCert, nil
 }
 
-// validate checks whether "new" and "old" implement HasImmutableFields and checks them,
-// it then delegates validation to apis.Validatable on "new".
-func validate(ctx context.Context, old, new GenericCRD) error {
-	if old != nil {
-		// Copy the old object and set defaults so that we don't reject our own
-		// defaulting done earlier in the webhook.
-		old = old.DeepCopyObject().(GenericCRD)
-		old.SetDefaults(ctx)
-
-		ctx = apis.WithinUpdate(ctx, old)
-
-		// TODO(mattmoor): Remove this.
+// validate performs validation on the provided "new" CRD.
+// For legacy purposes, this also does apis.Immutable validation,
+// which is deprecated and will be removed in a future release.
+func validate(ctx context.Context, new GenericCRD) error {
+	if apis.IsInUpdate(ctx) {
+		old := apis.GetBaseline(ctx)
 		if immutableNew, ok := new.(apis.Immutable); ok {
 			immutableOld, ok := old.(apis.Immutable)
 			if !ok {
@@ -227,14 +221,13 @@ func validate(ctx context.Context, old, new GenericCRD) error {
 				return err
 			}
 		}
-	} else {
-		ctx = apis.WithinCreate(ctx)
 	}
 
 	// Can't just `return new.Validate()` because it doesn't properly nil-check.
 	if err := new.Validate(ctx); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -340,7 +333,7 @@ func (ac *AdmissionController) register(
 			Rule: admissionregistrationv1beta1.Rule{
 				APIGroups:   []string{gvk.Group},
 				APIVersions: []string{gvk.Version},
-				Resources:   []string{plural},
+				Resources:   []string{plural + "/*"},
 			},
 		})
 	}
@@ -550,7 +543,24 @@ func (ac *AdmissionController) mutate(ctx context.Context, req *admissionv1beta1
 		patches = append(patches, rtp...)
 	}
 
+	// Set up the context for defaulting and validation
+	if oldObj != nil {
+		// Copy the old object and set defaults so that we don't reject our own
+		// defaulting done earlier in the webhook.
+		oldObj = oldObj.DeepCopyObject().(GenericCRD)
+		oldObj.SetDefaults(ctx)
+
+		if req.SubResource == "" {
+			ctx = apis.WithinUpdate(ctx, oldObj)
+		} else {
+			ctx = apis.WithinSubResourceUpdate(ctx, oldObj, req.SubResource)
+		}
+	} else {
+		ctx = apis.WithinCreate(ctx)
+	}
 	ctx = apis.WithUserInfo(ctx, &req.UserInfo)
+
+	// Default the new object.
 	if patches, err = setDefaults(ctx, patches, newObj); err != nil {
 		logger.Errorw("Failed the resource specific defaulter", zap.Error(err))
 		// Return the error message as-is to give the defaulter callback
@@ -562,12 +572,13 @@ func (ac *AdmissionController) mutate(ctx context.Context, req *admissionv1beta1
 	if newObj == nil {
 		return nil, errMissingNewObject
 	}
-	if err := validate(ctx, oldObj, newObj); err != nil {
+	if err := validate(ctx, newObj); err != nil {
 		logger.Errorw("Failed the resource specific validation", zap.Error(err))
 		// Return the error message as-is to give the validation callback
 		// discretion over (our portion of) the message that the user sees.
 		return nil, err
 	}
+
 	return json.Marshal(patches)
 }
 
