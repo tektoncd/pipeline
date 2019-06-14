@@ -401,7 +401,9 @@ Use these code snippets to help you understand how to define your `Tasks`.
 
 - [Example of image building and pushing](#example-task)
 - [Mounting extra volumes](#using-an-extra-volume)
-- [Mounting configMap as volume source](#using-kubernetes-configmap-as-volume-source)
+- [Mounting configMap as volume
+  source](#using-kubernetes-configmap-as-volume-source)
+- [Using secret as environment source](#using-secret-as-environment-source)
 
 _Tip: See the collection of simple
 [examples](https://github.com/tektoncd/pipeline/tree/master/examples) for
@@ -514,6 +516,43 @@ spec:
     - name: "${inputs.params.volumeName}"
       configMap:
         name: "${inputs.params.CFGNAME}"
+```
+
+#### Using secret as environment source
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: goreleaser
+spec:
+  inputs:
+    params:
+    - name: package
+      description: base package to build in
+    - name: github-token-secret
+      description: name of the secret holding the github-token
+      default: github-token
+    resources:
+    - name: source
+      type: git
+      targetPath: src/${inputs.params.package}
+  steps:
+  - name: release
+    image: goreleaser/goreleaser
+    workingdir: /workspace/src/${inputs.params.package}
+    command:
+    - goreleaser
+    args:
+    - release
+    env:
+    - name: GOPATH
+      value: /workspace
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: ${inputs.params.github-token-secret}
+          key: bot-token
 ```
 
 Except as otherwise noted, the content of this page is licensed under the

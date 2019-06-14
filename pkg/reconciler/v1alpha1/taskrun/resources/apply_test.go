@@ -41,6 +41,44 @@ var simpleTaskSpec = &v1alpha1.TaskSpec{
 	}},
 }
 
+var envTaskSpec = &v1alpha1.TaskSpec{
+	Steps: []corev1.Container{{
+		Name:  "foo",
+		Image: "busybox:${inputs.params.FOO}",
+		Env: []corev1.EnvVar{{
+			Name:  "foo",
+			Value: "value-${inputs.params.FOO}",
+		}, {
+			Name: "bar",
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "config-${inputs.params.FOO}"},
+					Key:                  "config-key-${inputs.params.FOO}",
+				},
+			},
+		}, {
+			Name: "baz",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-${inputs.params.FOO}"},
+					Key:                  "secret-key-${inputs.params.FOO}",
+				},
+			},
+		}},
+		EnvFrom: []corev1.EnvFromSource{{
+			Prefix: "prefix-0-${inputs.params.FOO}",
+			ConfigMapRef: &corev1.ConfigMapEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "config-${inputs.params.FOO}"},
+			},
+		}, {
+			Prefix: "prefix-1-${inputs.params.FOO}",
+			SecretRef: &corev1.SecretEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: "secret-${inputs.params.FOO}"},
+			},
+		}},
+	}},
+}
+
 var volumeMountTaskSpec = &v1alpha1.TaskSpec{
 	Steps: []corev1.Container{{
 		Name:  "foo",
@@ -181,6 +219,33 @@ func TestApplyParameters(t *testing.T) {
 			spec.Steps[0].VolumeMounts[0].Name = "world"
 			spec.Steps[0].VolumeMounts[0].SubPath = "sub/world/path"
 			spec.Steps[0].VolumeMounts[0].MountPath = "path/to/world"
+			spec.Steps[0].Image = "busybox:world"
+		}),
+	}, {
+		name: "envs parameter",
+		args: args{
+			ts: envTaskSpec,
+			tr: &v1alpha1.TaskRun{
+				Spec: v1alpha1.TaskRunSpec{
+					Inputs: v1alpha1.TaskRunInputs{
+						Params: []v1alpha1.Param{{
+							Name:  "FOO",
+							Value: "world",
+						}},
+					},
+				},
+			},
+		},
+		want: applyMutation(envTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[0].Env[0].Value = "value-world"
+			spec.Steps[0].Env[1].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "config-world"
+			spec.Steps[0].Env[1].ValueFrom.ConfigMapKeyRef.Key = "config-key-world"
+			spec.Steps[0].Env[2].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "secret-world"
+			spec.Steps[0].Env[2].ValueFrom.SecretKeyRef.Key = "secret-key-world"
+			spec.Steps[0].EnvFrom[0].Prefix = "prefix-0-world"
+			spec.Steps[0].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "config-world"
+			spec.Steps[0].EnvFrom[1].Prefix = "prefix-1-world"
+			spec.Steps[0].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
 			spec.Steps[0].Image = "busybox:world"
 		}),
 	}, {
