@@ -19,7 +19,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
-	"github.com/tektoncd/cli/pkg/errors"
 	"github.com/tektoncd/cli/pkg/helper/pods"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 )
@@ -92,12 +91,7 @@ func (lo *LogOptions) run() error {
 	}
 
 	logC, errC, err := lr.Read()
-	switch e := err.(type) {
-	// ignore log warnings
-	case *errors.WarningError:
-		fmt.Fprintf(lo.stream.Err, "%s \n", e.Error())
-	case nil: // ignore nil
-	default:
+	if err != nil {
 		return err
 	}
 

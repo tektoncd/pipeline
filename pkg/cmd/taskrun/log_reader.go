@@ -18,8 +18,6 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	clierrors "github.com/tektoncd/cli/pkg/errors"
-
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/helper/pods"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
@@ -97,10 +95,7 @@ func (lr *LogReader) readLiveLogs(tr *v1alpha1.TaskRun) (<-chan Log, <-chan erro
 	p := pods.New(podName, lr.Ns, kube, lr.Streamer)
 	pod, err := p.Wait()
 	if err != nil {
-		if _, ok := err.(*clierrors.WarningError); !ok {
-			return nil, nil, errors.Wrap(err, fmt.Sprintf("task %s failed", lr.Task))
-		}
-		err = clierrors.NewWarning(fmt.Sprintf("task %s failed: %s", lr.Task, err))
+		return nil, nil, errors.Wrap(err, fmt.Sprintf("task %s failed", lr.Task))
 	}
 
 	steps := filterSteps(pod, lr.AllSteps)
@@ -151,6 +146,7 @@ func (lr *LogReader) readStepsLogs(steps []step, pod *pods.Pod, follow bool) (<-
 				case l, ok := <-podC:
 					if !ok {
 						podC = nil
+						logC <- Log{Task: lr.Task, Step: step.name, Log: "EOFLOG"}
 						continue
 					}
 					logC <- Log{Task: lr.Task, Step: step.name, Log: l.Log}

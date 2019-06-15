@@ -225,29 +225,29 @@ func TestPipelinerunLogs(t *testing.T) {
 			name:     "for all tasks",
 			allSteps: false,
 			expectedLogs: []string{
-				"[output-task : writefile-step] written a file",
-				"[output-task : nop] Build successful",
-				"[read-task : readfile-step] able to read a file",
-				"[read-task : nop] Build successful",
+				"[output-task : writefile-step] written a file\n",
+				"[output-task : nop] Build successful\n",
+				"[read-task : readfile-step] able to read a file\n",
+				"[read-task : nop] Build successful\n",
 			},
 		}, {
 			name:     "for task1 only",
 			allSteps: false,
 			tasks:    []string{task1Name},
 			expectedLogs: []string{
-				"[output-task : writefile-step] written a file",
-				"[output-task : nop] Build successful",
+				"[output-task : writefile-step] written a file\n",
+				"[output-task : nop] Build successful\n",
 			},
 		}, {
 			name:     "including init steps",
 			allSteps: true,
 			expectedLogs: []string{
-				"[output-task : credential-initializer-mdzbr] initialized the credentials",
-				"[output-task : place-tools] place tools log",
-				"[output-task : writefile-step] written a file",
-				"[output-task : nop] Build successful",
-				"[read-task : readfile-step] able to read a file",
-				"[read-task : nop] Build successful",
+				"[output-task : credential-initializer-mdzbr] initialized the credentials\n",
+				"[output-task : place-tools] place tools log\n",
+				"[output-task : writefile-step] written a file\n",
+				"[output-task : nop] Build successful\n",
+				"[read-task : readfile-step] able to read a file\n",
+				"[read-task : nop] Build successful\n",
 			},
 		},
 	}
@@ -371,8 +371,8 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 	output, _ := fetchLogs(prlo)
 
 	expectedLogs := []string{
-		"[output-task : writefile-step] wrote a file",
-		"[output-task : nop] Build successful",
+		"[output-task : writefile-step] wrote a file\n",
+		"[output-task : nop] Build successful\n",
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
@@ -483,8 +483,8 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 		"[output-task : writefile-step] wrote a file1",
 		"[output-task : writefile-step] wrote a file2",
 		"[output-task : writefile-step] wrote a file3",
-		"[output-task : writefile-step] wrote a file4",
-		"[output-task : nop] Build successful",
+		"[output-task : writefile-step] wrote a file4\n",
+		"[output-task : nop] Build successful\n",
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 

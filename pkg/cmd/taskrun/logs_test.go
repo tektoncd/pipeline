@@ -118,8 +118,8 @@ func TestLog_taskrun_logs(t *testing.T) {
 	output, _ := fetchLogs(trlo)
 
 	expectedLogs := []string{
-		"[writefile-step] wrote a file",
-		"[nop] Build successful",
+		"[writefile-step] wrote a file\n",
+		"[nop] Build successful\n",
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
@@ -196,10 +196,10 @@ func TestLog_taskrun_all_steps(t *testing.T) {
 	output, _ := fetchLogs(trl)
 
 	expectedLogs := []string{
-		"[credential-initializer-mdzbr] initialized the credentials",
-		"[place-tools] place tools log",
-		"[writefile-step] written a file",
-		"[nop] Build successful",
+		"[credential-initializer-mdzbr] initialized the credentials\n",
+		"[place-tools] place tools log\n",
+		"[writefile-step] written a file\n",
+		"[nop] Build successful\n",
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
@@ -275,8 +275,8 @@ func TestLog_taskrun_follow_mode(t *testing.T) {
 	output, _ := fetchLogs(trlo)
 
 	expectedLogs := []string{
-		"[writefile-step] wrote a file",
-		"[nop] Build successful",
+		"[writefile-step] wrote a file\n",
+		"[nop] Build successful\n",
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 

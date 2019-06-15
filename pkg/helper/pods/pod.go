@@ -5,7 +5,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/tektoncd/cli/pkg/errors"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,12 +116,9 @@ func checkPodStatus(obj interface{}) (*corev1.Pod, error) {
 	}
 
 	if pod.Status.Phase == corev1.PodSucceeded ||
-		pod.Status.Phase == corev1.PodRunning {
+		pod.Status.Phase == corev1.PodRunning ||
+		pod.Status.Phase == corev1.PodFailed {
 		return pod, nil
-	}
-
-	if pod.Status.Phase == corev1.PodFailed {
-		return pod, errors.NewWarning(pod.Status.Reason)
 	}
 
 	// Handle any issues with pulling images that may fail

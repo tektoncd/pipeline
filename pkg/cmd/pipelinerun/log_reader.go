@@ -7,7 +7,6 @@ import (
 
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/taskrun"
-	"github.com/tektoncd/cli/pkg/errors"
 	"github.com/tektoncd/cli/pkg/helper/pipelinerun"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 	trh "github.com/tektoncd/cli/pkg/helper/taskrun"
@@ -117,9 +116,7 @@ func pipeLogs(logC chan<- Log, errC chan<- error, tlr *taskrun.LogReader) {
 	tlogC, terrC, err := tlr.Read()
 	if err != nil {
 		errC <- err
-		if _, ok := err.(*errors.WarningError); !ok {
-			return
-		}
+		return
 	}
 
 	for tlogC != nil || terrC != nil {

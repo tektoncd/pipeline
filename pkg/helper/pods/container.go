@@ -3,9 +3,8 @@ package pods
 import (
 	"bufio"
 	"fmt"
-	"io"
-
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
+	"io"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -85,12 +84,10 @@ func (lr *LogReader) Read() (<-chan Log, <-chan error, error) {
 		for {
 			line, _, err := r.ReadLine()
 
-			if err != nil && err != io.EOF {
-				errC <- err
-				return
-			}
-
-			if err == io.EOF {
+			if err != nil {
+				if err != io.EOF {
+					errC <- err
+				}
 				return
 			}
 

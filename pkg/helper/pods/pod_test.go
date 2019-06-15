@@ -1,7 +1,6 @@
 package pods
 
 import (
-	"github.com/tektoncd/cli/pkg/errors"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -94,12 +93,8 @@ func Test_wait_pod_fail(t *testing.T) {
 		t.Errorf("Unexpected output mismatch: \n%s\n", p)
 	}
 
-	if err == nil {
+	if err != nil {
 		t.Errorf("Unexpected error: \n%s\n", err)
-	}
-
-	if _, ok := err.(*errors.WarningError); !ok {
-		t.Errorf("Unexpected error type")
 	}
 }
 

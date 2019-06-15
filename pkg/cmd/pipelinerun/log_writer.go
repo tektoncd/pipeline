@@ -31,11 +31,11 @@ func (lw *LogWriter) Write(s *cli.Stream, logC <-chan Log, errC <-chan error) {
 				continue
 			}
 
-			if l.Log == "LOGEOF" {
+			if l.Log == "EOFLOG" {
 				fmt.Fprintf(s.Out, "\n")
-				break
+				continue
 			}
-			//TODO: formatting statement header
+
 			fmt.Fprintf(s.Out, "[%s : %s] %s\n", l.Task, l.Step, l.Log)
 
 		case e, ok := <-errC:
