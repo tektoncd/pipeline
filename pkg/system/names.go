@@ -29,5 +29,5 @@ func GetNamespace() string {
 	if systemNamespace == "" {
 		return DefaultNamespace
 	}
-	return os.Getenv(SystemNamespaceEnvVar)
+	return systemNamespace
 }
