@@ -103,6 +103,10 @@ func (t *Tracker) findNewTaskruns(pr *v1alpha1.PipelineRun, allowed []string) []
 }
 
 func hasCompleted(pr *v1alpha1.PipelineRun) bool {
+	if len(pr.Status.Conditions) == 0 {
+		return false
+	}
+
 	return pr.Status.Conditions[0].Status != corev1.ConditionUnknown
 }
 

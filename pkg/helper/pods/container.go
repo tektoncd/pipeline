@@ -27,7 +27,17 @@ func (c *Container) Status() error {
 		}
 
 		if cs.State.Terminated != nil && cs.State.Terminated.ExitCode == 1 {
-			return fmt.Errorf("container %s has failed: %s", container, cs.State.Terminated.Reason)
+			msg := ""
+
+			if cs.State.Terminated.Reason != "" {
+				msg = msg + " : " + cs.State.Terminated.Reason
+			}
+
+			if cs.State.Terminated.Message != "" {
+				msg = msg + " : " + cs.State.Terminated.Message
+			}
+
+			return fmt.Errorf("container %s has failed %s", container, msg)
 		}
 	}
 

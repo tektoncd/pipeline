@@ -16,7 +16,6 @@ package taskrun
 
 import (
 	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/helper/pods"
@@ -30,6 +29,11 @@ import (
 type step struct {
 	name      string
 	container string
+	state     corev1.ContainerState
+}
+
+func (s *step) hasStarted() bool {
+	return s.state.Waiting == nil
 }
 
 type Log struct {
@@ -105,13 +109,12 @@ func (lr *LogReader) readLiveLogs(tr *v1alpha1.TaskRun) (<-chan Log, <-chan erro
 
 func (lr *LogReader) readAvailableLogs(tr *v1alpha1.TaskRun) (<-chan Log, <-chan error, error) {
 	var (
-		kube     = lr.Clients.Kube
-		trStatus = tr.Status
-		podName  = trStatus.PodName
+		kube    = lr.Clients.Kube
+		podName = tr.Status.PodName
 	)
 
-	if !hasStarted(trStatus) {
-		return nil, nil, fmt.Errorf("task %s has not started yet", lr.Task)
+	if !tr.HasStarted() {
+		return nil, nil, fmt.Errorf("task %s has not hasStarted yet", lr.Task)
 	}
 
 	p := pods.New(podName, lr.Ns, kube, lr.Streamer)
@@ -125,7 +128,7 @@ func (lr *LogReader) readAvailableLogs(tr *v1alpha1.TaskRun) (<-chan Log, <-chan
 	return logC, errC, nil
 }
 
-func (lr *LogReader) readStepsLogs(steps []step, pod *pods.Pod, follow bool) (<-chan Log, <-chan error) {
+func (lr *LogReader) readStepsLogs(steps []*step, pod *pods.Pod, follow bool) (<-chan Log, <-chan error) {
 	logC := make(chan Log)
 	errC := make(chan error)
 
@@ -134,6 +137,10 @@ func (lr *LogReader) readStepsLogs(steps []step, pod *pods.Pod, follow bool) (<-
 		defer close(errC)
 
 		for _, step := range steps {
+			if !follow && !step.hasStarted() {
+				continue
+			}
+
 			container := pod.Container(step.container)
 			podC, perrC, err := container.LogReader(follow).Read()
 			if err != nil {
@@ -171,27 +178,50 @@ func (lr *LogReader) readStepsLogs(steps []step, pod *pods.Pod, follow bool) (<-
 	return logC, errC
 }
 
-func hasStarted(trStatus v1alpha1.TaskRunStatus) bool {
-	return trStatus.StartTime != nil && !trStatus.StartTime.IsZero()
-}
-
-func filterSteps(pod *corev1.Pod, allSteps bool) []step {
-	steps := []step{}
+func filterSteps(pod *corev1.Pod, allSteps bool) []*step {
+	steps := []*step{}
 
 	if allSteps {
-		for _, ics := range pod.Status.InitContainerStatuses {
-			steps = append(steps, step{
-				name:      resources.TrimContainerNamePrefix(ics.Name),
-				container: ics.Name,
-			})
-		}
+		steps = append(steps, getInitSteps(pod)...)
 	}
 
-	for _, cs := range pod.Spec.Containers {
-		steps = append(steps, step{
-			name:      resources.TrimContainerNamePrefix(cs.Name),
-			container: cs.Name,
+	steps = append(steps, getSteps(pod)...)
+
+	return steps
+}
+
+func getInitSteps(pod *corev1.Pod) []*step {
+	status := map[string]corev1.ContainerState{}
+	for _, ics := range pod.Status.InitContainerStatuses {
+		status[ics.Name] = ics.State
+	}
+
+	steps := []*step{}
+	for _, ic := range pod.Spec.InitContainers {
+		steps = append(steps, &step{
+			name:      resources.TrimContainerNamePrefix(ic.Name),
+			container: ic.Name,
+			state:     status[ic.Name],
 		})
 	}
+
+	return steps
+}
+
+func getSteps(pod *corev1.Pod) []*step {
+	status := map[string]corev1.ContainerState{}
+	for _, cs := range pod.Status.ContainerStatuses {
+		status[cs.Name] = cs.State
+	}
+
+	steps := []*step{}
+	for _, c := range pod.Spec.Containers {
+		steps = append(steps, &step{
+			name:      resources.TrimContainerNamePrefix(c.Name),
+			container: c.Name,
+			state:     status[c.Name],
+		})
+	}
+
 	return steps
 }
