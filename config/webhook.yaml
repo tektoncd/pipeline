@@ -21,6 +21,8 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
         app: tekton-pipelines-webhook
     spec:
