@@ -38,4 +38,5 @@ logs        Display pipelinerun logs
 ### SEE ALSO
 
 * [tkn pipelinerun list](tkn_pipelinerun_list.md)	 - Lists all the pipelineruns in a given namespace.
-* [tkn pipelinerun describe](tkn_pipelinerun_describe.md)	 - Describe given pipelinerun.
+* [tkn pipelinerun describe](tkn_pipelinerun_describe.md)	 - Describe given `pipelinerun`.
+* [tkn pipelinerun logs](tkn_pipelinerun_logs.md)	 - Show logs for the  given `pipelinerun`.

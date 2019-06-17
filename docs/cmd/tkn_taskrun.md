@@ -36,3 +36,4 @@ logs        Displays taskrun logs
 ### SEE ALSO
 
 * [tkn taskrun list](tkn_taskrun_list.md)	 - Lists all the `taskruns` in a given namespace.
+* [tkn taskrun logs](tkn_taskrun_logs.md)	 - Show logs for the  given `taskrun`.
