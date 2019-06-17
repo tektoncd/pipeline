@@ -20,6 +20,8 @@ builds:
   - amd64
   - arm
   - arm64
+  ldflags:
+  - -s -w -X github.com/tektoncd/cli/pkg/cmd/version.clientVersion={{.Version}}
 archives:
 - name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
   replacements:
