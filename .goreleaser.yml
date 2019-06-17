@@ -21,7 +21,7 @@ builds:
   - arm
   - arm64
   ldflags:
-  - -s -w -X github.com/tektoncd/cli/pkg/cmd/version.clientVersion={{.Version}}
+  - -w -X github.com/tektoncd/cli/pkg/cmd/version.clientVersion={{.Version}}
 archives:
 - name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
   replacements:
@@ -45,3 +45,14 @@ changelog:
 release:
   draft: true
   prerelease: auto
+brews:
+  -
+    name: tektoncd-cli
+    github:
+      owner: chmouel
+      name: homebrew-tektoncd-cli
+    folder: Formula
+    homepage: "https://github.com/tektoncd/cli"
+    description: A CLI for interacting with Tekton!
+    test: |
+      system "#{bin}/tkn --version"
