@@ -16,11 +16,19 @@ package pipelinerun
 
 import (
 	"fmt"
-
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/formatted"
 )
 
-type LogWriter struct{}
+type LogWriter struct {
+	fmt *formatted.Color
+}
+
+func NewLogWriter() *LogWriter {
+	return &LogWriter{
+		fmt: formatted.NewColor(),
+	}
+}
 
 func (lw *LogWriter) Write(s *cli.Stream, logC <-chan Log, errC <-chan error) {
 	for logC != nil || errC != nil {
@@ -35,15 +43,14 @@ func (lw *LogWriter) Write(s *cli.Stream, logC <-chan Log, errC <-chan error) {
 				fmt.Fprintf(s.Out, "\n")
 				continue
 			}
-
-			fmt.Fprintf(s.Out, "[%s : %s] %s\n", l.Task, l.Step, l.Log)
-
+			lw.fmt.Header(s.Out, "[%s : %s] ", l.Task, l.Step)
+			fmt.Fprintf(s.Out, "%s\n", l.Log)
 		case e, ok := <-errC:
 			if !ok {
 				errC = nil
 				continue
 			}
-			fmt.Fprintf(s.Err, "%s\n", e)
+			lw.fmt.Error(s.Err, "%s\n", e)
 		}
 	}
 }

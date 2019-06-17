@@ -95,7 +95,6 @@ func (lo *LogOptions) run() error {
 		return err
 	}
 
-	lw := &LogWriter{}
-	lw.Write(lo.stream, logC, errC)
+	NewLogWriter().Write(lo.stream, logC, errC)
 	return nil
 }
