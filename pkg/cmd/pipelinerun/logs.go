@@ -71,7 +71,7 @@ func logCommand(p cli.Params) *cobra.Command {
 	}
 
 	c.Flags().BoolVarP(&opts.allSteps, "all", "a", false, "show all logs including init steps injected by tekton")
-	c.Flags().BoolVarP(&opts.follow, "follow", "f", false, "stream the live logs")
+	c.Flags().BoolVarP(&opts.follow, "follow", "f", false, "stream live logs")
 	c.Flags().StringSliceVarP(&opts.tasks, "only-tasks", "t", []string{}, "show logs for mentioned tasks only")
 
 	return c

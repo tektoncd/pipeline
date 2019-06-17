@@ -14,7 +14,7 @@ tkn taskrun logs NAME [flags]
 
 ```
   -a, --all      show all logs including init steps injected by tekton
-  -f, --follow   stream the live logs
+  -f, --follow   stream live logs
   -h, --help     help for logs
 
 ```

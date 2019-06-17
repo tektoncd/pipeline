@@ -15,7 +15,7 @@ tkn pipelinerun logs NAME [flags]
 ```
 -a, --all                  show all logs including init steps injected by tekton
 -h, --help                 help for logs
--f  --follow               stream the live logs 
+-f  --follow               stream live logs 
 -t, --only-tasks strings   show the logs for mentioned task only
 ```
 
