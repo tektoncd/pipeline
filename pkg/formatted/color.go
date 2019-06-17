@@ -19,11 +19,13 @@ import (
 	"io"
 )
 
+//Color formatter to print the colored output on streams
 type Color struct {
 	red  *color.Color
 	blue *color.Color
 }
 
+//NewColor returns a new instance color formatter
 func NewColor() *Color {
 	return &Color{
 		red:  color.New(color.FgRed),
@@ -31,18 +33,22 @@ func NewColor() *Color {
 	}
 }
 
+//PrintBlue prints the formatted content to given destination in blue color
 func (c *Color) PrintBlue(w io.Writer, format string, args ...interface{}) {
 	c.blue.Fprintf(w, format, args...)
 }
 
+//Header prints the formatted content to given destination in blue color
 func (c *Color) Header(w io.Writer, format string, args ...interface{}) {
 	c.PrintBlue(w, format, args...)
 }
 
+//PrintBlue prints the formatted content to given destination in red color
 func (c *Color) PrintRed(w io.Writer, format string, args ...interface{}) {
 	c.red.Fprintf(w, format, args...)
 }
 
+//Error prints the formatted content to given destination in red color
 func (c *Color) Error(w io.Writer, format string, args ...interface{}) {
 	c.PrintRed(w, format, args...)
 }

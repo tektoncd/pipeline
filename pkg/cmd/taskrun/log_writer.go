@@ -24,6 +24,7 @@ type LogWriter struct {
 	fmt *formatted.Color
 }
 
+//NewLogWriter returns the new instance of LogWriter
 func NewLogWriter() *LogWriter {
 	return &LogWriter{
 		fmt: formatted.NewColor(),

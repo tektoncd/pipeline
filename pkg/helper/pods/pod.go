@@ -1,3 +1,17 @@
+// Copyright © 2019 The Tekton Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package pods
 
 import (
@@ -39,14 +53,6 @@ type Pod struct {
 	Streamer  stream.NewStreamerFunc
 }
 
-func NewWithDefaults(name, ns string, client k8s.Interface) *Pod {
-	return &Pod{
-		Name: name, Ns: ns,
-		Kc:       client,
-		Streamer: NewStream,
-	}
-}
-
 func New(name, ns string, client k8s.Interface, streamer stream.NewStreamerFunc) *Pod {
 	return &Pod{
 		Name: name, Ns: ns,
@@ -55,8 +61,16 @@ func New(name, ns string, client k8s.Interface, streamer stream.NewStreamerFunc)
 	}
 }
 
-func (p *Pod) Wait() (*corev1.Pod, error) {
+func NewWithDefaults(name, ns string, client k8s.Interface) *Pod {
+	return &Pod{
+		Name: name, Ns: ns,
+		Kc:       client,
+		Streamer: NewStream,
+	}
+}
 
+//Wait wait for the pod to get up and running
+func (p *Pod) Wait() (*corev1.Pod, error) {
 	// ensure pod exists before we actually check for it
 	if _, err := p.Get(); err != nil {
 		return nil, err
@@ -133,10 +147,12 @@ func checkPodStatus(obj interface{}) (*corev1.Pod, error) {
 	return nil, nil
 }
 
+//Get gets the pod
 func (p *Pod) Get() (*corev1.Pod, error) {
 	return p.Kc.CoreV1().Pods(p.Ns).Get(p.Name, metav1.GetOptions{})
 }
 
+//Container returns the an instance of Container
 func (p *Pod) Container(c string) *Container {
 	return &Container{
 		name:        c,
@@ -145,6 +161,8 @@ func (p *Pod) Container(c string) *Container {
 	}
 }
 
+//Stream returns the stream object for given container and mode
+// in order to fetch the logs
 func (p *Pod) Stream(opt *corev1.PodLogOptions) (io.ReadCloser, error) {
 	pods := p.Kc.CoreV1().Pods(p.Ns)
 	if pods == nil {

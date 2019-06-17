@@ -36,6 +36,7 @@ func (s *step) hasStarted() bool {
 	return s.state.Waiting == nil
 }
 
+//Log data to write on log channel
 type Log struct {
 	Task string
 	Step string

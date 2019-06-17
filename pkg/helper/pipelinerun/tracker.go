@@ -1,3 +1,17 @@
+// Copyright © 2019 The Tekton Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package pipelinerun
 
 import (
@@ -13,6 +27,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+//Tracker tracks the progress of a PipelineRun
 type Tracker struct {
 	Name         string
 	Ns           string
@@ -20,6 +35,7 @@ type Tracker struct {
 	ongoingTasks map[string]bool
 }
 
+//NewTracker returns a new instance of Tracker
 func NewTracker(name string, ns string, tekton versioned.Interface) *Tracker {
 	return &Tracker{
 		Name:         name,
@@ -29,6 +45,10 @@ func NewTracker(name string, ns string, tekton versioned.Interface) *Tracker {
 	}
 }
 
+//Monitor to observe the progress of PipelineRun. It emits
+//an event upon starting of a new Pipeline's Task.
+//allowed containers the name of the Pipeline tasks, which used as filter
+//limit the events to only those tasks
 func (t *Tracker) Monitor(allowed []string) <-chan []trh.Run {
 
 	factory := informers.NewSharedInformerFactoryWithOptions(
