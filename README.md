@@ -11,12 +11,34 @@ Tekton !
 
 Download the latest binary executable for your operating system:
 
-// Note:- Need to update below links.
-* [Max OS X](README.md)
-* [Linux AMD 64](README.md)
-* [Windows AMD 64](README.md)
+* [Max OS X](https://github.com/tektoncd/cli/releases/download/v0.1.0/tektoncd-cli_0.1.0_Darwin_x86_64.tar.gz)
 
-// Need to add installation steps.
+  ```shell
+  # Get the tar.xz
+  curl -LO https://github.com/tektoncd/cli/releases/download/v0.1.0/tektoncd-cli_0.1.0_Darwin_x86_64.tar.gz
+  # Extract tkn to your PATH (e.g. /usr/local/bin)
+  sudo tar xvzf tektoncd-cli_0.1.0_Darwin_x86_64.tar.gz -C /usr/local/bin tkn
+  ```
+  
+* [Linux AMD 64](https://github.com/tektoncd/cli/releases/download/v0.1.0/tektoncd-cli_0.1.0_Linux_x86_64.tar.gz)
+  
+  ```shell
+  # Get the tar.xz
+  curl -LO https://github.com/tektoncd/cli/releases/download/v0.1.0/tektoncd-cli_0.1.0_Linux_x86_64.tar.gz
+  # Extract tkn to your PATH (e.g. /usr/local/bin)
+  sudo tar xvzf tektoncd-cli_0.1.0_Linux_x86_64.tar.gz -C /usr/local/bin/ tkn
+  ```
+  
+* [Linux ARM 64](https://github.com/tektoncd/cli/releases/download/v0.1.0/tektoncd-cli_0.1.0_Linux_arm64.tar.gz)
+  
+  ```shell
+  # Get the tar.xz
+  curl -LO https://github.com/tektoncd/cli/releases/download/v0.1.0/tektoncd-cli_0.1.0_Linux_arm64.tar.gz
+  # Extract tkn to your PATH (e.g. /usr/local/bin)
+  sudo tar xvzf tektoncd-cli_0.1.0_Linux_arm64.tar.gz -C /usr/local/bin/ tkn
+  ```
+
+If you have [go](https://golang.org/) installed `GO111MODULE="on" go get github.com/tektoncd/cli@v0.1.0` is all you need!
 
 ### Useful Commands
 
