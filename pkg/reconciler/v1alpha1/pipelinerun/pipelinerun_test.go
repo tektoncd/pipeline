@@ -25,6 +25,7 @@ import (
 	"github.com/knative/pkg/apis"
 	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/knative/pkg/configmap"
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
@@ -55,7 +56,18 @@ func getPipelineRunController(t *testing.T, d test.Data, recorder record.EventRe
 	stopCh := make(chan struct{})
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	logger := zap.New(observer).Sugar()
-	th := reconciler.NewTimeoutHandler(stopCh, logger)
+	store := apisconfig.NewStore(logger)
+	defaultConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "tekton-pipelines",
+			Name:      "config-defaults",
+		},
+		Data: map[string]string{
+			"default-timeout-minutes": "60",
+		},
+	}
+	store.OnConfigChanged(defaultConfig)
+	th := reconciler.NewTimeoutHandler(stopCh, logger, store)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
