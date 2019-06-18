@@ -89,7 +89,9 @@ func printPipelineRunMetadata(w *tabwriter.Writer, pr *v1alpha1.PipelineRun) {
 	fmt.Fprintf(w, "Name:\t%s\n", pr.Name)
 	fmt.Fprintf(w, "Namespace:\t%s\n", pr.Namespace)
 	fmt.Fprintf(w, "Pipeline Ref:\t%s\n", pr.Spec.PipelineRef.Name)
-	fmt.Fprintf(w, "Service Account:\t%s\n", pr.Spec.ServiceAccount)
+	if pr.Spec.ServiceAccount != "" {
+		fmt.Fprintf(w, "Service Account:\t%s\n", pr.Spec.ServiceAccount)
+	}
 }
 
 func printPipelineRunStatus(w *tabwriter.Writer, pr *v1alpha1.PipelineRun, p cli.Params) {

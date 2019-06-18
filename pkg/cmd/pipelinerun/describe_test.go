@@ -66,9 +66,7 @@ func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),
 				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
-				tb.PipelineRunSpec("pipeline",
-					tb.PipelineRunServiceAccount("test-sa"),
-				),
+				tb.PipelineRunSpec("pipeline"),
 				tb.PipelineRunStatus(
 					tb.PipelineRunTaskRunsStatus(map[string]*v1alpha1.PipelineRunTaskRunStatus{
 						"tr-1": {
@@ -95,10 +93,9 @@ func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	expected := `Name:              pipeline-run
-Namespace:         ns
-Pipeline Ref:      pipeline
-Service Account:   test-sa
+	expected := `Name:           pipeline-run
+Namespace:      ns
+Pipeline Ref:   pipeline
 
 Status
 STARTED          DURATION    STATUS
