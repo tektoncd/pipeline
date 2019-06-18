@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
+	logtesting "github.com/knative/pkg/logging/testing"
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -22,6 +24,21 @@ var (
 	simpleStep = tb.Step("simple-step", testNs, tb.Command("/mycmd"))
 	simpleTask = tb.Task("test-task", testNs, tb.TaskSpec(simpleStep))
 )
+
+func getStore(t *testing.T) *apisconfig.Store {
+	store := apisconfig.NewStore(logtesting.TestLogger(t))
+	defaultConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "tekton-pipelines",
+			Name:      "config-defaults",
+		},
+		Data: map[string]string{
+			"default-timeout-minutes": "60",
+		},
+	}
+	store.OnConfigChanged(defaultConfig)
+	return store
+}
 
 func TestTaskRunCheckTimeouts(t *testing.T) {
 	taskRunTimedout := tb.TaskRun("test-taskrun-run-timedout", testNs, tb.TaskRunSpec(
@@ -69,7 +86,8 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	defer close(stopCh)
 	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
-	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+
+	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar(), getStore(t))
 	gotCallback := sync.Map{}
 	f := func(tr interface{}) {
 		trNew := tr.(*v1alpha1.TaskRun)
@@ -172,7 +190,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	c, _ := test.SeedTestData(t, d)
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)
-	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar(), getStore(t))
 	defer close(stopCh)
 
 	gotCallback := sync.Map{}
@@ -247,7 +265,7 @@ func TestWithNoFunc(t *testing.T) {
 	stopCh := make(chan struct{})
 	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
-	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar(), getStore(t))
 	defer func() {
 		// this delay will ensure there is no race condition between stopCh/ timeout channel getting triggered
 		time.Sleep(10 * time.Millisecond)
@@ -276,12 +294,12 @@ func TestGetTimeout(t *testing.T) {
 		{
 			description:      "returns an end time using the default timeout if a TaskRun's timeout is nil",
 			inputDuration:    nil,
-			expectedDuration: defaultTimeout,
+			expectedDuration: 60 * time.Minute,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			receivedDuration := GetTimeout(tc.inputDuration)
+			receivedDuration := GetTimeout(tc.inputDuration, 60)
 			if receivedDuration != tc.expectedDuration {
 				t.Errorf("expected %q received %q", tc.expectedDuration.String(), receivedDuration.String())
 			}
@@ -303,7 +321,7 @@ func TestSetTaskRunTimer(t *testing.T) {
 
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)
-	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
+	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar(), getStore(t))
 	timerDuration := 50 * time.Millisecond
 	timerFailDeadline := 100 * time.Millisecond
 	doneCh := make(chan struct{})

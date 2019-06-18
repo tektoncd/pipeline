@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/configmap"
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
@@ -223,7 +224,19 @@ func getTaskRunController(t *testing.T, d test.Data) test.TestAssets {
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	stopCh := make(chan struct{})
 	logger := zap.New(observer).Sugar()
-	th := reconciler.NewTimeoutHandler(stopCh, logger)
+	store := apisconfig.NewStore(logger.Named("config-store"))
+	defaultConfig := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "tekton-pipelines",
+			Name:      "config-defaults",
+		},
+		Data: map[string]string{
+			"default-timeout-minutes": "60",
+		},
+	}
+	store.OnConfigChanged(defaultConfig)
+
+	th := reconciler.NewTimeoutHandler(stopCh, logger, store)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
@@ -239,6 +252,7 @@ func getTaskRunController(t *testing.T, d test.Data) test.TestAssets {
 			i.Pod,
 			entrypointCache,
 			th,
+			store,
 		),
 		Logs:      logs,
 		Clients:   c,
@@ -1500,20 +1514,20 @@ func TestReconcileTimeouts(t *testing.T) {
 			},
 		},
 		{
-			taskRun: tb.TaskRun("test-taskrun-default-timeout-10-minutes", "foo",
+			taskRun: tb.TaskRun("test-taskrun-default-timeout-60-minutes", "foo",
 				tb.TaskRunSpec(
 					tb.TaskRunTaskRef(simpleTask.Name),
 				),
 				tb.TaskRunStatus(tb.Condition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionUnknown}),
-					tb.TaskRunStartTime(time.Now().Add(-11*time.Minute)))),
+					tb.TaskRunStartTime(time.Now().Add(-61*time.Minute)))),
 
 			expectedStatus: &apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
 				Reason:  "TaskRunTimeout",
-				Message: `TaskRun "test-taskrun-default-timeout-10-minutes" failed to finish within "10m0s"`,
+				Message: `TaskRun "test-taskrun-default-timeout-60-minutes" failed to finish within "1h0m0s"`,
 			},
 		},
 	}

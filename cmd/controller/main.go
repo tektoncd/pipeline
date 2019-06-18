@@ -23,6 +23,7 @@ import (
 
 	"github.com/knative/pkg/logging"
 
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	tklogging "github.com/tektoncd/pipeline/pkg/logging"
 	corev1 "k8s.io/api/core/v1"
 	kubeinformers "k8s.io/client-go/informers"
@@ -116,7 +117,11 @@ func main() {
 
 	pipelineInformer := pipelineInformerFactory.Tekton().V1alpha1().Pipelines()
 	pipelineRunInformer := pipelineInformerFactory.Tekton().V1alpha1().PipelineRuns()
-	timeoutHandler := reconciler.NewTimeoutHandler(stopCh, logger)
+
+	store := apisconfig.NewStore(logger.Named("config-store"))
+	store.WatchConfigs(configMapWatcher)
+
+	timeoutHandler := reconciler.NewTimeoutHandler(stopCh, logger, store)
 
 	trc := taskrun.NewController(opt,
 		taskRunInformer,
@@ -126,6 +131,7 @@ func main() {
 		podInformer,
 		nil, //entrypoint cache will be initialized by controller if not provided
 		timeoutHandler,
+		store,
 	)
 	prc := pipelinerun.NewController(opt,
 		pipelineRunInformer,
