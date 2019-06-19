@@ -33,6 +33,7 @@ func Root(p cli.Params) *cobra.Command {
 		Use:   "tkn",
 		Short: "CLI for tekton pipelines",
 		Long:  ``,
+		BashCompletionFunction: completion.BashCompletionFunc,
 	}
 
 	cmd.AddCommand(
