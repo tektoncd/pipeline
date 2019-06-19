@@ -46,11 +46,10 @@ func (s *Stream) Stream() (io.ReadCloser, error) {
 }
 
 type Pod struct {
-	Name      string
-	container string
-	Ns        string
-	Kc        k8s.Interface
-	Streamer  stream.NewStreamerFunc
+	Name     string
+	Ns       string
+	Kc       k8s.Interface
+	Streamer stream.NewStreamerFunc
 }
 
 func New(name, ns string, client k8s.Interface, streamer stream.NewStreamerFunc) *Pod {
