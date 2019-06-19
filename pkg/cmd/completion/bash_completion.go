@@ -14,6 +14,15 @@
 
 package completion
 
+var (
+	// BashCompletionFlags this maps between a flag (ie: namespace) to a custom
+	// zsh completion
+	BashCompletionFlags = map[string]string{
+		"namespace":  "__kubectl_get_object namespace",
+		"kubeconfig": "_filedir",
+	}
+)
+
 const (
 	// BashCompletionFunc the custom bash completion function to complete object.
 	// The bash completion mechanism will launch the __custom_func func if it cannot
@@ -29,6 +38,17 @@ __tkn_get_object()
 	if tkn_out=$(tkn ${type} ls -o template --template="${template}" 2>/dev/null); then
 		COMPREPLY=( $( compgen -W "${tkn_out}" -- "$cur" ) )
 	fi
+}
+
+__kubectl_get_object()
+{
+    local type=$1
+    local template
+    template="{{ range .items  }}{{ .metadata.name }} {{ end }}"
+    local kubectl_out
+    if kubectl_out=$(kubectl get -o template --template="${template}" ${type} 2>/dev/null); then
+        COMPREPLY=( $( compgen -W "${kubectl_out}" -- "$cur" ) )
+    fi
 }
 
 __custom_func() {

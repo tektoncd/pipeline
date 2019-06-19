@@ -17,6 +17,7 @@ package flags
 import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/cmd/completion"
 )
 
 const (
@@ -33,6 +34,21 @@ func AddTektonOptions(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringP(
 		namespace, "n", "",
 		"namespace to use (default: from $KUBECONFIG)")
+
+	// Add custom completion for that command as specified in
+	// bashCompletionFlags map
+	for name, completion := range completion.BashCompletionFlags {
+		pflag := cmd.PersistentFlags().Lookup(name)
+		if pflag != nil {
+			if pflag.Annotations == nil {
+				pflag.Annotations = map[string][]string{}
+			}
+			pflag.Annotations[cobra.BashCompCustom] = append(
+				pflag.Annotations[cobra.BashCompCustom],
+				completion,
+			)
+		}
+	}
 }
 
 // InitParams initialises cli.Params based on flags defined in command
