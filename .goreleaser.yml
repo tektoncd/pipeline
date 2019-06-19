@@ -43,8 +43,7 @@ changelog:
     - Merge pull request
     - Merge branch
 release:
-  draft: true
-  prerelease: auto
+  prerelease: true
 brews:
   -
     name: tektoncd-cli
