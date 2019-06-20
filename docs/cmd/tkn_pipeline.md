@@ -17,6 +17,7 @@ pipeline, p, pipelines
 ```
 describe    Describes a pipeline in a namespace
 list        Lists pipelines in a namespace
+start       Start pipelines by creating a pipelinerun in a namespace
 ```
 
 ### Options
@@ -37,3 +38,4 @@ list        Lists pipelines in a namespace
 
 * [tkn pipeline list](tkn_pipeline_list.md)	 - Lists all `pipelines` in a given namespace.
 * [tkn pipeline describe](tkn_pipeline_describe.md)	 - Describe given `pipeline`.
+* [tkn pipeline start](tkn_pipeline_start.md)	 - Start given `pipeline`.
