@@ -35,6 +35,7 @@ type FakeGitHub struct {
 	// We need to store references to both to emulate the API properly.
 	prComments map[key][]*github.IssueComment
 	comments   map[key]*github.IssueComment
+	status     map[statusKey]map[string]*github.RepoStatus
 }
 
 // NewFakeGitHub returns a new FakeGitHub.
@@ -44,6 +45,7 @@ func NewFakeGitHub() *FakeGitHub {
 		pr:         make(map[key]*github.PullRequest),
 		prComments: make(map[key][]*github.IssueComment),
 		comments:   make(map[key]*github.IssueComment),
+		status:     make(map[statusKey]map[string]*github.RepoStatus),
 	}
 	s.HandleFunc("/repos/{owner}/{repo}/pulls/{number}", s.getPullRequest).Methods(http.MethodGet)
 	s.HandleFunc("/repos/{owner}/{repo}/issues/{number}/comments", s.getComments).Methods(http.MethodGet)
@@ -51,6 +53,8 @@ func NewFakeGitHub() *FakeGitHub {
 	s.HandleFunc("/repos/{owner}/{repo}/issues/comments/{number}", s.updateComment).Methods(http.MethodPatch)
 	s.HandleFunc("/repos/{owner}/{repo}/issues/comments/{number}", s.deleteComment).Methods(http.MethodDelete)
 	s.HandleFunc("/repos/{owner}/{repo}/issues/{number}/labels", s.updateLabels).Methods(http.MethodPut)
+	s.HandleFunc("/repos/{owner}/{repo}/statuses/{revision}", s.createStatus).Methods(http.MethodPost)
+	s.HandleFunc("/repos/{owner}/{repo}/commits/{revision}/status", s.getStatuses).Methods(http.MethodGet)
 
 	return s
 }
@@ -229,4 +233,51 @@ func (g *FakeGitHub) updateLabels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+type statusKey struct {
+	owner    string
+	repo     string
+	revision string
+}
+
+func getStatusKey(r *http.Request) statusKey {
+	return statusKey{
+		owner:    mux.Vars(r)["owner"],
+		repo:     mux.Vars(r)["repo"],
+		revision: mux.Vars(r)["revision"],
+	}
+}
+
+func (g *FakeGitHub) createStatus(w http.ResponseWriter, r *http.Request) {
+	k := getStatusKey(r)
+
+	rs := new(github.RepoStatus)
+	if err := json.NewDecoder(r.Body).Decode(rs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, ok := g.status[k]; !ok {
+		g.status[k] = make(map[string]*github.RepoStatus)
+	}
+	g.status[k][rs.GetContext()] = rs
+}
+
+func (g *FakeGitHub) getStatuses(w http.ResponseWriter, r *http.Request) {
+	k := getStatusKey(r)
+
+	s := make([]github.RepoStatus, 0, len(g.status[k]))
+	for _, v := range g.status[k] {
+		s = append(s, *v)
+	}
+
+	cs := &github.CombinedStatus{
+		TotalCount: github.Int(len(s)),
+		Statuses:   s,
+	}
+	if err := json.NewEncoder(w).Encode(cs); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

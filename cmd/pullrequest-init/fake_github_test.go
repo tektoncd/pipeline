@@ -64,3 +64,38 @@ func TestFakeGitHubBadKey(t *testing.T) {
 		t.Errorf("want BadRequest, got %+v, %v", resp, err)
 	}
 }
+
+func TestFakeGitHubStatus(t *testing.T) {
+	ctx := context.Background()
+	gh := NewFakeGitHub()
+	client, close := githubClient(t, gh)
+	defer close()
+
+	sha := "tacocat"
+
+	if got, resp, err := client.Repositories.GetCombinedStatus(ctx, owner, repo, sha, nil); err != nil || resp.StatusCode != http.StatusOK || len(got.Statuses) != 0 {
+		t.Fatalf("GetCombinedStatus: wanted [], got %+v, %+v, %v", got, resp, err)
+	}
+
+	rs := &github.RepoStatus{
+		Context:     github.String("Tekton"),
+		Description: github.String("Test all the things!"),
+		State:       github.String("success"),
+		TargetURL:   github.String("https://tekton.dev"),
+	}
+	if _, _, err := client.Repositories.CreateStatus(ctx, owner, repo, sha, rs); err != nil {
+		t.Fatalf("CreateStatus: %v", err)
+	}
+
+	got, resp, err := client.Repositories.GetCombinedStatus(ctx, owner, repo, sha, nil)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		t.Fatalf("GetCombinedStatus: wanted OK, got %+v, %v", resp, err)
+	}
+	want := &github.CombinedStatus{
+		TotalCount: github.Int(1),
+		Statuses:   []github.RepoStatus{*rs},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("GetCombinedStatus: -want +got: %s", diff)
+	}
+}

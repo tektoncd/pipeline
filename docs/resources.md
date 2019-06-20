@@ -191,6 +191,15 @@ Example payload:
   ],
   "Raw": "/tmp/pr/github/pr.json",
   "Type": "github"
+  "Statuses": [
+        {
+            "Code": "success",
+            "Description": "Job succeeded.",
+            "ID": "pull-tekton-pipeline-go-coverage",
+            "URL": "https://tekton-releases.appspot.com/build/tekton-prow/pr-logs/pull/tektoncd_pipeline/895/pull-tekton-pipeline-go-coverage/1141483806818045953/"
+        },
+  ],
+  "RawStatus": "/tmp/pr/github/status.json"
 }
 ```
 
@@ -218,6 +227,29 @@ spec:
 Params that can be added are the following:
 
 1.  `url`: represents the location of the pull request to fetch.
+
+#### Statuses
+
+The following status codes are available to use for the Pull Request resource:
+
+Status          |
+--------------- |
+success         |
+neutral         |
+queued          |
+in_progress     |
+failure         |
+unknown         |
+error           |
+timeout         |
+canceled        |
+action_required |
+
+Note: Status codes are currently **case sensitive**.
+
+For more information on how Tekton Pull Request status codes convert to SCM
+provider statuses, see
+[pullrequest-init/README.md](/cmd/pullrequest-init/README.md).
 
 #### GitHub
 
