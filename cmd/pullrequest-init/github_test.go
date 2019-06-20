@@ -17,6 +17,46 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
+const (
+	owner = "foo"
+	repo  = "bar"
+	prNum = 1
+	sha   = "tacocat"
+)
+
+var (
+	pr = &github.PullRequest{
+		ID:      github.Int64(int64(prNum)),
+		HTMLURL: github.String(fmt.Sprintf("https://github.com/%s/%s/pull/%d", owner, repo, prNum)),
+		Base: &github.PullRequestBranch{
+			User: &github.User{
+				Login: github.String(owner),
+			},
+			Repo: &github.Repository{
+				Name:     github.String(repo),
+				CloneURL: github.String(fmt.Sprintf("https://github.com/%s/%s", owner, repo)),
+			},
+			Ref: github.String("master"),
+			SHA: github.String("1"),
+		},
+		Head: &github.PullRequestBranch{
+			User: &github.User{
+				Login: github.String("baz"),
+			},
+			Repo: &github.Repository{
+				Name:     github.String(repo),
+				CloneURL: github.String(fmt.Sprintf("https://github.com/baz/%s", repo)),
+			},
+			Ref: github.String("feature"),
+			SHA: github.String("2"),
+		},
+	}
+	comment = &github.IssueComment{
+		ID:   github.Int64(1),
+		Body: github.String("hello world!"),
+	}
+)
+
 func TestGitHubParseURL(t *testing.T) {
 	wantOwner := "owner"
 	wantRepo := "repo"
@@ -62,45 +102,6 @@ func TestGitHubParseURL_errors(t *testing.T) {
 		})
 	}
 }
-
-const (
-	owner = "foo"
-	repo  = "bar"
-	prNum = 1
-)
-
-var (
-	pr = &github.PullRequest{
-		ID:      github.Int64(int64(prNum)),
-		HTMLURL: github.String(fmt.Sprintf("https://github.com/%s/%s/pull/%d", owner, repo, prNum)),
-		Base: &github.PullRequestBranch{
-			User: &github.User{
-				Login: github.String(owner),
-			},
-			Repo: &github.Repository{
-				Name:     github.String(repo),
-				CloneURL: github.String(fmt.Sprintf("https://github.com/%s/%s", owner, repo)),
-			},
-			Ref: github.String("master"),
-			SHA: github.String("1"),
-		},
-		Head: &github.PullRequestBranch{
-			User: &github.User{
-				Login: github.String("baz"),
-			},
-			Repo: &github.Repository{
-				Name:     github.String(repo),
-				CloneURL: github.String(fmt.Sprintf("https://github.com/baz/%s", repo)),
-			},
-			Ref: github.String("feature"),
-			SHA: github.String("2"),
-		},
-	}
-	comment = &github.IssueComment{
-		ID:   github.Int64(1),
-		Body: github.String("hello world!"),
-	}
-)
 
 func githubClient(t *testing.T, gh *FakeGitHub) (*github.Client, func()) {
 	t.Helper()
@@ -148,6 +149,7 @@ func TestGitHub(t *testing.T) {
 	}
 
 	prPath := filepath.Join(dir, "pr.json")
+	rawStatusPath := filepath.Join(dir, "github/status.json")
 	rawPRPath := filepath.Join(dir, "github/pr.json")
 	rawCommentPath := filepath.Join(dir, "github/comments/1.json")
 
@@ -164,14 +166,16 @@ func TestGitHub(t *testing.T) {
 			Branch: pr.GetBase().GetRef(),
 			SHA:    pr.GetBase().GetSHA(),
 		},
+		Statuses: []*Status{},
 		Comments: []*Comment{{
 			ID:     comment.GetID(),
 			Author: comment.GetUser().GetLogin(),
 			Text:   comment.GetBody(),
 			Raw:    rawCommentPath,
 		}},
-		Labels: []*Label{},
-		Raw:    rawPRPath,
+		Labels:    []*Label{},
+		Raw:       rawPRPath,
+		RawStatus: rawStatusPath,
 	}
 
 	gotPR := new(PullRequest)
@@ -214,6 +218,12 @@ func TestUpload(t *testing.T) {
 		Labels: []*Label{{
 			Text: "tacocat",
 		}},
+		Statuses: []*Status{{
+			ID:          "Tekton",
+			Code:        Success,
+			Description: "Test all the things!",
+			URL:         "https://tekton.dev",
+		}},
 	}
 	dir := os.TempDir()
 	prPath := filepath.Join(dir, "pr.json")
@@ -253,6 +263,23 @@ func TestUpload(t *testing.T) {
 		t.Errorf("Upload comment -want +got: %s", diff)
 	}
 
+	tektonStatus := tektonPR.Statuses[0]
+	wantStatus := &github.CombinedStatus{
+		TotalCount: github.Int(1),
+		Statuses: []github.RepoStatus{{
+			Context:     github.String(tektonStatus.ID),
+			Description: github.String(tektonStatus.Description),
+			State:       github.String("success"),
+			TargetURL:   github.String(tektonStatus.URL),
+		}},
+	}
+	gotStatus, resp, err := h.Client.Repositories.GetCombinedStatus(ctx, owner, repo, tektonPR.Head.SHA, nil)
+	if err != nil {
+		t.Fatalf("GetCombinedStatus: wanted OK, got %+v, %v", resp, err)
+	}
+	if diff := cmp.Diff(wantStatus, gotStatus); diff != "" {
+		t.Errorf("GetCombinedStatus: -want +got: %s", diff)
+	}
 }
 
 func diffFile(t *testing.T, path string, want interface{}, got interface{}) {
@@ -484,5 +511,124 @@ func TestUploadComments(t *testing.T) {
 	want := []*github.IssueComment{comment2, comment3}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("-want +got: %v", diff)
+	}
+}
+
+func TestGetStatuses(t *testing.T) {
+	ctx := context.Background()
+	h, close := newHandler(ctx, t)
+	defer close()
+
+	rs := []*github.RepoStatus{
+		{
+			Context: github.String("a"),
+			State:   github.String("success"),
+		},
+		{
+			Context: github.String("b"),
+			State:   github.String("failure"),
+		},
+	}
+	for _, s := range rs {
+		if _, _, err := h.Client.Repositories.CreateStatus(ctx, owner, repo, sha, s); err != nil {
+			t.Fatalf("CreateStatus: %v", err)
+		}
+	}
+
+	testCases := []struct {
+		sha  string
+		want []*Status
+	}{
+		{
+			sha: sha,
+			want: []*Status{
+				{
+					ID:   "a",
+					Code: Success,
+				},
+				{
+					ID:   "b",
+					Code: Failure,
+				},
+			},
+		},
+		{
+			sha:  "deadbeef",
+			want: []*Status{},
+		},
+	}
+
+	dir := os.TempDir()
+	for _, tc := range testCases {
+		t.Run(tc.sha, func(t *testing.T) {
+			path := filepath.Join(dir, tc.sha)
+			s, err := h.getStatuses(ctx, tc.sha, path)
+			if err != nil {
+				t.Fatalf("getStatuses: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, s); diff != "" {
+				t.Errorf("-want +got: %s", diff)
+			}
+		})
+	}
+}
+
+func TestGetStatusesError(t *testing.T) {
+	ctx := context.Background()
+	h, close := newHandler(ctx, t)
+	defer close()
+
+	s := &github.RepoStatus{
+		Context: github.String("a"),
+		// Not a valid GitHub status state
+		State: github.String("unknown"),
+	}
+	if _, _, err := h.Client.Repositories.CreateStatus(ctx, owner, repo, sha, s); err != nil {
+		t.Fatalf("CreateStatus: %v", err)
+	}
+
+	got, err := h.getStatuses(ctx, sha, "")
+	if err == nil {
+		t.Fatalf("getStatuses: want err, got %+v", got)
+	}
+}
+
+func TestUploadStatuses(t *testing.T) {
+	ctx := context.Background()
+	h, close := newHandler(ctx, t)
+	defer close()
+
+	s := []*Status{
+		// Invaid status code. Should fail.
+		{
+			Code: StatusCode(""),
+		},
+		{
+			Code: Failure,
+		},
+		// Should overwrite previous status.
+		{
+			Code: "success",
+		},
+	}
+
+	if err := h.uploadStatuses(ctx, sha, s); err == nil {
+		t.Error("uploadStatus want error, got nil")
+	}
+	want := &github.CombinedStatus{
+		TotalCount: github.Int(1),
+		Statuses: []github.RepoStatus{{
+			Context:     github.String(""),
+			State:       github.String("success"),
+			Description: github.String(""),
+			TargetURL:   github.String(""),
+		}},
+	}
+	got, resp, err := h.Client.Repositories.GetCombinedStatus(ctx, owner, repo, sha, nil)
+	if err != nil {
+		t.Fatalf("GetCombinedStatus: wanted OK, got %+v, %v", resp, err)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("GetCombinedStatus: -want +got: %s", diff)
 	}
 }

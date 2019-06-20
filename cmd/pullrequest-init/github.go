@@ -18,6 +18,29 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	toGitHub = map[StatusCode]string{
+		Unknown: "error",
+		Success: "success",
+		Failure: "failure",
+		Error:   "error",
+		// There's no analog for neutral in GitHub statuses, so default to success
+		// to make this non-blocking.
+		Neutral:        "success",
+		Queued:         "pending",
+		InProgress:     "pending",
+		Timeout:        "error",
+		Canceled:       "error",
+		ActionRequired: "error",
+	}
+	toTekton = map[string]StatusCode{
+		"success": Success,
+		"failure": Failure,
+		"error":   Error,
+		"pending": Queued,
+	}
+)
+
 // GitHubHandler handles interactions with the GitHub API.
 type GitHubHandler struct {
 	*github.Client
@@ -96,6 +119,14 @@ func (h *GitHubHandler) Download(ctx context.Context, path string) error {
 		return err
 	}
 	pr := baseGitHubPullRequest(gpr)
+
+	rawStatus := filepath.Join(rawPrefix, "status.json")
+	statuses, err := h.getStatuses(ctx, pr.Head.SHA, rawStatus)
+	if err != nil {
+		return err
+	}
+	pr.RawStatus = rawStatus
+	pr.Statuses = statuses
 
 	rawPR := filepath.Join(rawPrefix, "pr.json")
 	if err := writeJSON(rawPR, gpr); err != nil {
@@ -197,6 +228,11 @@ func (h *GitHubHandler) Upload(ctx context.Context, path string) error {
 	}
 
 	var merr error
+
+	if err := h.uploadStatuses(ctx, pr.Head.SHA, pr.Statuses); err != nil {
+		merr = multierror.Append(merr, err)
+	}
+
 	if err := h.uploadLabels(ctx, pr.Labels); err != nil {
 		merr = multierror.Append(merr, err)
 	}
@@ -295,5 +331,55 @@ func (h *GitHubHandler) createNewComments(ctx context.Context, comments []*Comme
 			merr = multierror.Append(merr, err)
 		}
 	}
+	return merr
+}
+
+func (h *GitHubHandler) getStatuses(ctx context.Context, sha string, path string) ([]*Status, error) {
+	resp, _, err := h.Repositories.GetCombinedStatus(ctx, h.owner, h.repo, sha, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := writeJSON(path, resp); err != nil {
+		return nil, err
+	}
+
+	statuses := make([]*Status, 0, len(resp.Statuses))
+	for _, s := range resp.Statuses {
+		code, ok := toTekton[s.GetState()]
+		if !ok {
+			return nil, fmt.Errorf("unknown GitHub status state: %s", s.GetState())
+		}
+		statuses = append(statuses, &Status{
+			ID:          s.GetContext(),
+			Code:        code,
+			Description: s.GetDescription(),
+			URL:         s.GetTargetURL(),
+		})
+	}
+	return statuses, nil
+}
+
+func (h *GitHubHandler) uploadStatuses(ctx context.Context, sha string, statuses []*Status) error {
+	var merr error
+
+	for _, s := range statuses {
+		state, ok := toGitHub[s.Code]
+		if !ok {
+			merr = multierror.Append(merr, fmt.Errorf("unknown status code %s", s.Code))
+			continue
+		}
+
+		rs := &github.RepoStatus{
+			Context:     github.String(s.ID),
+			State:       github.String(state),
+			Description: github.String(s.Description),
+			TargetURL:   github.String(s.URL),
+		}
+		if _, _, err := h.Client.Repositories.CreateStatus(ctx, h.owner, h.repo, sha, rs); err != nil {
+			merr = multierror.Append(merr, err)
+			continue
+		}
+	}
+
 	return merr
 }
