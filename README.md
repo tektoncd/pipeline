@@ -19,26 +19,26 @@ Download the latest binary executable for your operating system:
   # Extract tkn to your PATH (e.g. /usr/local/bin)
   sudo tar xvzf tkn_0.1.2_Darwin_x86_64.tar.gz -C /usr/local/bin tkn
   ```
-  
+
   You can also use [@chmouel](https://github.com/chmouel)'s unofficial
   brew tap for the time being.
-  
+
   ```shell
   brew tap chmouel/tektoncd-cli
   brew install tektoncd-cli
   ```
-  
+
 * [Linux AMD 64](https://github.com/tektoncd/cli/releases/download/v0.1.2/tkn_0.1.2_Linux_x86_64.tar.gz)
-  
+
   ```shell
   # Get the tar.xz
   curl -LO https://github.com/tektoncd/cli/releases/download/v0.1.2/tkn_0.1.2_Linux_x86_64.tar.gz
   # Extract tkn to your PATH (e.g. /usr/local/bin)
   sudo tar xvzf tkn_0.1.2_Linux_x86_64.tar.gz -C /usr/local/bin/ tkn
   ```
-  
+
 * [Linux ARM 64](https://github.com/tektoncd/cli/releases/download/v0.1.2/tkn_0.1.2_Linux_arm64.tar.gz)
-  
+
   ```shell
   # Get the tar.xz
   curl -LO https://github.com/tektoncd/cli/releases/download/v0.1.2/tkn_0.1.2_Linux_arm64.tar.gz
