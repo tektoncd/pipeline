@@ -23,7 +23,7 @@ kubectl apply -f examples/pipelineruns/pipelinerun.yaml
 kubectl apply -f examples/pipelineruns/output-pipelinerun.yaml
 
 # To invoke the TaskRun with embedded Resource spec and task Spec
-kubectl apply -f examples/taskruns/resource-spec-taskrun.yaml
+kubectl apply -f examples/taskruns/git-resource-spec-taskrun.yaml
 ```
 
 ## Results
