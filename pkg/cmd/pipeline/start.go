@@ -29,11 +29,14 @@ import (
 var (
 	errNoPipeline      = errors.New("missing pipeline name")
 	errInvalidPipeline = errors.New("invalid pipeline name")
-	errInvalidResource = errors.New("invalid resource parameter: ")
-	errInvalidParam    = errors.New("invalid param parameter: ")
 )
 
-type triggerOptions struct {
+const (
+	invalidResource = "invalid resource parameter: "
+	invalidParam    = "invalid param parameter: "
+)
+
+type startOptions struct {
 	Params             []string
 	Resources          []string
 	ServiceAccountName string
@@ -82,12 +85,12 @@ func startCommand(p cli.Params) *cobra.Command {
 		Args:         NameArg(p),
 		RunE: func(cmd *cobra.Command, args []string) error {
 
-			opt := triggerOptions{
+			opt := startOptions{
 				Resources:          res,
 				Params:             params,
 				ServiceAccountName: svc,
 			}
-			return trigger(cmd.OutOrStdout(), opt, p, args[0])
+			return startPipeline(cmd.OutOrStdout(), opt, p, args[0])
 		},
 	}
 
@@ -98,7 +101,7 @@ func startCommand(p cli.Params) *cobra.Command {
 	return c
 }
 
-func trigger(out io.Writer, opt triggerOptions, p cli.Params, pName string) error {
+func startPipeline(out io.Writer, opt startOptions, p cli.Params, pName string) error {
 
 	cs, err := p.Clients()
 	if err != nil {
@@ -142,7 +145,7 @@ func parseRes(res []string) ([]v1alpha1.PipelineResourceBinding, error) {
 	for _, v := range res {
 		r := strings.Split(v, "=")
 		if len(r) != 2 {
-			errMsg := errInvalidResource.Error() + v +
+			errMsg := invalidResource + v +
 				"\n Please pass resource as -p ResourceName=ResourceRef"
 			return nil, errors.New(errMsg)
 		}
@@ -161,7 +164,7 @@ func parseParam(p []string) ([]v1alpha1.Param, error) {
 	for _, v := range p {
 		r := strings.Split(v, "=")
 		if len(r) != 2 {
-			errMsg := errInvalidParam.Error() + v +
+			errMsg := invalidParam + v +
 				"\n Please pass resource as -r ParamName=ParamValue"
 			return nil, errors.New(errMsg)
 		}
