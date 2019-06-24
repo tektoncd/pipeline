@@ -16,7 +16,6 @@ package pipelinerun
 
 import (
 	"fmt"
-
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
 )

@@ -33,9 +33,9 @@ type LogReader struct {
 	Ns       string
 	Clients  *cli.Clients
 	Streamer stream.NewStreamerFunc
-	allSteps bool
-	follow   bool
-	tasks    []string
+	AllSteps bool
+	Follow   bool
+	Tasks    []string
 }
 
 // Log is the data gets written to the log channel
@@ -53,7 +53,7 @@ func (lr *LogReader) Read() (<-chan Log, <-chan error, error) {
 		return nil, nil, fmt.Errorf("%s : %s", msgPRNotFoundErr, err)
 	}
 
-	if lr.follow {
+	if lr.Follow {
 		return lr.readLiveLogs(pr)
 	}
 	return lr.readAvailableLogs(pr)
@@ -69,7 +69,7 @@ func (lr *LogReader) readLiveLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-chan 
 		defer close(errC)
 
 		prTracker := pipelinerun.NewTracker(pr.Name, lr.Ns, lr.Clients.Tekton)
-		trC := prTracker.Monitor(lr.tasks)
+		trC := prTracker.Monitor(lr.Tasks)
 
 		wg := sync.WaitGroup{}
 		taskIndex := int32(1)
@@ -83,7 +83,7 @@ func (lr *LogReader) readLiveLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-chan 
 					defer wg.Done()
 
 					tlr := tr.NewLogReader(lr.Ns, lr.Clients, lr.Streamer,
-						int(taskNum), lr.follow, lr.allSteps)
+						int(taskNum), lr.Follow, lr.AllSteps)
 					pipeLogs(logC, errC, tlr)
 				}(run, atomic.AddInt32(&taskIndex, 1))
 			}
@@ -105,7 +105,7 @@ func (lr *LogReader) readAvailableLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-
 
 	//Sort taskruns, to display the taskrun logs as per pipeline tasks order
 	ordered := trh.SortTasksBySpecOrder(pl.Spec.Tasks, pr.Status.TaskRuns)
-	taskRuns := trh.Filter(ordered, lr.tasks)
+	taskRuns := trh.Filter(ordered, lr.Tasks)
 
 	logC := make(chan Log)
 	errC := make(chan error)
@@ -117,7 +117,7 @@ func (lr *LogReader) readAvailableLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-
 		for i, tr := range taskRuns {
 			tlr := tr.NewLogReader(
 				lr.Ns, lr.Clients, lr.Streamer,
-				i+1, lr.follow, lr.allSteps)
+				i+1, lr.Follow, lr.AllSteps)
 
 			pipeLogs(logC, errC, tlr)
 		}
