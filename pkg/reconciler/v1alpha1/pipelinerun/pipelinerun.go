@@ -504,6 +504,7 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 		Spec: v1alpha1.TaskRunSpec{
 			TaskRef: &v1alpha1.TaskRef{
 				Name: rprt.ResolvedTaskResources.TaskName,
+				Kind: rprt.ResolvedTaskResources.Kind,
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: rprt.PipelineTask.Params,
@@ -513,7 +514,8 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			NodeSelector:   pr.Spec.NodeSelector,
 			Tolerations:    pr.Spec.Tolerations,
 			Affinity:       pr.Spec.Affinity,
-		}}
+		},
+	}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 
