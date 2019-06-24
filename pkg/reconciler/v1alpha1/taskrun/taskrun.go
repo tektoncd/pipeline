@@ -193,8 +193,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return err
 }
 
-func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) resources.GetTask {
+func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alpha1.TaskKind) {
 	var gtFunc resources.GetTask
+	kind := v1alpha1.NamespacedTaskKind
 	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
 		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
 			t, err := c.clusterTaskLister.Get(name)
@@ -203,6 +204,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) resources.GetTask {
 			}
 			return t, nil
 		}
+		kind = v1alpha1.ClusterTaskKind
 	} else {
 		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
 			t, err := c.taskLister.Tasks(tr.Namespace).Get(name)
@@ -212,7 +214,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) resources.GetTask {
 			return t, nil
 		}
 	}
-	return gtFunc
+	return gtFunc, kind
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
@@ -225,7 +227,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return err
 	}
 
-	getTaskFunc := c.getTaskFunc(tr)
+	getTaskFunc, kind := c.getTaskFunc(tr)
 	taskMeta, taskSpec, err := resources.GetTaskData(tr, getTaskFunc)
 	if err != nil {
 		c.Logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
@@ -265,7 +267,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, kind, tr.Spec.Inputs.Resources, tr.Spec.Outputs.Resources, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{

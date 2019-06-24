@@ -246,7 +246,7 @@ func ResolvePipelineRun(
 		}
 
 		spec := t.TaskSpec()
-		rtr, err := resources.ResolveTaskResources(&spec, t.TaskMetadata().Name, inputs, outputs, getResource)
+		rtr, err := resources.ResolveTaskResources(&spec, t.TaskMetadata().Name, pt.TaskRef.Kind, inputs, outputs, getResource)
 		if err != nil {
 			return nil, &ResourceNotFoundError{Msg: err.Error()}
 		}
