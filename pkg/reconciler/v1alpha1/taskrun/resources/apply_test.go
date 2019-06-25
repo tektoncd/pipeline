@@ -79,6 +79,26 @@ var envTaskSpec = &v1alpha1.TaskSpec{
 	}},
 }
 
+var containerTemplateTaskSpec = &v1alpha1.TaskSpec{
+	ContainerTemplate: &corev1.Container{
+		Env: []corev1.EnvVar{{
+			Name:  "template-var",
+			Value: "${inputs.params.FOO}",
+		}},
+	},
+	Steps: []corev1.Container{{
+		Name:  "simple-image",
+		Image: "${inputs.params.myimage}",
+	}, {
+		Name:  "image-with-env-specified",
+		Image: "some-other-image",
+		Env: []corev1.EnvVar{{
+			Name:  "template-var",
+			Value: "overridden-value",
+		}},
+	}},
+}
+
 var volumeMountTaskSpec = &v1alpha1.TaskSpec{
 	Steps: []corev1.Container{{
 		Name:  "foo",
@@ -247,6 +267,31 @@ func TestApplyParameters(t *testing.T) {
 			spec.Steps[0].EnvFrom[1].Prefix = "prefix-1-world"
 			spec.Steps[0].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
 			spec.Steps[0].Image = "busybox:world"
+		}),
+	}, {
+		name: "containerTemplate parameter",
+		args: args{
+			ts: containerTemplateTaskSpec,
+			tr: &v1alpha1.TaskRun{
+				Spec: v1alpha1.TaskRunSpec{
+					Inputs: v1alpha1.TaskRunInputs{
+						Params: []v1alpha1.Param{{
+							Name:  "FOO",
+							Value: "BAR",
+						}},
+					},
+				},
+			},
+			dp: []v1alpha1.TaskParam{
+				{
+					Name:    "myimage",
+					Default: "replaced-image-name",
+				},
+			},
+		},
+		want: applyMutation(containerTemplateTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.ContainerTemplate.Env[0].Value = "BAR"
+			spec.Steps[0].Image = "replaced-image-name"
 		}),
 	}, {
 		name: "with default parameter",
