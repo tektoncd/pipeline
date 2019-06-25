@@ -33,21 +33,41 @@ import (
 )
 
 var (
-	pipelinerun = &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "foo",
-			Name:      "pipelineruntest",
-		},
-	}
-	persistentVolumeClaim = GetPersistentVolumeClaim(DefaultPvcSize)
-	quantityComparer      = cmp.Comparer(func(x, y resource.Quantity) bool {
+	quantityComparer = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
+	tasksWithFrom = []v1alpha1.PipelineTask{
+		{
+			Name: "task1",
+			TaskRef: v1alpha1.TaskRef{
+				Name: "task",
+			},
+			Resources: &v1alpha1.PipelineTaskResources{
+				Outputs: []v1alpha1.PipelineTaskOutputResource{{
+					Name:     "output",
+					Resource: "resource",
+				}},
+			},
+		},
+		{
+			Name: "task2",
+			TaskRef: v1alpha1.TaskRef{
+				Name: "task",
+			},
+			Resources: &v1alpha1.PipelineTaskResources{
+				Inputs: []v1alpha1.PipelineTaskInputResource{{
+					Name:     "input1",
+					Resource: "resource",
+					From:     []string{"task1"},
+				}},
+			},
+		},
+	}
 )
 
-func GetPersistentVolumeClaim(size string) *corev1.PersistentVolumeClaim {
+func GetPersistentVolumeClaim(pipelinerun *v1alpha1.PipelineRun, size string) *corev1.PersistentVolumeClaim {
 	pvc := &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{Name: "pipelineruntest-pvc", Namespace: "foo", OwnerReferences: pipelinerun.GetOwnerReference()},
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelineruntest-pvc", Namespace: pipelinerun.Namespace, OwnerReferences: pipelinerun.GetOwnerReference()},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 			Resources:   corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(size)}},
@@ -56,7 +76,7 @@ func GetPersistentVolumeClaim(size string) *corev1.PersistentVolumeClaim {
 	return pvc
 }
 
-func TestNeedsPVC(t *testing.T) {
+func TestConfigMapNeedsPVC(t *testing.T) {
 	logger := logtesting.TestLogger(t)
 	for _, c := range []struct {
 		desc      string
@@ -126,12 +146,12 @@ func TestNeedsPVC(t *testing.T) {
 		pvcNeeded: false,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			needed, err := NeedsPVC(c.configMap, nil, logger)
+			needed, err := ConfigMapNeedsPVC(c.configMap, nil, logger)
 			if err != nil {
 				t.Fatalf("Somehow had error checking if PVC was needed run: %s", err)
 			}
 			if needed != c.pvcNeeded {
-				t.Fatalf("Expected that NeedsPVC would be %t, but was %t", c.pvcNeeded, needed)
+				t.Fatalf("Expected that ConfigMapNeedsPVC would be %t, but was %t", c.pvcNeeded, needed)
 			}
 		})
 	}
@@ -139,11 +159,20 @@ func TestNeedsPVC(t *testing.T) {
 }
 
 func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
+	pipelinerun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelineruntest",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipelineWithFrom",
+			},
+		},
+	}
 	logger := logtesting.TestLogger(t)
 	for _, c := range []struct {
 		desc                    string
 		configMap               *corev1.ConfigMap
-		pipelinerun             *v1alpha1.PipelineRun
 		expectedArtifactStorage ArtifactStorageInterface
 		storagetype             string
 	}{{
@@ -157,10 +186,9 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				PvcSizeKey: "10Gi",
 			},
 		},
-		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
-			PersistentVolumeClaim: GetPersistentVolumeClaim("10Gi"),
+			PersistentVolumeClaim: GetPersistentVolumeClaim(pipelinerun, "10Gi"),
 		},
 		storagetype: "pvc",
 	}, {
@@ -176,7 +204,6 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
 			Location: "gs://fake-bucket",
 			Secrets: []v1alpha1.SecretParam{{
@@ -199,10 +226,9 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
-			PersistentVolumeClaim: persistentVolumeClaim,
+			PersistentVolumeClaim: GetPersistentVolumeClaim(pipelinerun, DefaultPvcSize),
 		},
 		storagetype: "pvc",
 	}, {
@@ -217,10 +243,9 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
-			PersistentVolumeClaim: persistentVolumeClaim,
+			PersistentVolumeClaim: GetPersistentVolumeClaim(pipelinerun, DefaultPvcSize),
 		},
 		storagetype: "pvc",
 	}, {
@@ -231,10 +256,9 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				Name:      v1alpha1.BucketConfigName,
 			},
 		},
-		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
-			PersistentVolumeClaim: persistentVolumeClaim,
+			PersistentVolumeClaim: GetPersistentVolumeClaim(pipelinerun, DefaultPvcSize),
 		},
 		storagetype: "pvc",
 	}, {
@@ -248,7 +272,6 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				v1alpha1.BucketLocationKey: "gs://fake-bucket",
 			},
 		},
-		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
 			Location: "gs://fake-bucket",
 		},
@@ -256,40 +279,121 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
-			artifactStorage, err := InitializeArtifactStorage(c.pipelinerun, fakekubeclient, logger)
+			artifactStorage, err := InitializeArtifactStorage(pipelinerun, tasksWithFrom, fakekubeclient, logger)
 			if err != nil {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
+			if artifactStorage == nil {
+				t.Fatal("artifactStorage was nil, expected an actual value")
+			}
 			// If the expected storage type is PVC, make sure we're actually creating that PVC.
 			if c.storagetype == "pvc" {
-				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(c.pipelinerun.Namespace).Get(GetPVCName(c.pipelinerun), metav1.GetOptions{})
+				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
 				if err != nil {
-					t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(c.pipelinerun), c.pipelinerun.Name, err)
+					t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
 				}
 			}
 			// Make sure we don't get any errors running CleanupArtifactStorage against the resulting storage, whether it's
 			// a bucket or a PVC.
-			if err := CleanupArtifactStorage(c.pipelinerun, fakekubeclient, logger); err != nil {
+			if err := CleanupArtifactStorage(pipelinerun, fakekubeclient, logger); err != nil {
 				t.Fatalf("Error cleaning up artifact storage: %s", err)
 			}
 			if diff := cmp.Diff(artifactStorage.GetType(), c.storagetype); diff != "" {
-				t.Fatalf("want %v, but got %v", c.storagetype, artifactStorage.GetType())
+				t.Fatalf(diff)
 			}
 			if diff := cmp.Diff(artifactStorage, c.expectedArtifactStorage, quantityComparer); diff != "" {
-				t.Fatalf("want %v, but got %v", c.expectedArtifactStorage, artifactStorage)
+				t.Fatalf(diff)
 			}
 		})
 	}
 }
 
-func TestCleanupArtifactStorage(t *testing.T) {
+func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 	logger := logtesting.TestLogger(t)
+	// This Pipeline has Tasks that use both inputs and outputs, but there is
+	// no link between the inputs and outputs, so no storage is needed
+	pipeline := &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "pipelineruntest",
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{
+				{
+					Name: "task1",
+					TaskRef: v1alpha1.TaskRef{
+						Name: "task",
+					},
+					Resources: &v1alpha1.PipelineTaskResources{
+						Inputs: []v1alpha1.PipelineTaskInputResource{{
+							Name:     "input1",
+							Resource: "resource",
+						}},
+						Outputs: []v1alpha1.PipelineTaskOutputResource{{
+							Name:     "output",
+							Resource: "resource",
+						}},
+					},
+				},
+				{
+					Name: "task2",
+					TaskRef: v1alpha1.TaskRef{
+						Name: "task",
+					},
+					Resources: &v1alpha1.PipelineTaskResources{
+						Inputs: []v1alpha1.PipelineTaskInputResource{{
+							Name:     "input1",
+							Resource: "resource",
+						}},
+						Outputs: []v1alpha1.PipelineTaskOutputResource{{
+							Name:     "output",
+							Resource: "resource",
+						}},
+					},
+				},
+			},
+		},
+	}
+	pipelinerun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipelinerun",
+			Namespace: "namespace",
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
+				Name: "pipeline",
+			},
+		},
+	}
 	for _, c := range []struct {
-		desc        string
-		configMap   *corev1.ConfigMap
-		pipelinerun *v1alpha1.PipelineRun
+		desc      string
+		configMap *corev1.ConfigMap
 	}{{
-		desc: "location empty",
+		desc: "has pvc configured",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      PvcConfigName,
+			},
+			Data: map[string]string{
+				PvcSizeKey: "10Gi",
+			},
+		},
+	}, {
+		desc: "has bucket configured",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketLocationKey:              "gs://fake-bucket",
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+			},
+		},
+	}, {
+		desc: "no configmap",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
@@ -301,10 +405,42 @@ func TestCleanupArtifactStorage(t *testing.T) {
 				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		pipelinerun: &v1alpha1.PipelineRun{
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
+			artifactStorage, err := InitializeArtifactStorage(pipelinerun, pipeline.Spec.Tasks, fakekubeclient, logger)
+			if err != nil {
+				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
+			}
+			if artifactStorage.GetType() != "none" {
+				t.Errorf("Expected NoneArtifactStorage when none is needed but got %s", artifactStorage.GetType())
+			}
+		})
+	}
+}
+
+func TestCleanupArtifactStorage(t *testing.T) {
+	pipelinerun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "pipelineruntest",
+		},
+	}
+	logger := logtesting.TestLogger(t)
+	for _, c := range []struct {
+		desc      string
+		configMap *corev1.ConfigMap
+	}{{
+		desc: "location empty",
+		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "pipelineruntest",
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketLocationKey:              "",
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 	}, {
@@ -319,12 +455,6 @@ func TestCleanupArtifactStorage(t *testing.T) {
 				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		pipelinerun: &v1alpha1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "pipelineruntest",
-			},
-		},
 	}, {
 		desc: "no config map data",
 		configMap: &corev1.ConfigMap{
@@ -333,52 +463,57 @@ func TestCleanupArtifactStorage(t *testing.T) {
 				Name:      v1alpha1.BucketConfigName,
 			},
 		},
-		pipelinerun: &v1alpha1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "foo",
-				Name:      "pipelineruntest",
-			},
-		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap, GetPVCSpec(c.pipelinerun, persistentVolumeClaim.Spec.Resources.Requests["storage"]))
-			_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(c.pipelinerun.Namespace).Get(GetPVCName(c.pipelinerun), metav1.GetOptions{})
+			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap, GetPVCSpec(pipelinerun, GetPersistentVolumeClaim(pipelinerun, DefaultPvcSize).Spec.Resources.Requests["storage"]))
+			_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
 			if err != nil {
-				t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(c.pipelinerun), c.pipelinerun.Name, err)
+				t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
 			}
-			if err := CleanupArtifactStorage(c.pipelinerun, fakekubeclient, logger); err != nil {
+			if err := CleanupArtifactStorage(pipelinerun, fakekubeclient, logger); err != nil {
 				t.Fatalf("Error cleaning up artifact storage: %s", err)
 			}
-			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(c.pipelinerun.Namespace).Get(GetPVCName(c.pipelinerun), metav1.GetOptions{})
+			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(GetPVCName(pipelinerun), metav1.GetOptions{})
 			if err == nil {
-				t.Fatalf("Found PVC %s for PipelineRun %s after it should have been cleaned up", GetPVCName(c.pipelinerun), c.pipelinerun.Name)
+				t.Fatalf("Found PVC %s for PipelineRun %s after it should have been cleaned up", GetPVCName(pipelinerun), pipelinerun.Name)
 			} else if !errors.IsNotFound(err) {
-				t.Fatalf("Error checking if PVC %s for PipelineRun %s has been cleaned up: %s", GetPVCName(c.pipelinerun), c.pipelinerun.Name, err)
+				t.Fatalf("Error checking if PVC %s for PipelineRun %s has been cleaned up: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
 			}
 		})
 	}
 }
 
 func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
+	pipelinerun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelineruntest",
+		},
+	}
 	logger := logtesting.TestLogger(t)
 	fakekubeclient := fakek8s.NewSimpleClientset()
 
-	pvc, err := InitializeArtifactStorage(pipelinerun, fakekubeclient, logger)
+	pvc, err := InitializeArtifactStorage(pipelinerun, tasksWithFrom, fakekubeclient, logger)
 	if err != nil {
 		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 	}
 
 	expectedArtifactPVC := &v1alpha1.ArtifactPVC{
 		Name:                  "pipelineruntest",
-		PersistentVolumeClaim: persistentVolumeClaim,
+		PersistentVolumeClaim: GetPersistentVolumeClaim(pipelinerun, DefaultPvcSize),
 	}
 
 	if diff := cmp.Diff(pvc, expectedArtifactPVC, cmpopts.IgnoreUnexported(resource.Quantity{})); diff != "" {
-		t.Fatalf("want %v, but got %v", expectedArtifactPVC, pvc)
+		t.Fatal(diff)
 	}
 }
 
 func TestGetArtifactStorageWithConfigMap(t *testing.T) {
+	pipelinerun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "pipelineruntest",
+		},
+	}
 	logger := logtesting.TestLogger(t)
 	for _, c := range []struct {
 		desc                    string
