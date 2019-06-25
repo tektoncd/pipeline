@@ -29,13 +29,6 @@ import (
 
 var (
 	outputDir = "/workspace/output/"
-
-	// allowedOutputResource checks if an output resource type produces
-	// an output that should be copied to the PVC
-	allowedOutputResources = map[v1alpha1.PipelineResourceType]bool{
-		v1alpha1.PipelineResourceTypeStorage: true,
-		v1alpha1.PipelineResourceTypeGit:     true,
-	}
 )
 
 // AddOutputResources reads the output resources and adds the corresponding container steps
@@ -94,10 +87,12 @@ func AddOutputResources(
 		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
 		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
-		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+		needsPvc := false
+		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []v1alpha1.Step
 			for _, dPath := range boundResource.Paths {
 				newSteps = append(newSteps, as.GetCopyToStorageFromSteps(resource.GetName(), sourcePath, dPath)...)
+				needsPvc = true
 			}
 			taskSpec.Steps = append(taskSpec.Steps, newSteps...)
 			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
@@ -124,7 +119,9 @@ func AddOutputResources(
 					return taskSpec, nil
 				}
 			}
-			taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
+			if needsPvc {
+				taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
+			}
 		}
 	}
 	return taskSpec, nil

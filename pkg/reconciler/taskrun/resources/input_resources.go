@@ -86,7 +86,7 @@ func AddInputResource(
 		dPath := destinationPath(input.Name, input.TargetPath)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
-		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
 				cpSteps := as.GetCopyFromStorageToSteps(boundResource.Name, path, dPath)
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {

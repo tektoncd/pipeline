@@ -185,6 +185,17 @@ func TestValidOutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}}},
+		wantVolumes: []corev1.Volume{
+			{
+				Name: "pipelinerun-pvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "pipelinerun-pvc",
+						ReadOnly:  false,
+					},
+				},
+			},
+		},
 	}, {
 		name: "git resource in output only",
 		desc: "git resource declared as output with pipelinerun owner reference",
@@ -247,6 +258,17 @@ func TestValidOutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}}},
+		wantVolumes: []corev1.Volume{
+			{
+				Name: "pipelinerun-pvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "pipelinerun-pvc",
+						ReadOnly:  false,
+					},
+				},
+			},
+		},
 	}, {
 		name: "image resource in output with pipelinerun with owner",
 		desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
@@ -432,7 +454,17 @@ func TestValidOutputResources(t *testing.T) {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
 			},
-		}},
+		},
+			{
+				Name: "pipelinerun-parent-pvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "pipelinerun-parent-pvc",
+						ReadOnly:  false,
+					},
+				},
+			},
+		},
 	}, {
 		name: "storage resource as output",
 		desc: "storage resource defined only in output with pipeline ownder reference",
@@ -510,7 +542,16 @@ func TestValidOutputResources(t *testing.T) {
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
 			},
-		}},
+		},
+			{
+				Name: "pipelinerun-pvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "pipelinerun-pvc",
+					},
+				},
+			},
+		},
 	}, {
 		name: "storage resource as output with no owner",
 		desc: "storage resource defined only in output without pipelinerun reference",
@@ -778,20 +819,6 @@ func TestValidOutputResources(t *testing.T) {
 			if got != nil {
 				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
 					t.Fatalf("post build steps mismatch (-want, +got): %s", d)
-				}
-
-				if c.taskRun.GetPipelineRunPVCName() != "" {
-					c.wantVolumes = append(
-						c.wantVolumes,
-						corev1.Volume{
-							Name: c.taskRun.GetPipelineRunPVCName(),
-							VolumeSource: corev1.VolumeSource{
-								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: c.taskRun.GetPipelineRunPVCName(),
-								},
-							},
-						},
-					)
 				}
 				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
 					t.Fatalf("post build steps volumes mismatch (-want, +got): %s", d)
