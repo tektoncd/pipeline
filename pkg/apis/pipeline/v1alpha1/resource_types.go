@@ -30,6 +30,13 @@ import (
 // additional metatdata should be provided for it.
 type PipelineResourceType string
 
+var (
+	AllowedOutputResources = map[PipelineResourceType]bool{
+		PipelineResourceTypeStorage: true,
+		PipelineResourceTypeGit:     true,
+	}
+)
+
 const (
 	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
 	PipelineResourceTypeGit PipelineResourceType = "git"

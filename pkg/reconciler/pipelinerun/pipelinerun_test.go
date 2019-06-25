@@ -830,6 +830,54 @@ func TestReconcileWithTimeout(t *testing.T) {
 	}
 }
 
+func TestReconcileWithoutPVC(t *testing.T) {
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world"),
+		tb.PipelineTask("hello-world-2", "hello-world"),
+	))}
+
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run", "foo",
+		tb.PipelineRunSpec("test-pipeline")),
+	}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// Check that the expected TaskRun was created
+	for _, a := range clients.Kube.Actions() {
+		if ca, ok := a.(ktesting.CreateAction); ok {
+			obj := ca.GetObject()
+			if pvc, ok := obj.(*corev1.PersistentVolumeClaim); ok {
+				t.Errorf("Did not expect to see a PVC created when no resources are linked. %s was created", pvc)
+			}
+		}
+	}
+
+	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+		t.Errorf("Expected PipelineRun to be running, but condition status is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+}
+
 func TestReconcileCancelledPipelineRun(t *testing.T) {
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hello-world", tb.Retries(1)),
