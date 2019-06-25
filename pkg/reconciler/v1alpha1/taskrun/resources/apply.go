@@ -17,6 +17,8 @@ limitations under the License.
 package resources
 
 import (
+	corev1 "k8s.io/api/core/v1"
+
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -60,42 +62,12 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, replacements map[string]string) 
 	// Apply variable expansion to steps fields.
 	steps := spec.Steps
 	for i := range steps {
-		steps[i].Name = templating.ApplyReplacements(steps[i].Name, replacements)
-		steps[i].Image = templating.ApplyReplacements(steps[i].Image, replacements)
-		for ia, a := range steps[i].Args {
-			steps[i].Args[ia] = templating.ApplyReplacements(a, replacements)
-		}
-		for ie, e := range steps[i].Env {
-			steps[i].Env[ie].Value = templating.ApplyReplacements(e.Value, replacements)
-			if steps[i].Env[ie].ValueFrom != nil {
-				if e.ValueFrom.SecretKeyRef != nil {
-					steps[i].Env[ie].ValueFrom.SecretKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, replacements)
-					steps[i].Env[ie].ValueFrom.SecretKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, replacements)
-				}
-				if e.ValueFrom.ConfigMapKeyRef != nil {
-					steps[i].Env[ie].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, replacements)
-					steps[i].Env[ie].ValueFrom.ConfigMapKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, replacements)
-				}
-			}
-		}
-		for ie, e := range steps[i].EnvFrom {
-			steps[i].EnvFrom[ie].Prefix = templating.ApplyReplacements(e.Prefix, replacements)
-			if e.ConfigMapRef != nil {
-				steps[i].EnvFrom[ie].ConfigMapRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ConfigMapRef.LocalObjectReference.Name, replacements)
-			}
-			if e.SecretRef != nil {
-				steps[i].EnvFrom[ie].SecretRef.LocalObjectReference.Name = templating.ApplyReplacements(e.SecretRef.LocalObjectReference.Name, replacements)
-			}
-		}
-		steps[i].WorkingDir = templating.ApplyReplacements(steps[i].WorkingDir, replacements)
-		for ic, c := range steps[i].Command {
-			steps[i].Command[ic] = templating.ApplyReplacements(c, replacements)
-		}
-		for iv, v := range steps[i].VolumeMounts {
-			steps[i].VolumeMounts[iv].Name = templating.ApplyReplacements(v.Name, replacements)
-			steps[i].VolumeMounts[iv].MountPath = templating.ApplyReplacements(v.MountPath, replacements)
-			steps[i].VolumeMounts[iv].SubPath = templating.ApplyReplacements(v.SubPath, replacements)
-		}
+		applyContainerReplacements(&steps[i], replacements)
+	}
+
+	// Apply variable expansion to containerTemplate fields.
+	if spec.ContainerTemplate != nil {
+		applyContainerReplacements(spec.ContainerTemplate, replacements)
 	}
 
 	// Apply variable expansion to the build's volumes
@@ -113,4 +85,43 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, replacements map[string]string) 
 	}
 
 	return spec
+}
+
+func applyContainerReplacements(container *corev1.Container, replacements map[string]string) {
+	container.Name = templating.ApplyReplacements(container.Name, replacements)
+	container.Image = templating.ApplyReplacements(container.Image, replacements)
+	for ia, a := range container.Args {
+		container.Args[ia] = templating.ApplyReplacements(a, replacements)
+	}
+	for ie, e := range container.Env {
+		container.Env[ie].Value = templating.ApplyReplacements(e.Value, replacements)
+		if container.Env[ie].ValueFrom != nil {
+			if e.ValueFrom.SecretKeyRef != nil {
+				container.Env[ie].ValueFrom.SecretKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, replacements)
+				container.Env[ie].ValueFrom.SecretKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, replacements)
+			}
+			if e.ValueFrom.ConfigMapKeyRef != nil {
+				container.Env[ie].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, replacements)
+				container.Env[ie].ValueFrom.ConfigMapKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, replacements)
+			}
+		}
+	}
+	for ie, e := range container.EnvFrom {
+		container.EnvFrom[ie].Prefix = templating.ApplyReplacements(e.Prefix, replacements)
+		if e.ConfigMapRef != nil {
+			container.EnvFrom[ie].ConfigMapRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ConfigMapRef.LocalObjectReference.Name, replacements)
+		}
+		if e.SecretRef != nil {
+			container.EnvFrom[ie].SecretRef.LocalObjectReference.Name = templating.ApplyReplacements(e.SecretRef.LocalObjectReference.Name, replacements)
+		}
+	}
+	container.WorkingDir = templating.ApplyReplacements(container.WorkingDir, replacements)
+	for ic, c := range container.Command {
+		container.Command[ic] = templating.ApplyReplacements(c, replacements)
+	}
+	for iv, v := range container.VolumeMounts {
+		container.VolumeMounts[iv].Name = templating.ApplyReplacements(v.Name, replacements)
+		container.VolumeMounts[iv].MountPath = templating.ApplyReplacements(v.MountPath, replacements)
+		container.VolumeMounts[iv].SubPath = templating.ApplyReplacements(v.SubPath, replacements)
+	}
 }
