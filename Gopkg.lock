@@ -437,12 +437,11 @@
   revision = "68737b1b4e03d9a888e89ee2a44714a56eefd539"
 
 [[projects]]
-  branch = "master"
   digest = "1:dabd27a263906435d198a5fa9237ff2b14383a1e29964b7006e6dc975134f5e6"
   name = "github.com/knative/test-infra"
   packages = ["tools/dep-collector"]
   pruneopts = "NUT"
-  revision = "8c8ba71c83aa5ec7928c32fa6e4d9c07d18141b0"
+  revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
 
 [[projects]]
   digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
@@ -599,12 +598,11 @@
   version = "v1.0.3"
 
 [[projects]]
-  branch = "master"
   digest = "1:5558ceef0c045f9c8a0c08c6e0de89bb0895b1aad69d9722b3748f003564b8cb"
   name = "github.com/tektoncd/plumbing"
   packages = ["scripts"]
   pruneopts = "UT"
-  revision = "373083123d6a795a29afd25b4b8f3efc4b7d14bc"
+  revision = "a51e87c5261fdb718470c077c155e070aca690a8"
 
 [[projects]]
   digest = "1:e65b395598ef96d96c1df34e3fd3ec4dabe629edb1511de33a59efd9931df0e8"
