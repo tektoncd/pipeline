@@ -20,7 +20,7 @@ type UpdatePod func(*corev1.Pod) (*corev1.Pod, error)
 // have already stopped.
 //
 // A sidecar is killed by replacing its current container image with the nop
-// image, which in turn quickly exits. If the sidedcar defines a command then
+// image, which in turn quickly exits. If the sidecar defines a command then
 // it will exit with a non-zero status. When we check for TaskRun success we
 // have to check for the containers we care about - not the final Pod status.
 func Stop(pod *corev1.Pod, updatePod UpdatePod) error {
