@@ -53,11 +53,55 @@ type ArtifactStorageInterface interface {
 	StorageBasePath(pr *v1alpha1.PipelineRun) string
 }
 
+// ArtifactStorageNone is used when no storage is needed.
+type ArtifactStorageNone struct{}
+
+// GetCopyToStorageFromContainerSpec returns no containers because none are needed.
+func (a *ArtifactStorageNone) GetCopyToStorageFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
+	return nil
+}
+
+// GetCopyFromStorageToContainerSpec returns no containers because none are needed.
+func (a *ArtifactStorageNone) GetCopyFromStorageToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
+	return nil
+}
+
+// GetSecretsVolumes returns no volumes because none are needed.
+func (a *ArtifactStorageNone) GetSecretsVolumes() []corev1.Volume {
+	return nil
+}
+
+// GetType returns the string "none" to indicate this is the None storage type.
+func (a *ArtifactStorageNone) GetType() string {
+	return "none"
+}
+
+// StorageBasePath returns an empty string because no storage is being used and so
+// there is no path that resources should be copied from / to.
+func (a *ArtifactStorageNone) StorageBasePath(pr *v1alpha1.PipelineRun) string {
+	return ""
+}
+
 // InitializeArtifactStorage will check if there is there is a
-// bucket configured or create a PVC
-func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
+// bucket configured, create a PVC or return nil if no storage is required.
+func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, ts []v1alpha1.PipelineTask, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
+	// Artifact storage is only required if a pipeline has tasks that take inputs from previous tasks.
+	needStorage := false
+	for _, t := range ts {
+		if t.Resources != nil {
+			for _, i := range t.Resources.Inputs {
+				if len(i.From) != 0 {
+					needStorage = true
+				}
+			}
+		}
+	}
+	if !needStorage {
+		return &ArtifactStorageNone{}, nil
+	}
+
 	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
-	shouldCreatePVC, err := NeedsPVC(configMap, err, logger)
+	shouldCreatePVC, err := ConfigMapNeedsPVC(configMap, err, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +120,7 @@ func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface,
 // an output workspace or artifacts from one Task to another Task. No other PVCs will be impacted by this cleanup.
 func CleanupArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface, logger *zap.SugaredLogger) error {
 	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
-	shouldCreatePVC, err := NeedsPVC(configMap, err, logger)
+	shouldCreatePVC, err := ConfigMapNeedsPVC(configMap, err, logger)
 	if err != nil {
 		return err
 	}
@@ -89,9 +133,9 @@ func CleanupArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface, lo
 	return nil
 }
 
-// NeedsPVC checks if the possibly-nil config map passed to it is configured to use a bucket for artifact storage,
+// ConfigMapNeedsPVC checks if the possibly-nil config map passed to it is configured to use a bucket for artifact storage,
 // returning true if instead a PVC is needed.
-func NeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.SugaredLogger) (bool, error) {
+func ConfigMapNeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.SugaredLogger) (bool, error) {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return true, nil
@@ -120,7 +164,7 @@ func NeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.SugaredLogger)
 // consumer code to get a container step for copy to/from storage
 func GetArtifactStorage(prName string, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
 	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
-	pvc, err := NeedsPVC(configMap, err, logger)
+	pvc, err := ConfigMapNeedsPVC(configMap, err, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't determine if PVC was needed from config map: %w", err)
 	}
