@@ -17,12 +17,11 @@ limitations under the License.
 package resources
 
 import (
-	corev1 "k8s.io/api/core/v1"
-
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/templating"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
