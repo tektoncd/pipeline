@@ -58,6 +58,16 @@ required = [
   # HEAD as of 2019-03-21
   revision = "3fc06fd3c9880a9ebb5c401f4b20cf6666cc7bc0"
 
+[[constraint]]
+  name = "github.com/tektoncd/plumbing"
+  # HEAD as of 2019-06-24
+  revision = "a51e87c5261fdb718470c077c155e070aca690a8"
+
+[[constraint]]
+  name = "github.com/knative/test-infra"
+  # HEAD as of 2019-06-25
+  revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
+
 [[override]]
   name = "github.com/knative/pkg"
   # HEAD as of 2019-06-14 💖
