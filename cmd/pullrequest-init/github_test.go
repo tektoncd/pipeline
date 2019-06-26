@@ -96,10 +96,7 @@ var (
 			SHA: github.String("2"),
 		},
 	}
-	comment = &github.IssueComment{
-		ID:   github.Int64(1),
-		Body: github.String("hello world!"),
-	}
+	comments []*github.IssueComment
 )
 
 func githubClient(t *testing.T, gh *FakeGitHub) (*github.Client, func()) {
@@ -122,10 +119,22 @@ func newHandler(ctx context.Context, t *testing.T) (*GitHubHandler, func()) {
 	gh := NewFakeGitHub()
 	client, close := githubClient(t, gh)
 
-	// Automatically prepopulate GitHub server to ease test setup.
+	// Prepopulate GitHub server with defaults to ease test setup.
 	gh.AddPullRequest(pr)
-	if _, _, err := client.Issues.CreateComment(ctx, owner, repo, prNum, comment); err != nil {
-		t.Fatalf("Create Comment: %v", err)
+	commentBody := []string{
+		"hello world!",
+		"a",
+		"b",
+	}
+	comments = make([]*github.IssueComment, 0, len(commentBody))
+	for _, b := range commentBody {
+		c, _, err := client.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
+			Body: github.String(b),
+		})
+		if err != nil {
+			t.Fatalf("error creating comment: %v", err)
+		}
+		comments = append(comments, c)
 	}
 
 	h, err := NewGitHubHandler(ctx, zaptest.NewLogger(t, zaptest.WrapOptions(zap.AddCaller())).Sugar(), pr.GetHTMLURL())
@@ -149,7 +158,12 @@ func TestGitHub(t *testing.T) {
 
 	prPath := filepath.Join(dir, "pr.json")
 	rawPRPath := filepath.Join(dir, "github/pr.json")
-	rawCommentPath := filepath.Join(dir, "github/comments/1.json")
+
+	tknComments := []*Comment{
+		githubCommentToTekton(comments[0], dir),
+		githubCommentToTekton(comments[1], dir),
+		githubCommentToTekton(comments[2], dir),
+	}
 
 	wantPR := &PullRequest{
 		Type: "github",
@@ -164,14 +178,9 @@ func TestGitHub(t *testing.T) {
 			Branch: pr.GetBase().GetRef(),
 			SHA:    pr.GetBase().GetSHA(),
 		},
-		Comments: []*Comment{{
-			ID:     comment.GetID(),
-			Author: comment.GetUser().GetLogin(),
-			Text:   comment.GetBody(),
-			Raw:    rawCommentPath,
-		}},
-		Labels: []*Label{},
-		Raw:    rawPRPath,
+		Comments: tknComments,
+		Labels:   []*Label{},
+		Raw:      rawPRPath,
 	}
 
 	gotPR := new(PullRequest)
@@ -180,9 +189,13 @@ func TestGitHub(t *testing.T) {
 	if rawPRPath != gotPR.Raw {
 		t.Errorf("Raw PR path: want [%s], got [%s]", rawPRPath, gotPR.Raw)
 	}
-	diffFile(t, rawCommentPath, comment, new(github.IssueComment))
-	if rawCommentPath != gotPR.Comments[0].Raw {
-		t.Errorf("Raw PR path: want [%s], got [%s]", rawCommentPath, gotPR.Comments[0].Raw)
+	for i, c := range tknComments {
+		t.Run(fmt.Sprintf("Comment%d", c.GetID()), func(t *testing.T) {
+			diffFile(t, c.GetRaw(), comments[i], new(github.IssueComment))
+			if c.GetRaw() != gotPR.Comments[i].Raw {
+				t.Errorf("Raw PR path: want [%s], got [%s]", c.GetRaw(), gotPR.Comments[i].Raw)
+			}
+		})
 	}
 }
 
@@ -205,9 +218,9 @@ func TestUpload(t *testing.T) {
 			SHA:    pr.GetBase().GetSHA(),
 		},
 		Comments: []*Comment{{
-			ID:     comment.GetID(),
-			Author: comment.GetUser().GetLogin(),
-			Text:   comment.GetBody(),
+			ID:     comments[0].GetID(),
+			Author: comments[0].GetUser().GetLogin(),
+			Text:   comments[0].GetBody(),
 		}, {
 			Text: "abc123",
 		}},
@@ -245,7 +258,7 @@ func TestUpload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantComments := []*github.IssueComment{comment, &github.IssueComment{
+	wantComments := []*github.IssueComment{comments[0], &github.IssueComment{
 		ID:   github.Int64(2),
 		Body: github.String(tektonPR.Comments[1].Text),
 	}}
@@ -356,7 +369,7 @@ func TestCreateNewComments(t *testing.T) {
 	h, close := newHandler(ctx, t)
 	defer close()
 
-	comments := []*Comment{
+	req := []*Comment{
 		{
 			// Forces comment creation to fail.
 			Text: ErrorKeyword,
@@ -365,7 +378,7 @@ func TestCreateNewComments(t *testing.T) {
 			Text: "b",
 		},
 	}
-	if err := h.createNewComments(ctx, comments); err == nil {
+	if err := h.createNewComments(ctx, req); err == nil {
 		t.Error("expected error, got nil")
 	}
 
@@ -373,13 +386,10 @@ func TestCreateNewComments(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetComments: %v", err)
 	}
-	want := []*github.IssueComment{
-		comment,
-		{
-			ID:   github.Int64(2),
-			Body: github.String(comments[1].Text),
-		},
-	}
+	want := append(comments, &github.IssueComment{
+		ID:   github.Int64(int64(len(comments) + 1)),
+		Body: github.String(req[1].GetText()),
+	})
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("-want +got: %v", diff)
 	}
@@ -390,39 +400,25 @@ func TestUpdateExistingComments(t *testing.T) {
 	h, close := newHandler(ctx, t)
 	defer close()
 
-	comment2, _, err := h.Client.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
-		Body: github.String("a"),
-	})
-	if err != nil {
-		t.Fatalf("error creating comment: %v", err)
-	}
-	comment3, _, err := h.Client.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
-		Body: github.String("b"),
-	})
-	if err != nil {
-		t.Fatalf("error creating comment: %v", err)
-	}
-	comment3.Body = github.String("tacocat")
-
-	comments := map[int64]*Comment{
+	req := map[int64]*Comment{
 		// Non-existant comment. Should be ignored.
 		8675309: &Comment{
 			ID:   8675309,
-			Text: comment.GetBody(),
+			Text: comments[0].GetBody(),
 		},
 		// Comment that fails to update. Should not affect later updates.
-		comment2.GetID(): &Comment{
-			ID:   comment2.GetID(),
+		comments[1].GetID(): &Comment{
+			ID:   comments[1].GetID(),
 			Text: ErrorKeyword,
 		},
 		// Normal update.
-		comment3.GetID(): &Comment{
-			ID:   comment3.GetID(),
-			Text: comment3.GetBody(),
+		comments[2].GetID(): &Comment{
+			ID:   comments[2].GetID(),
+			Text: "tacocat",
 		},
 		// Comment 1 should be deleted.
 	}
-	if err := h.updateExistingComments(ctx, comments); err == nil {
+	if err := h.updateExistingComments(ctx, req); err == nil {
 		t.Error("expected error, got nil")
 	}
 
@@ -430,7 +426,13 @@ func TestUpdateExistingComments(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetComments: %v", err)
 	}
-	want := []*github.IssueComment{comment2, comment3}
+	want := []*github.IssueComment{
+		comments[1],
+		{
+			ID:   comments[2].ID,
+			Body: github.String(req[comments[2].GetID()].GetText()),
+		},
+	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("-want +got: %v", diff)
 	}
@@ -441,39 +443,29 @@ func TestUploadComments(t *testing.T) {
 	h, close := newHandler(ctx, t)
 	defer close()
 
-	comment2, _, err := h.Client.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
-		Body: github.String("a"),
-	})
-	if err != nil {
-		t.Fatalf("error creating comment: %v", err)
+	if err := h.uploadComments(ctx, nil); err != nil {
+		t.Errorf("uploadComments(nil): %v", err)
 	}
-	comment3, _, err := h.Client.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
-		Body: github.String("b"),
-	})
-	if err != nil {
-		t.Fatalf("error creating comment: %v", err)
-	}
-	comment3.Body = github.String("tacocat")
 
-	comments := []*Comment{
+	req := []*Comment{
 		// Non-existant comment. Should be ignored.
 		{
 			ID:   8675309,
-			Text: comment.GetBody(),
+			Text: comments[0].GetBody(),
 		},
 		// Comment that fails to update. Should not affect later updates.
 		{
-			ID:   comment2.GetID(),
+			ID:   comments[1].GetID(),
 			Text: ErrorKeyword,
 		},
 		// Normal update.
 		{
-			ID:   comment3.GetID(),
-			Text: comment3.GetBody(),
+			ID:   comments[2].GetID(),
+			Text: "tacocat",
 		},
 		// Comment 1 should be deleted.
 	}
-	if err := h.uploadComments(ctx, comments); err == nil {
+	if err := h.uploadComments(ctx, req); err == nil {
 		t.Error("expected error, got nil")
 	}
 
@@ -481,8 +473,62 @@ func TestUploadComments(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetComments: %v", err)
 	}
-	want := []*github.IssueComment{comment2, comment3}
+	want := []*github.IssueComment{
+		comments[1],
+		{
+			ID:   comments[2].ID,
+			Body: github.String(req[2].GetText()),
+		},
+	}
 	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("-want +got: %v", diff)
+	}
+
+	// Perform a no-op upload, verify it doesn't error and that it doesn't delete
+	// all existing comments.
+	if err := h.uploadComments(ctx, nil); err != nil {
+		t.Fatalf("uploadComments: %v", err)
+	}
+	got, _, err = h.Client.Issues.ListComments(ctx, owner, repo, prNum, nil)
+	if err != nil {
+		t.Fatalf("GetComments: %v", err)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("-want +got: %v", diff)
+	}
+}
+
+func TestUploadLabels(t *testing.T) {
+	ctx := context.Background()
+	h, close := newHandler(ctx, t)
+	defer close()
+
+	text := "tacocat"
+	l := []*Label{{Text: text}}
+
+	if err := h.uploadLabels(ctx, l); err != nil {
+		t.Errorf("uploadLabels: %v", err)
+	}
+
+	pr, _, err := h.Client.PullRequests.Get(ctx, h.owner, h.repo, h.prNum)
+	if err != nil {
+		t.Fatalf("GetPullRequest: %v", err)
+	}
+	want := []*github.Label{{Name: github.String(text)}}
+	if diff := cmp.Diff(want, pr.Labels); diff != "" {
+		t.Errorf("-want +got: %v", diff)
+	}
+
+	// Perform a no-op upload, verify it doesn't error and that it doesn't delete
+	// all existing labels.
+	if err := h.uploadLabels(ctx, nil); err != nil {
+		t.Errorf("uploadLabels(nil): %v", err)
+	}
+	pr, _, err = h.Client.PullRequests.Get(ctx, h.owner, h.repo, h.prNum)
+	if err != nil {
+		t.Fatalf("GetPullRequest: %v", err)
+	}
+	if diff := cmp.Diff(want, pr.Labels); diff != "" {
 		t.Errorf("-want +got: %v", diff)
 	}
 }

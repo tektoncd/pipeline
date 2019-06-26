@@ -197,11 +197,11 @@ func (h *GitHubHandler) Upload(ctx context.Context, path string) error {
 	}
 
 	var merr error
-	if err := h.uploadLabels(ctx, pr.Labels); err != nil {
+	if err := h.uploadLabels(ctx, pr.GetLabels()); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
-	if err := h.uploadComments(ctx, pr.Comments); err != nil {
+	if err := h.uploadComments(ctx, pr.GetComments()); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
@@ -209,9 +209,13 @@ func (h *GitHubHandler) Upload(ctx context.Context, path string) error {
 }
 
 func (h *GitHubHandler) uploadLabels(ctx context.Context, labels []*Label) error {
+	if len(labels) == 0 {
+		return nil
+	}
+
 	labelNames := make([]string, 0, len(labels))
 	for _, l := range labels {
-		labelNames = append(labelNames, l.Text)
+		labelNames = append(labelNames, l.GetText())
 	}
 	h.Logger.Infof("Setting labels for PR %d to %v", h.prNum, labelNames)
 	_, _, err := h.Issues.ReplaceLabelsForIssue(ctx, h.owner, h.repo, h.prNum, labelNames)
@@ -219,6 +223,10 @@ func (h *GitHubHandler) uploadLabels(ctx context.Context, labels []*Label) error
 }
 
 func (h *GitHubHandler) uploadComments(ctx context.Context, comments []*Comment) error {
+	if comments == nil {
+		return nil
+	}
+
 	h.Logger.Infof("Setting comments for PR %d to: %v", h.prNum, comments)
 
 	// Sort comments into whether they are new or existing comments (based on
@@ -226,8 +234,8 @@ func (h *GitHubHandler) uploadComments(ctx context.Context, comments []*Comment)
 	existingComments := map[int64]*Comment{}
 	newComments := []*Comment{}
 	for _, c := range comments {
-		if c.ID != 0 {
-			existingComments[c.ID] = c
+		if c.GetID() != 0 {
+			existingComments[c.GetID()] = c
 		} else {
 			newComments = append(newComments, c)
 		}
@@ -251,9 +259,6 @@ func (h *GitHubHandler) updateExistingComments(ctx context.Context, comments map
 		return err
 	}
 
-	h.Logger.Info(existingComments)
-	h.Logger.Info(comments)
-
 	var merr error
 	for _, ec := range existingComments {
 		dc, ok := comments[ec.GetID()]
@@ -265,14 +270,14 @@ func (h *GitHubHandler) updateExistingComments(ctx context.Context, comments map
 				merr = multierror.Append(merr, err)
 				continue
 			}
-		} else if dc.Text != ec.GetBody() {
+		} else if dc.GetText() != ec.GetBody() {
 			// Update
 			c := &github.IssueComment{
 				ID:   ec.ID,
-				Body: github.String(dc.Text),
+				Body: github.String(dc.GetText()),
 				User: ec.User,
 			}
-			h.Logger.Infof("Updating comment %d for PR %d to %s", ec.GetID(), h.prNum, dc.Text)
+			h.Logger.Infof("Updating comment %d for PR %d to %s", ec.GetID(), h.prNum, dc.GetText())
 			if _, _, err := h.Issues.EditComment(ctx, h.owner, h.repo, ec.GetID(), c); err != nil {
 				h.Logger.Warnf("Error editing comment: %v", err)
 				merr = multierror.Append(merr, err)
@@ -287,13 +292,22 @@ func (h *GitHubHandler) createNewComments(ctx context.Context, comments []*Comme
 	var merr error
 	for _, dc := range comments {
 		c := &github.IssueComment{
-			Body: github.String(dc.Text),
+			Body: github.String(dc.GetText()),
 		}
-		h.Logger.Infof("Creating comment %s for PR %d", dc.Text, h.prNum)
+		h.Logger.Infof("Creating comment %s for PR %d", dc.GetText(), h.prNum)
 		if _, _, err := h.Issues.CreateComment(ctx, h.owner, h.repo, h.prNum, c); err != nil {
 			h.Logger.Warnf("Error creating comment: %v", err)
 			merr = multierror.Append(merr, err)
 		}
 	}
 	return merr
+}
+
+func githubCommentToTekton(c *github.IssueComment, pathPrefix string) *Comment {
+	return &Comment{
+		ID:     c.GetID(),
+		Author: c.GetUser().GetLogin(),
+		Text:   c.GetBody(),
+		Raw:    filepath.Join(pathPrefix, fmt.Sprintf("github/comments/%d.json", c.GetID())),
+	}
 }

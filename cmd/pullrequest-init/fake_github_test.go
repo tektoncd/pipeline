@@ -41,7 +41,10 @@ func TestFakeGitHubComments(t *testing.T) {
 		t.Fatalf("List Issues: wanted [], got %+v, %+v, %v", got, resp, err)
 	}
 
-	if _, _, err := client.Issues.CreateComment(ctx, owner, repo, prNum, comment); err != nil {
+	comment, _, err := client.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
+		Body: github.String("tacocat"),
+	})
+	if err != nil {
 		t.Fatalf("CreateComment: %v", err)
 	}
 
