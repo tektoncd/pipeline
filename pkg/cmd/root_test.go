@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/pflag"
 	"github.com/tektoncd/cli/pkg/test"
+	tu "github.com/tektoncd/cli/pkg/test"
 )
 
 func TestCommand_no_global_flags(t *testing.T) {
@@ -33,7 +33,5 @@ func TestCommand_suggest(t *testing.T) {
 		t.Errorf("No errors was defined. Output: %s", out)
 	}
 	expected := "unknown command \"pi\" for \"tkn\"\n\nDid you mean this?\n\tpipeline\n\tpipelinerun\n"
-	if d := cmp.Diff(expected, err.Error()); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
+	tu.AssertOutput(t, expected, err.Error())
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/completion"
 	"github.com/tektoncd/cli/pkg/cmd/pipeline"
+	"github.com/tektoncd/cli/pkg/cmd/pipelineresource"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/cmd/task"
 	"github.com/tektoncd/cli/pkg/cmd/taskrun"
@@ -34,9 +35,9 @@ func Root(p cli.Params) *cobra.Command {
 	pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
 
 	var cmd = &cobra.Command{
-		Use:   "tkn",
-		Short: "CLI for tekton pipelines",
-		Long:  ``,
+		Use:                    "tkn",
+		Short:                  "CLI for tekton pipelines",
+		Long:                   ``,
 		BashCompletionFunction: completion.BashCompletionFunc,
 	}
 
@@ -46,6 +47,7 @@ func Root(p cli.Params) *cobra.Command {
 		pipelinerun.Command(p),
 		task.Command(p),
 		taskrun.Command(p),
+		pipelineresource.Command(p),
 		version.Command(),
 	)
 

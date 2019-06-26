@@ -112,6 +112,6 @@ run_test  "describe pipelinerun" tkn pipelinerun describe output-pipeline-run
 
 run_test  "show logs" tkn pipelinerun logs output-pipeline-run
 run_test  "show logs" tkn taskrun logs test-template-volume
-echo ---------------------------------
+run_test  "list pipelineresources" tkn resource list
 
 success
