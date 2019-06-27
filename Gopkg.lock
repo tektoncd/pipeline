@@ -398,7 +398,7 @@
   revision = "3fc06fd3c9880a9ebb5c401f4b20cf6666cc7bc0"
 
 [[projects]]
-  digest = "1:284d19f7f7cc781b18146ccd634271d3c328b828a061330f00625023d985a554"
+  digest = "1:33afd816eb96416e5d7c0a64c1c6412e277720faa03c90739ce1d1fb1764b8de"
   name = "github.com/knative/pkg"
   packages = [
     "apis",
@@ -414,8 +414,12 @@
     "client/clientset/versioned/scheme",
     "client/clientset/versioned/typed/authentication/v1alpha1",
     "client/clientset/versioned/typed/istio/v1alpha3",
+    "codegen/cmd/injection-gen",
+    "codegen/cmd/injection-gen/args",
+    "codegen/cmd/injection-gen/generators",
     "configmap",
     "controller",
+    "injection",
     "kmeta",
     "kmp",
     "logging",
@@ -433,7 +437,7 @@
     "tracker",
     "webhook",
   ]
-  pruneopts = "NUT"
+  pruneopts = "T"
   revision = "68737b1b4e03d9a888e89ee2a44714a56eefd539"
 
 [[projects]]
@@ -1191,8 +1195,7 @@
   version = "kubernetes-1.12.6"
 
 [[projects]]
-  branch = "master"
-  digest = "1:e2844a79caf5a09550077b6f468f4a5e9a5d5a241e34555f2da692064e742184"
+  digest = "1:39912eb5f8eaf46486faae0839586c27c93423e552f76875defa048f52c15c15"
   name = "k8s.io/gengo"
   packages = [
     "args",
@@ -1205,7 +1208,7 @@
     "types",
   ]
   pruneopts = "NUT"
-  revision = "8394c995ab8fbe52216f38d0e1a37de36d820528"
+  revision = "e17681d19d3ac4837a019ece36c2a0ec31ffe985"
 
 [[projects]]
   digest = "1:c263611800c3a97991dbcf9d3bc4de390f6224aaa8ca0a7226a9d734f65a416a"
@@ -1269,8 +1272,10 @@
     "github.com/knative/pkg/apis",
     "github.com/knative/pkg/apis/duck/v1beta1",
     "github.com/knative/pkg/client/clientset/versioned",
+    "github.com/knative/pkg/codegen/cmd/injection-gen",
     "github.com/knative/pkg/configmap",
     "github.com/knative/pkg/controller",
+    "github.com/knative/pkg/injection",
     "github.com/knative/pkg/logging",
     "github.com/knative/pkg/logging/logkey",
     "github.com/knative/pkg/logging/testing",

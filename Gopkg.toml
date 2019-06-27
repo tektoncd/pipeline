@@ -8,10 +8,19 @@ required = [
   "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
+  "github.com/knative/pkg/codegen/cmd/injection-gen",
   "github.com/knative/caching/pkg/apis/caching",
   "github.com/tektoncd/plumbing/scripts",
   "github.com/knative/test-infra/tools/dep-collector",
 ]
+
+[[override]]
+  name = "k8s.io/klog"
+  version = "v0.2.0"
+
+[[override]]
+  name = "k8s.io/gengo"
+  revision = "e17681d19d3ac4837a019ece36c2a0ec31ffe985"
 
 [[override]]
   name = "gopkg.in/yaml.v2"
@@ -35,7 +44,7 @@ required = [
 
 [[override]]
   name = "golang.org/x/sys"
-  revision = "1c9583448a9c3aa0f9a6a5241bf73c0bd8aafded"  
+  revision = "1c9583448a9c3aa0f9a6a5241bf73c0bd8aafded"
 
 [[override]]
   name = "github.com/json-iterator/go"
@@ -104,4 +113,9 @@ required = [
 
 [[prune.project]]
   name = "github.com/tektoncd/plumbing"
+  non-go = false
+
+ [[prune.project]]
+  name = "github.com/knative/pkg"
+  unused-packages = false
   non-go = false
