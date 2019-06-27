@@ -74,9 +74,11 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		podStatus: corev1.PodStatus{
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init; ignored
+				ImageID: "ignored",
 			}},
 			ContainerStatuses: []corev1.ContainerStatus{{
-				Name: "step-state-name",
+				Name:    "step-state-name",
+				ImageID: "",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
@@ -102,11 +104,14 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		podStatus: corev1.PodStatus{
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init; ignored.
+				ImageID: "ignoreme",
 			}, {
 				// git-init; ignored.
+				ImageID: "ignoreme",
 			}},
 			ContainerStatuses: []corev1.ContainerStatus{{
-				Name: "step-state-name",
+				Name:    "step-state-name",
+				ImageID: "image-id",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
@@ -125,6 +130,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					}},
 				Name:          "state-name",
 				ContainerName: "step-state-name",
+				ImageID:       "image-id",
 			}},
 		},
 	}, {
@@ -138,6 +144,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 						ExitCode: 0,
 					},
 				},
+				ImageID: "image-id",
 			}},
 		},
 		want: v1alpha1.TaskRunStatus{
@@ -151,6 +158,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					}},
 				Name:          "step-push",
 				ContainerName: "step-step-push",
+				ImageID:       "image-id",
 			}},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
@@ -181,9 +189,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 	}, {
 		desc: "failure-terminated",
 		podStatus: corev1.PodStatus{
-			Phase:                 corev1.PodFailed,
+			Phase: corev1.PodFailed,
 			InitContainerStatuses: []corev1.ContainerStatus{{
 				// creds-init status; ignored
+				ImageID: "ignore-me",
 			}},
 			ContainerStatuses: []corev1.ContainerStatus{{
 				Name:    "step-failure",
@@ -209,8 +218,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
+
 				Name:          "failure",
 				ContainerName: "step-failure",
+				ImageID:       "image-id",
 			}},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},

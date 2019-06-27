@@ -18,7 +18,8 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
   - [Service Account](#service-account)
   - [Pod Template](#pod-template)
-- [Steps](#steps)
+- [Status](#status)
+  - [Steps](#steps)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
 - [Examples](#examples)
 - [Sidecars](#sidecars)
@@ -300,7 +301,39 @@ spec:
       emptyDir: {}
 ```
 
-## Steps
+## Status
+
+As a TaskRun completes, it's `status` field is filled in with relevant information for
+the overall run, as well as each step.
+
+The following example shows a completed TaskRun and it's `status` field:
+
+```yaml
+completionTime: "2019-08-12T18:22:57Z"
+conditions:
+- lastTransitionTime: "2019-08-12T18:22:57Z"
+  message: All Steps have completed executing
+  reason: Succeeded
+  status: "True"
+  type: Succeeded
+podName: status-taskrun-pod-6488ef
+startTime: "2019-08-12T18:22:51Z"
+steps:
+- container: step-hello
+  imageID: docker-pullable://busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649
+  name: hello
+  terminated:
+    containerID: docker://d5a54f5bbb8e7a6fd3bc7761b78410403244cf4c9c5822087fb0209bf59e3621
+    exitCode: 0
+    finishedAt: "2019-08-12T18:22:56Z"
+    reason: Completed
+    startedAt: "2019-08-12T18:22:54Z"
+  ```
+
+Fields include start and stop times for the `TaskRun` and each `Step`, and exit codes.
+For each step we also include the fully-qualified image used, with the digest.
+
+### Steps
 
 If multiple `steps` are defined in the `Task` invoked by the `TaskRun`, we will see the
 `status.steps` of the `TaskRun` displayed in the same order as they are defined in
