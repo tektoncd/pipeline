@@ -102,8 +102,6 @@ type TaskResourceBinding struct {
 type TaskRunOutputs struct {
 	// +optional
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
-	// +optional
-	Params []Param `json:"params,omitempty"`
 }
 
 var taskRunCondSet = apis.NewBatchConditionSet()

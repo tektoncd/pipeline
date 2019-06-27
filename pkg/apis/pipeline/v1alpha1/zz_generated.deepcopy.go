@@ -1346,11 +1346,6 @@ func (in *TaskRunOutputs) DeepCopyInto(out *TaskRunOutputs) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Params != nil {
-		in, out := &in.Params, &out.Params
-		*out = make([]Param, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 
