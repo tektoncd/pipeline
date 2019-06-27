@@ -17,10 +17,12 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/knative/pkg/apis"
+	rtesting "github.com/knative/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
@@ -43,7 +45,8 @@ func TestWaitForTaskRunStateSucceed(t *testing.T) {
 			)),
 		},
 	}
-	c := fakeClients(t, d)
+	c, cancel := fakeClients(t, d)
+	defer cancel()
 	err := WaitForTaskRunState(c, "foo", TaskRunSucceed("foo"), "TestTaskRunSucceed")
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +60,8 @@ func TestWaitForTaskRunStateFailed(t *testing.T) {
 			)),
 		},
 	}
-	c := fakeClients(t, d)
+	c, cancel := fakeClients(t, d)
+	defer cancel()
 	err := WaitForTaskRunState(c, "foo", TaskRunFailed("foo"), "TestTaskRunFailed")
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +76,8 @@ func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 			)),
 		},
 	}
-	c := fakeClients(t, d)
+	c, cancel := fakeClients(t, d)
+	defer cancel()
 	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunSucceed("bar"), "TestWaitForPipelineRunSucceed")
 	if err != nil {
 		t.Fatal(err)
@@ -87,15 +92,18 @@ func TestWaitForPipelineRunStateFailed(t *testing.T) {
 			)),
 		},
 	}
-	c := fakeClients(t, d)
+	c, cancel := fakeClients(t, d)
+	defer cancel()
 	err := WaitForPipelineRunState(c, "bar", 2*time.Second, PipelineRunFailed("bar"), "TestWaitForPipelineRunFailed")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func fakeClients(t *testing.T, d Data) *clients {
-	fakeClients, _ := SeedTestData(t, d)
+func fakeClients(t *testing.T, d Data) (*clients, func()) {
+	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, cancel := context.WithCancel(ctx)
+	fakeClients, _ := SeedTestData(t, ctx, d)
 	// 	c.KubeClient = fakeClients.Kube
 	return &clients{
 		PipelineClient:         fakeClients.Pipeline.TektonV1alpha1().Pipelines(waitNamespace),
@@ -103,5 +111,5 @@ func fakeClients(t *testing.T, d Data) *clients {
 		PipelineRunClient:      fakeClients.Pipeline.TektonV1alpha1().PipelineRuns(waitNamespace),
 		TaskClient:             fakeClients.Pipeline.TektonV1alpha1().Tasks(waitNamespace),
 		TaskRunClient:          fakeClients.Pipeline.TektonV1alpha1().TaskRuns(waitNamespace),
-	}
+	}, cancel
 }

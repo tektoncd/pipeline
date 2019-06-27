@@ -17,11 +17,13 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/knative/pkg/apis"
+	rtesting "github.com/knative/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test"
@@ -53,7 +55,10 @@ func TestRecorderOptions(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	c, _ := test.SeedTestData(t, d)
+	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, _ := test.SeedTestData(t, ctx, d)
 
 	observer, _ := observer.New(zap.InfoLevel)
 

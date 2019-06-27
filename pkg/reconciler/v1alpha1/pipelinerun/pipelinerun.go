@@ -29,11 +29,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
-	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipeline/dag"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/config"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"
 	"go.uber.org/zap"
@@ -96,49 +94,6 @@ type Reconciler struct {
 
 // Check that our Reconciler implements controller.Reconciler
 var _ controller.Reconciler = (*Reconciler)(nil)
-
-// NewController creates a new Configuration controller
-func NewController(
-	opt reconciler.Options,
-	pipelineRunInformer informers.PipelineRunInformer,
-	pipelineInformer informers.PipelineInformer,
-	taskInformer informers.TaskInformer,
-	clusterTaskInformer informers.ClusterTaskInformer,
-	taskRunInformer informers.TaskRunInformer,
-	resourceInformer informers.PipelineResourceInformer,
-	timeoutHandler *reconciler.TimeoutSet,
-) *controller.Impl {
-
-	r := &Reconciler{
-		Base:              reconciler.NewBase(opt, pipelineRunAgentName),
-		pipelineRunLister: pipelineRunInformer.Lister(),
-		pipelineLister:    pipelineInformer.Lister(),
-		taskLister:        taskInformer.Lister(),
-		clusterTaskLister: clusterTaskInformer.Lister(),
-		taskRunLister:     taskRunInformer.Lister(),
-		resourceLister:    resourceInformer.Lister(),
-		timeoutHandler:    timeoutHandler,
-	}
-
-	impl := controller.NewImpl(r, r.Logger, pipelineRunControllerName)
-
-	r.Logger.Info("Setting up event handlers")
-	pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    impl.Enqueue,
-		UpdateFunc: controller.PassNew(impl.Enqueue),
-		DeleteFunc: impl.Enqueue,
-	})
-
-	r.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
-	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
-	})
-
-	r.Logger.Info("Setting up ConfigMap receivers")
-	r.configStore = config.NewStore(r.Logger.Named("config-store"))
-	r.configStore.WatchConfigs(opt.ConfigMapWatcher)
-	return impl
-}
 
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
