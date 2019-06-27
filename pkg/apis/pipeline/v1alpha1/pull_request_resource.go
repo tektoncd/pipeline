@@ -85,9 +85,6 @@ func (s *PullRequestResource) GetURL() string {
 	return s.URL
 }
 
-// GetParams returns the resource params
-func (s PullRequestResource) GetParams() []Param { return []Param{} }
-
 // Replacements is used for template replacement on a PullRequestResource inside of a Taskrun.
 func (s *PullRequestResource) Replacements() map[string]string {
 	return map[string]string{

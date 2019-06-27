@@ -52,7 +52,6 @@ var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineR
 type PipelineResourceInterface interface {
 	GetName() string
 	GetType() PipelineResourceType
-	GetParams() []Param
 	Replacements() map[string]string
 	GetDownloadContainerSpec() ([]corev1.Container, error)
 	GetUploadContainerSpec() ([]corev1.Container, error)

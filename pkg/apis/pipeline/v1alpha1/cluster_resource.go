@@ -118,9 +118,6 @@ func (s *ClusterResource) GetURL() string {
 	return s.URL
 }
 
-// GetParams returns the resource params
-func (s ClusterResource) GetParams() []Param { return []Param{} }
-
 // Replacements is used for template replacement on a ClusterResource inside of a Taskrun.
 func (s *ClusterResource) Replacements() map[string]string {
 	return map[string]string{

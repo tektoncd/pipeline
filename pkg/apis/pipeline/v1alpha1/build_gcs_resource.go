@@ -107,9 +107,6 @@ func (s BuildGCSResource) GetType() PipelineResourceType {
 	return PipelineResourceTypeStorage
 }
 
-// GetParams get params
-func (s *BuildGCSResource) GetParams() []Param { return []Param{} }
-
 // GetSecretParams returns the resource secret params
 func (s *BuildGCSResource) GetSecretParams() []SecretParam { return nil }
 
