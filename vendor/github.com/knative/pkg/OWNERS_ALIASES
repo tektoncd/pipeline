@@ -1,0 +1,65 @@
+aliases:
+  pkg-approvers:
+  - evankanderson
+  - mattmoor
+  - vaikas-google
+
+  apis-approvers:
+  - mattmoor
+  - vaikas-google
+  - n3wscott
+
+  apis-istio-approvers:
+  - tcnghia
+
+  apis-duck-approvers:
+  - mattmoor
+  - vaikas-google
+
+  cloudevents-approvers:
+  - n3wscott
+  - vaikas-google
+
+  configmap-approvers:
+  - mattmoor
+  - mdemirhan
+
+  controller-approvers:
+  - mattmoor
+  - grantr
+  - tcnghia
+
+  kmeta-approvers:
+  - mattmoor
+  - jonjohnsonjr
+
+  logging-approvers:
+  - mdemirhan
+  - n3wscott
+  - yanweiguo
+
+  metrics-approvers:
+  - mdemirhan
+  - yanweiguo
+
+  productivity-approvers:
+  - adrcunha
+  - chaodaiG
+  - srinivashegde86
+  productivity-reviewers:
+  - adrcunha
+  - chaodaiG
+  - coryrc
+  - dushyanthsc
+  - ericKlawitter
+  - Fredy-Z
+  - nbarthwal
+  - srinivashegde86
+  - steuhs
+  - yt3liu
+
+  webhook-approvers:
+  - mattmoor
+  - grantr
+  - tcnghia
+

@@ -22,6 +22,8 @@ source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
 
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${REPO_ROOT_DIR}; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../../../k8s.io/code-generator)}
 
+KNATIVE_CODEGEN_PKG=${KNATIVE_CODEGEN_PKG:-$(cd ${REPO_ROOT_DIR}; ls -d -1 ./vendor/github.com/knative/pkg 2>/dev/null || echo ../pkg)}
+
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
@@ -36,6 +38,12 @@ ${GOPATH}/bin/deepcopy-gen \
   -O zz_generated.deepcopy \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
   -i github.com/tektoncd/pipeline/pkg/apis/config
+
+# Knative Injection
+${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
+  github.com/tektoncd/pipeline/pkg/client github.com/tektoncd/pipeline/pkg/apis \
+  "pipeline:v1alpha1" \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 # Make sure our dependencies are up-to-date
 ${REPO_ROOT_DIR}/hack/update-deps.sh
