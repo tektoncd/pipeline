@@ -86,9 +86,6 @@ func (s *GitResource) GetURL() string {
 	return s.URL
 }
 
-// GetParams returns the resource params
-func (s GitResource) GetParams() []Param { return []Param{} }
-
 // Replacements is used for template replacement on a GitResource inside of a Taskrun.
 func (s *GitResource) Replacements() map[string]string {
 	return map[string]string{

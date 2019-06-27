@@ -65,9 +65,6 @@ func (s ImageResource) GetType() PipelineResourceType {
 	return PipelineResourceTypeImage
 }
 
-// GetParams returns the resource params
-func (s ImageResource) GetParams() []Param { return []Param{} }
-
 // Replacements is used for template replacement on an ImageResource inside of a Taskrun.
 func (s *ImageResource) Replacements() map[string]string {
 	return map[string]string{
