@@ -53,6 +53,7 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 				ContainerState: *s.State.DeepCopy(),
 				Name:           resources.TrimContainerNamePrefix(s.Name),
 				ContainerName:  s.Name,
+				ImageID:        s.ImageID,
 			})
 		}
 	}
