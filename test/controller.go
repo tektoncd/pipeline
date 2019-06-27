@@ -14,17 +14,26 @@ limitations under the License.
 package test
 
 import (
+	"context"
 	"testing"
+
+	// Link in the fakes so they get injected into injection.Fake
+	fakekubeclient "github.com/knative/pkg/injection/clients/kubeclient/fake"
+	fakepodinformer "github.com/knative/pkg/injection/informers/kubeinformers/corev1/pod/fake"
+	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
+	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask/fake"
+	fakepipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipeline/fake"
+	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelineresource/fake"
+	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun/fake"
+	faketaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task/fake"
+	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun/fake"
 
 	"github.com/knative/pkg/controller"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
-	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	kubeinformers "k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 )
@@ -73,58 +82,31 @@ type TestAssets struct {
 	Controller *controller.Impl
 	Logs       *observer.ObservedLogs
 	Clients    Clients
-	Informers  Informers
 }
 
 // SeedTestData returns Clients and Informers populated with the
 // given Data.
-func SeedTestData(t *testing.T, d Data) (Clients, Informers) {
-	objs := []runtime.Object{}
-	for _, r := range d.PipelineResources {
-		objs = append(objs, r)
-	}
-	for _, p := range d.Pipelines {
-		objs = append(objs, p)
-	}
-	for _, pr := range d.PipelineRuns {
-		objs = append(objs, pr)
-	}
-	for _, t := range d.Tasks {
-		objs = append(objs, t)
-	}
-	for _, ct := range d.ClusterTasks {
-		objs = append(objs, ct)
-	}
-	for _, tr := range d.TaskRuns {
-		objs = append(objs, tr)
-	}
-
-	kubeObjs := []runtime.Object{}
-	for _, p := range d.Pods {
-		kubeObjs = append(kubeObjs, p)
-	}
-	for _, n := range d.Namespaces {
-		kubeObjs = append(kubeObjs, n)
-	}
+func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers) {
 	c := Clients{
-		Pipeline: fakepipelineclientset.NewSimpleClientset(objs...),
-		Kube:     fakekubeclientset.NewSimpleClientset(kubeObjs...),
+		Kube:     fakekubeclient.Get(ctx),
+		Pipeline: fakepipelineclient.Get(ctx),
 	}
-	sharedInformer := informers.NewSharedInformerFactory(c.Pipeline, 0)
-	kubeInformer := kubeinformers.NewSharedInformerFactory(c.Kube, 0)
 
 	i := Informers{
-		PipelineRun:      sharedInformer.Tekton().V1alpha1().PipelineRuns(),
-		Pipeline:         sharedInformer.Tekton().V1alpha1().Pipelines(),
-		TaskRun:          sharedInformer.Tekton().V1alpha1().TaskRuns(),
-		Task:             sharedInformer.Tekton().V1alpha1().Tasks(),
-		ClusterTask:      sharedInformer.Tekton().V1alpha1().ClusterTasks(),
-		PipelineResource: sharedInformer.Tekton().V1alpha1().PipelineResources(),
-		Pod:              kubeInformer.Core().V1().Pods(),
+		PipelineRun:      fakepipelineruninformer.Get(ctx),
+		Pipeline:         fakepipelineinformer.Get(ctx),
+		TaskRun:          faketaskruninformer.Get(ctx),
+		Task:             faketaskinformer.Get(ctx),
+		ClusterTask:      fakeclustertaskinformer.Get(ctx),
+		PipelineResource: fakeresourceinformer.Get(ctx),
+		Pod:              fakepodinformer.Get(ctx),
 	}
 
 	for _, pr := range d.PipelineRuns {
 		if err := i.PipelineRun.Informer().GetIndexer().Add(pr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Pipeline.TektonV1alpha1().PipelineRuns(pr.Namespace).Create(pr); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -132,9 +114,15 @@ func SeedTestData(t *testing.T, d Data) (Clients, Informers) {
 		if err := i.Pipeline.Informer().GetIndexer().Add(p); err != nil {
 			t.Fatal(err)
 		}
+		if _, err := c.Pipeline.TektonV1alpha1().Pipelines(p.Namespace).Create(p); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, tr := range d.TaskRuns {
 		if err := i.TaskRun.Informer().GetIndexer().Add(tr); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Pipeline.TektonV1alpha1().TaskRuns(tr.Namespace).Create(tr); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -142,9 +130,15 @@ func SeedTestData(t *testing.T, d Data) (Clients, Informers) {
 		if err := i.Task.Informer().GetIndexer().Add(ta); err != nil {
 			t.Fatal(err)
 		}
+		if _, err := c.Pipeline.TektonV1alpha1().Tasks(ta.Namespace).Create(ta); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, ct := range d.ClusterTasks {
 		if err := i.ClusterTask.Informer().GetIndexer().Add(ct); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := c.Pipeline.TektonV1alpha1().ClusterTasks().Create(ct); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -152,11 +146,24 @@ func SeedTestData(t *testing.T, d Data) (Clients, Informers) {
 		if err := i.PipelineResource.Informer().GetIndexer().Add(r); err != nil {
 			t.Fatal(err)
 		}
+		if _, err := c.Pipeline.TektonV1alpha1().PipelineResources(r.Namespace).Create(r); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, p := range d.Pods {
 		if err := i.Pod.Informer().GetIndexer().Add(p); err != nil {
 			t.Fatal(err)
 		}
+		if _, err := c.Kube.CoreV1().Pods(p.Namespace).Create(p); err != nil {
+			t.Fatal(err)
+		}
 	}
+	for _, n := range d.Namespaces {
+		if _, err := c.Kube.CoreV1().Namespaces().Create(n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.Pipeline.ClearActions()
+	c.Kube.ClearActions()
 	return c, i
 }

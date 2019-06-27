@@ -17,10 +17,12 @@ limitations under the License.
 package taskrun
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
+	rtesting "github.com/knative/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -81,8 +83,11 @@ func TestCancelTaskRun(t *testing.T) {
 				d.Pods = []*corev1.Pod{tc.pod}
 			}
 
+			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			c, _ := test.SeedTestData(t, ctx, d)
 			observer, _ := observer.New(zap.InfoLevel)
-			c, _ := test.SeedTestData(t, d)
 			err := cancelTaskRun(tc.taskRun, c.Kube, zap.New(observer).Sugar())
 			if err != nil {
 				t.Fatal(err)

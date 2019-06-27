@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
+	rtesting "github.com/knative/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
@@ -69,9 +70,10 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 			},
 		}},
 	}
+	ctx, _ := rtesting.SetupFakeContext(t)
+	c, _ := test.SeedTestData(t, ctx, d)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
 
 	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
@@ -179,11 +181,13 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 			},
 		}},
 	}
-	c, _ := test.SeedTestData(t, d)
+
+	ctx, _ := rtesting.SetupFakeContext(t)
+	c, _ := test.SeedTestData(t, ctx, d)
 	stopCh := make(chan struct{})
+	defer close(stopCh)
 	observer, _ := observer.New(zap.InfoLevel)
 	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
-	defer close(stopCh)
 
 	gotCallback := sync.Map{}
 	f := func(pr interface{}) {
@@ -254,8 +258,9 @@ func TestWithNoFunc(t *testing.T) {
 			},
 		}},
 	}
+	ctx, _ := rtesting.SetupFakeContext(t)
+	c, _ := test.SeedTestData(t, ctx, d)
 	stopCh := make(chan struct{})
-	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
 	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	defer func() {

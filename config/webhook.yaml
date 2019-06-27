@@ -35,6 +35,11 @@ spec:
         volumeMounts:
         - name: config-logging
           mountPath: /etc/config-logging
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       volumes:
         - name: config-logging
           configMap:

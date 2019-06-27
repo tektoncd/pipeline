@@ -28,7 +28,6 @@ import (
 	"github.com/knative/pkg/tracker"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
@@ -41,7 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -73,50 +71,6 @@ type Reconciler struct {
 
 // Check that our Reconciler implements controller.Reconciler
 var _ controller.Reconciler = (*Reconciler)(nil)
-
-// NewController creates a new Configuration controller
-func NewController(
-	opt reconciler.Options,
-	taskRunInformer informers.TaskRunInformer,
-	taskInformer informers.TaskInformer,
-	clusterTaskInformer informers.ClusterTaskInformer,
-	resourceInformer informers.PipelineResourceInformer,
-	podInformer coreinformers.PodInformer,
-	entrypointCache *entrypoint.Cache,
-	timeoutHandler *reconciler.TimeoutSet,
-) *controller.Impl {
-
-	c := &Reconciler{
-		Base:              reconciler.NewBase(opt, taskRunAgentName),
-		taskRunLister:     taskRunInformer.Lister(),
-		taskLister:        taskInformer.Lister(),
-		clusterTaskLister: clusterTaskInformer.Lister(),
-		resourceLister:    resourceInformer.Lister(),
-		timeoutHandler:    timeoutHandler,
-	}
-	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
-
-	c.Logger.Info("Setting up event handlers")
-	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    impl.Enqueue,
-		UpdateFunc: controller.PassNew(impl.Enqueue),
-	})
-
-	c.tracker = tracker.New(impl.EnqueueKey, opt.GetTrackerLease())
-	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    impl.EnqueueControllerOf,
-		UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
-		DeleteFunc: impl.EnqueueControllerOf,
-	})
-
-	c.Logger.Info("Setting up Entrypoint cache")
-	c.cache = entrypointCache
-	if c.cache == nil {
-		c.cache, _ = entrypoint.NewCache()
-	}
-
-	return impl
-}
 
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run

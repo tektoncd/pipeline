@@ -17,9 +17,11 @@ limitations under the License.
 package pipelinerun
 
 import (
+	"context"
 	"testing"
 
 	"github.com/knative/pkg/apis"
+	rtesting "github.com/knative/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test"
@@ -72,7 +74,10 @@ func TestCancelPipelineRun(t *testing.T) {
 				PipelineRuns: []*v1alpha1.PipelineRun{tc.pipelineRun},
 				TaskRuns:     tc.taskRuns,
 			}
-			c, _ := test.SeedTestData(t, d)
+			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			c, _ := test.SeedTestData(t, ctx, d)
 			err := cancelPipelineRun(tc.pipelineRun, tc.pipelineState, c.Pipeline)
 			if err != nil {
 				t.Fatal(err)

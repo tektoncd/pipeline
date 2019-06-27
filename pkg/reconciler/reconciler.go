@@ -20,7 +20,6 @@ import (
 	"time"
 
 	cachingclientset "github.com/knative/caching/pkg/client/clientset/versioned"
-	sharedclientset "github.com/knative/pkg/client/clientset/versioned"
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/logging/logkey"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -38,7 +37,6 @@ import (
 // creating our controllers.
 type Options struct {
 	KubeClientSet     kubernetes.Interface
-	SharedClientSet   sharedclientset.Interface
 	PipelineClientSet clientset.Interface
 	CachingClientSet  cachingclientset.Interface
 
@@ -61,9 +59,6 @@ func (o Options) GetTrackerLease() time.Duration {
 type Base struct {
 	// KubeClientSet allows us to talk to the k8s for core APIs
 	KubeClientSet kubernetes.Interface
-
-	// SharedClientSet allows us to configure shared objects
-	SharedClientSet sharedclientset.Interface
 
 	// PipelineClientSet allows us to configure pipeline objects
 	PipelineClientSet clientset.Interface
@@ -108,8 +103,8 @@ func NewBase(opt Options, controllerAgentName string) *Base {
 	}
 
 	base := &Base{
-		KubeClientSet:     opt.KubeClientSet,
-		SharedClientSet:   opt.SharedClientSet,
+		KubeClientSet: opt.KubeClientSet,
+
 		PipelineClientSet: opt.PipelineClientSet,
 		CachingClientSet:  opt.CachingClientSet,
 		ConfigMapWatcher:  opt.ConfigMapWatcher,

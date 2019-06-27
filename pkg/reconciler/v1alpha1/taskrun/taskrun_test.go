@@ -25,10 +25,10 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/configmap"
+	rtesting "github.com/knative/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
-	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/status"
@@ -216,35 +216,19 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-func getTaskRunController(t *testing.T, d test.Data) test.TestAssets {
+func getTaskRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
+	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, cancel := context.WithCancel(ctx)
 	entrypointCache, _ = entrypoint.NewCache()
-	c, i := test.SeedTestData(t, d)
-	observer, logs := observer.New(zap.InfoLevel)
+	c, _ := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
-	stopCh := make(chan struct{})
-	logger := zap.New(observer).Sugar()
-
-	th := reconciler.NewTimeoutHandler(stopCh, logger)
 	return test.TestAssets{
 		Controller: NewController(
-			reconciler.Options{
-				Logger:            logger,
-				KubeClientSet:     c.Kube,
-				PipelineClientSet: c.Pipeline,
-				ConfigMapWatcher:  configMapWatcher,
-			},
-			i.TaskRun,
-			i.Task,
-			i.ClusterTask,
-			i.PipelineResource,
-			i.Pod,
-			entrypointCache,
-			th,
+			ctx,
+			configMapWatcher,
 		),
-		Logs:      logs,
-		Clients:   c,
-		Informers: i,
-	}
+		Clients: c,
+	}, cancel
 }
 
 func TestReconcile(t *testing.T) {
@@ -1025,7 +1009,8 @@ func TestReconcile(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
-			testAssets := getTaskRunController(t, d)
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			saName := tc.taskRun.Spec.ServiceAccount
@@ -1099,7 +1084,8 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 		TaskRuns: []*v1alpha1.TaskRun{taskRun},
 		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
-	testAssets := getTaskRunController(t, d)
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
 
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -1163,7 +1149,8 @@ func TestReconcile_SortTaskRunStatusSteps(t *testing.T) {
 			},
 		}},
 	}
-	testAssets := getTaskRunController(t, d)
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
@@ -1205,7 +1192,8 @@ func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 			},
 		}},
 	}
-	testAssets := getTaskRunController(t, d)
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
 
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -1248,7 +1236,8 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets := getTaskRunController(t, d)
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun))
@@ -1258,8 +1247,10 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid TaskRun but saw %q", err)
 			}
-			if len(clients.Kube.Actions()) != 0 {
-				t.Errorf("expected no actions created by the reconciler, got %v", clients.Kube.Actions())
+			if len(clients.Kube.Actions()) != 1 ||
+				clients.Kube.Actions()[0].GetVerb() != "list" ||
+				clients.Kube.Actions()[0].GetResource().Resource != "namespaces" {
+				t.Errorf("expected only one action (list namespaces) created by the reconciler, got %+v", clients.Kube.Actions())
 			}
 			// Since the TaskRun is invalid, the status should say it has failed
 			condition := tc.taskRun.Status.GetCondition(apis.ConditionSucceeded)
@@ -1284,7 +1275,8 @@ func TestReconcilePodFetchError(t *testing.T) {
 		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := getTaskRunController(t, d)
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1335,7 +1327,8 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		Pods:     []*corev1.Pod{pod},
 	}
 
-	testAssets := getTaskRunController(t, d)
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1425,7 +1418,8 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		Tasks: []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := getTaskRunController(t, d)
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1454,7 +1448,8 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
 
-	testAssets := getTaskRunController(t, d)
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
@@ -1526,7 +1521,8 @@ func TestReconcileTimeouts(t *testing.T) {
 			TaskRuns: []*v1alpha1.TaskRun{tc.taskRun},
 			Tasks:    []*v1alpha1.Task{simpleTask},
 		}
-		testAssets := getTaskRunController(t, d)
+		testAssets, cancel := getTaskRunController(t, d)
+		defer cancel()
 		c := testAssets.Controller
 		clients := testAssets.Clients
 
@@ -1558,7 +1554,8 @@ func TestHandlePodCreationError(t *testing.T) {
 		TaskRuns: []*v1alpha1.TaskRun{taskRun},
 		Tasks:    []*v1alpha1.Task{simpleTask},
 	}
-	testAssets := getTaskRunController(t, d)
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
 	c, ok := testAssets.Controller.Reconciler.(*Reconciler)
 	if !ok {
 		t.Errorf("failed to construct instance of taskrun reconciler")
