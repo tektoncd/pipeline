@@ -22,17 +22,20 @@ func TestGitHubParseURL(t *testing.T) {
 	wantRepo := "repo"
 	wantPR := 1
 
-	for _, url := range []string{
-		"https://github.com/owner/repo/pulls/1",
-		"https://github.com/owner/repo/pulls/1/",
-		"https://github.com/owner/repo/pulls/1/files",
-		"http://github.com/owner/repo/pulls/1",
-		"ssh://github.com/owner/repo/pulls/1",
-		"https://example.com/owner/repo/pulls/1",
-		"https://github.com/owner/repo/foo/1",
+	for _, tt := range []struct{
+		url      string
+		wantHost string
+	}{
+		{"https://github.com/owner/repo/pulls/1", "https://github.com"},
+		{"https://github.com/owner/repo/pulls/1/", "https://github.com"},
+		{"https://github.com/owner/repo/pulls/1/files", "https://github.com"},
+		{"http://github.com/owner/repo/pulls/1", "http://github.com"},
+		{"ssh://github.com/owner/repo/pulls/1", "ssh://github.com"},
+		{"https://example.com/owner/repo/pulls/1", "https://example.com"},
+		{"https://github.com/owner/repo/foo/1", "https://github.com"},
 	} {
-		t.Run(url, func(t *testing.T) {
-			owner, repo, pr, err := parseGitHubURL(url)
+		t.Run(tt.url, func(t *testing.T) {
+			owner, repo, host, pr, err := parseGitHubURL(tt.url)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -41,6 +44,9 @@ func TestGitHubParseURL(t *testing.T) {
 			}
 			if repo != wantRepo {
 				t.Errorf("Repo: %s, want: %s", repo, wantRepo)
+			}
+			if host != tt.wantHost {
+				t.Errorf("Host: %s, want: %s", host, tt.wantHost)
 			}
 			if pr != wantPR {
 				t.Errorf("PR Number: %d, want: %d", pr, wantPR)
@@ -56,8 +62,30 @@ func TestGitHubParseURL_errors(t *testing.T) {
 		"https://github.com/owner/repo/pulls/foo",
 	} {
 		t.Run(url, func(t *testing.T) {
-			if o, r, pr, err := parseGitHubURL(url); err == nil {
-				t.Errorf("Expected error, got (%s, %s, %d)", o, r, pr)
+			if o, r, h, pr, err := parseGitHubURL(url); err == nil {
+				t.Errorf("Expected error, got (%s, %s, %s, %d)", o, r, h, pr)
+			}
+		})
+	}
+}
+
+func TestNewGitHubHandler(t *testing.T) {
+	ctx := context.Background()
+
+	for _, tt := range []struct{
+		in  string
+		out string
+	} {
+		{"https://github.com/tektoncd/pipeline/pull/1", "api.github.com"},
+		{"https://github.tekton.dev/tektoncd/pipeline/pull/1", "github.tekton.dev"},
+	} {
+		t.Run(tt.in, func(t *testing.T) {
+			h, err := NewGitHubHandler(ctx, zaptest.NewLogger(t, zaptest.WrapOptions(zap.AddCaller())).Sugar(), tt.in)
+			if err != nil {
+				t.Fatalf("error creating GitHubHandler: %v", err)
+			}
+			if h.BaseURL.Host != tt.out {
+				t.Fatalf("error unexpected BaseURL.Host: %v", h.BaseURL.Host)
 			}
 		})
 	}
@@ -270,23 +298,26 @@ func diffFile(t *testing.T, path string, want interface{}, got interface{}) {
 }
 
 func TestParseGitHubURL(t *testing.T) {
-	good := []string{
-		fmt.Sprintf("https://github.com/%s/%s/pull/%d", owner, repo, prNum),
-		fmt.Sprintf("https://github.com/%s/%s/foo/%d", owner, repo, prNum),
-		fmt.Sprintf("http://github.com/%s/%s/pull/%d", owner, repo, prNum),
-		fmt.Sprintf("tacocat://github.com/%s/%s/pull/%d", owner, repo, prNum),
-		fmt.Sprintf("https://example.com/%s/%s/pull/%d", owner, repo, prNum),
-		fmt.Sprintf("https://github.com/%s/%s/pull/%d/foo", owner, repo, prNum),
-		fmt.Sprintf("github.com/%s/%s/pull/%d/foo", owner, repo, prNum),
+	good := []struct{
+		url string
+		wantHost string
+	} {
+		{fmt.Sprintf("https://github.com/%s/%s/pull/%d", owner, repo, prNum), "https://github.com"},
+		{fmt.Sprintf("https://github.com/%s/%s/foo/%d", owner, repo, prNum), "https://github.com"},
+		{fmt.Sprintf("http://github.com/%s/%s/pull/%d", owner, repo, prNum), "http://github.com"},
+		{fmt.Sprintf("tacocat://github.com/%s/%s/pull/%d", owner, repo, prNum), "tacocat://github.com"},
+		{fmt.Sprintf("https://example.com/%s/%s/pull/%d", owner, repo, prNum), "https://example.com"},
+		{fmt.Sprintf("https://github.com/%s/%s/pull/%d/foo", owner, repo, prNum), "https://github.com"}, 
+		{fmt.Sprintf("github.com/%s/%s/pull/%d/foo", owner, repo, prNum), "://"},
 	}
 	for _, u := range good {
-		t.Run(u, func(t *testing.T) {
-			gotOwner, gotRepo, gotPR, err := parseGitHubURL(u)
+		t.Run(u.url, func(t *testing.T) {
+			gotOwner, gotRepo, gotHost, gotPR, err := parseGitHubURL(u.url)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if gotOwner != owner || gotRepo != repo || gotPR != prNum {
-				t.Errorf("want (%s, %s, %d), got (%s, %s, %d)", owner, repo, prNum, gotOwner, gotRepo, gotPR)
+			if gotOwner != owner || gotRepo != repo || gotHost != u.wantHost || gotPR != prNum {
+				t.Errorf("want (%s, %s, %s, %d), got (%s, %s, %s, %d)", owner, repo, u.wantHost, prNum, gotOwner, gotRepo, gotHost, gotPR)
 			}
 		})
 	}
@@ -299,8 +330,8 @@ func TestParseGitHubURL(t *testing.T) {
 	}
 	for _, u := range bad {
 		t.Run(u, func(t *testing.T) {
-			if owner, repo, pr, err := parseGitHubURL(u); err == nil {
-				t.Errorf("want error, got (%s, %s, %d)", owner, repo, pr)
+			if owner, repo, host, pr, err := parseGitHubURL(u); err == nil {
+				t.Errorf("want error, got (%s, %s, %s, %d)", owner, repo, host, pr)
 			}
 		})
 	}
