@@ -63,13 +63,22 @@ func NewGitHubHandler(ctx context.Context, logger *zap.SugaredLogger, rawURL str
 		hc = oauth2.NewClient(ctx, ts)
 	}
 
-	owner, repo, prNumber, err := parseGitHubURL(rawURL)
+	owner, repo, host, prNumber, err := parseGitHubURL(rawURL)
 	if err != nil {
 		return nil, err
 	}
-
+	var client *github.Client
+	if !strings.Contains(host, "github.com") {
+		u := fmt.Sprintf("%s/api/v3/", host)
+		client, err = github.NewEnterpriseClient(u, u, hc)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		client = github.NewClient(hc)
+	}
 	return &GitHubHandler{
-		Client: github.NewClient(hc),
+		Client: client,
 		Logger: logger,
 		owner:  owner,
 		repo:   repo,
@@ -78,24 +87,24 @@ func NewGitHubHandler(ctx context.Context, logger *zap.SugaredLogger, rawURL str
 }
 
 // parseURL takes in a raw GitHub URL
-// (e.g. https://github.com/owner/repo/pull/1) and extracts the owner, repo,
+// (e.g. https://github.com/owner/repo/pull/1) and extracts the owner, repo, host,
 // and pull request number.
-func parseGitHubURL(raw string) (string, string, int, error) {
+func parseGitHubURL(raw string) (string, string, string, int, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
-		return "", "", 0, err
+		return "", "", "", 0, err
 	}
 	split := strings.Split(u.Path, "/")
 	if len(split) < 5 {
-		return "", "", 0, fmt.Errorf("could not determine PR from URL: %v", raw)
+		return "", "", "", 0, fmt.Errorf("could not determine PR from URL: %v", raw)
 	}
 	owner, repo, pr := split[1], split[2], split[4]
 	prNumber, err := strconv.Atoi(pr)
 	if err != nil {
-		return "", "", 0, fmt.Errorf("error parsing PR number: %s", pr)
+		return "", "", "", 0, fmt.Errorf("error parsing PR number: %s", pr)
 	}
 
-	return owner, repo, prNumber, nil
+	return owner, repo, u.Scheme + "://" + u.Host, prNumber, nil
 }
 
 // writeJSON writes an arbitrary interface to the given path.
