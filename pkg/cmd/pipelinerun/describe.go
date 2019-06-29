@@ -18,6 +18,9 @@ import (
 	"fmt"
 	"io"
 
+	"text/tabwriter"
+	"text/template"
+
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
@@ -25,19 +28,55 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
-	"text/tabwriter"
 )
 
-const (
-	statusHeader   = "STARTED\tDURATION\tSTATUS\n"
-	statusBody     = "%s\t%s\t%s\n"
-	resourceHeader = "NAME\tRESOURCE REF\n"
-	resourceBody   = "%s\t%s\n"
-	paramHeader    = "NAME\tVALUE\n"
-	paramBody      = "%s\t%s\n"
-	taskrunHeader  = "NAME\tTASK NAME\tSTARTED\tDURATION\tSTATUS\n"
-	taskrunBody    = "%s\t%s\t%s\t%s\t%s\n"
-)
+const templ = `Name:	{{ .PipelineRun.Name }}
+Namespace:	{{ .PipelineRun.Namespace }}
+Pipeline Ref:	{{ .PipelineRun.Spec.PipelineRef.Name }}
+{{- if ne .PipelineRun.Spec.ServiceAccount "" }}
+Service Account:	{{ .PipelineRun.Spec.ServiceAccount }}
+{{- end }}
+
+Status
+STARTED	DURATION	STATUS
+{{ formatAge .PipelineRun.Status.StartTime  .Params.Time }}	{{ formatDuration .PipelineRun.Status.StartTime .PipelineRun.Status.CompletionTime }}	{{ index .PipelineRun.Status.Conditions 0 | formatCondition }}
+{{- $msg := hasFailed .PipelineRun -}}
+{{-  if ne $msg "" }}
+
+Message
+{{ $msg }}
+{{- end }}
+
+Resources
+{{- $l := len .PipelineRun.Spec.Resources }}{{ if eq $l 0 }}
+No resources
+{{- else }}
+NAME	RESOURCE REF
+{{- range $i, $r := .PipelineRun.Spec.Resources }}
+{{$r.Name }}	{{ $r.ResourceRef.Name }}
+{{- end }}
+{{- end }}
+
+Params
+{{- $l := len .PipelineRun.Spec.Params }}{{ if eq $l 0 }}
+No params
+{{- else }}
+NAME	VALUE
+{{- range $i, $p := .PipelineRun.Spec.Params }}
+{{ $p.Name }}	{{ $p.Value }}
+{{- end }}
+{{- end }}
+
+Taskruns
+{{- $l := len .PipelineRun.Status.TaskRuns }}{{ if eq $l 0 }}
+No taskruns
+{{- else }}
+NAME	TASK NAME	STARTED	DURATION	STATUS
+{{- range $taskrunname, $taskrun := .PipelineRun.Status.TaskRuns }}
+{{ $taskrunname }}	{{ $taskrun.PipelineTaskName }}	{{ formatAge $taskrun.Status.StartTime $.Params.Time }}	{{ formatDuration $taskrun.Status.StartTime $taskrun.Status.CompletionTime }}	{{ index $taskrun.Status.Conditions 0 | formatCondition }}
+{{- end }}
+{{- end }}
+`
 
 func describeCommand(p cli.Params) *cobra.Command {
 	f := cliopts.NewPrintFlags("describe")
@@ -76,81 +115,34 @@ func printPipelineRunDescription(out io.Writer, prname string, p cli.Params) err
 		return fmt.Errorf("Failed to find pipelinerun %q", prname)
 	}
 
+	var data = struct {
+		PipelineRun *v1alpha1.PipelineRun
+		Params      cli.Params
+	}{
+		PipelineRun: pr,
+		Params:      p,
+	}
+
+	funcMap := template.FuncMap{
+		"formatAge":       formatted.Age,
+		"formatDuration":  formatted.Duration,
+		"formatCondition": formatted.Condition,
+		"hasFailed":       hasFailed,
+	}
+
 	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
-	printPipelineRunMetadata(w, pr)
-	printPipelineRunStatus(w, pr, p)
-	printPipelineRunResources(w, pr)
-	printPipelineRunParams(w, pr)
-	printPipelineRunTaskruns(w, pr, p)
+	t := template.Must(template.New("Describe Pipelinerun").Funcs(funcMap).Parse(templ))
+	err = t.Execute(w, data)
+	if err != nil {
+		panic(err)
+	}
+
 	return w.Flush()
 }
 
-func printPipelineRunMetadata(w *tabwriter.Writer, pr *v1alpha1.PipelineRun) {
-	fmt.Fprintf(w, "Name:\t%s\n", pr.Name)
-	fmt.Fprintf(w, "Namespace:\t%s\n", pr.Namespace)
-	fmt.Fprintf(w, "Pipeline Ref:\t%s\n", pr.Spec.PipelineRef.Name)
-	if pr.Spec.ServiceAccount != "" {
-		fmt.Fprintf(w, "Service Account:\t%s\n", pr.Spec.ServiceAccount)
-	}
-}
-
-func printPipelineRunStatus(w *tabwriter.Writer, pr *v1alpha1.PipelineRun, p cli.Params) {
-	fmt.Fprintln(w, "\nStatus")
-	fmt.Fprintf(w, statusHeader)
-	fmt.Fprintf(w, statusBody, formatted.Age(*pr.Status.StartTime, p.Time()),
-		formatted.Duration(pr.Status.StartTime, pr.Status.CompletionTime),
-		formatted.Condition(pr.Status.Conditions[0]))
-
-	if failed, msg := hasFailed(pr); failed && msg != "" {
-		fmt.Fprintln(w, "\nMessage")
-		fmt.Fprintln(w, msg)
-	}
-}
-
-func printPipelineRunResources(w *tabwriter.Writer, pr *v1alpha1.PipelineRun) {
-	fmt.Fprintln(w, "\nResources")
-	if len(pr.Spec.Resources) == 0 {
-		fmt.Fprintln(w, "No resources")
-		return
-	}
-
-	fmt.Fprintf(w, resourceHeader)
-	for _, resource := range pr.Spec.Resources {
-		fmt.Fprintf(w, resourceBody, resource.Name, resource.ResourceRef.Name)
-	}
-}
-
-func printPipelineRunParams(w *tabwriter.Writer, pr *v1alpha1.PipelineRun) {
-	fmt.Fprintln(w, "\nParams")
-	if len(pr.Spec.Params) == 0 {
-		fmt.Fprintln(w, "No params")
-		return
-	}
-
-	fmt.Fprintf(w, paramHeader)
-	for _, param := range pr.Spec.Params {
-		fmt.Fprintf(w, paramBody, param.Name, param.Value)
-	}
-}
-
-func printPipelineRunTaskruns(w *tabwriter.Writer, pr *v1alpha1.PipelineRun, p cli.Params) {
-	fmt.Fprintln(w, "\nTaskruns")
-	if len(pr.Status.TaskRuns) == 0 {
-		fmt.Fprintln(w, "No taskruns")
-		return
-	}
-
-	fmt.Fprintf(w, taskrunHeader)
-	for taskrunname, taskrun := range pr.Status.TaskRuns {
-		fmt.Fprintf(w, taskrunBody, taskrunname, taskrun.PipelineTaskName, formatted.Age(*taskrun.Status.StartTime, p.Time()),
-			formatted.Duration(taskrun.Status.StartTime, taskrun.Status.CompletionTime),
-			formatted.Condition(taskrun.Status.Conditions[0]))
-	}
-}
-
-func hasFailed(pr *v1alpha1.PipelineRun) (bool, string) {
+func hasFailed(pr *v1alpha1.PipelineRun) string {
 	if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
-		return true, pr.Status.Conditions[0].Message
+		return pr.Status.Conditions[0].Message
 	}
-	return false, ""
+	return ""
 }
