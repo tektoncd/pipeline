@@ -120,7 +120,7 @@ func printPipelineDescription(out io.Writer, p cli.Params, pname string) error {
 	t := template.Must(template.New("Describe Pipeline").Funcs(funcMap).Parse(templ))
 	err = t.Execute(w, data)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return w.Flush()
