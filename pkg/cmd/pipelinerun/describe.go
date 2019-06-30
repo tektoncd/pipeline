@@ -16,7 +16,6 @@ package pipelinerun
 
 import (
 	"fmt"
-	"io"
 
 	"text/tabwriter"
 	"text/template"
@@ -95,7 +94,11 @@ tkn pr desc foo -n bar",
 		Args:         cobra.MinimumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return printPipelineRunDescription(cmd.OutOrStdout(), args[0], p)
+			s := &cli.Stream{
+				Out: cmd.OutOrStdout(),
+				Err: cmd.OutOrStderr(),
+			}
+			return printPipelineRunDescription(s, args[0], p)
 		},
 	}
 
@@ -104,15 +107,15 @@ tkn pr desc foo -n bar",
 	return c
 }
 
-func printPipelineRunDescription(out io.Writer, prname string, p cli.Params) error {
+func printPipelineRunDescription(s *cli.Stream, prName string, p cli.Params) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return fmt.Errorf("failed to create tekton client")
+		return fmt.Errorf("Failed to create tekton client")
 	}
 
-	pr, err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Get(prname, metav1.GetOptions{})
+	pr, err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Get(prName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to find pipelinerun %q", prname)
+		return fmt.Errorf("Failed to find pipelinerun %q", prName)
 	}
 
 	var data = struct {
@@ -130,13 +133,14 @@ func printPipelineRunDescription(out io.Writer, prname string, p cli.Params) err
 		"hasFailed":       hasFailed,
 	}
 
-	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
+	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	t := template.Must(template.New("Describe Pipelinerun").Funcs(funcMap).Parse(templ))
+
 	err = t.Execute(w, data)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(s.Err, "Failed to execute template")
+		return err
 	}
-
 	return w.Flush()
 }
 
