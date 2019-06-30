@@ -17,8 +17,8 @@ package pipeline
 import (
 	"fmt"
 	"io"
-	"os"
 	"text/tabwriter"
+	"text/template"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -28,14 +28,38 @@ import (
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-const (
-	resHeader  = "NAME\tTYPE\n"
-	resBody    = "%s\t%s\n"
-	taskHeader = "NAME\tTASKREF\tRUNAFTER\n"
-	taskBody   = "%s\t%s\t%v\n"
-	runsHeader = "NAME\tSTARTED\tDURATION\tSTATUS\n"
-	runsBody   = "%s\t%s\t%s\t%s\n"
-)
+const templ = `Name:	{{ .PipelineName }}
+
+Resources
+{{- $rl := len .Pipeline.Spec.Resources }}{{ if eq $rl 0 }}
+No resources
+{{- else }}
+NAME	TYPE
+{{- range $i, $r := .Pipeline.Spec.Resources }}
+{{$r.Name }}	{{ $r.Type }}
+{{- end }}
+{{- end }}
+
+Tasks
+{{- $tl := len .Pipeline.Spec.Tasks }}{{ if eq $tl 0 }}
+No tasks
+{{- else }}
+NAME	TASKREF	RUNAFTER
+{{- range $i, $t := .Pipeline.Spec.Tasks }}
+{{ $t.Name }}	{{ $t.TaskRef.Name }}	{{ $t.RunAfter }}
+{{- end }}
+{{- end }}
+
+Runs
+{{- $rl := len .PipelineRuns.Items }}{{ if eq $rl 0 }}
+No runs
+{{- else }}
+NAME	STARTED	DURATION	STATUS
+{{- range $i, $pr := .PipelineRuns.Items }}
+{{ $pr.Name }}	{{ formatAge $pr.Status.StartTime $.Params.Time }}	{{ formatDuration $pr.Status.StartTime $pr.Status.CompletionTime }}	{{ index $pr.Status.Conditions 0 | formatCondition }}
+{{- end }}
+{{- end }}
+`
 
 func describeCommand(p cli.Params) *cobra.Command {
 	f := cliopts.NewPrintFlags("describe")
@@ -66,70 +90,38 @@ func printPipelineDescription(out io.Writer, p cli.Params, pname string) error {
 		return err
 	}
 
-	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
-	fmt.Fprintf(out, "Name: %s\n", pname)
-	printResources(w, pipeline)
-	printTasks(w, pipeline)
-	printRuns(w, cs, p, pname)
-
-	return w.Flush()
-}
-
-func printResources(w *tabwriter.Writer, pipeline *v1alpha1.Pipeline) {
-	fmt.Fprintln(w, "\nResources")
-	if len(pipeline.Spec.Resources) == 0 {
-		fmt.Fprintln(w, "No resources found")
-		return
-	}
-	fmt.Fprintf(w, resHeader)
-	for _, val := range pipeline.Spec.Resources {
-		fmt.Fprintf(w, resBody,
-			val.Name,
-			val.Type,
-		)
-
-	}
-}
-
-func printTasks(w *tabwriter.Writer, pipeline *v1alpha1.Pipeline) {
-	fmt.Fprintln(w, "\nTasks")
-	if len(pipeline.Spec.Tasks) == 0 {
-		fmt.Fprintln(w, "No tasks found")
-		return
-	}
-	fmt.Fprintf(w, taskHeader)
-	for _, val := range pipeline.Spec.Tasks {
-		fmt.Fprintf(w, taskBody,
-			val.Name,
-			val.TaskRef.Name,
-			val.RunAfter,
-		)
-
-	}
-}
-
-func printRuns(w *tabwriter.Writer, cs *cli.Clients, p cli.Params, pname string) {
-	fmt.Fprintln(w, "\nRuns")
 	opts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pname),
 	}
-
-	runs, err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).List(opts)
+	pipelineRuns, err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).List(opts)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		return err
 	}
-	if len(runs.Items) == 0 {
-		fmt.Fprintln(w, "No runs found")
-		return
-	}
-	fmt.Fprintf(w, runsHeader)
-	for _, run := range runs.Items {
-		fmt.Fprintf(w, runsBody,
-			run.Name,
-			formatted.Age(*run.Status.StartTime, p.Time()),
-			formatted.Duration(run.Status.StartTime, run.Status.CompletionTime),
-			formatted.Condition(run.Status.Conditions[0]),
-		)
 
+	var data = struct {
+		Pipeline     *v1alpha1.Pipeline
+		PipelineRuns *v1alpha1.PipelineRunList
+		PipelineName string
+		Params       cli.Params
+	}{
+		Pipeline:     pipeline,
+		PipelineRuns: pipelineRuns,
+		PipelineName: pname,
+		Params:       p,
 	}
+
+	funcMap := template.FuncMap{
+		"formatAge":       formatted.Age,
+		"formatDuration":  formatted.Duration,
+		"formatCondition": formatted.Condition,
+	}
+
+	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
+	t := template.Must(template.New("Describe Pipeline").Funcs(funcMap).Parse(templ))
+	err = t.Execute(w, data)
+	if err != nil {
+		panic(err)
+	}
+
+	return w.Flush()
 }

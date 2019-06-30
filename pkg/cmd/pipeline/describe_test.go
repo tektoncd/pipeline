@@ -91,11 +91,11 @@ func TestPipelinesDescribe_with_run(t *testing.T) {
 	}
 
 	expected := []string{
-		"Name: pipeline",
+		"Name:   pipeline",
 		"\nResources",
-		"No resources found\n",
+		"No resources\n",
 		"Tasks",
-		"No tasks found\n",
+		"No tasks\n",
 		"Runs",
 		"NAME             STARTED          DURATION     STATUS",
 		"pipeline-run-1   15 minutes ago   10 minutes   Succeeded\n",
@@ -156,9 +156,9 @@ func TestPipelinesDescribe_with_task_run(t *testing.T) {
 	}
 
 	expected := []string{
-		"Name: pipeline",
+		"Name:   pipeline",
 		"\nResources",
-		"No resources found\n",
+		"No resources\n",
 		"Tasks",
 		"NAME   TASKREF   RUNAFTER",
 		"task   taskref   [one two]\n",
@@ -224,7 +224,7 @@ func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 	}
 
 	expected := []string{
-		"Name: pipeline",
+		"Name:   pipeline",
 		"\nResources",
 		"NAME   TYPE",
 		"name   git\n",
