@@ -25,6 +25,7 @@ kind: TaskRun
 metadata:
   name: publish-ci-images-run
 spec:
+  serviceAccount: release-right-meow
   taskRef:
     name: publish-ci-images
   inputs:

@@ -81,19 +81,67 @@ image registry the images are pushed to. However since we have so many images,
 all going to the same registry, we are cheating and using a parameter for the
 image registry instead.
 
-- [`ciimages-run.yaml`](ci-images-run.yaml) - This example `TaskRun` and
-  `PipelineResources` demonstrate how to invoke `ci-images.yaml`:
-
-  ```bash
-  kubectl apply -f tekton/ci-images.yaml
-  kubectl apply -f tekton/ci-images-run.yaml
-  ```
+- [`ci-images-run.yaml`](ci-images-run.yaml) - This example `TaskRun` and
+  `PipelineResources` demonstrate how to invoke `ci-images.yaml` (see
+  [Build and push the CI image](#creating-ci-image))
 
 - [`publish-run.yaml`](publish-run.yaml) - This example `TaskRun` and
   `PipelineResources` demonstrate how to invoke `publish.yaml` (see
   [Creating a new release](#creating-a-new-release))
 
+#### Setting up your credentials
+
+Setup the required credentials for the `release-right-meow` service account, either:
+
+- For
+  [the GCP service account `release-right-meow@tekton-releases.iam.gserviceaccount.com`](#production-service-account)
+  which has the proper authorization to release the images and yamls in
+  [our `tekton-releases` GCP project](https://github.com/tektoncd/plumbing#prow)
+- For
+  [your own GCP service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts)
+  if running against your own infrastructure
+
+```bash
+KEY_FILE=release.json
+GENERIC_SECRET=release-secret
+ACCOUNT=release-right-meow
+# Replace with your own service account if using your own infra
+GCP_ACCOUNT="release-right-meow@tekton-releases.iam.gserviceaccount.com"
+```
+
+The value of GCP_ACCOUNT for your own infrastructure is `[SA-NAME]@[PROJECT-ID].iam.gserviceaccount.com`.
+`[SA-NAME]` is the name of the service account, and `[PROJECT-ID]` is the ID of
+your Google Cloud Platform project. Make sure you have both of them created for your own
+account, before proceeding with the following commands. Please refer to [Google Projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects)
+to create the project, and [Google Service Accounts](https://cloud.google.com/iam/docs/creating-managing-service-accounts) to create the service account, if necessary.
+
+```bash
+# 1. Create a private key for the service account, which you can use
+gcloud iam service-accounts keys create --iam-account $GCP_ACCOUNT $KEY_FILE
+
+# 2. Create kubernetes secret, which we will use via a service account and directly mounting
+kubectl create secret generic $GENERIC_SECRET --from-file=./$KEY_FILE
+
+# 3. Add the docker secret to the service account
+kubectl apply -f tekton/account.yaml
+kubectl patch serviceaccount $ACCOUNT \
+  -p "{\"secrets\": [{\"name\": \"$GENERIC_SECRET\"}]}"
+```
+
+#### Creating CI image
+
+After the credentials are configured, you can run the following commands to
+build and push the CI image upstream.
+
+```bash
+kubectl apply -f tekton/ci-images.yaml
+kubectl apply -f tekton/ci-images-run.yaml
+```
+
 #### Creating a new release
+
+Currently, all the official release processes are conducted under [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine/docs/).
+Please follow the tutorial [here](https://cloud.google.com/kubernetes-engine/docs/quickstart) to launch your own infrastructure, if needed.
 
 The `TaskRun` will use
 
@@ -149,7 +197,7 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
   gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
   ```
 
-4. To run against your own infrastructure (if you are running
+5. To run against your own infrastructure (if you are running
    [in the production cluster](https://github.com/tektoncd/plumbing#prow) the default account should
    already have these creds, this is just a bonus - plus `release-right-meow` might already exist in the
    cluster!), also setup the required credentials for the `release-right-meow` service account, either:
@@ -181,7 +229,7 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
      -p "{\"secrets\": [{\"name\": \"$GENERIC_SECRET\"}]}"
    ```
 
-5. Run the `publish-tekton-pipelines` `Task`:
+6. Run the `publish-tekton-pipelines` `Task`:
 
    ```bash
    # If you are running in a cluster you've run this in previously, delete the previous run
