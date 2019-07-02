@@ -13,6 +13,7 @@ rules:
   - pipelines
   - pipelineruns
   - pipelineresources
+  - conditions
   verbs:
   - get
   - list
