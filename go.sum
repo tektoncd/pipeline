@@ -185,8 +185,6 @@ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
 github.com/tektoncd/pipeline v0.3.1 h1:LZ0U+HJ3jg3o7e5A7+8nRDEt0G5yJ5seb/uoTxHtBR0=
 github.com/tektoncd/pipeline v0.3.1/go.mod h1:IZzJdiX9EqEMuUcgdnElozdYYRh0/ZRC+NKMLj1K3Yw=
-github.com/tektoncd/plumbing v0.0.0-20190515135757-19ac801cfcf2 h1:F2DzJ7AOA5y6tDBKPL/vwsDgAWQGI67ph+aKThl8rkI=
-github.com/tektoncd/plumbing v0.0.0-20190515135757-19ac801cfcf2/go.mod h1:dvZoTaPGpr3ZDqOUR1sc8VOhh/7OzYncVnbQETJTqvQ=
 github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a h1:4HMTW2uHdQIm8XabCE6P4z/ikCx9eqK8Tvo3noR5RV4=
 github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a/go.mod h1:dvZoTaPGpr3ZDqOUR1sc8VOhh/7OzYncVnbQETJTqvQ=
 go.opencensus.io v0.15.0/go.mod h1:UffZAU+4sDEINUGP/B7UfBBkq4fqLu9zXAX7ke6CHW0=
