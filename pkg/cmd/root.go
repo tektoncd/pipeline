@@ -15,9 +15,6 @@
 package cmd
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/completion"
@@ -45,39 +42,5 @@ func Root(p cli.Params) *cobra.Command {
 		version.Command(),
 	)
 
-	visitCommands(cmd, reconfigureCmdWithSubcmd)
-
 	return cmd
-}
-
-// reconfigureCmdWithSubcmd reconfigures each root command with a list of all subcommands and lists them
-// beside the help output
-func reconfigureCmdWithSubcmd(cmd *cobra.Command) {
-	if len(cmd.Commands()) == 0 {
-		return
-	}
-
-	if cmd.Args == nil {
-		cmd.Args = cobra.ArbitraryArgs
-	}
-
-	if cmd.RunE == nil {
-		cmd.RunE = ShowSubcommands
-	}
-}
-
-// ShowSubcommands shows all available subcommands.
-func ShowSubcommands(cmd *cobra.Command, args []string) error {
-	var strs []string
-	for _, subcmd := range cmd.Commands() {
-		strs = append(strs, subcmd.Use)
-	}
-	return fmt.Errorf("Use one of available subcommands: %s", strings.Join(strs, ", "))
-}
-
-func visitCommands(cmd *cobra.Command, f func(*cobra.Command)) {
-	f(cmd)
-	for _, child := range cmd.Commands() {
-		visitCommands(child, f)
-	}
 }
