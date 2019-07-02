@@ -9,6 +9,7 @@ require (
 	github.com/Azure/azure-sdk-for-go v26.1.0+incompatible // indirect
 	github.com/Azure/go-autorest v11.6.0+incompatible // indirect
 	github.com/aws/aws-sdk-go v1.19.11 // indirect
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/census-instrumentation/opencensus-proto v0.1.0 // indirect
 	github.com/cpuguy83/go-md2man v1.0.10
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect

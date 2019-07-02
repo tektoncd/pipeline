@@ -16,6 +16,7 @@ package version
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/tektoncd/cli/pkg/test"
@@ -25,15 +26,37 @@ func TestVersion(t *testing.T) {
 	v := clientVersion
 	defer func() { clientVersion = v }()
 
-	clientVersion = "v1.0.0"
-	expected := fmt.Sprintf("Client version: %s\n", clientVersion)
-
+	clientVersion = "v0.0.1"
 	version := Command()
-	got, err := test.ExecuteCommand(version)
 
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+	scenarios := []struct {
+		name     string
+		flag     string
+		expected string
+	}{
+		{
+			name:     "no flags",
+			flag:     "",
+			expected: fmt.Sprintf("Client version: %s\n", clientVersion),
+		},
+		{
+			name:     "with a check flag",
+			flag:     "-c",
+			expected: fmt.Sprintf("Client version: %s\n", clientVersion),
+		},
 	}
 
-	test.AssertOutput(t, expected, got)
+	for i, s := range scenarios {
+		t.Run(s.name, func(t *testing.T) {
+			got, err := test.ExecuteCommand(version, "version", s.flag)
+
+			if err != nil {
+				t.Errorf("#%d Unexpected error: %v", i, err)
+			}
+
+			if !strings.HasPrefix(got, s.expected) {
+				t.Errorf("#%d Invalid output: %v", i, got)
+			}
+		})
+	}
 }
