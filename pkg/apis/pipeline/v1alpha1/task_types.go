@@ -103,7 +103,7 @@ type Inputs struct {
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.
 	// +optional
-	Params []TaskParam `json:"params,omitempty"`
+	Params []ParamSpec `json:"params,omitempty"`
 }
 
 // TaskResource defines an input or output Resource declared as a requirement
@@ -125,31 +125,6 @@ type TaskResource struct {
 	// Path to the index.json file for output container images.
 	// +optional
 	OutputImageDir string `json:"outputImageDir"`
-}
-
-// TaskParam defines arbitrary parameters needed by a task beyond typed inputs
-// such as resources. Parameter values are provided by users as inputs on a
-// TaskRun.
-type TaskParam struct {
-	// Name declares the name by which a parameter is referenced in the Task's
-	// definition. Parameters may be referenced by name in the definition of a
-	// Task's steps.
-	Name string `json:"name"`
-	// Description is a user-facing description of the parameter that may be
-	// used to populate a UI.
-	// +optional
-	Description string `json:"description,omitempty"`
-	// Default is the value a parameter takes if no input value is supplied. If
-	// default is set, a Task maybe be executed by a TaskRun that does not
-	// supply a value for the parameter.
-	// +optional
-	Default string `json:"default,omitempty"`
-}
-
-// Param declares a value to use for the Param called Name.
-type Param struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
 }
 
 // Outputs allow a task to declare what data the Build/Task will be producing,

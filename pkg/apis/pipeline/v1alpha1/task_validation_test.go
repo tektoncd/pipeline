@@ -62,7 +62,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		fields: fields{
 			Inputs: &Inputs{
 				Resources: []TaskResource{validResource},
-				Params: []TaskParam{
+				Params: []ParamSpec{
 					{
 						Name:        "task",
 						Description: "param",
@@ -110,7 +110,7 @@ func TestTaskSpecValidate(t *testing.T) {
 					Name: "foo",
 					Type: PipelineResourceTypeImage,
 				}},
-				Params: []TaskParam{{
+				Params: []ParamSpec{{
 					Name: "baz",
 				}, {
 					Name: "foo-is-baz",
@@ -367,7 +367,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "Inexistent param variable with existing",
 		fields: fields{
 			Inputs: &Inputs{
-				Params: []TaskParam{
+				Params: []ParamSpec{
 					{
 						Name:        "foo",
 						Description: "param",

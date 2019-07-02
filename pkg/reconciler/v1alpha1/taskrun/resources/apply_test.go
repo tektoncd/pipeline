@@ -205,7 +205,7 @@ func TestApplyParameters(t *testing.T) {
 	type args struct {
 		ts *v1alpha1.TaskSpec
 		tr *v1alpha1.TaskRun
-		dp []v1alpha1.TaskParam
+		dp []v1alpha1.ParamSpec
 	}
 	tests := []struct {
 		name string
@@ -282,7 +282,7 @@ func TestApplyParameters(t *testing.T) {
 					},
 				},
 			},
-			dp: []v1alpha1.TaskParam{
+			dp: []v1alpha1.ParamSpec{
 				{
 					Name:    "myimage",
 					Default: "replaced-image-name",
@@ -298,7 +298,7 @@ func TestApplyParameters(t *testing.T) {
 		args: args{
 			ts: simpleTaskSpec,
 			tr: &v1alpha1.TaskRun{},
-			dp: []v1alpha1.TaskParam{
+			dp: []v1alpha1.ParamSpec{
 				{
 					Name:    "myimage",
 					Default: "mydefault",
