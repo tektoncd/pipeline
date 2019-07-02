@@ -38,8 +38,8 @@ type InputsOp func(*v1alpha1.Inputs)
 // OutputsOp is an operation which modify an Outputs struct.
 type OutputsOp func(*v1alpha1.Outputs)
 
-// TaskParamOp is an operation which modify a TaskParam struct.
-type TaskParamOp func(*v1alpha1.TaskParam)
+// TaskParamOp is an operation which modify a ParamSpec struct.
+type TaskParamOp func(*v1alpha1.ParamSpec)
 
 // TaskRunOp is an operation which modify a TaskRun struct.
 type TaskRunOp func(*v1alpha1.TaskRun)
@@ -249,10 +249,10 @@ func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) Ou
 }
 
 // InputsParam adds a param, with specified name, to the Inputs.
-// Any number of TaskParam modifier can be passed to transform it.
+// Any number of ParamSpec modifier can be passed to transform it.
 func InputsParam(name string, ops ...TaskParamOp) InputsOp {
 	return func(i *v1alpha1.Inputs) {
-		tp := &v1alpha1.TaskParam{Name: name}
+		tp := &v1alpha1.ParamSpec{Name: name}
 		for _, op := range ops {
 			op(tp)
 		}
@@ -260,16 +260,16 @@ func InputsParam(name string, ops ...TaskParamOp) InputsOp {
 	}
 }
 
-// ParamDescripiton sets the description to the TaskParam.
+// ParamDescripiton sets the description to the ParamSpec.
 func ParamDescription(desc string) TaskParamOp {
-	return func(tp *v1alpha1.TaskParam) {
+	return func(tp *v1alpha1.ParamSpec) {
 		tp.Description = desc
 	}
 }
 
-// ParamDefault sets the default value to the TaskParam.
+// ParamDefault sets the default value to the ParamSpec.
 func ParamDefault(value string) TaskParamOp {
-	return func(tp *v1alpha1.TaskParam) {
+	return func(tp *v1alpha1.ParamSpec) {
 		tp.Default = value
 	}
 }

@@ -149,7 +149,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
-func validatePipelineParameterVariables(tasks []PipelineTask, params []PipelineParam) *apis.FieldError {
+func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	for _, p := range params {
 		parameterNames[p.Name] = struct{}{}

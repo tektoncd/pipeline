@@ -72,7 +72,7 @@ func TestTask(t *testing.T) {
 					Type:       v1alpha1.PipelineResourceTypeGit,
 					TargetPath: "/foo/bar",
 				}},
-				Params: []v1alpha1.TaskParam{{Name: "param", Description: "mydesc", Default: "default"}},
+				Params: []v1alpha1.ParamSpec{{Name: "param", Description: "mydesc", Default: "default"}},
 			},
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{{

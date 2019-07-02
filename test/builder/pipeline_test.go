@@ -59,7 +59,7 @@ func TestPipeline(t *testing.T) {
 				Name: "my-only-image-resource",
 				Type: "image",
 			}},
-			Params: []v1alpha1.PipelineParam{{
+			Params: []v1alpha1.ParamSpec{{
 				Name:        "first-param",
 				Default:     "default-value",
 				Description: "default description",

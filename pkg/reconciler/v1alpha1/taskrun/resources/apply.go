@@ -25,7 +25,7 @@ import (
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
-func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...v1alpha1.TaskParam) *v1alpha1.TaskSpec {
+func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...v1alpha1.ParamSpec) *v1alpha1.TaskSpec {
 	// This assumes that the TaskRun inputs have been validated against what the Task requests.
 	replacements := map[string]string{}
 	// Set all the default replacements

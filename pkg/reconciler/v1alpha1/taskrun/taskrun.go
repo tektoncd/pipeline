@@ -461,7 +461,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, xerrors.Errorf("couldn't create redirected TaskSpec: %w", err)
 	}
 
-	var defaults []v1alpha1.TaskParam
+	var defaults []v1alpha1.ParamSpec
 	if ts.Inputs != nil {
 		defaults = append(defaults, ts.Inputs.Params...)
 	}
