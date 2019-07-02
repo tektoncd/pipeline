@@ -54,11 +54,12 @@ var (
 	masterURL  string
 	kubeconfig string
 	namespace  string
+	loggingConfig string
 )
 
 func main() {
 	flag.Parse()
-	loggingConfigMap, err := configmap.Load("/etc/config-logging")
+	loggingConfigMap, err := configmap.Load(loggingConfig)
 	if err != nil {
 		log.Fatalf("Error loading logging configuration: %v", err)
 	}
@@ -188,4 +189,5 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&namespace, "namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
+	flag.StringVar(&loggingConfig, "loggingconfig", "/etc/config-logging", "Path to config logging file. Optional. Defaults to /etc/config-logging")
 }
