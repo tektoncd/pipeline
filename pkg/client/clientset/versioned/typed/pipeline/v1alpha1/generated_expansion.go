@@ -20,6 +20,8 @@ package v1alpha1
 
 type ClusterTaskExpansion interface{}
 
+type ConditionExpansion interface{}
+
 type PipelineExpansion interface{}
 
 type PipelineResourceExpansion interface{}
