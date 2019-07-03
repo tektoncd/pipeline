@@ -27,12 +27,6 @@ logs        Displays taskrun logs
 -n, --namespace string    namespace to use (default: from $KUBECONFIG)
 ```
 
-### Options inherited from parent commands
-
-```
---azure-container-registry-config string   Path to the file containing Azure container registry configuration information.
-```
-
 ### SEE ALSO
 
 * [tkn taskrun list](tkn_taskrun_list.md)	 - Lists all `taskruns` in a given namespace.

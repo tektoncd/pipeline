@@ -28,12 +28,6 @@ start       Start pipelines by creating a pipelinerun in a namespace
 -n, --namespace string    namespace to use (default: from $KUBECONFIG)
 ```
 
-### Options inherited from parent commands
-
-```
---azure-container-registry-config string   Path to the file containing Azure container registry configuration information.
-```
-
 ### SEE ALSO
 
 * [tkn pipeline list](tkn_pipeline_list.md)	 - Lists all `pipelines` in a given namespace.

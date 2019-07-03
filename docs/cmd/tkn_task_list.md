@@ -28,7 +28,6 @@ list, ls
 ### Options inherited from parent commands
 
 ```
---azure-container-registry-config string         Path to the file containing Azure container registry configuration information.
   -k, --kubeconfig string                        kubectl config file (default: $HOME/.kube/config)
   -n, --namespace string                         namespace to use (default: from $KUBECONFIG)
 ```

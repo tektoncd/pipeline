@@ -29,12 +29,6 @@ logs        Display pipelinerun logs
 -n, --namespace string    namespace to use (default: from $KUBECONFIG)
 ```
 
-### Options inherited from parent commands
-
-```
---azure-container-registry-config string   Path to the file containing Azure container registry configuration information.
-```
-
 ### SEE ALSO
 
 * [tkn pipelinerun list](tkn_pipelinerun_list.md)	 - Lists all the pipelineruns in a given namespace.
