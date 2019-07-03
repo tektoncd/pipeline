@@ -6,7 +6,7 @@ spec:
   type: git
   params:
   - name: revision
-    value: master
+    value: v0.32.0
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
