@@ -17,10 +17,10 @@ limitations under the License.
 package v1alpha1_test
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/knative/pkg/webhook"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 func TestTypes(t *testing.T) {

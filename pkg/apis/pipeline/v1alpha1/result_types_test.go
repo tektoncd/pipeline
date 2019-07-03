@@ -18,11 +18,11 @@ package v1alpha1_test
 
 import (
 	"context"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
 func TestValidate(t *testing.T) {
