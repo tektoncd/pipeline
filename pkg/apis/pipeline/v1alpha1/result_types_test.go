@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha1_test
 
 import (
 	"context"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -25,7 +26,7 @@ import (
 )
 
 func TestValidate(t *testing.T) {
-	results := Results{
+	results := v1alpha1.Results{
 		URL:  "http://google.com",
 		Type: "gcs",
 	}
@@ -38,12 +39,12 @@ func TestValidate(t *testing.T) {
 func TestValidate_Invalid(t *testing.T) {
 	tests := []struct {
 		name    string
-		results *Results
+		results *v1alpha1.Results
 		want    *apis.FieldError
 	}{
 		{
 			name: "invalid task type result",
-			results: &Results{
+			results: &v1alpha1.Results{
 				URL:  "http://www.google.com",
 				Type: "wrongtype",
 			},
@@ -51,23 +52,23 @@ func TestValidate_Invalid(t *testing.T) {
 		},
 		{
 			name: "invalid task type results missing url",
-			results: &Results{
-				Type: ResultTargetTypeGCS,
+			results: &v1alpha1.Results{
+				Type: v1alpha1.ResultTargetTypeGCS,
 				URL:  "",
 			},
 			want: apis.ErrMissingField("spec.results.URL"),
 		},
 		{
 			name: "invalid task type results bad url",
-			results: &Results{
-				Type: ResultTargetTypeGCS,
+			results: &v1alpha1.Results{
+				Type: v1alpha1.ResultTargetTypeGCS,
 				URL:  "badurl",
 			},
 			want: apis.ErrInvalidValue("badurl", "spec.results.URL"),
 		},
 		{
 			name: "invalid task type results type",
-			results: &Results{
+			results: &v1alpha1.Results{
 				Type: "badtype",
 				URL:  "http://www.google.com",
 			},

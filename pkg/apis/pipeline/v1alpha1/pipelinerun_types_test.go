@@ -1,6 +1,23 @@
-package v1alpha1
+/*
+Copyright 2019 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1_test
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 	"time"
 
@@ -11,7 +28,7 @@ import (
 )
 
 func TestPipelineRunStatusConditions(t *testing.T) {
-	p := &PipelineRun{}
+	p := &v1alpha1.PipelineRun{}
 	foo := &apis.Condition{
 		Type:   "Foo",
 		Status: "True",
@@ -44,7 +61,7 @@ func TestPipelineRunStatusConditions(t *testing.T) {
 }
 
 func TestPipelineRun_TaskRunref(t *testing.T) {
-	p := &PipelineRun{
+	p := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-name",
 			Namespace: "test-ns",
@@ -64,7 +81,7 @@ func TestPipelineRun_TaskRunref(t *testing.T) {
 }
 
 func TestInitializeConditions(t *testing.T) {
-	p := &PipelineRun{
+	p := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-name",
 			Namespace: "test-ns",
@@ -80,7 +97,7 @@ func TestInitializeConditions(t *testing.T) {
 		t.Fatalf("PipelineRun StartTime not initialized correctly")
 	}
 
-	p.Status.TaskRuns["fooTask"] = &PipelineRunTaskRunStatus{}
+	p.Status.TaskRuns["fooTask"] = &v1alpha1.PipelineRunTaskRunStatus{}
 
 	p.Status.InitializeConditions()
 	if len(p.Status.TaskRuns) != 1 {
@@ -89,7 +106,7 @@ func TestInitializeConditions(t *testing.T) {
 }
 
 func TestPipelineRunIsDone(t *testing.T) {
-	pr := &PipelineRun{}
+	pr := &v1alpha1.PipelineRun{}
 	foo := &apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionFalse,
@@ -101,9 +118,9 @@ func TestPipelineRunIsDone(t *testing.T) {
 }
 
 func TestPipelineRunIsCancelled(t *testing.T) {
-	pr := &PipelineRun{
-		Spec: PipelineRunSpec{
-			Status: PipelineRunSpecStatusCancelled,
+	pr := &v1alpha1.PipelineRun{
+		Spec: v1alpha1.PipelineRunSpec{
+			Status: v1alpha1.PipelineRunSpecStatusCancelled,
 		},
 	}
 	if !pr.IsCancelled() {
@@ -112,7 +129,7 @@ func TestPipelineRunIsCancelled(t *testing.T) {
 }
 
 func TestPipelineRunKey(t *testing.T) {
-	pr := &PipelineRun{
+	pr := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "prunname",
 			Namespace: "testns",
@@ -127,28 +144,28 @@ func TestPipelineRunKey(t *testing.T) {
 func TestPipelineRunHasStarted(t *testing.T) {
 	params := []struct {
 		name          string
-		prStatus      PipelineRunStatus
+		prStatus      v1alpha1.PipelineRunStatus
 		expectedValue bool
 	}{{
 		name:          "prWithNoStartTime",
-		prStatus:      PipelineRunStatus{},
+		prStatus:      v1alpha1.PipelineRunStatus{},
 		expectedValue: false,
 	}, {
 		name: "prWithStartTime",
-		prStatus: PipelineRunStatus{
+		prStatus: v1alpha1.PipelineRunStatus{
 			StartTime: &metav1.Time{Time: time.Now()},
 		},
 		expectedValue: true,
 	}, {
 		name: "prWithZeroStartTime",
-		prStatus: PipelineRunStatus{
+		prStatus: v1alpha1.PipelineRunStatus{
 			StartTime: &metav1.Time{},
 		},
 		expectedValue: false,
 	}}
 	for _, tc := range params {
 		t.Run(tc.name, func(t *testing.T) {
-			pr := &PipelineRun{
+			pr := &v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "prunname",
 					Namespace: "testns",

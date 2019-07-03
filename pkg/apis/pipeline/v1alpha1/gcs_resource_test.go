@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha1_test
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,26 +29,26 @@ import (
 func Test_Invalid_NewStorageResource(t *testing.T) {
 	testcases := []struct {
 		name             string
-		pipelineResource *PipelineResource
+		pipelineResource *v1alpha1.PipelineResource
 	}{{
 		name: "wrong-resource-type",
-		pipelineResource: &PipelineResource{
+		pipelineResource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "gcs-resource",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeGit,
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeGit,
 			},
 		},
 	}, {
 		name: "unimplemented type",
-		pipelineResource: &PipelineResource{
+		pipelineResource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "gcs-resource",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeStorage,
-				Params: []Param{{
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeStorage,
+				Params: []v1alpha1.Param{{
 					Name:  "Location",
 					Value: "gs://fake-bucket",
 				}, {
@@ -58,13 +59,13 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 		},
 	}, {
 		name: "no type",
-		pipelineResource: &PipelineResource{
+		pipelineResource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "gcs-resource",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeStorage,
-				Params: []Param{{
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeStorage,
+				Params: []v1alpha1.Param{{
 					Name:  "Location",
 					Value: "gs://fake-bucket",
 				}},
@@ -72,13 +73,13 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 		},
 	}, {
 		name: "no location params",
-		pipelineResource: &PipelineResource{
+		pipelineResource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "gcs-resource-with-no-location-param",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeStorage,
-				Params: []Param{{
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeStorage,
+				Params: []v1alpha1.Param{{
 					Name:  "NotLocation",
 					Value: "doesntmatter",
 				}, {
@@ -89,13 +90,13 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 		},
 	}, {
 		name: "location param with empty value",
-		pipelineResource: &PipelineResource{
+		pipelineResource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "gcs-resource-with-empty-location-param",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeStorage,
-				Params: []Param{{
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeStorage,
+				Params: []v1alpha1.Param{{
 					Name:  "Location",
 					Value: "",
 				}, {
@@ -107,7 +108,7 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := NewStorageResource(tc.pipelineResource)
+			_, err := v1alpha1.NewStorageResource(tc.pipelineResource)
 			if err == nil {
 				t.Error("Expected error creating GCS resource")
 			}
@@ -116,13 +117,13 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 }
 
 func Test_Valid_NewGCSResource(t *testing.T) {
-	pr := &PipelineResource{
+	pr := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "gcs-resource",
 		},
-		Spec: PipelineResourceSpec{
-			Type: PipelineResourceTypeStorage,
-			Params: []Param{{
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeStorage,
+			Params: []v1alpha1.Param{{
 				Name:  "Location",
 				Value: "gs://fake-bucket",
 			}, {
@@ -132,26 +133,26 @@ func Test_Valid_NewGCSResource(t *testing.T) {
 				Name:  "dir",
 				Value: "anything",
 			}},
-			SecretParams: []SecretParam{{
+			SecretParams: []v1alpha1.SecretParam{{
 				SecretKey:  "secretKey",
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
 	}
-	expectedGCSResource := &GCSResource{
+	expectedGCSResource := &v1alpha1.GCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
-		Type:     PipelineResourceTypeStorage,
+		Type:     v1alpha1.PipelineResourceTypeStorage,
 		TypeDir:  true,
-		Secrets: []SecretParam{{
+		Secrets: []v1alpha1.SecretParam{{
 			SecretName: "secretName",
 			SecretKey:  "secretKey",
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 		}},
 	}
 
-	gcsRes, err := NewGCSResource(pr)
+	gcsRes, err := v1alpha1.NewGCSResource(pr)
 	if err != nil {
 		t.Fatalf("Unexpected error creating GCS resource: %s", err)
 	}
@@ -161,10 +162,10 @@ func Test_Valid_NewGCSResource(t *testing.T) {
 }
 
 func Test_GCSGetReplacements(t *testing.T) {
-	gcsResource := &GCSResource{
+	gcsResource := &v1alpha1.GCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
-		Type:     PipelineResourceTypeGCS,
+		Type:     v1alpha1.PipelineResourceTypeGCS,
 	}
 	expectedReplacementMap := map[string]string{
 		"name":     "gcs-resource",
@@ -178,28 +179,28 @@ func Test_GCSGetReplacements(t *testing.T) {
 }
 
 func Test_GetParams(t *testing.T) {
-	pr := &PipelineResource{
-		Spec: PipelineResourceSpec{
-			Type: PipelineResourceTypeStorage,
-			Params: []Param{{
+	pr := &v1alpha1.PipelineResource{
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeStorage,
+			Params: []v1alpha1.Param{{
 				Name:  "type",
 				Value: "gcs",
 			}, {
 				Name:  "location",
 				Value: "gs://some-bucket.zip",
 			}},
-			SecretParams: []SecretParam{{
+			SecretParams: []v1alpha1.SecretParam{{
 				SecretKey:  "test-secret-key",
 				SecretName: "test-secret-name",
 				FieldName:  "test-field-name",
 			}},
 		},
 	}
-	gcsResource, err := NewStorageResource(pr)
+	gcsResource, err := v1alpha1.NewStorageResource(pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())
 	}
-	expectedSp := []SecretParam{{
+	expectedSp := []v1alpha1.SecretParam{{
 		SecretKey:  "test-secret-key",
 		SecretName: "test-secret-name",
 		FieldName:  "test-field-name",
@@ -214,17 +215,17 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 
 	testcases := []struct {
 		name           string
-		gcsResource    *GCSResource
+		gcsResource    *v1alpha1.GCSResource
 		wantContainers []corev1.Container
 		wantErr        bool
 	}{{
 		name: "valid download protected buckets",
-		gcsResource: &GCSResource{
+		gcsResource: &v1alpha1.GCSResource{
 			Name:           "gcs-valid",
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace",
 			TypeDir:        true,
-			Secrets: []SecretParam{{
+			Secrets: []v1alpha1.SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
@@ -251,11 +252,11 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 		}},
 	}, {
 		name: "duplicate secret mount paths",
-		gcsResource: &GCSResource{
+		gcsResource: &v1alpha1.GCSResource{
 			Name:           "gcs-valid",
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace",
-			Secrets: []SecretParam{{
+			Secrets: []v1alpha1.SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "fieldName",
 				SecretKey:  "key.json",
@@ -286,7 +287,7 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 		}},
 	}, {
 		name: "invalid no destination directory set",
-		gcsResource: &GCSResource{
+		gcsResource: &v1alpha1.GCSResource{
 			Name:     "gcs-invalid",
 			Location: "gs://some-bucket",
 		},
@@ -310,17 +311,17 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 
 	testcases := []struct {
 		name           string
-		gcsResource    *GCSResource
+		gcsResource    *v1alpha1.GCSResource
 		wantContainers []corev1.Container
 		wantErr        bool
 	}{{
 		name: "valid upload to protected buckets with directory paths",
-		gcsResource: &GCSResource{
+		gcsResource: &v1alpha1.GCSResource{
 			Name:           "gcs-valid",
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace/",
 			TypeDir:        true,
-			Secrets: []SecretParam{{
+			Secrets: []v1alpha1.SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
@@ -339,11 +340,11 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 		}},
 	}, {
 		name: "duplicate secret mount paths",
-		gcsResource: &GCSResource{
+		gcsResource: &v1alpha1.GCSResource{
 			Name:           "gcs-valid",
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace",
-			Secrets: []SecretParam{{
+			Secrets: []v1alpha1.SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
@@ -368,7 +369,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 		}},
 	}, {
 		name: "valid upload to protected buckets with single file",
-		gcsResource: &GCSResource{
+		gcsResource: &v1alpha1.GCSResource{
 			Name:           "gcs-valid",
 			Location:       "gs://some-bucket",
 			DestinationDir: "/workspace/",
@@ -382,7 +383,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 		}},
 	}, {
 		name: "invalid upload with no source directory path",
-		gcsResource: &GCSResource{
+		gcsResource: &v1alpha1.GCSResource{
 			Name:     "gcs-invalid",
 			Location: "gs://some-bucket",
 		},

@@ -11,9 +11,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha1_test
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -25,18 +26,18 @@ import (
 func TestNewClusterResource(t *testing.T) {
 	for _, c := range []struct {
 		desc     string
-		resource *PipelineResource
-		want     *ClusterResource
+		resource *v1alpha1.PipelineResource
+		want     *v1alpha1.ClusterResource
 	}{{
 		desc: "basic cluster resource",
-		resource: &PipelineResource{
+		resource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-cluster-resource",
+				Name:      "test-clus ter-resource",
 				Namespace: "foo",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeCluster,
-				Params: []Param{{
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeCluster,
+				Params: []v1alpha1.Param{{
 					Name:  "name",
 					Value: "test_cluster_resource",
 				}, {
@@ -52,23 +53,23 @@ func TestNewClusterResource(t *testing.T) {
 				},
 			},
 		},
-		want: &ClusterResource{
+		want: &v1alpha1.ClusterResource{
 			Name:   "test_cluster_resource",
-			Type:   PipelineResourceTypeCluster,
+			Type:   v1alpha1.PipelineResourceTypeCluster,
 			URL:    "http://10.10.10.10",
 			CAData: []byte("my-cluster-cert"),
 			Token:  "my-token",
 		},
 	}, {
 		desc: "resource with password instead of token",
-		resource: &PipelineResource{
+		resource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-cluster-resource",
 				Namespace: "foo",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeCluster,
-				Params: []Param{{
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeCluster,
+				Params: []v1alpha1.Param{{
 					Name:  "name",
 					Value: "test_cluster_resource",
 				}, {
@@ -87,9 +88,9 @@ func TestNewClusterResource(t *testing.T) {
 				},
 			},
 		},
-		want: &ClusterResource{
+		want: &v1alpha1.ClusterResource{
 			Name:     "test_cluster_resource",
-			Type:     PipelineResourceTypeCluster,
+			Type:     v1alpha1.PipelineResourceTypeCluster,
 			URL:      "http://10.10.10.10",
 			CAData:   []byte("my-cluster-cert"),
 			Username: "user",
@@ -97,14 +98,14 @@ func TestNewClusterResource(t *testing.T) {
 		},
 	}, {
 		desc: "set insecure flag to true when there is no cert",
-		resource: &PipelineResource{
+		resource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-cluster-resource",
 				Namespace: "foo",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeCluster,
-				Params: []Param{{
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeCluster,
+				Params: []v1alpha1.Param{{
 					Name:  "Name",
 					Value: "test.cluster.resource",
 				}, {
@@ -117,30 +118,30 @@ func TestNewClusterResource(t *testing.T) {
 				},
 			},
 		},
-		want: &ClusterResource{
+		want: &v1alpha1.ClusterResource{
 			Name:     "test.cluster.resource",
-			Type:     PipelineResourceTypeCluster,
+			Type:     v1alpha1.PipelineResourceTypeCluster,
 			URL:      "http://10.10.10.10",
 			Token:    "my-token",
 			Insecure: true,
 		},
 	}, {
 		desc: "basic resource with secrets",
-		resource: &PipelineResource{
+		resource: &v1alpha1.PipelineResource{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-cluster-resource",
 				Namespace: "foo",
 			},
-			Spec: PipelineResourceSpec{
-				Type: PipelineResourceTypeCluster,
-				Params: []Param{{
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeCluster,
+				Params: []v1alpha1.Param{{
 					Name:  "name",
 					Value: "test-cluster-resource",
 				}, {
 					Name:  "url",
 					Value: "http://10.10.10.10",
 				}},
-				SecretParams: []SecretParam{{
+				SecretParams: []v1alpha1.SecretParam{{
 					FieldName:  "cadata",
 					SecretKey:  "cadatakey",
 					SecretName: "secret1",
@@ -151,11 +152,11 @@ func TestNewClusterResource(t *testing.T) {
 				}},
 			},
 		},
-		want: &ClusterResource{
+		want: &v1alpha1.ClusterResource{
 			Name: "test-cluster-resource",
-			Type: PipelineResourceTypeCluster,
+			Type: v1alpha1.PipelineResourceTypeCluster,
 			URL:  "http://10.10.10.10",
-			Secrets: []SecretParam{{
+			Secrets: []v1alpha1.SecretParam{{
 				FieldName:  "cadata",
 				SecretKey:  "cadatakey",
 				SecretName: "secret1",
@@ -167,7 +168,7 @@ func TestNewClusterResource(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			got, err := NewClusterResource(c.resource)
+			got, err := v1alpha1.NewClusterResource(c.resource)
 			if err != nil {
 				t.Errorf("Test: %q; TestNewClusterResource() error = %v", c.desc, err)
 			}
@@ -182,16 +183,16 @@ func Test_ClusterResource_GetDownloadContainerSpec(t *testing.T) {
 	names.TestingSeed()
 	testcases := []struct {
 		name            string
-		clusterResource *ClusterResource
+		clusterResource *v1alpha1.ClusterResource
 		wantContainers  []corev1.Container
 		wantErr         bool
 	}{{
 		name: "valid cluster resource config",
-		clusterResource: &ClusterResource{
+		clusterResource: &v1alpha1.ClusterResource{
 			Name: "test-cluster-resource",
-			Type: PipelineResourceTypeCluster,
+			Type: v1alpha1.PipelineResourceTypeCluster,
 			URL:  "http://10.10.10.10",
-			Secrets: []SecretParam{{
+			Secrets: []v1alpha1.SecretParam{{
 				FieldName:  "cadata",
 				SecretKey:  "cadatakey",
 				SecretName: "secret1",
