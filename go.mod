@@ -21,7 +21,6 @@ require (
 	github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d // indirect
 	github.com/hako/durafmt v0.0.0-20180520121703-7b7ae1e72ead
 	github.com/imdario/mergo v0.3.7 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jonboulle/clockwork v0.1.1-0.20190114141812-62fb9bc030d1
 	github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3 // indirect
 	github.com/knative/pkg v0.0.0-20190409220258-28cfa161499b
@@ -35,8 +34,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573 // indirect
-	github.com/spf13/cobra v0.0.3
-	github.com/spf13/pflag v1.0.3 // indirect
+	github.com/spf13/cobra v0.0.5
 	github.com/tektoncd/pipeline v0.3.1
 	github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a
 	go.uber.org/atomic v1.3.2 // indirect
@@ -46,7 +44,6 @@ require (
 	google.golang.org/appengine v1.5.0 // indirect
 	google.golang.org/grpc v1.19.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/yaml.v2 v2.2.2 // indirect
 	k8s.io/api v0.0.0-20190226173710-145d52631d00
 	k8s.io/apimachinery v0.0.0-20190221084156-01f179d85dbc
 	k8s.io/cli-runtime v0.0.0-20190221101700-11047e25a94a
