@@ -15,7 +15,10 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/completion"
 	"github.com/tektoncd/cli/pkg/cmd/pipeline"
@@ -26,6 +29,10 @@ import (
 )
 
 func Root(p cli.Params) *cobra.Command {
+	// Reset CommandLine so we don't get the flags from the libraries, i.e:
+	// azure library adding --azure-container-registry-config
+	pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
+
 	var cmd = &cobra.Command{
 		Use:   "tkn",
 		Short: "CLI for tekton pipelines",
