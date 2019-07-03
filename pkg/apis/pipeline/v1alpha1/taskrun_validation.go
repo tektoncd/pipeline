@@ -66,6 +66,13 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
+	if ts.Timeout != nil {
+		// timeout should be a valid duration of at least 0.
+		if ts.Timeout.Duration < 0 {
+			return apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ts.Timeout.Duration.String()), "spec.timeout")
+		}
+	}
+
 	return nil
 }
 

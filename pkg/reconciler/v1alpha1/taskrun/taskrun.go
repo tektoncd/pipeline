@@ -215,9 +215,10 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
-	if timedOut, err := c.checkTimeout(tr, taskSpec, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete); err != nil {
-		return err
-	} else if timedOut {
+	if CheckTimeout(tr) {
+		if err := c.updateTaskRunStatusForTimeout(tr, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Delete); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -481,41 +482,29 @@ func createRedirectedTaskSpec(kubeclient kubernetes.Interface, ts *v1alpha1.Task
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
 
-func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, dp DeletePod) (bool, error) {
-	// If tr has not started, startTime should be zero.
-	if tr.Status.StartTime.IsZero() {
-		return false, nil
-	}
-
+func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun, dp DeletePod) error {
 	timeout := tr.Spec.Timeout.Duration
-	runtime := time.Since(tr.Status.StartTime.Time)
-	c.Logger.Infof("Checking timeout for TaskRun %q (startTime %s, timeout %s, runtime %s)", tr.Name, tr.Status.StartTime, timeout, runtime)
-
-	if runtime > timeout {
-		c.Logger.Infof("TaskRun %q is timeout (runtime %s over %s), deleting pod", tr.Name, runtime, timeout)
-		// tr.Status.PodName will be empty if the pod was never successfully created. This condition
-		// can be reached, for example, by the pod never being schedulable due to limits imposed by
-		// a namespace's ResourceQuota.
-		if tr.Status.PodName != "" {
-			if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-				c.Logger.Errorf("Failed to terminate pod: %v", err)
-				return true, err
-			}
+	c.Logger.Infof("TaskRun %q has timed out, deleting pod", tr.Name)
+	// tr.Status.PodName will be empty if the pod was never successfully created. This condition
+	// can be reached, for example, by the pod never being schedulable due to limits imposed by
+	// a namespace's ResourceQuota.
+	if tr.Status.PodName != "" {
+		if err := dp(tr.Status.PodName, &metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			c.Logger.Errorf("Failed to terminate pod: %v", err)
+			return err
 		}
-
-		timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
-		tr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  status.ReasonTimedOut,
-			Message: timeoutMsg,
-		})
-		// update tr completed time
-		tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
-
-		return true, nil
 	}
-	return false, nil
+
+	timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
+	tr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  status.ReasonTimedOut,
+		Message: timeoutMsg,
+	})
+	// update tr completed time
+	tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	return nil
 }
 
 func isExceededResourceQuotaError(err error) bool {

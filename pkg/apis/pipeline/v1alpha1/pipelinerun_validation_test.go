@@ -77,7 +77,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					Timeout: &metav1.Duration{Duration: -48 * time.Hour},
 				},
 			},
-			want: apis.ErrInvalidValue("-48h0m0s should be > 0", "spec.timeout"),
+			want: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
 		},
 	}
 
@@ -92,21 +92,47 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 }
 
 func TestPipelineRun_Validate(t *testing.T) {
-	tr := v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pipelinelineName",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
-				Name: "prname",
+	tests := []struct {
+		name string
+		pr   v1alpha1.PipelineRun
+	}{
+		{
+			name: "normal case",
+			pr: v1alpha1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1alpha1.PipelineRunSpec{
+					PipelineRef: v1alpha1.PipelineRef{
+						Name: "prname",
+					},
+					Results: &v1alpha1.Results{
+						URL:  "http://www.google.com",
+						Type: "gcs",
+					},
+				},
 			},
-			Results: &v1alpha1.Results{
-				URL:  "http://www.google.com",
-				Type: "gcs",
+		}, {
+			name: "no timeout",
+			pr: v1alpha1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipelinelineName",
+				},
+				Spec: v1alpha1.PipelineRunSpec{
+					PipelineRef: v1alpha1.PipelineRef{
+						Name: "prname",
+					},
+					Timeout: &metav1.Duration{Duration: 0},
+				},
 			},
 		},
 	}
-	if err := tr.Validate(context.Background()); err != nil {
-		t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
+
+	for _, ts := range tests {
+		t.Run(ts.name, func(t *testing.T) {
+			if err := ts.pr.Validate(context.Background()); err != nil {
+				t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
+			}
+		})
 	}
 }

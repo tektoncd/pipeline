@@ -41,7 +41,11 @@ following fields:
     information.
   - [`serviceAccounts`](#service-accounts) - Specifies a list of `ServiceAccount` 
     and `PipelineTask` pairs that enable you to overwrite `ServiceAccount` for concrete `PipelineTask`.
-  - `timeout` - Specifies timeout after which the `PipelineRun` will fail.
+  - [`timeout`] - Specifies timeout after which the `PipelineRun` will fail. If the value of
+    `timeout` is empty, the default timeout will be applied. If the value is set to 0,
+    there is no timeout. `PipelineRun` shares the same default timeout as `TaskRun`. You can
+    follow the instruction [here](taskruns.md#Configuring-default-timeout) to configure the
+    default timeout, the same way as `TaskRun`.
   - [`nodeSelector`] - A selector which must be true for the pod to fit on a
     node. The selector which must match a node's labels for the pod to be
     scheduled on that node. More info:
