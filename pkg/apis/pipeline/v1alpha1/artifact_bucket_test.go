@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha1_test
 
 import (
 	"fmt"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -32,9 +33,9 @@ const (
 var (
 	expectedVolumeName = fmt.Sprintf("volume-bucket-%s", secretName)
 
-	bucket = ArtifactBucket{
+	bucket = v1alpha1.ArtifactBucket{
 		Location: "gs://fake-bucket",
-		Secrets: []SecretParam{{
+		Secrets: []v1alpha1.SecretParam{{
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			SecretName: secretName,
 			SecretKey:  "serviceaccount",

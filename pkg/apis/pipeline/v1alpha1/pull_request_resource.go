@@ -129,7 +129,7 @@ func (s *PullRequestResource) getContainerSpec(mode string) ([]corev1.Container,
 		Image:      *prImage,
 		Command:    []string{"/ko-app/pullrequest-init"},
 		Args:       args,
-		WorkingDir: workspaceDir,
+		WorkingDir: WorkspaceDir,
 		Env:        evs,
 	}}, nil
 }

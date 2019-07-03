@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha1_test
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,7 +29,7 @@ import (
 func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
-	pvc := ArtifactPVC{
+	pvc := v1alpha1.ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
 	want := []corev1.Container{{
@@ -47,7 +48,7 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 func TestPVCGetCopyToContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
-	pvc := ArtifactPVC{
+	pvc := v1alpha1.ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
 	want := []corev1.Container{{
@@ -79,7 +80,7 @@ func TestPVCGetPvcMount(t *testing.T) {
 		Name:      name,
 		MountPath: pvcDir,
 	}
-	got := GetPvcMount(name)
+	got := v1alpha1.GetPvcMount(name)
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
@@ -94,17 +95,17 @@ func TestPVCGetMakeDirContainerSpec(t *testing.T) {
 		Command: []string{"/ko-app/bash"},
 		Args:    []string{"-args", "mkdir -p /workspace/destination"},
 	}
-	got := CreateDirContainer("workspace", "/workspace/destination")
+	got := v1alpha1.CreateDirContainer("workspace", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
 }
 
 func TestStorageBasePath(t *testing.T) {
-	pvc := ArtifactPVC{
+	pvc := v1alpha1.ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
-	pipelinerun := &PipelineRun{
+	pipelinerun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "pipelineruntest",

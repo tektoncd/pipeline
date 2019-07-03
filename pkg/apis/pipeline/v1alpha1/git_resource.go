@@ -25,7 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const workspaceDir = "/workspace"
+const WorkspaceDir = "/workspace"
 
 var (
 	gitSource = "git-source"
@@ -109,7 +109,7 @@ func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 		Image:      *gitImage,
 		Command:    []string{"/ko-app/git-init"},
 		Args:       args,
-		WorkingDir: workspaceDir,
+		WorkingDir: WorkspaceDir,
 	}}, nil
 }
 

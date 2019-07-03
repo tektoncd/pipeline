@@ -13,10 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package v1alpha1
+
+package v1alpha1_test
 
 import (
 	"context"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,12 +30,12 @@ import (
 func TestTaskRun_Invalidate(t *testing.T) {
 	tests := []struct {
 		name string
-		task TaskRun
+		task v1alpha1.TaskRun
 		want *apis.FieldError
 	}{
 		{
 			name: "invalid taskspec",
-			task: TaskRun{
+			task: v1alpha1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "taskmetaname",
 				},
@@ -42,7 +44,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 		},
 		{
 			name: "invalid taskrun metadata",
-			task: TaskRun{
+			task: v1alpha1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "task.name",
 				},
@@ -65,12 +67,12 @@ func TestTaskRun_Invalidate(t *testing.T) {
 }
 
 func TestTaskRun_Validate(t *testing.T) {
-	tr := TaskRun{
+	tr := v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "taskname",
 		},
-		Spec: TaskRunSpec{
-			TaskRef: &TaskRef{
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
 				Name: "taskrefname",
 			},
 		},
@@ -83,28 +85,28 @@ func TestTaskRun_Validate(t *testing.T) {
 func TestTaskRunSpec_Invalidate(t *testing.T) {
 	tests := []struct {
 		name    string
-		spec    TaskRunSpec
+		spec    v1alpha1.TaskRunSpec
 		wantErr *apis.FieldError
 	}{
 		{
 			name:    "invalid taskspec",
-			spec:    TaskRunSpec{},
+			spec:    v1alpha1.TaskRunSpec{},
 			wantErr: apis.ErrMissingField("spec"),
 		},
 		{
 			name: "invalid taskref name",
-			spec: TaskRunSpec{
-				TaskRef: &TaskRef{},
+			spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{},
 			},
 			wantErr: apis.ErrMissingField("spec.taskref.name, spec.taskspec"),
 		},
 		{
 			name: "invalid taskref and taskspec together",
-			spec: TaskRunSpec{
-				TaskRef: &TaskRef{
+			spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
 					Name: "taskrefname",
 				},
-				TaskSpec: &TaskSpec{
+				TaskSpec: &v1alpha1.TaskSpec{
 					Steps: []corev1.Container{{
 						Name:  "mystep",
 						Image: "myimage",
@@ -128,12 +130,12 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 func TestTaskRunSpec_Validate(t *testing.T) {
 	tests := []struct {
 		name string
-		spec TaskRunSpec
+		spec v1alpha1.TaskRunSpec
 	}{
 		{
 			name: "taskspec without a taskRef",
-			spec: TaskRunSpec{
-				TaskSpec: &TaskSpec{
+			spec: v1alpha1.TaskRunSpec{
+				TaskSpec: &v1alpha1.TaskSpec{
 					Steps: []corev1.Container{{
 						Name:  "mystep",
 						Image: "myimage",
@@ -153,13 +155,13 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 }
 
 func TestInput_Validate(t *testing.T) {
-	i := TaskRunInputs{
-		Params: []Param{{
+	i := v1alpha1.TaskRunInputs{
+		Params: []v1alpha1.Param{{
 			Name:  "name",
 			Value: "value",
 		}},
-		Resources: []TaskResourceBinding{{
-			ResourceRef: PipelineResourceRef{
+		Resources: []v1alpha1.TaskResourceBinding{{
+			ResourceRef: v1alpha1.PipelineResourceRef{
 				Name: "testresource",
 			},
 			Name: "workspace",
@@ -173,19 +175,19 @@ func TestInput_Validate(t *testing.T) {
 func TestInput_Invalidate(t *testing.T) {
 	tests := []struct {
 		name    string
-		inputs  TaskRunInputs
+		inputs  v1alpha1.TaskRunInputs
 		wantErr *apis.FieldError
 	}{
 		{
 			name: "duplicate task inputs",
-			inputs: TaskRunInputs{
-				Resources: []TaskResourceBinding{{
-					ResourceRef: PipelineResourceRef{
+			inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "testresource1",
 					},
 					Name: "workspace",
 				}, {
-					ResourceRef: PipelineResourceRef{
+					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "testresource2",
 					},
 					Name: "workspace",
@@ -195,14 +197,14 @@ func TestInput_Invalidate(t *testing.T) {
 		},
 		{
 			name: "invalid task input params",
-			inputs: TaskRunInputs{
-				Resources: []TaskResourceBinding{{
-					ResourceRef: PipelineResourceRef{
+			inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "testresource",
 					},
 					Name: "resource",
 				}},
-				Params: []Param{{
+				Params: []v1alpha1.Param{{
 					Name:  "name",
 					Value: "value",
 				}, {
@@ -213,13 +215,13 @@ func TestInput_Invalidate(t *testing.T) {
 			wantErr: apis.ErrMultipleOneOf("spec.inputs.params"),
 		}, {
 			name: "duplicate resource ref and resource spec",
-			inputs: TaskRunInputs{
-				Resources: []TaskResourceBinding{{
-					ResourceRef: PipelineResourceRef{
+			inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "testresource",
 					},
-					ResourceSpec: &PipelineResourceSpec{
-						Type: PipelineResourceTypeGit,
+					ResourceSpec: &v1alpha1.PipelineResourceSpec{
+						Type: v1alpha1.PipelineResourceTypeGit,
 					},
 					Name: "resource-dup",
 				}},
@@ -227,9 +229,9 @@ func TestInput_Invalidate(t *testing.T) {
 			wantErr: apis.ErrDisallowedFields("spec.Inputs.Resources.Name.ResourceRef", "spec.Inputs.Resources.Name.ResourceSpec"),
 		}, {
 			name: "invalid resource spec",
-			inputs: TaskRunInputs{
-				Resources: []TaskResourceBinding{{
-					ResourceSpec: &PipelineResourceSpec{
+			inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					ResourceSpec: &v1alpha1.PipelineResourceSpec{
 						Type: "non-existent",
 					},
 					Name: "resource-inv",
@@ -238,8 +240,8 @@ func TestInput_Invalidate(t *testing.T) {
 			wantErr: apis.ErrInvalidValue("spec.type", "non-existent"),
 		}, {
 			name: "no resource ref and resource spec",
-			inputs: TaskRunInputs{
-				Resources: []TaskResourceBinding{{
+			inputs: v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					Name: "resource",
 				}},
 			},
@@ -257,9 +259,9 @@ func TestInput_Invalidate(t *testing.T) {
 }
 
 func TestOutput_Validate(t *testing.T) {
-	i := TaskRunOutputs{
-		Resources: []TaskResourceBinding{{
-			ResourceRef: PipelineResourceRef{
+	i := v1alpha1.TaskRunOutputs{
+		Resources: []v1alpha1.TaskResourceBinding{{
+			ResourceRef: v1alpha1.PipelineResourceRef{
 				Name: "testresource",
 			},
 			Name: "someimage",
@@ -272,19 +274,19 @@ func TestOutput_Validate(t *testing.T) {
 func TestOutput_Invalidate(t *testing.T) {
 	tests := []struct {
 		name    string
-		outputs TaskRunOutputs
+		outputs v1alpha1.TaskRunOutputs
 		wantErr *apis.FieldError
 	}{
 		{
 			name: "duplicated task outputs",
-			outputs: TaskRunOutputs{
-				Resources: []TaskResourceBinding{{
-					ResourceRef: PipelineResourceRef{
+			outputs: v1alpha1.TaskRunOutputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "testresource1",
 					},
 					Name: "workspace",
 				}, {
-					ResourceRef: PipelineResourceRef{
+					ResourceRef: v1alpha1.PipelineResourceRef{
 						Name: "testresource2",
 					},
 					Name: "workspace",
@@ -293,8 +295,8 @@ func TestOutput_Invalidate(t *testing.T) {
 			wantErr: apis.ErrMultipleOneOf("spec.Outputs.Resources.Name"),
 		}, {
 			name: "no output resource with resource spec nor resource ref",
-			outputs: TaskRunOutputs{
-				Resources: []TaskResourceBinding{{
+			outputs: v1alpha1.TaskRunOutputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
 					Name: "workspace",
 				}},
 			},

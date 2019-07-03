@@ -78,7 +78,7 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "type"):
-				if !allowedStorageType(param.Value) {
+				if !AllowedStorageType(param.Value) {
 					return apis.ErrInvalidValue(param.Value, "spec.params.type")
 				}
 				foundTypeParam = true
@@ -104,7 +104,7 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 	return apis.ErrInvalidValue("spec.type", string(rs.Type))
 }
 
-func allowedStorageType(gotType string) bool {
+func AllowedStorageType(gotType string) bool {
 	switch gotType {
 	case string(PipelineResourceTypeGCS):
 		return true

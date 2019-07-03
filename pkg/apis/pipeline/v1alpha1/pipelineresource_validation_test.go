@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha1_test
 
 import (
 	"context"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -28,19 +29,19 @@ import (
 func TestResourceValidation_Invalid(t *testing.T) {
 	tests := []struct {
 		name string
-		res  PipelineResource
+		res  v1alpha1.PipelineResource
 		want *apis.FieldError
 	}{
 		{
 			name: "cluster with invalid url",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster-resource",
 					Namespace: "foo",
 				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeCluster,
-					Params: []Param{{
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeCluster,
+					Params: []v1alpha1.Param{{
 						Name:  "name",
 						Value: "test-cluster-resource",
 					}, {
@@ -63,14 +64,14 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		},
 		{
 			name: "cluster with missing username",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster-resource",
 					Namespace: "foo",
 				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeCluster,
-					Params: []Param{{
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeCluster,
+					Params: []v1alpha1.Param{{
 						Name:  "name",
 						Value: "test-cluster-resource",
 					}, {
@@ -90,14 +91,14 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		},
 		{
 			name: "cluster with missing name",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster-resource",
 					Namespace: "foo",
 				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeCluster,
-					Params: []Param{{
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeCluster,
+					Params: []v1alpha1.Param{{
 						Name:  "url",
 						Value: "http://10.10.10.10",
 					}, {
@@ -114,14 +115,14 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		},
 		{
 			name: "cluster with missing cadata",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-cluster-resource",
 					Namespace: "foo",
 				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeCluster,
-					Params: []Param{{
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeCluster,
+					Params: []v1alpha1.Param{{
 						Name:  "Name",
 						Value: "test-cluster-resource",
 					}, {
@@ -140,13 +141,13 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrMissingField("CAData param"),
 		}, {
 			name: "storage with no type",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "storage-resource",
 				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeStorage,
-					Params: []Param{{
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeStorage,
+					Params: []v1alpha1.Param{{
 						Name:  "no-type-param",
 						Value: "sometype",
 					}},
@@ -155,13 +156,13 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrMissingField("spec.params.type"),
 		}, {
 			name: "storage with unimplemented type",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "storage-resource",
 				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeStorage,
-					Params: []Param{{
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeStorage,
+					Params: []v1alpha1.Param{{
 						Name:  "type",
 						Value: "not-implemented-yet",
 					}},
@@ -170,13 +171,13 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrInvalidValue("not-implemented-yet", "spec.params.type"),
 		}, {
 			name: "storage with gcs type with no location param",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "storage-resource",
 				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeStorage,
-					Params: []Param{{
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeStorage,
+					Params: []v1alpha1.Param{{
 						Name:  "type",
 						Value: "gcs",
 					}},
@@ -185,13 +186,13 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrMissingField("spec.params.location"),
 		}, {
 			name: "storage with gcs type with empty location param",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "storage-resource",
 				},
-				Spec: PipelineResourceSpec{
-					Type: PipelineResourceTypeStorage,
-					Params: []Param{{
+				Spec: v1alpha1.PipelineResourceSpec{
+					Type: v1alpha1.PipelineResourceTypeStorage,
+					Params: []v1alpha1.Param{{
 						Name:  "type",
 						Value: "gcs",
 					}, {
@@ -203,11 +204,11 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrMissingField("spec.params.location"),
 		}, {
 			name: "invalid resoure type",
-			res: PipelineResource{
+			res: v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "invalid-resource",
 				},
-				Spec: PipelineResourceSpec{
+				Spec: v1alpha1.PipelineResourceSpec{
 					Type: "not-supported",
 				},
 			},
@@ -225,14 +226,14 @@ func TestResourceValidation_Invalid(t *testing.T) {
 }
 
 func TestClusterResourceValidation_Valid(t *testing.T) {
-	res := &PipelineResource{
+	res := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-cluster-resource",
 			Namespace: "foo",
 		},
-		Spec: PipelineResourceSpec{
-			Type: PipelineResourceTypeCluster,
-			Params: []Param{{
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeCluster,
+			Params: []v1alpha1.Param{{
 				Name:  "name",
 				Value: "test-cluster-resource",
 			}, {
@@ -281,7 +282,7 @@ func TestAllowedGCSStorageType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if allowedStorageType(tt.storageType) != tt.want {
+			if v1alpha1.AllowedStorageType(tt.storageType) != tt.want {
 				t.Errorf("PipleineResource.allowedStorageType should return %t, got %t for %s", tt.want, !tt.want, tt.storageType)
 			}
 		})

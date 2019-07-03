@@ -1,6 +1,23 @@
-package v1alpha1
+/*
+Copyright 2019 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1_test
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -11,34 +28,34 @@ import (
 
 func TestPullRequest_NewResource(t *testing.T) {
 	url := "https://github.com/tektoncd/pipeline/pulls/1"
-	pr := &PipelineResource{
+	pr := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
-		Spec: PipelineResourceSpec{
-			Type: PipelineResourceTypePullRequest,
-			Params: []Param{{
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypePullRequest,
+			Params: []v1alpha1.Param{{
 				Name:  "type",
 				Value: "github",
 			}, {
 				Name:  "url",
 				Value: url,
 			}},
-			SecretParams: []SecretParam{{
+			SecretParams: []v1alpha1.SecretParam{{
 				FieldName:  "githubToken",
 				SecretKey:  "test-secret-key",
 				SecretName: "test-secret-name",
 			}},
 		},
 	}
-	got, err := NewPullRequestResource(pr)
+	got, err := v1alpha1.NewPullRequestResource(pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())
 	}
 
-	want := &PullRequestResource{
+	want := &v1alpha1.PullRequestResource{
 		Name:    pr.Name,
-		Type:    PipelineResourceTypePullRequest,
+		Type:    v1alpha1.PipelineResourceTypePullRequest,
 		URL:     url,
 		Secrets: pr.Spec.SecretParams,
 	}
@@ -48,28 +65,28 @@ func TestPullRequest_NewResource(t *testing.T) {
 }
 
 func TestPullRequest_NewResource_error(t *testing.T) {
-	pr := &PipelineResource{
+	pr := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "foo",
 		},
-		Spec: PipelineResourceSpec{
-			Type: PipelineResourceTypeGit,
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
 		},
 	}
-	if _, err := NewPullRequestResource(pr); err == nil {
+	if _, err := v1alpha1.NewPullRequestResource(pr); err == nil {
 		t.Error("NewPullRequestResource() want error, got nil")
 	}
 }
 
 type testcase struct {
-	in  *PullRequestResource
+	in  *v1alpha1.PullRequestResource
 	out []corev1.Container
 }
 
 func containerTestCases(mode string) []testcase {
 	return []testcase{
 		{
-			in: &PullRequestResource{
+			in: &v1alpha1.PullRequestResource{
 				Name:           "nocreds",
 				DestinationDir: "/workspace",
 				URL:            "https://example.com",
@@ -77,18 +94,18 @@ func containerTestCases(mode string) []testcase {
 			out: []corev1.Container{{
 				Name:       "pr-source-nocreds-9l9zj",
 				Image:      "override-with-pr:latest",
-				WorkingDir: workspaceDir,
+				WorkingDir: v1alpha1.WorkspaceDir,
 				Command:    []string{"/ko-app/pullrequest-init"},
 				Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
 				Env:        []corev1.EnvVar{},
 			}},
 		},
 		{
-			in: &PullRequestResource{
+			in: &v1alpha1.PullRequestResource{
 				Name:           "creds",
 				DestinationDir: "/workspace",
 				URL:            "https://example.com",
-				Secrets: []SecretParam{{
+				Secrets: []v1alpha1.SecretParam{{
 					FieldName:  "githubToken",
 					SecretName: "github-creds",
 					SecretKey:  "token",
@@ -97,7 +114,7 @@ func containerTestCases(mode string) []testcase {
 			out: []corev1.Container{{
 				Name:       "pr-source-creds-mz4c7",
 				Image:      "override-with-pr:latest",
-				WorkingDir: workspaceDir,
+				WorkingDir: v1alpha1.WorkspaceDir,
 				Command:    []string{"/ko-app/pullrequest-init"},
 				Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
 				Env: []corev1.EnvVar{{

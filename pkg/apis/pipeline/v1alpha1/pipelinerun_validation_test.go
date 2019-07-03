@@ -13,10 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package v1alpha1
+
+package v1alpha1_test
 
 import (
 	"context"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"testing"
 	"time"
 
@@ -28,12 +30,12 @@ import (
 func TestPipelineRun_Invalidate(t *testing.T) {
 	tests := []struct {
 		name string
-		pr   PipelineRun
+		pr   v1alpha1.PipelineRun
 		want *apis.FieldError
 	}{
 		{
 			name: "invalid pipelinerun",
-			pr: PipelineRun{
+			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "prmetaname",
 				},
@@ -42,7 +44,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 		},
 		{
 			name: "invalid pipelinerun metadata",
-			pr: PipelineRun{
+			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipelinerun.name",
 				},
@@ -53,23 +55,23 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 			},
 		}, {
 			name: "no pipeline reference",
-			pr: PipelineRun{
+			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipelinelineName",
 				},
-				Spec: PipelineRunSpec{
+				Spec: v1alpha1.PipelineRunSpec{
 					ServiceAccount: "foo",
 				},
 			},
 			want: apis.ErrMissingField("pipelinerun.spec.Pipelineref.Name"),
 		}, {
 			name: "negative pipeline timeout",
-			pr: PipelineRun{
+			pr: v1alpha1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipelinelineName",
 				},
-				Spec: PipelineRunSpec{
-					PipelineRef: PipelineRef{
+				Spec: v1alpha1.PipelineRunSpec{
+					PipelineRef: v1alpha1.PipelineRef{
 						Name: "prname",
 					},
 					Timeout: &metav1.Duration{Duration: -48 * time.Hour},
@@ -90,15 +92,15 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 }
 
 func TestPipelineRun_Validate(t *testing.T) {
-	tr := PipelineRun{
+	tr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinelineName",
 		},
-		Spec: PipelineRunSpec{
-			PipelineRef: PipelineRef{
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{
 				Name: "prname",
 			},
-			Results: &Results{
+			Results: &v1alpha1.Results{
 				URL:  "http://www.google.com",
 				Type: "gcs",
 			},
