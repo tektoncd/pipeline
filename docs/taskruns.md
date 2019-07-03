@@ -49,8 +49,10 @@ following fields:
   - [`inputs`] - Specifies [input parameters](#input-parameters) and
     [input resources](#providing-resources)
   - [`outputs`] - Specifies [output resources](#providing-resources)
-  - `timeout` - Specifies timeout after which the `TaskRun` will fail. Defaults
-    to 60 minutes.
+  - [`timeout`] - Specifies timeout after which the `TaskRun` will fail. If the value of
+    `timeout` is empty, the default timeout will be applied. If the value is set to 0,
+    there is no timeout. You can also follow the instruction [here](#Configuring-default-timeout)
+    to configure the default timeout.
   - [`nodeSelector`] - a selector which must be true for the pod to fit on a
     node. The selector which must match a node's labels for the pod to be
     scheduled on that node. More info:
@@ -145,6 +147,13 @@ spec:
             - name: url
               value: https://github.com/pivotal-nader-ziada/gohelloworld
 ```
+
+### Configuring Default Timeout
+
+You can configure the default timeout by changing the value of `default-timeout-minutes`
+in [`config/config-defaults.yaml`](./../config/config-defaults.yaml). The default timeout
+is 60 minutes, if `default-timeout-minutes` is not available. There is no timeout by
+default, if `default-timeout-minutes` is set to 0.
 
 ### Service Account
 

@@ -19,11 +19,13 @@ package v1alpha1_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
@@ -101,6 +103,16 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 			wantErr: apis.ErrDisallowedFields("spec.taskspec", "spec.taskref"),
 		},
+		{
+			name: "negative pipeline timeout",
+			spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "taskrefname",
+				},
+				Timeout: &metav1.Duration{Duration: -48 * time.Hour},
+			},
+			wantErr: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
+		},
 	}
 
 	for _, ts := range tests {
@@ -121,6 +133,18 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		{
 			name: "taskspec without a taskRef",
 			spec: v1alpha1.TaskRunSpec{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Steps: []corev1.Container{{
+						Name:  "mystep",
+						Image: "myimage",
+					}},
+				},
+			},
+		},
+		{
+			name: "no timeout",
+			spec: v1alpha1.TaskRunSpec{
+				Timeout: &metav1.Duration{Duration: 0},
 				TaskSpec: &v1alpha1.TaskSpec{
 					Steps: []corev1.Container{{
 						Name:  "mystep",
