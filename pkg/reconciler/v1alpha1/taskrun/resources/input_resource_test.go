@@ -937,7 +937,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Name:    "artifact-copy-from-gitspace-78c5n",
 				Image:   "override-with-gsutil-image:latest",
 				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "cp -r gs://fake-bucket/prev-task-path/* /workspace/gitspace"},
+				Args:    []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gitspace"},
 			}},
 		},
 	}, {
@@ -975,7 +975,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Name:    "artifact-copy-from-workspace-j2tds",
 				Image:   "override-with-gsutil-image:latest",
 				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "cp -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
+				Args:    []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
 			}},
 		},
 	}} {

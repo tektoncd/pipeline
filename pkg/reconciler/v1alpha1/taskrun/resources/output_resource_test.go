@@ -771,7 +771,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Name:    "artifact-copy-to-source-git-9l9zj",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -r /workspace/source-workspace gs://fake-bucket/pipeline-task-name"},
+			Args:    []string{"-args", "cp -P -r /workspace/source-workspace gs://fake-bucket/pipeline-task-name"},
 		}},
 	}, {
 		name: "git resource in output only with bucket storage",
@@ -815,7 +815,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Name:    "artifact-copy-to-source-git-9l9zj",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},
+			Args:    []string{"-args", "cp -P -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},
 		}},
 	}, {
 		name: "git resource in output",
