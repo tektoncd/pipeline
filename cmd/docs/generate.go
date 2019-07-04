@@ -27,11 +27,17 @@ func generateCliYaml(opts *options) error {
 	}
 
 	tkn.DisableAutoGenTag = true
-	err := doc.GenMarkdownTree(tkn, opts.target)
-	if err != nil {
-		return nil
+	switch opts.kind {
+	case "markdown":
+		return doc.GenMarkdownTree(tkn, opts.target)
+	case "man":
+		header := &doc.GenManHeader{
+			Section: "1",
+		}
+		return doc.GenManTree(tkn, header, opts.target)
+	default:
+		return fmt.Errorf("Invalid docs kind : %s", opts.kind)
 	}
-	return nil
 }
 
 func disableFlagsInUseLine(cmd *cobra.Command) {
@@ -80,6 +86,7 @@ func loadLongDescription(cmd *cobra.Command, path ...string) error {
 type options struct {
 	source string
 	target string
+	kind   string
 }
 
 func parseArgs() (*options, error) {
@@ -88,6 +95,7 @@ func parseArgs() (*options, error) {
 	flags := pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
 	flags.StringVar(&opts.source, "root", cwd, "Path to project root")
 	flags.StringVar(&opts.target, "target", "/tmp", "Target path for generated yaml files")
+	flags.StringVar(&opts.kind, "kind", "markdown", "Kind of docs to generate (supported: man, markdown)")
 	err := flags.Parse(os.Args[1:])
 	return opts, err
 }
@@ -102,7 +110,6 @@ func parseMDContent(mdString string) (description string, examples string) {
 			examples = strings.TrimSpace(strings.TrimPrefix(s, "Examples"))
 		}
 	}
-	fmt.Println(description, examples)
 	return description, examples
 }
 

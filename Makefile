@@ -28,7 +28,7 @@ docs: bin/docs ## update docs
 .PHONY: man
 man: bin/docs ## update manpages
 	@echo "Update generated manpages"
-	@./bin/docs --target=./docs/man --kind=man
+	@./bin/docs --target=./docs/man/man1 --kind=man
 
 .PHONY: clean
 clean: ## clean build artifacts
