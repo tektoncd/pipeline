@@ -447,6 +447,14 @@ func TaskRunTaskRef(name string, ops ...TaskRefOp) TaskRunSpecOp {
 	}
 }
 
+// TaskRunSpecStatus sets the Status in the Spec, used for operations
+// such as cancelling executing TaskRuns.
+func TaskRunSpecStatus(status v1alpha1.TaskRunSpecStatus) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Status = status
+	}
+}
+
 // TaskRefKind set the specified kind to the TaskRef.
 func TaskRefKind(kind v1alpha1.TaskKind) TaskRefOp {
 	return func(ref *v1alpha1.TaskRef) {

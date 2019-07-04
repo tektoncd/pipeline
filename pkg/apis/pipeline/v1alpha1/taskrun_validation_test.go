@@ -24,31 +24,24 @@ import (
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestTaskRun_Invalidate(t *testing.T) {
 	tests := []struct {
 		name string
-		task v1alpha1.TaskRun
+		task *v1alpha1.TaskRun
 		want *apis.FieldError
 	}{
 		{
 			name: "invalid taskspec",
-			task: v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "taskmetaname",
-				},
-			},
+			task: tb.TaskRun("taskmetaname", "default"),
 			want: apis.ErrMissingField("spec"),
 		},
 		{
 			name: "invalid taskrun metadata",
-			task: v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "task.name",
-				},
-			},
+			task: tb.TaskRun("task.name", "default"),
 			want: &apis.FieldError{
 				Message: "Invalid resource name: special character . must not be present",
 				Paths:   []string{"metadata.name"},
@@ -67,16 +60,9 @@ func TestTaskRun_Invalidate(t *testing.T) {
 }
 
 func TestTaskRun_Validate(t *testing.T) {
-	tr := v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "taskname",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: "taskrefname",
-			},
-		},
-	}
+	tr := tb.TaskRun("taskname", "default", tb.TaskRunSpec(
+		tb.TaskRunTaskRef("taskrefname"),
+	))
 	if err := tr.Validate(context.Background()); err != nil {
 		t.Errorf("TaskRun.Validate() error = %v", err)
 	}

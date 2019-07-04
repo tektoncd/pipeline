@@ -23,31 +23,18 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestPullRequest_NewResource(t *testing.T) {
 	url := "https://github.com/tektoncd/pipeline/pulls/1"
-	pr := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "foo",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypePullRequest,
-			Params: []v1alpha1.Param{{
-				Name:  "type",
-				Value: "github",
-			}, {
-				Name:  "url",
-				Value: url,
-			}},
-			SecretParams: []v1alpha1.SecretParam{{
-				FieldName:  "githubToken",
-				SecretKey:  "test-secret-key",
-				SecretName: "test-secret-name",
-			}},
-		},
-	}
+	pr := tb.PipelineResource("foo", "default", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypePullRequest,
+		tb.PipelineResourceSpecParam("type", "github"),
+		tb.PipelineResourceSpecParam("url", url),
+		tb.PipelineResourceSpecSecretParam("githubToken", "test-secret-key", "test-secret-name"),
+	))
 	got, err := v1alpha1.NewPullRequestResource(pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())
@@ -65,14 +52,7 @@ func TestPullRequest_NewResource(t *testing.T) {
 }
 
 func TestPullRequest_NewResource_error(t *testing.T) {
-	pr := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "foo",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeGit,
-		},
-	}
+	pr := tb.PipelineResource("foo", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
 	if _, err := v1alpha1.NewPullRequestResource(pr); err == nil {
 		t.Error("NewPullRequestResource() want error, got nil")
 	}
