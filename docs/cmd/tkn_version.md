@@ -1,10 +1,10 @@
 ## tkn version
 
-Prints the tekton cli version
+Prints version information
 
 ### Synopsis
 
-Prints the tekton cli version
+Prints version information
 
 ```
 tkn version
@@ -15,3 +15,8 @@ tkn version
 ```
   -h, --help   help for version
 ```
+
+### SEE ALSO
+
+* [tkn](tkn.md)	 - CLI for tekton pipelines
+

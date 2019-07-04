@@ -1,13 +1,25 @@
 ## tkn taskrun logs
 
-Lists the logs for the taskrun in a namespace
+Show taskruns logs
 
 ### Synopsis
 
-Lists the logs for the taskrun in a namespace
+Show taskruns logs
 
 ```
-tkn taskrun logs NAME [flags]
+tkn taskrun logs
+```
+
+### Examples
+
+```
+
+# show the logs of TaskRun named "foo" from the namespace "bar"
+tkn taskrun logs foo -n bar
+
+# show the live logs of TaskRun named "foo" from the namespace "bar" 
+tkn taskrun logs -f foo -n bar
+
 ```
 
 ### Options
@@ -16,17 +28,16 @@ tkn taskrun logs NAME [flags]
   -a, --all      show all logs including init steps injected by tekton
   -f, --follow   stream live logs
   -h, --help     help for logs
-
 ```
 
 ### Options inherited from parent commands
 
 ```
-Flags:
-  -k, --kubeconfig string                        kubectl config file (default: $HOME/.kube/config)
-  -n, --namespace string                         namespace to use (default: from $KUBECONFIG)
+  -k, --kubeconfig string   kubectl config file (default: $HOME/.kube/config)
+  -n, --namespace string    namespace to use (default: from $KUBECONFIG)
 ```
 
 ### SEE ALSO
 
-* [tkn taskrun](tkn_taskrun.md)	 - Parent command of the `taskrun` command group
+* [tkn taskrun](tkn_taskrun.md)	 - Manage taskruns
+

@@ -1,20 +1,41 @@
 ## tkn completion
 
-Outputs the shell completion code (default Bash)
+Prints shell completion scripts
 
 ### Synopsis
 
-Outputs the shell completion code (default Bash)\
+
+This command prints shell completion code which must be evaluated to provide
+interactive completion
+
 Supported Shells:
-- bash
-- zsh
+	- bash
+	- zsh
+
 
 ```
-tkn completion [flags]
+tkn completion [SHELL]
+```
+
+### Examples
+
+```
+
+  # generate completion code for bash
+  source <(tkn completion bash)
+
+  # generate completion code for zsh
+  source <(tkn completion zsh)
+
 ```
 
 ### Options
 
 ```
--h, --help   help for completion
+  -h, --help   help for completion
 ```
+
+### SEE ALSO
+
+* [tkn](tkn.md)	 - CLI for tekton pipelines
+

@@ -1,36 +1,23 @@
 ## tkn pipelinerun
 
-Parent command of the `pipelinerun` command group
+Manage pipelineruns
 
 ### Synopsis
 
-Parent command of the `pipelinerun` command group
-
-### Aliases
-
-```
-pipelinerun, pr, pipelineruns
-```
-
-### Available Commands
-
-```
-describe    Describe a pipelinerun in a namespace
-list        Lists pipelineruns in a namespace
-logs        Display pipelinerun logs
-
-```
+Manage pipelineruns
 
 ### Options
 
 ```
--h, --help                help for pipelinerun
--k, --kubeconfig string   kubectl config file (default: $HOME/.kube/config)
--n, --namespace string    namespace to use (default: from $KUBECONFIG)
+  -h, --help                help for pipelinerun
+  -k, --kubeconfig string   kubectl config file (default: $HOME/.kube/config)
+  -n, --namespace string    namespace to use (default: from $KUBECONFIG)
 ```
 
 ### SEE ALSO
 
-* [tkn pipelinerun list](tkn_pipelinerun_list.md)	 - Lists all the pipelineruns in a given namespace.
-* [tkn pipelinerun describe](tkn_pipelinerun_describe.md)	 - Describe given `pipelinerun`.
-* [tkn pipelinerun logs](tkn_pipelinerun_logs.md)	 - Show logs for the  given `pipelinerun`.
+* [tkn](tkn.md)	 - CLI for tekton pipelines
+* [tkn pipelinerun describe](tkn_pipelinerun_describe.md)	 - Describe a pipelinerun in a namespace
+* [tkn pipelinerun list](tkn_pipelinerun_list.md)	 - Lists pipelineruns in a namespace
+* [tkn pipelinerun logs](tkn_pipelinerun_logs.md)	 - Show the logs of PipelineRun
+

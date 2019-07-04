@@ -16,3 +16,6 @@ lint: ## run linter(s)
 test-unit: ## run unit tests
 	@echo "Running unit tests..."
 	@go test -v -cover ./...
+docs: bin/docs ## update docs
+	@echo "Update generated docs"
+	@./bin/docs --target=./docs/cmd
