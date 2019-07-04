@@ -31,4 +31,11 @@ const (
 	// reasonExceededNodeResources indicates that the TaskRun's pod has failed to start due
 	// to resource constraints on the node
 	ReasonExceededNodeResources = "ExceededNodeResources"
+
+	// ReasonSucceeded indicates that the reason for the finished status is that all of the steps
+	// completed successfully
+	ReasonSucceeded = "Succeeded"
+
+	// ReasonFailed indicates that the reason for the failure status is unknown or that one of the steps failed
+	ReasonFailed = "Failed"
 )
