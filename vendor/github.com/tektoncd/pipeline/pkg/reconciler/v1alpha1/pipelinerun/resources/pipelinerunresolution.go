@@ -62,6 +62,32 @@ type ResolvedPipelineRunTask struct {
 // state of the PipelineRun.
 type PipelineRunState []*ResolvedPipelineRunTask
 
+func (t ResolvedPipelineRunTask) IsDone() (isDone bool) {
+	if t.TaskRun == nil || t.PipelineTask == nil {
+		return
+	}
+
+	status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+	retriesDone := len(t.TaskRun.Status.RetriesStatus)
+	retries := t.PipelineTask.Retries
+	isDone = status.IsTrue() || status.IsFalse() && retriesDone >= retries
+	return
+}
+
+func (state PipelineRunState) IsDone() (isDone bool) {
+	isDone = true
+	for _, t := range state {
+		if t.TaskRun == nil || t.PipelineTask == nil {
+			return false
+		}
+		isDone = isDone && t.IsDone()
+		if !isDone {
+			return
+		}
+	}
+	return
+}
+
 // GetNextTasks will return the next ResolvedPipelineRunTasks to execute, which are the ones in the
 // list of candidateTasks which aren't yet indicated in state to be running.
 func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.PipelineTask) []*ResolvedPipelineRunTask {
@@ -69,6 +95,16 @@ func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.Pi
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil {
 			tasks = append(tasks, t)
+		}
+		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
+			status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+			if status != nil && status.IsFalse() {
+				if !(t.TaskRun.IsCancelled() || status.Reason == "TaskRunCancelled") {
+					if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
+						tasks = append(tasks, t)
+					}
+				}
+			}
 		}
 	}
 	return tasks
@@ -171,6 +207,7 @@ func (e *ResourceNotFoundError) Error() string {
 func ResolvePipelineRun(
 	pipelineRun v1alpha1.PipelineRun,
 	getTask resources.GetTask,
+	getTaskRun resources.GetTaskRun,
 	getClusterTask resources.GetClusterTask,
 	getResource resources.GetResource,
 	tasks []v1alpha1.PipelineTask,
@@ -214,28 +251,19 @@ func ResolvePipelineRun(
 		}
 		rprt.ResolvedTaskResources = rtr
 
+		taskRun, err := getTaskRun(rprt.TaskRunName)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, fmt.Errorf("error retrieving TaskRun %s: %s", rprt.TaskRunName, err)
+			}
+		}
+		if taskRun != nil {
+			rprt.TaskRun = taskRun
+		}
 		// Add this task to the state of the PipelineRun
 		state = append(state, &rprt)
 	}
 	return state, nil
-}
-
-// ResolveTaskRuns will go through all tasks in state and check if there are existing TaskRuns
-// for each of them by calling getTaskRun.
-func ResolveTaskRuns(getTaskRun GetTaskRun, state PipelineRunState) error {
-	for _, rprt := range state {
-		// Check if we have already started a TaskRun for this task
-		taskRun, err := getTaskRun(rprt.TaskRunName)
-		if err != nil {
-			// If the TaskRun isn't found, it just means it hasn't been run yet
-			if !errors.IsNotFound(err) {
-				return fmt.Errorf("error retrieving TaskRun %s: %s", rprt.TaskRunName, err)
-			}
-		} else {
-			rprt.TaskRun = taskRun
-		}
-	}
-	return nil
 }
 
 // getTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
@@ -283,8 +311,8 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 		}
 		logger.Infof("TaskRun %s status : %v", rprt.TaskRunName, c.Status)
 		// If any TaskRuns have failed, we should halt execution and consider the run failed
-		if c.Status == corev1.ConditionFalse {
-			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed", rprt.TaskRunName, prName)
+		if c.Status == corev1.ConditionFalse && rprt.IsDone() {
+			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed, retries done: %b", rprt.TaskRunName, prName, len(rprt.TaskRun.Status.RetriesStatus))
 			return &apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,

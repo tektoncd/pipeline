@@ -107,24 +107,24 @@ pipelineRunsInformer.Informer().GetIndexer().Add(obj)
 
 ### Setup
 
-Besides the environment variable `KO_DOCKER_REPO`, you may also need the
-permissions inside the TaskRun to run the Kaniko e2e test and GCS taskrun test.
+Environment variables used by end to end tests:
+
+- `KO_DOCKER_REPO` - Set this to an image registry your tests can push images to
+- `GCP_SERVICE_ACCOUNT_KEY_PATH` - Tests that need to interact with GCS buckets
+  will use the json credentials at this path to authenticate with GCS.
 
 - In Kaniko e2e test, setting `GCP_SERVICE_ACCOUNT_KEY_PATH` as the path of the
   GCP service account JSON key which has permissions to push to the registry
   specified in `KO_DOCKER_REPO` will enable Kaniko to use those credentials when
   pushing an image.
 - In GCS taskrun test, GCP service account JSON key file at path
-  `GCP_SERVICE_ACCOUNT_KEY_PATH` is used to generate Kubernetes secret to access
-  GCS bucket. This e2e test requires valid service account configuration json
-  but it does not require any role binding.
-- In Storage artifact bucket, setting the `GCP_SERVICE_ACCOUNT_KEY_PATH` as the
-  path of the GCP service account JSON key which has permissions to
-  create/delete a bucket.
+  `GCP_SERVICE_ACCOUNT_KEY_PATH`, if present, is used to generate Kubernetes
+  secret to access GCS bucket.
+- In Storage artifact bucket test, the `GCP_SERVICE_ACCOUNT_KEY_PATH` JSON key
+  is used to create/delete a bucket which will be used for output to input
+  linking by the `PipelineRun` controller.
 
-To reduce e2e test setup developers can use the same environment variable for
-both Kaniko e2e test and GCS taskrun test. To create a service account usable in
-the e2e tests:
+To create a service account usable in the e2e tests:
 
 ```bash
 PROJECT_ID=your-gcp-project
@@ -181,9 +181,8 @@ against, i.e. override
 go test -v -tags=e2e -count=1 ./test --kubeconfig ~/special/kubeconfig --cluster myspecialcluster
 ```
 
-Tests importing
-[`github.com/knative/build-pipline/test`](#adding-integration-tests) recognize
-the
+Tests importing [`github.com/tektoncd/pipeline/test`](#adding-integration-tests)
+recognize the
 [flags added by `knative/pkg/test`](https://github.com/knative/pkg/tree/master/test#flags).
 
 ### One test case
@@ -349,7 +348,7 @@ test/presubmit-tests.sh --unit-tests
 ```
 
 Prow is configured in
-[the knative `config.yaml` in `knative/test-infra`](https://github.com/knative/test-infra/blob/master/ci/prow/config.yaml)
+[the knative `config.yaml` in `tektoncd/plumbing`](https://github.com/tektoncd/plumbing/blob/master/ci/prow/config.yaml)
 via the sections for `tektoncd/pipeline`.
 
 ### Running presubmit integration tests
@@ -361,9 +360,9 @@ The presubmit integration tests entrypoint will run:
 
 When run using Prow, integration tests will try to get a new cluster using
 [boskos](https://github.com/kubernetes/test-infra/tree/master/boskos) and
-[these hardcoded GKE projects](https://github.com/knative/test-infra/blob/master/ci/prow/boskos/resources.yaml#L15),
+[these hardcoded GKE projects](https://github.com/tektoncd/plumbing/blob/master/ci/prow/boskos/resources.yaml#L15),
 which only
-[the `knative/test-infra` OWNERS](https://github.com/knative/test-infra/blob/master/OWNERS)
+[the `tektoncd/plumbing` OWNERS](https://github.com/tektoncd/plumbing/blob/master/OWNERS)
 have access to.
 
 If you would like to run the integration tests against your cluster, you can use

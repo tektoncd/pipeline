@@ -39,8 +39,7 @@ var (
 
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
-	PipelineRef PipelineRef     `json:"pipelineRef"`
-	Trigger     PipelineTrigger `json:"trigger"`
+	PipelineRef PipelineRef `json:"pipelineRef"`
 	// Resources is a list of bindings specifying which actual instances of
 	// PipelineResources to use for the resources the Pipeline has declared
 	// it needs.
@@ -55,7 +54,7 @@ type PipelineRunSpec struct {
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
 	// Time after which the Pipeline times out. Defaults to never.
-	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// NodeSelector is a selector which must be true for the pod to fit on a node.
@@ -97,22 +96,6 @@ type PipelineRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
-}
-
-// PipelineTriggerType indicates the mechanism by which this PipelineRun was created.
-type PipelineTriggerType string
-
-const (
-	// PipelineTriggerTypeManual indicates that this PipelineRun was invoked manually by a user.
-	PipelineTriggerTypeManual PipelineTriggerType = "manual"
-)
-
-// PipelineTrigger describes what triggered this Pipeline to run. It could be triggered manually,
-// or it could have been some kind of external event (not yet designed).
-type PipelineTrigger struct {
-	Type PipelineTriggerType `json:"type,omitempty"`
-	// +optional
-	Name string `json:"name,omitempty"`
 }
 
 // PipelineRunStatus defines the observed state of PipelineRun

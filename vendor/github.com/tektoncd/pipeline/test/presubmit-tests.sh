@@ -25,7 +25,11 @@
 # in a net-negative contributor experience.
 export DISABLE_MD_LINTING=1
 
-source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/presubmit-tests.sh
+source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
+
+function post_build_tests() {
+    golangci-lint run
+}
 
 # We use the default build, unit and integration test runners.
 

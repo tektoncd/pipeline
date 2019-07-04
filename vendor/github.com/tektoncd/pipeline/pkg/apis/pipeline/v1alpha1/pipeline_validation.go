@@ -76,9 +76,7 @@ func validateFrom(tasks []PipelineTask) error {
 		var to []PipelineTaskOutputResource
 		if task.Resources != nil {
 			to = make([]PipelineTaskOutputResource, len(task.Resources.Outputs))
-			for i, o := range task.Resources.Outputs {
-				to[i] = o
-			}
+			copy(to, task.Resources.Outputs)
 		}
 		taskOutputs[task.Name] = to
 	}

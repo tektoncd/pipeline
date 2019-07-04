@@ -57,7 +57,7 @@ func TestPipelineResources(t *testing.T) {
 	}{
 		{
 			name:    "Multiple pipeline resources",
-			command: command(pres),
+			command: command(t, pres),
 			args:    []string{"list", "-n", "test-ns-1"},
 			expected: []string{
 				"NAME     TYPE    DETAILS",
@@ -69,7 +69,7 @@ func TestPipelineResources(t *testing.T) {
 		},
 		{
 			name:    "Single pipeline resource",
-			command: command(pres),
+			command: command(t, pres),
 			args:    []string{"list", "-n", "test-ns-2"},
 			expected: []string{
 				"NAME     TYPE    DETAILS",
@@ -79,7 +79,7 @@ func TestPipelineResources(t *testing.T) {
 		},
 		{
 			name:    "By template",
-			command: command(pres),
+			command: command(t, pres),
 			args:    []string{"list", "-n", "test-ns-1", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
 				"test-1",
@@ -104,15 +104,15 @@ func TestPipelineResources(t *testing.T) {
 }
 
 func TestPipelineResource_empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 	pipelineresource := Command(p)
 	out, _ := test.ExecuteCommand(pipelineresource, "list", "-n", "test-ns-3")
 	tu.AssertOutput(t, msgNoPREsFound+"\n", out)
 }
 
-func command(pres []*v1alpha1.PipelineResource) *cobra.Command {
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{PipelineResources: pres})
+func command(t *testing.T, pres []*v1alpha1.PipelineResource) *cobra.Command {
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
 	p := &test.Params{Tekton: cs.Pipeline}
 	return Command(p)
 }

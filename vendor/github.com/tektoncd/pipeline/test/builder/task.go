@@ -266,8 +266,9 @@ func ParamDefault(value string) TaskParamOp {
 func TaskRun(name, namespace string, ops ...TaskRunOp) *v1alpha1.TaskRun {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Namespace:   namespace,
+			Name:        name,
+			Annotations: map[string]string{},
 		},
 	}
 
@@ -300,6 +301,12 @@ func PodName(name string) TaskRunStatusOp {
 func Condition(condition apis.Condition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
 		s.Conditions = append(s.Conditions, condition)
+	}
+}
+
+func Retry(retry v1alpha1.TaskRunStatus) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.RetriesStatus = append(s.RetriesStatus, retry)
 	}
 }
 
@@ -389,6 +396,15 @@ func TaskRunLabel(key, value string) TaskRunOp {
 	}
 }
 
+func TaskRunAnnotation(key, value string) TaskRunOp {
+	return func(tr *v1alpha1.TaskRun) {
+		if tr.ObjectMeta.Annotations == nil {
+			tr.ObjectMeta.Annotations = map[string]string{}
+		}
+		tr.ObjectMeta.Annotations[key] = value
+	}
+}
+
 // TaskRunSpec sets the specified spec of the TaskRun.
 // Any number of TaskRunSpec modifier can be passed to transform it.
 func TaskRunSpec(ops ...TaskRunSpecOp) TaskRunOp {
@@ -441,16 +457,6 @@ func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
 			op(taskSpec)
 		}
 		spec.TaskSpec = taskSpec
-	}
-}
-
-// TaskTrigger set the TaskTrigger, with specified name and type, to the TaskRunSpec.
-func TaskTrigger(name string, triggerType v1alpha1.TaskTriggerType) TaskRunSpecOp {
-	return func(trs *v1alpha1.TaskRunSpec) {
-		trs.Trigger = v1alpha1.TaskTrigger{
-			Name: name,
-			Type: triggerType,
-		}
 	}
 }
 

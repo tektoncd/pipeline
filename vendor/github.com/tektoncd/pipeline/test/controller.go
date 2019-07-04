@@ -14,6 +14,8 @@ limitations under the License.
 package test
 
 import (
+	"testing"
+
 	"github.com/knative/pkg/controller"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
@@ -76,7 +78,7 @@ type TestAssets struct {
 
 // SeedTestData returns Clients and Informers populated with the
 // given Data.
-func SeedTestData(d Data) (Clients, Informers) {
+func SeedTestData(t *testing.T, d Data) (Clients, Informers) {
 	objs := []runtime.Object{}
 	for _, r := range d.PipelineResources {
 		objs = append(objs, r)
@@ -122,25 +124,39 @@ func SeedTestData(d Data) (Clients, Informers) {
 	}
 
 	for _, pr := range d.PipelineRuns {
-		i.PipelineRun.Informer().GetIndexer().Add(pr)
+		if err := i.PipelineRun.Informer().GetIndexer().Add(pr); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, p := range d.Pipelines {
-		i.Pipeline.Informer().GetIndexer().Add(p)
+		if err := i.Pipeline.Informer().GetIndexer().Add(p); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, tr := range d.TaskRuns {
-		i.TaskRun.Informer().GetIndexer().Add(tr)
+		if err := i.TaskRun.Informer().GetIndexer().Add(tr); err != nil {
+			t.Fatal(err)
+		}
 	}
-	for _, t := range d.Tasks {
-		i.Task.Informer().GetIndexer().Add(t)
+	for _, ta := range d.Tasks {
+		if err := i.Task.Informer().GetIndexer().Add(ta); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, ct := range d.ClusterTasks {
-		i.ClusterTask.Informer().GetIndexer().Add(ct)
+		if err := i.ClusterTask.Informer().GetIndexer().Add(ct); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, r := range d.PipelineResources {
-		i.PipelineResource.Informer().GetIndexer().Add(r)
+		if err := i.PipelineResource.Informer().GetIndexer().Add(r); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, p := range d.Pods {
-		i.Pod.Informer().GetIndexer().Add(p)
+		if err := i.Pod.Informer().GetIndexer().Add(p); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return c, i
 }

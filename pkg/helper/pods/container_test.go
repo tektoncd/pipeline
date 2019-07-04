@@ -46,7 +46,7 @@ func TestContainer_fetch_logs(t *testing.T) {
 		),
 	)
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{Pods: ps})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{Pods: ps})
 
 	pod := New(podName, ns, cs.Kube, fake.Streamer(logs))
 

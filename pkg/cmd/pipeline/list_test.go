@@ -21,7 +21,7 @@ import (
 
 func TestPipelinesList_empty(t *testing.T) {
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
@@ -40,7 +40,7 @@ func TestPipelineList_only_pipelines(t *testing.T) {
 	}
 
 	clock := clockwork.NewFakeClock()
-	cs, _ := seedPipelines(clock, pipelines, "namespace")
+	cs, _ := seedPipelines(t, clock, pipelines, "namespace")
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 
 	pipeline := Command(p)
@@ -66,7 +66,7 @@ func TestPipelineList_only_pipelines(t *testing.T) {
 func TestPipelinesList_with_single_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back
@@ -142,7 +142,7 @@ func TestPipelinesList_latest_run(t *testing.T) {
 		secondRunCompleted = secondRunStarted.Add(runDuration) // takes less thus completes
 	)
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back
@@ -207,7 +207,7 @@ type pipelineDetails struct {
 	age  time.Duration
 }
 
-func seedPipelines(clock clockwork.Clock, ps []pipelineDetails, ns string) (pipelinetest.Clients, pipelinetest.Informers) {
+func seedPipelines(t *testing.T, clock clockwork.Clock, ps []pipelineDetails, ns string) (pipelinetest.Clients, pipelinetest.Informers) {
 	pipelines := []*v1alpha1.Pipeline{}
 	for _, p := range ps {
 		pipelines = append(pipelines,
@@ -217,5 +217,5 @@ func seedPipelines(clock clockwork.Clock, ps []pipelineDetails, ns string) (pipe
 		)
 	}
 
-	return pipelinetest.SeedTestData(pipelinetest.Data{Pipelines: pipelines})
+	return pipelinetest.SeedTestData(t, pipelinetest.Data{Pipelines: pipelines})
 }

@@ -26,6 +26,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"go.uber.org/zap"
@@ -93,6 +94,8 @@ const (
 	unnamedInitContainerPrefix = "build-step-unnamed-"
 	// Name of the credential initialization container.
 	credsInit = "credential-initializer"
+	// Name of the working dir initialization container.
+	workingDirInit = "working-dir-initializer"
 )
 
 var (
@@ -162,6 +165,52 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 	}, volumes, nil
 }
 
+func makeWorkingDirScript(workingDirs map[string]bool) string {
+	script := ""
+	var orderedDirs []string
+
+	for wd := range workingDirs {
+		if wd != "" {
+			orderedDirs = append(orderedDirs, wd)
+		}
+	}
+	sort.Strings(orderedDirs)
+
+	for _, wd := range orderedDirs {
+		p := filepath.Clean(wd)
+		if rel, err := filepath.Rel(workspaceDir, p); err == nil && !strings.HasPrefix(rel, ".") {
+			if script == "" {
+				script = fmt.Sprintf("mkdir -p %s", p)
+			} else {
+				script = fmt.Sprintf("%s %s", script, p)
+			}
+		}
+	}
+
+	return script
+}
+
+func makeWorkingDirInitializer(steps []corev1.Container) *corev1.Container {
+	workingDirs := make(map[string]bool)
+	for _, step := range steps {
+		workingDirs[step.WorkingDir] = true
+	}
+
+	if script := makeWorkingDirScript(workingDirs); script != "" {
+		return &corev1.Container{
+			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + workingDirInit),
+			Image:        *v1alpha1.BashNoopImage,
+			Command:      []string{"/ko-app/bash"},
+			Args:         []string{"-args", script},
+			VolumeMounts: implicitVolumeMounts,
+			Env:          implicitEnvVars,
+			WorkingDir:   workspaceDir,
+		}
+	}
+
+	return nil
+}
+
 // GetPod returns the Pod for the given pod name
 type GetPod func(string, metav1.GetOptions) (*corev1.Pod, error)
 
@@ -182,20 +231,16 @@ func TryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp GetPod) (*corev1.Pod, er
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
 func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*corev1.Pod, error) {
-	// Copy annotations on the build through to the underlying pod to allow users
-	// to specify pod annotations.
-	annotations := map[string]string{}
-	for key, val := range taskRun.Annotations {
-		annotations[key] = val
-	}
-	annotations["sidecar.istio.io/inject"] = "false"
-
 	cred, secrets, err := makeCredentialInitializer(taskRun.Spec.ServiceAccount, taskRun.Namespace, kubeclient)
 	if err != nil {
 		return nil, err
 	}
 	initContainers := []corev1.Container{*cred}
 	podContainers := []corev1.Container{}
+
+	if workingDir := makeWorkingDirInitializer(taskSpec.Steps); workingDir != nil {
+		initContainers = append(initContainers, *workingDir)
+	}
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 
@@ -248,7 +293,9 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	gibberish := hex.EncodeToString(b)
 
 	nopContainer := &corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}}
-	entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger)
+	if err := entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger); err != nil {
+		return nil, err
+	}
 	podContainers = append(podContainers, *nopContainer)
 
 	mergedInitContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, initContainers)
@@ -274,7 +321,7 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
-			Annotations: annotations,
+			Annotations: makeAnnotations(taskRun),
 			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
@@ -298,6 +345,16 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	}
 	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
 	return labels
+}
+
+// makeAnnotations constructs the annotations we will propagate from TaskRuns to Pods.
+func makeAnnotations(s *v1alpha1.TaskRun) map[string]string {
+	annotations := make(map[string]string, len(s.ObjectMeta.Annotations)+1)
+	for k, v := range s.ObjectMeta.Annotations {
+		annotations[k] = v
+	}
+	annotations["sidecar.istio.io/inject"] = "false"
+	return annotations
 }
 
 // zeroNonMaxResourceRequests zeroes out the container's cpu, memory, or

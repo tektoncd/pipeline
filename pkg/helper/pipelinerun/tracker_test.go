@@ -134,7 +134,7 @@ func TestTracker_pipelinerun_complete(t *testing.T) {
 
 		finalPRStatus := prStatus(corev1.ConditionTrue, resources.ReasonSucceeded, finalTRStatus)
 
-		tc := startPipelineRun(test.Data{PipelineRuns: initialPR, TaskRuns: taskruns}, finalPRStatus)
+		tc := startPipelineRun(t, test.Data{PipelineRuns: initialPR, TaskRuns: taskruns}, finalPRStatus)
 		tracker := NewTracker(pipelineName, ns, tc)
 		output := taskRunsFor(s.tasks, tracker)
 
@@ -166,8 +166,8 @@ func taskRunsFor(onlyTasks []string, tracker *Tracker) []trh.Run {
 	return output
 }
 
-func startPipelineRun(data test.Data, prStatus ...v1alpha1.PipelineRunStatus) versioned.Interface {
-	cs, _ := test.SeedTestData(data)
+func startPipelineRun(t *testing.T, data test.Data, prStatus ...v1alpha1.PipelineRunStatus) versioned.Interface {
+	cs, _ := test.SeedTestData(t, data)
 
 	// to keep pushing the taskrun over the period(simulate watch)
 	watcher := watch.NewFake()

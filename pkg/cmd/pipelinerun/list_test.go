@@ -84,7 +84,7 @@ func TestListPipelineRuns(t *testing.T) {
 	}{
 		{
 			name:    "by pipeline name",
-			command: command(prs, clock.Now()),
+			command: command(t, prs, clock.Now()),
 			args:    []string{"list", "pipeline", "-n", "namespace"},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS      ",
@@ -94,7 +94,7 @@ func TestListPipelineRuns(t *testing.T) {
 		},
 		{
 			name:    "all in namespace",
-			command: command(prs, clock.Now()),
+			command: command(t, prs, clock.Now()),
 			args:    []string{"list", "-n", "namespace"},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS               ",
@@ -106,7 +106,7 @@ func TestListPipelineRuns(t *testing.T) {
 		},
 		{
 			name:    "by template",
-			command: command(prs, clock.Now()),
+			command: command(t, prs, clock.Now()),
 			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
 				"pr1-1",
@@ -132,7 +132,7 @@ func TestListPipelineRuns(t *testing.T) {
 }
 
 func TestListPipeline_empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
 	p := &tu.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
@@ -144,12 +144,12 @@ func TestListPipeline_empty(t *testing.T) {
 	tu.AssertOutput(t, emptyMsg+"\n", output)
 }
 
-func command(prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Command {
+func command(t *testing.T, prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Command {
 	// fake clock advanced by 1 hour
 	clock := clockwork.NewFakeClockAt(now)
 	clock.Advance(time.Duration(60) * time.Minute)
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{PipelineRuns: prs})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
 
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 

@@ -56,7 +56,7 @@ func TestLog_missing_pipelinerun(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(test.Data{PipelineRuns: pr})
+	cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: pr})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
@@ -250,7 +250,7 @@ func TestPipelinerunLogs(t *testing.T) {
 
 	for _, s := range scenarios {
 		t.Run(s.name, func(t *testing.T) {
-			cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+			cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
 
 			prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogs), s.allSteps, false, s.tasks...)
 			output, _ := fetchLogs(prlo)
@@ -362,7 +362,7 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
 	prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogStream), false, false)
 	output, _ := fetchLogs(prlo)
 
@@ -471,7 +471,7 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
 	prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogStream), false, true)
 	output, _ := fetchLogs(prlo)
 

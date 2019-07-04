@@ -25,6 +25,7 @@ import (
 
 // GetTask is a function used to retrieve Tasks.
 type GetTask func(string) (v1alpha1.TaskInterface, error)
+type GetTaskRun func(string) (*v1alpha1.TaskRun, error)
 
 // GetClusterTask is a function that will retrieve the Task from name and namespace.
 type GetClusterTask func(name string) (v1alpha1.TaskInterface, error)

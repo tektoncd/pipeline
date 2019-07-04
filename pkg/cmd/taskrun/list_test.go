@@ -82,7 +82,7 @@ func TestListTaskRuns(t *testing.T) {
 	}{
 		{
 			name:    "by Task name",
-			command: command(trs, now),
+			command: command(t, trs, now),
 			args:    []string{"list", "bar", "-n", "foo"},
 			expected: []string{
 				"NAME    STARTED      DURATION   STATUS      ",
@@ -92,7 +92,7 @@ func TestListTaskRuns(t *testing.T) {
 		},
 		{
 			name:    "all in namespace",
-			command: command(trs, now),
+			command: command(t, trs, now),
 			args:    []string{"list", "-n", "foo"},
 			expected: []string{
 				"NAME    STARTED      DURATION   STATUS      ",
@@ -104,7 +104,7 @@ func TestListTaskRuns(t *testing.T) {
 		},
 		{
 			name:    "print by template",
-			command: command(trs, now),
+			command: command(t, trs, now),
 			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
 				"tr1-1",
@@ -115,7 +115,7 @@ func TestListTaskRuns(t *testing.T) {
 		},
 		{
 			name:     "empty list",
-			command:  command(trs, now),
+			command:  command(t, trs, now),
 			args:     []string{"list", "-n", "random"},
 			expected: []string{emptyMsg, ""},
 		},
@@ -135,12 +135,12 @@ func TestListTaskRuns(t *testing.T) {
 	}
 }
 
-func command(trs []*v1alpha1.TaskRun, now time.Time) *cobra.Command {
+func command(t *testing.T, trs []*v1alpha1.TaskRun, now time.Time) *cobra.Command {
 	// fake clock advanced by 1 hour
 	clock := clockwork.NewFakeClockAt(now)
 	clock.Advance(time.Duration(60) * time.Minute)
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{TaskRuns: trs})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{TaskRuns: trs})
 
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 

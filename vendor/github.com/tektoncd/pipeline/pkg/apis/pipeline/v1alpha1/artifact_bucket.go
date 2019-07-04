@@ -75,15 +75,15 @@ func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
 	return fmt.Sprintf("%s-%s-bucket", pr.Name, pr.Namespace)
 }
 
-// GetCopyFromContainerSpec returns a container used to download artifacts from temporary storage
-func (b *ArtifactBucket) GetCopyFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
+// GetCopyFromStorageToContainerSpec returns a container used to download artifacts from temporary storage
+func (b *ArtifactBucket) GetCopyFromStorageToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
 	args := []string{"-args", fmt.Sprintf("cp -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []corev1.Container{{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
-		Image:   *bashNoopImage,
+		Image:   *BashNoopImage,
 		Command: []string{"/ko-app/bash"},
 		Args: []string{
 			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),
@@ -98,8 +98,8 @@ func (b *ArtifactBucket) GetCopyFromContainerSpec(name, sourcePath, destinationP
 	}}
 }
 
-// GetCopyToContainerSpec returns a container used to upload artifacts for temporary storage
-func (b *ArtifactBucket) GetCopyToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
+// GetCopyToStorageFromContainerSpec returns a container used to upload artifacts for temporary storage
+func (b *ArtifactBucket) GetCopyToStorageFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
 	args := []string{"-args", fmt.Sprintf("cp -r %s %s", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath))}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
@@ -120,7 +120,7 @@ func (b *ArtifactBucket) GetSecretsVolumes() []corev1.Volume {
 	volumes := []corev1.Volume{}
 	for _, sec := range b.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("bucket-secret-%s", sec.SecretName)),
+			Name: fmt.Sprintf("volume-bucket-%s", sec.SecretName),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: sec.SecretName,

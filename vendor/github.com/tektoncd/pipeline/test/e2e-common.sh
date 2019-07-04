@@ -16,7 +16,7 @@
 
 # Helper functions for E2E tests.
 
-source $(dirname $0)/../vendor/github.com/knative/test-infra/scripts/e2e-tests.sh
+source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
 function teardown() {
     subheader "Tearing down Tekton Pipelines"
@@ -103,21 +103,17 @@ function run_yaml_tests() {
   done
 
   # Wait for tests to finish.
-  echo ">> Waiting for tests to finish"
-  for test in taskrun pipelinerun; do
-     if validate_run ${test}; then
-      echo "ERROR: tests timed out"
-     fi
-  done
+  echo ">> Waiting for tests to finish for ${test}"
+  if validate_run $1; then
+    echo "ERROR: tests timed out"
+  fi
 
   # Check that tests passed.
-  echo ">> Checking test results"
-  for test in taskrun pipelinerun; do
-    if check_results ${test}; then
-      echo ">> All YAML tests passed"
-      return 0
-    fi
-  done
+  echo ">> Checking test results for ${test}"
+  if check_results $1; then
+    echo ">> All YAML tests passed"
+    return 0
+  fi
 
   return 1
 }

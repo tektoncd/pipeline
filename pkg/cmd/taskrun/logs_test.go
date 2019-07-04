@@ -48,7 +48,7 @@ func TestLog_missing_taskrun(t *testing.T) {
 	tr := []*v1alpha1.TaskRun{
 		tb.TaskRun("output-taskrun-1", "ns"),
 	}
-	cs, _ := test.SeedTestData(test.Data{TaskRuns: tr})
+	cs, _ := test.SeedTestData(t, test.Data{TaskRuns: tr})
 	watcher := watch.NewFake()
 	cs.Kube.PrependWatchReactor("pods", k8stest.DefaultWatchReactor(watcher, nil))
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
@@ -112,7 +112,7 @@ func TestLog_taskrun_logs(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(test.Data{TaskRuns: trs, Pods: ps})
+	cs, _ := test.SeedTestData(t, test.Data{TaskRuns: trs, Pods: ps})
 	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, false)
 	output, _ := fetchLogs(trlo)
 
@@ -189,7 +189,7 @@ func TestLog_taskrun_all_steps(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(test.Data{TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, test.Data{TaskRuns: trs, Pods: p})
 
 	trl := logOpts(trName, ns, cs, fake.Streamer(logs), true, false)
 	output, _ := fetchLogs(trl)
@@ -268,7 +268,7 @@ func TestLog_taskrun_follow_mode(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(test.Data{TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, test.Data{TaskRuns: trs, Pods: p})
 
 	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, true)
 	output, _ := fetchLogs(trlo)

@@ -54,7 +54,7 @@ func Test_start_pipeline_not_found(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
@@ -82,7 +82,7 @@ func Test_start_trigger(t *testing.T) {
 		), // pipeline
 	}
 
-	cs, _ := test.SeedTestData(test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
@@ -124,7 +124,7 @@ func Test_start_trigger_client_error(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
 
 	cs.Pipeline.PrependReactor("create", "*", func(_ k8stest.Action) (bool, runtime.Object, error) {
 		return true, nil, fmt.Errorf("mock error")
@@ -161,7 +161,7 @@ func Test_start_trigger_resource_error(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
 
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 	pipeline := Command(p)
@@ -194,7 +194,7 @@ func Test_start_trigger_param_error(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
 
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 

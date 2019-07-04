@@ -183,7 +183,7 @@ github.com/prometheus/procfs/internal/util
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# github.com/tektoncd/pipeline v0.3.1
+# github.com/tektoncd/pipeline v0.4.0
 github.com/tektoncd/pipeline/pkg/client/clientset/versioned
 github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1
 github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources
@@ -192,6 +192,7 @@ github.com/tektoncd/pipeline/test/builder
 github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1
 github.com/tektoncd/pipeline/pkg/apis/pipeline
 github.com/tektoncd/pipeline/pkg/list
+github.com/tektoncd/pipeline/pkg/merge
 github.com/tektoncd/pipeline/pkg/names
 github.com/tektoncd/pipeline/pkg/templating
 github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources
@@ -201,7 +202,6 @@ github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1
 github.com/tektoncd/pipeline/pkg/credentials
 github.com/tektoncd/pipeline/pkg/credentials/dockercreds
 github.com/tektoncd/pipeline/pkg/credentials/gitcreds
-github.com/tektoncd/pipeline/pkg/merge
 github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions/internalinterfaces
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline
@@ -418,12 +418,12 @@ k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/util/validation/field
 k8s.io/apimachinery/pkg/runtime/serializer/json
 k8s.io/apimachinery/pkg/runtime/serializer/versioning
+k8s.io/apimachinery/pkg/util/strategicpatch
 k8s.io/apimachinery/pkg/util/rand
 k8s.io/apimachinery/third_party/forked/golang/reflect
 k8s.io/apimachinery/pkg/apis/meta/v1beta1
 k8s.io/apimachinery/pkg/apis/meta/v1/unstructured
 k8s.io/apimachinery/pkg/apis/meta/v1/unstructured/unstructuredscheme
-k8s.io/apimachinery/pkg/util/strategicpatch
 k8s.io/apimachinery/pkg/apis/meta/v1/validation
 k8s.io/apimachinery/pkg/apis/meta/internalversion
 k8s.io/apimachinery/pkg/runtime/serializer/protobuf

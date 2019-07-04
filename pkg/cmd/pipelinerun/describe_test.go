@@ -32,7 +32,7 @@ import (
 )
 
 func TestPipelineRunDescribe_not_found(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipelinerun := Command(p)
@@ -60,7 +60,7 @@ func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),
@@ -133,7 +133,7 @@ func TestPipelineRunDescribe_failed(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),
@@ -212,7 +212,7 @@ func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),

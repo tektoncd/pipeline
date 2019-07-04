@@ -94,7 +94,9 @@ type TaskResource struct {
 	// +optional
 	// TargetPath is the path in workspace directory where the task resource will be copied.
 	TargetPath string `json:"targetPath"`
-	// Resource Value stuff
+	// +optional
+	// Path to the index.json file for output container images
+	OutputImageDir string `json:"outputImageDir"`
 }
 
 // +genclient
@@ -138,6 +140,12 @@ type TaskResourceBinding struct {
 	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
 	// +optional
 	Paths []string `json:"paths,omitempty"`
+}
+
+// PipelineResourceResult used to export the image name and digest as json
+type PipelineResourceResult struct {
+	Name   string `json:"name"`
+	Digest string `json:"digest"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

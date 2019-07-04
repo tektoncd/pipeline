@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script calls out to scripts in knative/test-infra to setup a cluster
+# This script calls out to scripts in tektoncd/plumbing to setup a cluster
 # and deploy Tekton Pipelines to it for running integration tests.
 
 source $(dirname $0)/e2e-common.sh
@@ -37,9 +37,9 @@ for test in taskrun pipelinerun; do
   header "Running YAML e2e tests for ${test}s"
   if ! run_yaml_tests ${test}; then
     echo "ERROR: one or more YAML tests failed"
-    failed=1
     output_yaml_test_results ${test}
     output_pods_logs ${test}
+    failed=1
   fi
 done
 

@@ -86,6 +86,13 @@ func PipelineSpec(ops ...PipelineSpecOp) PipelineOp {
 	}
 }
 
+// PipelineCreationTimestamp sets the creation time of the pipeline
+func PipelineCreationTimestamp(t time.Time) PipelineOp {
+	return func(p *v1alpha1.Pipeline) {
+		p.CreationTimestamp = metav1.Time{Time: t}
+	}
+}
+
 // PipelineRunCancelled sets the status to cancel to the TaskRunSpec.
 func PipelineRunCancelled(spec *v1alpha1.PipelineRunSpec) {
 	spec.Status = v1alpha1.PipelineRunSpecStatusCancelled
@@ -143,6 +150,12 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 			op(pTask)
 		}
 		ps.Tasks = append(ps.Tasks, *pTask)
+	}
+}
+
+func Retries(retries int) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.Retries = retries
 	}
 }
 
@@ -221,11 +234,7 @@ func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.Pipelin
 			Namespace: namespace,
 			Name:      name,
 		},
-		Spec: v1alpha1.PipelineRunSpec{
-			Trigger: v1alpha1.PipelineTrigger{
-				Type: v1alpha1.PipelineTriggerTypeManual,
-			},
-		},
+		Spec: v1alpha1.PipelineRunSpec{},
 	}
 
 	for _, op := range ops {
@@ -258,6 +267,16 @@ func PipelineRunLabel(key, value string) PipelineRunOp {
 			pr.ObjectMeta.Labels = map[string]string{}
 		}
 		pr.ObjectMeta.Labels[key] = value
+	}
+}
+
+// PipelineRunAnnotations adds a annotation to the PipelineRun.
+func PipelineRunAnnotation(key, value string) PipelineRunOp {
+	return func(pr *v1alpha1.PipelineRun) {
+		if pr.ObjectMeta.Annotations == nil {
+			pr.ObjectMeta.Annotations = map[string]string{}
+		}
+		pr.ObjectMeta.Annotations[key] = value
 	}
 }
 
@@ -352,6 +371,13 @@ func PipelineRunStatusCondition(condition apis.Condition) PipelineRunStatusOp {
 func PipelineRunStartTime(startTime time.Time) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
 		s.StartTime = &metav1.Time{Time: startTime}
+	}
+}
+
+// PipelineRunCompletionTime sets the completion time  to the PipelineRunStatus.
+func PipelineRunCompletionTime(t time.Time) PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		s.CompletionTime = &metav1.Time{Time: t}
 	}
 }
 

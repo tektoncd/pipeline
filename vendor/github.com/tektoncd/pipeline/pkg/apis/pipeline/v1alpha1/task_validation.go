@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/knative/pkg/apis"
+	"github.com/tektoncd/pipeline/pkg/merge"
 	"github.com/tektoncd/pipeline/pkg/templating"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -46,7 +47,15 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
 		return err
 	}
-	if err := validateSteps(ts.Steps).ViaField("steps"); err != nil {
+	mergedSteps, err := merge.CombineStepsWithContainerTemplate(ts.ContainerTemplate, ts.Steps)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("error merging container template and steps: %s", err),
+			Paths:   []string{"containerTemplate"},
+		}
+	}
+
+	if err := validateSteps(mergedSteps).ViaField("steps"); err != nil {
 		return err
 	}
 
@@ -145,6 +154,11 @@ func validateResourceVariables(steps []corev1.Container, inputs *Inputs, outputs
 	if outputs != nil {
 		for _, r := range outputs.Resources {
 			resourceNames[r.Name] = struct{}{}
+			if r.Type == PipelineResourceTypeImage {
+				if r.OutputImageDir == "" {
+					return apis.ErrMissingField("OutputImageDir")
+				}
+			}
 		}
 	}
 	return validateVariables(steps, "resources", resourceNames)

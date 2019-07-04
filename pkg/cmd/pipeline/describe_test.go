@@ -33,7 +33,7 @@ import (
 )
 
 func TestPipelineDescribe_Empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
@@ -48,7 +48,7 @@ func TestPipelineDescribe_Empty(t *testing.T) {
 func TestPipelinesDescribe_with_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back
@@ -109,7 +109,7 @@ func TestPipelinesDescribe_with_run(t *testing.T) {
 func TestPipelinesDescribe_with_task_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back
@@ -175,7 +175,7 @@ func TestPipelinesDescribe_with_task_run(t *testing.T) {
 func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back

@@ -97,7 +97,11 @@ func AddOutputResources(
 		// To build copy step it needs source path(which is targetpath of input resourcemap) from task input source
 		sourcePath := inputResourceMap[boundResource.Name]
 		if sourcePath == "" {
-			sourcePath = filepath.Join(outputDir, boundResource.Name)
+			if output.TargetPath == "" {
+				sourcePath = filepath.Join(outputDir, boundResource.Name)
+			} else {
+				sourcePath = output.TargetPath
+			}
 		}
 
 		switch resource.Spec.Type {
@@ -132,7 +136,7 @@ func AddOutputResources(
 		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []corev1.Container
 			for _, dPath := range boundResource.Paths {
-				containers := as.GetCopyToContainerSpec(resource.GetName(), sourcePath, dPath)
+				containers := as.GetCopyToStorageFromContainerSpec(resource.GetName(), sourcePath, dPath)
 				newSteps = append(newSteps, containers...)
 			}
 			resourceContainers = append(resourceContainers, newSteps...)
@@ -169,12 +173,11 @@ func addStoreUploadStep(spec *v1alpha1.TaskSpec,
 	if err != nil {
 		return nil, nil, err
 	}
-	var totalBuildVol, storageVol []corev1.Volume
+	var storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 
 	for _, volume := range spec.Volumes {
 		mountedSecrets[volume.Name] = ""
-		totalBuildVol = append(totalBuildVol, volume)
 	}
 
 	// Map holds list of secrets that are mounted as volumes
@@ -191,7 +194,6 @@ func addStoreUploadStep(spec *v1alpha1.TaskSpec,
 		}
 
 		if _, ok := mountedSecrets[volName]; !ok {
-			totalBuildVol = append(totalBuildVol, gcsSecretVolume)
 			storageVol = append(storageVol, gcsSecretVolume)
 			mountedSecrets[volName] = ""
 		}

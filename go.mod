@@ -36,7 +36,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
-	github.com/tektoncd/pipeline v0.3.1
+	github.com/tektoncd/pipeline v0.4.0
 	github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect

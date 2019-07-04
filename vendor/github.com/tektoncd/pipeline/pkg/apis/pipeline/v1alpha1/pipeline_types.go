@@ -21,11 +21,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PipelineSpec defines the desired state of PipeLine.
+// PipelineSpec defines the desired state of Pipeline.
 type PipelineSpec struct {
+	// Resources declares the names and types of the resources given to the
+	// Pipeline's tasks as inputs and outputs.
 	Resources []PipelineDeclaredResource `json:"resources,omitempty"`
-	Tasks     []PipelineTask             `json:"tasks,omitempty"`
-	Params    []PipelineParam            `json:"params,omitempty"`
+	// Tasks declares the graph of Tasks that execute when this Pipeline is run.
+	Tasks []PipelineTask `json:"tasks,omitempty"`
+	// Params declares a list of input parameters that must be supplied when
+	// this Pipeline is run.
+	Params []PipelineParam `json:"params,omitempty"`
 }
 
 // PipelineStatus does not contain anything because Pipelines on their own
@@ -62,7 +67,8 @@ type Pipeline struct {
 	// Spec holds the desired state of the Pipeline from the client
 	// +optional
 	Spec PipelineSpec `json:"spec"`
-	// Status communicates the observed state of the Pipeline form the controller
+	// Status communicates the observed state of the Pipeline from the
+	// controller.
 	// +optional
 	Status PipelineStatus `json:"status"`
 }
@@ -70,16 +76,27 @@ type Pipeline struct {
 // PipelineTask defines a task in a Pipeline, passing inputs from both
 // Params and from the output of previous tasks.
 type PipelineTask struct {
-	Name    string  `json:"name,omitempty"`
+	// Name is the name of this task within the context of a Pipeline. Name is
+	// used as a coordinate with the `from` and `runAfter` fields to establish
+	// the execution order of tasks relative to one another.
+	Name string `json:"name,omitempty"`
+	// TaskRef is a reference to a task definition.
 	TaskRef TaskRef `json:"taskRef"`
+
+	// Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False
+	// +optional
+	Retries int `json:"retries,omitempty"`
 
 	// RunAfter is the list of PipelineTask names that should be executed before
 	// this Task executes. (Used to force a specific ordering in graph execution.)
 	// +optional
 	RunAfter []string `json:"runAfter,omitempty"`
 
+	// Resources declares the resources given to this task as inputs and
+	// outputs.
 	// +optional
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
+	// Parameters declares parameters passed to this task.
 	// +optional
 	Params []Param `json:"params,omitempty"`
 }
@@ -90,12 +107,17 @@ type PipelineTaskParam struct {
 	Value string `json:"value"`
 }
 
-// PipelineParam defines arbitrary parameters needed by a pipeline beyond typed inputs
+// PipelineParam defines an arbitrary parameter needed by a Pipeline beyond typed inputs
 // such as resources.
 type PipelineParam struct {
+	// Name is the name of the parameter.
 	Name string `json:"name"`
+	// Description is an informational description of what the parameter
+	// represents.
 	// +optional
 	Description string `json:"description,omitempty"`
+	// Default specifies the value that this parameter should take if a value is
+	// not specified in a PipelineRun.
 	// +optional
 	Default string `json:"default,omitempty"`
 }

@@ -97,7 +97,7 @@ func addLink(pt PipelineTask, previousTask string, nodes map[string]*Node) error
 	if !ok {
 		return fmt.Errorf("Task %s depends on %s but %s wasn't present in Pipeline", pt.Name, previousTask, previousTask)
 	}
-	next, _ := nodes[pt.Name]
+	next := nodes[pt.Name]
 	if err := linkPipelineTasks(prev, next); err != nil {
 		return fmt.Errorf("Couldn't create link from %s to %s: %v", prev.Task.Name, next.Task.Name, err)
 	}

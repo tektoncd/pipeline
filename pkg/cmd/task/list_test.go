@@ -30,7 +30,7 @@ import (
 )
 
 func TestTaskList_Empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	task := Command(p)
@@ -49,7 +49,7 @@ func TestTaskListOnlyTasks(t *testing.T) {
 		tb.Task("bananas", "namespace", cb.TaskCreationTime(clock.Now().Add(-512*time.Hour))),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(pipelinetest.Data{Tasks: tasks})
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 
 	task := Command(p)
