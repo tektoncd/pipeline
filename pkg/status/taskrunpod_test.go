@@ -30,11 +30,14 @@ func TestUpdateStatusFromPod(t *testing.T) {
 	conditionTrue := apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionTrue,
+		Reason:  ReasonSucceeded,
+		Message: "All Steps have completed executing",
 	}
 	conditionBuilding := apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown,
 		Reason: ReasonBuilding,
+		Message: "Not all Steps in the Task have finished executing",
 	}
 	for _, c := range []struct {
 		desc      string
@@ -177,6 +180,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
+					Reason:  ReasonFailed,
 					Message: `"step-failure" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c step-failure`,
 				}},
 			},
@@ -201,6 +205,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
+					Reason:  ReasonFailed,
 					Message: "boom",
 				}},
 			},
@@ -216,6 +221,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
+					Reason:  ReasonFailed,
 					Message: "build failed for unspecified reasons.",
 				}},
 			},

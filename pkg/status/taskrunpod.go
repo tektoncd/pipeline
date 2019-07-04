@@ -59,12 +59,15 @@ func updateCompletedTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 		taskRun.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
+			Reason:  ReasonFailed,
 			Message: msg,
 		})
 	} else {
 		taskRun.Status.SetCondition(&apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
+			Reason:  ReasonSucceeded,
+			Message: "All Steps have completed executing",
 		})
 	}
 	// update tr completed time
@@ -78,6 +81,7 @@ func updateIncompleteTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 			Reason: ReasonBuilding,
+			Message: "Not all Steps in the Task have finished executing",
 		})
 	case corev1.PodPending:
 		var reason, msg string

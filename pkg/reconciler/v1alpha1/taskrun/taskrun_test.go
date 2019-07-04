@@ -1373,6 +1373,8 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), &apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionTrue,
+		Reason:  status.ReasonSucceeded,
+		Message: "All Steps have completed executing",
 	}, ignoreLastTransitionTime); d != "" {
 		t.Errorf("Taskrun Status diff -got, +want: %v", d)
 	}
