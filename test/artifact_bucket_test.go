@@ -32,7 +32,7 @@ import (
 const (
 	helloworldResourceName    = "helloworldgit"
 	addFileTaskName           = "add-file-to-resource-task"
-	readFileTaskName          = "read-new-file-task"
+	runFileTaskName           = "run-new-file-task"
 	bucketTestPipelineName    = "bucket-test-pipeline"
 	bucketTestPipelineRunName = "bucket-test-pipeline-run"
 	systemNamespace           = "tekton-pipelines"
@@ -129,22 +129,22 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("addfile", "ubuntu", tb.Command("/bin/bash"),
-			tb.Args("-c", "echo stuff > /workspace/helloworldgit/newfile"),
+			tb.Args("-c", "'#!/bin/bash\necho hello' > /workspace/helloworldgit/newfile"),
 		),
+		tb.Step("make-executable", "ubuntu", tb.Command("chmod"),
+			tb.Args("+x", "/workspace/helloworldgit/newfile")),
 	))
 	if _, err := c.TaskClient.Create(addFileTask); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", addFileTaskName, err)
 	}
 
-	t.Logf("Creating Task %s", readFileTaskName)
-	readFileTask := tb.Task(readFileTaskName, namespace, tb.TaskSpec(
+	t.Logf("Creating Task %s", runFileTaskName)
+	readFileTask := tb.Task(runFileTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
-		tb.Step("readfile", "ubuntu", tb.Command("/bin/bash"),
-			tb.Args("-c", "cat /workspace/helloworldgit/newfile"),
-		),
+		tb.Step("runfile", "ubuntu", tb.Command("/workspace/helloworld/newfile")),
 	))
 	if _, err := c.TaskClient.Create(readFileTask); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", readFileTaskName, err)
+		t.Fatalf("Failed to create Task `%s`: %s", runFileTaskName, err)
 	}
 
 	t.Logf("Creating Pipeline %s", bucketTestPipelineName)
@@ -154,7 +154,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 			tb.PipelineTaskInputResource("helloworldgit", "source-repo"),
 			tb.PipelineTaskOutputResource("helloworldgit", "source-repo"),
 		),
-		tb.PipelineTask("readfile", readFileTaskName,
+		tb.PipelineTask("runfile", runFileTaskName,
 			tb.PipelineTaskInputResource("helloworldgit", "source-repo", tb.From("addfile")),
 		),
 	))
