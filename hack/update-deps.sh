@@ -23,7 +23,6 @@ source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
 cd ${REPO_ROOT_DIR}
 
 # Ensure we have everything we need under vendor/
-export GO111MODULE=on
 go mod tidy
 go mod vendor
 
