@@ -23,7 +23,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func Test_Invalid_NewStorageResource(t *testing.T) {
@@ -32,79 +33,40 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 		pipelineResource *v1alpha1.PipelineResource
 	}{{
 		name: "wrong-resource-type",
-		pipelineResource: &v1alpha1.PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "gcs-resource",
-			},
-			Spec: v1alpha1.PipelineResourceSpec{
-				Type: v1alpha1.PipelineResourceTypeGit,
-			},
-		},
+		pipelineResource: tb.PipelineResource("gcs-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit),
+		),
 	}, {
 		name: "unimplemented type",
-		pipelineResource: &v1alpha1.PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "gcs-resource",
-			},
-			Spec: v1alpha1.PipelineResourceSpec{
-				Type: v1alpha1.PipelineResourceTypeStorage,
-				Params: []v1alpha1.Param{{
-					Name:  "Location",
-					Value: "gs://fake-bucket",
-				}, {
-					Name:  "type",
-					Value: "non-existent-type",
-				}},
-			},
-		},
+		pipelineResource: tb.PipelineResource("gcs-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("Location", "gs://fake-bucket"),
+				tb.PipelineResourceSpecParam("type", "non-existent-type"),
+			),
+		),
 	}, {
 		name: "no type",
-		pipelineResource: &v1alpha1.PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "gcs-resource",
-			},
-			Spec: v1alpha1.PipelineResourceSpec{
-				Type: v1alpha1.PipelineResourceTypeStorage,
-				Params: []v1alpha1.Param{{
-					Name:  "Location",
-					Value: "gs://fake-bucket",
-				}},
-			},
-		},
+		pipelineResource: tb.PipelineResource("gcs-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("Location", "gs://fake-bucket"),
+			),
+		),
 	}, {
 		name: "no location params",
-		pipelineResource: &v1alpha1.PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "gcs-resource-with-no-location-param",
-			},
-			Spec: v1alpha1.PipelineResourceSpec{
-				Type: v1alpha1.PipelineResourceTypeStorage,
-				Params: []v1alpha1.Param{{
-					Name:  "NotLocation",
-					Value: "doesntmatter",
-				}, {
-					Name:  "type",
-					Value: "gcs",
-				}},
-			},
-		},
+		pipelineResource: tb.PipelineResource("gcs-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("NotLocation", "doesntmatter"),
+				tb.PipelineResourceSpecParam("type", "gcs"),
+			),
+		),
 	}, {
 		name: "location param with empty value",
-		pipelineResource: &v1alpha1.PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "gcs-resource-with-empty-location-param",
-			},
-			Spec: v1alpha1.PipelineResourceSpec{
-				Type: v1alpha1.PipelineResourceTypeStorage,
-				Params: []v1alpha1.Param{{
-					Name:  "Location",
-					Value: "",
-				}, {
-					Name:  "type",
-					Value: "gcs",
-				}},
-			},
-		},
+		pipelineResource: tb.PipelineResource("gcs-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("Location", ""),
+				tb.PipelineResourceSpecParam("type", "gcs"),
+			),
+		),
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -117,29 +79,13 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 }
 
 func Test_Valid_NewGCSResource(t *testing.T) {
-	pr := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "gcs-resource",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeStorage,
-			Params: []v1alpha1.Param{{
-				Name:  "Location",
-				Value: "gs://fake-bucket",
-			}, {
-				Name:  "type",
-				Value: "gcs",
-			}, {
-				Name:  "dir",
-				Value: "anything",
-			}},
-			SecretParams: []v1alpha1.SecretParam{{
-				SecretKey:  "secretKey",
-				SecretName: "secretName",
-				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
-			}},
-		},
-	}
+	pr := tb.PipelineResource("gcs-resource", "default", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeStorage,
+		tb.PipelineResourceSpecParam("Location", "gs://fake-bucket"),
+		tb.PipelineResourceSpecParam("type", "gcs"),
+		tb.PipelineResourceSpecParam("dir", "anything"),
+		tb.PipelineResourceSpecSecretParam("GOOGLE_APPLICATION_CREDENTIALS", "secretName", "secretKey"),
+	))
 	expectedGCSResource := &v1alpha1.GCSResource{
 		Name:     "gcs-resource",
 		Location: "gs://fake-bucket",
@@ -179,23 +125,12 @@ func Test_GCSGetReplacements(t *testing.T) {
 }
 
 func Test_GetParams(t *testing.T) {
-	pr := &v1alpha1.PipelineResource{
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeStorage,
-			Params: []v1alpha1.Param{{
-				Name:  "type",
-				Value: "gcs",
-			}, {
-				Name:  "location",
-				Value: "gs://some-bucket.zip",
-			}},
-			SecretParams: []v1alpha1.SecretParam{{
-				SecretKey:  "test-secret-key",
-				SecretName: "test-secret-name",
-				FieldName:  "test-field-name",
-			}},
-		},
-	}
+	pr := tb.PipelineResource("gcs-resource", "default", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeStorage,
+		tb.PipelineResourceSpecParam("Location", "gcs://some-bucket.zip"),
+		tb.PipelineResourceSpecParam("type", "gcs"),
+		tb.PipelineResourceSpecSecretParam("test-field-name", "test-secret-name", "test-secret-key"),
+	))
 	gcsResource, err := v1alpha1.NewStorageResource(pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())

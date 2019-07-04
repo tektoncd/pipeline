@@ -23,188 +23,91 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestResourceValidation_Invalid(t *testing.T) {
 	tests := []struct {
 		name string
-		res  v1alpha1.PipelineResource
+		res  *v1alpha1.PipelineResource
 		want *apis.FieldError
 	}{
 		{
 			name: "cluster with invalid url",
-			res: v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster-resource",
-					Namespace: "foo",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.Param{{
-						Name:  "name",
-						Value: "test-cluster-resource",
-					}, {
-						Name:  "url",
-						Value: "10.10.10",
-					}, {
-						Name:  "username",
-						Value: "admin",
-					}, {
-						Name:  "cadata",
-						Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-					}, {
-						Name:  "token",
-						Value: "my-token",
-					},
-					},
-				},
-			},
+			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeCluster,
+				tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
+				tb.PipelineResourceSpecParam("url", "10.10.10"),
+				tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
+				tb.PipelineResourceSpecParam("username", "admin"),
+				tb.PipelineResourceSpecParam("token", "my-token"),
+			)),
 			want: apis.ErrInvalidValue("10.10.10", "URL"),
 		},
 		{
 			name: "cluster with missing username",
-			res: v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster-resource",
-					Namespace: "foo",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.Param{{
-						Name:  "name",
-						Value: "test-cluster-resource",
-					}, {
-						Name:  "url",
-						Value: "http://10.10.10.10",
-					}, {
-						Name:  "cadata",
-						Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-					}, {
-						Name:  "token",
-						Value: "my-token",
-					},
-					},
-				},
-			},
+			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeCluster,
+				tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
+				tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
+				tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
+				tb.PipelineResourceSpecParam("token", "my-token"),
+			)),
 			want: apis.ErrMissingField("username param"),
 		},
 		{
 			name: "cluster with missing name",
-			res: v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster-resource",
-					Namespace: "foo",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.Param{{
-						Name:  "url",
-						Value: "http://10.10.10.10",
-					}, {
-						Name:  "cadata",
-						Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-					}, {
-						Name:  "token",
-						Value: "my-token",
-					},
-					},
-				},
-			},
+			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeCluster,
+				tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
+				tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
+				tb.PipelineResourceSpecParam("token", "my-token"),
+			)),
 			want: apis.ErrMissingField("name param"),
 		},
 		{
 			name: "cluster with missing cadata",
-			res: v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-cluster-resource",
-					Namespace: "foo",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.Param{{
-						Name:  "Name",
-						Value: "test-cluster-resource",
-					}, {
-						Name:  "url",
-						Value: "http://10.10.10.10",
-					}, {
-						Name:  "username",
-						Value: "admin",
-					}, {
-						Name:  "token",
-						Value: "my-token",
-					},
-					},
-				},
-			},
+			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeCluster,
+				tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
+				tb.PipelineResourceSpecParam("Name", "admin"),
+				tb.PipelineResourceSpecParam("token", "my-token"),
+				tb.PipelineResourceSpecParam("username", "admin"),
+			)),
 			want: apis.ErrMissingField("CAData param"),
 		}, {
 			name: "storage with no type",
-			res: v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "storage-resource",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeStorage,
-					Params: []v1alpha1.Param{{
-						Name:  "no-type-param",
-						Value: "sometype",
-					}},
-				},
-			},
+			res: tb.PipelineResource("storage-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("no-type-param", "something"),
+			)),
 			want: apis.ErrMissingField("spec.params.type"),
 		}, {
 			name: "storage with unimplemented type",
-			res: v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "storage-resource",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeStorage,
-					Params: []v1alpha1.Param{{
-						Name:  "type",
-						Value: "not-implemented-yet",
-					}},
-				},
-			},
+			res: tb.PipelineResource("storage-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("type", "not-implemented-yet"),
+			)),
 			want: apis.ErrInvalidValue("not-implemented-yet", "spec.params.type"),
 		}, {
 			name: "storage with gcs type with no location param",
-			res: v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "storage-resource",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeStorage,
-					Params: []v1alpha1.Param{{
-						Name:  "type",
-						Value: "gcs",
-					}},
-				},
-			},
+			res: tb.PipelineResource("storage-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("type", "gcs"),
+			)),
 			want: apis.ErrMissingField("spec.params.location"),
 		}, {
 			name: "storage with gcs type with empty location param",
-			res: v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "storage-resource",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeStorage,
-					Params: []v1alpha1.Param{{
-						Name:  "type",
-						Value: "gcs",
-					}, {
-						Name:  "location",
-						Value: "",
-					}},
-				},
-			},
+			res: tb.PipelineResource("storage-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("type", "gcs"),
+				tb.PipelineResourceSpecParam("location", ""),
+			)),
 			want: apis.ErrMissingField("spec.params.location"),
 		}, {
-			name: "invalid resoure type",
-			res: v1alpha1.PipelineResource{
+			name: "invalid resource type",
+			res: &v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "invalid-resource",
 				},
@@ -219,39 +122,21 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.res.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), tt.want.Error()); d != "" {
-				t.Errorf("PipleineResource.Validate/%s (-want, +got) = %v", tt.name, d)
+				t.Errorf("PipelineResource.Validate/%s (-want, +got) = %v", tt.name, d)
 			}
 		})
 	}
 }
 
 func TestClusterResourceValidation_Valid(t *testing.T) {
-	res := &v1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-cluster-resource",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeCluster,
-			Params: []v1alpha1.Param{{
-				Name:  "name",
-				Value: "test-cluster-resource",
-			}, {
-				Name:  "url",
-				Value: "http://10.10.10.10",
-			}, {
-				Name:  "username",
-				Value: "admin",
-			}, {
-				Name:  "cadata",
-				Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-			}, {
-				Name:  "token",
-				Value: "my-token",
-			},
-			},
-		},
-	}
+	res := tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeCluster,
+		tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
+		tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
+		tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
+		tb.PipelineResourceSpecParam("username", "admin"),
+		tb.PipelineResourceSpecParam("token", "my-token"),
+	))
 	if err := res.Validate(context.Background()); err != nil {
 		t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
 	}

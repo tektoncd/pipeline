@@ -231,6 +231,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		),
 		tb.TaskRunServiceAccount("sa"),
 		tb.TaskRunTimeout(2*time.Minute),
+		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
 	))
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -246,6 +247,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 				}},
 			},
 			ServiceAccount: "sa",
+			Status:         v1alpha1.TaskRunSpecStatusCancelled,
 			Timeout:        &metav1.Duration{Duration: 2 * time.Minute},
 		},
 	}
