@@ -2,6 +2,12 @@
 
 Prints shell completion scripts
 
+### Usage
+
+```
+tkn completion [SHELL]
+```
+
 ### Synopsis
 
 
@@ -13,13 +19,8 @@ Supported Shells:
 	- zsh
 
 
-```
-tkn completion [SHELL]
-```
-
 ### Examples
 
-```
 
   # generate completion code for bash
   source <(tkn completion bash)
@@ -27,7 +28,6 @@ tkn completion [SHELL]
   # generate completion code for zsh
   source <(tkn completion zsh)
 
-```
 
 ### Options
 

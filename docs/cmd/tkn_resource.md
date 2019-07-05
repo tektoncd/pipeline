@@ -2,6 +2,8 @@
 
 Manage pipeline resources
 
+***Aliases**: res,resources*
+
 ### Synopsis
 
 Manage pipeline resources

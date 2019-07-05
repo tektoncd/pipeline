@@ -2,17 +2,18 @@
 
 Show the logs of PipelineRun
 
-### Synopsis
-
-Show the logs of PipelineRun
+### Usage
 
 ```
 tkn pipelinerun logs
 ```
 
+### Synopsis
+
+Show the logs of PipelineRun
+
 ### Examples
 
-```
 
   # show the logs of PipelineRun named "foo" from the namesspace "bar"
     tkn pipelinerun logs foo -n bar
@@ -24,7 +25,6 @@ tkn pipelinerun logs
     from the namespace "foo"
     tkn pr logs microservice-1 -a -n foo
    
-```
 
 ### Options
 

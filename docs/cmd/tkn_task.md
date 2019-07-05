@@ -2,6 +2,8 @@
 
 Manage tasks
 
+***Aliases**: t,tasks*
+
 ### Synopsis
 
 Manage tasks

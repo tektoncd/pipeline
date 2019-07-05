@@ -74,13 +74,13 @@ func startCommand(p cli.Params) *cobra.Command {
 	)
 
 	c := &cobra.Command{
-		Use:     "start",
+		Use:     "start pipeline [RESOURCES...] [PARAMS...] [SERVICEACCOUNT]",
 		Aliases: []string{"trigger"},
 		Short:   "Start pipelines",
 		Example: `
-  # start pipeline foo by creating a pipelienrun named "foo-run-xyz123" from the namespace "bar"
-    tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s ServiceAccountName  -n bar
-   `,
+# start pipeline foo by creating a pipelienrun named "foo-run-xyz123" from the namespace "bar"
+tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s ServiceAccountName  -n bar
+`,
 		SilenceUsage: true,
 		Args:         NameArg(p),
 		RunE: func(cmd *cobra.Command, args []string) error {

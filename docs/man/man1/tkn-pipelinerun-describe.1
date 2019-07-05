@@ -29,7 +29,7 @@ Describe a pipelinerun in a namespace
 
 .PP
 \fB\-o\fP, \fB\-\-output\fP=""
-    Output format. One of: json|yaml|name|template|go\-template|go\-template\-file|templatefile|jsonpath|jsonpath\-file.
+    Output format. One of: json|yaml|name|template|go\-template|go\-template\-file|templatefile|jsonpath\-file|jsonpath.
 
 .PP
 \fB\-\-template\fP=""
@@ -48,19 +48,13 @@ Describe a pipelinerun in a namespace
 
 
 .SH EXAMPLE
+
+.SH Describe a PipelineRun of name 'foo' in namespace 'bar'
 .PP
-.RS
-
-.nf
-
-# Describe a PipelineRun of name 'foo' in namespace 'bar'
 tkn pipelinerun describe foo \-n bar
 
+.PP
 tkn pr desc foo \-n bar",
-
-
-.fi
-.RE
 
 
 .SH SEE ALSO

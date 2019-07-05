@@ -2,13 +2,17 @@
 
 Lists pipelines in a namespace
 
-### Synopsis
+***Aliases**: ls*
 
-Lists pipelines in a namespace
+### Usage
 
 ```
 tkn pipeline list
 ```
+
+### Synopsis
+
+Lists pipelines in a namespace
 
 ### Options
 

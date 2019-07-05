@@ -43,20 +43,15 @@ Show taskruns logs
 
 
 .SH EXAMPLE
+
+.SH show the logs of TaskRun named "foo" from the namespace "bar"
 .PP
-.RS
-
-.nf
-
-# show the logs of TaskRun named "foo" from the namespace "bar"
 tkn taskrun logs foo \-n bar
 
-# show the live logs of TaskRun named "foo" from the namespace "bar" 
+
+.SH show the live logs of TaskRun named "foo" from the namespace "bar"
+.PP
 tkn taskrun logs \-f foo \-n bar
-
-
-.fi
-.RE
 
 
 .SH SEE ALSO

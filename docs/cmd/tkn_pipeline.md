@@ -2,6 +2,8 @@
 
 Manage pipelines
 
+***Aliases**: p,pipelines*
+
 ### Synopsis
 
 Manage pipelines

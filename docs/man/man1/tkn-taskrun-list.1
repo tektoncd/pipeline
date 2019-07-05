@@ -29,7 +29,7 @@ Lists taskruns in a namespace
 
 .PP
 \fB\-o\fP, \fB\-\-output\fP=""
-    Output format. One of: json|yaml|name|template|go\-template|go\-template\-file|templatefile|jsonpath\-file|jsonpath.
+    Output format. One of: json|yaml|name|template|go\-template|go\-template\-file|templatefile|jsonpath|jsonpath\-file.
 
 .PP
 \fB\-\-template\fP=""
@@ -48,20 +48,15 @@ Lists taskruns in a namespace
 
 
 .SH EXAMPLE
+
+.SH List all TaskRuns of Task name 'foo'
 .PP
-.RS
-
-.nf
-
-# List all TaskRuns of Task name 'foo'
 tkn taskrun list  foo \-n bar
 
-# List all taskruns in a namespaces 'foo'
+
+.SH List all taskruns in a namespaces 'foo'
+.PP
 tkn pr list \-n foo \\n",
-
-
-.fi
-.RE
 
 
 .SH SEE ALSO

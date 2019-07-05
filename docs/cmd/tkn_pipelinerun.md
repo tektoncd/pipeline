@@ -2,6 +2,8 @@
 
 Manage pipelineruns
 
+***Aliases**: pr,pipelineruns*
+
 ### Synopsis
 
 Manage pipelineruns

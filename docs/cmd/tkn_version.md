@@ -2,13 +2,15 @@
 
 Prints version information
 
-### Synopsis
-
-Prints version information
+### Usage
 
 ```
 tkn version
 ```
+
+### Synopsis
+
+Prints version information
 
 ### Options
 

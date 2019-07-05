@@ -10,7 +10,7 @@ tkn\-pipeline\-start \- Start pipelines
 
 .SH SYNOPSIS
 .PP
-\fBtkn pipeline start\fP
+\fBtkn pipeline start pipeline [RESOURCES...] [PARAMS...] [SERVICEACCOUNT]\fP
 
 
 .SH DESCRIPTION
@@ -56,12 +56,12 @@ Parameters, at least those that have no default value
 
 .SH EXAMPLE
 .PP
+To run a Pipeline that has one git resource and no parameter.
+
+.PP
 .RS
 
 .nf
-To run a Pipeline that has one git resource and no parameter.
-
-```shell
 $ tkn pipeline start \-\-resource source=samples\-git
 
 .fi
@@ -76,15 +76,12 @@ two parameters (foo and bar)
 
 .nf
 $ tkn pipeline start \-\-resource source=samples\-git \\
-	\-\-resource image=my\-image \\
-	\-\-param foo=yay \\
-	\-\-param bar=10
+    \-\-resource image=my\-image \\
+    \-\-param foo=yay \\
+    \-\-param bar=10
 
 .fi
 .RE
-
-.PP
-```
 
 
 .SH SEE ALSO

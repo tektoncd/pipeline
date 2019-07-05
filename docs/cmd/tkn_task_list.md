@@ -2,13 +2,17 @@
 
 Lists tasks in a namespace
 
-### Synopsis
+***Aliases**: ls*
 
-Lists tasks in a namespace
+### Usage
 
 ```
 tkn task list
 ```
+
+### Synopsis
+
+Lists tasks in a namespace
 
 ### Options
 

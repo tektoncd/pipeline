@@ -29,7 +29,7 @@ Lists pipelineruns in a namespace
 
 .PP
 \fB\-o\fP, \fB\-\-output\fP=""
-    Output format. One of: json|yaml|name|template|go\-template|go\-template\-file|templatefile|jsonpath|jsonpath\-file.
+    Output format. One of: json|yaml|name|go\-template\-file|templatefile|template|go\-template|jsonpath|jsonpath\-file.
 
 .PP
 \fB\-\-template\fP=""
@@ -48,20 +48,15 @@ Lists pipelineruns in a namespace
 
 
 .SH EXAMPLE
+
+.SH List all PipelineRuns of Pipeline name 'foo'
 .PP
-.RS
-
-.nf
-
-# List all PipelineRuns of Pipeline name 'foo'
 tkn pipelinerun list foo \-n bar
 
-# List all pipelineruns in a namespaces 'foo'
+
+.SH List all pipelineruns in a namespaces 'foo'
+.PP
 tkn pr list \-n foo",
-
-
-.fi
-.RE
 
 
 .SH SEE ALSO

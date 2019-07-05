@@ -2,17 +2,18 @@
 
 Show taskruns logs
 
-### Synopsis
-
-Show taskruns logs
+### Usage
 
 ```
 tkn taskrun logs
 ```
 
+### Synopsis
+
+Show taskruns logs
+
 ### Examples
 
-```
 
 # show the logs of TaskRun named "foo" from the namespace "bar"
 tkn taskrun logs foo -n bar
@@ -20,7 +21,6 @@ tkn taskrun logs foo -n bar
 # show the live logs of TaskRun named "foo" from the namespace "bar" 
 tkn taskrun logs -f foo -n bar
 
-```
 
 ### Options
 

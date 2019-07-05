@@ -2,6 +2,8 @@
 
 Manage taskruns
 
+***Aliases**: tr,taskruns*
+
 ### Synopsis
 
 Manage taskruns
