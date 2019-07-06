@@ -28,7 +28,7 @@ import (
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-const templ = `Name:	{{ .PipelineName }}
+const describeTemplate = `Name:	{{ .PipelineName }}
 
 Resources
 {{- $rl := len .Pipeline.Spec.Resources }}{{ if eq $rl 0 }}
@@ -117,7 +117,7 @@ func printPipelineDescription(out io.Writer, p cli.Params, pname string) error {
 	}
 
 	w := tabwriter.NewWriter(out, 0, 5, 3, ' ', tabwriter.TabIndent)
-	t := template.Must(template.New("Describe Pipeline").Funcs(funcMap).Parse(templ))
+	t := template.Must(template.New("Describe Pipeline").Funcs(funcMap).Parse(describeTemplate))
 	err = t.Execute(w, data)
 	if err != nil {
 		return err
