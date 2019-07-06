@@ -1,6 +1,8 @@
 all: bin/tkn test
 
-bin/%: cmd/%
+FORCE:
+
+bin/%: cmd/% FORCE
 	@go build -v -o $@$(EXEC_EXT) ./$<
 
 check: lint test
