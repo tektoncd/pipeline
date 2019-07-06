@@ -19,6 +19,7 @@ import (
 	"io"
 	"os"
 	"text/tabwriter"
+	"text/template"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -31,12 +32,20 @@ import (
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-const (
-	emptyMsg = "No pipelines found"
-	header   = "NAME\tAGE\tLAST RUN\tSTARTED\tDURATION\tSTATUS"
-	body     = "%s\t%s\t%s\t%s\t%s\t%s\n"
-	blank    = "---"
-)
+const listTemplate = `{{- $pl := len .Pipelines.Items }}{{ if eq $pl 0 -}}
+No pipelines
+{{- else -}}
+NAME	AGE	LAST RUN	STARTED	DURATION	STATUS
+{{- range $_, $p := .Pipelines.Items }}
+{{- $pr := accessMap $.PipelineRuns $p.Name }}
+{{- if $pr }}
+{{ $p.Name }}	{{ formatAge $p.CreationTimestamp $.Params.Time }}	{{ $pr.Name }}	{{ formatAge $pr.Status.StartTime $.Params.Time }}	{{ formatDuration $pr.Status.StartTime $pr.Status.CompletionTime }}	{{ index $pr.Status.Conditions 0 | formatCondition }}
+{{- else }}
+{{ $p.Name }}	{{ formatAge $p.CreationTimestamp $.Params.Time }}	---	---	---	---
+{{- end }}
+{{- end }}
+{{- end }}
+`
 
 func listCommand(p cli.Params) *cobra.Command {
 	f := cliopts.NewPrintFlags("list")
@@ -83,38 +92,36 @@ func printPipelineDetails(s *cli.Stream, p cli.Params) error {
 		return err
 	}
 
-	if len(ps.Items) == 0 {
-		fmt.Fprintln(s.Err, emptyMsg)
-		return nil
+	var data = struct {
+		Pipelines    *v1alpha1.PipelineList
+		PipelineRuns pipelineruns
+		Params       cli.Params
+	}{
+		Pipelines:    ps,
+		PipelineRuns: prs,
+		Params:       p,
+	}
+
+	funcMap := template.FuncMap{
+		"accessMap": func(prs pipelineruns, name string) *v1alpha1.PipelineRun {
+			if pr, ok := prs[name]; ok {
+				return &pr
+			}
+
+			return nil
+		},
+		"formatAge":       formatted.Age,
+		"formatDuration":  formatted.Duration,
+		"formatCondition": formatted.Condition,
 	}
 
 	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
-	fmt.Fprintln(w, header)
-
-	for _, pipeline := range ps.Items {
-		pr, ok := prs[pipeline.Name]
-		if !ok {
-			fmt.Fprintf(w, body,
-				pipeline.Name,
-				formatted.Age(pipeline.CreationTimestamp, p.Time()),
-				blank,
-				blank,
-				blank,
-				blank,
-			)
-			continue
-		}
-
-		fmt.Fprintf(w, body,
-			pipeline.Name,
-			formatted.Age(pipeline.CreationTimestamp, p.Time()),
-			pr.Name,
-			formatted.Age(*pr.Status.StartTime, p.Time()),
-			formatted.Duration(pr.Status.StartTime, pr.Status.CompletionTime),
-			formatted.Condition(pr.Status.Conditions[0]),
-		)
-
+	t := template.Must(template.New("List Pipeline").Funcs(funcMap).Parse(listTemplate))
+	err = t.Execute(w, data)
+	if err != nil {
+		return err
 	}
+
 	return w.Flush()
 }
 

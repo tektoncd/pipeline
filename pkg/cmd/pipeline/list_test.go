@@ -29,7 +29,7 @@ func TestPipelinesList_empty(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	tu.AssertOutput(t, emptyMsg+"\n", output)
+	tu.AssertOutput(t, "No pipelines\n", output)
 }
 
 func TestPipelineList_only_pipelines(t *testing.T) {
