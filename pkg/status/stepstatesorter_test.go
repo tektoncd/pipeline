@@ -14,11 +14,12 @@
 package status
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
-	"testing"
 )
 
 func TestSortTaskRunStepOrder(t *testing.T) {
@@ -42,7 +43,6 @@ func TestSortTaskRunStepOrder(t *testing.T) {
 			},
 		},
 		Name: "world",
-
 	}, {
 		ContainerState: corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{
@@ -59,7 +59,6 @@ func TestSortTaskRunStepOrder(t *testing.T) {
 			},
 		},
 		Name: "hello",
-
 	}, {
 
 		ContainerState: corev1.ContainerState{
@@ -73,7 +72,7 @@ func TestSortTaskRunStepOrder(t *testing.T) {
 
 	SortTaskRunStepOrder(taskRunStatusSteps, task.Spec.Steps)
 	actualStepOrder := []string{}
-	for _, state :=  range(taskRunStatusSteps) {
+	for _, state := range taskRunStatusSteps {
 		actualStepOrder = append(actualStepOrder, state.Name)
 	}
 

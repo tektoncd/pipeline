@@ -14,17 +14,17 @@
 package status
 
 import (
+	"sort"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"sort"
 )
-
 
 // StepStateSorter implements a sorting mechanism to align the order of the steps in TaskRun
 // with the spec steps in Task.
 type StepStateSorter struct {
 	taskRunSteps []v1alpha1.StepState
-	mapForSort map[string]int
+	mapForSort   map[string]int
 }
 
 func (trt *StepStateSorter) Init(taskRunSteps []v1alpha1.StepState, taskSpecSteps []corev1.Container) {
@@ -62,7 +62,7 @@ func (trt *StepStateSorter) Swap(i, j int) {
 	trt.changeIndex(j)
 	// The index j is unable to reach the last index.
 	// When i reaches the end of the array, we need to check whether the last one needs a swap.
-	if (i == trt.Len() - 1 ) {
+	if i == trt.Len()-1 {
 		trt.changeIndex(i)
 	}
 }
