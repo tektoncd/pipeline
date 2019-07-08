@@ -25,7 +25,6 @@ import (
 	"github.com/knative/pkg/apis"
 	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/knative/pkg/configmap"
-	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
@@ -56,18 +55,7 @@ func getPipelineRunController(t *testing.T, d test.Data, recorder record.EventRe
 	stopCh := make(chan struct{})
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	logger := zap.New(observer).Sugar()
-	store := apisconfig.NewStore(logger)
-	defaultConfig := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "tekton-pipelines",
-			Name:      "config-defaults",
-		},
-		Data: map[string]string{
-			"default-timeout-minutes": "60",
-		},
-	}
-	store.OnConfigChanged(defaultConfig)
-	th := reconciler.NewTimeoutHandler(stopCh, logger, store)
+	th := reconciler.NewTimeoutHandler(stopCh, logger)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
@@ -643,7 +631,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-timeout", "foo",
 		tb.PipelineRunSpec("test-pipeline",
 			tb.PipelineRunServiceAccount("test-sa"),
-			tb.PipelineRunTimeout(&metav1.Duration{Duration: 12 * time.Hour}),
+			tb.PipelineRunTimeout(12*time.Hour),
 		),
 		tb.PipelineRunStatus(
 			tb.PipelineRunStartTime(time.Now().AddDate(0, 0, -1))),
@@ -1001,7 +989,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 			prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-retry-run-with-timeout", "foo",
 				tb.PipelineRunSpec("test-pipeline-retry",
 					tb.PipelineRunServiceAccount("test-sa"),
-					tb.PipelineRunTimeout(&metav1.Duration{Duration: 12 * time.Hour}),
+					tb.PipelineRunTimeout(12*time.Hour),
 				),
 				tb.PipelineRunStatus(
 					tb.PipelineRunStartTime(time.Now().AddDate(0, 0, -1))),

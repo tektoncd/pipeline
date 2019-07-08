@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
-	logtesting "github.com/knative/pkg/logging/testing"
-	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -25,21 +24,6 @@ var (
 	simpleTask = tb.Task("test-task", testNs, tb.TaskSpec(simpleStep))
 )
 
-func getStore(t *testing.T) *apisconfig.Store {
-	store := apisconfig.NewStore(logtesting.TestLogger(t))
-	defaultConfig := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "tekton-pipelines",
-			Name:      "config-defaults",
-		},
-		Data: map[string]string{
-			"default-timeout-minutes": "60",
-		},
-	}
-	store.OnConfigChanged(defaultConfig)
-	return store
-}
-
 func TestTaskRunCheckTimeouts(t *testing.T) {
 	taskRunTimedout := tb.TaskRun("test-taskrun-run-timedout", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
@@ -52,6 +36,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 
 	taskRunRunning := tb.TaskRun("test-taskrun-running", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
+		tb.TaskRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
 	), tb.TaskRunStatus(tb.Condition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
@@ -60,6 +45,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 
 	taskRunDone := tb.TaskRun("test-taskrun-completed", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
+		tb.TaskRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
 	), tb.TaskRunStatus(tb.Condition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionTrue}),
@@ -68,6 +54,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	taskRunCancelled := tb.TaskRun("test-taskrun-run-cancelled", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name),
 		tb.TaskRunCancelled,
+		tb.TaskRunTimeout(1*time.Second),
 	), tb.TaskRunStatus(tb.Condition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
@@ -87,7 +74,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
 
-	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar(), getStore(t))
+	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	gotCallback := sync.Map{}
 	f := func(tr interface{}) {
 		trNew := tr.(*v1alpha1.TaskRun)
@@ -146,7 +133,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	prTimeout := tb.PipelineRun("test-pipeline-run-with-timeout", testNs,
 		tb.PipelineRunSpec("test-pipeline",
 			tb.PipelineRunServiceAccount("test-sa"),
-			tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Second}),
+			tb.PipelineRunTimeout(1*time.Second),
 		),
 		tb.PipelineRunStatus(
 			tb.PipelineRunStartTime(time.Now().AddDate(0, 0, -1))),
@@ -154,7 +141,9 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	ts := tb.Task("hello-world", testNs)
 
 	prRunning := tb.PipelineRun("test-pipeline-running", testNs,
-		tb.PipelineRunSpec("test-pipeline"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
+		),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown}),
@@ -162,7 +151,9 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 		),
 	)
 	prDone := tb.PipelineRun("test-pipeline-done", testNs,
-		tb.PipelineRunSpec("test-pipeline"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
+		),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue}),
@@ -171,6 +162,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	prCancelled := tb.PipelineRun("test-pipeline-cancel", testNs,
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa"),
 			tb.PipelineRunCancelled,
+			tb.PipelineRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
 		),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -190,7 +182,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	c, _ := test.SeedTestData(t, d)
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)
-	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar(), getStore(t))
+	th := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	defer close(stopCh)
 
 	gotCallback := sync.Map{}
@@ -265,7 +257,7 @@ func TestWithNoFunc(t *testing.T) {
 	stopCh := make(chan struct{})
 	c, _ := test.SeedTestData(t, d)
 	observer, _ := observer.New(zap.InfoLevel)
-	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar(), getStore(t))
+	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	defer func() {
 		// this delay will ensure there is no race condition between stopCh/ timeout channel getting triggered
 		time.Sleep(10 * time.Millisecond)
@@ -276,35 +268,6 @@ func TestWithNoFunc(t *testing.T) {
 	}()
 	testHandler.CheckTimeouts(c.Kube, c.Pipeline)
 
-}
-
-// TestGetTimeout checks that the timeout calculated for a given taskrun falls
-// back to the default taskrun timeout when none is provided.
-func TestGetTimeout(t *testing.T) {
-	testCases := []struct {
-		description      string
-		inputDuration    *metav1.Duration
-		expectedDuration time.Duration
-	}{
-		{
-			description:      "returns same duration as input when input is not nil",
-			inputDuration:    &metav1.Duration{Duration: 2 * time.Second},
-			expectedDuration: 2 * time.Second,
-		},
-		{
-			description:      "returns an end time using the default timeout if a TaskRun's timeout is nil",
-			inputDuration:    nil,
-			expectedDuration: 60 * time.Minute,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.description, func(t *testing.T) {
-			receivedDuration := GetTimeout(tc.inputDuration, 60)
-			if receivedDuration != tc.expectedDuration {
-				t.Errorf("expected %q received %q", tc.expectedDuration.String(), receivedDuration.String())
-			}
-		})
-	}
 }
 
 // TestSetTaskRunTimer checks that the SetTaskRunTimer method correctly calls the TaskRun
@@ -321,7 +284,7 @@ func TestSetTaskRunTimer(t *testing.T) {
 
 	stopCh := make(chan struct{})
 	observer, _ := observer.New(zap.InfoLevel)
-	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar(), getStore(t))
+	testHandler := NewTimeoutHandler(stopCh, zap.New(observer).Sugar())
 	timerDuration := 50 * time.Millisecond
 	timerFailDeadline := 100 * time.Millisecond
 	doneCh := make(chan struct{})

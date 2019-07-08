@@ -24,16 +24,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (tr *TaskRun) SetDefaults(ctx context.Context) {
-	tr.Spec.SetDefaults(ctx)
+func (pr *PipelineRun) SetDefaults(ctx context.Context) {
+	pr.Spec.SetDefaults(ctx)
 }
 
-func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
-	if trs.TaskRef != nil && trs.TaskRef.Kind == "" {
-		trs.TaskRef.Kind = NamespacedTaskKind
-	}
+func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	cfg := config.FromContextOrDefaults(ctx)
-	if trs.Timeout == nil {
-		trs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+	if prs.Timeout == nil {
+		prs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
 	}
 }

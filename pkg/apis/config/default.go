@@ -30,20 +30,20 @@ const (
 	defaultTimeoutMinutesKey = "default-timeout-minutes"
 )
 
-// ConfigDefault holds the default configurations
+// Defaults holds the default configurations
 // +k8s:deepcopy-gen=true
-type ConfigDefault struct {
+type Defaults struct {
 	DefaultTimeoutMinutes int
 }
 
 // Equals returns true if two Configs are identical
-func (cfg *ConfigDefault) Equals(other *ConfigDefault) bool {
+func (cfg *Defaults) Equals(other *Defaults) bool {
 	return other.DefaultTimeoutMinutes == cfg.DefaultTimeoutMinutes
 }
 
-// NewConfigDefaultFromMap returns a Config given a map corresponding to a ConfigMap
-func NewConfigDefaultFromMap(cfgMap map[string]string) (*ConfigDefault, error) {
-	tc := ConfigDefault{
+// NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
+func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
+	tc := Defaults{
 		DefaultTimeoutMinutes: DefaultTimeoutMinutes,
 	}
 	if defaultTimeoutMin, ok := cfgMap[defaultTimeoutMinutesKey]; ok {
@@ -57,7 +57,7 @@ func NewConfigDefaultFromMap(cfgMap map[string]string) (*ConfigDefault, error) {
 	return &tc, nil
 }
 
-// NewConfigDefaultFromConfigMap returns a Config for the given configmap
-func NewConfigDefaultFromConfigMap(config *corev1.ConfigMap) (*ConfigDefault, error) {
-	return NewConfigDefaultFromMap(config.Data)
+// NewDefaultsFromConfigMap returns a Config for the given configmap
+func NewDefaultsFromConfigMap(config *corev1.ConfigMap) (*Defaults, error) {
+	return NewDefaultsFromMap(config.Data)
 }

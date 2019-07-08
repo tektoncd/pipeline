@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
@@ -423,6 +424,8 @@ func TaskRunAnnotation(key, value string) TaskRunOp {
 func TaskRunSpec(ops ...TaskRunSpecOp) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {
 		spec := &tr.Spec
+		// Set a default timeout
+		spec.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
 		for _, op := range ops {
 			op(spec)
 		}

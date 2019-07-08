@@ -101,7 +101,7 @@ func TestPipelineRun(t *testing.T) {
 	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccount("sa"),
 		tb.PipelineRunParam("first-param", "first-value"),
-		tb.PipelineRunTimeout(&metav1.Duration{Duration: 1 * time.Hour}),
+		tb.PipelineRunTimeout(1*time.Hour),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 		tb.PipelineRunServiceAccountTask("foo", "sa-2"),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(

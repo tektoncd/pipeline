@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -251,6 +252,8 @@ func PipelineRunSpec(name string, ops ...PipelineRunSpecOp) PipelineRunOp {
 		prs := &pr.Spec
 
 		prs.PipelineRef.Name = name
+		// Set a default timeout
+		prs.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
 
 		for _, op := range ops {
 			op(prs)
@@ -331,9 +334,9 @@ func PipelineRunParam(name, value string) PipelineRunSpecOp {
 }
 
 // PipelineRunTimeout sets the timeout to the PipelineSpec.
-func PipelineRunTimeout(duration *metav1.Duration) PipelineRunSpecOp {
+func PipelineRunTimeout(duration time.Duration) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Timeout = duration
+		prs.Timeout = &metav1.Duration{Duration: duration}
 	}
 }
 

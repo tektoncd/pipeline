@@ -26,7 +26,6 @@ import (
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
-	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
@@ -70,7 +69,6 @@ type Reconciler struct {
 	tracker           tracker.Interface
 	cache             *entrypoint.Cache
 	timeoutHandler    *reconciler.TimeoutSet
-	store             *apisconfig.Store
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -86,7 +84,6 @@ func NewController(
 	podInformer coreinformers.PodInformer,
 	entrypointCache *entrypoint.Cache,
 	timeoutHandler *reconciler.TimeoutSet,
-	store *apisconfig.Store,
 ) *controller.Impl {
 
 	c := &Reconciler{
@@ -96,10 +93,6 @@ func NewController(
 		clusterTaskLister: clusterTaskInformer.Lister(),
 		resourceLister:    resourceInformer.Lister(),
 		timeoutHandler:    timeoutHandler,
-		store:             store,
-	}
-	if c.store == nil {
-		c.store = apisconfig.NewStore(c.Logger.Named("config-store"))
 	}
 	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
@@ -540,8 +533,7 @@ func (c *Reconciler) checkTimeout(tr *v1alpha1.TaskRun, ts *v1alpha1.TaskSpec, d
 		return false, nil
 	}
 
-	cfg := c.store.Load()
-	timeout := reconciler.GetTimeout(tr.Spec.Timeout, cfg.ConfigDefault.DefaultTimeoutMinutes)
+	timeout := tr.Spec.Timeout.Duration
 	runtime := time.Since(tr.Status.StartTime.Time)
 	c.Logger.Infof("Checking timeout for TaskRun %q (startTime %s, timeout %s, runtime %s)", tr.Name, tr.Status.StartTime, timeout, runtime)
 

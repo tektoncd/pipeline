@@ -7,7 +7,6 @@ import (
 
 	"time"
 
-	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"go.uber.org/zap"
@@ -52,21 +51,18 @@ type TimeoutSet struct {
 	doneMut                 sync.Mutex
 	backoffs                map[string]backoff
 	backoffsMut             sync.Mutex
-	store                   *apisconfig.Store
 }
 
 // NewTimeoutHandler returns TimeoutSet filled structure
 func NewTimeoutHandler(
 	stopCh <-chan struct{},
 	logger *zap.SugaredLogger,
-	store *apisconfig.Store,
 ) *TimeoutSet {
 	return &TimeoutSet{
 		stopCh:   stopCh,
 		done:     make(map[string]chan bool),
 		backoffs: make(map[string]backoff),
 		logger:   logger,
-		store:    store,
 	}
 }
 
@@ -110,17 +106,6 @@ func (t *TimeoutSet) getOrCreateFinishedChan(runObj StatusKey) chan bool {
 	return finished
 }
 
-// GetTimeout takes a kubernetes Duration representing the timeout period for a
-// resource and returns it as a time.Duration. If the provided duration is nil
-// then fallback behaviour is to return a default timeout period.
-func GetTimeout(d *metav1.Duration, defaultTimeout int) time.Duration {
-	timeout := time.Duration(defaultTimeout) * time.Minute
-	if d != nil {
-		timeout = d.Duration
-	}
-	return timeout
-}
-
 // GetBackoff records the number of times it has seen a TaskRun and calculates an
 // appropriate backoff deadline based on that count. Only one backoff per TaskRun
 // may be active at any moment. Requests for a new backoff in the face of an
@@ -142,8 +127,7 @@ func (t *TimeoutSet) GetBackoff(tr *v1alpha1.TaskRun) (backoff, bool) {
 	}
 	b.NumAttempts += 1
 	b.NextAttempt = time.Now().Add(backoffDuration(b.NumAttempts, rand.Intn))
-	cfg := t.store.Load()
-	timeoutDeadline := tr.Status.StartTime.Time.Add(GetTimeout(tr.Spec.Timeout, cfg.ConfigDefault.DefaultTimeoutMinutes))
+	timeoutDeadline := tr.Status.StartTime.Time.Add(tr.Spec.Timeout.Duration)
 	if timeoutDeadline.Before(b.NextAttempt) {
 		b.NextAttempt = timeoutDeadline
 	}
@@ -220,16 +204,14 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, pipelineclientset cl
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out, which is
 // determined by checking if the tr's timeout has occurred since the startTime
 func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun, startTime *metav1.Time) {
-	cfg := t.store.Load()
-	t.waitRun(tr, GetTimeout(tr.Spec.Timeout, cfg.ConfigDefault.DefaultTimeoutMinutes), startTime, t.taskRunCallbackFunc)
+	t.waitRun(tr, tr.Spec.Timeout.Duration, startTime, t.taskRunCallbackFunc)
 }
 
 // WaitPipelineRun function creates a blocking function for pipelinerun to wait for
 // 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out which is
 // determined by checking if the tr's timeout has occurred since the startTime
 func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun, startTime *metav1.Time) {
-	cfg := t.store.Load()
-	t.waitRun(pr, GetTimeout(pr.Spec.Timeout, cfg.ConfigDefault.DefaultTimeoutMinutes), startTime, t.pipelineRunCallbackFunc)
+	t.waitRun(pr, pr.Spec.Timeout.Duration, startTime, t.pipelineRunCallbackFunc)
 }
 
 func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime *metav1.Time, callback func(interface{})) {
