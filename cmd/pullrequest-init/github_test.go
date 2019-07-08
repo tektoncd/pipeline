@@ -62,7 +62,7 @@ func TestGitHubParseURL(t *testing.T) {
 	wantRepo := "repo"
 	wantPR := 1
 
-	for _, tt := range []struct{
+	for _, tt := range []struct {
 		url      string
 		wantHost string
 	}{
@@ -112,10 +112,10 @@ func TestGitHubParseURL_errors(t *testing.T) {
 func TestNewGitHubHandler(t *testing.T) {
 	ctx := context.Background()
 
-	for _, tt := range []struct{
+	for _, tt := range []struct {
 		in  string
 		out string
-	} {
+	}{
 		{"https://github.com/tektoncd/pipeline/pull/1", "api.github.com"},
 		{"https://github.tekton.dev/tektoncd/pipeline/pull/1", "github.tekton.dev"},
 	} {
@@ -325,16 +325,16 @@ func diffFile(t *testing.T, path string, want interface{}, got interface{}) {
 }
 
 func TestParseGitHubURL(t *testing.T) {
-	good := []struct{
-		url string
+	good := []struct {
+		url      string
 		wantHost string
-	} {
+	}{
 		{fmt.Sprintf("https://github.com/%s/%s/pull/%d", owner, repo, prNum), "https://github.com"},
 		{fmt.Sprintf("https://github.com/%s/%s/foo/%d", owner, repo, prNum), "https://github.com"},
 		{fmt.Sprintf("http://github.com/%s/%s/pull/%d", owner, repo, prNum), "http://github.com"},
 		{fmt.Sprintf("tacocat://github.com/%s/%s/pull/%d", owner, repo, prNum), "tacocat://github.com"},
 		{fmt.Sprintf("https://example.com/%s/%s/pull/%d", owner, repo, prNum), "https://example.com"},
-		{fmt.Sprintf("https://github.com/%s/%s/pull/%d/foo", owner, repo, prNum), "https://github.com"}, 
+		{fmt.Sprintf("https://github.com/%s/%s/pull/%d/foo", owner, repo, prNum), "https://github.com"},
 		{fmt.Sprintf("github.com/%s/%s/pull/%d/foo", owner, repo, prNum), "://"},
 	}
 	for _, u := range good {

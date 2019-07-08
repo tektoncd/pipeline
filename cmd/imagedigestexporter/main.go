@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	images = flag.String("images", "", "List of images resources built by task in json format")
+	images                 = flag.String("images", "", "List of images resources built by task in json format")
 	terminationMessagePath = flag.String("terminationMessagePath", "", "Location of file containing termination message")
 )
 
