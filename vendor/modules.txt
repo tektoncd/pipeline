@@ -185,7 +185,6 @@ github.com/prometheus/procfs/internal/util
 github.com/russross/blackfriday
 # github.com/spf13/cobra v0.0.5
 github.com/spf13/cobra
-github.com/spf13/cobra/doc
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
 # github.com/tektoncd/pipeline v0.4.0

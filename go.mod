@@ -10,6 +10,7 @@ require (
 	github.com/Azure/go-autorest v11.6.0+incompatible // indirect
 	github.com/aws/aws-sdk-go v1.19.11 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.1.0 // indirect
+	github.com/cpuguy83/go-md2man v1.0.10
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/evanphx/json-patch v4.1.0+incompatible // indirect
 	github.com/fatih/color v1.7.0
