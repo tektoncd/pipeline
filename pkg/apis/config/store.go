@@ -18,6 +18,7 @@ package config
 
 import (
 	"context"
+
 	"github.com/knative/pkg/configmap"
 )
 
@@ -26,7 +27,7 @@ type cfgKey struct{}
 // Config holds the collection of configurations that we attach to contexts.
 // +k8s:deepcopy-gen=false
 type Config struct {
-	ConfigDefault *ConfigDefault
+	Defaults *Defaults
 }
 
 // FromContext extracts a Config from the provided context.
@@ -44,9 +45,9 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	if cfg := FromContext(ctx); cfg != nil {
 		return cfg
 	}
-	defaults, _ := NewConfigDefaultFromMap(map[string]string{})
+	defaults, _ := NewDefaultsFromMap(map[string]string{})
 	return &Config{
-		ConfigDefault: defaults,
+		Defaults: defaults,
 	}
 }
 
@@ -69,7 +70,7 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 			"defaults",
 			logger,
 			configmap.Constructors{
-				DefaultsConfigName: NewConfigDefaultFromConfigMap,
+				DefaultsConfigName: NewDefaultsFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -86,6 +87,6 @@ func (s *Store) ToContext(ctx context.Context) context.Context {
 // Load creates a Config from the current config state of the Store.
 func (s *Store) Load() *Config {
 	return &Config{
-		ConfigDefault: s.UntypedLoad(DefaultsConfigName).(*ConfigDefault).DeepCopy(),
+		Defaults: s.UntypedLoad(DefaultsConfigName).(*Defaults).DeepCopy(),
 	}
 }

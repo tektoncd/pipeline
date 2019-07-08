@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -36,6 +35,10 @@ var (
 		Kind:    pipelineRunControllerName,
 	}
 )
+
+// Check that TaskRun may be validated and defaulted.
+var _ apis.Validatable = (*PipelineRun)(nil)
+var _ apis.Defaultable = (*PipelineRun)(nil)
 
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
@@ -210,9 +213,6 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 		Name:       pr.Name,
 	}
 }
-
-// SetDefaults for pipelinerun
-func (pr *PipelineRun) SetDefaults(ctx context.Context) {}
 
 // GetOwnerReference gets the pipeline run as owner reference for any related objects
 func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {

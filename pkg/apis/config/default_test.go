@@ -17,33 +17,34 @@ limitations under the License.
 package config
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	"testing"
 )
 
-func TestNewConfigDefaultFromConfigMap(t *testing.T) {
-	expectedConfig := &ConfigDefault{
+func TestNewDefaultsFromConfigMap(t *testing.T) {
+	expectedConfig := &Defaults{
 		DefaultTimeoutMinutes: 50,
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigName, expectedConfig)
 }
 
-func TestNewConfigDefaultFromEmptyConfigMap(t *testing.T) {
+func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 	DefaultsConfigEmptyName := "config-defaults-empty"
-	expectedConfig := &ConfigDefault{
+	expectedConfig := &Defaults{
 		DefaultTimeoutMinutes: 60,
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }
 
-func verifyConfigFileWithExpectedConfig(t *testing.T, fileName string, expectedConfig *ConfigDefault) {
+func verifyConfigFileWithExpectedConfig(t *testing.T, fileName string, expectedConfig *Defaults) {
 	cm := test.ConfigMapFromTestFile(t, fileName)
-	if configDefault, err := NewConfigDefaultFromConfigMap(cm); err == nil {
-		if d := cmp.Diff(configDefault, expectedConfig); d != "" {
+	if Defaults, err := NewDefaultsFromConfigMap(cm); err == nil {
+		if d := cmp.Diff(Defaults, expectedConfig); d != "" {
 			t.Errorf("Diff:\n%s", d)
 		}
 	} else {
-		t.Errorf("NewConfigDefaultFromConfigMap(actual) = %v", err)
+		t.Errorf("NewDefaultsFromConfigMap(actual) = %v", err)
 	}
 }

@@ -25,7 +25,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/configmap"
-	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
@@ -224,19 +223,8 @@ func getTaskRunController(t *testing.T, d test.Data) test.TestAssets {
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	stopCh := make(chan struct{})
 	logger := zap.New(observer).Sugar()
-	store := apisconfig.NewStore(logger.Named("config-store"))
-	defaultConfig := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "tekton-pipelines",
-			Name:      "config-defaults",
-		},
-		Data: map[string]string{
-			"default-timeout-minutes": "60",
-		},
-	}
-	store.OnConfigChanged(defaultConfig)
 
-	th := reconciler.NewTimeoutHandler(stopCh, logger, store)
+	th := reconciler.NewTimeoutHandler(stopCh, logger)
 	return test.TestAssets{
 		Controller: NewController(
 			reconciler.Options{
@@ -252,7 +240,6 @@ func getTaskRunController(t *testing.T, d test.Data) test.TestAssets {
 			i.Pod,
 			entrypointCache,
 			th,
-			store,
 		),
 		Logs:      logs,
 		Clients:   c,

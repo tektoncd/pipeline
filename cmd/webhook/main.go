@@ -17,21 +17,20 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 
-	"github.com/knative/pkg/logging"
-	tklogging "github.com/tektoncd/pipeline/pkg/logging"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-
-	"go.uber.org/zap"
-
 	"github.com/knative/pkg/configmap"
+	"github.com/knative/pkg/logging"
 	"github.com/knative/pkg/logging/logkey"
 	"github.com/knative/pkg/signals"
 	"github.com/knative/pkg/webhook"
+	apiconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tklogging "github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/system"
+	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -71,6 +70,10 @@ func main() {
 	// Watch the logging config map and dynamically update logging levels.
 	configMapWatcher := configmap.NewInformedWatcher(kubeClient, system.GetNamespace())
 	configMapWatcher.Watch(tklogging.ConfigName, logging.UpdateLevelFromConfigMap(logger, atomicLevel, WebhookLogKey))
+
+	store := apiconfig.NewStore(logger.Named("config-store"))
+	store.WatchConfigs(configMapWatcher)
+
 	if err = configMapWatcher.Start(stopCh); err != nil {
 		logger.Fatalf("failed to start configuration manager: %v", err)
 	}
@@ -95,6 +98,11 @@ func main() {
 			v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
 		},
 		Logger: logger,
+
+		// Decorate contexts with the current state of the config.
+		WithContext: func(ctx context.Context) context.Context {
+			return v1alpha1.WithDefaultConfigurationName(store.ToContext(ctx))
+		},
 	}
 
 	if err := controller.Run(stopCh); err != nil {

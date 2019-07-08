@@ -52,7 +52,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
 	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(pipeline.Name,
-		tb.PipelineRunTimeout(&metav1.Duration{Duration: 5 * time.Second}),
+		tb.PipelineRunTimeout(5*time.Second),
 	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
