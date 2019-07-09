@@ -14,18 +14,21 @@ review them:
 - [ ] Includes [docs](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if user facing)
 - [ ] Commit messages follow [commit message best practices](https://github.com/tektoncd/community/blob/master/standards.md#commit-messages)
 
-_See [the contribution guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md)
-for more details._
+_See [the contribution guide](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md) for more details._
+
+Double check this list of stuff that's easy to miss:
+
+- If you are adding [a new binary/image to the `cmd` dir](../cmd), please update
+  [the release Task](../tekton/publish.yaml) and [TaskRun](../tekton/publish-run.yaml) to build and release this image
 
 # Release Notes
 
-<!--
-Does your PR contain User facing changes?
-
-If so, briefly describe them here so we can include this description in the
-release notes for the next release!
--->
-
 ```
-release-note
+Describe any user facing changes here, or delete this block.
+
+Examples of user facing changes:
+- API changes
+- Bug fixes
+- Any changes in behavior
+
 ```
