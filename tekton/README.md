@@ -1,5 +1,8 @@
 # Tekton Repo CI/CD
 
+_Why does Tekton pipelines have a folder called `tekton`? Cuz we think it would be cool
+if the `tekton` folder were the place to look for CI/CD logic in most repos!_
+
 We dogfood our project by using Tekton Pipelines to build, test and release
 Tekton Pipelines!
 
@@ -43,16 +46,29 @@ The `Tasks` which make up our release `Pipeline` are:
   [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko) to
   build all of the container images we release and generate the `release.yaml`
 
-The official releases are performed from the `prow` cluster in the `tekton-releases`
-GCP project.
+The official releases [are performed from the `prow` cluster in the `tekton-releases`
+GCP project](https://github.com/tektoncd/plumbing#prow). To release you will want to:
 
-### Running
+1. Install / update Tekton in the kubernetes cluster you'll be running against either via:
 
-To run these `Pipelines` and `Tasks`, you must have Tekton Pipelines installed
-(in your own kubernetes cluster) either via
-[an official release](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
-or
-[from `HEAD`](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#install-pipeline).
+  * [An official release](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
+  * [From `HEAD`](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#install-pipeline)
+
+  If this is your first time running in the cluster, you will need to give yourself admin permissions
+  in the cluster in order to deploy Tekton pipelines, e.g.:
+
+  ```bash
+  kubectl create clusterrolebinding cluster-admin-binding-someusername \
+    --clusterrole=cluster-admin \
+    --user=$(gcloud config get-value core/account)
+  ```
+
+2. [Run the Pipeline](#run-the-pipeline). Note that since we don't yet have an actual Pipeline (#531)
+   we often just [create the release](#creating-a-new-release) and we skip the bit where we publish
+   the ci images (which rarely change anyway). Hashtag lazy manual anti-pattern.
+
+
+### Run the Pipeline
 
 TODO(#531): Add the Pipeline, for now all we have are `Tasks` which we can
 invoke individually by creating
@@ -87,7 +103,7 @@ The `TaskRun` will use
 
 It needs to run with a service account in the target GCP project with
 [`Storage Admin`](https://cloud.google.com/container-registry/docs/access-control)
-access).
+access), such as [the production service account](#production-service-account).
 
 To run the `publish-tekton-pipelines` `Task` and create a release:
 
@@ -106,8 +122,11 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
    ```yaml
    params:
      - name: versionTag
-       value: 0.2.0 # REPLACE with the version you want to release
+       value: v0.22222.0 # REPLACE with the version you want to release
    ```
+
+   **TODO(#983) Be careful! if you use a tag that has already been released, you
+   can overwrite a previous release!**
 
 3. To run against your own infrastructure (not needed for actual releases), also
    replace the `imageRegistry` param:
@@ -124,9 +143,16 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
      value: gs://tekton-releases # REPLACE with your own bucket
    ```
 
-4. To run against your own infrastructure (not needed for the actual releases),
-also setup the required credentials for the `release-right-meow` service acount,
-   either:
+4. To run an official release [using the production cluster](https://github.com/tektoncd/plumbing#prow):
+
+  ```bash
+  gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
+  ```
+
+4. To run against your own infrastructure (if you are running
+   [in the production cluster](https://github.com/tektoncd/plumbing#prow) the default account should
+   already have these creds, this is just a bonus - plus `release-right-meow` might already exist in the
+   cluster!), also setup the required credentials for the `release-right-meow` service account, either:
 
    - For
      [the GCP service account `release-right-meow@tekton-releases.iam.gserviceaccount.com`](#production-service-account)
@@ -155,17 +181,15 @@ also setup the required credentials for the `release-right-meow` service acount,
      -p "{\"secrets\": [{\"name\": \"$GENERIC_SECRET\"}]}"
    ```
 
-4. To run an official release using the shared cluster:
-
-  ```bash
-  gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
-  ```
-
 5. Run the `publish-tekton-pipelines` `Task`:
 
    ```bash
+   # If you are running in a cluster you've run this in previously, delete the previous run
+
    kubectl apply -f tekton/publish.yaml
    kubectl apply -f tekton/publish-run.yaml
+
+   # If you are running this in a shared cluster, delete the pipelinerun
    ```
 
 ### Authentication
@@ -195,17 +219,11 @@ to request access to
 
 ##### Production service account
 
-TODO(christiewilson, dlorenc): add a group which has access to this service
-account
-
 The GCP service account for creating release is
 `release-right-meow@tekton-releases.iam.gserviceaccount.com`. This account has
 the role
 [`Storage Admin`](https://cloud.google.com/container-registry/docs/access-control)
 in order to be able to read and write buckets and images.
-
-Users who need access to this service account should ping
-[a member of the governing board](https://github.com/tektoncd/community/blob/master/governance.md).
 
 ## Supporting scripts
 
