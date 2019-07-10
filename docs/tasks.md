@@ -109,7 +109,7 @@ spec:
       args: ["ubuntu-build-example", "SECRETS-example.md"]
     - image: gcr.io/example-builders/build-example
       command: ["echo"]
-      args: ["${inputs.resources.params.pathToDockerFile}"]
+      args: ["${inputs.params.pathToDockerFile}"]
     - name: dockerfile-pushexample
       image: gcr.io/example-builders/push-example
       args: ["push", "${outputs.resources.builtImage.url}"]
