@@ -37,29 +37,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktesting "k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/record"
 )
 
 func getRunName(pr *v1alpha1.PipelineRun) string {
 	return strings.Join([]string{pr.Namespace, pr.Name}, "/")
 }
 
-func validateNoEvents(t *testing.T, r *record.FakeRecorder) {
-	t.Helper()
-	timer := time.NewTimer(1 * time.Second)
-
-	select {
-	case event := <-r.Events:
-		t.Errorf("Expected no event but got %s", event)
-	case <-timer.C:
-		return
-	}
-}
-
 // getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
-// recorder can be a fake recorder that is used for testing
-func getPipelineRunController(t *testing.T, d test.Data, recorder record.EventRecorder) (test.TestAssets, func()) {
+func getPipelineRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
 	ctx, _ := rtesting.SetupFakeContext(t)
 	c, _ := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
@@ -174,10 +160,7 @@ func TestReconcile(t *testing.T) {
 		PipelineResources: rs,
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(1)
-
-	testAssets, cancel := getPipelineRunController(t, d, fr)
+	testAssets, cancel := getPipelineRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
@@ -185,9 +168,6 @@ func TestReconcile(t *testing.T) {
 	if err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success"); err != nil {
 		t.Fatalf("Error reconciling: %s", err)
 	}
-
-	// make sure there is no failed events
-	validateNoEvents(t, fr)
 
 	if len(clients.Pipeline.Actions()) == 0 {
 		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
@@ -326,12 +306,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}
 
-	// Create fake recorder for testing
-	fr := record.NewFakeRecorder(1)
-
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets, cancel := getPipelineRunController(t, d, fr)
+			testAssets, cancel := getPipelineRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
 
@@ -341,9 +318,6 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			// When a PipelineRun is invalid and can't run, we don't want to return an error because
 			// an error will tell the Reconciler to keep trying to reconcile; instead we want to stop
 			// and forget about the Run.
-
-			// make sure there is no failed events
-			validateNoEvents(t, fr)
 
 			if tc.pipelineRun.Status.CompletionTime == nil {
 				t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
@@ -361,7 +335,6 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	}
 }
 
-/*
 func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 	invalidNames := []string{
 		"foo/test-pipeline-run-doesnot-exist",
@@ -370,43 +343,30 @@ func TestReconcile_InvalidPipelineRunNames(t *testing.T) {
 	tcs := []struct {
 		name        string
 		pipelineRun string
-		log         string
 	}{
 		{
 			name:        "invalid-pipeline-run-shd-stop-reconciling",
 			pipelineRun: invalidNames[0],
-			log:         "pipeline run \"foo/test-pipeline-run-doesnot-exist\" in work queue no longer exists",
 		}, {
 			name:        "invalid-pipeline-run-name-shd-stop-reconciling",
 			pipelineRun: invalidNames[1],
-			log:         "invalid resource key: test/invalidformat/t",
 		},
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(1)
-
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			testAssets, cancel := getPipelineRunController(t, test.Data{}, fr)
+			testAssets, cancel := getPipelineRunController(t, test.Data{})
 			defer cancel()
 			c := testAssets.Controller
-			logs := testAssets.Logs
 
 			err := c.Reconciler.Reconcile(context.Background(), tc.pipelineRun)
 			// No reason to keep reconciling something that doesnt or can't exist
 			if err != nil {
 				t.Errorf("Did not expect to see error when reconciling invalid PipelineRun but saw %q", err)
 			}
-
-			if logs.FilterMessage(tc.log).Len() == 0 {
-				m := test.GetLogMessages(logs)
-				t.Errorf("Log lines diff %s", cmp.Diff(tc.log, m))
-			}
 		})
 	}
 }
-*/
 
 func TestUpdateTaskRunsState(t *testing.T) {
 	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
@@ -500,10 +460,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 		TaskRuns:     trs,
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(1)
-
-	testAssets, cancel := getPipelineRunController(t, d, fr)
+	testAssets, cancel := getPipelineRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
@@ -511,9 +468,6 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	if err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-completed"); err != nil {
 		t.Fatalf("Error reconciling: %s", err)
 	}
-
-	// make sure there is no failed events
-	validateNoEvents(t, fr)
 
 	if len(clients.Pipeline.Actions()) != 1 {
 		t.Fatalf("Expected client to have updated the TaskRun status for a completed PipelineRun, but it did not")
@@ -587,10 +541,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 		TaskRuns:     trs,
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(1)
-
-	testAssets, cancel := getPipelineRunController(t, d, fr)
+	testAssets, cancel := getPipelineRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
@@ -636,10 +587,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 		Tasks:        ts,
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(2)
-
-	testAssets, cancel := getPipelineRunController(t, d, fr)
+	testAssets, cancel := getPipelineRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
@@ -693,10 +641,7 @@ func TestReconcileWithoutPVC(t *testing.T) {
 		Tasks:        ts,
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(2)
-
-	testAssets, cancel := getPipelineRunController(t, d, fr)
+	testAssets, cancel := getPipelineRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
@@ -744,10 +689,7 @@ func TestReconcileCancelledPipelineRun(t *testing.T) {
 		Tasks:        ts,
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(2)
-
-	testAssets, cancel := getPipelineRunController(t, d, fr)
+	testAssets, cancel := getPipelineRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
@@ -841,10 +783,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 				Tasks:        ts,
 			}
 
-			// create fake recorder for testing
-			fr := record.NewFakeRecorder(2)
-
-			testAssets, cancel := getPipelineRunController(t, d, fr)
+			testAssets, cancel := getPipelineRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
@@ -896,10 +835,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 		Tasks:        ts,
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(2)
-
-	testAssets, cancel := getPipelineRunController(t, d, fr)
+	testAssets, cancel := getPipelineRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
@@ -1029,9 +965,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 				TaskRuns:     trs,
 			}
 
-			fr := record.NewFakeRecorder(2)
-
-			testAssets, cancel := getPipelineRunController(t, d, fr)
+			testAssets, cancel := getPipelineRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
@@ -1079,10 +1013,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 		Tasks:        ts,
 	}
 
-	// create fake recorder for testing
-	fr := record.NewFakeRecorder(2)
-
-	testAssets, cancel := getPipelineRunController(t, d, fr)
+	testAssets, cancel := getPipelineRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
