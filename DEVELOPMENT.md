@@ -116,9 +116,9 @@ If you want this `tkn` binary on your `$PATH`, a couple options are:
    ```
 3. After it finishes, you can run the following to execute the binary to verify it works:
 
-  ```sh
-  ./tkn
-  ```
+   ```sh
+   ./tkn
+   ```
 
 Whether you have added the `tkn` binary to your current directory or added it to
 your `$PATH`, you are should now be ready to make changes to `tkn`.
