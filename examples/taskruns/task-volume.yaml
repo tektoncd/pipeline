@@ -19,10 +19,6 @@ spec:
     volumeMounts:
     - name: custom
       mountPath: /short/and/stout
-
-  volumes:
-  - name: custom
-    emptyDir: {}
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
@@ -31,3 +27,7 @@ metadata:
 spec:
   taskRef:
     name:  task-volume
+  podTemplate:
+    volumes:
+    - name: custom
+      emptyDir: {}

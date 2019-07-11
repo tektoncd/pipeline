@@ -448,6 +448,8 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 		})
 		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).UpdateStatus(tr)
 	}
+
+	podTemplate := v1alpha1.CombinedPodTemplate(pr.Spec.PodTemplate, pr.Spec.NodeSelector, pr.Spec.Tolerations, pr.Spec.Affinity)
 	tr = &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
@@ -466,11 +468,8 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			},
 			ServiceAccount: serviceAccount,
 			Timeout:        taskRunTimeout,
-			NodeSelector:   pr.Spec.NodeSelector,
-			Tolerations:    pr.Spec.Tolerations,
-			Affinity:       pr.Spec.Affinity,
-		},
-	}
+			PodTemplate:    podTemplate,
+		}}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 
