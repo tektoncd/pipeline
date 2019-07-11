@@ -84,32 +84,44 @@ While iterating on the project, you may need to:
 
 [go mod](https://github.com/golang/go/wiki/Modules#quick-start) is used and required for dependencies.
 
-**Building:**
+**Building In Local Directory:**
+
+The following command builds the `tkn` binary in your current directory:
 
 ```sh
-go build ./cmd/...
+go build ./cmd/tkn
 ```
 
-It builds `tkn` binary in your current directory. You can start playing with
-it.
+After it finishes, you can run the following to execute the binary to
+verify it works:
 
-If you want this `tkn` binary in your `$PATH`, a couple options are:
+```sh
+./tkn
+```
+
+**Building and Adding to $PATH:**
+
+If you want this `tkn` binary on your `$PATH`, a couple options are:
 
 
-1. Use `go install ./cmd/...` to install the binary into your `$GOBIN`. Rerun
-   `go install ./cmd/...` when you want to update the binary:
-
-   ```bash
-   go install ./cmd/
-   ```
+1. Use `go install ./cmd/tkn` to install the binary into your `$GOBIN`. Rerun
+`go install ./cmd/tkn` when you want to update the binary.
 
 2. Add a soft link to the binary into your `$PATH`. Rerun `go build` when
    you want to update the binary.
 
    ```bash
-   go build ./cmd/...
+   go build ./cmd/tkn
    ln -s $PWD/tkn $GOPATH/bin/tkn
    ```
+3. After it finishes, you can run the following to execute the binary to verify it works:
+
+  ```sh
+  ./tkn
+  ```
+
+Whether you have added the `tkn` binary to your current directory or added it to
+your `$PATH`, you are should now be ready to make changes to `tkn`.
 
 **Notes:**
 
@@ -118,7 +130,7 @@ If you want this `tkn` binary in your `$PATH`, a couple options are:
 
 ```sh
 # if you are building in your $GOPATH
-GO111MODULE=on go build ./cmd/...
+GO111MODULE=on go build ./cmd/tkn
 ```
 
 You can now try updating code for client and test out the changes by building the `tkn` binary.
