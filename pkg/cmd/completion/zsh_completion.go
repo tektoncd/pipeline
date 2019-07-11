@@ -49,6 +49,7 @@ function _tkn {
       "resource:Manage pipeline resources"
       "task:Manage tasks"
       "taskrun:Manage taskruns"
+      "clustertask:Manage clustertasks"
       "version:Prints version information"
     )
     _describe "command" commands
@@ -73,6 +74,9 @@ function _tkn {
     ;;
   tr|taskrun|taskruns)
     _tkn_taskrun
+    ;;
+  c|clustertask|clustertasks)
+    _tkn_clustertask
     ;;
   version)
     _tkn_version
@@ -251,6 +255,34 @@ function _tkn_task_list {
     "$common_describe_options[@]"
 }
 
+function _tkn_clustertask {
+  local -a commands
+
+  _arguments -C \
+    "$common_options[@]" \
+    "1: :->cmnds" \
+    "*::arg:->args"
+
+  case $state in
+  cmnds)
+    commands=(
+      "list:Lists clustertasks in a namespace"
+    )
+    _describe "command" commands
+    ;;
+  esac
+
+  case "$words[1]" in
+  list|ls)
+    _tkn_clustertask_list
+    ;;
+  esac
+}
+
+function _tkn_clustertask_list {
+  _arguments \
+    "$common_describe_options[@]"
+}
 
 function __tkn_get_taskrun() { __tkn_get_object taskrun; }
 

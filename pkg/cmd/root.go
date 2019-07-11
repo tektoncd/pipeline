@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/cmd/clustertask"
 	"github.com/tektoncd/cli/pkg/cmd/completion"
 	"github.com/tektoncd/cli/pkg/cmd/pipeline"
 	"github.com/tektoncd/cli/pkg/cmd/pipelineresource"
@@ -48,6 +49,7 @@ func Root(p cli.Params) *cobra.Command {
 		task.Command(p),
 		taskrun.Command(p),
 		pipelineresource.Command(p),
+		clustertask.Command(p),
 		version.Command(),
 	)
 

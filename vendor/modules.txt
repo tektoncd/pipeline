@@ -199,8 +199,8 @@ github.com/tektoncd/pipeline/pkg/list
 github.com/tektoncd/pipeline/pkg/merge
 github.com/tektoncd/pipeline/pkg/names
 github.com/tektoncd/pipeline/pkg/templating
-github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources
 github.com/tektoncd/pipeline/test
+github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources
 github.com/tektoncd/pipeline/pkg/artifacts
 github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1
 github.com/tektoncd/pipeline/pkg/credentials
