@@ -97,7 +97,7 @@ If you want this `tkn` binary in your `$PATH`, a couple options are:
 
 
 1. Use `go install ./cmd/...` to install the binary into your `$GOBIN`. Rerun
-   `go install` when you want to update the binary:
+   `go install ./cmd/...` when you want to update the binary:
 
    ```bash
    go install ./cmd/
