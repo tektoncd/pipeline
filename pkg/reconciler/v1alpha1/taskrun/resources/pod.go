@@ -299,9 +299,11 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			podContainers = append(podContainers, *step)
 		}
 	}
+	// Add podTemplate Volumes to the explicitly declared use volumes
+	volumes := append(taskSpec.Volumes, taskRun.Spec.PodTemplate.Volumes...)
 	// Add our implicit volumes and any volumes needed for secrets to the explicitly
 	// declared user volumes.
-	volumes := append(taskSpec.Volumes, implicitVolumes...)
+	volumes = append(volumes, implicitVolumes...)
 	volumes = append(volumes, secrets...)
 	if err := v1alpha1.ValidateVolumes(volumes); err != nil {
 		return nil, err
@@ -333,6 +335,8 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 		return nil, err
 	}
 
+	podTemplate := v1alpha1.CombinedPodTemplate(taskRun.Spec.PodTemplate, taskRun.Spec.NodeSelector, taskRun.Spec.Tolerations, taskRun.Spec.Affinity)
+
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			// We execute the build's pod in the same namespace as where the build was
@@ -356,9 +360,10 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			Containers:         mergedPodContainers,
 			ServiceAccountName: taskRun.Spec.ServiceAccount,
 			Volumes:            volumes,
-			NodeSelector:       taskRun.Spec.NodeSelector,
-			Tolerations:        taskRun.Spec.Tolerations,
-			Affinity:           taskRun.Spec.Affinity,
+			NodeSelector:       podTemplate.NodeSelector,
+			Tolerations:        podTemplate.Tolerations,
+			Affinity:           podTemplate.Affinity,
+			SecurityContext:    podTemplate.SecurityContext,
 		},
 	}, nil
 }
