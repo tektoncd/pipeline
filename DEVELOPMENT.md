@@ -121,7 +121,7 @@ If you want this `tkn` binary on your `$PATH`, a couple options are:
    ```
 
 Whether you have added the `tkn` binary to your current directory or added it to
-your `$PATH`, you are should now be ready to make changes to `tkn`.
+your `$PATH`, you are now be ready to make changes to `tkn`.
 
 **Notes:**
 
