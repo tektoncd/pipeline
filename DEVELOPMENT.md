@@ -66,8 +66,8 @@ registry, you can add `storage-full` to your `--scopes` arg.
 
 ## Environment Setup
 
-To build the Tekton pipelines cli you'll need to set `GO111MODULE=on`
-enviroment variable to force `go` to use [go
+To build the Tekton pipelines cli, you'll need to set `GO111MODULE=on`
+environment variable to force `go` to use [go
 modules](https://github.com/golang/go/wiki/Modules#quick-start).
 
 ## Iterating
@@ -75,7 +75,7 @@ modules](https://github.com/golang/go/wiki/Modules#quick-start).
 While iterating on the project, you may need to:
 
 1. [Install Tekton pipeline](#install-pipeline)
-2. [Buildking Tekton client](#building-tekton-client)
+2. [Building Tekton client](#building-tekton-client)
 1. [Add and run tests](./test/README.md#tests)
 
 ## Building Tekton client
@@ -96,7 +96,7 @@ it.
 If you want this `tkn` binary in your `$PATH`, a couple options are:
 
 
-1. Use `go install ./cmd/` to install the binary into your `$GOBIN`. Rerun
+1. Use `go install ./cmd/...` to install the binary into your `$GOBIN`. Rerun
    `go install` when you want to update the binary:
 
    ```bash

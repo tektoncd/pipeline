@@ -39,3 +39,6 @@ tags
 
 # VSCode specific
 .vscode
+
+#Mac
+.DS_Store
