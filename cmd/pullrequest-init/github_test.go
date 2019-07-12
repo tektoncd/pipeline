@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -597,7 +598,7 @@ func TestGetStatuses(t *testing.T) {
 			if err != nil {
 				t.Fatalf("getStatuses: %v", err)
 			}
-			if diff := cmp.Diff(tc.want, s); diff != "" {
+			if diff := cmp.Diff(tc.want, s, cmpopts.SortSlices(func(x, y *Status) bool { return x.ID < y.ID })); diff != "" {
 				t.Errorf("-want +got: %s", diff)
 			}
 		})
