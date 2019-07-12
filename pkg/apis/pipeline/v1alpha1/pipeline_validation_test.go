@@ -24,6 +24,73 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
+func TestPipeline_Validate_Error(t *testing.T) {
+	tests := []struct {
+		name string
+		p    *v1alpha1.Pipeline
+	}{
+		{
+			name: "period in name",
+			p: tb.Pipeline("pipe.line", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+			)),
+		},
+		{
+			name: "pipeline name too long",
+			p: tb.Pipeline("asdf123456789012345678901234567890123456789012345678901234567890", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+			)),
+		},
+		{
+			name: "pipeline spec invalid (duplicate tasks)",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+				tb.PipelineTask("foo", "foo-task"),
+			)),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.p.Validate(context.Background()); err == nil {
+				t.Error("Pipeline.Validate() did not return error, wanted error")
+			}
+		})
+	}
+}
+
+func TestPipeline_Validate_Valid(t *testing.T) {
+	tests := []struct {
+		name string
+		p    *v1alpha1.Pipeline
+	}{
+		{
+			name: "valid metadata",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineTask("foo", "foo-task"),
+			)),
+		},
+		{
+			name: "valid resource declarations and usage",
+			p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+				tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+				tb.PipelineDeclaredResource("wonderful-resource", v1alpha1.PipelineResourceTypeImage),
+				tb.PipelineTask("bar", "bar-task",
+					tb.PipelineTaskInputResource("some-workspace", "great-resource"),
+					tb.PipelineTaskOutputResource("some-image", "wonderful-resource")),
+				tb.PipelineTask("foo", "foo-task",
+					tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
+			)),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.p.Spec.Validate(context.Background()); err != nil {
+				t.Errorf("Pipeline.Validate() returned error: %v", err)
+			}
+		})
+	}
+}
+
 func TestPipelineSpec_Validate_Error(t *testing.T) {
 	tests := []struct {
 		name string
