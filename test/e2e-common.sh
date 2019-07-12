@@ -118,7 +118,7 @@ function run_yaml_tests() {
   return 1
 }
 
-function install_pipeline_crd() {
+function setup_tekton() {
   echo ">> Deploying Tekton Pipelines"
   ko apply -f config/ || fail_test "Build pipeline installation failed"
 

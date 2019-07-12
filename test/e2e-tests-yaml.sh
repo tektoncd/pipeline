@@ -29,8 +29,6 @@ header "Setting up environment"
 set +o errexit
 set +o pipefail
 
-install_pipeline_crd
-
 # Run the tests
 failed=0
 for test in taskrun pipelinerun; do
