@@ -380,7 +380,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	rprts := pipelineState.GetNextTasks(candidateTasks)
 
 	var as artifacts.ArtifactStorageInterface
-	if as, err = artifacts.InitializeArtifactStorage(pr, p.Spec.Tasks, c.KubeClientSet, c.Logger); err != nil {
+	if as, err = artifacts.InitializeArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
 		c.Logger.Infof("PipelineRun failed to initialize artifact storage %s", pr.Name)
 		return err
 	}
