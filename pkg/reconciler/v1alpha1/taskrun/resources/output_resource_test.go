@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -97,614 +98,652 @@ func outputResourceSetup(t *testing.T) {
 		outputResources[r.Name] = ri
 	}
 }
+
 func TestValidOutputResources(t *testing.T) {
-
-	for _, c := range []struct {
-		name        string
-		desc        string
-		task        *v1alpha1.Task
-		taskRun     *v1alpha1.TaskRun
-		wantSteps   []corev1.Container
-		wantVolumes []corev1.Volume
-	}{{
-		name: "git resource in input and output",
-		desc: "git resource declared as both input and output with pipelinerun owner reference",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
+	for _, pvcExists := range []bool{true, false} {
+		for _, c := range []struct {
+			name        string
+			desc        string
+			task        *v1alpha1.Task
+			taskRun     *v1alpha1.TaskRun
+			wantSteps   []corev1.Container
+			wantVolumes []corev1.Volume
+		}{{
+			name: "git resource in input and output",
+			desc: "git resource declared as both input and output with pipelinerun owner reference",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-output-steps",
+					Namespace: "marshmallow",
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "PipelineRun",
+						Name: "pipelinerun",
+					}},
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Inputs: v1alpha1.TaskRunInputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
+						}},
+					},
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
+							Paths: []string{"pipeline-task-name"},
+						}},
+					},
+				},
+			},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "git",
+						}},
+					},
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "git",
+						}},
+					},
+				},
+			},
+			wantSteps: []corev1.Container{{
+				Name:    "source-mkdir-source-git-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p pipeline-task-name"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "pipelinerun-pvc",
+					MountPath: "/pvc",
 				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
-						},
-					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
-						},
-						Paths: []string{"pipeline-task-name"},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
-				},
-			},
-		},
-		wantSteps: []corev1.Container{{
-			Name:    "source-mkdir-source-git-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p pipeline-task-name"},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "pipelinerun-pvc",
-				MountPath: "/pvc",
+			}, {
+				Name:    "source-copy-source-git-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "cp -r /workspace/source-workspace/. pipeline-task-name"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "pipelinerun-pvc",
+					MountPath: "/pvc",
+				}},
 			}},
 		}, {
-			Name:    "source-copy-source-git-mz4c7",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "cp -r /workspace/source-workspace/. pipeline-task-name"},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "pipelinerun-pvc",
-				MountPath: "/pvc",
-			}},
-		}},
-	}, {
-		name: "git resource in output only",
-		desc: "git resource declared as output with pipelinerun owner reference",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
+			name: "git resource in output only",
+			desc: "git resource declared as output with pipelinerun owner reference",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-output-steps",
+					Namespace: "marshmallow",
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "PipelineRun",
+						Name: "pipelinerun",
+					}},
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
+							Paths: []string{"pipeline-task-name"},
+						}},
+					},
+				},
+			},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "git",
+						}},
+					},
+				},
+			},
+			wantSteps: []corev1.Container{{
+				Name:    "source-mkdir-source-git-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p pipeline-task-name"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "pipelinerun-pvc",
+					MountPath: "/pvc",
 				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
-						},
-						Paths: []string{"pipeline-task-name"},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
-				},
-			},
-		},
-		wantSteps: []corev1.Container{{
-			Name:    "source-mkdir-source-git-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p pipeline-task-name"},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "pipelinerun-pvc",
-				MountPath: "/pvc",
+			}, {
+				Name:    "source-copy-source-git-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-name"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "pipelinerun-pvc",
+					MountPath: "/pvc",
+				}},
 			}},
 		}, {
-			Name:    "source-copy-source-git-mz4c7",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-name"},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "pipelinerun-pvc",
-				MountPath: "/pvc",
-			}},
-		}},
-	}, {
-		name: "image resource in output with pipelinerun with owner",
-		desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
+			name: "image resource in output with pipelinerun with owner",
+			desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-output-steps",
+					Namespace: "marshmallow",
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "PipelineRun",
+						Name: "pipelinerun",
+					}},
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
+							Paths: []string{"pipeline-task-name"},
+						}},
+					},
+				},
+			},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "image",
+						}},
+					},
+				},
+			},
+			wantSteps:   nil,
+			wantVolumes: nil,
+		}, {
+			name: "git resource in output",
+			desc: "git resource declared in output without pipelinerun owner reference",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-output-steps",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
+						}},
+					},
+				},
+			},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "git",
+						}},
+					},
+				},
+			},
+		}, {
+			name: "storage resource as both input and output",
+			desc: "storage resource defined in both input and output with parents pipelinerun reference",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-output-steps",
+					Namespace: "marshmallow",
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "PipelineRun",
+						Name: "pipelinerun-parent",
+					}},
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Inputs: v1alpha1.TaskRunInputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
+						}},
+					},
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
+							Paths: []string{"pipeline-task-path"},
+						}},
+					},
+				},
+			},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Inputs: &v1alpha1.Inputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name:       "source-workspace",
+							Type:       "storage",
+							TargetPath: "faraway-disk",
+						}},
+					},
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "storage",
+						}},
+					},
+				},
+			},
+			wantSteps: []corev1.Container{{
+				Name:  "upload-source-gcs-9l9zj",
+				Image: "override-with-gsutil-image:latest",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-source-gcs-sname",
+					MountPath: "/var/secret/sname",
 				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image",
-						},
-						Paths: []string{"pipeline-task-name"},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "image",
-					}},
-				},
-			},
-		},
-		wantSteps:   nil,
-		wantVolumes: nil,
-	}, {
-		name: "git resource in output",
-		desc: "git resource declared in output without pipelinerun owner reference",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
-						},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
-				},
-			},
-		},
-	}, {
-		name: "storage resource as both input and output",
-		desc: "storage resource defined in both input and output with parents pipelinerun reference",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun-parent",
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "rsync -d -r /workspace/faraway-disk gs://some-bucket"},
+				Env: []corev1.EnvVar{{
+					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
-						},
-					}},
-				},
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
-						},
-						Paths: []string{"pipeline-task-path"},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name:       "source-workspace",
-						Type:       "storage",
-						TargetPath: "faraway-disk",
-					}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
-				},
-			},
-		},
-		wantSteps: []corev1.Container{{
-			Name:  "upload-source-gcs-9l9zj",
-			Image: "override-with-gsutil-image:latest",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "volume-source-gcs-sname",
-				MountPath: "/var/secret/sname",
+			}, {
+				Name:         "source-mkdir-source-gcs-mz4c7",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "mkdir -p pipeline-task-path"},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
+			}, {
+				Name:         "source-copy-source-gcs-mssqb",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "cp -r /workspace/faraway-disk/. pipeline-task-path"},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 			}},
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/faraway-disk gs://some-bucket"},
-			Env: []corev1.EnvVar{{
-				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+			wantVolumes: []corev1.Volume{{
+				Name: "volume-source-gcs-sname",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+				},
 			}},
 		}, {
-			Name:         "source-mkdir-source-gcs-mz4c7",
-			Image:        "override-with-bash-noop:latest",
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
-		}, {
-			Name:         "source-copy-source-gcs-mssqb",
-			Image:        "override-with-bash-noop:latest",
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", "cp -r /workspace/faraway-disk/. pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
-		}},
-		wantVolumes: []corev1.Volume{{
-			Name: "volume-source-gcs-sname",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+			name: "storage resource as output",
+			desc: "storage resource defined only in output with pipeline ownder reference",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-only-output-step",
+					Namespace: "marshmallow",
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "PipelineRun",
+						Name: "pipelinerun",
+					}},
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
+							Paths: []string{"pipeline-task-path"},
+						}},
+					},
+				},
 			},
-		}},
-	}, {
-		name: "storage resource as output",
-		desc: "storage resource defined only in output with pipeline ownder reference",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "storage",
+						}},
+					},
+				},
+			},
+			wantSteps: []corev1.Container{{
+				Name:  "upload-source-gcs-9l9zj",
+				Image: "override-with-gsutil-image:latest",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
-						},
-						Paths: []string{"pipeline-task-path"},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
-				},
-			},
-		},
-		wantSteps: []corev1.Container{{
-			Name:  "upload-source-gcs-9l9zj",
-			Image: "override-with-gsutil-image:latest",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-			}},
-			Env: []corev1.EnvVar{{
-				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
-			}},
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
-		}, {
-			Name:         "source-mkdir-source-gcs-mz4c7",
-			Image:        "override-with-bash-noop:latest",
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
-		}, {
-			Name:         "source-copy-source-gcs-mssqb",
-			Image:        "override-with-bash-noop:latest",
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
-		}},
-		wantVolumes: []corev1.Volume{{
-			Name: "volume-source-gcs-sname",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
-			},
-		}},
-	}, {
-		name: "storage resource as output with no owner",
-		desc: "storage resource defined only in output without pipelinerun reference",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
-						},
-						Paths: []string{"pipeline-task-path"},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
-				},
-			},
-		},
-		wantSteps: []corev1.Container{{
-			Name:  "upload-source-gcs-9l9zj",
-			Image: "override-with-gsutil-image:latest",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-			}},
-			Env: []corev1.EnvVar{{
-				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
-			}},
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
-		}},
-		wantVolumes: []corev1.Volume{{
-			Name: "volume-source-gcs-sname",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
-			},
-		}},
-	}, {
-		name: "storage resource as output with matching build volumes",
-		desc: "storage resource defined only in output without pipelinerun reference",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
-						},
-					}},
-				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
-				},
-			},
-		},
-		wantSteps: []corev1.Container{{
-			Name:  "upload-source-gcs-9l9zj",
-			Image: "override-with-gsutil-image:latest",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-			}},
-			Env: []corev1.EnvVar{{
-				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
-			}},
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
-		}},
-		wantVolumes: []corev1.Volume{{
-			Name: "volume-source-gcs-sname",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
-			},
-		}},
-	}, {
-		name: "image resource as output",
-		desc: "image resource defined only in output",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
+				Env: []corev1.EnvVar{{
+					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image",
-						},
-					}},
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+			}, {
+				Name:         "source-mkdir-source-gcs-mz4c7",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "mkdir -p pipeline-task-path"},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
+			}, {
+				Name:         "source-copy-source-gcs-mssqb",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
+			}},
+			wantVolumes: []corev1.Volume{{
+				Name: "volume-source-gcs-sname",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+				},
+			}},
+		}, {
+			name: "storage resource as output with no owner",
+			desc: "storage resource defined only in output without pipelinerun reference",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-only-output-step",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
+							Paths: []string{"pipeline-task-path"},
+						}},
+					},
 				},
 			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "image",
-					}},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "storage",
+						}},
+					},
 				},
 			},
-		},
-		wantSteps: nil,
-	}, {
-		name: "Resource with TargetPath as output",
-		desc: "Resource with TargetPath defined only in output",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
+			wantSteps: []corev1.Container{{
+				Name:  "upload-source-gcs-9l9zj",
+				Image: "override-with-gsutil-image:latest",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image",
-						},
-					}},
+				Env: []corev1.EnvVar{{
+					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+				}},
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+			}},
+			wantVolumes: []corev1.Volume{{
+				Name: "volume-source-gcs-sname",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+				},
+			}},
+		}, {
+			name: "storage resource as output with matching build volumes",
+			desc: "storage resource defined only in output without pipelinerun reference",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-only-output-step",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
+						}},
+					},
 				},
 			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name:       "source-workspace",
-						Type:       "image",
-						TargetPath: "/workspace",
-					}},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "storage",
+						}},
+					},
 				},
 			},
-		},
-		wantSteps: nil,
-	}, {
-		desc: "image output resource with no steps",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Outputs: v1alpha1.TaskRunOutputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image",
-						},
+			wantSteps: []corev1.Container{{
+				Name:  "upload-source-gcs-9l9zj",
+				Image: "override-with-gsutil-image:latest",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
+				}},
+				Env: []corev1.EnvVar{{
+					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+				}},
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+			}},
+			wantVolumes: []corev1.Volume{{
+				Name: "volume-source-gcs-sname",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+				},
+			}},
+		}, {
+			name: "image resource as output",
+			desc: "image resource defined only in output",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-only-output-step",
+					Namespace: "marshmallow",
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "PipelineRun",
+						Name: "pipelinerun",
 					}},
 				},
-			},
-		},
-		task: &v1alpha1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "image",
-					}},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
+						}},
+					},
 				},
 			},
-		},
-		wantSteps: nil,
-	}} {
-		t.Run(c.name, func(t *testing.T) {
-			names.TestingSeed()
-			outputResourceSetup(t)
-			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
-			if err != nil {
-				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "image",
+						}},
+					},
+				},
+			},
+			wantSteps: nil,
+		}, {
+			name: "Resource with TargetPath as output",
+			desc: "Resource with TargetPath defined only in output",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-only-output-step",
+					Namespace: "marshmallow",
+					OwnerReferences: []metav1.OwnerReference{{
+						Kind: "PipelineRun",
+						Name: "pipelinerun",
+					}},
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
+						}},
+					},
+				},
+			},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name:       "source-workspace",
+							Type:       "image",
+							TargetPath: "/workspace",
+						}},
+					},
+				},
+			},
+			wantSteps: nil,
+		}, {
+			desc: "image output resource with no steps",
+			taskRun: &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-run-output-steps",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskRunSpec{
+					Outputs: v1alpha1.TaskRunOutputs{
+						Resources: []v1alpha1.TaskResourceBinding{{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
+						}},
+					},
+				},
+			},
+			task: &v1alpha1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task1",
+					Namespace: "marshmallow",
+				},
+				Spec: v1alpha1.TaskSpec{
+					Outputs: &v1alpha1.Outputs{
+						Resources: []v1alpha1.TaskResource{{
+							Name: "source-workspace",
+							Type: "image",
+						}},
+					},
+				},
+			},
+			wantSteps: nil,
+		}} {
+			name := c.name
+			if pvcExists {
+				name = name + " with existing parent PVC"
+			} else {
+				name = name + " without existing parent PVC"
 			}
+			t.Run(name, func(t *testing.T) {
+				names.TestingSeed()
+				outputResourceSetup(t)
+				fakekubeclient := fakek8s.NewSimpleClientset()
 
-			if got != nil {
-				if d := cmp.Diff(got.Steps, c.wantSteps); d != "" {
-					t.Fatalf("post build steps mismatch: %s", d)
-				}
-
-				if c.taskRun.GetPipelineRunPVCName() != "" {
-					c.wantVolumes = append(
-						c.wantVolumes,
-						corev1.Volume{
-							Name: c.taskRun.GetPipelineRunPVCName(),
-							VolumeSource: corev1.VolumeSource{
-								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: c.taskRun.GetPipelineRunPVCName(),
-								},
+				if pvcExists && c.taskRun.GetPipelineRunPVCName() != "" {
+					_, err := fakekubeclient.CoreV1().PersistentVolumeClaims("marshmallow").Create(
+						&corev1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      c.taskRun.GetPipelineRunPVCName(),
+								Namespace: "marshmallow",
 							},
 						},
 					)
+					if err != nil {
+						t.Fatalf("Couldn't create PVC to mimic PVC created by parent PipelineRun: %s", err)
+					}
 				}
-				if d := cmp.Diff(got.Volumes, c.wantVolumes); d != "" {
-					t.Fatalf("post build steps volumes mismatch: %s", d)
+				var wantSteps []corev1.Container
+				if c.wantSteps != nil && !pvcExists {
+					steps := []corev1.Container{}
+					for i := range c.wantSteps {
+						// Since there is no PVC, we shouldn't include the steps that copy from the PVC
+						if !strings.HasPrefix(c.wantSteps[i].Name, "source-") {
+							steps = append(steps, c.wantSteps[i])
+						}
+					}
+					if len(steps) > 0 {
+						wantSteps = steps
+					}
+				} else {
+					wantSteps = c.wantSteps
 				}
-			}
-		})
+
+				got, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
+				if err != nil {
+					t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
+				}
+
+				if got != nil {
+					if d := cmp.Diff(wantSteps, got.Steps); d != "" {
+						t.Fatalf("post build steps mismatch: %s", d)
+					}
+
+					if pvcExists && c.taskRun.GetPipelineRunPVCName() != "" {
+						c.wantVolumes = append(
+							c.wantVolumes,
+							corev1.Volume{
+								Name: c.taskRun.GetPipelineRunPVCName(),
+								VolumeSource: corev1.VolumeSource{
+									PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+										ClaimName: c.taskRun.GetPipelineRunPVCName(),
+									},
+								},
+							},
+						)
+					}
+					if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
+						t.Fatalf("post build steps volumes mismatch: %s", d)
+					}
+				}
+			})
+		}
 	}
 }
 

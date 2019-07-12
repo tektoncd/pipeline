@@ -67,8 +67,7 @@ func TestPipelineRun(t *testing.T) {
 					t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 				}
 			}
-
-			for _, res := range getFanInFanOutGitResources(namespace) {
+			for _, res := range getKritisGitResources(namespace) {
 				if _, err := c.PipelineResourceClient.Create(res); err != nil {
 					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
 				}
@@ -83,7 +82,7 @@ func TestPipelineRun(t *testing.T) {
 		// 1 from PipelineRun and 4 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 5,
 	}, {
-		name: "service account propagation",
+		name: "simple pipeline with output and service account",
 		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
 			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
@@ -95,6 +94,7 @@ func TestPipelineRun(t *testing.T) {
 			}
 
 			task := tb.Task(getName(taskName, index), namespace, tb.TaskSpec(
+				tb.TaskOutputs(tb.OutputsResource("my-resource", v1alpha1.PipelineResourceTypeGit)),
 				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
 				tb.Step("config-docker", "quay.io/rhpipeline/skopeo:alpine",
 					tb.Command("skopeo"),
@@ -103,6 +103,12 @@ func TestPipelineRun(t *testing.T) {
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
+			}
+
+			for _, res := range getKritisGitResources(namespace) {
+				if _, err := c.PipelineResourceClient.Create(res); err != nil {
+					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
+				}
 			}
 
 			if _, err := c.PipelineClient.Create(getHelloWorldPipelineWithSingularTask(index, namespace)); err != nil {
@@ -202,7 +208,10 @@ func TestPipelineRun(t *testing.T) {
 
 func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(getName(pipelineName, suffix), namespace, tb.PipelineSpec(
-		tb.PipelineTask(task1Name, getName(taskName, suffix)),
+		tb.PipelineDeclaredResource("resource", "resource"),
+		tb.PipelineTask(task1Name, getName(taskName, suffix),
+			tb.PipelineTaskOutputResource("my-resource", "resource"),
+		),
 	))
 }
 
@@ -282,7 +291,7 @@ func getFanInFanOutPipeline(suffix int, namespace string) *v1alpha1.Pipeline {
 	))
 }
 
-func getFanInFanOutGitResources(namespace string) []*v1alpha1.PipelineResource {
+func getKritisGitResources(namespace string) []*v1alpha1.PipelineResource {
 	return []*v1alpha1.PipelineResource{
 		tb.PipelineResource("kritis-resource-git", namespace, tb.PipelineResourceSpec(
 			v1alpha1.PipelineResourceTypeGit,
@@ -343,6 +352,7 @@ func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRu
 	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
 		tb.PipelineRunLabel("hello-world-key", "hello-world-value"),
 		tb.PipelineRunSpec(getName(pipelineName, suffix),
+			tb.PipelineRunResourceBinding("resource", tb.PipelineResourceBindingRef("kritis-resource-git")),
 			tb.PipelineRunServiceAccount(fmt.Sprintf("%s%d", saName, suffix)),
 		),
 	)

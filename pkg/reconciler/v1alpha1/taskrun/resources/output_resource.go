@@ -25,6 +25,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -43,8 +45,8 @@ var (
 // This function also reads the inputs to check if resources are redeclared in inputs and has any custom
 // target directory.
 // Steps executed:
-//  1. If taskrun has owner reference as pipelinerun then all outputs are copied to parents PVC
-// and also runs any custom upload steps (upload to blob store)
+//  1. If taskrun has owner reference as pipelinerun and the expected parent PVC exists, then all outputs
+// are copied to parents PVC and also runs any custom upload steps (upload to blob store)
 //  2.  If taskrun does not have pipelinerun as owner reference then all outputs resources execute their custom
 // upload steps (like upload to blob store )
 //
@@ -68,8 +70,22 @@ func AddOutputResources(
 
 	pvcName := taskRun.GetPipelineRunPVCName()
 	as, err := artifacts.GetArtifactStorage(pvcName, kubeclient, logger)
+
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("couldn't determine artifact storage: %w", err)
+	}
+
+	if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+		// TODO(#1068) There is probably a race condition here - this is just a hack to work around the bug in 0.5.0 while we
+		// work on a real long term fix
+		if _, err := kubeclient.CoreV1().PersistentVolumeClaims(taskRun.Namespace).Get(pvcName, metav1.GetOptions{}); err != nil {
+			// If there is no "parent" PVC, we shouldn't try to attach it and upload to it
+			if errors.IsNotFound(err) {
+				as = &artifacts.ArtifactStorageNone{}
+			} else {
+				return nil, xerrors.Errorf("error checking for possible parent PVC volume %s: %w", pvcName, err)
+			}
+		}
 	}
 
 	// track resources that are present in input of task cuz these resources will be copied onto PVC
@@ -91,6 +107,7 @@ func AddOutputResources(
 		if !ok || resource == nil {
 			return nil, xerrors.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)
 		}
+
 		var (
 			resourceContainers []corev1.Container
 			resourceVolumes    []corev1.Volume
@@ -132,6 +149,7 @@ func AddOutputResources(
 		}
 
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+
 			var newSteps []corev1.Container
 			for _, dPath := range boundResource.Paths {
 				containers := as.GetCopyToStorageFromContainerSpec(resource.GetName(), sourcePath, dPath)

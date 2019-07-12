@@ -696,20 +696,38 @@ func TestReconcileWithTimeout(t *testing.T) {
 }
 
 func TestReconcileWithoutPVC(t *testing.T) {
+	rs := []*v1alpha1.PipelineResource{tb.PipelineResource("dance-party", "foo",
+		tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit),
+	)}
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
-		tb.PipelineTask("hello-world-1", "hello-world"),
-		tb.PipelineTask("hello-world-2", "hello-world"),
+		tb.PipelineDeclaredResource("party", v1alpha1.PipelineResourceTypeGit),
+		// Though these use the same resource as input and output, they are not linked with `from` so no PVC is needed
+		tb.PipelineTask("hello-world-1", "time-output",
+			tb.PipelineTaskOutputResource("time", "party"),
+		),
+		tb.PipelineTask("hello-world-2", "time-input",
+			tb.PipelineTaskInputResource("time", "party"),
+		),
 	))}
 
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run", "foo",
-		tb.PipelineRunSpec("test-pipeline")),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunResourceBinding("party", tb.PipelineResourceBindingRef("dance-party")),
+		)),
 	}
-	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+	ts := []*v1alpha1.Task{
+		tb.Task("time-input", "foo", tb.TaskSpec(
+			tb.TaskInputs(tb.InputsResource("time", v1alpha1.PipelineResourceTypeGit)),
+		)),
+		tb.Task("time-output", "foo", tb.TaskSpec(
+			tb.TaskOutputs(tb.OutputsResource("time", v1alpha1.PipelineResourceTypeGit)),
+		))}
 
 	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
+		PipelineResources: rs,
+		PipelineRuns:      prs,
+		Pipelines:         ps,
+		Tasks:             ts,
 	}
 
 	// create fake recorder for testing
@@ -730,7 +748,7 @@ func TestReconcileWithoutPVC(t *testing.T) {
 		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 	}
 
-	// Check that the expected TaskRun was created
+	// Check that no PVC was created
 	for _, a := range clients.Kube.Actions() {
 		if ca, ok := a.(ktesting.CreateAction); ok {
 			obj := ca.GetObject()
