@@ -33,7 +33,7 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(p.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
-	return nil
+	return p.Spec.Validate(ctx)
 }
 
 func validateDeclaredResources(ps *PipelineSpec) error {
