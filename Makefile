@@ -2,7 +2,10 @@ all: bin/tkn test
 
 FORCE:
 
-bin/%: cmd/% FORCE
+./vendor: go.mod go.sum
+	@go mod vendor
+
+bin/%: cmd/% ./vendor FORCE
 	@go build -v -o $@ ./$<
 
 check: lint test
@@ -16,7 +19,7 @@ lint: ## run linter(s)
 	@golangci-lint run ./...
 
 .PHONY: test-unit
-test-unit: ## run unit tests
+test-unit: ./vendor ## run unit tests
 	@echo "Running unit tests..."
 	@go test -v -cover ./...
 
