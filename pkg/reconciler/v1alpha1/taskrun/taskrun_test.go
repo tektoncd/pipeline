@@ -1496,8 +1496,7 @@ func TestReconcileTimeouts(t *testing.T) {
 				Reason:  "TaskRunTimeout",
 				Message: `TaskRun "test-taskrun-timeout" failed to finish within "10s"`,
 			},
-		},
-		{
+		}, {
 			taskRun: tb.TaskRun("test-taskrun-default-timeout-60-minutes", "foo",
 				tb.TaskRunSpec(
 					tb.TaskRunTaskRef(simpleTask.Name),
@@ -1513,8 +1512,7 @@ func TestReconcileTimeouts(t *testing.T) {
 				Reason:  "TaskRunTimeout",
 				Message: `TaskRun "test-taskrun-default-timeout-60-minutes" failed to finish within "1h0m0s"`,
 			},
-		},
-		{
+		}, {
 			taskRun: tb.TaskRun("test-taskrun-nil-timeout-default-60-minutes", "foo",
 				tb.TaskRunSpec(
 					tb.TaskRunTaskRef(simpleTask.Name),
@@ -1531,8 +1529,7 @@ func TestReconcileTimeouts(t *testing.T) {
 				Reason:  "TaskRunTimeout",
 				Message: `TaskRun "test-taskrun-nil-timeout-default-60-minutes" failed to finish within "1h0m0s"`,
 			},
-		},
-	}
+		}}
 
 	for _, tc := range testcases {
 		d := test.Data{
@@ -1589,22 +1586,19 @@ func TestHandlePodCreationError(t *testing.T) {
 		expectedType   apis.ConditionType
 		expectedStatus corev1.ConditionStatus
 		expectedReason string
-	}{
-		{
-			description:    "exceeded quota errors are surfaced in taskrun condition but do not fail taskrun",
-			err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
-			expectedType:   apis.ConditionSucceeded,
-			expectedStatus: corev1.ConditionUnknown,
-			expectedReason: status.ReasonExceededResourceQuota,
-		},
-		{
-			description:    "errors other than exceeded quota fail the taskrun",
-			err:            errors.New("this is a fatal error"),
-			expectedType:   apis.ConditionSucceeded,
-			expectedStatus: corev1.ConditionFalse,
-			expectedReason: status.ReasonCouldntGetTask,
-		},
-	}
+	}{{
+		description:    "exceeded quota errors are surfaced in taskrun condition but do not fail taskrun",
+		err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
+		expectedType:   apis.ConditionSucceeded,
+		expectedStatus: corev1.ConditionUnknown,
+		expectedReason: status.ReasonExceededResourceQuota,
+	}, {
+		description:    "errors other than exceeded quota fail the taskrun",
+		err:            errors.New("this is a fatal error"),
+		expectedType:   apis.ConditionSucceeded,
+		expectedStatus: corev1.ConditionFalse,
+		expectedReason: status.ReasonCouldntGetTask,
+	}}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
 			c.handlePodCreationError(taskRun, tc.err)

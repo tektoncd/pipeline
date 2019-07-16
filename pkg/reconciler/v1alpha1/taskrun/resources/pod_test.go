@@ -445,31 +445,28 @@ func TestMakeAnnotations(t *testing.T) {
 		taskRun                  *v1alpha1.TaskRun
 		expectedAnnotationSubset map[string]string
 	}
-	for _, c := range []testcase{
-		{
-			desc: "a taskruns annotations are copied to the pod",
-			taskRun: &v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "a-taskrun",
-					Annotations: map[string]string{
-						"foo": "bar",
-						"baz": "quux",
-					},
+	for _, c := range []testcase{{
+		desc: "a taskruns annotations are copied to the pod",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "a-taskrun",
+				Annotations: map[string]string{
+					"foo": "bar",
+					"baz": "quux",
 				},
 			},
-			expectedAnnotationSubset: map[string]string{
-				"foo": "bar",
-				"baz": "quux",
-			},
 		},
-		{
-			desc:    "initial pod annotations contain the ReadyAnnotation to pause steps until sidecars are ready",
-			taskRun: &v1alpha1.TaskRun{},
-			expectedAnnotationSubset: map[string]string{
-				ReadyAnnotation: "",
-			},
+		expectedAnnotationSubset: map[string]string{
+			"foo": "bar",
+			"baz": "quux",
 		},
-	} {
+	}, {
+		desc:    "initial pod annotations contain the ReadyAnnotation to pause steps until sidecars are ready",
+		taskRun: &v1alpha1.TaskRun{},
+		expectedAnnotationSubset: map[string]string{
+			ReadyAnnotation: "",
+		},
+	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			annos := makeAnnotations(c.taskRun)
 			for k, v := range c.expectedAnnotationSubset {

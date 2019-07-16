@@ -15,62 +15,56 @@ func Test_EmitEvent(t *testing.T) {
 		before      *apis.Condition
 		after       *apis.Condition
 		expectEvent bool
-	}{
-		{
-			name: "unknown to true",
-			before: &apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionUnknown,
-			},
-			after: &apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionTrue,
-			},
-			expectEvent: true,
+	}{{
+		name: "unknown to true",
+		before: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
 		},
-		{
-			name: "true to true",
-			before: &apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionTrue,
-			},
-			after: &apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionTrue,
-			},
-			expectEvent: false,
+		after: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
 		},
-		{
-			name: "false to false",
-			before: &apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-			},
-			after: &apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-			},
-			expectEvent: false,
+		expectEvent: true,
+	}, {
+		name: "true to true",
+		before: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
 		},
-		{
-			name:  "true to nil",
-			after: nil,
-			before: &apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionTrue,
-			},
-			expectEvent: true,
+		after: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
 		},
-		{
-			name:   "nil to true",
-			before: nil,
-			after: &apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionTrue,
-			},
-			expectEvent: true,
+		expectEvent: false,
+	}, {
+		name: "false to false",
+		before: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
 		},
-	}
+		after: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		},
+		expectEvent: false,
+	}, {
+		name:  "true to nil",
+		after: nil,
+		before: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		},
+		expectEvent: true,
+	}, {
+		name:   "nil to true",
+		before: nil,
+		after: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		},
+		expectEvent: true,
+	}}
 
 	for _, ts := range testcases {
 		fr := record.NewFakeRecorder(1)

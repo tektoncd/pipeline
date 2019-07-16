@@ -64,53 +64,50 @@ type testcase struct {
 }
 
 func containerTestCases(mode string) []testcase {
-	return []testcase{
-		{
-			in: &v1alpha1.PullRequestResource{
-				Name:           "nocreds",
-				DestinationDir: "/workspace",
-				URL:            "https://example.com",
-			},
-			out: []corev1.Container{{
-				Name:       "pr-source-nocreds-9l9zj",
-				Image:      "override-with-pr:latest",
-				WorkingDir: v1alpha1.WorkspaceDir,
-				Command:    []string{"/ko-app/pullrequest-init"},
-				Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
-				Env:        []corev1.EnvVar{},
+	return []testcase{{
+		in: &v1alpha1.PullRequestResource{
+			Name:           "nocreds",
+			DestinationDir: "/workspace",
+			URL:            "https://example.com",
+		},
+		out: []corev1.Container{{
+			Name:       "pr-source-nocreds-9l9zj",
+			Image:      "override-with-pr:latest",
+			WorkingDir: v1alpha1.WorkspaceDir,
+			Command:    []string{"/ko-app/pullrequest-init"},
+			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
+			Env:        []corev1.EnvVar{},
+		}},
+	}, {
+		in: &v1alpha1.PullRequestResource{
+			Name:           "creds",
+			DestinationDir: "/workspace",
+			URL:            "https://example.com",
+			Secrets: []v1alpha1.SecretParam{{
+				FieldName:  "githubToken",
+				SecretName: "github-creds",
+				SecretKey:  "token",
 			}},
 		},
-		{
-			in: &v1alpha1.PullRequestResource{
-				Name:           "creds",
-				DestinationDir: "/workspace",
-				URL:            "https://example.com",
-				Secrets: []v1alpha1.SecretParam{{
-					FieldName:  "githubToken",
-					SecretName: "github-creds",
-					SecretKey:  "token",
-				}},
-			},
-			out: []corev1.Container{{
-				Name:       "pr-source-creds-mz4c7",
-				Image:      "override-with-pr:latest",
-				WorkingDir: v1alpha1.WorkspaceDir,
-				Command:    []string{"/ko-app/pullrequest-init"},
-				Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
-				Env: []corev1.EnvVar{{
-					Name: "GITHUBTOKEN",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "github-creds",
-							},
-							Key: "token",
+		out: []corev1.Container{{
+			Name:       "pr-source-creds-mz4c7",
+			Image:      "override-with-pr:latest",
+			WorkingDir: v1alpha1.WorkspaceDir,
+			Command:    []string{"/ko-app/pullrequest-init"},
+			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
+			Env: []corev1.EnvVar{{
+				Name: "GITHUBTOKEN",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "github-creds",
 						},
+						Key: "token",
 					},
-				}},
+				},
 			}},
-		},
-	}
+		}},
+	}}
 }
 
 func TestPullRequest_GetDownloadContainerSpec(t *testing.T) {

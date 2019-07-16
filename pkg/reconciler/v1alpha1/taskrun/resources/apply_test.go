@@ -143,12 +143,10 @@ var gcsTaskSpec = &v1alpha1.TaskSpec{
 var paramTaskRun = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{
-				{
-					Name:  "myimage",
-					Value: "bar",
-				},
-			},
+			Params: []v1alpha1.Param{{
+				Name:  "myimage",
+				Value: "bar",
+			}},
 		},
 	},
 }
@@ -168,12 +166,10 @@ var gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 	Spec: v1alpha1.PipelineResourceSpec{
 		Type: v1alpha1.PipelineResourceTypeGit,
-		Params: []v1alpha1.Param{
-			{
-				Name:  "URL",
-				Value: "https://git-repo",
-			},
-		},
+		Params: []v1alpha1.Param{{
+			Name:  "URL",
+			Value: "https://git-repo",
+		}},
 	},
 })
 
@@ -183,12 +179,10 @@ var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 	Spec: v1alpha1.PipelineResourceSpec{
 		Type: v1alpha1.PipelineResourceTypeImage,
-		Params: []v1alpha1.Param{
-			{
-				Name:  "URL",
-				Value: "gcr.io/hans/sandwiches",
-			},
-		},
+		Params: []v1alpha1.Param{{
+			Name:  "URL",
+			Value: "gcr.io/hans/sandwiches",
+		}},
 	},
 })
 
@@ -198,16 +192,13 @@ var gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 	Spec: v1alpha1.PipelineResourceSpec{
 		Type: v1alpha1.PipelineResourceTypeStorage,
-		Params: []v1alpha1.Param{
-			{
-				Name:  "type",
-				Value: "gcs",
-			},
-			{
-				Name:  "location",
-				Value: "theCloud?",
-			},
-		},
+		Params: []v1alpha1.Param{{
+			Name:  "type",
+			Value: "gcs",
+		}, {
+			Name:  "location",
+			Value: "theCloud?",
+		}},
 	},
 })
 
@@ -415,8 +406,7 @@ func TestApplyResources(t *testing.T) {
 		want: applyMutation(gcsTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[0].Args = []string{"/workspace/outputs/bucket"}
 		}),
-	},
-	}
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			setup()

@@ -9,16 +9,13 @@ func Test_GetNamespace(t *testing.T) {
 	testcases := []struct {
 		envVar       string
 		expectEnvVar string
-	}{
-		{
-			envVar:       "",
-			expectEnvVar: DefaultNamespace,
-		},
-		{
-			envVar:       "test",
-			expectEnvVar: "test",
-		},
-	}
+	}{{
+		envVar:       "",
+		expectEnvVar: DefaultNamespace,
+	}, {
+		envVar:       "test",
+		expectEnvVar: "test",
+	}}
 
 	value := os.Getenv(SystemNamespaceEnvVar)
 	defer func() { os.Setenv(SystemNamespaceEnvVar, value) }()
