@@ -123,9 +123,9 @@ spec:
       description: Okay this is a hack, but I didn't feel right hard-codeing `-d1` down below
     - name: yamlPathToImage
       description: The path to the image to replace in the yaml manifest (arg to yq)
-    clusters:
-    - name: targetCluster
-      description: Not yet used, kubectl command below should use this cluster
+    #clusters:
+    #- name: targetCluster
+    #  description: Not yet used, kubectl command below should use this cluster
   steps:
   - name: replace-image
     image: mikefarah/yq
