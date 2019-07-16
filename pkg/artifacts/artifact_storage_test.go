@@ -497,8 +497,7 @@ func TestGetArtifactStorageWithPvcConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name: "pipelineruntest",
 		},
-	},
-	} {
+	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
 

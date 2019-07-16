@@ -38,84 +38,78 @@ func TestValidateVariables(t *testing.T) {
 		name          string
 		args          args
 		expectedError *apis.FieldError
-	}{
-		{
-			name: "valid variable",
-			args: args{
-				input:         "--flag=${inputs.params.baz}",
-				prefix:        "params",
-				contextPrefix: "inputs.",
-				locationName:  "step",
-				path:          "taskspec.steps",
-				vars: map[string]struct{}{
-					"baz": {},
-				},
-			},
-			expectedError: nil,
-		},
-		{
-			name: "multiple variables",
-			args: args{
-				input:         "--flag=${inputs.params.baz} ${input.params.foo}",
-				prefix:        "params",
-				contextPrefix: "inputs.",
-				locationName:  "step",
-				path:          "taskspec.steps",
-				vars: map[string]struct{}{
-					"baz": {},
-					"foo": {},
-				},
-			},
-			expectedError: nil,
-		},
-		{
-			name: "different context and prefix",
-			args: args{
-				input:        "--flag=${something.baz}",
-				prefix:       "something",
-				locationName: "step",
-				path:         "taskspec.steps",
-				vars: map[string]struct{}{
-					"baz": {},
-				},
-			},
-			expectedError: nil,
-		},
-		{
-			name: "undefined variable",
-			args: args{
-				input:         "--flag=${inputs.params.baz}",
-				prefix:        "params",
-				contextPrefix: "inputs.",
-				locationName:  "step",
-				path:          "taskspec.steps",
-				vars: map[string]struct{}{
-					"foo": {},
-				},
-			},
-			expectedError: &apis.FieldError{
-				Message: `non-existent variable in "--flag=${inputs.params.baz}" for step somefield`,
-				Paths:   []string{"taskspec.steps.somefield"},
+	}{{
+		name: "valid variable",
+		args: args{
+			input:         "--flag=${inputs.params.baz}",
+			prefix:        "params",
+			contextPrefix: "inputs.",
+			locationName:  "step",
+			path:          "taskspec.steps",
+			vars: map[string]struct{}{
+				"baz": {},
 			},
 		},
-		{
-			name: "undefined variable and defined variable",
-			args: args{
-				input:         "--flag=${inputs.params.baz} ${input.params.foo}",
-				prefix:        "params",
-				contextPrefix: "inputs.",
-				locationName:  "step",
-				path:          "taskspec.steps",
-				vars: map[string]struct{}{
-					"foo": {},
-				},
-			},
-			expectedError: &apis.FieldError{
-				Message: `non-existent variable in "--flag=${inputs.params.baz} ${input.params.foo}" for step somefield`,
-				Paths:   []string{"taskspec.steps.somefield"},
+		expectedError: nil,
+	}, {
+		name: "multiple variables",
+		args: args{
+			input:         "--flag=${inputs.params.baz} ${input.params.foo}",
+			prefix:        "params",
+			contextPrefix: "inputs.",
+			locationName:  "step",
+			path:          "taskspec.steps",
+			vars: map[string]struct{}{
+				"baz": {},
+				"foo": {},
 			},
 		},
-	}
+		expectedError: nil,
+	}, {
+		name: "different context and prefix",
+		args: args{
+			input:        "--flag=${something.baz}",
+			prefix:       "something",
+			locationName: "step",
+			path:         "taskspec.steps",
+			vars: map[string]struct{}{
+				"baz": {},
+			},
+		},
+		expectedError: nil,
+	}, {
+		name: "undefined variable",
+		args: args{
+			input:         "--flag=${inputs.params.baz}",
+			prefix:        "params",
+			contextPrefix: "inputs.",
+			locationName:  "step",
+			path:          "taskspec.steps",
+			vars: map[string]struct{}{
+				"foo": {},
+			},
+		},
+		expectedError: &apis.FieldError{
+			Message: `non-existent variable in "--flag=${inputs.params.baz}" for step somefield`,
+			Paths:   []string{"taskspec.steps.somefield"},
+		},
+	}, {
+		name: "undefined variable and defined variable",
+		args: args{
+			input:         "--flag=${inputs.params.baz} ${input.params.foo}",
+			prefix:        "params",
+			contextPrefix: "inputs.",
+			locationName:  "step",
+			path:          "taskspec.steps",
+			vars: map[string]struct{}{
+				"foo": {},
+			},
+		},
+		expectedError: &apis.FieldError{
+			Message: `non-existent variable in "--flag=${inputs.params.baz} ${input.params.foo}" for step somefield`,
+			Paths:   []string{"taskspec.steps.somefield"},
+		},
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := templating.ValidateVariable("somefield", tt.args.input, tt.args.prefix, tt.args.contextPrefix, tt.args.locationName, tt.args.path, tt.args.vars)

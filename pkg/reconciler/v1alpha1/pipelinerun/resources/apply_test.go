@@ -27,49 +27,46 @@ func TestApplyParameters(t *testing.T) {
 		original *v1alpha1.Pipeline
 		run      *v1alpha1.PipelineRun
 		expected *v1alpha1.Pipeline
-	}{
-		{
-			name: "single parameter",
-			original: tb.Pipeline("test-pipeline", "foo",
-				tb.PipelineSpec(
-					tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
-					tb.PipelineParam("second-param"),
-					tb.PipelineTask("first-task-1", "first-task",
-						tb.PipelineTaskParam("first-task-first-param", "${params.first-param}"),
-						tb.PipelineTaskParam("first-task-second-param", "${params.second-param}"),
-						tb.PipelineTaskParam("first-task-third-param", "static value"),
-					))),
-			run: tb.PipelineRun("test-pipeline-run", "foo",
-				tb.PipelineRunSpec("test-pipeline",
-					tb.PipelineRunParam("second-param", "second-value"))),
-			expected: tb.Pipeline("test-pipeline", "foo",
-				tb.PipelineSpec(
-					tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
-					tb.PipelineParam("second-param"),
-					tb.PipelineTask("first-task-1", "first-task",
-						tb.PipelineTaskParam("first-task-first-param", "default-value"),
-						tb.PipelineTaskParam("first-task-second-param", "second-value"),
-						tb.PipelineTaskParam("first-task-third-param", "static value"),
-					))),
-		},
-		{
-			name: "pipeline parameter nested inside task parameter",
-			original: tb.Pipeline("test-pipeline", "foo",
-				tb.PipelineSpec(
-					tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
-					tb.PipelineTask("first-task-1", "first-task",
-						tb.PipelineTaskParam("first-task-first-param", "${input.workspace.${params.first-param}}"),
-					))),
-			run: tb.PipelineRun("test-pipeline-run", "foo",
-				tb.PipelineRunSpec("test-pipeline")),
-			expected: tb.Pipeline("test-pipeline", "foo",
-				tb.PipelineSpec(
-					tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
-					tb.PipelineTask("first-task-1", "first-task",
-						tb.PipelineTaskParam("first-task-first-param", "${input.workspace.default-value}"),
-					))),
-		},
-	}
+	}{{
+		name: "single parameter",
+		original: tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
+				tb.PipelineParam("second-param"),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "${params.first-param}"),
+					tb.PipelineTaskParam("first-task-second-param", "${params.second-param}"),
+					tb.PipelineTaskParam("first-task-third-param", "static value"),
+				))),
+		run: tb.PipelineRun("test-pipeline-run", "foo",
+			tb.PipelineRunSpec("test-pipeline",
+				tb.PipelineRunParam("second-param", "second-value"))),
+		expected: tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
+				tb.PipelineParam("second-param"),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "default-value"),
+					tb.PipelineTaskParam("first-task-second-param", "second-value"),
+					tb.PipelineTaskParam("first-task-third-param", "static value"),
+				))),
+	}, {
+		name: "pipeline parameter nested inside task parameter",
+		original: tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "${input.workspace.${params.first-param}}"),
+				))),
+		run: tb.PipelineRun("test-pipeline-run", "foo",
+			tb.PipelineRunSpec("test-pipeline")),
+		expected: tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "${input.workspace.default-value}"),
+				))),
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ApplyParameters(tt.original, tt.run)
