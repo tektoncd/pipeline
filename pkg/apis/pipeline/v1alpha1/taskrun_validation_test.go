@@ -113,6 +113,22 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 			wantErr: apis.ErrInvalidValue("-48h0m0s should be >= 0", "spec.timeout"),
 		},
+		{
+			name: "invalid taskspec",
+			spec: v1alpha1.TaskRunSpec{
+				TaskSpec: &v1alpha1.TaskSpec{
+					Steps: []corev1.Container{{
+						Name:  "invalid-name-with-$weird-char*/%",
+						Image: "myimage",
+					}},
+				},
+			},
+			wantErr: &apis.FieldError{
+				Message: `invalid value "invalid-name-with-$weird-char*/%"`,
+				Paths:   []string{"taskspec.steps.name"},
+				Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+			},
+		},
 	}
 
 	for _, ts := range tests {

@@ -59,6 +59,15 @@ func TestTaskSpecValidate(t *testing.T) {
 		name   string
 		fields fields
 	}{{
+		name: "unnamed steps",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Image: "myimage",
+			}, {
+				Image: "myotherimage",
+			}},
+		},
+	}, {
 		name: "valid inputs",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
