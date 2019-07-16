@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"text/tabwriter"
+	"sort"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/cobra"
@@ -125,6 +126,8 @@ func printFormatted(s *cli.Stream, trs *v1alpha1.TaskRunList, c clockwork.Clock)
 		return nil
 	}
 
+	sort.Sort(byStartTime(trs.Items))
+
 	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(w, "NAME\tSTARTED\tDURATION\tSTATUS\t")
 	for _, tr := range trs.Items {
@@ -137,3 +140,9 @@ func printFormatted(s *cli.Stream, trs *v1alpha1.TaskRunList, c clockwork.Clock)
 	}
 	return w.Flush()
 }
+
+type byStartTime []v1alpha1.TaskRun
+
+func (s byStartTime) Len() int           { return len(s) }
+func (s byStartTime) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s byStartTime) Less(i, j int) bool { return s[j].Status.StartTime.Before(s[i].Status.StartTime) }
