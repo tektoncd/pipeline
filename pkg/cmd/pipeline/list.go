@@ -54,7 +54,6 @@ func listCommand(p cli.Params) *cobra.Command {
 		Use:          "list",
 		Aliases:      []string{"ls"},
 		Short:        "Lists pipelines in a namespace",
-		Long:         ``,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output, err := cmd.LocalFlags().GetString("output")

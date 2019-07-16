@@ -68,7 +68,6 @@ func describeCommand(p cli.Params) *cobra.Command {
 		Use:          "describe",
 		Aliases:      []string{"desc"},
 		Short:        "Describes a pipeline in a namespace",
-		Long:         ``,
 		Args:         cobra.MinimumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

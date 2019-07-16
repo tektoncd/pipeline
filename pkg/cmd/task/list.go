@@ -44,7 +44,6 @@ func listCommand(p cli.Params) *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "Lists tasks in a namespace",
-		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output, err := cmd.LocalFlags().GetString("output")
 			if err != nil {
@@ -104,7 +103,6 @@ func printTaskListObj(w io.Writer, p cli.Params, f *cliopts.PrintFlags) error {
 	}
 
 	tasks, err := listAllTasks(cs.Tekton, p.Namespace())
-
 	if err != nil {
 		return err
 	}
@@ -133,10 +131,6 @@ func listTaskDetails(cs versioned.Interface, ns string) (*v1alpha1.TaskList, err
 	tasks, err := listAllTasks(cs, ns)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(tasks.Items) == 0 {
-		return tasks, nil
 	}
 
 	return tasks, nil
