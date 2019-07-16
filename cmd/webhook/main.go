@@ -98,8 +98,8 @@ func main() {
 			v1alpha1.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha1.TaskRun{},
 			v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
 		},
-		Logger: logger,
-
+		Logger:                logger,
+		DisallowUnknownFields: true,
 		// Decorate contexts with the current state of the config.
 		WithContext: func(ctx context.Context) context.Context {
 			return v1alpha1.WithDefaultConfigurationName(store.ToContext(ctx))
