@@ -64,8 +64,8 @@ func updateCompletedTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 		})
 	} else {
 		taskRun.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionTrue,
 			Reason:  ReasonSucceeded,
 			Message: "All Steps have completed executing",
 		})
@@ -78,9 +78,9 @@ func updateIncompleteTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		taskRun.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-			Reason: ReasonBuilding,
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  ReasonBuilding,
 			Message: "Not all Steps in the Task have finished executing",
 		})
 	case corev1.PodPending:
