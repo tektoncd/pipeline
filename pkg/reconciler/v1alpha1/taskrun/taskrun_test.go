@@ -1364,8 +1364,8 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), &apis.Condition{
-		Type:   apis.ConditionSucceeded,
-		Status: corev1.ConditionTrue,
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
 		Reason:  status.ReasonSucceeded,
 		Message: "All Steps have completed executing",
 	}, ignoreLastTransitionTime); d != "" {

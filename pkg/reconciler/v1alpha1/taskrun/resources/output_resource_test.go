@@ -89,6 +89,18 @@ func outputResourceSetup(t *testing.T) {
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "image",
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "source-volume",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "volume",
+			Params: []v1alpha1.Param{{
+				Name:  "Size",
+				Value: "10Gi",
+			}},
+		},
 	}}
 
 	outputResources = make(map[string]v1alpha1.PipelineResourceInterface)
@@ -672,6 +684,152 @@ func TestValidOutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: nil,
+	}, {
+		name: "volume resource as output with no owner",
+		desc: "volume resource defined only in output without pipelinerun reference",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-only-output-step",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-volume",
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name:       "source-workspace",
+						Type:       "volume",
+						TargetPath: "/workspace",
+					}},
+				},
+			},
+		},
+		wantSteps: []corev1.Container{{
+			Name:  "upload-mkdir-source-volume-9l9zj",
+			Image: "override-with-bash-noop:latest",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "source-volume", MountPath: "/volumeresource",
+			}},
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "mkdir -p /volumeresource/source-volume"},
+		}, {
+			Name:  "upload-copy-source-volume-mz4c7",
+			Image: "override-with-bash-noop:latest",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "source-volume", MountPath: "/volumeresource",
+			}},
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "cp -r /workspace/. /volumeresource/source-volume"},
+		}},
+		wantVolumes: []corev1.Volume{{
+			Name: "source-volume",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "source-volume", ReadOnly: false},
+			},
+		}},
+	}, {
+		name: "volume resource as both input and output",
+		desc: "volume resource defined in both input and output",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun-parent",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-volume",
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						Name: "source-workspace",
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "source-volume",
+						},
+						Paths: []string{"pipeline-task-path"},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name:       "source-workspace",
+						Type:       "volume",
+						TargetPath: "faraway-disk",
+					}},
+				},
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						Name: "source-workspace",
+						Type: "volume",
+					}},
+				},
+			},
+		},
+		wantSteps: []corev1.Container{{
+			Name:  "upload-mkdir-source-volume-9l9zj",
+			Image: "override-with-bash-noop:latest",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "source-volume", MountPath: "/volumeresource",
+			}},
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "mkdir -p /volumeresource/pipeline-task-path"},
+		}, {
+			Name:  "upload-copy-source-volume-mz4c7",
+			Image: "override-with-bash-noop:latest",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "source-volume",
+				MountPath: "/volumeresource",
+			}},
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "cp -r /workspace/faraway-disk/. /volumeresource/pipeline-task-path"},
+		}, {
+			Name:         "source-mkdir-source-volume-mssqb",
+			Image:        "override-with-bash-noop:latest",
+			Command:      []string{"/ko-app/bash"},
+			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
+			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
+		}, {
+			Name:         "source-copy-source-volume-78c5n",
+			Image:        "override-with-bash-noop:latest",
+			Command:      []string{"/ko-app/bash"},
+			Args:         []string{"-args", "cp -r /workspace/faraway-disk/. pipeline-task-path"},
+			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
+		}},
+		wantVolumes: []corev1.Volume{{
+			Name: "source-volume",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "source-volume", ReadOnly: false},
+			},
+		}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()

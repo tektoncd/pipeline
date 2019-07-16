@@ -43,6 +43,9 @@ const (
 
 	// PipelineResourceTypePullRequest indicates that this source is a SCM Pull Request.
 	PipelineResourceTypePullRequest PipelineResourceType = "pullRequest"
+
+	// PipelineResourceTypeVolume indicates that this source is a PVC.
+	PipelineResourceTypeVolume PipelineResourceType = "volume"
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
@@ -143,6 +146,8 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 		return NewStorageResource(r)
 	case PipelineResourceTypePullRequest:
 		return NewPullRequestResource(r)
+	case PipelineResourceTypeVolume:
+		return NewVolumeResource(r)
 	}
 	return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

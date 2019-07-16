@@ -28,15 +28,15 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		Message: ReasonRunning,
 	}
 	conditionTrue := apis.Condition{
-		Type:   apis.ConditionSucceeded,
-		Status: corev1.ConditionTrue,
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
 		Reason:  ReasonSucceeded,
 		Message: "All Steps have completed executing",
 	}
 	conditionBuilding := apis.Condition{
-		Type:   apis.ConditionSucceeded,
-		Status: corev1.ConditionUnknown,
-		Reason: ReasonBuilding,
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionUnknown,
+		Reason:  ReasonBuilding,
 		Message: "Not all Steps in the Task have finished executing",
 	}
 	for _, c := range []struct {

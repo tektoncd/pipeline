@@ -125,6 +125,17 @@ func AddInputResource(
 						return nil, xerrors.Errorf("task %q invalid gcs Pipeline Resource download steps: %q: %w", taskName, boundResource.ResourceRef.Name, err)
 					}
 				}
+			case v1alpha1.PipelineResourceTypeVolume:
+				{
+					volumeResource, ok := resource.(*v1alpha1.VolumeResource)
+					if !ok {
+						return nil, xerrors.Errorf("task %q invalid volume Pipeline Resource: %q", taskName, boundResource.ResourceRef.Name)
+					}
+					resourceContainers, resourceVolumes, err = addVolumeFetchStep(kubeclient, taskRun, volumeResource, boundResource.Paths)
+					if err != nil {
+						return nil, xerrors.Errorf("task %q invalid volume Pipeline Resource download steps: %q: %w", taskName, boundResource.ResourceRef.Name, err)
+					}
+				}
 			default:
 				{
 					resourceContainers, err = resource.GetDownloadContainerSpec()
@@ -144,6 +155,33 @@ func AddInputResource(
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 	}
 	return taskSpec, nil
+}
+
+func addVolumeFetchStep(kubeClient kubernetes.Interface, taskRun *v1alpha1.TaskRun, volumeResource *v1alpha1.VolumeResource, sourcePaths []string) ([]corev1.Container, []corev1.Volume, error) {
+	var volumeContainers []corev1.Container
+
+	var actualSourcePaths []string
+
+	if len(sourcePaths) > 0 {
+		actualSourcePaths = append(actualSourcePaths, sourcePaths...)
+	} else {
+		actualSourcePaths = append(actualSourcePaths, volumeResource.Name)
+	}
+
+	for _, src := range actualSourcePaths {
+		volumeResource.SetSourceDirectory(src)
+		containers, err := volumeResource.GetDownloadContainerSpec()
+		if err != nil {
+			return nil, nil, err
+		}
+		volumeContainers = append(volumeContainers, containers...)
+	}
+
+	volume, err := volumeResource.GetVolume(kubeClient, taskRun)
+	if err != nil {
+		return nil, nil, err
+	}
+	return volumeContainers, []corev1.Volume{*volume}, nil
 }
 
 func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.PipelineStorageResourceInterface) ([]corev1.Container, []corev1.Volume, error) {

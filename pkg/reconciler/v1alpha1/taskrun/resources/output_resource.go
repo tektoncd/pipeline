@@ -36,6 +36,7 @@ var (
 	allowedOutputResources = map[v1alpha1.PipelineResourceType]bool{
 		v1alpha1.PipelineResourceTypeStorage: true,
 		v1alpha1.PipelineResourceTypeGit:     true,
+		v1alpha1.PipelineResourceTypeVolume:  true,
 	}
 )
 
@@ -122,6 +123,21 @@ func AddOutputResources(
 						taskName, boundResource.ResourceRef.Name, err)
 				}
 			}
+		case v1alpha1.PipelineResourceTypeVolume:
+			{
+				volumeResource, ok := resource.(*v1alpha1.VolumeResource)
+				if !ok {
+					return nil, xerrors.Errorf("task %q invalid volume Pipeline Resource: %q",
+						taskName,
+						boundResource.ResourceRef.Name,
+					)
+				}
+				resourceContainers, resourceVolumes, err = addVolumeUploadStep(kubeclient, taskRun, volumeResource, sourcePath, boundResource.Paths)
+				if err != nil {
+					return nil, xerrors.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %w",
+						taskName, boundResource.ResourceRef.Name, err)
+				}
+			}
 		default:
 			{
 				resourceContainers, err = resource.GetUploadContainerSpec()
@@ -195,4 +211,32 @@ func addStoreUploadStep(spec *v1alpha1.TaskSpec,
 		}
 	}
 	return gcsContainers, storageVol, nil
+}
+
+func addVolumeUploadStep(kubeClient kubernetes.Interface, taskRun *v1alpha1.TaskRun, volumeResource *v1alpha1.VolumeResource, sourcePath string, destinations []string) ([]corev1.Container, []corev1.Volume, error) {
+	var volumeContainers []corev1.Container
+
+	volumeResource.SetSourceDirectory(sourcePath)
+
+	var actualDestinations []string
+	if len(destinations) > 0 {
+		actualDestinations = append(actualDestinations, destinations...)
+	} else {
+		actualDestinations = append(actualDestinations, volumeResource.Name)
+	}
+
+	for _, dest := range actualDestinations {
+		volumeResource.SetDestinationDirectory(dest)
+		containers, err := volumeResource.GetUploadContainerSpec()
+		if err != nil {
+			return nil, nil, err
+		}
+		volumeContainers = append(volumeContainers, containers...)
+	}
+
+	volume, err := volumeResource.GetVolume(kubeClient, taskRun)
+	if err != nil {
+		return nil, nil, err
+	}
+	return volumeContainers, []corev1.Volume{*volume}, nil
 }

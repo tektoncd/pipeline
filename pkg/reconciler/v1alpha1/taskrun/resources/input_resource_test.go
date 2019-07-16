@@ -58,6 +58,13 @@ var (
 			Type: "cluster",
 		}},
 	}
+	volumeInputs = &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			Name:       "workspace",
+			Type:       "volume",
+			TargetPath: "sub-dir",
+		}},
+	}
 )
 
 func setUp(t *testing.T) {
@@ -186,6 +193,18 @@ func setUp(t *testing.T) {
 				Value: "non-existent",
 			}},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "volume-valid",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "volume",
+			Params: []v1alpha1.Param{{
+				Name:  "Size",
+				Value: "10Gi",
+			}},
+		},
 	}}
 	inputResourceInterfaces = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
@@ -221,6 +240,15 @@ func TestAddResourceToTask(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: gcsInputs,
+		},
+	}
+	taskWithVolume := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "task-with-volume",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: volumeInputs,
 		},
 	}
 
@@ -685,6 +713,147 @@ func TestAddResourceToTask(t *testing.T) {
 					},
 					Name: "CADATA",
 				}},
+			}},
+		},
+	}, {
+		desc: "volume resource as input with paths",
+		task: taskWithVolume,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-volume",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "volume-valid",
+						},
+						Name:  "workspace",
+						Paths: []string{"workspace"},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: volumeInputs,
+			Steps: []corev1.Container{{
+				Name:    "create-dir-volume-valid-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/sub-dir"},
+			}, {
+				Name:    "download-copy-volume-valid-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "cp -r /volumeresource/workspace/. /workspace/sub-dir"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-valid",
+					MountPath: "/volumeresource",
+				}},
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "volume-valid",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "volume-valid",
+						ReadOnly:  false,
+					},
+				},
+			}},
+		},
+	}, {
+		desc: "volume resource as input without paths",
+		task: taskWithVolume,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-volume",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "volume-valid",
+						},
+						Name: "workspace",
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: volumeInputs,
+			Steps: []corev1.Container{{
+				Name:    "create-dir-volume-valid-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/sub-dir"},
+			}, {
+				Name:    "download-copy-volume-valid-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "cp -r /volumeresource/volume-valid/. /workspace/sub-dir"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-valid",
+					MountPath: "/volumeresource",
+				}},
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "volume-valid",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "volume-valid",
+						ReadOnly:  false,
+					},
+				},
+			}},
+		},
+	}, {
+		desc: "volume resource as input from previous task",
+		task: taskWithVolume,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-volume",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "volume-valid",
+						},
+						Name:  "workspace",
+						Paths: []string{"prev-task-path"},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: volumeInputs,
+			Steps: []corev1.Container{{
+				Name:    "create-dir-workspace-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/sub-dir"},
+			}, {
+				Name:         "source-copy-workspace-9l9zj",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "cp -r prev-task-path/. /workspace/sub-dir"},
+				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
+			}},
+			Volumes: []corev1.Volume{{
+				Name: "pipelinerun-pvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
+				},
 			}},
 		},
 	}} {
