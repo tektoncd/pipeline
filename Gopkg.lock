@@ -123,6 +123,26 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:fa1c3e6de410f74eb102fd927c838a66feb5b825fdf63d0e82cbbfd1a16db8a1"
+  name = "github.com/cloudevents/sdk-go"
+  packages = [
+    "pkg/cloudevents",
+    "pkg/cloudevents/client",
+    "pkg/cloudevents/codec",
+    "pkg/cloudevents/context",
+    "pkg/cloudevents/datacodec",
+    "pkg/cloudevents/datacodec/json",
+    "pkg/cloudevents/datacodec/xml",
+    "pkg/cloudevents/observability",
+    "pkg/cloudevents/transport",
+    "pkg/cloudevents/transport/http",
+    "pkg/cloudevents/types",
+  ]
+  pruneopts = "NUT"
+  revision = "51b1fb67ea02b6edb9c158592f4c996d6edd1493"
+  version = "0.6.0"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -396,6 +416,14 @@
   ]
   pruneopts = "T"
   revision = "3fc06fd3c9880a9ebb5c401f4b20cf6666cc7bc0"
+
+[[projects]]
+  digest = "1:067a241f3d8511e43ae1df08337a3cf2475d82b90c31cb4c43e4936cd5808d3c"
+  name = "github.com/knative/eventing-sources"
+  packages = ["pkg/kncloudevents"]
+  pruneopts = "NUT"
+  revision = "32ce3778fa1bc46ed0b0ade16d5c57f343cafa4d"
+  version = "v0.5.0"
 
 [[projects]]
   digest = "1:33afd816eb96416e5d7c0a64c1c6412e277720faa03c90739ce1d1fb1764b8de"
@@ -1253,6 +1281,10 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/cloudevents/sdk-go/pkg/cloudevents",
+    "github.com/cloudevents/sdk-go/pkg/cloudevents/client",
+    "github.com/cloudevents/sdk-go/pkg/cloudevents/context",
+    "github.com/cloudevents/sdk-go/pkg/cloudevents/types",
     "github.com/ghodss/yaml",
     "github.com/google/go-cmp/cmp",
     "github.com/google/go-cmp/cmp/cmpopts",
@@ -1270,6 +1302,7 @@
     "github.com/hashicorp/golang-lru",
     "github.com/knative/caching/pkg/apis/caching",
     "github.com/knative/caching/pkg/client/clientset/versioned",
+    "github.com/knative/eventing-sources/pkg/kncloudevents",
     "github.com/knative/pkg/apis",
     "github.com/knative/pkg/apis/duck/v1beta1",
     "github.com/knative/pkg/codegen/cmd/injection-gen",
