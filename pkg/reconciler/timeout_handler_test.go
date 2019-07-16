@@ -43,6 +43,15 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 		tb.TaskRunStartTime(time.Now()),
 	))
 
+	taskRunRunningNilTimeout := tb.TaskRun("test-taskrun-running-nil-timeout", testNs, tb.TaskRunSpec(
+		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
+		tb.TaskRunNilTimeout,
+	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionUnknown}),
+		tb.TaskRunStartTime(time.Now()),
+	))
+
 	taskRunDone := tb.TaskRun("test-taskrun-completed", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
@@ -61,7 +70,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	))
 
 	d := test.Data{
-		TaskRuns: []*v1alpha1.TaskRun{taskRunTimedout, taskRunRunning, taskRunDone, taskRunCancelled},
+		TaskRuns: []*v1alpha1.TaskRun{taskRunTimedout, taskRunRunning, taskRunDone, taskRunCancelled, taskRunRunningNilTimeout},
 		Tasks:    []*v1alpha1.Task{simpleTask},
 		Namespaces: []*corev1.Namespace{{
 			ObjectMeta: metav1.ObjectMeta{
@@ -95,6 +104,10 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	}, {
 		name:           "running",
 		taskRun:        taskRunRunning,
+		expectCallback: false,
+	}, {
+		name:           "running-with-nil-timeout",
+		taskRun:        taskRunRunningNilTimeout,
 		expectCallback: false,
 	}, {
 		name:           "completed",
@@ -150,6 +163,16 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 			tb.PipelineRunStartTime(time.Now()),
 		),
 	)
+	prRunningNilTimeout := tb.PipelineRun("test-pipeline-running-nil-timeout", testNs,
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunNilTimeout,
+		),
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown}),
+			tb.PipelineRunStartTime(time.Now()),
+		),
+	)
 	prDone := tb.PipelineRun("test-pipeline-done", testNs,
 		tb.PipelineRunSpec("test-pipeline",
 			tb.PipelineRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
@@ -170,7 +193,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 		),
 	)
 	d := test.Data{
-		PipelineRuns: []*v1alpha1.PipelineRun{prTimeout, prRunning, prDone, prCancelled},
+		PipelineRuns: []*v1alpha1.PipelineRun{prTimeout, prRunning, prDone, prCancelled, prRunningNilTimeout},
 		Pipelines:    []*v1alpha1.Pipeline{simplePipeline},
 		Tasks:        []*v1alpha1.Task{ts},
 		Namespaces: []*corev1.Namespace{{
@@ -200,6 +223,10 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	}{{
 		name:           "pr-running",
 		pr:             prRunning,
+		expectCallback: false,
+	}, {
+		name:           "pr-running-nil-timeout",
+		pr:             prRunningNilTimeout,
 		expectCallback: false,
 	}, {
 		name:           "pr-timedout",

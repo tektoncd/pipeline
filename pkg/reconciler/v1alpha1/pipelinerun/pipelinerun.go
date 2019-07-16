@@ -26,6 +26,7 @@ import (
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
@@ -441,6 +442,8 @@ func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) erro
 func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
 	var taskRunTimeout = &metav1.Duration{Duration: 0 * time.Second}
 
+	// If the value of the timeout is 0 for any resource, there is no timeout.
+	// It is impossible for pr.Spec.Timeout to be nil, since SetDefault always assigns it with a value.
 	if pr.Spec.Timeout != nil {
 		pTimeoutTime := pr.Status.StartTime.Add(pr.Spec.Timeout.Duration)
 		if time.Now().After(pTimeoutTime) {

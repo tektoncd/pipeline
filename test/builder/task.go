@@ -349,6 +349,11 @@ func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
 	}
 }
 
+// TaskRunNilTimeout sets the timeout duration to nil on the TaskRunSpec.
+func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
+	spec.Timeout = nil
+}
+
 // TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {

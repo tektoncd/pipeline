@@ -1371,8 +1371,8 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
 	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), &apis.Condition{
-		Type:   apis.ConditionSucceeded,
-		Status: corev1.ConditionTrue,
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
 		Reason:  status.ReasonSucceeded,
 		Message: "All Steps have completed executing",
 	}, ignoreLastTransitionTime); d != "" {
@@ -1517,6 +1517,24 @@ func TestReconcileTimeouts(t *testing.T) {
 				Status:  corev1.ConditionFalse,
 				Reason:  "TaskRunTimeout",
 				Message: `TaskRun "test-taskrun-default-timeout-60-minutes" failed to finish within "1h0m0s"`,
+			},
+		},
+		{
+			taskRun: tb.TaskRun("test-taskrun-nil-timeout-default-60-minutes", "foo",
+				tb.TaskRunSpec(
+					tb.TaskRunTaskRef(simpleTask.Name),
+					tb.TaskRunNilTimeout,
+				),
+				tb.TaskRunStatus(tb.Condition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown}),
+					tb.TaskRunStartTime(time.Now().Add(-61*time.Minute)))),
+
+			expectedStatus: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "TaskRunTimeout",
+				Message: `TaskRun "test-taskrun-nil-timeout-default-60-minutes" failed to finish within "1h0m0s"`,
 			},
 		},
 	}
