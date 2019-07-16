@@ -151,3 +151,53 @@ func TestTaskRunHasStarted(t *testing.T) {
 		})
 	}
 }
+
+func TestInitializeCloudEvents(t *testing.T) {
+	tests := []struct {
+		name 						string
+		targets    			[]string
+		wantCloudEvents	[]v1alpha1.CloudEventDelivery
+	}{{
+		name: "testWithNilTarget",
+		targets: nil,
+		wantCloudEvents: nil,
+	},{
+		name: "testWithEmptyListTarget",
+		targets: make([]string, 0),
+		wantCloudEvents: nil,
+	},{
+		name: "testWithTwoTargets",
+		targets: []string{"target1", "target2"},
+		wantCloudEvents: []v1alpha1.CloudEventDelivery{
+			v1alpha1.CloudEventDelivery{
+				Target: "target1",
+				Status: v1alpha1.CloudEventDeliveryState{
+					Condition: v1alpha1.CloudEventConditionUnknown,
+					SentAt: nil,
+					Error: "",
+					RetryCount: 0,
+				},
+			},
+			v1alpha1.CloudEventDelivery{
+				Target: "target2",
+				Status: v1alpha1.CloudEventDeliveryState{
+					Condition: v1alpha1.CloudEventConditionUnknown,
+					SentAt: nil,
+					Error: "",
+					RetryCount: 0,
+				},
+			},
+		},
+	}}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tr := tb.TaskRun("taskrunname", "testns", tb.TaskRunStatus())
+			trs := tr.Status
+			trs.InitializeCloudEvents(tc.targets)
+			gotCloudEvents := trs.CloudEvents
+			if diff := cmp.Diff(tc.wantCloudEvents, gotCloudEvents); diff != "" {
+				t.Errorf("Wrong Cloud Events (-want +got) = %s", diff)
+			}
+		})
+	}
+}

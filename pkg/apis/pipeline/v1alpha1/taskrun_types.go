@@ -133,6 +133,12 @@ type TaskRunStatus struct {
 	// Steps describes the state of each build step container.
 	// +optional
 	Steps []StepState `json:"steps,omitempty"`
+
+	// CloudEvents describe the state of each cloud event requested via a
+	// CloudEventResource.
+	// +optional
+	CloudEvents []CloudEventDelivery `json:"cloudEvents,omitempty"`
+
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
 	// +optional
@@ -165,10 +171,65 @@ func (tr *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 	}
 }
 
+// InitializeCloudEvents initializes the CloudEvents part of the TaskRunStatus
+// from a list of event targets
+func (tr *TaskRunStatus) InitializeCloudEvents(targets []string) {
+	// len(nil slice) is 0
+	if len(targets) > 0 {
+		initialState := CloudEventDeliveryState{
+			Condition: CloudEventConditionUnknown,
+			RetryCount: 0,
+		}
+		events := make([]CloudEventDelivery, len(targets))
+		for idx, target := range targets {
+			events[idx] = CloudEventDelivery{
+				Target: target,
+				Status: initialState,
+			}
+		}
+		tr.CloudEvents = events
+	}
+}
+
 // StepState reports the results of running a step in the Task.
 type StepState struct {
 	corev1.ContainerState
 	Name string `json:"name,omitempty"`
+}
+
+// CloudEventDelivery is the target of a cloud event along with the state of
+// delivery.
+type CloudEventDelivery struct {
+	// Target points to an addressable
+	Target string `json:"target,omitempty"`
+	Status CloudEventDeliveryState `json:"status,omitempty"`
+}
+
+// CloudEventCondition is a string that represents the condition of the event.
+type CloudEventCondition string
+
+const (
+	// CloudEventConditionUnknown means that the condition for the event to be
+	// triggered was not met yet, or we don't know the state yet.
+	CloudEventConditionUnknown CloudEventCondition = "Unknown"
+	// CloudEventConditionSent means that the event was sent successfully
+	CloudEventConditionSent CloudEventCondition = "Sent"
+	// CloudEventConditionFailed means that there was one or more attempts to
+	// send the event, and none was successful so far.
+	CloudEventConditionFailed CloudEventCondition = "Failed"
+)
+
+// CloudEventDeliveryState reports the state of a cloud event to be sent.
+type CloudEventDeliveryState struct {
+	// Current status
+	Condition CloudEventCondition `json:"condition,omitempty"`
+	// SentAt is the time at which the last attempt to send the event was made
+	// +optional
+	SentAt *metav1.Time `json:"sentAt,omitempty"`
+	// Error is the text of error (if any)
+	Error string `json:"message"`
+	// RetryCount is the number of attempts of sending the cloud event
+	RetryCount int32 `json:"retryCount"`
 }
 
 // +genclient
