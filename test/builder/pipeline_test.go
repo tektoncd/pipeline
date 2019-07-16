@@ -31,9 +31,10 @@ func TestPipeline(t *testing.T) {
 	pipeline := tb.Pipeline("tomatoes", "foo", tb.PipelineSpec(
 		tb.PipelineDeclaredResource("my-only-git-resource", "git"),
 		tb.PipelineDeclaredResource("my-only-image-resource", "image"),
-		tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value"), tb.PipelineParamDescription("default description")),
+		tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("default-value"), tb.PipelineParamDescription("default description")),
 		tb.PipelineTask("foo", "banana",
-			tb.PipelineTaskParam("name", "value"),
+			tb.PipelineTaskParam("stringparam", "value"),
+			tb.PipelineTaskParam("arrayparam", "array", "value"),
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
@@ -61,13 +62,20 @@ func TestPipeline(t *testing.T) {
 			}},
 			Params: []v1alpha1.ParamSpec{{
 				Name:        "first-param",
-				Default:     "default-value",
+				Type:        v1alpha1.ParamTypeString,
+				Default:     tb.ArrayOrString("default-value"),
 				Description: "default description",
 			}},
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "foo",
 				TaskRef: v1alpha1.TaskRef{Name: "banana"},
-				Params:  []v1alpha1.Param{{Name: "name", Value: "value"}},
+				Params: []v1alpha1.ArrayOrStringParam{{
+					Name:  "stringparam",
+					Value: *tb.ArrayOrString("value"),
+				}, {
+					Name:  "arrayparam",
+					Value: *tb.ArrayOrString("array", "value"),
+				}},
 			}, {
 				Name:    "bar",
 				TaskRef: v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},
@@ -100,7 +108,8 @@ func TestPipelineRun(t *testing.T) {
 
 	pipelineRun := tb.PipelineRun("pear", "foo", tb.PipelineRunSpec(
 		"tomatoes", tb.PipelineRunServiceAccount("sa"),
-		tb.PipelineRunParam("first-param", "first-value"),
+		tb.PipelineRunParam("first-param-string", "first-value"),
+		tb.PipelineRunParam("second-param-array", "some", "array"),
 		tb.PipelineRunTimeout(1*time.Hour),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 		tb.PipelineRunServiceAccountTask("foo", "sa-2"),
@@ -121,9 +130,12 @@ func TestPipelineRun(t *testing.T) {
 			PipelineRef:     v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccount:  "sa",
 			ServiceAccounts: []v1alpha1.PipelineRunSpecServiceAccount{{TaskName: "foo", ServiceAccount: "sa-2"}},
-			Params: []v1alpha1.Param{{
-				Name:  "first-param",
-				Value: "first-value",
+			Params: []v1alpha1.ArrayOrStringParam{{
+				Name:  "first-param-string",
+				Value: *tb.ArrayOrString("first-value"),
+			}, {
+				Name:  "second-param-array",
+				Value: *tb.ArrayOrString("some", "array"),
 			}},
 			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1alpha1.PipelineResourceBinding{{

@@ -118,16 +118,25 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}, {
 		name: "valid parameter variables",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParam("baz"),
-			tb.PipelineParam("foo-is-baz"),
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString),
+			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeString),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "${baz} and ${foo-is-baz}")),
 		)),
 		failureExpected: false,
 	}, {
+		name: "valid array parameter variables",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.PipelineParamDefault("some", "default")),
+			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "${baz}", "and", "${foo-is-baz}")),
+		)),
+		failureExpected: false,
+	}, {
 		name: "pipeline parameter nested in task parameter",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParam("baz"),
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "${input.workspace.${baz}}")),
 		)),
@@ -203,9 +212,50 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}, {
 		name: "not defined parameter variable with defined",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParam("foo", tb.PipelineParamDefault("something")),
+			tb.PipelineParamSpec("foo", v1alpha1.ParamTypeString, tb.PipelineParamDefault("something")),
 			tb.PipelineTask("foo", "foo-task",
 				tb.PipelineTaskParam("a-param", "${params.foo} and ${params.does-not-exist}")))),
+		failureExpected: true,
+	}, {
+		name: "invalid parameter type",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", "invalidtype", tb.PipelineParamDefault("some", "default")),
+			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "${baz}", "and", "${foo-is-baz}")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "array parameter mismatching default type",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.PipelineParamDefault("astring")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "arrayelement", "${baz}")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "string parameter mismatching default type",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString, tb.PipelineParamDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "arrayelement", "${baz}")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "array parameter used as string",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.PipelineParamDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "${params.baz}")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "array parameter string template not isolated",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.PipelineParamDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "first", "value: ${params.baz}", "last")),
+		)),
 		failureExpected: true,
 	}, {
 		name: "invalid dependency graph between the tasks",

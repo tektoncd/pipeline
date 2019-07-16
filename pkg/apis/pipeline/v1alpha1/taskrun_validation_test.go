@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/test/builder"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -170,9 +172,9 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 
 func TestInput_Validate(t *testing.T) {
 	i := v1alpha1.TaskRunInputs{
-		Params: []v1alpha1.Param{{
+		Params: []v1alpha1.ArrayOrStringParam{{
 			Name:  "name",
-			Value: "value",
+			Value: *builder.ArrayOrString("value"),
 		}},
 		Resources: []v1alpha1.TaskResourceBinding{{
 			ResourceRef: v1alpha1.PipelineResourceRef{
@@ -216,12 +218,12 @@ func TestInput_Invalidate(t *testing.T) {
 				},
 				Name: "resource",
 			}},
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ArrayOrStringParam{{
 				Name:  "name",
-				Value: "value",
+				Value: *builder.ArrayOrString("value"),
 			}, {
 				Name:  "name",
-				Value: "value",
+				Value: *builder.ArrayOrString("value"),
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("spec.inputs.params"),

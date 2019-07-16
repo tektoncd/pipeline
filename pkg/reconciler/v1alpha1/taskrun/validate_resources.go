@@ -63,12 +63,14 @@ func validateResources(requiredResources []v1alpha1.TaskResource, providedResour
 	return nil
 }
 
-func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
-	neededParams := []string{}
+func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.ArrayOrStringParam) error {
+	var neededParams []string
+	paramTypes := make(map[string]v1alpha1.ParamType)
 	if inputs != nil {
 		neededParams = make([]string, 0, len(inputs.Params))
 		for _, inputResourceParam := range inputs.Params {
 			neededParams = append(neededParams, inputResourceParam.Name)
+			paramTypes[inputResourceParam.Name] = inputResourceParam.Type
 		}
 	}
 	providedParams := make([]string, 0, len(params))
@@ -76,10 +78,10 @@ func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
 		providedParams = append(providedParams, param.Name)
 	}
 	missingParams := list.DiffLeft(neededParams, providedParams)
-	missingParamsNoDefaults := []string{}
+	var missingParamsNoDefaults []string
 	for _, param := range missingParams {
 		for _, inputResourceParam := range inputs.Params {
-			if inputResourceParam.Name == param && inputResourceParam.Default == "" {
+			if inputResourceParam.Name == param && inputResourceParam.Default == nil {
 				missingParamsNoDefaults = append(missingParamsNoDefaults, param)
 			}
 		}
@@ -91,11 +93,24 @@ func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
 	if len(extraParams) != 0 {
 		return xerrors.Errorf("didn't need these params but they were provided anyway: %s", extraParams)
 	}
+
+	// Now that we have checked against missing/extra params, make sure each param's actual type matches
+	// the user-specified type.
+	var wrongTypeParamNames []string
+	for _, param := range params {
+		if param.Value.Type != paramTypes[param.Name] {
+			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
+		}
+	}
+	if len(wrongTypeParamNames) != 0 {
+		return xerrors.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
+	}
+
 	return nil
 }
 
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
-func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.ResolvedTaskResources) error {
+func ValidateResolvedTaskResources(params []v1alpha1.ArrayOrStringParam, rtr *resources.ResolvedTaskResources) error {
 	if err := validateParams(rtr.TaskSpec.Inputs, params); err != nil {
 		return xerrors.Errorf("invalid input params: %w", err)
 	}

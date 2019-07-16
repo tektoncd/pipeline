@@ -39,8 +39,8 @@ type InputsOp func(*v1alpha1.Inputs)
 // OutputsOp is an operation which modify an Outputs struct.
 type OutputsOp func(*v1alpha1.Outputs)
 
-// TaskParamOp is an operation which modify a ParamSpec struct.
-type TaskParamOp func(*v1alpha1.ParamSpec)
+// TaskParamSpecOp is an operation which modify a ParamSpec struct.
+type TaskParamSpecOp func(*v1alpha1.ParamSpec)
 
 // TaskRunOp is an operation which modify a TaskRun struct.
 type TaskRunOp func(*v1alpha1.TaskRun)
@@ -249,11 +249,11 @@ func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) Ou
 	}
 }
 
-// InputsParam adds a param, with specified name, to the Inputs.
-// Any number of ParamSpec modifier can be passed to transform it.
-func InputsParam(name string, ops ...TaskParamOp) InputsOp {
+// InputsParamSpec adds a param, with specified name, to the Inputs.
+// Any number of TaskParamSpec modifier can be passed to transform it.
+func InputsParamSpec(name string, pt v1alpha1.ParamType, ops ...TaskParamSpecOp) InputsOp {
 	return func(i *v1alpha1.Inputs) {
-		tp := &v1alpha1.ParamSpec{Name: name}
+		tp := &v1alpha1.ParamSpec{Name: name, Type: pt}
 		for _, op := range ops {
 			op(tp)
 		}
@@ -262,16 +262,17 @@ func InputsParam(name string, ops ...TaskParamOp) InputsOp {
 }
 
 // ParamDescripiton sets the description to the ParamSpec.
-func ParamDescription(desc string) TaskParamOp {
+func ParamDescription(desc string) TaskParamSpecOp {
 	return func(tp *v1alpha1.ParamSpec) {
 		tp.Description = desc
 	}
 }
 
 // ParamDefault sets the default value to the ParamSpec.
-func ParamDefault(value string) TaskParamOp {
+func ParamDefault(value string, additionalValues ...string) TaskParamSpecOp {
+	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(tp *v1alpha1.ParamSpec) {
-		tp.Default = value
+		tp.Default = arrayOrString
 	}
 }
 
@@ -509,11 +510,12 @@ func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
 }
 
 // TaskRunInputsParam add a param, with specified name and value, to the TaskRunInputs.
-func TaskRunInputsParam(name, value string) TaskRunInputsOp {
+func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunInputsOp {
+	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(i *v1alpha1.TaskRunInputs) {
-		i.Params = append(i.Params, v1alpha1.Param{
+		i.Params = append(i.Params, v1alpha1.ArrayOrStringParam{
 			Name:  name,
-			Value: value,
+			Value: *arrayOrString,
 		})
 	}
 }

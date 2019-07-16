@@ -52,6 +52,10 @@ const (
 	// ReasonInvalidBindings indicates that the reason for the failure status is that the
 	// PipelineResources bound in the PipelineRun didn't match those declared in the Pipeline
 	ReasonInvalidBindings = "InvalidPipelineResourceBindings"
+	// ReasonParameterTypeMismatch indicates that the reason for the failure status is that
+	// parameter(s) declared in the PipelineRun do not have the some declared type as the
+	// parameters(s) declared in the Pipeline that they are supposed to override.
+	ReasonParameterTypeMismatch = "ParameterTypeMismatch"
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
 	ReasonCouldntGetTask = "CouldntGetTask"
@@ -222,6 +226,21 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			Status: corev1.ConditionFalse,
 			Reason: ReasonInvalidBindings,
 			Message: fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's PipelineResources correctly: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
+		})
+		return nil
+	}
+
+	// Ensure that the parameters from the PipelineRun are overriding Pipeline parameters with the same type.
+	// Weird templating issues can occur if this is not validated (ApplyParameters() does not verify type).
+	err = resources.ValidateParamTypesMatching(p, pr)
+	if err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonParameterTypeMismatch,
+			Message: fmt.Sprintf("PipelineRun %s parameters have mismatching types with Pipeline %s's parameters: %s",
 				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
 		})
 		return nil

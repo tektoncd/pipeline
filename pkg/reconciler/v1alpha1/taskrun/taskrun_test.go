@@ -112,9 +112,9 @@ var (
 	templatedTask = tb.Task("test-task-with-templating", "foo", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-			tb.InputsParam("myarg"), tb.InputsParam("myarghasdefault", tb.ParamDefault("dont see me")),
-			tb.InputsParam("myarghasdefault2", tb.ParamDefault("thedefault")),
-			tb.InputsParam("configmapname"),
+			tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString), tb.InputsParamSpec("myarghasdefault", v1alpha1.ParamTypeString, tb.ParamDefault("dont see me")),
+			tb.InputsParamSpec("myarghasdefault2", v1alpha1.ParamTypeString, tb.ParamDefault("thedefault")),
+			tb.InputsParamSpec("configmapname", v1alpha1.ParamTypeString),
 		),
 		tb.TaskOutputs(tb.OutputsResource("myimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
@@ -280,7 +280,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParam("myarg", tb.ParamDefault("mydefault")),
+				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamDefault("mydefault")),
 			),
 			tb.Step("mycontainer", "myimage", tb.Command("/mycmd"),
 				tb.Args("--my-arg=${inputs.params.myarg}"),

@@ -120,3 +120,122 @@ func TestValidateVariables(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyReplacements(t *testing.T) {
+	type args struct {
+		input        string
+		replacements map[string]string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		expectedOutput string
+	}{
+		{
+			name: "no replacements requested",
+			args: args{
+				input:        "this is a string",
+				replacements: map[string]string{},
+			},
+			expectedOutput: "this is a string",
+		},
+		{
+			name: "single replacement requested",
+			args: args{
+				input:        "this is ${a} string",
+				replacements: map[string]string{"a": "not a"},
+			},
+			expectedOutput: "this is not a string",
+		},
+		{
+			name: "single replacement requested multiple matches",
+			args: args{
+				input:        "this ${is} a string ${is} a string",
+				replacements: map[string]string{"is": "a"},
+			},
+			expectedOutput: "this a a string a a string",
+		},
+		{
+			name: "multiple replacements requested",
+			args: args{
+				input:        "this ${is} a ${string} ${is} a ${string}",
+				replacements: map[string]string{"is": "a", "string": "sstring"},
+			},
+			expectedOutput: "this a a sstring a a sstring",
+		},
+		{
+			name: "multiple replacements requested nothing replaced",
+			args: args{
+				input:        "this is a string",
+				replacements: map[string]string{"this": "a", "evxasdd": "string"},
+			},
+			expectedOutput: "this is a string",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualOutput := templating.ApplyReplacements(tt.args.input, tt.args.replacements)
+			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
+				t.Errorf("ApplyReplacements() output did not match expected value %s", d)
+			}
+		})
+	}
+}
+
+func TestApplyArrayReplacements(t *testing.T) {
+	type args struct {
+		input              string
+		stringReplacements map[string]string
+		arrayReplacements  map[string][]string
+	}
+	tests := []struct {
+		name           string
+		args           args
+		expectedOutput []string
+	}{
+		{
+			name: "no replacements requested",
+			args: args{
+				input:              "this is a string",
+				stringReplacements: map[string]string{},
+				arrayReplacements:  map[string][]string{},
+			},
+			expectedOutput: []string{"this is a string"},
+		},
+		{
+			name: "multiple replacements requested nothing replaced",
+			args: args{
+				input:              "this is a string",
+				stringReplacements: map[string]string{"key": "replacement", "anotherkey": "foo"},
+				arrayReplacements:  map[string][]string{"key2": {"replacement", "a"}, "key3": {"1", "2"}},
+			},
+			expectedOutput: []string{"this is a string"},
+		},
+		{
+			name: "multiple replacements only string replacement possible",
+			args: args{
+				input:              "${string}rep${lacement}${string}",
+				stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
+				arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "string": {"1", "2"}},
+			},
+			expectedOutput: []string{"wordreplacementsword"},
+		},
+		{
+			name: "array replacement",
+			args: args{
+				input:              "${match}",
+				stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
+				arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "match": {"1", "2"}},
+			},
+			expectedOutput: []string{"1", "2"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualOutput := templating.ApplyArrayReplacements(tt.args.input, tt.args.stringReplacements, tt.args.arrayReplacements)
+			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
+				t.Errorf("ApplyArrayReplacements() output did not match expected value %s", d)
+			}
+		})
+	}
+}

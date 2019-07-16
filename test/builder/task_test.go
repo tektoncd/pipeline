@@ -41,7 +41,8 @@ func TestTask(t *testing.T) {
 	task := tb.Task("test-task", "foo", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceTargetPath("/foo/bar")),
-			tb.InputsParam("param", tb.ParamDescription("mydesc"), tb.ParamDefault("default")),
+			tb.InputsParamSpec("param", v1alpha1.ParamTypeString, tb.ParamDescription("mydesc"), tb.ParamDefault("default")),
+			tb.InputsParamSpec("array-param", v1alpha1.ParamTypeString, tb.ParamDescription("desc"), tb.ParamDefault("array", "values")),
 		),
 		tb.TaskOutputs(tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
@@ -73,8 +74,17 @@ func TestTask(t *testing.T) {
 					Type:       v1alpha1.PipelineResourceTypeGit,
 					TargetPath: "/foo/bar",
 				}},
-				Params: []v1alpha1.ParamSpec{{Name: "param", Description: "mydesc", Default: "default"}},
-			},
+				Params: []v1alpha1.ParamSpec{{
+					Name:        "param",
+					Type:        v1alpha1.ParamTypeString,
+					Description: "mydesc",
+					Default:     tb.ArrayOrString("default"),
+				}, {
+					Name:        "array-param",
+					Type:        v1alpha1.ParamTypeString,
+					Description: "desc",
+					Default:     tb.ArrayOrString("array", "values"),
+				}}},
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{{
 					Name: "myotherimage",
@@ -153,6 +163,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					tb.TaskResourceBindingResourceSpec(&v1alpha1.PipelineResourceSpec{Type: v1alpha1.PipelineResourceTypeCluster}),
 				),
 				tb.TaskRunInputsParam("iparam", "ivalue"),
+				tb.TaskRunInputsParam("arrayparam", "array", "values"),
 			),
 			tb.TaskRunOutputs(
 				tb.TaskRunOutputsResource(gitResource.Name,
@@ -193,7 +204,13 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					ResourceSpec: &v1alpha1.PipelineResourceSpec{Type: v1alpha1.PipelineResourceType("cluster")},
 					Paths:        []string{"source-folder"},
 				}},
-				Params: []v1alpha1.Param{{Name: "iparam", Value: "ivalue"}},
+				Params: []v1alpha1.ArrayOrStringParam{{
+					Name:  "iparam",
+					Value: *tb.ArrayOrString("ivalue"),
+				}, {
+					Name:  "arrayparam",
+					Value: *tb.ArrayOrString("array", "values"),
+				}},
 			},
 			Outputs: v1alpha1.TaskRunOutputs{
 				Resources: []v1alpha1.TaskResourceBinding{{

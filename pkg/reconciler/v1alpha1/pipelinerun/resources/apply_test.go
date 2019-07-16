@@ -1,5 +1,5 @@
 /*
- Copyright 2019 Knative Authors LLC
+ Copyright 2019 The Tekton Authors
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
@@ -31,8 +31,8 @@ func TestApplyParameters(t *testing.T) {
 		name: "single parameter",
 		original: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
-				tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
-				tb.PipelineParam("second-param"),
+				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("default-value")),
+				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString),
 				tb.PipelineTask("first-task-1", "first-task",
 					tb.PipelineTaskParam("first-task-first-param", "${params.first-param}"),
 					tb.PipelineTaskParam("first-task-second-param", "${params.second-param}"),
@@ -43,8 +43,8 @@ func TestApplyParameters(t *testing.T) {
 				tb.PipelineRunParam("second-param", "second-value"))),
 		expected: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
-				tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
-				tb.PipelineParam("second-param"),
+				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("default-value")),
+				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString),
 				tb.PipelineTask("first-task-1", "first-task",
 					tb.PipelineTaskParam("first-task-first-param", "default-value"),
 					tb.PipelineTaskParam("first-task-second-param", "second-value"),
@@ -54,7 +54,7 @@ func TestApplyParameters(t *testing.T) {
 		name: "pipeline parameter nested inside task parameter",
 		original: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
-				tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
+				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("default-value")),
 				tb.PipelineTask("first-task-1", "first-task",
 					tb.PipelineTaskParam("first-task-first-param", "${input.workspace.${params.first-param}}"),
 				))),
@@ -62,9 +62,34 @@ func TestApplyParameters(t *testing.T) {
 			tb.PipelineRunSpec("test-pipeline")),
 		expected: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
-				tb.PipelineParam("first-param", tb.PipelineParamDefault("default-value")),
+				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("default-value")),
 				tb.PipelineTask("first-task-1", "first-task",
 					tb.PipelineTaskParam("first-task-first-param", "${input.workspace.default-value}"),
+				))),
+	}, {
+		name: "single array parameter",
+		original: tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeArray, tb.PipelineParamDefault(
+					"default", "array", "value")),
+				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeArray),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "firstelement", "${params.first-param}"),
+					tb.PipelineTaskParam("first-task-second-param", "first", "${params.second-param}"),
+					tb.PipelineTaskParam("first-task-third-param", "static value"),
+				))),
+		run: tb.PipelineRun("test-pipeline-run", "foo",
+			tb.PipelineRunSpec("test-pipeline",
+				tb.PipelineRunParam("second-param", "second-value", "array"))),
+		expected: tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeArray, tb.PipelineParamDefault(
+					"default", "array", "value")),
+				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeArray),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskParam("first-task-first-param", "firstelement", "default", "array", "value"),
+					tb.PipelineTaskParam("first-task-second-param", "first", "second-value", "array"),
+					tb.PipelineTaskParam("first-task-third-param", "static value"),
 				))),
 	}}
 	for _, tt := range tests {

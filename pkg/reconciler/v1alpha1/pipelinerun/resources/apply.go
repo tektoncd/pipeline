@@ -20,29 +20,41 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/templating"
 )
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
 func ApplyParameters(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) *v1alpha1.Pipeline {
 	// This assumes that the PipelineRun inputs have been validated against what the Pipeline requests.
-	replacements := map[string]string{}
-	// Set all the default replacements
+
+	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
+	// that need to be further processed.
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+
+	// Set all the default stringReplacements
 	for _, p := range p.Spec.Params {
-		if p.Default != "" {
-			replacements[fmt.Sprintf("params.%s", p.Name)] = p.Default
+		if p.Default != nil {
+			if p.Default.Type == v1alpha1.ParamTypeString {
+				stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.StringVal
+			} else {
+				arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.ArrayVal
+			}
 		}
 	}
 	// Set and overwrite params with the ones from the PipelineRun
 	for _, p := range pr.Spec.Params {
-		replacements[fmt.Sprintf("params.%s", p.Name)] = p.Value
+		if p.Value.Type == v1alpha1.ParamTypeString {
+			stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.StringVal
+		} else {
+			arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.ArrayVal
+		}
 	}
 
-	return ApplyReplacements(p, replacements)
+	return ApplyReplacements(p, stringReplacements, arrayReplacements)
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
-func ApplyReplacements(p *v1alpha1.Pipeline, replacements map[string]string) *v1alpha1.Pipeline {
+func ApplyReplacements(p *v1alpha1.Pipeline, replacements map[string]string, arrayReplacements map[string][]string) *v1alpha1.Pipeline {
 	p = p.DeepCopy()
 
 	tasks := p.Spec.Tasks
@@ -51,7 +63,7 @@ func ApplyReplacements(p *v1alpha1.Pipeline, replacements map[string]string) *v1
 		params := tasks[i].Params
 
 		for j := range params {
-			params[j].Value = templating.ApplyReplacements(params[j].Value, replacements)
+			params[j].Value.ApplyReplacements(replacements, arrayReplacements)
 		}
 
 		tasks[i].Params = params
