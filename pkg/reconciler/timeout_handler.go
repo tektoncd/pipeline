@@ -7,6 +7,7 @@ import (
 
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"go.uber.org/zap"
@@ -204,14 +205,26 @@ func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, pipelineclientset cl
 // 1. Stop signal, 2. TaskRun to complete or 3. Taskrun to time out, which is
 // determined by checking if the tr's timeout has occurred since the startTime
 func (t *TimeoutSet) WaitTaskRun(tr *v1alpha1.TaskRun, startTime *metav1.Time) {
-	t.waitRun(tr, tr.Spec.Timeout.Duration, startTime, t.taskRunCallbackFunc)
+	var timeout time.Duration
+	if tr.Spec.Timeout == nil {
+		timeout = config.DefaultTimeoutMinutes * time.Minute
+	} else {
+		timeout = tr.Spec.Timeout.Duration
+	}
+	t.waitRun(tr, timeout, startTime, t.taskRunCallbackFunc)
 }
 
 // WaitPipelineRun function creates a blocking function for pipelinerun to wait for
 // 1. Stop signal, 2. pipelinerun to complete or 3. pipelinerun to time out which is
 // determined by checking if the tr's timeout has occurred since the startTime
 func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun, startTime *metav1.Time) {
-	t.waitRun(pr, pr.Spec.Timeout.Duration, startTime, t.pipelineRunCallbackFunc)
+	var timeout time.Duration
+	if pr.Spec.Timeout == nil {
+		timeout = config.DefaultTimeoutMinutes * time.Minute
+	} else {
+		timeout = pr.Spec.Timeout.Duration
+	}
+	t.waitRun(pr, timeout, startTime, t.pipelineRunCallbackFunc)
 }
 
 func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime *metav1.Time, callback func(interface{})) {

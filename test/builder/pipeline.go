@@ -333,11 +333,16 @@ func PipelineRunParam(name, value string) PipelineRunSpecOp {
 	}
 }
 
-// PipelineRunTimeout sets the timeout to the PipelineSpec.
+// PipelineRunTimeout sets the timeout to the PipelineRunSpec.
 func PipelineRunTimeout(duration time.Duration) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
 		prs.Timeout = &metav1.Duration{Duration: duration}
 	}
+}
+
+// PipelineRunNilTimeout sets the timeout to nil on the PipelineRunSpec
+func PipelineRunNilTimeout(prs *v1alpha1.PipelineRunSpec) {
+	prs.Timeout = nil
 }
 
 // PipelineRunNodeSelector sets the Node selector to the PipelineSpec.

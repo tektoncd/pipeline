@@ -26,6 +26,7 @@ import (
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
@@ -213,6 +214,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.ObjectMeta.Annotations[key] = value
 	}
 
+	if tr.Spec.Timeout == nil {
+		tr.Spec.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
+	}
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
 	if CheckTimeout(tr) {
@@ -483,7 +487,6 @@ func createRedirectedTaskSpec(kubeclient kubernetes.Interface, ts *v1alpha1.Task
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
 
 func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun, dp DeletePod) error {
-	timeout := tr.Spec.Timeout.Duration
 	c.Logger.Infof("TaskRun %q has timed out, deleting pod", tr.Name)
 	// tr.Status.PodName will be empty if the pod was never successfully created. This condition
 	// can be reached, for example, by the pod never being schedulable due to limits imposed by
@@ -495,6 +498,7 @@ func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun, dp Dele
 		}
 	}
 
+	timeout := tr.Spec.Timeout.Duration
 	timeoutMsg := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, timeout.String())
 	tr.Status.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
