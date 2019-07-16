@@ -52,13 +52,13 @@ func listCommand(p cli.Params) *cobra.Command {
 			}
 
 			if output != "" {
-				return printClustertaskListObj(cmd.OutOrStdout(), p, f)
+				return printClusterTaskListObj(cmd.OutOrStdout(), p, f)
 			}
 			stream := &cli.Stream{
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
-			return printClustertaskDetails(stream, p)
+			return printClusterTaskDetails(stream, p)
 		},
 	}
 	f.AddFlags(c)
@@ -66,14 +66,14 @@ func listCommand(p cli.Params) *cobra.Command {
 	return c
 }
 
-func printClustertaskDetails(s *cli.Stream, p cli.Params) error {
+func printClusterTaskDetails(s *cli.Stream, p cli.Params) error {
 
 	cs, err := p.Clients()
 	if err != nil {
 		return err
 	}
 
-	clustertasks, err := listClustertaskDetails(cs.Tekton)
+	clustertasks, err := listAllClusterTasks(cs.Tekton)
 	if err != nil {
 		fmt.Fprintln(s.Err, emptyMsg)
 		return err
@@ -96,20 +96,20 @@ func printClustertaskDetails(s *cli.Stream, p cli.Params) error {
 	return w.Flush()
 }
 
-func printClustertaskListObj(w io.Writer, p cli.Params, f *cliopts.PrintFlags) error {
+func printClusterTaskListObj(w io.Writer, p cli.Params, f *cliopts.PrintFlags) error {
 	cs, err := p.Clients()
 	if err != nil {
 		return err
 	}
 
-	clustertasks, err := listAllClustertasks(cs.Tekton)
+	clustertasks, err := listAllClusterTasks(cs.Tekton)
 	if err != nil {
 		return err
 	}
 	return printer.PrintObject(w, clustertasks, f)
 }
 
-func listAllClustertasks(cs versioned.Interface) (*v1alpha1.ClusterTaskList, error) {
+func listAllClusterTasks(cs versioned.Interface) (*v1alpha1.ClusterTaskList, error) {
 	c := cs.TektonV1alpha1().ClusterTasks()
 
 	clustertasks, err := c.List(metav1.ListOptions{})
@@ -122,17 +122,7 @@ func listAllClustertasks(cs versioned.Interface) (*v1alpha1.ClusterTaskList, err
 	clustertasks.GetObjectKind().SetGroupVersionKind(
 		schema.GroupVersionKind{
 			Version: "tekton.dev/v1alpha1",
-			Kind:    "ClustertaskList",
+			Kind:    "ClusterTaskList",
 		})
 	return clustertasks, nil
-}
-
-func listClustertaskDetails(cs versioned.Interface) (*v1alpha1.ClusterTaskList, error) {
-	clustertasks, err := listAllClustertasks(cs)
-	if err != nil {
-		return nil, err
-	}
-
-	return clustertasks, nil
-
 }

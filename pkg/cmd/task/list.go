@@ -73,7 +73,7 @@ func printTaskDetails(s *cli.Stream, p cli.Params) error {
 		return err
 	}
 
-	tasks, err := listTaskDetails(cs.Tekton, p.Namespace())
+	tasks, err := listAllTasks(cs.Tekton, p.Namespace())
 	if err != nil {
 		fmt.Fprintln(s.Err, emptyMsg)
 		return err
@@ -127,12 +127,4 @@ func listAllTasks(cs versioned.Interface, ns string) (*v1alpha1.TaskList, error)
 	return tasks, nil
 }
 
-func listTaskDetails(cs versioned.Interface, ns string) (*v1alpha1.TaskList, error) {
-	tasks, err := listAllTasks(cs, ns)
-	if err != nil {
-		return nil, err
-	}
 
-	return tasks, nil
-
-}
