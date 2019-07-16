@@ -44,7 +44,6 @@ func listCommand(p cli.Params) *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "Lists clustertasks in a namespace",
-		Long:    ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output, err := cmd.LocalFlags().GetString("output")
 			if err != nil {
@@ -104,7 +103,6 @@ func printClustertaskListObj(w io.Writer, p cli.Params, f *cliopts.PrintFlags) e
 	}
 
 	clustertasks, err := listAllClustertasks(cs.Tekton)
-
 	if err != nil {
 		return err
 	}
@@ -133,10 +131,6 @@ func listClustertaskDetails(cs versioned.Interface) (*v1alpha1.ClusterTaskList, 
 	clustertasks, err := listAllClustertasks(cs)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(clustertasks.Items) == 0 {
-		return clustertasks, nil
 	}
 
 	return clustertasks, nil

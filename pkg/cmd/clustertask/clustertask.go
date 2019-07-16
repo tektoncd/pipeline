@@ -23,7 +23,7 @@ import (
 func Command(p cli.Params) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "clustertask",
-		Aliases: []string{"c", "clustertasks"},
+		Aliases: []string{"ct", "clustertasks"},
 		Short:   "Manage clustertasks",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
