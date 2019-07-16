@@ -98,6 +98,7 @@ func TestReconcile(t *testing.T) {
 						}},
 					},
 				)),
+				tb.PipelineRunResourceBinding("volume-resource", tb.PipelineResourceBindingRef("some-volume")),
 				tb.PipelineRunParam("bar", "somethingmorefun"),
 			),
 		),
@@ -109,6 +110,7 @@ func TestReconcile(t *testing.T) {
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
+				tb.PipelineDeclaredResource("volume-resource", "storage"),
 				tb.PipelineDeclaredResource("best-image", "image"),
 				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
 				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
@@ -118,24 +120,24 @@ func TestReconcile(t *testing.T) {
 					tb.RunAfter("unit-test-2"),
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
-					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("workspace", "volume-resource"),
 				),
 				// unit-test-1 can run right away because it has no dependencies
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
-					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("workspace", "volume-resource"),
 				),
 				// unit-test-2 uses `from` to indicate it should run after `unit-test-1`
 				tb.PipelineTask("unit-test-2", "unit-test-followup-task",
-					tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("unit-test-1")),
+					tb.PipelineTaskInputResource("workspace", "volume-resource", tb.From("unit-test-1")),
 				),
 				// unit-test-cluster-task can run right away because it has no dependencies
 				tb.PipelineTask("unit-test-cluster-task", "unit-test-cluster-task",
 					tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
 					funParam, moreFunParam, templatedParam,
-					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskInputResource("workspace", "volume-resource"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
 					tb.PipelineTaskOutputResource("workspace", "git-repo"),
 				),
@@ -150,17 +152,17 @@ func TestReconcile(t *testing.T) {
 			),
 			tb.TaskOutputs(
 				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
-				tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+				tb.OutputsResource("workspace", v1alpha1.PipelineResourceTypeStorage),
 			),
 		)),
 		tb.Task("unit-test-followup-task", "foo", tb.TaskSpec(
-			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
+			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeStorage)),
 		)),
 	}
 	clusterTasks := []*v1alpha1.ClusterTask{
 		tb.ClusterTask("unit-test-cluster-task", tb.ClusterTaskSpec(
 			tb.TaskInputs(
-				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
+				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeStorage),
 				tb.InputsParamSpec("foo", v1alpha1.ParamTypeString), tb.InputsParamSpec("bar", v1alpha1.ParamTypeString), tb.InputsParamSpec("templatedparam", v1alpha1.ParamTypeString),
 			),
 			tb.TaskOutputs(
@@ -177,12 +179,18 @@ func TestReconcile(t *testing.T) {
 			v1alpha1.PipelineResourceTypeGit,
 			tb.PipelineResourceSpecParam("url", "https://github.com/kristoff/reindeer"),
 		)),
+		tb.PipelineResource("some-volume", "foo", tb.PipelineResourceSpec(
+			v1alpha1.PipelineResourceTypeStorage,
+			tb.PipelineResourceSpecParam("type", "volume"),
+		)),
 	}
 
 	// When PipelineResources are created in the cluster, Kubernetes will add a SelfLink. We
 	// are using this to differentiate between Resources that we are referencing by Spec or by Ref
 	// after we have resolved them.
-	rs[0].SelfLink = "some/link"
+	for _, r := range rs {
+		r.SelfLink = "some/link"
+	}
 
 	d := test.Data{
 		PipelineRuns:      prs,
@@ -244,7 +252,7 @@ func TestReconcile(t *testing.T) {
 				),
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
 				),
-				tb.TaskRunOutputsResource("workspace", tb.TaskResourceBindingRef("some-repo"),
+				tb.TaskRunOutputsResource("workspace", tb.TaskResourceBindingRef("some-volume"),
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
 				),
 			),
@@ -278,6 +286,11 @@ func TestReconcile(t *testing.T) {
 	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task-78c5n"]; !exists {
 		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
 	}
+
+	// Two PVCs should be created: one for input output linking (to be removed in #1284)
+	// and another for the VolumeResource (must be created by PipelineRun so there is not a scheudling conflict)
+	test.EnsurePVCCreated(t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
+	test.EnsurePVCCreated(t, clients, "some-volume", "foo")
 }
 
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {

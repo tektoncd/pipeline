@@ -58,6 +58,9 @@ func NewCloudEventResource(r *PipelineResource) (*CloudEventResource, error) {
 	}, nil
 }
 
+// GetSetup returns a PipelineResourceSetupInterface that can create the backing PVC if needed.
+func (s CloudEventResource) GetSetup() PipelineResourceSetupInterface { return SetupPVC{} }
+
 // GetName returns the name of the resource
 func (s CloudEventResource) GetName() string {
 	return s.Name

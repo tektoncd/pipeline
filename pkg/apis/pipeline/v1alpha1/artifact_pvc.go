@@ -57,7 +57,7 @@ func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPat
 	}}}
 }
 
-// GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage
+// GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storageCreateDirStep
 func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []Step {
 	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-mkdir-%s", name)),
@@ -86,13 +86,16 @@ func GetPvcMount(name string) corev1.VolumeMount {
 	}
 }
 
-// CreateDirStep returns a container step to create a dir
-func CreateDirStep(bashNoopImage string, name, destinationPath string) Step {
+// CreateDirStep returns a container step to create a dir at destinationPath. The name
+// of the step will include name. Optionally will mount included volumeMounts if the
+// dir is to be created on the volume.
+func CreateDirStep(bashNoopImage string, name, destinationPath string, volumeMounts []corev1.VolumeMount) Step {
 	return Step{Container: corev1.Container{
-		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", strings.ToLower(name))),
-		Image:   bashNoopImage,
-		Command: []string{"/ko-app/bash"},
-		Args:    []string{"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " ")},
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", strings.ToLower(name))),
+		Image:        bashNoopImage,
+		Command:      []string{"/ko-app/bash"},
+		Args:         []string{"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " ")},
+		VolumeMounts: volumeMounts,
 	}}
 }
 

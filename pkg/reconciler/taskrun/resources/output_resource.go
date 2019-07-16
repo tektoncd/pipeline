@@ -91,10 +91,12 @@ func AddOutputResources(
 		}
 
 		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, sourcePath)}
+		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, sourcePath, nil)}
 		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
-		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+		// If the output has a Path specified, this implies that data should be copied to that path. This is used for `from` linking only.
+		// The VolumeResource is exempted from this because it will already copy to and from an underlying PVC.
+		if allowedOutputResources[resource.GetType()] && resource.GetType() != v1alpha1.PipelineResourceTypeVolume && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []v1alpha1.Step
 			for _, dPath := range boundResource.Paths {
 				newSteps = append(newSteps, as.GetCopyToStorageFromSteps(resource.GetName(), sourcePath, dPath)...)
@@ -108,9 +110,13 @@ func AddOutputResources(
 		if err != nil {
 			return nil, err
 		}
-		v1alpha1.ApplyTaskModifier(taskSpec, modifier)
+		if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+			return nil, xerrors.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
+		}
 
-		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+		// Attach the PVC that will be used for `from` copying.
+		// The VolumeResource is exempted from this because it will already copy to and from an underlying PVC.
+		if resource.GetType() != v1alpha1.PipelineResourceTypeVolume && as.GetType() == v1alpha1.ArtifactStoragePVCType {
 			if pvcName == "" {
 				return taskSpec, nil
 			}

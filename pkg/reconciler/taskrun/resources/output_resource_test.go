@@ -89,6 +89,24 @@ func outputResourceSetup() {
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "image",
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "source-volume",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "storage",
+			Params: []v1alpha1.ResourceParam{
+				{
+					Name:  "Size",
+					Value: "10Gi",
+				},
+				{
+					Name:  "Type",
+					Value: "volume",
+				},
+			},
+		},
 	}}
 
 	outputResources = make(map[string]v1alpha1.PipelineResourceInterface)
@@ -188,6 +206,14 @@ func TestValidOutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}}},
+		wantVolumes: []corev1.Volume{{
+			Name: "pipelinerun-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pipelinerun-pvc",
+				},
+			},
+		}},
 	}, {
 		name: "git resource in output only",
 		desc: "git resource declared as output with pipelinerun owner reference",
@@ -253,6 +279,14 @@ func TestValidOutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}}},
+		wantVolumes: []corev1.Volume{{
+			Name: "pipelinerun-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pipelinerun-pvc",
+				},
+			},
+		}},
 	}, {
 		name: "image resource in output with pipelinerun with owner",
 		desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
@@ -300,7 +334,14 @@ func TestValidOutputResources(t *testing.T) {
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 		}}},
-		wantVolumes: nil,
+		wantVolumes: []corev1.Volume{{
+			Name: "pipelinerun-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pipelinerun-pvc",
+				},
+			},
+		}},
 	}, {
 		name: "git resource in output",
 		desc: "git resource declared in output without pipelinerun owner reference",
@@ -352,7 +393,7 @@ func TestValidOutputResources(t *testing.T) {
 				Namespace: "marshmallow",
 				OwnerReferences: []metav1.OwnerReference{{
 					Kind: "PipelineRun",
-					Name: "pipelinerun-parent",
+					Name: "pipelinerun",
 				}},
 			},
 			Spec: v1alpha1.TaskRunSpec{
@@ -414,14 +455,14 @@ func TestValidOutputResources(t *testing.T) {
 				Image:        "override-with-bash-noop:latest",
 				Command:      []string{"/ko-app/bash"},
 				Args:         []string{"-args", "mkdir -p pipeline-task-path"},
-				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 			}},
 			{Container: corev1.Container{
 				Name:         "source-copy-source-gcs-mssqb",
 				Image:        "override-with-bash-noop:latest",
 				Command:      []string{"/ko-app/bash"},
 				Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
-				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
@@ -442,6 +483,13 @@ func TestValidOutputResources(t *testing.T) {
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+			},
+		}, {
+			Name: "pipelinerun-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pipelinerun-pvc",
+				},
 			},
 		}},
 	}, {
@@ -523,6 +571,13 @@ func TestValidOutputResources(t *testing.T) {
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
+			},
+		}, {
+			Name: "pipelinerun-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pipelinerun-pvc",
+				},
 			},
 		}},
 	}, {
@@ -696,6 +751,14 @@ func TestValidOutputResources(t *testing.T) {
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 		}}},
+		wantVolumes: []corev1.Volume{{
+			Name: "pipelinerun-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pipelinerun-pvc",
+				},
+			},
+		}},
 	}, {
 		name: "Resource with TargetPath as output",
 		desc: "Resource with TargetPath defined only in output",
@@ -743,6 +806,14 @@ func TestValidOutputResources(t *testing.T) {
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace"},
 		}}},
+		wantVolumes: []corev1.Volume{{
+			Name: "pipelinerun-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pipelinerun-pvc",
+				},
+			},
+		}},
 	}, {
 		desc: "image output resource with no steps",
 		taskRun: &v1alpha1.TaskRun{
@@ -784,6 +855,159 @@ func TestValidOutputResources(t *testing.T) {
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 		}}},
+	}, {
+		name: "volume resource as output with no owner",
+		desc: "volume resource defined only in output without pipelinerun reference",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-only-output-step",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-volume",
+							},
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:       "source-workspace",
+							Type:       "storage",
+							TargetPath: "/workspace",
+						}}},
+				},
+			},
+		},
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:    "create-dir-source-workspace-9l9zj",
+			Image:   "override-with-bash-noop:latest",
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "mkdir -p /workspace"},
+		}}, {Container: corev1.Container{
+			Name:  "create-dir-source-volume-mz4c7",
+			Image: "override-with-bash-noop:latest",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "source-volume", MountPath: "/volumeresource-source-volume",
+			}},
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "mkdir -p /volumeresource-source-volume"},
+		}}, {Container: corev1.Container{
+			Name:  "upload-copy-source-volume-mssqb",
+			Image: "override-with-bash-noop:latest",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "source-volume", MountPath: "/volumeresource-source-volume",
+			}},
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "cp -r /workspace/. /volumeresource-source-volume"},
+		}}},
+		wantVolumes: []corev1.Volume{{
+			Name: "source-volume",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "source-volume", ReadOnly: false},
+			},
+		}},
+	}, {
+		name: "volume resource as both input and output",
+		desc: "volume resource defined in both input and output",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun-parent",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-volume",
+							},
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-volume",
+							},
+						},
+						Paths: []string{"pipeline-task-path"},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Inputs: &v1alpha1.Inputs{
+					Resources: []v1alpha1.TaskResource{{
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:       "source-workspace",
+							Type:       "volume",
+							TargetPath: "faraway-disk",
+						}}},
+				},
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "volume",
+						}}},
+				},
+			},
+		},
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:    "create-dir-source-workspace-9l9zj",
+			Image:   "override-with-bash-noop:latest",
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+		}}, {Container: corev1.Container{
+			Name:  "create-dir-source-volume-mz4c7",
+			Image: "override-with-bash-noop:latest",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name: "source-volume", MountPath: "/volumeresource-source-volume",
+			}},
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "mkdir -p /volumeresource-source-volume"},
+		}}, {Container: corev1.Container{
+			Name:  "upload-copy-source-volume-mssqb",
+			Image: "override-with-bash-noop:latest",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "source-volume",
+				MountPath: "/volumeresource-source-volume",
+			}},
+			Command: []string{"/ko-app/bash"},
+			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/. /volumeresource-source-volume"},
+		}}},
+		wantVolumes: []corev1.Volume{{
+			Name: "source-volume",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "source-volume", ReadOnly: false},
+			},
+		}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()
@@ -795,25 +1019,12 @@ func TestValidOutputResources(t *testing.T) {
 			}
 
 			if got != nil {
-				if d := cmp.Diff(got.Steps, c.wantSteps); d != "" {
-					t.Fatalf("post build steps mismatch: %s", d)
+				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
+					t.Fatalf("post build steps mismatch (-want, +got): %v", d)
 				}
 
-				if c.taskRun.GetPipelineRunPVCName() != "" {
-					c.wantVolumes = append(
-						c.wantVolumes,
-						corev1.Volume{
-							Name: c.taskRun.GetPipelineRunPVCName(),
-							VolumeSource: corev1.VolumeSource{
-								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: c.taskRun.GetPipelineRunPVCName(),
-								},
-							},
-						},
-					)
-				}
-				if d := cmp.Diff(got.Volumes, c.wantVolumes); d != "" {
-					t.Fatalf("post build steps volumes mismatch: %s", d)
+				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
+					t.Fatalf("post build steps volumes mismatch (-want, +got) : %s", d)
 				}
 			}
 		})

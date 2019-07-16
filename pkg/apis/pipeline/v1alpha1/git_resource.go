@@ -44,6 +44,9 @@ type GitResource struct {
 	GitImage string `json:"-"`
 }
 
+// GetSetup returns a PipelineResourceSetupInterface that does nothing because no setup is needed.
+func (s GitResource) GetSetup() PipelineResourceSetupInterface { return &NoSetup{} }
+
 // NewGitResource creates a new git resource to pass to a Task
 func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) {
 	if r.Spec.Type != PipelineResourceTypeGit {

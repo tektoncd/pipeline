@@ -54,6 +54,9 @@ type ClusterResource struct {
 	KubeconfigWriterImage string `json:"-"`
 }
 
+// GetSetup returns a PipelineResourceSetupInterface that does nothing because no setup is needed.
+func (s ClusterResource) GetSetup() PipelineResourceSetupInterface { return &NoSetup{} }
+
 // NewClusterResource create a new k8s cluster resource to pass to a pipeline task
 func NewClusterResource(kubeconfigWriterImage string, r *PipelineResource) (*ClusterResource, error) {
 	if r.Spec.Type != PipelineResourceTypeCluster {

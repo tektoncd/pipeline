@@ -1,0 +1,183 @@
+# This example will be using multiple PVCs and will be run against a regional GKE.
+# This means we have to make sure that the PVCs aren't created in different zones,
+# and the only way to do this is to create regional PVCs.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: regional-disk
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+  replication-type: regional-pd
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: volume-resource-1
+spec:
+  type: storage
+  params:
+  - name: type
+    value: volume
+  - name: storageClassName
+    value: regional-disk
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: volume-resource-2
+spec:
+  type: storage
+  params:
+  - name: type
+    value: volume
+  - name: path
+    value: special-folder
+  - name: storageClassName
+    value: regional-disk
+---
+# Task writes data to a predefined path
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-files
+spec:
+  outputs:
+    # This Task uses two volume outputs to ensure that multiple volume
+    # outputs can be used
+    resources:
+    - name: volume1
+      type: storage
+    - name: volume2
+      type: storage
+  steps:
+  - name: write-new-stuff-1
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo stuff1 > $(outputs.resources.volume1.path)/stuff1']
+  - name: write-new-stuff-2
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo stuff2 > $(outputs.resources.volume2.path)/stuff2']
+---
+# Reads a file from a predefined path and writes as well
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: files-exist-and-add-new
+spec:
+  inputs:
+    resources:
+    - name: volume1
+      type: storage
+      targetPath: newpath
+    - name: volume2
+      type: storage
+  outputs:
+    resources:
+    - name: volume1
+      type: storage
+  steps:
+  - name: read1
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+      - '-c'
+      - '[[ stuff1 == $(cat $(inputs.resources.volume1.path)/stuff1) ]]'
+  - name: read2
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+      - '-c'
+      - '[[ stuff2 == $(cat $(inputs.resources.volume2.path)/stuff2) ]]'
+  - name: write-new-stuff-3
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo stuff3 > $(outputs.resources.volume1.path)/stuff3']
+---
+# Reads a file from a predefined path and writes as well
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: files-exist
+spec:
+  inputs:
+    resources:
+    - name: volume1
+      type: storage
+  steps:
+  - name: read1
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+      - '-c'
+      - '[[ stuff1 == $(cat $(inputs.resources.volume1.path)/stuff1) ]]'
+  - name: read3
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+      - '-c'
+      - '[[ stuff3 == $(cat $(inputs.resources.volume1.path)/stuff3) ]]'
+---
+# First task writees files to two volumes. The next task ensures these files exist
+# then writes a third file to the first volume. The last Task ensures both expected
+# files exist on this volume.
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: volume-output-pipeline
+spec:
+  resources:
+  - name: volume1
+    type: storage
+  - name: volume2
+    type: storage
+  tasks:
+  - name: first-create-files
+    taskRef:
+      name: create-files
+    resources:
+      outputs:
+      - name: volume1
+        resource: volume1
+      - name: volume2
+        resource: volume2
+  - name: then-check-and-write
+    taskRef:
+      name: files-exist-and-add-new
+    resources:
+      inputs:
+      - name: volume1
+        resource: volume1
+        from: [first-create-files]
+      - name: volume2
+        resource: volume2
+        from: [first-create-files]
+      outputs:
+      - name: volume1
+        # This Task uses the same volume as an input and an output to ensure this works
+        resource: volume1
+  - name: then-check
+    taskRef:
+      name: files-exist
+    resources:
+      inputs:
+      - name: volume1
+        resource: volume1
+        from: [then-check-and-write]
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: volume-output-pipeline-run
+spec:
+  pipelineRef:
+    name: volume-output-pipeline
+  serviceAccount: 'default'
+  resources:
+  - name: volume1
+    resourceRef:
+      name: volume-resource-1
+  - name: volume2
+    resourceRef:
+      name: volume-resource-2

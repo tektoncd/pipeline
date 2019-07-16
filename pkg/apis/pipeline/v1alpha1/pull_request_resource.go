@@ -44,6 +44,9 @@ type PullRequestResource struct {
 	PRImage string `json:"-"`
 }
 
+// GetSetup returns a PipelineResourceSetupInterface that does nothing because no setup is needed.
+func (s PullRequestResource) GetSetup() PipelineResourceSetupInterface { return &NoSetup{} }
+
 // NewPullRequestResource create a new git resource to pass to a Task
 func NewPullRequestResource(prImage string, r *PipelineResource) (*PullRequestResource, error) {
 	if r.Spec.Type != PipelineResourceTypePullRequest {

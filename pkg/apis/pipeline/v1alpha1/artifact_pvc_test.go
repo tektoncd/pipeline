@@ -88,7 +88,7 @@ func TestPVCGetPvcMount(t *testing.T) {
 	}
 }
 
-func TestPVCGetMakeStep(t *testing.T) {
+func TestCreateDirStepWithoutVolume(t *testing.T) {
 	names.TestingSeed()
 
 	want := v1alpha1.Step{Container: corev1.Container{
@@ -97,9 +97,27 @@ func TestPVCGetMakeStep(t *testing.T) {
 		Command: []string{"/ko-app/bash"},
 		Args:    []string{"-args", "mkdir -p /workspace/destination"},
 	}}
-	got := v1alpha1.CreateDirStep("override-with-bash-noop:latest", "workspace", "/workspace/destination")
+	got := v1alpha1.CreateDirStep("override-with-bash-noop:latest", "workspace", "/workspace/destination", nil)
 	if d := cmp.Diff(got, want); d != "" {
-		t.Errorf("Diff:\n%s", d)
+		t.Errorf("Did not get expected step for creating directory (-want, +got): %s", d)
+	}
+}
+
+func TestCreateDirStepWithVolume(t *testing.T) {
+	names.TestingSeed()
+
+	want := v1alpha1.Step{Container: corev1.Container{
+		Name:         "create-dir-workspace-9l9zj",
+		Image:        "override-with-bash-noop:latest",
+		Command:      []string{"/ko-app/bash"},
+		Args:         []string{"-args", "mkdir -p /special-workspace/destination"},
+		VolumeMounts: []corev1.VolumeMount{{Name: "foo", MountPath: "/special-workspace"}},
+	}}
+	got := v1alpha1.CreateDirStep("override-with-bash-noop:latest", "workspace", "/special-workspace/destination", []corev1.VolumeMount{{
+		Name: "foo", MountPath: "/special-workspace",
+	}})
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Did not get expected step for creating directory (-want, +got): %s", d)
 	}
 }
 

@@ -17,6 +17,15 @@ For example:
 
 -   [Syntax](#syntax)
 -   [Resource types](#resource-types)
+    -   [Git Resource](#git-resource)
+    -   [Pull Request Resource](#pull-request-resource)
+    -   [Image Resource](#image-resource)
+    -   [Cluster Resource](#cluster-resource)
+    -   [Storage Resource](#storage-resource)
+        -   [GCS Storage Resource](#gcs-storage-resource)
+        -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
+        -   [Volume Resource](#volume-resource)
+    -   [Cloud Event Resource](#cloud-event-resource)
 -   [Using Resources](#using-resources)
 
 ## Syntax
@@ -119,93 +128,7 @@ spec:
           value: /workspace/go
 ```
 
-### Overriding where resources are copied from
-
-When specifying input and output `PipelineResources`, you can optionally specify
-`paths` for each resource. `paths` will be used by `TaskRun` as the resource's
-new source paths i.e., copy the resource from specified list of paths. `TaskRun`
-expects the folder and contents to be already present in specified paths.
-`paths` feature could be used to provide extra files or altered version of
-existing resource before execution of steps.
-
-Output resource includes name and reference to pipeline resource and optionally
-`paths`. `paths` will be used by `TaskRun` as the resource's new destination
-paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
-responsible for creating required directories and copying contents over. `paths`
-feature could be used to inspect the results of taskrun after execution of
-steps.
-
-`paths` feature for input and output resource is heavily used to pass same
-version of resources across tasks in context of pipelinerun.
-
-In the following example, task and taskrun are defined with input resource,
-output resource and step which builds war artifact. After execution of
-taskrun(`volume-taskrun`), `custom` volume will have entire resource
-`java-git-resource` (including the war artifact) copied to the destination path
-`/custom/workspace/`.
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: Task
-metadata:
-  name: volume-task
-  namespace: default
-spec:
-  inputs:
-    resources:
-      - name: workspace
-        type: git
-  outputs:
-    resources:
-      - name: workspace
-  steps:
-    - name: build-war
-      image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
-      command: jar
-      args: ["-cvf", "projectname.war", "*"]
-      volumeMounts:
-        - name: custom-volume
-          mountPath: /custom
-```
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: TaskRun
-metadata:
-  name: volume-taskrun
-  namespace: default
-spec:
-  taskRef:
-    name: volume-task
-  inputs:
-    resources:
-      - name: workspace
-        resourceRef:
-          name: java-git-resource
-  outputs:
-    resources:
-      - name: workspace
-        paths:
-          - /custom/workspace/
-        resourceRef:
-          name: java-git-resource
-  volumes:
-    - name: custom-volume
-      emptyDir: {}
-```
-
 ## Resource Types
-
-The following `PipelineResources` are currently supported:
-
--   [Git Resource](#git-resource)
--   [Pull Request Resource](#pull-request-resource)
--   [Image Resource](#image-resource)
--   [Cluster Resource](#cluster-resource)
--   [Storage Resource](#storage-resource)
-    -   [GCS Storage Resource](#gcs-storage-resource)
-    -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
--   [Cloud Event Resource](#cloud-event-resource)
 
 ### Git Resource
 
@@ -769,6 +692,50 @@ as storage resources for BuildGCS Storage Resource right now. This is because
 the container image
 [gcr.io/cloud-builders//gcs-fetcher](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher)
 does not support configuring secrets.
+
+#### Volume Resource
+
+The Volume `PipelineResource` will create and manage an underlying
+[Persistent Volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) (PVC).
+
+To create a Volume resource:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: volume-resource-1
+spec:
+  type: storage
+  params:
+  - name: type
+    value: volume
+  - name: size
+    value: 5Gi
+  - name: subPath
+    value: some/path/on/the/pvc
+  - name: storageClassName
+    value: regional-disk
+```
+
+Supported `params` are:
+
+* `size` - **Required** The size to make the underlying PVC, expressed as a
+  [Quantity](https://godoc.org/k8s.io/apimachinery/pkg/api/resource#Quantity)
+* `subPath` - By default, data will be placed at the root of the PVC. This allows data to
+  instead be placed in a subfolder on the PVC
+* `storageClassName` - The [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+  that the PVC should use. For example, this is how you can use multiple Volume PipelineResources
+  [with GKE regional clusters](#using-with-gke-regional-clusters).
+
+##### Using with GKE Regional Clusters
+
+When using GKE regional clusters, when PVCs are created they will be assigned to zones
+round robin. This means if two Volume PipelineResources are used by one Task, you must specify a
+[`regional-pd`](https://cloud.google.com/kubernetes-engine/docs/how-to/persistent-volumes/regional-pd) storage class, otherwise the PVCs could be created in different zones, and it will
+be impossible to schedule a Task's pod that can use both.
+
+[See the volume PipelineResource example.](../examples/pipelineruns/volume-output-pipelinerun.yaml)
 
 ### Cloud Event Resource
 

@@ -258,6 +258,13 @@ func (tr *TaskRun) GetPipelineRunPVCName() string {
 	return ""
 }
 
+// GetOwnerReference gets the task run as owner reference for any related objects
+func (tr *TaskRun) GetOwnerReference() []metav1.OwnerReference {
+	return []metav1.OwnerReference{
+		*metav1.NewControllerRef(tr, groupVersionKind),
+	}
+}
+
 // HasPipelineRunOwnerReference returns true of TaskRun has
 // owner reference of type PipelineRun
 func (tr *TaskRun) HasPipelineRunOwnerReference() bool {

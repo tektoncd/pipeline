@@ -109,7 +109,7 @@ var (
 			tb.InputsResource(gitResource.Name, v1alpha1.PipelineResourceTypeGit),
 			tb.InputsResource(anotherGitResource.Name, v1alpha1.PipelineResourceTypeGit),
 		),
-		tb.TaskOutputs(tb.OutputsResource(gitResource.Name, v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskOutputs(tb.OutputsResource(volumeResource.Name, v1alpha1.PipelineResourceTypeStorage)),
 	))
 
 	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("sa-step", "foo", tb.StepCommand("/mycmd"))))
@@ -171,6 +171,9 @@ var (
 	anotherCloudEventResource = tb.PipelineResource("another-cloud-event-resource", "foo", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget2),
 	))
+	volumeResource = tb.PipelineResource("volume-resource", "foo", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeStorage, tb.PipelineResourceSpecParam("type", "volume"),
+	))
 
 	toolsVolume = corev1.Volume{
 		Name: "tools",
@@ -202,6 +205,16 @@ var (
 						},
 					},
 				},
+			},
+		},
+	}
+	// volumeVolume is the volume for the VolumeResource
+	volumeVolume = corev1.Volume{
+		Name: "volume-resource",
+		VolumeSource: corev1.VolumeSource{
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "volume-resource",
+				ReadOnly:  false,
 			},
 		},
 	}
@@ -480,8 +493,8 @@ func TestReconcile(t *testing.T) {
 				),
 			),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(gitResource.Name,
-					tb.TaskResourceBindingRef(gitResource.Name),
+				tb.TaskRunOutputsResource(volumeResource.Name,
+					tb.TaskResourceBindingRef(volumeResource.Name),
 					tb.TaskResourceBindingPaths("output-folder"),
 				),
 			),
@@ -592,7 +605,7 @@ func TestReconcile(t *testing.T) {
 		TaskRuns:          taskruns,
 		Tasks:             []*v1alpha1.Task{simpleTask, saTask, templatedTask, outputTask, taskEnvTask},
 		ClusterTasks:      []*v1alpha1.ClusterTask{clustertask},
-		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
+		PipelineResources: []*v1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource, volumeResource},
 	}
 	for _, tc := range []struct {
 		name    string
@@ -806,11 +819,11 @@ func TestReconcile(t *testing.T) {
 							ReadOnly:  false,
 						},
 					},
-				}, toolsVolume, downward, workspaceVolume, homeVolume),
+				}, volumeVolume, toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("l22wn"),
 				getPlaceToolsInitContainer(),
-				getMkdirResourceContainer("git-resource", "/workspace/output/git-resource", "6nl7g"),
+				getMkdirResourceContainer("volume-resource", "/workspace/output/volume-resource", "6nl7g"),
 				tb.PodContainer("step-create-dir-git-resource-78c5n", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/builder/tools/0", "-post_file", "/builder/tools/1", "-entrypoint", "/ko-app/bash", "--",
@@ -887,13 +900,13 @@ func TestReconcile(t *testing.T) {
 						tb.EphemeralStorage("0"),
 					)),
 				),
-				tb.PodContainer("step-source-mkdir-git-resource-j2tds", "override-with-bash-noop:latest",
+				tb.PodContainer("step-create-dir-volume-resource-j2tds", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/builder/tools/5", "-post_file", "/builder/tools/6", "-entrypoint", "/ko-app/bash", "--",
-						"-args", "mkdir -p output-folder"),
+						"-args", "mkdir -p /volumeresource-volume-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("test-pvc", "/pvc"),
+					tb.VolumeMount("volume-resource", "/volumeresource-volume-resource"),
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
@@ -903,13 +916,13 @@ func TestReconcile(t *testing.T) {
 						tb.EphemeralStorage("0"),
 					)),
 				),
-				tb.PodContainer("step-source-copy-git-resource-vr6ds", "override-with-bash-noop:latest",
+				tb.PodContainer("step-upload-copy-volume-resource-vr6ds", "override-with-bash-noop:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/builder/tools/6", "-post_file", "/builder/tools/7", "-entrypoint", "/ko-app/bash", "--",
-						"-args", "cp -r /workspace/output/git-resource/. output-folder"),
+						"-args", "cp -r /workspace/output/volume-resource/. /volumeresource-volume-resource"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
-					tb.VolumeMount("test-pvc", "/pvc"),
+					tb.VolumeMount("volume-resource", "/volumeresource-volume-resource"),
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
@@ -1303,15 +1316,17 @@ func TestReconcile(t *testing.T) {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
 
-			if d := cmp.Diff(pod.ObjectMeta, tc.wantPod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
-				t.Errorf("Pod metadata doesn't match, diff: %s", d)
+			if d := cmp.Diff(tc.wantPod.ObjectMeta, pod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
+				t.Errorf("Pod metadata doesn't match (-want, +got): %s", d)
 			}
 
-			if d := cmp.Diff(pod.Spec, tc.wantPod.Spec, resourceQuantityCmp); d != "" {
-				t.Errorf("Pod spec doesn't match, diff: %s", d)
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
+				t.Errorf("Pod spec doesn't match (-want, +got): %s", d)
 			}
-			if len(clients.Kube.Actions()) == 0 {
-				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
+
+			// If the TaskRun used a volume resource, make sure the backing PVC was created
+			if name == taskRunInputOutput.Name {
+				test.EnsurePVCCreated(t, clients, volumeResource.Name, volumeResource.Namespace)
 			}
 		})
 	}
@@ -1395,10 +1410,10 @@ func TestReconcile_SortTaskRunStatusSteps(t *testing.T) {
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
-	verify_TaskRunStatusStep(t, taskRun)
+	verifyTaskRunStatusStep(t, taskRun)
 }
 
-func verify_TaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun) {
+func verifyTaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun) {
 	actualStepOrder := []string{}
 	for _, state := range taskRun.Status.Steps {
 		actualStepOrder = append(actualStepOrder, state.Name)

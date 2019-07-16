@@ -22,7 +22,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// GetOutputSteps will add the correct `path` to the input resources for pt
+// GetOutputSteps will add the correct `path` to the output resources for pt
 func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, storageBasePath string) []v1alpha1.TaskResourceBinding {
 	var taskOutputResources []v1alpha1.TaskResourceBinding
 
@@ -78,6 +78,8 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 			}
 		}
 
+		// Determine if the value is meant to come `from` a previous Task - if so, add the path to the pvc
+		// that contains the data as the `path` the resulting TaskRun should get the data from
 		var stepSourceNames []string
 		if pt.Resources != nil {
 			for _, pipelineTaskInput := range pt.Resources.Inputs {

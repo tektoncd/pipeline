@@ -116,12 +116,27 @@ func TestResourceValidation_Invalid(t *testing.T) {
 				},
 			},
 			want: apis.ErrInvalidValue("spec.type", "not-supported"),
+		}, {
+			name: "volume resource without size",
+			res: tb.PipelineResource("volume-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("type", "volume"),
+			)),
+			want: apis.ErrMissingField("spec.params.size"),
+		}, {
+			name: "volume resource with invalid size",
+			res: tb.PipelineResource("volume-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("type", "volume"),
+				tb.PipelineResourceSpecParam("size", "bigger than a breadbox"),
+			)),
+			want: apis.ErrInvalidValue("invalid-size", "spec.params.size"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.res.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), tt.want.Error()); d != "" {
+			if d := cmp.Diff(tt.want.Error(), err.Error()); d != "" {
 				t.Errorf("PipelineResource.Validate/%s (-want, +got) = %v", tt.name, d)
 			}
 		})
@@ -134,7 +149,7 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 		res  *v1alpha1.PipelineResource
 	}{
 		{
-			name: "success validate",
+			name: "success validate cluster",
 			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
 				v1alpha1.PipelineResourceTypeCluster,
 				tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
@@ -145,7 +160,7 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 			)),
 		},
 		{
-			name: "specify insecure without cadata",
+			name: "specify insecure cluster without cadata",
 			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
 				v1alpha1.PipelineResourceTypeCluster,
 				tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
@@ -153,6 +168,22 @@ func TestClusterResourceValidation_Valid(t *testing.T) {
 				tb.PipelineResourceSpecParam("username", "admin"),
 				tb.PipelineResourceSpecParam("token", "my-token"),
 				tb.PipelineResourceSpecParam("insecure", "true"),
+			)),
+		}, {
+			name: "valid minimal volume resource",
+			res: tb.PipelineResource("volume-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("type", "volume"),
+				tb.PipelineResourceSpecParam("size", "5Gi"),
+			)),
+		}, {
+			name: "valid fully specified volume resource",
+			res: tb.PipelineResource("volume-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("type", "volume"),
+				tb.PipelineResourceSpecParam("size", "5Gi"),
+				tb.PipelineResourceSpecParam("subPath", "some/path"),
+				tb.PipelineResourceSpecParam("storageClassName", "magicstorage"),
 			)),
 		},
 	}

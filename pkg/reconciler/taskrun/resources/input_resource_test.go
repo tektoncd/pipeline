@@ -79,6 +79,14 @@ var (
 				Type: "cluster",
 			}}},
 	}
+	volumeInputs = &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name:       "workspace",
+				Type:       "storage",
+				TargetPath: "sub-dir",
+			}}},
+	}
 )
 
 func setUp() {
@@ -210,6 +218,23 @@ func setUp() {
 				Value: "non-existent",
 			}},
 		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "volume-valid",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "storage",
+			Params: []v1alpha1.ResourceParam{
+				{
+					Name:  "Size",
+					Value: "10Gi",
+				},
+				{
+					Name:  "Type",
+					Value: "volume",
+				}},
+		},
 	}}
 	inputResourceInterfaces = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
@@ -245,6 +270,15 @@ func TestAddResourceToTask(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: gcsInputs,
+		},
+	}
+	taskWithVolume := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "task-with-volume",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: volumeInputs,
 		},
 	}
 
@@ -738,6 +772,159 @@ func TestAddResourceToTask(t *testing.T) {
 				}},
 			}}},
 		},
+	}, {
+		desc: "volume resource as input with paths",
+		task: taskWithVolume,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-volume",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "volume-valid",
+							},
+							Name: "workspace",
+						},
+						Paths: []string{"workspace"},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: volumeInputs,
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:    "create-dir-volume-valid-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/sub-dir"},
+			}}, {Container: corev1.Container{
+				Name:    "download-copy-volume-valid-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "cp -r /volumeresource-volume-valid/. /workspace/sub-dir"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-valid",
+					MountPath: "/volumeresource-volume-valid",
+				}},
+			}}},
+			Volumes: []corev1.Volume{{
+				Name: "volume-valid",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "volume-valid",
+						ReadOnly:  false,
+					},
+				},
+			}},
+		},
+	}, {
+		desc: "volume resource as input without paths",
+		task: taskWithVolume,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-volume",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "volume-valid",
+							},
+							Name: "workspace",
+						},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: volumeInputs,
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:    "create-dir-volume-valid-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/sub-dir"},
+			}}, {Container: corev1.Container{
+				Name:    "download-copy-volume-valid-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "cp -r /volumeresource-volume-valid/. /workspace/sub-dir"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-valid",
+					MountPath: "/volumeresource-volume-valid",
+				}},
+			}}},
+			Volumes: []corev1.Volume{{
+				Name: "volume-valid",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "volume-valid",
+						ReadOnly:  false,
+					},
+				},
+			}},
+		},
+	}, {
+		desc: "volume resource as input from previous task",
+		task: taskWithVolume,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-volume",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "volume-valid",
+							},
+							Name: "workspace",
+						},
+						Paths: []string{"prev-task-path"},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: volumeInputs,
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:    "create-dir-volume-valid-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/sub-dir"},
+			}}, {Container: corev1.Container{
+				Name:    "download-copy-volume-valid-mz4c7",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "cp -r /volumeresource-volume-valid/. /workspace/sub-dir"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-valid",
+					MountPath: "/volumeresource-volume-valid",
+				}},
+			}}},
+			Volumes: []corev1.Volume{{
+				Name: "volume-valid",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "volume-valid",
+						ReadOnly:  false,
+					},
+				},
+			}},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
@@ -748,8 +935,8 @@ func TestAddResourceToTask(t *testing.T) {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
 			if got != nil {
-				if d := cmp.Diff(got, c.want); d != "" {
-					t.Errorf("Diff:\n%s", d)
+				if d := cmp.Diff(c.want, got); d != "" {
+					t.Errorf("Didn't get expected Task spec (-want +got): %s", d)
 				}
 			}
 		})
