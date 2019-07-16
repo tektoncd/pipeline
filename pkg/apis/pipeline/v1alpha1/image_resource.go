@@ -54,6 +54,9 @@ type ImageResource struct {
 	OutputImageDir string
 }
 
+// GetSetup returns a PipelineResourceSetupInterface that does nothing because no setup is needed.
+func (s ImageResource) GetSetup() PipelineResourceSetupInterface { return &NoSetup{} }
+
 // GetName returns the name of the resource
 func (s ImageResource) GetName() string {
 	return s.Name

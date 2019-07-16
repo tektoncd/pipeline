@@ -213,7 +213,7 @@ func initOutputResourcesDefaultDir(bashNoopImage string, taskRun *v1alpha1.TaskR
 			for _, o := range taskSpec.Outputs.Resources {
 				if o.Name == r.Name {
 					if strings.HasPrefix(o.OutputImageDir, v1alpha1.TaskOutputImageDefaultDir) {
-						s := v1alpha1.CreateDirStep(bashNoopImage, "default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name))
+						s := v1alpha1.CreateDirStep(bashNoopImage, "default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name), nil)
 						s.VolumeMounts = append(s.VolumeMounts, implicitVolumeMounts...)
 						makeDirSteps = append(makeDirSteps, s)
 					}

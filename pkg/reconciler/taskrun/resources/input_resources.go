@@ -84,8 +84,9 @@ func AddInputResource(
 		var copyStepsFromPrevTasks []v1alpha1.Step
 		dPath := destinationPath(input.Name, input.TargetPath)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
-		// to the desired destination directory, as long as the resource exports output to be copied
-		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+		// to the desired destination directory, as long as the resource exports output to be copied.
+		// The VolumeResource is exempted from this because it will already copy to and from an underlying PVC.
+		if allowedOutputResources[resource.GetType()] && resource.GetType() != v1alpha1.PipelineResourceTypeVolume && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
 				cpSteps := as.GetCopyFromStorageToSteps(boundResource.Name, path, dPath)
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
@@ -93,7 +94,7 @@ func AddInputResource(
 					for _, s := range cpSteps {
 						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
-							v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, dPath),
+							v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, dPath, nil),
 							s)
 					}
 				} else {
@@ -112,7 +113,9 @@ func AddInputResource(
 			if err != nil {
 				return nil, err
 			}
-			v1alpha1.ApplyTaskModifier(taskSpec, modifier)
+			if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+				return nil, xerrors.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
+			}
 		}
 	}
 

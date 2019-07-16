@@ -45,6 +45,9 @@ type GCSResource struct {
 	GsutilImage   string `json:"-"`
 }
 
+// GetSetup returns a PipelineResourceSetupInterface that does nothing because no setup is needed.
+func (s GCSResource) GetSetup() PipelineResourceSetupInterface { return &NoSetup{} }
+
 // NewGCSResource creates a new GCS resource to pass to a Task
 func NewGCSResource(images pipeline.Images, r *PipelineResource) (*GCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
@@ -143,7 +146,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 	steps := []Step{
-		CreateDirStep(s.BashNoopImage, s.Name, path),
+		CreateDirStep(s.BashNoopImage, s.Name, path, nil),
 		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        s.GsutilImage,

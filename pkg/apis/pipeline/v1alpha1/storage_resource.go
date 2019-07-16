@@ -25,20 +25,29 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// PipelineResourceStorageType is used as an enum for subtypes of the storage resource.
 type PipelineResourceStorageType string
 
 const (
-	// PipelineResourceTypeGCS indicates that resource source is a GCS blob/directory.
-	PipelineResourceTypeGCS      PipelineResourceType = "gcs"
+	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
+	PipelineResourceTypeGCS PipelineResourceType = "gcs"
+	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
+	// with additional funcitonality that was added to be compatible with knative build.
 	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
+	// PipelineResourceTypeVolume is the subtype for the VolumeResource, which is backed by a PVC.
+	PipelineResourceTypeVolume PipelineResourceType = "volume"
 )
 
-// PipelineResourceInterface interface to be implemented by different PipelineResource types
+// PipelineStorageResourceInterface is the interface for subtypes of the storage type.
+// It adds a function to the PipelineResourceInterface for retrieving secrets that are usually
+// needed for storage PipelineResources.
 type PipelineStorageResourceInterface interface {
 	PipelineResourceInterface
 	GetSecretParams() []SecretParam
 }
 
+// NewStorageResource returns an instance of the requested storage subtype, which can be used
+// to add input and output steps and volumes to an executing pod.
 func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineStorageResourceInterface, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
@@ -51,6 +60,8 @@ func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineSt
 				return NewGCSResource(images, r)
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeBuildGCS)):
 				return NewBuildGCSResource(images, r)
+			case strings.EqualFold(param.Value, string(PipelineResourceTypeVolume)):
+				return NewVolumeResource(images, r)
 			default:
 				return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}

@@ -277,6 +277,25 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
+	// Some PipelineResources will require state to be setup before they can be used.
+	// If this PipelineResource is being used as part of a PipelineRun, any state that it needs
+	// created should be created in the same reconcile loop. For example, creating two different
+	// PVCs in two separate reconcile loops with GKE then trying to create a TaskRun that uses
+	// both can create an unschedulable pod if the PVCs end up created in different zones.
+	for name, r := range providedResources {
+		rr, err := v1alpha1.ResourceFromType(r, c.Images)
+		if err != nil {
+			c.Logger.Errorf("Unexpected error getting PipelineResource instance for %s: %v", name, err)
+			return nil
+		}
+		s := rr.GetSetup()
+		err = s.Setup(rr, pr.GetOwnerReference(), c.KubeClientSet)
+		if err != nil {
+			c.Logger.Errorf("Failed to setup PipelineResource %s: %v", name, err)
+			return nil
+		}
+	}
+
 	// Ensure that the parameters from the PipelineRun are overriding Pipeline parameters with the same type.
 	// Weird substitution issues can occur if this is not validated (ApplyParameters() does not verify type).
 	err = resources.ValidateParamTypesMatching(pipelineSpec, pr)

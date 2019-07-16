@@ -417,15 +417,33 @@ func (c *Reconciler) updateReady(pod *corev1.Pod) error {
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
 	ts := rtr.TaskSpec.DeepCopy()
-	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)
+	inputResources, err := getPipelineResourceInstances(rtr.Inputs, c.KubeClientSet, c.Images)
 	if err != nil {
-		c.Logger.Errorf("Failed to initialize input resources: %v", err)
+		c.Logger.Errorf("Failed to instantiate input resources: %v", err)
 		return nil, err
 	}
-	outputResources, err := resourceImplBinding(rtr.Outputs, c.Images)
+	outputResources, err := getPipelineResourceInstances(rtr.Outputs, c.KubeClientSet, c.Images)
 	if err != nil {
-		c.Logger.Errorf("Failed to initialize output resources: %v", err)
+		c.Logger.Errorf("Failed to Instantiate output resources: %v", err)
 		return nil, err
+	}
+
+	// Some PipelineResources will require state to be setup before they can be used
+	for name, r := range inputResources {
+		s := r.GetSetup()
+		err := s.Setup(r, tr.GetOwnerReference(), c.KubeClientSet)
+		if err != nil {
+			c.Logger.Errorf("Failed to setup input PipelineResource %s: %v", name, err)
+			return nil, err
+		}
+	}
+	for name, r := range outputResources {
+		s := r.GetSetup()
+		err := s.Setup(r, tr.GetOwnerReference(), c.KubeClientSet)
+		if err != nil {
+			c.Logger.Errorf("Failed to setup output PipelineResource %s: %v", name, err)
+			return nil, err
+		}
 	}
 
 	// Get actual resource
@@ -548,8 +566,8 @@ func isExceededResourceQuotaError(err error) bool {
 	return err != nil && errors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
 }
 
-// resourceImplBinding maps pipeline resource names to the actual resource type implementations
-func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images pipeline.Images) (map[string]v1alpha1.PipelineResourceInterface, error) {
+// getPipelineResourceInstances maps pipeline resource names to the actual resource type implementations
+func getPipelineResourceInstances(resources map[string]*v1alpha1.PipelineResource, c kubernetes.Interface, images pipeline.Images) (map[string]v1alpha1.PipelineResourceInterface, error) {
 	p := make(map[string]v1alpha1.PipelineResourceInterface)
 	for rName, r := range resources {
 		i, err := v1alpha1.ResourceFromType(r, images)

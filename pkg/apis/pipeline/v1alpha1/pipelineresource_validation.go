@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"knative.dev/pkg/apis"
 )
 
@@ -77,24 +78,38 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 	if rs.Type == PipelineResourceTypeStorage {
-		foundTypeParam := false
 		var location string
+		t := ""
 		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "type"):
 				if !AllowedStorageType(param.Value) {
 					return apis.ErrInvalidValue(param.Value, "spec.params.type")
 				}
-				foundTypeParam = true
+				t = param.Value
 			case strings.EqualFold(param.Name, "Location"):
 				location = param.Value
 			}
 		}
 
-		if !foundTypeParam {
+		if t == "" {
 			return apis.ErrMissingField("spec.params.type")
 		}
-		if location == "" {
+		if t == string(PipelineResourceTypeVolume) {
+			size := ""
+			for _, param := range rs.Params {
+				if strings.EqualFold(param.Name, "size") {
+					size = param.Value
+				}
+			}
+			if size == "" {
+				return apis.ErrMissingField("spec.params.size")
+			}
+			_, err := resource.ParseQuantity(size)
+			if err != nil {
+				return apis.ErrInvalidValue("invalid-size", "spec.params.size")
+			}
+		} else if location == "" {
 			return apis.ErrMissingField("spec.params.location")
 		}
 	}
@@ -113,6 +128,8 @@ func AllowedStorageType(gotType string) bool {
 	case string(PipelineResourceTypeGCS):
 		return true
 	case string(PipelineResourceTypeBuildGCS):
+		return true
+	case string(PipelineResourceTypeVolume):
 		return true
 	}
 	return false

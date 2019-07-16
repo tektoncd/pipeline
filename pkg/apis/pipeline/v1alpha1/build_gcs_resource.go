@@ -70,7 +70,10 @@ type BuildGCSResource struct {
 	BuildGCSFetcherImage string `json:"-"`
 }
 
-//  creates a new BuildGCS resource to pass to a Task
+// GetSetup returns a PipelineResourceSetupInterface that does nothing because no setup is needed.
+func (s BuildGCSResource) GetSetup() PipelineResourceSetupInterface { return &NoSetup{} }
+
+// NewBuildGCSResource creates a new BuildGCS resource to pass to a Task
 func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
@@ -135,7 +138,7 @@ func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string)
 	}
 
 	steps := []Step{
-		CreateDirStep(s.BashNoopImage, s.Name, sourcePath),
+		CreateDirStep(s.BashNoopImage, s.Name, sourcePath, nil),
 		{Container: corev1.Container{
 			Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Command: []string{"/ko-app/gcs-fetcher"},
