@@ -171,26 +171,6 @@ func (tr *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 	}
 }
 
-// InitializeCloudEvents initializes the CloudEvents part of the TaskRunStatus
-// from a list of event targets
-func (tr *TaskRunStatus) InitializeCloudEvents(targets []string) {
-	// len(nil slice) is 0
-	if len(targets) > 0 {
-		initialState := CloudEventDeliveryState{
-			Condition:  CloudEventConditionUnknown,
-			RetryCount: 0,
-		}
-		events := make([]CloudEventDelivery, len(targets))
-		for idx, target := range targets {
-			events[idx] = CloudEventDelivery{
-				Target: target,
-				Status: initialState,
-			}
-		}
-		tr.CloudEvents = events
-	}
-}
-
 // StepState reports the results of running a step in the Task.
 type StepState struct {
 	corev1.ContainerState

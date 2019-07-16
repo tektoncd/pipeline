@@ -21,12 +21,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cloudevents/sdk-go/pkg/cloudevents"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
 	cecontext "github.com/cloudevents/sdk-go/pkg/cloudevents/context"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.uber.org/zap"
 	"knative.dev/eventing-contrib/pkg/kncloudevents"
 	"knative.dev/pkg/apis"
@@ -124,4 +127,22 @@ func SendTaskRunCloudEvent(sinkURI string, taskRun *v1alpha1.TaskRun, logger *za
 	data, _ := json.Marshal(NewTektonCloudEventData(taskRun))
 	event, err = SendCloudEvent(sinkURI, eventID, eventSourceURI, data, eventType, logger, cloudEventClient)
 	return event, err
+}
+
+// GetCloudEventDeliveryCompareOptions returns compare options to sort
+// and compare a list of CloudEventDelivery
+func GetCloudEventDeliveryCompareOptions() []cmp.Option {
+	// Setup cmp options
+	cloudDeliveryStateCompare := func(x, y v1alpha1.CloudEventDeliveryState) bool {
+		return cmp.Equal(x.Condition, y.Condition) && cmp.Equal(x.RetryCount, y.RetryCount)
+	}
+	less := func(x, y v1alpha1.CloudEventDelivery) bool {
+		return strings.Compare(x.Target, y.Target) < 0 || (strings.Compare(x.Target, y.Target) == 0 && x.Status.SentAt.Before(y.Status.SentAt))
+	}
+	return []cmp.Option{
+		cmpopts.SortSlices(less),
+		cmp.Comparer(func(x, y v1alpha1.CloudEventDelivery) bool {
+			return (strings.Compare(x.Target, y.Target) == 0) && cloudDeliveryStateCompare(x.Status, y.Status)
+		}),
+	}
 }

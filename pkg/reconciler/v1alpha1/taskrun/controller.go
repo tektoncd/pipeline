@@ -27,6 +27,7 @@ import (
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
+	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources/cloudevent"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -69,6 +70,7 @@ func NewController(
 		clusterTaskLister: clusterTaskInformer.Lister(),
 		resourceLister:    resourceInformer.Lister(),
 		timeoutHandler:    timeoutHandler,
+		cloudEventClient:  cloudeventclient.Get(ctx),
 	}
 	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
