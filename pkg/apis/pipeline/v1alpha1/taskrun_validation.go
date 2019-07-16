@@ -49,6 +49,13 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("spec.taskref.name", "spec.taskspec")
 	}
 
+	// Validate TaskSpec if it's present
+	if ts.TaskSpec != nil {
+		if err := ts.TaskSpec.Validate(ctx); err != nil {
+			return err
+		}
+	}
+
 	// check for input resources
 	if err := ts.Inputs.Validate(ctx, "spec.Inputs"); err != nil {
 		return err
