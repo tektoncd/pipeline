@@ -167,9 +167,11 @@ spec:
         type: git
     params:
       - name: pathToDockerFile
+        type: string
         description: The path to the dockerfile to build
         default: /workspace/docker-source/Dockerfile
       - name: pathToContext
+        type: string
         description:
           The build context used by Kaniko
           (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
@@ -391,12 +393,15 @@ spec:
         type: image
     params:
       - name: path
+        type: string
         description: Path to the manifest to apply
       - name: yqArg
+        type: string
         description:
           Okay this is a hack, but I didn't feel right hard-coding `-d1` down
           below
       - name: yamlPathToImage
+        type: string
         description:
           The path to the image to replace in the yaml manifest (arg to yq)
   steps:
