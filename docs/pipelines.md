@@ -80,6 +80,8 @@ Parameters name are limited to alpha-numeric characters, `-` and `_` and can
 only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
 parameter name, `barIsBa$` or `0banana` are not.
 
+Each declared parameter has a `type` field, assumed to be `string` if not provided by the user. The other possible type is `array` — useful, for instance, when a dynamic number of string arguments need to be supplied to a task. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
+
 #### Usage
 
 The following example shows how `Pipeline`s can be parameterized, and these
@@ -103,6 +105,7 @@ metadata:
 spec:
   params:
     - name: context
+      type: string
       description: Path to context
       default: /some/where/or/other
   tasks:

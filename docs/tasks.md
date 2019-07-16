@@ -97,6 +97,7 @@ spec:
         type: git
     params:
       - name: pathToDockerFile
+        type: string
         description: The path to the dockerfile to build
         default: /workspace/workspace/Dockerfile
   outputs:
@@ -164,6 +165,8 @@ Parameters name are limited to alpha-numeric characters, `-` and `_` and can
 only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
 parameter name, `barIsBa$` or `0banana` are not.
 
+Each declared parameter has a `type` field, assumed to be `string` if not provided by the user. The other possible type is `array` — useful, for instance, when a dynamic number of compilation flags need to be supplied to a task building an application. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
+
 ##### Usage
 
 The following example shows how Tasks can be parameterized, and these parameters
@@ -184,14 +187,16 @@ spec:
   inputs:
     params:
       - name: flags
-        value: -someflag
+        type: array
+      - name: someURL
+        type: string
   steps:
     - name: build
       image: my-builder
-      args: ["build", "--flags=${inputs.params.flags}"]
+      args: ["build", "${inputs.params.flags}", "url=${someURL}"]
 ```
 
-The following `TaskRun` supplies a value for `flags`:
+The following `TaskRun` supplies a dynamic number of strings within the `flags` parameter:
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -203,8 +208,14 @@ spec:
     name: task-with-parameters
   inputs:
     params:
-      - name: "flags"
-        value: "foo=bar,baz=bat"
+      - name: flags
+        value: 
+          - "--set"
+          - "arg1=foo"
+          - "--randomflag"
+          - "--someotherflag"
+      - name: someURL
+        value: "http://google.com"
 ```
 
 #### Input resources
@@ -394,6 +405,49 @@ To access an input parameter, replace `resources` with `params`.
 ${inputs.params.<name>}
 ```
 
+#### Templating Parameters of Type `Array`
+
+Referenced parameters of type `array` will expand to insert the array elements in the reference string's spot.
+
+So, with the following parameter:
+```
+inputs:
+    params:
+      - name: array-param
+        value: 
+          - "some"
+          - "array"
+          - "elements"
+```
+then `command: ["first", "inputs.params.array-param", "last"]` will become 
+`command: ["first", "some", "array", "elements", "last"]`
+
+
+Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array. 
+Any other attempt to reference an array is invalid and will throw an error. 
+
+For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because 
+the template string isn't isolated:
+```
+ - name: build-step
+      image: gcr.io/cloud-builders/some-image
+      args: ["build", "additionalArg ${inputs.params.build-args}"]
+```
+
+Similarly, referencing `build-args` in a non-array field is also invalid:
+```
+ - name: build-step
+      image: "${inputs.params.build-args}"
+      args: ["build", "args"]
+```
+
+A valid reference to the `build-args` parameter is isolated and in an eligible field (`args`, in this case):
+```
+ - name: build-step
+      image: gcr.io/cloud-builders/some-image
+      args: ["build", "${inputs.params.build-args}", "additonalArg"]
+```
+
 #### Templating Volumes
 
 Task volume names and different
@@ -435,9 +489,11 @@ spec:
     params:
       # These may be overridden, but provide sensible defaults.
       - name: directory
+        type: string
         description: The directory containing the build context.
         default: /workspace
       - name: dockerfileName
+        type: string
         description: The name of the Dockerfile
         default: Dockerfile
   outputs:
@@ -509,8 +565,10 @@ spec:
   inputs:
     params:
       - name: CFGNAME
+        type: string
         description: Name of config map
       - name: volumeName
+        type: string
         description: Name of volume
   steps:
     - image: ubuntu
@@ -537,8 +595,10 @@ spec:
   inputs:
     params:
     - name: package
+      type: string
       description: base package to build in
     - name: github-token-secret
+      type: string
       description: name of the secret holding the github-token
       default: github-token
     resources:
