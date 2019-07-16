@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/status"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test"
@@ -72,6 +73,8 @@ var (
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
+	cloudEventTarget1 = "https://foo"
+	cloudEventTarget2 = "https://bar"
 
 	simpleStep        = tb.Step("simple-step", "foo", tb.StepCommand("/mycmd"))
 	simpleTask        = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
@@ -134,6 +137,13 @@ var (
 		})),
 	))
 
+	twoOutputsTask = tb.Task("test-two-output-task", "foo", tb.TaskSpec(
+		simpleStep, tb.TaskOutputs(
+			tb.OutputsResource(cloudEventResource.Name, v1alpha1.PipelineResourceTypeCloudEvent),
+			tb.OutputsResource(anotherCloudEventResource.Name, v1alpha1.PipelineResourceTypeCloudEvent),
+		),
+	))
+
 	gitResource = tb.PipelineResource("git-resource", "foo", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
 	))
@@ -142,6 +152,12 @@ var (
 	))
 	imageResource = tb.PipelineResource("image-resource", "foo", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeImage, tb.PipelineResourceSpecParam("URL", "gcr.io/kristoff/sven"),
+	))
+	cloudEventResource = tb.PipelineResource("cloud-event-resource", "foo", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget1),
+	))
+	anotherCloudEventResource = tb.PipelineResource("another-cloud-event-resource", "foo", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget2),
 	))
 
 	toolsVolume = corev1.Volume{
@@ -241,6 +257,10 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 func getTaskRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
 	ctx, _ := rtesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
+	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
+		SendSuccessfully: true,
+	}
+	ctx = cloudevent.WithClient(ctx, &cloudEventClientBehaviour)
 	entrypointCache, _ = entrypoint.NewCache()
 	c, _ := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
@@ -1612,6 +1632,185 @@ func TestHandlePodCreationError(t *testing.T) {
 			}
 			if !foundCondition {
 				t.Errorf("expected to find condition type %q, status %q and reason %q", tc.expectedType, tc.expectedStatus, tc.expectedReason)
+			}
+		})
+	}
+}
+
+func TestReconcileCloudEvents(t *testing.T) {
+
+	taskRunWithNoCEResources := tb.TaskRun("test-taskrun-no-ce-resources", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
+		))
+	taskRunWithTwoCEResourcesNoInit := tb.TaskRun("test-taskrun-two-ce-resources-no-init", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(twoOutputsTask.Name),
+			tb.TaskRunOutputs(
+				tb.TaskRunOutputsResource(cloudEventResource.Name),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+			),
+		),
+	)
+	taskRunWithTwoCEResourcesInit := tb.TaskRun("test-taskrun-two-ce-resources-init", "foo",
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(twoOutputsTask.Name),
+			tb.TaskRunOutputs(
+				tb.TaskRunOutputsResource(cloudEventResource.Name),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+			),
+		),
+		tb.TaskRunStatus(
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+		),
+	)
+	taskRunWithCESucceded := tb.TaskRun("test-taskrun-ce-succeeded", "foo",
+		tb.TaskRunSelfLink("/task/1234"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(twoOutputsTask.Name),
+			tb.TaskRunOutputs(
+				tb.TaskRunOutputsResource(cloudEventResource.Name),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+			),
+		),
+		tb.TaskRunStatus(
+			tb.StatusCondition(apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			}),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+		),
+	)
+	taskRunWithCEFailed := tb.TaskRun("test-taskrun-ce-failed", "foo",
+		tb.TaskRunSelfLink("/task/1234"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(twoOutputsTask.Name),
+			tb.TaskRunOutputs(
+				tb.TaskRunOutputsResource(cloudEventResource.Name),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+			),
+		),
+		tb.TaskRunStatus(
+			tb.StatusCondition(apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+		),
+	)
+	taskRunWithCESuccededOneAttempt := tb.TaskRun("test-taskrun-ce-succeeded-one-attempt", "foo",
+		tb.TaskRunSelfLink("/task/1234"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef(twoOutputsTask.Name),
+			tb.TaskRunOutputs(
+				tb.TaskRunOutputsResource(cloudEventResource.Name),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+			),
+		),
+		tb.TaskRunStatus(
+			tb.StatusCondition(apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			}),
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "fakemessage", 0, v1alpha1.CloudEventConditionUnknown),
+		),
+	)
+	taskruns := []*v1alpha1.TaskRun{
+		taskRunWithNoCEResources, taskRunWithTwoCEResourcesNoInit,
+		taskRunWithTwoCEResourcesInit, taskRunWithCESucceded, taskRunWithCEFailed,
+		taskRunWithCESuccededOneAttempt,
+	}
+
+	d := test.Data{
+		TaskRuns:          taskruns,
+		Tasks:             []*v1alpha1.Task{simpleTask, twoOutputsTask},
+		ClusterTasks:      []*v1alpha1.ClusterTask{},
+		PipelineResources: []*v1alpha1.PipelineResource{cloudEventResource, anotherCloudEventResource},
+	}
+	for _, tc := range []struct {
+		name            string
+		taskRun         *v1alpha1.TaskRun
+		wantCloudEvents []v1alpha1.CloudEventDelivery
+	}{{
+		name:            "no-ce-resources",
+		taskRun:         taskRunWithNoCEResources,
+		wantCloudEvents: taskRunWithNoCEResources.Status.CloudEvents,
+	}, {
+		name:    "ce-resources-no-init",
+		taskRun: taskRunWithTwoCEResourcesNoInit,
+		wantCloudEvents: tb.TaskRun("want", "foo", tb.TaskRunStatus(
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+		)).Status.CloudEvents,
+	}, {
+		name:    "ce-resources-init",
+		taskRun: taskRunWithTwoCEResourcesInit,
+		wantCloudEvents: tb.TaskRun("want2", "foo", tb.TaskRunStatus(
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1alpha1.CloudEventConditionUnknown),
+		)).Status.CloudEvents,
+	}, {
+		name:    "ce-resources-init-task-successful",
+		taskRun: taskRunWithCESucceded,
+		wantCloudEvents: tb.TaskRun("want3", "foo", tb.TaskRunStatus(
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1alpha1.CloudEventConditionSent),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 1, v1alpha1.CloudEventConditionSent),
+		)).Status.CloudEvents,
+	}, {
+		name:    "ce-resources-init-task-failed",
+		taskRun: taskRunWithCEFailed,
+		wantCloudEvents: tb.TaskRun("want4", "foo", tb.TaskRunStatus(
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1alpha1.CloudEventConditionSent),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "", 1, v1alpha1.CloudEventConditionSent),
+		)).Status.CloudEvents,
+	}, {
+		name:    "ce-resources-init-task-successful-one-attempt",
+		taskRun: taskRunWithCESuccededOneAttempt,
+		wantCloudEvents: tb.TaskRun("want5", "foo", tb.TaskRunStatus(
+			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1alpha1.CloudEventConditionUnknown),
+			tb.TaskRunCloudEvent(cloudEventTarget2, "fakemessage", 1, v1alpha1.CloudEventConditionSent),
+		)).Status.CloudEvents,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+
+			saName := tc.taskRun.Spec.ServiceAccount
+			if saName == "" {
+				saName = "default"
+			}
+			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      saName,
+					Namespace: tc.taskRun.Namespace,
+				},
+			}); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := c.Reconciler.Reconcile(context.Background(), getRunName(tc.taskRun)); err != nil {
+				t.Errorf("expected no error. Got error %v", err)
+			}
+			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun.Name)
+			if err != nil {
+				t.Errorf("Invalid resource key: %v", err)
+			}
+
+			tr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			opts := cloudevent.GetCloudEventDeliveryCompareOptions()
+			t.Log(tr.Status.CloudEvents)
+			if diff := cmp.Diff(tc.wantCloudEvents, tr.Status.CloudEvents, opts...); diff != "" {
+				t.Errorf("Unexpected status of cloud events (-want +got) = %s", diff)
 			}
 		})
 	}

@@ -314,6 +314,24 @@ func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 	}
 }
 
+// TaskRunCloudEvent adds an event to the TaskRunStatus.
+func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		if len(s.CloudEvents) == 0 {
+			s.CloudEvents = make([]v1alpha1.CloudEventDelivery, 0)
+		}
+		cloudEvent := v1alpha1.CloudEventDelivery{
+			Target: target,
+			Status: v1alpha1.CloudEventDeliveryState{
+				Condition:  condition,
+				RetryCount: retryCount,
+				Error:      error,
+			},
+		}
+		s.CloudEvents = append(s.CloudEvents, cloudEvent)
+	}
+}
+
 // TaskRunTimeout sets the timeout duration to the TaskRunSpec.
 func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
@@ -393,6 +411,13 @@ func TaskRunAnnotation(key, value string) TaskRunOp {
 			tr.ObjectMeta.Annotations = map[string]string{}
 		}
 		tr.ObjectMeta.Annotations[key] = value
+	}
+}
+
+// TaskRunSelfLink adds a SelfLink
+func TaskRunSelfLink(selflink string) TaskRunOp {
+	return func(tr *v1alpha1.TaskRun) {
+		tr.ObjectMeta.SelfLink = selflink
 	}
 }
 
