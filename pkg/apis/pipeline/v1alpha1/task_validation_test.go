@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/builder"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -68,7 +70,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "valid inputs",
+		name: "valid inputs (type implied)",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
@@ -76,7 +78,23 @@ func TestTaskSpecValidate(t *testing.T) {
 					{
 						Name:        "task",
 						Description: "param",
-						Default:     "default",
+						Default:     builder.ArrayOrString("default"),
+					},
+				},
+			},
+			BuildSteps: validBuildSteps,
+		},
+	}, {
+		name: "valid inputs type explicit",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+				Params: []v1alpha1.ParamSpec{
+					{
+						Name:        "task",
+						Type:        v1alpha1.ParamTypeString,
+						Description: "param",
+						Default:     builder.ArrayOrString("default"),
 					},
 				},
 			},
@@ -133,6 +151,33 @@ func TestTaskSpecValidate(t *testing.T) {
 				Name:       "mystep",
 				Image:      "${inputs.resources.foo.url}",
 				Args:       []string{"--flag=${inputs.params.baz} && ${input.params.foo-is-baz}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
+		},
+	}, {
+		name: "valid array template variable",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "${inputs.resources.foo.url}",
+				Command:    []string{"${inputs.param.foo-is-baz}"},
+				Args:       []string{"${inputs.params.baz}", "middle string", "${input.params.foo-is-baz}"},
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
 			}},
 		},
@@ -248,6 +293,71 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"taskspec.Inputs.Resources.source.Type"},
 		},
 	}, {
+		name: "invalid input type",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+				Params: []v1alpha1.ParamSpec{
+					{
+						Name:        "validparam",
+						Type:        v1alpha1.ParamTypeString,
+						Description: "parameter",
+						Default:     builder.ArrayOrString("default"),
+					}, {
+						Name:        "param-with-invalid-type",
+						Type:        "invalidtype",
+						Description: "invalidtypedesc",
+						Default:     builder.ArrayOrString("default"),
+					},
+				},
+			},
+			BuildSteps: validBuildSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalidtype`,
+			Paths:   []string{"taskspec.inputs.params.param-with-invalid-type.type"},
+		},
+	}, {
+		name: "input mismatching default/type 1",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+				Params: []v1alpha1.ParamSpec{
+					{
+						Name:        "task",
+						Type:        v1alpha1.ParamTypeArray,
+						Description: "param",
+						Default:     builder.ArrayOrString("default"),
+					},
+				},
+			},
+			BuildSteps: validBuildSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `"array" type does not match default value's type: "string"`,
+			Paths:   []string{"taskspec.inputs.params.task.type", "taskspec.inputs.params.task.default.type"},
+		},
+	}, {
+		name: "input mismatching default/type 2",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+				Params: []v1alpha1.ParamSpec{
+					{
+						Name:        "task",
+						Type:        v1alpha1.ParamTypeString,
+						Description: "param",
+						Default:     builder.ArrayOrString("default", "array"),
+					},
+				},
+			},
+			BuildSteps: validBuildSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `"string" type does not match default value's type: "array"`,
+			Paths:   []string{"taskspec.inputs.params.task.type", "taskspec.inputs.params.task.default.type"},
+		},
+	}, {
 		name: "one invalid output",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
@@ -349,6 +459,148 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {
+		name: "array used in unaccepted field",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "${inputs.params.baz}",
+				Command:    []string{"${inputs.param.foo-is-baz}"},
+				Args:       []string{"${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "${inputs.params.baz}" for step image`,
+			Paths:   []string{"taskspec.steps.image"},
+		},
+	}, {
+		name: "array not properly isolated",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"${inputs.param.foo-is-baz}"},
+				Args:       []string{"not isolated: ${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: ${inputs.params.baz}" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
+		name: "array not properly isolated",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"${inputs.param.foo-is-baz}"},
+				Args:       []string{"not isolated: ${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: ${inputs.params.baz}" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
+		name: "inexistent input resource variable",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage:${inputs.resources.inputs}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "myimage:${inputs.resources.inputs}" for step image`,
+			Paths:   []string{"taskspec.steps.image"},
+		},
+	}, {
+		name: "inferred array not properly isolated",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Default: &v1alpha1.ArrayOrString{
+						Type:     v1alpha1.ParamTypeArray,
+						ArrayVal: []string{"implied", "array", "type"},
+					},
+				}, {
+					Name: "foo-is-baz",
+					Default: &v1alpha1.ArrayOrString{
+						Type:     v1alpha1.ParamTypeArray,
+						ArrayVal: []string{"implied", "array", "type"},
+					},
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"${inputs.param.foo-is-baz}"},
+				Args:       []string{"not isolated: ${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: ${inputs.params.baz}" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
 		name: "inexistent input resource variable",
 		fields: fields{
 			BuildSteps: []corev1.Container{{
@@ -381,7 +633,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 					{
 						Name:        "foo",
 						Description: "param",
-						Default:     "default",
+						Default:     builder.ArrayOrString("default"),
 					},
 				},
 			},
@@ -403,6 +655,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Outputs: tt.fields.Outputs,
 				Steps:   tt.fields.BuildSteps,
 			}
+			ctx := context.Background()
+			ts.SetDefaults(ctx)
 			err := ts.Validate(context.Background())
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)

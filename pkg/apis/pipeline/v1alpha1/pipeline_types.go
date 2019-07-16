@@ -102,7 +102,7 @@ type PipelineTask struct {
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
 	// Parameters declares parameters passed to this task.
 	// +optional
-	Params []Param `json:"params,omitempty"`
+	Params []ArrayOrStringParam `json:"params,omitempty"`
 }
 
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.

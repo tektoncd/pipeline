@@ -80,8 +80,8 @@ func TestReconcile(t *testing.T) {
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("best-image", "image"),
-				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("revision")),
 				// unit-test-3 uses runAfter to indicate it should run last
 				tb.PipelineTask("unit-test-3", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
@@ -116,7 +116,7 @@ func TestReconcile(t *testing.T) {
 		tb.Task("unit-test-task", "foo", tb.TaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParam("foo"), tb.InputsParam("bar"), tb.InputsParam("templatedparam"),
+				tb.InputsParamSpec("foo", v1alpha1.ParamTypeString), tb.InputsParamSpec("bar", v1alpha1.ParamTypeString), tb.InputsParamSpec("templatedparam", v1alpha1.ParamTypeString),
 			),
 			tb.TaskOutputs(
 				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
@@ -131,7 +131,7 @@ func TestReconcile(t *testing.T) {
 		tb.ClusterTask("unit-test-cluster-task", tb.ClusterTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParam("foo"), tb.InputsParam("bar"), tb.InputsParam("templatedparam"),
+				tb.InputsParamSpec("foo", v1alpha1.ParamTypeString), tb.InputsParamSpec("bar", v1alpha1.ParamTypeString), tb.InputsParamSpec("templatedparam", v1alpha1.ParamTypeString),
 			),
 			tb.TaskOutputs(
 				tb.OutputsResource("image-to-use", v1alpha1.PipelineResourceTypeImage),
@@ -244,7 +244,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	ts := []*v1alpha1.Task{
 		tb.Task("a-task-that-exists", "foo"),
 		tb.Task("a-task-that-needs-params", "foo", tb.TaskSpec(
-			tb.TaskInputs(tb.InputsParam("some-param")))),
+			tb.TaskInputs(tb.InputsParamSpec("some-param", v1alpha1.ParamTypeString)))),
+		tb.Task("a-task-that-needs-array-params", "foo", tb.TaskSpec(
+			tb.TaskInputs(tb.InputsParamSpec("some-param", v1alpha1.ParamTypeArray)))),
 	}
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("pipeline-missing-tasks", "foo", tb.PipelineSpec(
@@ -259,6 +261,9 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		tb.Pipeline("a-pipeline-that-should-be-caught-by-admission-control", "foo", tb.PipelineSpec(
 			tb.PipelineTask("some-task", "a-task-that-exists",
 				tb.PipelineTaskInputResource("needed-resource", "a-resource")))),
+		tb.Pipeline("a-pipeline-with-array-params", "foo", tb.PipelineSpec(
+			tb.PipelineParamSpec("some-param", v1alpha1.ParamTypeArray),
+			tb.PipelineTask("some-task", "a-task-that-needs-array-params"))),
 	}
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("invalid-pipeline", "foo", tb.PipelineRunSpec("pipeline-not-exist")),
@@ -268,6 +273,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		tb.PipelineRun("pipeline-resources-dont-exist", "foo", tb.PipelineRunSpec("a-fine-pipeline",
 			tb.PipelineRunResourceBinding("a-resource", tb.PipelineResourceBindingRef("missing-resource")))),
 		tb.PipelineRun("pipeline-resources-not-declared", "foo", tb.PipelineRunSpec("a-pipeline-that-should-be-caught-by-admission-control")),
+		tb.PipelineRun("pipeline-mismatching-param-type", "foo", tb.PipelineRunSpec("a-pipeline-with-array-params", tb.PipelineRunParam("some-param", "stringval"))),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -303,6 +309,10 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
 			pipelineRun: prs[5],
 			reason:      ReasonFailedValidation,
+		}, {
+			name:        "invalid-pipeline-mismatching-parameter-types",
+			pipelineRun: prs[6],
+			reason:      ReasonParameterTypeMismatch,
 		},
 	}
 

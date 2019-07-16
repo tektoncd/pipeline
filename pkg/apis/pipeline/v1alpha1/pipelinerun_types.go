@@ -48,7 +48,7 @@ type PipelineRunSpec struct {
 	// it needs.
 	Resources []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
-	Params []Param `json:"params,omitempty"`
+	Params []ArrayOrStringParam `json:"params,omitempty"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional

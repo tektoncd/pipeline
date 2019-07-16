@@ -168,8 +168,8 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 		tb.TaskInputs(
 			tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit),
 			tb.InputsResource("image", v1alpha1.PipelineResourceTypeImage),
-			tb.InputsParam("pathToHelmCharts", tb.ParamDescription("Path to the helm charts")),
-			tb.InputsParam("chartname", tb.ParamDefault("")),
+			tb.InputsParamSpec("pathToHelmCharts", v1alpha1.ParamTypeString, tb.ParamDescription("Path to the helm charts")),
+			tb.InputsParamSpec("chartname", v1alpha1.ParamTypeString, tb.ParamDefault("")),
 		),
 		tb.Step("helm-init", "alpine/helm:2.14.0", tb.Args("init", "--wait")),
 		tb.Step("helm-deploy", "alpine/helm:2.14.0", tb.Args(
@@ -187,7 +187,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(helmDeployPipelineName, namespace, tb.PipelineSpec(
 		tb.PipelineDeclaredResource("git-repo", "git"),
 		tb.PipelineDeclaredResource("the-image", "image"),
-		tb.PipelineParam("chartname"),
+		tb.PipelineParamSpec("chartname", v1alpha1.ParamTypeString),
 		tb.PipelineTask("push-image", createImageTaskName,
 			tb.PipelineTaskInputResource("gitsource", "git-repo"),
 			tb.PipelineTaskOutputResource("builtimage", "the-image"),

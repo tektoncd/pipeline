@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resources
+package resources_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -140,12 +142,144 @@ var gcsTaskSpec = &v1alpha1.TaskSpec{
 	}},
 }
 
+var arrayParamTaskSpec = &v1alpha1.TaskSpec{
+	Steps: []corev1.Container{{
+		Name:  "simple-image",
+		Image: "some-image",
+	}, {
+		Name:    "image-with-args-specified",
+		Image:   "some-other-image",
+		Command: []string{"echo"},
+		Args:    []string{"first", "second", "${inputs.params.array-param}", "last"},
+	}},
+}
+
+var arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{
+	Steps: []corev1.Container{{
+		Name:  "simple-image",
+		Image: "some-image",
+	}, {
+		Name:    "image-with-args-specified",
+		Image:   "some-other-image",
+		Command: []string{"echo"},
+		Args:    []string{"${inputs.params.normal-param}", "second", "${inputs.params.array-param}", "last"},
+	}},
+}
+
+var multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{
+	Steps: []corev1.Container{{
+		Name:  "simple-image",
+		Image: "some-image",
+	}, {
+		Name:    "image-with-args-specified",
+		Image:   "some-other-image",
+		Command: []string{"cmd", "${inputs.params.another-array-param}"},
+		Args:    []string{"first", "second", "${inputs.params.array-param}", "last"},
+	}},
+}
+
+var multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{
+	Steps: []corev1.Container{{
+		Name:  "simple-image",
+		Image: "image-${inputs.params.string-param2}",
+	}, {
+		Name:    "image-with-args-specified",
+		Image:   "some-other-image",
+		Command: []string{"cmd", "${inputs.params.array-param1}"},
+		Args:    []string{"${inputs.params.array-param2}", "second", "${inputs.params.array-param1}", "${inputs.params.string-param1}", "last"},
+	}},
+}
+
 var paramTaskRun = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ArrayOrStringParam{{
 				Name:  "myimage",
-				Value: "bar",
+				Value: *builder.ArrayOrString("bar"),
+			}},
+		},
+	},
+}
+
+var arrayTaskRun0Elements = &v1alpha1.TaskRun{
+	Spec: v1alpha1.TaskRunSpec{
+		Inputs: v1alpha1.TaskRunInputs{
+			Params: []v1alpha1.ArrayOrStringParam{{
+				Name: "array-param",
+				Value: v1alpha1.ArrayOrString{
+					Type:     v1alpha1.ParamTypeArray,
+					ArrayVal: []string{},
+				}},
+			},
+		},
+	},
+}
+
+var arrayTaskRun1Elements = &v1alpha1.TaskRun{
+	Spec: v1alpha1.TaskRunSpec{
+		Inputs: v1alpha1.TaskRunInputs{
+			Params: []v1alpha1.ArrayOrStringParam{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo"),
+			}},
+		},
+	},
+}
+
+var arrayTaskRun3Elements = &v1alpha1.TaskRun{
+	Spec: v1alpha1.TaskRunSpec{
+		Inputs: v1alpha1.TaskRunInputs{
+			Params: []v1alpha1.ArrayOrStringParam{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo", "bar", "third"),
+			}},
+		},
+	},
+}
+
+var arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
+	Spec: v1alpha1.TaskRunSpec{
+		Inputs: v1alpha1.TaskRunInputs{
+			Params: []v1alpha1.ArrayOrStringParam{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("foo", "bar", "third"),
+			}, {
+				Name:  "another-array-param",
+				Value: *builder.ArrayOrString("part1", "part2"),
+			}},
+		},
+	},
+}
+
+var arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
+	Spec: v1alpha1.TaskRunSpec{
+		Inputs: v1alpha1.TaskRunInputs{
+			Params: []v1alpha1.ArrayOrStringParam{{
+				Name:  "array-param",
+				Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
+			}, {
+				Name:  "normal-param",
+				Value: *builder.ArrayOrString("foo"),
+			}},
+		},
+	},
+}
+
+var arrayTaskRunMultipleArraysAndStrings = &v1alpha1.TaskRun{
+	Spec: v1alpha1.TaskRunSpec{
+		Inputs: v1alpha1.TaskRunInputs{
+			Params: []v1alpha1.ArrayOrStringParam{{
+				Name:  "array-param1",
+				Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
+			}, {
+				Name:  "array-param2",
+				Value: *builder.ArrayOrString("1-param2", "2-param2", "2-param3"),
+			}, {
+				Name:  "string-param1",
+				Value: *builder.ArrayOrString("foo"),
+			}, {
+				Name:  "string-param2",
+				Value: *builder.ArrayOrString("bar"),
 			}},
 		},
 	},
@@ -233,15 +367,87 @@ func TestApplyParameters(t *testing.T) {
 			spec.Steps[0].Image = "bar"
 		}),
 	}, {
+		name: "array parameter with 0 elements",
+		args: args{
+			ts: arrayParamTaskSpec,
+			tr: arrayTaskRun0Elements,
+		},
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].Args = []string{"first", "second", "last"}
+		}),
+	}, {
+		name: "array parameter with 1 element",
+		args: args{
+			ts: arrayParamTaskSpec,
+			tr: arrayTaskRun1Elements,
+		},
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].Args = []string{"first", "second", "foo", "last"}
+		}),
+	}, {
+		name: "array parameter with 3 elements",
+		args: args{
+			ts: arrayParamTaskSpec,
+			tr: arrayTaskRun3Elements,
+		},
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].Args = []string{"first", "second", "foo", "bar", "third", "last"}
+		}),
+	}, {
+		name: "multiple arrays",
+		args: args{
+			ts: multipleArrayParamsTaskSpec,
+			tr: arrayTaskRunMultipleArrays,
+		},
+		want: applyMutation(multipleArrayParamsTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].Command = []string{"cmd", "part1", "part2"}
+			spec.Steps[1].Args = []string{"first", "second", "foo", "bar", "third", "last"}
+		}),
+	}, {
+		name: "array and normal string parameter",
+		args: args{
+			ts: arrayAndStringParamTaskSpec,
+			tr: arrayTaskRunWith1StringParam,
+		},
+		want: applyMutation(arrayAndStringParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].Args = []string{"foo", "second", "middlefirst", "middlesecond", "last"}
+		}),
+	}, {
+		name: "several arrays and strings",
+		args: args{
+			ts: multipleArrayAndStringsParamsTaskSpec,
+			tr: arrayTaskRunMultipleArraysAndStrings,
+		},
+		want: applyMutation(multipleArrayAndStringsParamsTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[0].Image = "image-bar"
+			spec.Steps[1].Command = []string{"cmd", "1-param1", "2-param1", "3-param1", "4-param1"}
+			spec.Steps[1].Args = []string{"1-param2", "2-param2", "2-param3", "second", "1-param1", "2-param1", "3-param1", "4-param1", "foo", "last"}
+		}),
+	}, {
+		name: "default array parameter",
+		args: args{
+			ts: arrayParamTaskSpec,
+			tr: &v1alpha1.TaskRun{},
+			dp: []v1alpha1.ParamSpec{
+				{
+					Name:    "array-param",
+					Default: builder.ArrayOrString("defaulted", "value!"),
+				},
+			},
+		},
+		want: applyMutation(arrayParamTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].Args = []string{"first", "second", "defaulted", "value!", "last"}
+		}),
+	}, {
 		name: "volume mount parameter",
 		args: args{
 			ts: volumeMountTaskSpec,
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.Param{{
+						Params: []v1alpha1.ArrayOrStringParam{{
 							Name:  "FOO",
-							Value: "world",
+							Value: *builder.ArrayOrString("world"),
 						}},
 					},
 				},
@@ -260,9 +466,9 @@ func TestApplyParameters(t *testing.T) {
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.Param{{
+						Params: []v1alpha1.ArrayOrStringParam{{
 							Name:  "FOO",
-							Value: "world",
+							Value: *builder.ArrayOrString("world"),
 						}},
 					},
 				},
@@ -288,9 +494,9 @@ func TestApplyParameters(t *testing.T) {
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.Param{{
+						Params: []v1alpha1.ArrayOrStringParam{{
 							Name:  "FOO",
-							Value: "BAR",
+							Value: *builder.ArrayOrString("BAR"),
 						}},
 					},
 				},
@@ -298,7 +504,7 @@ func TestApplyParameters(t *testing.T) {
 			dp: []v1alpha1.ParamSpec{
 				{
 					Name:    "myimage",
-					Default: "replaced-image-name",
+					Default: builder.ArrayOrString("replaced-image-name"),
 				},
 			},
 		},
@@ -313,9 +519,9 @@ func TestApplyParameters(t *testing.T) {
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.Param{{
+						Params: []v1alpha1.ArrayOrStringParam{{
 							Name:  "FOO",
-							Value: "BAR",
+							Value: *builder.ArrayOrString("BAR"),
 						}},
 					},
 				},
@@ -323,7 +529,7 @@ func TestApplyParameters(t *testing.T) {
 			dp: []v1alpha1.ParamSpec{
 				{
 					Name:    "myimage",
-					Default: "replaced-image-name",
+					Default: builder.ArrayOrString("replaced-image-name"),
 				},
 			},
 		},
@@ -339,7 +545,7 @@ func TestApplyParameters(t *testing.T) {
 			dp: []v1alpha1.ParamSpec{
 				{
 					Name:    "myimage",
-					Default: "mydefault",
+					Default: builder.ArrayOrString("mydefault"),
 				},
 			},
 		},
@@ -349,7 +555,7 @@ func TestApplyParameters(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ApplyParameters(tt.args.ts, tt.args.tr, tt.args.dp...)
+			got := resources.ApplyParameters(tt.args.ts, tt.args.tr, tt.args.dp...)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", d)
 			}
@@ -410,7 +616,7 @@ func TestApplyResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			setup()
-			got := ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
+			got := resources.ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyResources() diff %s", d)
 			}
@@ -522,7 +728,7 @@ func TestVolumeReplacement(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ApplyReplacements(tt.ts, tt.repl)
+			got := resources.ApplyReplacements(tt.ts, tt.repl, map[string][]string{})
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyResources() diff %s", d)
 			}
