@@ -176,11 +176,11 @@ func PipelineTaskRefKind(kind v1alpha1.TaskKind) PipelineTaskOp {
 	}
 }
 
-// PipelineTaskParam adds a Param, with specified name and value, to the PipelineTask.
+// PipelineTaskParam adds a ResourceParam, with specified name and value, to the PipelineTask.
 func PipelineTaskParam(name string, value string, additionalValues ...string) PipelineTaskOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(pt *v1alpha1.PipelineTask) {
-		pt.Params = append(pt.Params, v1alpha1.ArrayOrStringParam{
+		pt.Params = append(pt.Params, v1alpha1.Param{
 			Name:  name,
 			Value: *arrayOrString,
 		})
@@ -329,7 +329,7 @@ func PipelineRunServiceAccountTask(taskName, sa string) PipelineRunSpecOp {
 func PipelineRunParam(name string, value string, additionalValues ...string) PipelineRunSpecOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Params = append(prs.Params, v1alpha1.ArrayOrStringParam{
+		prs.Params = append(prs.Params, v1alpha1.Param{
 			Name:  name,
 			Value: *arrayOrString,
 		})
@@ -437,10 +437,10 @@ func PipelineResourceSpec(resourceType v1alpha1.PipelineResourceType, ops ...Pip
 	}
 }
 
-// PipelineResourceSpecParam adds a Param, with specified name and value, to the PipelineResourceSpec.
+// PipelineResourceSpecParam adds a ResourceParam, with specified name and value, to the PipelineResourceSpec.
 func PipelineResourceSpecParam(name, value string) PipelineResourceSpecOp {
 	return func(spec *v1alpha1.PipelineResourceSpec) {
-		spec.Params = append(spec.Params, v1alpha1.Param{
+		spec.Params = append(spec.Params, v1alpha1.ResourceParam{
 			Name:  name,
 			Value: value,
 		})

@@ -49,7 +49,6 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Paths:   []string{"metadata.name"},
 		},
 	}}
-
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.task.Validate(context.Background())
@@ -123,7 +122,6 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}}
-
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.spec.Validate(context.Background())
@@ -160,7 +158,6 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 			},
 		},
 	}}
-
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			if err := ts.spec.Validate(context.Background()); err != nil {
@@ -172,7 +169,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 
 func TestInput_Validate(t *testing.T) {
 	i := v1alpha1.TaskRunInputs{
-		Params: []v1alpha1.ArrayOrStringParam{{
+		Params: []v1alpha1.Param{{
 			Name:  "name",
 			Value: *builder.ArrayOrString("value"),
 		}},
@@ -218,7 +215,7 @@ func TestInput_Invalidate(t *testing.T) {
 				},
 				Name: "resource",
 			}},
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name:  "name",
 				Value: *builder.ArrayOrString("value"),
 			}, {

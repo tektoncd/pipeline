@@ -176,7 +176,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 					},
 					Spec: v1alpha1.PipelineResourceSpec{
 						Type: "image",
-						Params: []v1alpha1.Param{{
+						Params: []v1alpha1.ResourceParam{{
 							Name:  "url",
 							Value: "gcr.io/some-image-1",
 						}, {
@@ -433,7 +433,7 @@ func TestTaskRunHasOutputImageResource(t *testing.T) {
 						},
 						Spec: v1alpha1.PipelineResourceSpec{
 							Type: "image",
-							Params: []v1alpha1.Param{{
+							Params: []v1alpha1.ResourceParam{{
 								Name:  "url",
 								Value: "gcr.io/some-image-1",
 							}, {
@@ -453,7 +453,7 @@ func TestTaskRunHasOutputImageResource(t *testing.T) {
 						},
 						Spec: v1alpha1.PipelineResourceSpec{
 							Type: "git",
-							Params: []v1alpha1.Param{{
+							Params: []v1alpha1.ResourceParam{{
 								Name:  "url",
 								Value: "github.com/repo",
 							},

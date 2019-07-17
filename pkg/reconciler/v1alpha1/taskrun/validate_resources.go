@@ -63,7 +63,7 @@ func validateResources(requiredResources []v1alpha1.TaskResource, providedResour
 	return nil
 }
 
-func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.ArrayOrStringParam) error {
+func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
 	var neededParams []string
 	paramTypes := make(map[string]v1alpha1.ParamType)
 	if inputs != nil {
@@ -110,7 +110,7 @@ func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.ArrayOrStringPara
 }
 
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
-func ValidateResolvedTaskResources(params []v1alpha1.ArrayOrStringParam, rtr *resources.ResolvedTaskResources) error {
+func ValidateResolvedTaskResources(params []v1alpha1.Param, rtr *resources.ResolvedTaskResources) error {
 	if err := validateParams(rtr.TaskSpec.Inputs, params); err != nil {
 		return xerrors.Errorf("invalid input params: %w", err)
 	}

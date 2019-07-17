@@ -292,7 +292,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunInputs(
 			tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingResourceSpec(&v1alpha1.PipelineResourceSpec{
 				Type: v1alpha1.PipelineResourceTypeGit,
-				Params: []v1alpha1.Param{{
+				Params: []v1alpha1.ResourceParam{{
 					Name:  "URL",
 					Value: "github.com/foo/bar.git",
 				}, {

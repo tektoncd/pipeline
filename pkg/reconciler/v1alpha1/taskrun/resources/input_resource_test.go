@@ -70,7 +70,7 @@ func setUp(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "Url",
 				Value: "https://github.com/grafeas/kritis",
 			}},
@@ -82,7 +82,7 @@ func setUp(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "Url",
 				Value: "https://github.com/grafeas/kritis",
 			}, {
@@ -97,7 +97,7 @@ func setUp(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "cluster",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "Name",
 				Value: "cluster2",
 			}, {
@@ -117,7 +117,7 @@ func setUp(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "cluster",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "name",
 				Value: "cluster3",
 			}, {
@@ -136,7 +136,7 @@ func setUp(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "storage",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "Location",
 				Value: "gs://fake-bucket/rules.zip",
 			}, {
@@ -151,7 +151,7 @@ func setUp(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "storage",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "Location",
 				Value: "gs://fake-bucket/rules.zip",
 			}, {
@@ -178,7 +178,7 @@ func setUp(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "storage",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "Location",
 				Value: "gs://fake-bucket/rules",
 			}, {
@@ -763,7 +763,7 @@ func TestStorageInputResource(t *testing.T) {
 						Name: "gcs-input-resource",
 						ResourceSpec: &v1alpha1.PipelineResourceSpec{
 							Type: v1alpha1.PipelineResourceTypeStorage,
-							Params: []v1alpha1.Param{{
+							Params: []v1alpha1.ResourceParam{{
 								Name:  "Location",
 								Value: "gs://fake-bucket/rules.zip",
 							}, {

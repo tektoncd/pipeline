@@ -204,7 +204,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					ResourceSpec: &v1alpha1.PipelineResourceSpec{Type: v1alpha1.PipelineResourceType("cluster")},
 					Paths:        []string{"source-folder"},
 				}},
-				Params: []v1alpha1.ArrayOrStringParam{{
+				Params: []v1alpha1.Param{{
 					Name:  "iparam",
 					Value: *tb.ArrayOrString("ivalue"),
 				}, {

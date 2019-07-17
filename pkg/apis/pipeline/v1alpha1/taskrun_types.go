@@ -85,7 +85,7 @@ type TaskRunInputs struct {
 	// +optional
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 	// +optional
-	Params []ArrayOrStringParam `json:"params,omitempty"`
+	Params []Param `json:"params,omitempty"`
 }
 
 // TaskResourceBinding points to the PipelineResource that

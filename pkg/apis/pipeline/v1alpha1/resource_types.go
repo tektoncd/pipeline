@@ -68,7 +68,7 @@ type SecretParam struct {
 // PipelineResourceSpec defines  an individual resources used in the pipeline.
 type PipelineResourceSpec struct {
 	Type   PipelineResourceType `json:"type"`
-	Params []Param              `json:"params"`
+	Params []ResourceParam      `json:"params"`
 	// Secrets to fetch to populate some of resource fields
 	// +optional
 	SecretParams []SecretParam `json:"secrets,omitempty"`

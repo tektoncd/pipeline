@@ -513,7 +513,7 @@ func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
 func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunInputsOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(i *v1alpha1.TaskRunInputs) {
-		i.Params = append(i.Params, v1alpha1.ArrayOrStringParam{
+		i.Params = append(i.Params, v1alpha1.Param{
 			Name:  name,
 			Value: *arrayOrString,
 		})

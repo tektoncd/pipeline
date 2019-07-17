@@ -47,7 +47,7 @@ func getEmbeddedTask(namespace string, args []string) *v1alpha1.Task {
 func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 	testSpec := &v1alpha1.PipelineResourceSpec{
 		Type: v1alpha1.PipelineResourceTypeGit,
-		Params: []v1alpha1.Param{{
+		Params: []v1alpha1.ResourceParam{{
 			Name:  "URL",
 			Value: "https://github.com/knative/docs",
 		}},
