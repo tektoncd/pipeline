@@ -11,7 +11,7 @@ Tekton !
 
 Download the latest binary executable for your operating system:
 
-* [Max OS X](https://github.com/tektoncd/cli/releases/download/v0.1.2/tkn_0.1.2_Darwin_x86_64.tar.gz)
+* [Mac OS X](https://github.com/tektoncd/cli/releases/download/v0.1.2/tkn_0.1.2_Darwin_x86_64.tar.gz)
 
   ```shell
   # Get the tar.xz
@@ -46,11 +46,11 @@ Download the latest binary executable for your operating system:
   sudo tar xvzf tkn_0.1.2_Linux_arm64.tar.gz -C /usr/local/bin/ tkn
   ```
 
-If you have [go](https://golang.org/) installed `GO111MODULE="on" go get github.com/tektoncd/cli@v0.1.2` is all you need!
+If you have [go](https://golang.org/) installed, `GO111MODULE="on" go get github.com/tektoncd/cli@v0.1.2` is all you need!
 
 ### Useful Commands
 
-The following commands help you understand and effectively use Tekton CLI:
+The following commands help you understand and effectively use the Tekton CLI:
 
  * `tkn help:` Displays a list of the commands with helpful information.
  * [`tkn completion:`](docs/cmd/tkn_completion.md) Outputs a BASH completion script for `tkn` to allow command completion with Tab.
@@ -60,9 +60,7 @@ The following commands help you understand and effectively use Tekton CLI:
  * [`tkn task:`](docs/cmd/tkn_task.md) Parent command of the Task command group.
  * [`tkn taskrun:`](docs/cmd/tkn_taskrun.md) Parent command of the Taskrun command group.
 
-For every tkn command you can use `-h` or `--help` flags to display specific help for that command.
-
-
+For every `tkn` command, you can use `-h` or `--help` flags to display specific help for that command.
 
 ## Want to contribute
 
