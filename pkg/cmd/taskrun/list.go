@@ -17,8 +17,8 @@ package taskrun
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 	"sort"
+	"text/tabwriter"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/cobra"
@@ -131,6 +131,10 @@ func printFormatted(s *cli.Stream, trs *v1alpha1.TaskRunList, c clockwork.Clock)
 	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(w, "NAME\tSTARTED\tDURATION\tSTATUS\t")
 	for _, tr := range trs.Items {
+		if len(tr.Status.Conditions) == 0 {
+			tr.Status.InitializeConditions()
+		}
+
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t\n",
 			tr.Name,
 			formatted.Age(*tr.Status.StartTime, c),

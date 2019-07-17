@@ -135,6 +135,39 @@ func TestListTaskRuns(t *testing.T) {
 	}
 }
 
+func TestListTaskRuns_no_condition(t *testing.T) {
+	now := time.Now()
+	aMinute, _ := time.ParseDuration("1m")
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr1-1", "foo",
+			tb.TaskRunLabel("tekton.dev/task", "bar"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("bar")),
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(now),
+				taskRunCompletionTime(now.Add(aMinute)),
+			),
+		),
+	}
+
+	cmd := command(t, trs, now)
+	got, err := test.ExecuteCommand(cmd, "list", "bar", "-n", "foo")
+
+	expected := []string{
+		"NAME    STARTED      DURATION   STATUS    ",
+		"tr1-1   1 hour ago   1 minute   Running   ",
+		"",
+	}
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if d := cmp.Diff(strings.Join(expected, "\n"), got); d != "" {
+		t.Errorf("Unexpected output mismatch: \n%s\n", d)
+	}
+
+}
+
 func command(t *testing.T, trs []*v1alpha1.TaskRun, now time.Time) *cobra.Command {
 	// fake clock advanced by 1 hour
 	clock := clockwork.NewFakeClockAt(now)
