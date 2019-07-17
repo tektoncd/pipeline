@@ -185,13 +185,14 @@ Tests importing [`github.com/tektoncd/pipeline/test`](#adding-integration-tests)
 recognize the
 [flags added by `knative/pkg/test`](https://github.com/knative/pkg/tree/master/test#flags).
 
-### One test case
+### Running specific test cases
 
-To run one e2e test case, e.g. TestTaskRun, use
+To run all the test cases with their names starting with the same letters, e.g.
+TestTaskRun, use
 [the `-run` flag with `go test`](https://golang.org/cmd/go/#hdr-Testing_flags):
 
 ```bash
-go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun$
+go test -v -tags=e2e -count=1 ./test -run ^TestTaskRun
 ```
 
 ### Running YAML tests

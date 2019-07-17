@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ import (
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
-	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -56,18 +56,20 @@ func AddOutputResources(
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
-	pipelineResourceLister listers.PipelineResourceLister,
+	outputResources map[string]v1alpha1.PipelineResourceInterface,
 	logger *zap.SugaredLogger,
-) error {
+) (*v1alpha1.TaskSpec, error) {
 
 	if taskSpec == nil || taskSpec.Outputs == nil {
-		return nil
+		return taskSpec, nil
 	}
+
+	taskSpec = taskSpec.DeepCopy()
 
 	pvcName := taskRun.GetPipelineRunPVCName()
 	as, err := artifacts.GetArtifactStorage(pvcName, kubeclient, logger)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// track resources that are present in input of task cuz these resources will be copied onto PVC
@@ -82,12 +84,12 @@ func AddOutputResources(
 	for _, output := range taskSpec.Outputs.Resources {
 		boundResource, err := getBoundResource(output.Name, taskRun.Spec.Outputs.Resources)
 		if err != nil {
-			return fmt.Errorf("Failed to get bound resource: %s", err)
+			return nil, xerrors.Errorf("failed to get bound resource: %w", err)
 		}
 
-		resource, err := getResource(boundResource, pipelineResourceLister.PipelineResources(taskRun.Namespace).Get)
-		if err != nil {
-			return fmt.Errorf("Failed to get output pipeline Resource for task %q resource %v; error: %s", taskName, boundResource, err.Error())
+		resource, ok := outputResources[boundResource.Name]
+		if !ok || resource == nil {
+			return nil, xerrors.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)
 		}
 		var (
 			resourceContainers []corev1.Container
@@ -103,37 +105,33 @@ func AddOutputResources(
 				sourcePath = output.TargetPath
 			}
 		}
-
-		switch resource.Spec.Type {
+		resource.SetDestinationDirectory(sourcePath)
+		switch resource.GetType() {
 		case v1alpha1.PipelineResourceTypeStorage:
 			{
-				storageResource, err := v1alpha1.NewStorageResource(resource)
-				if err != nil {
-					return fmt.Errorf("task %q invalid storage Pipeline Resource: %q",
+				storageResource, ok := resource.(v1alpha1.PipelineStorageResourceInterface)
+				if !ok {
+					return nil, xerrors.Errorf("task %q invalid storage Pipeline Resource: %q",
 						taskName,
 						boundResource.ResourceRef.Name,
 					)
 				}
-				resourceContainers, resourceVolumes, err = addStoreUploadStep(taskSpec, storageResource, sourcePath)
+				resourceContainers, resourceVolumes, err = addStoreUploadStep(taskSpec, storageResource)
 				if err != nil {
-					return fmt.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %v",
+					return nil, xerrors.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %w",
 						taskName, boundResource.ResourceRef.Name, err)
 				}
 			}
 		default:
 			{
-				resSpec, err := v1alpha1.ResourceFromType(resource)
+				resourceContainers, err = resource.GetUploadContainerSpec()
 				if err != nil {
-					return err
-				}
-				resourceContainers, err = resSpec.GetUploadContainerSpec()
-				if err != nil {
-					return fmt.Errorf("task %q invalid download spec: %q; error %s", taskName, boundResource.ResourceRef.Name, err.Error())
+					return nil, xerrors.Errorf("task %q invalid download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 				}
 			}
 		}
 
-		if allowedOutputResources[resource.Spec.Type] && taskRun.HasPipelineRunOwnerReference() {
+		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []corev1.Container
 			for _, dPath := range boundResource.Paths {
 				containers := as.GetCopyToStorageFromContainerSpec(resource.GetName(), sourcePath, dPath)
@@ -148,27 +146,25 @@ func AddOutputResources(
 
 		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 			if pvcName == "" {
-				return nil
+				return taskSpec, nil
 			}
 
 			// attach pvc volume only if it is not already attached
 			for _, buildVol := range taskSpec.Volumes {
 				if buildVol.Name == pvcName {
-					return nil
+					return taskSpec, nil
 				}
 			}
 			taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 		}
 	}
-	return nil
+	return taskSpec, nil
 }
 
 func addStoreUploadStep(spec *v1alpha1.TaskSpec,
 	storageResource v1alpha1.PipelineStorageResourceInterface,
-	sourcePath string,
 ) ([]corev1.Container, []corev1.Volume, error) {
 
-	storageResource.SetDestinationDirectory(sourcePath)
 	gcsContainers, err := storageResource.GetUploadContainerSpec()
 	if err != nil {
 		return nil, nil, err

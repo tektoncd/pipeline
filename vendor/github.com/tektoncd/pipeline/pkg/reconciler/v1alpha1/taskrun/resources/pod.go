@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,7 +47,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
 
-const workspaceDir = "/workspace"
+const (
+	workspaceDir = "/workspace"
+	homeDir      = "/builder/home"
+)
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
@@ -62,14 +65,14 @@ var (
 	// These are injected into all of the source/step containers.
 	implicitEnvVars = []corev1.EnvVar{{
 		Name:  "HOME",
-		Value: "/builder/home",
+		Value: homeDir,
 	}}
 	implicitVolumeMounts = []corev1.VolumeMount{{
 		Name:      "workspace",
 		MountPath: workspaceDir,
 	}, {
 		Name:      "home",
-		MountPath: "/builder/home",
+		MountPath: homeDir,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "workspace",
@@ -88,23 +91,20 @@ var (
 
 const (
 	// Prefixes to add to the name of the init containers.
-	// IMPORTANT: Changing these values without changing fluentd collection configuration
-	// will break log collection for init containers.
-	containerPrefix            = "build-step-"
-	unnamedInitContainerPrefix = "build-step-unnamed-"
+	containerPrefix            = "step-"
+	unnamedInitContainerPrefix = "step-unnamed-"
 	// Name of the credential initialization container.
 	credsInit = "credential-initializer"
 	// Name of the working dir initialization container.
-	workingDirInit = "working-dir-initializer"
+	workingDirInit       = "working-dir-initializer"
+	ReadyAnnotation      = "tekton.dev/ready"
+	readyAnnotationValue = "READY"
 )
 
 var (
 	// The container used to initialize credentials before the build runs.
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
-	// The container that just prints build successful.
-	nopImage = flag.String("nop-image", "override-with-nop:latest",
-		"The container image run at the end of the build to log build success")
 )
 
 func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*corev1.Container, []corev1.Volume, error) {
@@ -211,6 +211,26 @@ func makeWorkingDirInitializer(steps []corev1.Container) *corev1.Container {
 	return nil
 }
 
+// initOutputResourcesDefaultDir checks if there are any output image resources expecting a default path
+// and creates an init container to create that folder
+func initOutputResourcesDefaultDir(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec) []corev1.Container {
+	makeDirSteps := []corev1.Container{}
+	if len(taskRun.Spec.Outputs.Resources) > 0 {
+		for _, r := range taskRun.Spec.Outputs.Resources {
+			for _, o := range taskSpec.Outputs.Resources {
+				if o.Name == r.Name {
+					if strings.HasPrefix(o.OutputImageDir, v1alpha1.TaskOutputImageDefaultDir) {
+						cn := v1alpha1.CreateDirContainer("default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name))
+						cn.VolumeMounts = append(cn.VolumeMounts, implicitVolumeMounts...)
+						makeDirSteps = append(makeDirSteps, cn)
+					}
+				}
+			}
+		}
+	}
+	return makeDirSteps
+}
+
 // GetPod returns the Pod for the given pod name
 type GetPod func(string, metav1.GetOptions) (*corev1.Pod, error)
 
@@ -241,6 +261,8 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	if workingDir := makeWorkingDirInitializer(taskSpec.Steps); workingDir != nil {
 		initContainers = append(initContainers, *workingDir)
 	}
+
+	initContainers = append(initContainers, initOutputResourcesDefaultDir(taskRun, taskSpec)...)
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 
@@ -292,17 +314,21 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}
 	gibberish := hex.EncodeToString(b)
 
-	nopContainer := &corev1.Container{Name: "nop", Image: *nopImage, Command: []string{"/ko-app/nop"}}
-	if err := entrypoint.RedirectStep(cache, len(podContainers), nopContainer, kubeclient, taskRun, logger); err != nil {
-		return nil, err
-	}
-	podContainers = append(podContainers, *nopContainer)
-
-	mergedInitContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, initContainers)
+	mergedInitContainers, err := merge.CombineStepsWithStepTemplate(taskSpec.StepTemplate, initContainers)
 	if err != nil {
 		return nil, err
 	}
-	mergedPodContainers, err := merge.CombineStepsWithContainerTemplate(taskSpec.ContainerTemplate, podContainers)
+	mergedPodContainers, err := merge.CombineStepsWithStepTemplate(taskSpec.StepTemplate, podContainers)
+	if err != nil {
+		return nil, err
+	}
+
+	// The ContainerTemplate field is deprecated (#977)
+	mergedInitContainers, err = merge.CombineStepsWithStepTemplate(taskSpec.ContainerTemplate, mergedInitContainers)
+	if err != nil {
+		return nil, err
+	}
+	mergedPodContainers, err = merge.CombineStepsWithStepTemplate(taskSpec.ContainerTemplate, mergedPodContainers)
 	if err != nil {
 		return nil, err
 	}
@@ -337,6 +363,28 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}, nil
 }
 
+type UpdatePod func(*corev1.Pod) (*corev1.Pod, error)
+
+// AddReadyAnnotation adds the ready annotation if it is not present.
+// Returns any error that comes back from the passed-in update func.
+func AddReadyAnnotation(p *corev1.Pod, update UpdatePod) error {
+	if p.ObjectMeta.Annotations == nil {
+		p.ObjectMeta.Annotations = make(map[string]string)
+	}
+	if p.ObjectMeta.Annotations[ReadyAnnotation] != readyAnnotationValue {
+		p.ObjectMeta.Annotations[ReadyAnnotation] = readyAnnotationValue
+		_, err := update(p)
+
+		return err
+	}
+
+	return nil
+}
+
+func IsContainerStep(name string) bool {
+	return strings.HasPrefix(name, containerPrefix)
+}
+
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
 func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
@@ -347,13 +395,14 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	return labels
 }
 
-// makeAnnotations constructs the annotations we will propagate from TaskRuns to Pods.
+// makeAnnotations constructs the annotations we will propagate from TaskRuns to Pods
+// and adds any other annotations that will be needed to initialize a Pod.
 func makeAnnotations(s *v1alpha1.TaskRun) map[string]string {
 	annotations := make(map[string]string, len(s.ObjectMeta.Annotations)+1)
 	for k, v := range s.ObjectMeta.Annotations {
 		annotations[k] = v
 	}
-	annotations["sidecar.istio.io/inject"] = "false"
+	annotations[ReadyAnnotation] = ""
 	return annotations
 }
 

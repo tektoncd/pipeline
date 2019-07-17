@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -46,7 +47,7 @@ type GCSResource struct {
 // NewGCSResource creates a new GCS resource to pass to a Task
 func NewGCSResource(r *PipelineResource) (*GCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
-		return nil, fmt.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, xerrors.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	var location string
 	var locationSpecified, dir bool
@@ -64,7 +65,7 @@ func NewGCSResource(r *PipelineResource) (*GCSResource, error) {
 	}
 
 	if !locationSpecified {
-		return nil, fmt.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
+		return nil, xerrors.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
 	}
 	return &GCSResource{
 		Name:     r.Name,
@@ -85,9 +86,6 @@ func (s GCSResource) GetType() PipelineResourceType {
 	return PipelineResourceTypeStorage
 }
 
-// GetParams get params
-func (s *GCSResource) GetParams() []Param { return []Param{} }
-
 // GetSecretParams returns the resource secret params
 func (s *GCSResource) GetSecretParams() []SecretParam { return s.Secrets }
 
@@ -97,6 +95,7 @@ func (s *GCSResource) Replacements() map[string]string {
 		"name":     s.Name,
 		"type":     string(s.Type),
 		"location": s.Location,
+		"path":     s.DestinationDir,
 	}
 }
 
@@ -107,7 +106,7 @@ func (s *GCSResource) SetDestinationDirectory(destDir string) { s.DestinationDir
 // set environment variable from secret params and set volume mounts for those secrets
 func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	if s.DestinationDir == "" {
-		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set: %s", s.Name)
+		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set: %s", s.Name)
 	}
 	var args []string
 	if s.TypeDir {
@@ -131,7 +130,7 @@ func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 // GetDownloadContainerSpec returns an array of container specs to download gcs storage object
 func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	if s.DestinationDir == "" {
-		return nil, fmt.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
+		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
 	var args []string
 	if s.TypeDir {

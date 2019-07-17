@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,7 +48,9 @@ var _ apis.Defaultable = (*ClusterTask)(nil)
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ClusterTask is a Task with a cluster scope
+// ClusterTask is a Task with a cluster scope. ClusterTasks are used to
+// represent Tasks that should be publicly addressable from any namespace in the
+// cluster.
 type ClusterTask struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional

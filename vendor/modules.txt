@@ -135,6 +135,7 @@ github.com/json-iterator/go
 github.com/knative/pkg/apis
 github.com/knative/pkg/apis/duck/v1beta1
 github.com/knative/pkg/apis/duck
+github.com/knative/pkg/configmap
 github.com/knative/pkg/controller
 github.com/knative/pkg/test
 github.com/knative/pkg/test/logging
@@ -187,13 +188,14 @@ github.com/russross/blackfriday
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# github.com/tektoncd/pipeline v0.4.0
+# github.com/tektoncd/pipeline v0.5.2
 github.com/tektoncd/pipeline/pkg/client/clientset/versioned
 github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1
 github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions
 github.com/tektoncd/pipeline/test/builder
 github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1
+github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
 github.com/tektoncd/pipeline/pkg/list
 github.com/tektoncd/pipeline/pkg/merge
@@ -202,7 +204,6 @@ github.com/tektoncd/pipeline/pkg/templating
 github.com/tektoncd/pipeline/test
 github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources
 github.com/tektoncd/pipeline/pkg/artifacts
-github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1
 github.com/tektoncd/pipeline/pkg/credentials
 github.com/tektoncd/pipeline/pkg/credentials/dockercreds
 github.com/tektoncd/pipeline/pkg/credentials/gitcreds
@@ -214,6 +215,7 @@ github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1
 github.com/tektoncd/pipeline/pkg/system
 github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1/fake
+github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1
 # github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a
 github.com/tektoncd/plumbing/scripts
 # go.opencensus.io v0.19.2
@@ -284,6 +286,9 @@ golang.org/x/text/internal/utf8internal
 golang.org/x/text/runes
 # golang.org/x/time v0.0.0-20181108054448-85acf8d2951c
 golang.org/x/time/rate
+# golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
+golang.org/x/xerrors
+golang.org/x/xerrors/internal
 # google.golang.org/api v0.3.0
 google.golang.org/api/option
 google.golang.org/api/support/bundler

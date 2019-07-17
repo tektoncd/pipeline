@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
 	"strings"
+
+	"golang.org/x/xerrors"
 )
 
 // Node represents a Task in a pipeline.
@@ -44,7 +45,7 @@ func newDAG() *DAG {
 
 func (g *DAG) addPipelineTask(t PipelineTask) (*Node, error) {
 	if _, ok := g.Nodes[t.Name]; ok {
-		return nil, fmt.Errorf("duplicate pipeline taks")
+		return nil, xerrors.New("duplicate pipeline task")
 	}
 	newNode := &Node{
 		Task: t,
@@ -56,13 +57,13 @@ func (g *DAG) addPipelineTask(t PipelineTask) (*Node, error) {
 func linkPipelineTasks(prev *Node, next *Node) error {
 	// Check for self cycle
 	if prev.Task.Name == next.Task.Name {
-		return fmt.Errorf("cycle detected; task %q depends on itself", next.Task.Name)
+		return xerrors.Errorf("cycle detected; task %q depends on itself", next.Task.Name)
 	}
 	// Check if we are adding cycles.
 	visited := map[string]bool{prev.Task.Name: true, next.Task.Name: true}
 	path := []string{next.Task.Name, prev.Task.Name}
 	if err := visit(next.Task.Name, prev.Prev, path, visited); err != nil {
-		return fmt.Errorf("cycle detected: %v", err)
+		return xerrors.Errorf("cycle detected: %w", err)
 	}
 	next.Prev = append(next.Prev, prev)
 	prev.Next = append(prev.Next, next)
@@ -73,7 +74,7 @@ func visit(currentName string, nodes []*Node, path []string, visited map[string]
 	for _, n := range nodes {
 		path = append(path, n.Task.Name)
 		if _, ok := visited[n.Task.Name]; ok {
-			return fmt.Errorf(getVisitedPath(path))
+			return xerrors.New(getVisitedPath(path))
 		}
 		visited[currentName+"."+n.Task.Name] = true
 		if err := visit(n.Task.Name, n.Prev, path, visited); err != nil {
@@ -95,11 +96,11 @@ func getVisitedPath(path []string) string {
 func addLink(pt PipelineTask, previousTask string, nodes map[string]*Node) error {
 	prev, ok := nodes[previousTask]
 	if !ok {
-		return fmt.Errorf("Task %s depends on %s but %s wasn't present in Pipeline", pt.Name, previousTask, previousTask)
+		return xerrors.Errorf("Task %s depends on %s but %s wasn't present in Pipeline", pt.Name, previousTask, previousTask)
 	}
 	next := nodes[pt.Name]
 	if err := linkPipelineTasks(prev, next); err != nil {
-		return fmt.Errorf("Couldn't create link from %s to %s: %v", prev.Task.Name, next.Task.Name, err)
+		return xerrors.Errorf("Couldn't create link from %s to %s: %w", prev.Task.Name, next.Task.Name, err)
 	}
 	return nil
 }
@@ -111,21 +112,21 @@ func BuildDAG(tasks []PipelineTask) (*DAG, error) {
 	// Add all Tasks mentioned in the `PipelineSpec`
 	for _, pt := range tasks {
 		if _, err := d.addPipelineTask(pt); err != nil {
-			return nil, fmt.Errorf("task %s is already present in DAG, can't add it again: %v", pt.Name, err)
+			return nil, xerrors.Errorf("task %s is already present in DAG, can't add it again: %w", pt.Name, err)
 		}
 	}
 	// Process all from and runAfter constraints to add task dependency
 	for _, pt := range tasks {
 		for _, previousTask := range pt.RunAfter {
 			if err := addLink(pt, previousTask, d.Nodes); err != nil {
-				return nil, fmt.Errorf("couldn't add link between %s and %s: %v", pt.Name, previousTask, err)
+				return nil, xerrors.Errorf("couldn't add link between %s and %s: %w", pt.Name, previousTask, err)
 			}
 		}
 		if pt.Resources != nil {
 			for _, rd := range pt.Resources.Inputs {
 				for _, previousTask := range rd.From {
 					if err := addLink(pt, previousTask, d.Nodes); err != nil {
-						return nil, fmt.Errorf("couldn't add link between %s and %s: %v", pt.Name, previousTask, err)
+						return nil, xerrors.Errorf("couldn't add link between %s and %s: %w", pt.Name, previousTask, err)
 					}
 				}
 			}

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,9 +26,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/tektoncd/pipeline/pkg/credentials"
+	"golang.org/x/xerrors"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const sshKnownHosts = "known_hosts"
@@ -57,13 +57,13 @@ func (dc *sshGitConfig) String() string {
 func (dc *sshGitConfig) Set(value string) error {
 	parts := strings.Split(value, "=")
 	if len(parts) != 2 {
-		return fmt.Errorf("Expect entries of the form secret=url, got: %v", value)
+		return xerrors.Errorf("Expect entries of the form secret=url, got: %v", value)
 	}
 	secret := parts[0]
 	url := parts[1]
 
 	if _, ok := dc.entries[url]; ok {
-		return fmt.Errorf("Multiple entries for url: %v", url)
+		return xerrors.Errorf("Multiple entries for url: %v", url)
 	}
 
 	e, err := newSshEntry(url, secret)

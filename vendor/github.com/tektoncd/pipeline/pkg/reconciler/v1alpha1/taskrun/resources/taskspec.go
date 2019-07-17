@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,9 +17,8 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"golang.org/x/xerrors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,7 +40,7 @@ func GetTaskData(taskRun *v1alpha1.TaskRun, getTask GetTask) (*metav1.ObjectMeta
 		// Get related task for taskrun
 		t, err := getTask(taskRun.Spec.TaskRef.Name)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error when listing tasks for taskRun %s %v", taskRun.Name, err)
+			return nil, nil, xerrors.Errorf("error when listing tasks for taskRun %s: %w", taskRun.Name, err)
 		}
 		taskMeta = t.TaskMetadata()
 		taskSpec = t.TaskSpec()
@@ -49,7 +48,7 @@ func GetTaskData(taskRun *v1alpha1.TaskRun, getTask GetTask) (*metav1.ObjectMeta
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec
 	default:
-		return nil, nil, fmt.Errorf("TaskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
+		return nil, nil, xerrors.Errorf("TaskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
 	}
 	return &taskMeta, &taskSpec, nil
 }

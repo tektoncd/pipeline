@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.uber.org/zap"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -36,17 +37,24 @@ import (
 const (
 	// MountName is the name of the pvc being mounted (which
 	// will contain the entrypoint binary and eventually the logs)
-	MountName         = "tools"
-	MountPoint        = "/builder/tools"
-	BinaryLocation    = MountPoint + "/entrypoint"
-	JSONConfigEnvVar  = "ENTRYPOINT_OPTIONS"
-	InitContainerName = "place-tools"
-	cacheSize         = 1024
+	MountName              = "tools"
+	MountPoint             = "/builder/tools"
+	DownwardMountName      = "downward"
+	DownwardMountPoint     = "/builder/downward"
+	DownwardMountReadyFile = "ready"
+	BinaryLocation         = MountPoint + "/entrypoint"
+	JSONConfigEnvVar       = "ENTRYPOINT_OPTIONS"
+	InitContainerName      = "place-tools"
+	cacheSize              = 1024
 )
 
 var toolsMount = corev1.VolumeMount{
 	Name:      MountName,
 	MountPath: MountPoint,
+}
+var downwardMount = corev1.VolumeMount{
+	Name:      DownwardMountName,
+	MountPath: DownwardMountPoint,
 }
 var (
 	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
@@ -134,16 +142,19 @@ func RedirectStep(cache *Cache, stepNum int, step *corev1.Container, kubeclient 
 	step.Args = GetArgs(stepNum, step.Command, step.Args)
 	step.Command = []string{BinaryLocation}
 	step.VolumeMounts = append(step.VolumeMounts, toolsMount)
+	// The first step in a Task waits for the existence of a file projected into the Pod
+	// from the Downward API. That file will be populated only when all sidecars are ready,
+	// thereby ensuring that steps don't start executing while helper sidecars are still pending.
+	if stepNum == 0 {
+		step.VolumeMounts = append(step.VolumeMounts, downwardMount)
+	}
 	return nil
 }
 
 // GetArgs returns the arguments that should be specified for the step which has been wrapped
 // such that it will execute our custom entrypoint instead of the user provided Command and Args.
 func GetArgs(stepNum int, commands, args []string) []string {
-	waitFile := fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum-1))
-	if stepNum == 0 {
-		waitFile = ""
-	}
+	waitFile := getWaitFile(stepNum)
 	// The binary we want to run must be separated from its arguments by --
 	// so if commands has more than one value, we'll move the other values
 	// into the arg list so we can separate them
@@ -151,15 +162,26 @@ func GetArgs(stepNum int, commands, args []string) []string {
 		args = append(commands[1:], args...)
 		commands = commands[:1]
 	}
-	argsForEntrypoint := append([]string{
+	argsForEntrypoint := []string{
 		"-wait_file", waitFile,
-		"-post_file", fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum)),
-		"-entrypoint"},
-		commands...,
-	)
+		"-post_file", getWaitFile(stepNum + 1),
+	}
+	if stepNum == 0 {
+		argsForEntrypoint = append(argsForEntrypoint, "-wait_file_content")
+	}
+	argsForEntrypoint = append(argsForEntrypoint, "-entrypoint")
+	argsForEntrypoint = append(argsForEntrypoint, commands...)
 	// TODO: what if Command has multiple elements, do we need "--" between command and args?
 	argsForEntrypoint = append(argsForEntrypoint, "--")
 	return append(argsForEntrypoint, args...)
+}
+
+func getWaitFile(stepNum int) string {
+	if stepNum == 0 {
+		return fmt.Sprintf("%s/%s", DownwardMountPoint, DownwardMountReadyFile)
+	}
+
+	return fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum-1))
 }
 
 // GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
@@ -171,11 +193,11 @@ func GetRemoteEntrypoint(cache *Cache, digest string, kubeclient kubernetes.Inte
 	}
 	img, err := getRemoteImage(digest, kubeclient, taskRun)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to fetch remote image %s: %v", digest, err)
+		return nil, xerrors.Errorf("Failed to fetch remote image %s: %w", digest, err)
 	}
 	cfg, err := img.ConfigFile()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get config for image %s: %v", digest, err)
+		return nil, xerrors.Errorf("Failed to get config for image %s: %w", digest, err)
 	}
 	command := cfg.Config.Entrypoint
 	if len(command) == 0 {
@@ -189,7 +211,7 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, taskRun *v1al
 	// verify the image name, then download the remote config file
 	ref, err := name.ParseReference(image, name.WeakValidation)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse image %s: %v", image, err)
+		return nil, xerrors.Errorf("Failed to parse image %s: %w", image, err)
 	}
 
 	kc, err := k8schain.New(kubeclient, k8schain.Options{
@@ -197,7 +219,7 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, taskRun *v1al
 		ServiceAccountName: taskRun.Spec.ServiceAccount,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create k8schain: %v", err)
+		return nil, xerrors.Errorf("Failed to create k8schain: %w", err)
 	}
 
 	// this will first try to authenticate using the k8schain,
@@ -206,7 +228,7 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, taskRun *v1al
 	mkc := authn.NewMultiKeychain(kc)
 	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc))
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get container image info from registry %s: %v", image, err)
+		return nil, xerrors.Errorf("Failed to get container image info from registry %s: %w", image, err)
 	}
 
 	return img, nil

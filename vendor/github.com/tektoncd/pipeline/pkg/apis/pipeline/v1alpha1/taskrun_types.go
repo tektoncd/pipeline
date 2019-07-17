@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -83,12 +83,25 @@ type TaskRunInputs struct {
 	Params []Param `json:"params,omitempty"`
 }
 
+// TaskResourceBinding points to the PipelineResource that
+// will be used for the Task input or output called Name. The optional Path field
+// corresponds to a path on disk at which the Resource can be found (used when providing
+// the resource via mounted volume, overriding the default logic to fetch the Resource).
+type TaskResourceBinding struct {
+	Name string `json:"name"`
+	// no more than one of the ResourceRef and ResourceSpec may be specified.
+	// +optional
+	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
+	// +optional
+	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
+	// +optional
+	Paths []string `json:"paths,omitempty"`
+}
+
 // TaskRunOutputs holds the output values that this task was invoked with.
 type TaskRunOutputs struct {
 	// +optional
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
-	// +optional
-	Params []Param `json:"params,omitempty"`
 }
 
 var taskRunCondSet = apis.NewBatchConditionSet()
@@ -156,7 +169,10 @@ type StepState struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// TaskRun is the Schema for the taskruns API
+// TaskRun represents a single execution of a Task. TaskRuns are how the steps
+// specified in a Task are executed; they specify the parameters and resources
+// used to run the steps in a Task.
+//
 // +k8s:openapi-gen=true
 type TaskRun struct {
 	metav1.TypeMeta `json:",inline"`

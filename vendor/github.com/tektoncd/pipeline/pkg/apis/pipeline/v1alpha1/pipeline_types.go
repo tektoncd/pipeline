@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ type PipelineSpec struct {
 	Tasks []PipelineTask `json:"tasks,omitempty"`
 	// Params declares a list of input parameters that must be supplied when
 	// this Pipeline is run.
-	Params []PipelineParam `json:"params,omitempty"`
+	Params []ParamSpec `json:"params,omitempty"`
 }
 
 // PipelineStatus does not contain anything because Pipelines on their own
@@ -105,21 +105,6 @@ type PipelineTask struct {
 type PipelineTaskParam struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
-}
-
-// PipelineParam defines an arbitrary parameter needed by a Pipeline beyond typed inputs
-// such as resources.
-type PipelineParam struct {
-	// Name is the name of the parameter.
-	Name string `json:"name"`
-	// Description is an informational description of what the parameter
-	// represents.
-	// +optional
-	Description string `json:"description,omitempty"`
-	// Default specifies the value that this parameter should take if a value is
-	// not specified in a PipelineRun.
-	// +optional
-	Default string `json:"default,omitempty"`
 }
 
 // PipelineDeclaredResource is used by a Pipeline to declare the types of the

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,10 +21,11 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/templating"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
-func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...v1alpha1.TaskParam) *v1alpha1.TaskSpec {
+func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...v1alpha1.ParamSpec) *v1alpha1.TaskSpec {
 	// This assumes that the TaskRun inputs have been validated against what the Task requests.
 	replacements := map[string]string{}
 	// Set all the default replacements
@@ -42,25 +43,15 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 }
 
 // ApplyResources applies the templating from values in resources which are referenced in spec as subitems
-// of the replacementStr. It retrieves the referenced resources via the getter.
-func ApplyResources(spec *v1alpha1.TaskSpec, resources []v1alpha1.TaskResourceBinding, getter GetResource, replacementStr string) (*v1alpha1.TaskSpec, error) {
+// of the replacementStr.
+func ApplyResources(spec *v1alpha1.TaskSpec, resolvedResources map[string]v1alpha1.PipelineResourceInterface, replacementStr string) *v1alpha1.TaskSpec {
 	replacements := map[string]string{}
-
-	for _, r := range resources {
-		pr, err := getResource(&r, getter)
-		if err != nil {
-			return nil, err
-		}
-
-		resource, err := v1alpha1.ResourceFromType(pr)
-		if err != nil {
-			return nil, err
-		}
-		for k, v := range resource.Replacements() {
-			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, r.Name, k)] = v
+	for name, r := range resolvedResources {
+		for k, v := range r.Replacements() {
+			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, name, k)] = v
 		}
 	}
-	return ApplyReplacements(spec, replacements), nil
+	return ApplyReplacements(spec, replacements)
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
@@ -70,23 +61,18 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, replacements map[string]string) 
 	// Apply variable expansion to steps fields.
 	steps := spec.Steps
 	for i := range steps {
-		steps[i].Name = templating.ApplyReplacements(steps[i].Name, replacements)
-		steps[i].Image = templating.ApplyReplacements(steps[i].Image, replacements)
-		for ia, a := range steps[i].Args {
-			steps[i].Args[ia] = templating.ApplyReplacements(a, replacements)
-		}
-		for ie, e := range steps[i].Env {
-			steps[i].Env[ie].Value = templating.ApplyReplacements(e.Value, replacements)
-		}
-		steps[i].WorkingDir = templating.ApplyReplacements(steps[i].WorkingDir, replacements)
-		for ic, c := range steps[i].Command {
-			steps[i].Command[ic] = templating.ApplyReplacements(c, replacements)
-		}
-		for iv, v := range steps[i].VolumeMounts {
-			steps[i].VolumeMounts[iv].Name = templating.ApplyReplacements(v.Name, replacements)
-			steps[i].VolumeMounts[iv].MountPath = templating.ApplyReplacements(v.MountPath, replacements)
-			steps[i].VolumeMounts[iv].SubPath = templating.ApplyReplacements(v.SubPath, replacements)
-		}
+		applyContainerReplacements(&steps[i], replacements)
+	}
+
+	// Apply variable expansion to containerTemplate fields.
+	// Should eventually be removed; ContainerTemplate is the deprecated previous name of the StepTemplate field (#977).
+	if spec.ContainerTemplate != nil {
+		applyContainerReplacements(spec.ContainerTemplate, replacements)
+	}
+
+	// Apply variable expansion to stepTemplate fields.
+	if spec.StepTemplate != nil {
+		applyContainerReplacements(spec.StepTemplate, replacements)
 	}
 
 	// Apply variable expansion to the build's volumes
@@ -104,4 +90,43 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, replacements map[string]string) 
 	}
 
 	return spec
+}
+
+func applyContainerReplacements(container *corev1.Container, replacements map[string]string) {
+	container.Name = templating.ApplyReplacements(container.Name, replacements)
+	container.Image = templating.ApplyReplacements(container.Image, replacements)
+	for ia, a := range container.Args {
+		container.Args[ia] = templating.ApplyReplacements(a, replacements)
+	}
+	for ie, e := range container.Env {
+		container.Env[ie].Value = templating.ApplyReplacements(e.Value, replacements)
+		if container.Env[ie].ValueFrom != nil {
+			if e.ValueFrom.SecretKeyRef != nil {
+				container.Env[ie].ValueFrom.SecretKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, replacements)
+				container.Env[ie].ValueFrom.SecretKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, replacements)
+			}
+			if e.ValueFrom.ConfigMapKeyRef != nil {
+				container.Env[ie].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, replacements)
+				container.Env[ie].ValueFrom.ConfigMapKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, replacements)
+			}
+		}
+	}
+	for ie, e := range container.EnvFrom {
+		container.EnvFrom[ie].Prefix = templating.ApplyReplacements(e.Prefix, replacements)
+		if e.ConfigMapRef != nil {
+			container.EnvFrom[ie].ConfigMapRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ConfigMapRef.LocalObjectReference.Name, replacements)
+		}
+		if e.SecretRef != nil {
+			container.EnvFrom[ie].SecretRef.LocalObjectReference.Name = templating.ApplyReplacements(e.SecretRef.LocalObjectReference.Name, replacements)
+		}
+	}
+	container.WorkingDir = templating.ApplyReplacements(container.WorkingDir, replacements)
+	for ic, c := range container.Command {
+		container.Command[ic] = templating.ApplyReplacements(c, replacements)
+	}
+	for iv, v := range container.VolumeMounts {
+		container.VolumeMounts[iv].Name = templating.ApplyReplacements(v.Name, replacements)
+		container.VolumeMounts[iv].MountPath = templating.ApplyReplacements(v.MountPath, replacements)
+		container.VolumeMounts[iv].SubPath = templating.ApplyReplacements(v.SubPath, replacements)
+	}
 }

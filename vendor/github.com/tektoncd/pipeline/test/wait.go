@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ import (
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -148,7 +149,7 @@ func TaskRunSucceed(name string) TaskRunStateFn {
 			if c.Status == corev1.ConditionTrue {
 				return true, nil
 			} else if c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("task run %s failed!", name)
+				return true, xerrors.Errorf("task run %s failed!", name)
 			}
 		}
 		return false, nil
@@ -162,7 +163,7 @@ func TaskRunFailed(name string) TaskRunStateFn {
 		c := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
-				return true, fmt.Errorf("task run %s succeeded!", name)
+				return true, xerrors.Errorf("task run %s succeeded!", name)
 			} else if c.Status == corev1.ConditionFalse {
 				return true, nil
 			}
@@ -180,7 +181,7 @@ func PipelineRunSucceed(name string) PipelineRunStateFn {
 			if c.Status == corev1.ConditionTrue {
 				return true, nil
 			} else if c.Status == corev1.ConditionFalse {
-				return true, fmt.Errorf("pipeline run %s failed!", name)
+				return true, xerrors.Errorf("pipeline run %s failed!", name)
 			}
 		}
 		return false, nil
@@ -194,7 +195,7 @@ func PipelineRunFailed(name string) PipelineRunStateFn {
 		c := tr.Status.GetCondition(apis.ConditionSucceeded)
 		if c != nil {
 			if c.Status == corev1.ConditionTrue {
-				return true, fmt.Errorf("task run %s succeeded!", name)
+				return true, xerrors.Errorf("task run %s succeeded!", name)
 			} else if c.Status == corev1.ConditionFalse {
 				return true, nil
 			}

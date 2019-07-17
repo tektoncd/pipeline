@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
@@ -38,8 +39,8 @@ type InputsOp func(*v1alpha1.Inputs)
 // OutputsOp is an operation which modify an Outputs struct.
 type OutputsOp func(*v1alpha1.Outputs)
 
-// TaskParamOp is an operation which modify a TaskParam struct.
-type TaskParamOp func(*v1alpha1.TaskParam)
+// TaskParamOp is an operation which modify a ParamSpec struct.
+type TaskParamOp func(*v1alpha1.ParamSpec)
 
 // TaskRunOp is an operation which modify a TaskRun struct.
 type TaskRunOp func(*v1alpha1.TaskRun)
@@ -153,7 +154,20 @@ func Step(name, image string, ops ...ContainerOp) TaskSpecOp {
 	}
 }
 
-// TaskContainerTemplate adds a base container for all steps in the task.
+// TaskStepTemplate adds a base container for all steps in the task.
+func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		base := &corev1.Container{}
+
+		for _, op := range ops {
+			op(base)
+		}
+		spec.StepTemplate = base
+	}
+}
+
+// TaskContainerTemplate adds the deprecated (#977) base container for
+// all steps in the task. ContainerTemplate is now StepTemplate.
 func TaskContainerTemplate(ops ...ContainerOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
 		base := &corev1.Container{}
@@ -236,10 +250,10 @@ func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) Ou
 }
 
 // InputsParam adds a param, with specified name, to the Inputs.
-// Any number of TaskParam modifier can be passed to transform it.
+// Any number of ParamSpec modifier can be passed to transform it.
 func InputsParam(name string, ops ...TaskParamOp) InputsOp {
 	return func(i *v1alpha1.Inputs) {
-		tp := &v1alpha1.TaskParam{Name: name}
+		tp := &v1alpha1.ParamSpec{Name: name}
 		for _, op := range ops {
 			op(tp)
 		}
@@ -247,16 +261,16 @@ func InputsParam(name string, ops ...TaskParamOp) InputsOp {
 	}
 }
 
-// ParamDescripiton sets the description to the TaskParam.
+// ParamDescripiton sets the description to the ParamSpec.
 func ParamDescription(desc string) TaskParamOp {
-	return func(tp *v1alpha1.TaskParam) {
+	return func(tp *v1alpha1.ParamSpec) {
 		tp.Description = desc
 	}
 }
 
-// ParamDefault sets the default value to the TaskParam.
+// ParamDefault sets the default value to the ParamSpec.
 func ParamDefault(value string) TaskParamOp {
-	return func(tp *v1alpha1.TaskParam) {
+	return func(tp *v1alpha1.ParamSpec) {
 		tp.Default = value
 	}
 }
@@ -335,6 +349,11 @@ func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
 	}
 }
 
+// TaskRunNilTimeout sets the timeout duration to nil on the TaskRunSpec.
+func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
+	spec.Timeout = nil
+}
+
 // TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
@@ -410,6 +429,8 @@ func TaskRunAnnotation(key, value string) TaskRunOp {
 func TaskRunSpec(ops ...TaskRunSpecOp) TaskRunOp {
 	return func(tr *v1alpha1.TaskRun) {
 		spec := &tr.Spec
+		// Set a default timeout
+		spec.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
 		for _, op := range ops {
 			op(spec)
 		}
@@ -431,6 +452,14 @@ func TaskRunTaskRef(name string, ops ...TaskRefOp) TaskRunSpecOp {
 			op(ref)
 		}
 		spec.TaskRef = ref
+	}
+}
+
+// TaskRunSpecStatus sets the Status in the Spec, used for operations
+// such as cancelling executing TaskRuns.
+func TaskRunSpecStatus(status v1alpha1.TaskRunSpecStatus) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Status = status
 	}
 }
 

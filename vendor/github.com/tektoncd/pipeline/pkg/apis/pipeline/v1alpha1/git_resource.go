@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,14 +18,14 @@ package v1alpha1
 
 import (
 	"flag"
-	"fmt"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
-const workspaceDir = "/workspace"
+const WorkspaceDir = "/workspace"
 
 var (
 	gitSource = "git-source"
@@ -50,7 +50,7 @@ type GitResource struct {
 // NewGitResource create a new git resource to pass to a Task
 func NewGitResource(r *PipelineResource) (*GitResource, error) {
 	if r.Spec.Type != PipelineResourceTypeGit {
-		return nil, fmt.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, xerrors.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	gitResource := GitResource{
 		Name: r.Name,
@@ -86,9 +86,6 @@ func (s *GitResource) GetURL() string {
 	return s.URL
 }
 
-// GetParams returns the resource params
-func (s GitResource) GetParams() []Param { return []Param{} }
-
 // Replacements is used for template replacement on a GitResource inside of a Taskrun.
 func (s *GitResource) Replacements() map[string]string {
 	return map[string]string{
@@ -96,6 +93,7 @@ func (s *GitResource) Replacements() map[string]string {
 		"type":     string(s.Type),
 		"url":      s.URL,
 		"revision": s.Revision,
+		"path":     s.TargetPath,
 	}
 }
 
@@ -103,21 +101,15 @@ func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	args := []string{"-url", s.URL,
 		"-revision", s.Revision,
 	}
-	var dPath string
-	if s.TargetPath != "" {
-		dPath = s.TargetPath
-	} else {
-		dPath = s.Name
-	}
 
-	args = append(args, []string{"-path", dPath}...)
+	args = append(args, []string{"-path", s.TargetPath}...)
 
 	return []corev1.Container{{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
 		Image:      *gitImage,
 		Command:    []string{"/ko-app/git-init"},
 		Args:       args,
-		WorkingDir: workspaceDir,
+		WorkingDir: WorkspaceDir,
 	}}, nil
 }
 

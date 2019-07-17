@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors
+Copyright 2019 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/knative/pkg/apis"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,8 +29,8 @@ type PipelineOp func(*v1alpha1.Pipeline)
 // PipelineSpecOp is an operation which modify a PipelineSpec struct.
 type PipelineSpecOp func(*v1alpha1.PipelineSpec)
 
-// PipelineParamOp is an operation which modify a PipelineParam struct.
-type PipelineParamOp func(*v1alpha1.PipelineParam)
+// PipelineParamOp is an operation which modify a ParamSpec struct.
+type PipelineParamOp func(*v1alpha1.ParamSpec)
 
 // PipelineTaskOp is an operation which modify a PipelineTask struct.
 type PipelineTaskOp func(*v1alpha1.PipelineTask)
@@ -110,11 +111,11 @@ func PipelineDeclaredResource(name string, t v1alpha1.PipelineResourceType) Pipe
 	}
 }
 
-// PipelineParam adds a param, with specified name, to the Spec.
-// Any number of PipelineParam modifiers can be passed to transform it.
+// ParamSpec adds a param, with specified name, to the Spec.
+// Any number of ParamSpec modifiers can be passed to transform it.
 func PipelineParam(name string, ops ...PipelineParamOp) PipelineSpecOp {
 	return func(ps *v1alpha1.PipelineSpec) {
-		pp := &v1alpha1.PipelineParam{Name: name}
+		pp := &v1alpha1.ParamSpec{Name: name}
 		for _, op := range ops {
 			op(pp)
 		}
@@ -122,16 +123,16 @@ func PipelineParam(name string, ops ...PipelineParamOp) PipelineSpecOp {
 	}
 }
 
-// PipelineParamDescription sets the description to the PipelineParam.
+// PipelineParamDescription sets the description to the ParamSpec.
 func PipelineParamDescription(desc string) PipelineParamOp {
-	return func(pp *v1alpha1.PipelineParam) {
+	return func(pp *v1alpha1.ParamSpec) {
 		pp.Description = desc
 	}
 }
 
-// PipelineParamDefault sets the default value to the PipelineParam.
+// PipelineParamDefault sets the default value to the ParamSpec.
 func PipelineParamDefault(value string) PipelineParamOp {
-	return func(pp *v1alpha1.PipelineParam) {
+	return func(pp *v1alpha1.ParamSpec) {
 		pp.Default = value
 	}
 }
@@ -251,6 +252,8 @@ func PipelineRunSpec(name string, ops ...PipelineRunSpecOp) PipelineRunOp {
 		prs := &pr.Spec
 
 		prs.PipelineRef.Name = name
+		// Set a default timeout
+		prs.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
 
 		for _, op := range ops {
 			op(prs)
@@ -310,6 +313,16 @@ func PipelineRunServiceAccount(sa string) PipelineRunSpecOp {
 	}
 }
 
+// PipelineRunServiceAccountTask configures the service account for given Task in PipelineRun.
+func PipelineRunServiceAccountTask(taskName, sa string) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.ServiceAccounts = append(prs.ServiceAccounts, v1alpha1.PipelineRunSpecServiceAccount{
+			TaskName:       taskName,
+			ServiceAccount: sa,
+		})
+	}
+}
+
 // PipelineRunParam add a param, with specified name and value, to the PipelineRunSpec.
 func PipelineRunParam(name, value string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
@@ -320,11 +333,16 @@ func PipelineRunParam(name, value string) PipelineRunSpecOp {
 	}
 }
 
-// PipelineRunTimeout sets the timeout to the PipelineSpec.
-func PipelineRunTimeout(duration *metav1.Duration) PipelineRunSpecOp {
+// PipelineRunTimeout sets the timeout to the PipelineRunSpec.
+func PipelineRunTimeout(duration time.Duration) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Timeout = duration
+		prs.Timeout = &metav1.Duration{Duration: duration}
 	}
+}
+
+// PipelineRunNilTimeout sets the timeout to nil on the PipelineRunSpec
+func PipelineRunNilTimeout(prs *v1alpha1.PipelineRunSpec) {
+	prs.Timeout = nil
 }
 
 // PipelineRunNodeSelector sets the Node selector to the PipelineSpec.

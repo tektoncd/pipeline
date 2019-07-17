@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
 	"strings"
+
+	"golang.org/x/xerrors"
 )
 
 type PipelineResourceStorageType string
@@ -37,7 +38,7 @@ type PipelineStorageResourceInterface interface {
 
 func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
-		return nil, fmt.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 
 	for _, param := range r.Spec.Params {
@@ -48,9 +49,9 @@ func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, 
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeBuildGCS)):
 				return NewBuildGCSResource(r)
 			default:
-				return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
+				return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}
 		}
 	}
-	return nil, fmt.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
+	return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
 }

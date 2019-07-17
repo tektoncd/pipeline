@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
 
 // GetCopyFromStorageToContainerSpec returns a container used to download artifacts from temporary storage
 func (b *ArtifactBucket) GetCopyFromStorageToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
-	args := []string{"-args", fmt.Sprintf("cp -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)}
+	args := []string{"-args", fmt.Sprintf("cp -P -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
@@ -100,7 +100,7 @@ func (b *ArtifactBucket) GetCopyFromStorageToContainerSpec(name, sourcePath, des
 
 // GetCopyToStorageFromContainerSpec returns a container used to upload artifacts for temporary storage
 func (b *ArtifactBucket) GetCopyToStorageFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
-	args := []string{"-args", fmt.Sprintf("cp -r %s %s", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath))}
+	args := []string{"-args", fmt.Sprintf("cp -P -r %s %s", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath))}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 		for i, o := range ts.Outputs.Resources {
 			if o.Type == PipelineResourceTypeImage {
 				if o.OutputImageDir == "" {
-					ts.Outputs.Resources[i].OutputImageDir = fmt.Sprintf("/builder/image-outputs/%s", o.Name)
+					ts.Outputs.Resources[i].OutputImageDir = fmt.Sprintf("%s/%s", TaskOutputImageDefaultDir, o.Name)
 				}
 			}
 		}

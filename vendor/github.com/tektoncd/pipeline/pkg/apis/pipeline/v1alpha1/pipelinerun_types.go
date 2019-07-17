@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -37,6 +36,10 @@ var (
 	}
 )
 
+// Check that TaskRun may be validated and defaulted.
+var _ apis.Validatable = (*PipelineRun)(nil)
+var _ apis.Defaultable = (*PipelineRun)(nil)
+
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
 	PipelineRef PipelineRef `json:"pipelineRef"`
@@ -48,6 +51,8 @@ type PipelineRunSpec struct {
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	ServiceAccount string `json:"serviceAccount"`
+	// +optional
+	ServiceAccounts []PipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
@@ -147,6 +152,12 @@ func (pr *PipelineRunStatus) InitializeConditions() {
 	pipelineRunCondSet.Manage(pr).InitializeConditions()
 }
 
+// PipelineRunSpecServiceAccount can be used to configure specific ServiceAccount for a concrete Task
+type PipelineRunSpecServiceAccount struct {
+	TaskName       string `json:"taskName,omitempty"`
+	ServiceAccount string `json:"serviceAccount,omitempty"`
+}
+
 // SetCondition sets the condition, unsetting previous conditions with the same
 // type as necessary.
 func (pr *PipelineRunStatus) SetCondition(newCond *apis.Condition) {
@@ -158,7 +169,12 @@ func (pr *PipelineRunStatus) SetCondition(newCond *apis.Condition) {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// PipelineRun is the Schema for the pipelineruns API
+// PipelineRun represents a single execution of a Pipeline. PipelineRuns are how
+// the graph of Tasks declared in a Pipeline are executed; they specify inputs
+// to Pipelines such as parameter values and capture operational aspects of the
+// Tasks execution such as service account and tolerations. Creating a
+// PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.
+//
 // +k8s:openapi-gen=true
 type PipelineRun struct {
 	metav1.TypeMeta `json:",inline"`
@@ -197,9 +213,6 @@ func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 		Name:       pr.Name,
 	}
 }
-
-// SetDefaults for pipelinerun
-func (pr *PipelineRun) SetDefaults(ctx context.Context) {}
 
 // GetOwnerReference gets the pipeline run as owner reference for any related objects
 func (pr *PipelineRun) GetOwnerReference() []metav1.OwnerReference {

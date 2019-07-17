@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
-
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -63,10 +63,10 @@ type BuildGCSResource struct {
 // NewBuildGCSResource creates a new BuildGCS resource to pass to a Task
 func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
-		return nil, fmt.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
+		return nil, xerrors.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	if r.Spec.SecretParams != nil {
-		return nil, fmt.Errorf("BuildGCSResource: %s cannot support artifacts on private bucket", r.Name)
+		return nil, xerrors.Errorf("BuildGCSResource: %s cannot support artifacts on private bucket", r.Name)
 	}
 	var location string
 	var aType GCSArtifactType
@@ -79,15 +79,15 @@ func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 			var err error
 			aType, err = getArtifactType(param.Value)
 			if err != nil {
-				return nil, fmt.Errorf("BuildGCSResource %s : %s", r.Name, err)
+				return nil, xerrors.Errorf("BuildGCSResource %s : %w", r.Name, err)
 			}
 		}
 	}
 	if location == "" {
-		return nil, fmt.Errorf("BuildGCSResource: Need Location to be specified in order to create BuildGCS resource %s", r.Name)
+		return nil, xerrors.Errorf("BuildGCSResource: Need Location to be specified in order to create BuildGCS resource %s", r.Name)
 	}
 	if aType == EmptyArtifactType {
-		return nil, fmt.Errorf("BuildGCSResource: Need ArtifactType to be specified in order to fetch BuildGCS resource %s", r.Name)
+		return nil, xerrors.Errorf("BuildGCSResource: Need ArtifactType to be specified in order to fetch BuildGCS resource %s", r.Name)
 	}
 	return &BuildGCSResource{
 		Name:         r.Name,
@@ -107,9 +107,6 @@ func (s BuildGCSResource) GetType() PipelineResourceType {
 	return PipelineResourceTypeStorage
 }
 
-// GetParams get params
-func (s *BuildGCSResource) GetParams() []Param { return []Param{} }
-
 // GetSecretParams returns the resource secret params
 func (s *BuildGCSResource) GetSecretParams() []SecretParam { return nil }
 
@@ -119,6 +116,7 @@ func (s *BuildGCSResource) Replacements() map[string]string {
 		"name":     s.Name,
 		"type":     string(s.Type),
 		"location": s.Location,
+		"path":     s.DestinationDir,
 	}
 }
 
@@ -128,7 +126,7 @@ func (s *BuildGCSResource) SetDestinationDirectory(destDir string) { s.Destinati
 // GetDownloadContainerSpec returns an array of container specs to download gcs storage object
 func (s *BuildGCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	if s.DestinationDir == "" {
-		return nil, fmt.Errorf("BuildGCSResource: Expect Destination Directory param to be set %s", s.Name)
+		return nil, xerrors.Errorf("BuildGCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
 	args := []string{"--type", string(s.ArtifactType), "--location", s.Location}
 	// dest_dir is the destination directory for GCS files to be copies"
@@ -148,10 +146,10 @@ func (s *BuildGCSResource) GetDownloadContainerSpec() ([]corev1.Container, error
 // set environment variable from secret params and set volume mounts for those secrets
 func (s *BuildGCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	if s.ArtifactType != GCSManifest {
-		return nil, fmt.Errorf("BuildGCSResource: Can only upload Artifacts of type Manifest: %s", s.Name)
+		return nil, xerrors.Errorf("BuildGCSResource: Can only upload Artifacts of type Manifest: %s", s.Name)
 	}
 	if s.DestinationDir == "" {
-		return nil, fmt.Errorf("BuildGCSResource: Expect Destination Directory param to be set %s", s.Name)
+		return nil, xerrors.Errorf("BuildGCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
 	args := []string{"--location", s.Location, "--dir", s.DestinationDir}
 
@@ -171,7 +169,7 @@ func getArtifactType(val string) (GCSArtifactType, error) {
 	case GCSManifest:
 		return aType, nil
 	case EmptyArtifactType:
-		return "", fmt.Errorf("ArtifactType is empty. Should be one of %s", strings.Join(valid, ","))
+		return "", xerrors.Errorf("ArtifactType is empty. Should be one of %s", strings.Join(valid, ","))
 	}
-	return "", fmt.Errorf("Invalid ArtifactType %s. Should be one of %s", aType, strings.Join(valid, ","))
+	return "", xerrors.Errorf("Invalid ArtifactType %s. Should be one of %s", aType, strings.Join(valid, ","))
 }

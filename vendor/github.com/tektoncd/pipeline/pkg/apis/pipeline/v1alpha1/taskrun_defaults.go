@@ -1,5 +1,5 @@
 /*
-Copyright 2018 The Knative Authors.
+Copyright 2019 The Tekton Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,13 @@ limitations under the License.
 
 package v1alpha1
 
-import "context"
+import (
+	"context"
+	"time"
+
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 func (tr *TaskRun) SetDefaults(ctx context.Context) {
 	tr.Spec.SetDefaults(ctx)
@@ -25,5 +31,9 @@ func (tr *TaskRun) SetDefaults(ctx context.Context) {
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 	if trs.TaskRef != nil && trs.TaskRef.Kind == "" {
 		trs.TaskRef.Kind = NamespacedTaskKind
+	}
+	cfg := config.FromContextOrDefaults(ctx)
+	if trs.Timeout == nil {
+		trs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
 	}
 }
