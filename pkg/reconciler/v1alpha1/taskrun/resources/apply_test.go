@@ -193,7 +193,7 @@ var multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{
 var paramTaskRun = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name:  "myimage",
 				Value: *builder.ArrayOrString("bar"),
 			}},
@@ -204,7 +204,7 @@ var paramTaskRun = &v1alpha1.TaskRun{
 var arrayTaskRun0Elements = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name: "array-param",
 				Value: v1alpha1.ArrayOrString{
 					Type:     v1alpha1.ParamTypeArray,
@@ -218,7 +218,7 @@ var arrayTaskRun0Elements = &v1alpha1.TaskRun{
 var arrayTaskRun1Elements = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name:  "array-param",
 				Value: *builder.ArrayOrString("foo"),
 			}},
@@ -229,7 +229,7 @@ var arrayTaskRun1Elements = &v1alpha1.TaskRun{
 var arrayTaskRun3Elements = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name:  "array-param",
 				Value: *builder.ArrayOrString("foo", "bar", "third"),
 			}},
@@ -240,7 +240,7 @@ var arrayTaskRun3Elements = &v1alpha1.TaskRun{
 var arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name:  "array-param",
 				Value: *builder.ArrayOrString("foo", "bar", "third"),
 			}, {
@@ -254,7 +254,7 @@ var arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
 var arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name:  "array-param",
 				Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
 			}, {
@@ -268,7 +268,7 @@ var arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
 var arrayTaskRunMultipleArraysAndStrings = &v1alpha1.TaskRun{
 	Spec: v1alpha1.TaskRunSpec{
 		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name:  "array-param1",
 				Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
@@ -300,7 +300,7 @@ var gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 	Spec: v1alpha1.PipelineResourceSpec{
 		Type: v1alpha1.PipelineResourceTypeGit,
-		Params: []v1alpha1.Param{{
+		Params: []v1alpha1.ResourceParam{{
 			Name:  "URL",
 			Value: "https://git-repo",
 		}},
@@ -313,7 +313,7 @@ var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 	Spec: v1alpha1.PipelineResourceSpec{
 		Type: v1alpha1.PipelineResourceTypeImage,
-		Params: []v1alpha1.Param{{
+		Params: []v1alpha1.ResourceParam{{
 			Name:  "URL",
 			Value: "gcr.io/hans/sandwiches",
 		}},
@@ -326,7 +326,7 @@ var gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 	Spec: v1alpha1.PipelineResourceSpec{
 		Type: v1alpha1.PipelineResourceTypeStorage,
-		Params: []v1alpha1.Param{{
+		Params: []v1alpha1.ResourceParam{{
 			Name:  "type",
 			Value: "gcs",
 		}, {
@@ -445,7 +445,7 @@ func TestApplyParameters(t *testing.T) {
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.ArrayOrStringParam{{
+						Params: []v1alpha1.Param{{
 							Name:  "FOO",
 							Value: *builder.ArrayOrString("world"),
 						}},
@@ -466,7 +466,7 @@ func TestApplyParameters(t *testing.T) {
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.ArrayOrStringParam{{
+						Params: []v1alpha1.Param{{
 							Name:  "FOO",
 							Value: *builder.ArrayOrString("world"),
 						}},
@@ -494,7 +494,7 @@ func TestApplyParameters(t *testing.T) {
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.ArrayOrStringParam{{
+						Params: []v1alpha1.Param{{
 							Name:  "FOO",
 							Value: *builder.ArrayOrString("BAR"),
 						}},
@@ -519,7 +519,7 @@ func TestApplyParameters(t *testing.T) {
 			tr: &v1alpha1.TaskRun{
 				Spec: v1alpha1.TaskRunSpec{
 					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.ArrayOrStringParam{{
+						Params: []v1alpha1.Param{{
 							Name:  "FOO",
 							Value: *builder.ArrayOrString("BAR"),
 						}},

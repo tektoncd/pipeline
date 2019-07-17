@@ -42,7 +42,7 @@ func outputResourceSetup(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "git",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "Url",
 				Value: "https://github.com/grafeas/kritis",
 			}, {
@@ -65,7 +65,7 @@ func outputResourceSetup(t *testing.T) {
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: "storage",
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name:  "Location",
 				Value: "gs://some-bucket",
 			}, {

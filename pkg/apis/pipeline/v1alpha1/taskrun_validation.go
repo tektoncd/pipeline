@@ -123,7 +123,7 @@ func validatePipelineResources(ctx context.Context, resources []TaskResourceBind
 	return nil
 }
 
-func validateParameters(params []ArrayOrStringParam) *apis.FieldError {
+func validateParameters(params []Param) *apis.FieldError {
 	// Template must not duplicate parameter names.
 	seen := map[string]struct{}{}
 	for _, p := range params {

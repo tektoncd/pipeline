@@ -57,15 +57,15 @@ func (pp *ParamSpec) SetDefaults(ctx context.Context) {
 	}
 }
 
-// Param declares a value to use for the Param called Name, and is used in the
-// specific context of PipelineResources.
-type Param struct {
+// ResourceParam declares a string value to use for the parameter called Name, and is used in
+// the specific context of PipelineResources.
+type ResourceParam struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
-// ArrayOrStringParam declares an ArrayOrString to use for the parameter called name.
-type ArrayOrStringParam struct {
+// Param declares an ArrayOrString to use for the parameter called name.
+type Param struct {
 	Name  string        `json:"name"`
 	Value ArrayOrString `json:"value"`
 }

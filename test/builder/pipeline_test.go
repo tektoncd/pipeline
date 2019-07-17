@@ -69,7 +69,7 @@ func TestPipeline(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{{
 				Name:    "foo",
 				TaskRef: v1alpha1.TaskRef{Name: "banana"},
-				Params: []v1alpha1.ArrayOrStringParam{{
+				Params: []v1alpha1.Param{{
 					Name:  "stringparam",
 					Value: *tb.ArrayOrString("value"),
 				}, {
@@ -130,7 +130,7 @@ func TestPipelineRun(t *testing.T) {
 			PipelineRef:     v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccount:  "sa",
 			ServiceAccounts: []v1alpha1.PipelineRunSpecServiceAccount{{TaskName: "foo", ServiceAccount: "sa-2"}},
-			Params: []v1alpha1.ArrayOrStringParam{{
+			Params: []v1alpha1.Param{{
 				Name:  "first-param-string",
 				Value: *tb.ArrayOrString("first-value"),
 			}, {
@@ -166,7 +166,7 @@ func TestPipelineResource(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "git-resource", Namespace: "foo"},
 		Spec: v1alpha1.PipelineResourceSpec{
 			Type: v1alpha1.PipelineResourceTypeGit,
-			Params: []v1alpha1.Param{{
+			Params: []v1alpha1.ResourceParam{{
 				Name: "URL", Value: "https://foo.git",
 			}},
 		},
