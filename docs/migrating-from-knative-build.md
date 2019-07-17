@@ -31,7 +31,7 @@ Pipeline, and provide additional flexibility and reusability.
 * Input resources must specify a `name`, which is the directory within
   `/workspace` where the resource's source will be placed. So if you specify a
   `git`-type resource named `foo`, the source will be cloned into
-  `/workspace/foo` -- make sure to either set `workingdir: /workspace/foo` in
+  `/workspace/foo` -- make sure to either set `workingDir: /workspace/foo` in
   the Task's `steps`, or at least be aware that source will not be cloned into
   `/workspace` as was the case with Knative Builds. See [Controlling where
   resources are
@@ -98,7 +98,7 @@ spec:
   steps:
   - name: go-test  # <-- the step must specify a name.
     image: golang
-    workingdir: /workspace/source  # <-- set workingdir
+    workingDir: /workspace/source  # <-- set workingdir
     command: ['go', 'test', '${inputs.params.TARGET}']  # <-- specify inputs.params.TARGET
 ```
 
