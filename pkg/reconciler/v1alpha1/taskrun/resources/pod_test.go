@@ -33,7 +33,6 @@ import (
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/test/names"
 )
 
@@ -366,8 +365,7 @@ func TestMakePod(t *testing.T) {
 				},
 				Spec: c.trs,
 			}
-			cache, _ := entrypoint.NewCache()
-			got, err := MakePod(tr, c.ts, cs, cache, logger)
+			got, err := MakePod(tr, c.ts, cs)
 			if err != c.wantErr {
 				t.Fatalf("MakePod: %v", err)
 			}
@@ -591,8 +589,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 				},
 				Spec: c.trs,
 			}
-			cache, _ := entrypoint.NewCache()
-			got, err := MakePod(tr, c.ts, cs, cache, logger)
+			got, err := MakePod(tr, c.ts, cs)
 			if err != c.wantErr {
 				t.Fatalf("MakePod: %v", err)
 			}
