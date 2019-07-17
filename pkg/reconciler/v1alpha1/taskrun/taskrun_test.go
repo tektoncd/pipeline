@@ -26,16 +26,6 @@ import (
 	"github.com/knative/pkg/apis"
 	"github.com/knative/pkg/configmap"
 	rtesting "github.com/knative/pkg/reconciler/testing"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/logging"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
-	"github.com/tektoncd/pipeline/pkg/status"
-	"github.com/tektoncd/pipeline/pkg/system"
-	"github.com/tektoncd/pipeline/test"
-	tb "github.com/tektoncd/pipeline/test/builder"
-	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	"golang.org/x/xerrors"
@@ -48,6 +38,16 @@ import (
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/status"
+	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/test"
+	tb "github.com/tektoncd/pipeline/test/builder"
+	"github.com/tektoncd/pipeline/test/names"
 )
 
 const (
@@ -1294,8 +1294,6 @@ func TestReconcilePodFetchError(t *testing.T) {
 }
 
 func makePod(taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) (*corev1.Pod, error) {
-	logger, _ := logging.NewLogger("", "")
-	cache, _ := entrypoint.NewCache()
 	// TODO(jasonhall): This avoids a circular dependency where
 	// getTaskRunController takes a test.Data which must be populated with
 	// a pod created from MakePod which requires a (fake) Kube client. When
@@ -1308,7 +1306,7 @@ func makePod(taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) (*corev1.Pod, error
 			Name:      "default",
 			Namespace: taskRun.Namespace,
 		},
-	}), cache, logger)
+	}))
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {
