@@ -77,7 +77,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
-				Name: "state-name",
+				Name:          "state-name",
+				ContainerName: "step-state-name",
 			}},
 		},
 	}, {
@@ -106,7 +107,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
-				Name: "state-name",
+				Name:          "state-name",
+				ContainerName: "step-state-name",
 			}},
 		},
 	}, {
@@ -131,7 +133,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 0,
 					}},
-				Name: "step-push",
+				Name:          "step-push",
+				ContainerName: "step-step-push",
 			}},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
@@ -155,7 +158,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				ContainerState: corev1.ContainerState{
 					Running: &corev1.ContainerStateRunning{},
 				},
-				Name: "running-step",
+				Name:          "running-step",
+				ContainerName: "step-running-step",
 			}},
 		},
 	}, {
@@ -189,7 +193,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 123,
 					}},
-				Name: "failure",
+				Name:          "failure",
+				ContainerName: "step-failure",
 			}},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
@@ -260,7 +265,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 						Message: "i'm pending",
 					},
 				},
-				Name: "status-name",
+				Name:          "status-name",
+				ContainerName: "step-status-name",
 			}},
 		},
 	}, {
@@ -363,7 +369,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				ContainerState: corev1.ContainerState{
 					Running: &corev1.ContainerStateRunning{},
 				},
-				Name: "running-step",
+				Name:          "running-step",
+				ContainerName: "step-running-step",
 			}},
 		},
 	}} {
