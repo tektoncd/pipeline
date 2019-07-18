@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
-	"golang.org/x/xerrors"
 )
 
 var (
@@ -69,80 +68,4 @@ func main() {
 			log.Fatalf("Error executing command: %v", err)
 		}
 	}
-}
-
-// TODO(jasonhall): Test that original exit code is propagated and that
-// stdout/stderr are collected -- needs e2e tests.
-
-// RealWaiter actually waits for files, by polling.
-type RealWaiter struct{}
-
-var _ entrypoint.Waiter = (*RealWaiter)(nil)
-
-// Wait watches a file and returns when either a) the file exists and, if
-// the expectContent argument is true, the file has non-zero size or b) there
-// is an error polling the file.
-//
-// If the passed-in file is an empty string then this function returns
-// immediately.
-//
-// If a file of the same name with a ".err" extension exists then this Wait
-// will end with a skipError.
-func (*RealWaiter) Wait(file string, expectContent bool) error {
-	if file == "" {
-		return nil
-	}
-	for ; ; time.Sleep(waitPollingInterval) {
-		if info, err := os.Stat(file); err == nil {
-			if !expectContent || info.Size() > 0 {
-				return nil
-			}
-		} else if !os.IsNotExist(err) {
-			return xerrors.Errorf("Waiting for %q: %w", file, err)
-		}
-		if _, err := os.Stat(file + ".err"); err == nil {
-			return skipError("error file present, bail and skip the step")
-		}
-	}
-}
-
-// RealRunner actually runs commands.
-type RealRunner struct{}
-
-var _ entrypoint.Runner = (*RealRunner)(nil)
-
-func (*RealRunner) Run(args ...string) error {
-	if len(args) == 0 {
-		return nil
-	}
-	name, args := args[0], args[1:]
-
-	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
-}
-
-// RealPostWriter actually writes files.
-type RealPostWriter struct{}
-
-var _ entrypoint.PostWriter = (*RealPostWriter)(nil)
-
-func (*RealPostWriter) Write(file string) {
-	if file == "" {
-		return
-	}
-	if _, err := os.Create(file); err != nil {
-		log.Fatalf("Creating %q: %v", file, err)
-	}
-}
-
-type skipError string
-
-func (e skipError) Error() string {
-	return string(e)
 }
