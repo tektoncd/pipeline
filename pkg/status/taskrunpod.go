@@ -36,6 +36,7 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 			taskRun.Status.Steps = append(taskRun.Status.Steps, v1alpha1.StepState{
 				ContainerState: *s.State.DeepCopy(),
 				Name:           resources.TrimContainerNamePrefix(s.Name),
+				ContainerName:  s.Name,
 			})
 		}
 	}

@@ -194,7 +194,8 @@ func (tr *TaskRunStatus) InitializeCloudEvents(targets []string) {
 // StepState reports the results of running a step in the Task.
 type StepState struct {
 	corev1.ContainerState
-	Name string `json:"name,omitempty"`
+	Name          string `json:"name,omitempty"`
+	ContainerName string `json:"container,omitempty"`
 }
 
 // CloudEventDelivery is the target of a cloud event along with the state of
