@@ -17,7 +17,6 @@ For example:
 
 -   [Syntax](#syntax)
 -   [Resource types](#resource-types)
--   [Examples](#examples)
 
 ## Syntax
 
