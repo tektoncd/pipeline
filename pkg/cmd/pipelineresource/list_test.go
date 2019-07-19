@@ -36,7 +36,7 @@ func TestPipelineResources(t *testing.T) {
 		),
 		tb.PipelineResource("test-2", "test-ns-1",
 			tb.PipelineResourceSpec("git",
-				tb.PipelineResourceSpecParam("URL", "git@github.com:tektoncd/cli.git"),
+				tb.PipelineResourceSpecParam("url", "git@github.com:tektoncd/cli.git"),
 			),
 		),
 		tb.PipelineResource("test-3", "test-ns-1",
@@ -62,7 +62,7 @@ func TestPipelineResources(t *testing.T) {
 			expected: []string{
 				"NAME     TYPE    DETAILS",
 				"test-1   image   URL: quey.io/tekton/controller",
-				"test-2   git     URL: git@github.com:tektoncd/cli.git",
+				"test-2   git     url: git@github.com:tektoncd/cli.git",
 				"test-3   image   ---",
 				"",
 			},

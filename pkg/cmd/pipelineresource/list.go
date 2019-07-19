@@ -17,6 +17,7 @@ package pipelineresource
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -127,13 +128,13 @@ func printFormatted(s *cli.Stream, pres *v1alpha1.PipelineResourceList) error {
 }
 
 func details(pre v1alpha1.PipelineResource) string {
-	var key = "URL"
+	var key = "url"
 	if pre.Spec.Type == v1alpha1.PipelineResourceTypeStorage {
-		key = "Location"
+		key = "location"
 	}
 
 	for _, p := range pre.Spec.Params {
-		if p.Name == key {
+		if strings.ToLower(p.Name) == key {
 			return p.Name + ": " + p.Value
 		}
 	}
