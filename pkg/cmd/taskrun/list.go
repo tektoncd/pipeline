@@ -109,6 +109,10 @@ func list(p cli.Params, task string) (*v1alpha1.TaskRunList, error) {
 		return nil, err
 	}
 
+	if len(trs.Items) != 0 {
+		sort.Sort(byStartTime(trs.Items))
+	}
+
 	// NOTE: this is required for -o json|yaml to work properly since
 	// tektoncd go client fails to set these; probably a bug
 	trs.GetObjectKind().SetGroupVersionKind(
@@ -125,8 +129,6 @@ func printFormatted(s *cli.Stream, trs *v1alpha1.TaskRunList, c clockwork.Clock)
 		fmt.Fprintln(s.Err, emptyMsg)
 		return nil
 	}
-
-	sort.Sort(byStartTime(trs.Items))
 
 	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(w, "NAME\tSTARTED\tDURATION\tSTATUS\t")

@@ -17,8 +17,8 @@ package pipelinerun
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 	"sort"
+	"text/tabwriter"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/cobra"
@@ -109,6 +109,10 @@ func list(p cli.Params, pipeline string) (*v1alpha1.PipelineRunList, error) {
 		return nil, err
 	}
 
+	if len(prs.Items) != 0 {
+		sort.Sort(byStartTime(prs.Items))
+	}
+
 	// NOTE: this is required for -o json|yaml to work properly since
 	// tektoncd go client fails to set these; probably a bug
 	prs.GetObjectKind().SetGroupVersionKind(
@@ -126,8 +130,6 @@ func printFormatted(s *cli.Stream, prs *v1alpha1.PipelineRunList, c clockwork.Cl
 		return nil
 	}
 
-	sort.Sort(byStartTime(prs.Items))
-	
 	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	fmt.Fprintln(w, "NAME\tSTARTED\tDURATION\tSTATUS\t")
 	for _, pr := range prs.Items {

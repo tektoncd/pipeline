@@ -126,5 +126,3 @@ func listAllTasks(cs versioned.Interface, ns string) (*v1alpha1.TaskList, error)
 		})
 	return tasks, nil
 }
-
-

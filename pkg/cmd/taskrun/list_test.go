@@ -35,6 +35,7 @@ import (
 func TestListTaskRuns(t *testing.T) {
 	now := time.Now()
 	aMinute, _ := time.ParseDuration("1m")
+	twoMinute, _ := time.ParseDuration("2m")
 
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun("tr1-1", "foo",
@@ -68,8 +69,8 @@ func TestListTaskRuns(t *testing.T) {
 					Status: corev1.ConditionFalse,
 					Reason: resources.ReasonFailed,
 				}),
-				tb.TaskRunStartTime(now),
-				taskRunCompletionTime(now.Add(aMinute)),
+				tb.TaskRunStartTime(now.Add(aMinute)),
+				taskRunCompletionTime(now.Add(twoMinute)),
 			),
 		),
 	}
@@ -95,10 +96,10 @@ func TestListTaskRuns(t *testing.T) {
 			command: command(t, trs, now),
 			args:    []string{"list", "-n", "foo"},
 			expected: []string{
-				"NAME    STARTED      DURATION   STATUS      ",
-				"tr1-1   1 hour ago   1 minute   Succeeded   ",
-				"tr2-1   1 hour ago   ---        Running     ",
-				"tr2-2   1 hour ago   1 minute   Failed      ",
+				"NAME    STARTED          DURATION   STATUS      ",
+				"tr2-2   59 minutes ago   1 minute   Failed      ",
+				"tr1-1   1 hour ago       1 minute   Succeeded   ",
+				"tr2-1   1 hour ago       ---        Running     ",
 				"",
 			},
 		},
@@ -107,9 +108,9 @@ func TestListTaskRuns(t *testing.T) {
 			command: command(t, trs, now),
 			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
+				"tr2-2",
 				"tr1-1",
 				"tr2-1",
-				"tr2-2",
 				"",
 			},
 		},

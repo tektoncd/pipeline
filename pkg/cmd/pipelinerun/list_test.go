@@ -39,7 +39,7 @@ func TestListPipelineRuns(t *testing.T) {
 
 	pr1Started := clock.Now().Add(10 * time.Second)
 	pr2Started := clock.Now().Add(-2 * time.Hour)
-	pr3Started := clock.Now().Add(-450 * time.Hour)
+	pr3Started := clock.Now().Add(-1 * time.Hour)
 
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("pr1-1", "namespace",
@@ -99,8 +99,8 @@ func TestListPipelineRuns(t *testing.T) {
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS               ",
 				"pr1-1   59 minutes ago   1 minute   Succeeded            ",
+				"pr2-2   2 hours ago      1 minute   Failed               ",
 				"pr2-1   3 hours ago      ---        Succeeded(Running)   ",
-				"pr2-2   2 weeks ago      1 minute   Failed               ",
 				"",
 			},
 		},
@@ -110,8 +110,8 @@ func TestListPipelineRuns(t *testing.T) {
 			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
 				"pr1-1",
-				"pr2-1",
 				"pr2-2",
+				"pr2-1",
 				"",
 			},
 		},
