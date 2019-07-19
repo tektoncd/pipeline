@@ -14,6 +14,7 @@ CLI for tekton pipelines
 
 ### SEE ALSO
 
+* [tkn clustertask](tkn_clustertask.md)	 - Manage clustertasks
 * [tkn completion](tkn_completion.md)	 - Prints shell completion scripts
 * [tkn pipeline](tkn_pipeline.md)	 - Manage pipelines
 * [tkn pipelinerun](tkn_pipelinerun.md)	 - Manage pipelineruns

@@ -440,7 +440,7 @@ k8s.io/apimachinery/pkg/runtime/serializer/recognizer
 k8s.io/apimachinery/pkg/util/framer
 k8s.io/apimachinery/pkg/util/mergepatch
 k8s.io/apimachinery/third_party/forked/golang/json
-# k8s.io/cli-runtime v0.0.0-20190221101700-11047e25a94a
+# k8s.io/cli-runtime v0.0.0-20190325194458-f2b4781c3ae1
 k8s.io/cli-runtime/pkg/genericclioptions
 k8s.io/cli-runtime/pkg/genericclioptions/printers
 k8s.io/cli-runtime/pkg/genericclioptions/resource

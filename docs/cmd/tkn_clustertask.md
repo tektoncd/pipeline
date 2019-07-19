@@ -2,7 +2,7 @@
 
 Manage clustertasks
 
-***Aliases**: t,clustertasks*
+***Aliases**: ct,clustertasks*
 
 ### Synopsis
 
