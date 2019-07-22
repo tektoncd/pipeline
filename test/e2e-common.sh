@@ -124,7 +124,9 @@ function run_yaml_tests() {
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  kubectl apply -f https://github.com/tektoncd/pipeline/releases/download/v0.4.0/release.yaml ||
+  local latestreleaseyaml=$(curl -s https://api.github.com/repos/tektoncd/pipeline/releases|python -c "import sys, json;x=json.load(sys.stdin);ass=x[0]['assets'];print([ x['browser_download_url'] for x in ass if x['name'] == 'release.yaml'][0])")
+  [[ -z ${latestreleaseyaml} ]] && fail_test "Could not get latest released release.yaml"
+  kubectl apply -f ${latestreleaseyaml} ||
     fail_test "Build pipeline installation failed"
 
   # Make sure thateveything is cleaned up in the current namespace.
