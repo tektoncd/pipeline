@@ -26,6 +26,14 @@ import (
 	"github.com/knative/pkg/configmap"
 	"github.com/knative/pkg/controller"
 	"github.com/knative/pkg/tracker"
+	"go.uber.org/zap"
+	"golang.org/x/xerrors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -36,13 +44,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"
-	"go.uber.org/zap"
-	"golang.org/x/xerrors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/cache"
 )
 
 const (
@@ -396,6 +397,82 @@ func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) erro
 }
 
 func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
+	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
+
+	if tr != nil {
+		//is a retry
+		addRetryHistory(tr)
+		clearStatus(tr)
+		tr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+		})
+		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).UpdateStatus(tr)
+	}
+
+	podTemplate := v1alpha1.CombinedPodTemplate(pr.Spec.PodTemplate, pr.Spec.NodeSelector, pr.Spec.Tolerations, pr.Spec.Affinity)
+	tr = &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            rprt.TaskRunName,
+			Namespace:       pr.Namespace,
+			OwnerReferences: pr.GetOwnerReference(),
+			Labels:          getTaskrunLabels(pr, rprt.PipelineTask.Name),
+			Annotations:     getTaskrunAnnotations(pr),
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name: rprt.ResolvedTaskResources.TaskName,
+				Kind: rprt.ResolvedTaskResources.Kind,
+			},
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: rprt.PipelineTask.Params,
+			},
+			ServiceAccount: getServiceAccount(pr, rprt.PipelineTask.Name),
+			Timeout:        getTaskRunTimeout(pr),
+			PodTemplate:    podTemplate,
+		}}
+
+	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
+
+	return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
+}
+
+func addRetryHistory(tr *v1alpha1.TaskRun) {
+	newStatus := *tr.Status.DeepCopy()
+	newStatus.RetriesStatus = nil
+	tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, newStatus)
+}
+
+func clearStatus(tr *v1alpha1.TaskRun) {
+	tr.Status.StartTime = nil
+	tr.Status.CompletionTime = nil
+	tr.Status.Results = nil
+	tr.Status.PodName = ""
+}
+
+func getTaskrunAnnotations(pr *v1alpha1.PipelineRun) map[string]string {
+	// Propagate annotations from PipelineRun to TaskRun.
+	annotations := make(map[string]string, len(pr.ObjectMeta.Annotations)+1)
+	for key, val := range pr.ObjectMeta.Annotations {
+		annotations[key] = val
+	}
+	return annotations
+}
+
+func getTaskrunLabels(pr *v1alpha1.PipelineRun, pipelineTaskName string) map[string]string {
+	// Propagate labels from PipelineRun to TaskRun.
+	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
+	for key, val := range pr.ObjectMeta.Labels {
+		labels[key] = val
+	}
+	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
+	if pipelineTaskName != "" {
+		labels[pipeline.GroupName+pipeline.PipelineTaskLabelKey] = pipelineTaskName
+	}
+	return labels
+}
+
+func getTaskRunTimeout(pr *v1alpha1.PipelineRun) *metav1.Duration {
 	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
 
 	var timeout time.Duration
@@ -419,82 +496,18 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 			taskRunTimeout = &metav1.Duration{Duration: timeout}
 		}
 	}
+	return taskRunTimeout
+}
 
+func getServiceAccount(pr *v1alpha1.PipelineRun, pipelineTaskName string) string {
 	// If service account is configured for a given PipelineTask, override PipelineRun's seviceAccount
 	serviceAccount := pr.Spec.ServiceAccount
 	for _, sa := range pr.Spec.ServiceAccounts {
-		if sa.TaskName == rprt.PipelineTask.Name {
+		if sa.TaskName == pipelineTaskName {
 			serviceAccount = sa.ServiceAccount
 		}
 	}
-
-	// Propagate labels from PipelineRun to TaskRun.
-	labels := make(map[string]string, len(pr.ObjectMeta.Labels)+1)
-	for key, val := range pr.ObjectMeta.Labels {
-		labels[key] = val
-	}
-	labels[pipeline.GroupName+pipeline.PipelineRunLabelKey] = pr.Name
-	if rprt.PipelineTask.Name != "" {
-		labels[pipeline.GroupName+pipeline.PipelineTaskLabelKey] = rprt.PipelineTask.Name
-	}
-
-	// Propagate annotations from PipelineRun to TaskRun.
-	annotations := make(map[string]string, len(pr.ObjectMeta.Annotations)+1)
-	for key, val := range pr.ObjectMeta.Annotations {
-		annotations[key] = val
-	}
-
-	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
-
-	if tr != nil {
-		//is a retry
-		addRetryHistory(tr)
-		clearStatus(tr)
-		tr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		})
-		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).UpdateStatus(tr)
-	}
-
-	podTemplate := v1alpha1.CombinedPodTemplate(pr.Spec.PodTemplate, pr.Spec.NodeSelector, pr.Spec.Tolerations, pr.Spec.Affinity)
-	tr = &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            rprt.TaskRunName,
-			Namespace:       pr.Namespace,
-			OwnerReferences: pr.GetOwnerReference(),
-			Labels:          labels,
-			Annotations:     annotations,
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: rprt.ResolvedTaskResources.TaskName,
-				Kind: rprt.ResolvedTaskResources.Kind,
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Params: rprt.PipelineTask.Params,
-			},
-			ServiceAccount: serviceAccount,
-			Timeout:        taskRunTimeout,
-			PodTemplate:    podTemplate,
-		}}
-
-	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
-
-	return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
-}
-
-func addRetryHistory(tr *v1alpha1.TaskRun) {
-	newStatus := *tr.Status.DeepCopy()
-	newStatus.RetriesStatus = nil
-	tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, newStatus)
-}
-
-func clearStatus(tr *v1alpha1.TaskRun) {
-	tr.Status.StartTime = nil
-	tr.Status.CompletionTime = nil
-	tr.Status.Results = nil
-	tr.Status.PodName = ""
+	return serviceAccount
 }
 
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
