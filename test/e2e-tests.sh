@@ -27,9 +27,6 @@ ci_run && {
   initialize $@
 }
 
-# FIXME(vdemeester) To Do later
-# install_pipeline_crd
-
 # Run the integration tests
 ci_run && {
   header "Running Go e2e tests"
