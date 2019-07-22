@@ -130,15 +130,29 @@ type PipelineResourceList struct {
 	Items           []PipelineResource `json:"items"`
 }
 
-// ResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
-func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
+// InputResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
+func InputResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 	switch r.Spec.Type {
 	case PipelineResourceTypeGit:
 		return NewGitResource(r)
-	case PipelineResourceTypeImage:
-		return NewImageResource(r)
 	case PipelineResourceTypeCluster:
 		return NewClusterResource(r)
+	default:
+		return InputOutputResourceFromType(r)
+	}
+}
+
+// OutputResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
+func OutputResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
+	// We currently have no output-only resources.
+	return InputOutputResourceFromType(r)
+}
+
+// InputOutputResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
+func InputOutputResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
+	switch r.Spec.Type {
+	case PipelineResourceTypeImage:
+		return NewImageResource(r)
 	case PipelineResourceTypeStorage:
 		return NewStorageResource(r)
 	case PipelineResourceTypePullRequest:

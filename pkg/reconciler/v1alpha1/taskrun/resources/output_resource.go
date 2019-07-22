@@ -35,7 +35,6 @@ var (
 	// an output that should be copied to the PVC
 	allowedOutputResources = map[v1alpha1.PipelineResourceType]bool{
 		v1alpha1.PipelineResourceTypeStorage: true,
-		v1alpha1.PipelineResourceTypeGit:     true,
 	}
 )
 

@@ -384,12 +384,12 @@ func (c *Reconciler) updateReady(pod *corev1.Pod) error {
 // TODO(dibyom): Refactor resource setup/templating logic to its own function in the resources package
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
 	ts := rtr.TaskSpec.DeepCopy()
-	inputResources, err := resourceImplBinding(rtr.Inputs)
+	inputResources, err := inputResourceImplBinding(rtr.Inputs)
 	if err != nil {
 		c.Logger.Errorf("Failed to initialize input resources: %v", err)
 		return nil, err
 	}
-	outputResources, err := resourceImplBinding(rtr.Outputs)
+	outputResources, err := outputResourceImplBinding(rtr.Outputs)
 	if err != nil {
 		c.Logger.Errorf("Failed to initialize output resources: %v", err)
 		return nil, err
@@ -515,15 +515,25 @@ func isExceededResourceQuotaError(err error) bool {
 	return err != nil && errors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
 }
 
+type resourceGetter func(r *v1alpha1.PipelineResource) (v1alpha1.PipelineResourceInterface, error)
+
 // resourceImplBinding maps pipeline resource names to the actual resource type implementations
-func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource) (map[string]v1alpha1.PipelineResourceInterface, error) {
+func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, getter resourceGetter) (map[string]v1alpha1.PipelineResourceInterface, error) {
 	p := make(map[string]v1alpha1.PipelineResourceInterface)
 	for rName, r := range resources {
-		i, err := v1alpha1.ResourceFromType(r)
+		i, err := getter(r)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
 		}
 		p[rName] = i
 	}
 	return p, nil
+}
+
+func inputResourceImplBinding(resources map[string]*v1alpha1.PipelineResource) (map[string]v1alpha1.PipelineResourceInterface, error) {
+	return resourceImplBinding(resources, v1alpha1.InputResourceFromType)
+}
+
+func outputResourceImplBinding(resources map[string]*v1alpha1.PipelineResource) (map[string]v1alpha1.PipelineResourceInterface, error) {
+	return resourceImplBinding(resources, v1alpha1.OutputResourceFromType)
 }

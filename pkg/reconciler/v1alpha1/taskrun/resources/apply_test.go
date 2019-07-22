@@ -160,7 +160,7 @@ var outputs = map[string]v1alpha1.PipelineResourceInterface{
 	"bucket":     gcsResource,
 }
 
-var gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+var gitResource, _ = v1alpha1.InputResourceFromType(&v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "git-resource",
 	},
@@ -173,7 +173,7 @@ var gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 })
 
-var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+var imageResource, _ = v1alpha1.InputResourceFromType(&v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "image-resource",
 	},
@@ -186,7 +186,7 @@ var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	},
 })
 
-var gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+var gcsResource, _ = v1alpha1.InputResourceFromType(&v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
 		Name: "gcs-resource",
 	},

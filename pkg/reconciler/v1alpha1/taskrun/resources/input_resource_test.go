@@ -189,7 +189,7 @@ func setUp(t *testing.T) {
 	}}
 	inputResourceInterfaces = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
-		ri, _ := v1alpha1.ResourceFromType(r)
+		ri, _ := v1alpha1.InputResourceFromType(r)
 		inputResourceInterfaces[r.Name] = ri
 	}
 }
@@ -406,52 +406,6 @@ func TestAddResourceToTask(t *testing.T) {
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
-			}},
-		},
-	}, {
-		desc: "git resource as input from previous task",
-		task: task,
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-from-git",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "the-git",
-						},
-						Name:  "gitspace",
-						Paths: []string{"prev-task-path"},
-					}},
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1alpha1.TaskSpec{
-			Inputs: gitInputs,
-			Steps: []corev1.Container{{
-				Name:    "create-dir-gitspace-mz4c7",
-				Image:   "override-with-bash-noop:latest",
-				Command: []string{"/ko-app/bash"},
-				Args:    []string{"-args", "mkdir -p /workspace/gitspace"},
-			}, {
-				Name:         "source-copy-gitspace-9l9zj",
-				Image:        "override-with-bash-noop:latest",
-				Command:      []string{"/ko-app/bash"},
-				Args:         []string{"-args", "cp -r prev-task-path/. /workspace/gitspace"},
-				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-			}},
-			Volumes: []corev1.Volume{{
-				Name: "pipelinerun-pvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
-				},
 			}},
 		},
 	}, {
@@ -878,15 +832,6 @@ func TestStorageInputResource(t *testing.T) {
 }
 
 func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "build-from-repo",
-			Namespace: "marshmallow",
-		},
-		Spec: v1alpha1.TaskSpec{
-			Inputs: gitInputs,
-		},
-	}
 	taskWithTargetPath := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "task-with-targetpath",
@@ -903,44 +848,6 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 		taskRun *v1alpha1.TaskRun
 		want    *v1alpha1.TaskSpec
 	}{{
-		desc: "git resource as input from previous task - copy to bucket",
-		task: task,
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-from-git",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1alpha1.TaskRunSpec{
-				Inputs: v1alpha1.TaskRunInputs{
-					Resources: []v1alpha1.TaskResourceBinding{{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "the-git",
-						},
-						Name:  "gitspace",
-						Paths: []string{"prev-task-path"},
-					}},
-				},
-			},
-		},
-		want: &v1alpha1.TaskSpec{
-			Inputs: gitInputs,
-			Steps: []corev1.Container{{
-				Name:    "artifact-dest-mkdir-gitspace-mssqb",
-				Image:   "override-with-bash-noop:latest",
-				Command: []string{"/ko-app/bash"},
-				Args:    []string{"-args", "mkdir -p /workspace/gitspace"},
-			}, {
-				Name:    "artifact-copy-from-gitspace-78c5n",
-				Image:   "override-with-gsutil-image:latest",
-				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gitspace"},
-			}},
-		},
-	}, {
 		desc: "storage resource as input from previous task - copy from bucket",
 		task: taskWithTargetPath,
 		taskRun: &v1alpha1.TaskRun{
@@ -967,12 +874,12 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 		want: &v1alpha1.TaskSpec{
 			Inputs: gcsInputs,
 			Steps: []corev1.Container{{
-				Name:    "artifact-dest-mkdir-workspace-6nl7g",
+				Name:    "artifact-dest-mkdir-workspace-mssqb",
 				Image:   "override-with-bash-noop:latest",
 				Command: []string{"/ko-app/bash"},
 				Args:    []string{"-args", "mkdir -p /workspace/gcs-dir"},
 			}, {
-				Name:    "artifact-copy-from-workspace-j2tds",
+				Name:    "artifact-copy-from-workspace-78c5n",
 				Image:   "override-with-gsutil-image:latest",
 				Command: []string{"/ko-app/gsutil"},
 				Args:    []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
@@ -1011,7 +918,7 @@ func mockResolveTaskResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pip
 			i = inputResourceInterfaces[name]
 			resolved[r.Name] = i
 		} else if r.ResourceSpec != nil {
-			i, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+			i, _ = v1alpha1.InputResourceFromType(&v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: r.Name,
 				},
