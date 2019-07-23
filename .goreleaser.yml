@@ -56,6 +56,7 @@ brews:
     test: |
       system "#{bin}/tkn", "--version"
     install: |
+      bin.install_symlink "tkn" => "kubectl-tkn"
       bin.install "tkn" => "tkn"
       output = Utils.popen_read("SHELL=bash #{bin}/tkn completion bash")
       (bash_completion/"tkn").write output
