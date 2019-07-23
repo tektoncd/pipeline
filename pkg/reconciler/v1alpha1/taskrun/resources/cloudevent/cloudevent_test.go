@@ -39,7 +39,7 @@ const (
 	defaultEventID                = "event1234"
 	defaultEventSourceURI         = "/taskrun/1234"
 	invalidEventSourceURI         = "htt%23p://_invalid_URI##"
-	defaultEventType              = TektonTaskRunUnknown
+	defaultEventType              = TektonTaskRunUnknownV1
 	taskRunName                   = "faketaskrunname"
 	invalidConditionSuccessStatus = "foobar"
 )
@@ -138,15 +138,15 @@ func TestSendTaskRunCloudEvent(t *testing.T) {
 	}{{
 		desc:          "send a cloud event with unknown status taskrun",
 		taskRun:       getTaskRunByCondition(corev1.ConditionUnknown),
-		wantEventType: TektonTaskRunUnknown,
+		wantEventType: TektonTaskRunUnknownV1,
 	}, {
 		desc:          "send a cloud event with successful status taskrun",
 		taskRun:       getTaskRunByCondition(corev1.ConditionTrue),
-		wantEventType: TektonTaskRunSuccessful,
+		wantEventType: TektonTaskRunSuccessfulV1,
 	}, {
 		desc:          "send a cloud event with unknown status taskrun",
 		taskRun:       getTaskRunByCondition(corev1.ConditionFalse),
-		wantEventType: TektonTaskRunFailed,
+		wantEventType: TektonTaskRunFailedV1,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			logger, _ := logging.NewLogger("", "")
@@ -163,7 +163,7 @@ func TestSendTaskRunCloudEvent(t *testing.T) {
 				if diff := cmp.Diff(string(c.wantEventType), gotEventType); diff != "" {
 					t.Errorf("Wrong Event Type (-want +got) = %s", diff)
 				}
-				wantData, _ := json.Marshal(c.taskRun)
+				wantData, _ := json.Marshal(NewTektonCloudEventData(c.taskRun))
 				gotData, err := event.DataBytes()
 				if err != nil {
 					t.Fatalf("Could not get data from event %v: %v", event, err)
