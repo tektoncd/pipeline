@@ -81,8 +81,8 @@ func TestStop(t *testing.T) {
 				Status: corev1.PodStatus{
 					Phase: tc.podPhase,
 					ContainerStatuses: []corev1.ContainerStatus{
-						corev1.ContainerStatus{},
-						corev1.ContainerStatus{
+						{},
+						{
 							Name:  tc.sidecarContainer.Name,
 							State: tc.sidecarState,
 						},

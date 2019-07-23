@@ -76,10 +76,8 @@ type ConditionSpec struct {
 	Params []ParamSpec `json:"params,omitempty"`
 }
 
-
 // ConditionCheck represents a single evaluation of a Condition step.
 type ConditionCheck TaskRun
-
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -99,4 +97,3 @@ func NewConditionCheck(tr *TaskRun) *ConditionCheck {
 	cc := ConditionCheck(*tr)
 	return &cc
 }
-

@@ -177,7 +177,7 @@ func (tr *TaskRunStatus) InitializeCloudEvents(targets []string) {
 	// len(nil slice) is 0
 	if len(targets) > 0 {
 		initialState := CloudEventDeliveryState{
-			Condition: CloudEventConditionUnknown,
+			Condition:  CloudEventConditionUnknown,
 			RetryCount: 0,
 		}
 		events := make([]CloudEventDelivery, len(targets))
@@ -201,7 +201,7 @@ type StepState struct {
 // delivery.
 type CloudEventDelivery struct {
 	// Target points to an addressable
-	Target string `json:"target,omitempty"`
+	Target string                  `json:"target,omitempty"`
 	Status CloudEventDeliveryState `json:"status,omitempty"`
 }
 

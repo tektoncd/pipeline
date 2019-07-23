@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 )
+
 func TestCondition_Validate(t *testing.T) {
 	c := Condition{
 		ObjectMeta: metav1.ObjectMeta{
@@ -50,24 +51,24 @@ func TestCondition_Validate(t *testing.T) {
 }
 
 func TestCondition_Invalidate(t *testing.T) {
-	tcs := []struct{
-		name string
-		cond Condition
+	tcs := []struct {
+		name          string
+		cond          Condition
 		expectedError apis.FieldError
 	}{{
 		name: "invalid meta",
 		cond: Condition{
 			ObjectMeta: metav1.ObjectMeta{
-				Name : "invalid.,name",
+				Name: "invalid.,name",
 			},
 		},
 		expectedError: apis.FieldError{
 			Message: "Invalid resource name: special character . must not be present",
-			Paths: []string{"metadata.name"},
+			Paths:   []string{"metadata.name"},
 		},
-	},{
+	}, {
 		name: "no image",
-		cond:Condition{
+		cond: Condition{
 			ObjectMeta: metav1.ObjectMeta{Name: "cond"},
 			Spec: ConditionSpec{
 				Check: corev1.Container{},
@@ -75,7 +76,7 @@ func TestCondition_Invalidate(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: "missing field(s)",
-			Paths: []string{"Spec.Check.Image"},
+			Paths:   []string{"Spec.Check.Image"},
 		},
 	}}
 
