@@ -98,7 +98,10 @@ func AddOutputResources(
 		// if resource is declared in input then copy outputs to pvc
 		// To build copy step it needs source path(which is targetpath of input resourcemap) from task input source
 		sourcePath := inputResourceMap[boundResource.Name]
-		if sourcePath == "" {
+		if sourcePath != "" {
+			logger.Warn(`This task uses the same resource as an input and output. The behavior of this will change in a future release.
+		See https://github.com/tektoncd/pipeline/issues/1118 for more information.`)
+		} else {
 			if output.TargetPath == "" {
 				sourcePath = filepath.Join(outputDir, boundResource.Name)
 			} else {
