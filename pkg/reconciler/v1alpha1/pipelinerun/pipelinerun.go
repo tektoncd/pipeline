@@ -477,7 +477,7 @@ func getTaskRunTimeout(pr *v1alpha1.PipelineRun) *metav1.Duration {
 
 	var timeout time.Duration
 	if pr.Spec.Timeout == nil {
-		timeout = config.DefaultTimeoutMinutes
+		timeout = config.DefaultTimeoutMinutes * time.Minute
 	} else {
 		timeout = pr.Spec.Timeout.Duration
 	}
