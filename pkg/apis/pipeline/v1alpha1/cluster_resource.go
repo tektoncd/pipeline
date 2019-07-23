@@ -138,13 +138,11 @@ func (s ClusterResource) String() string {
 	return string(json)
 }
 
-func (s *ClusterResource) GetUploadContainerSpec() ([]corev1.Container, error) {
+func (s *ClusterResource) GetUploadContainerSpec(_ string) ([]corev1.Container, error) {
 	return nil, nil
 }
 
-func (s *ClusterResource) SetDestinationDirectory(path string) {
-}
-func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
+func (s *ClusterResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error) {
 	var envVars []corev1.EnvVar
 	for _, sec := range s.Secrets {
 		ev := corev1.EnvVar{

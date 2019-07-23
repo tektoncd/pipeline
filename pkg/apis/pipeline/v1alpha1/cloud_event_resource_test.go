@@ -94,7 +94,7 @@ func Test_CloudEventDownloadContainerSpec(t *testing.T) {
 		TargetURI: "http://fake-uri",
 		Type:      v1alpha1.PipelineResourceTypeCloudEvent,
 	}
-	d, e := r.GetDownloadContainerSpec()
+	d, e := r.GetDownloadContainerSpec("")
 	if d != nil {
 		t.Errorf("Did not expect a download container for CloudEventResource")
 	}
@@ -109,7 +109,7 @@ func Test_CloudEventUploadContainerSpec(t *testing.T) {
 		TargetURI: "http://fake-uri",
 		Type:      v1alpha1.PipelineResourceTypeCloudEvent,
 	}
-	d, e := r.GetUploadContainerSpec()
+	d, e := r.GetUploadContainerSpec("")
 	if d != nil {
 		t.Errorf("Did not expect an upload container for CloudEventResource")
 	}

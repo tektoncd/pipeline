@@ -81,17 +81,13 @@ func (s *CloudEventResource) Replacements() map[string]string {
 }
 
 // GetUploadContainerSpec returns nothing as the cloud event is sent by the controller once the POD execution is completed
-func (s *CloudEventResource) GetUploadContainerSpec() ([]corev1.Container, error) {
+func (s *CloudEventResource) GetUploadContainerSpec(_ string) ([]corev1.Container, error) {
 	return nil, nil
 }
 
 // GetDownloadContainerSpec returns nothing, cloud events cannot be used as input resource
-func (s *CloudEventResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
+func (s *CloudEventResource) GetDownloadContainerSpec(_ string) ([]corev1.Container, error) {
 	return nil, nil
-}
-
-// SetDestinationDirectory required by the interface but not really used
-func (s *CloudEventResource) SetDestinationDirectory(path string) {
 }
 
 // GetUploadVolumeSpec - no upload from volume for CloudEvent resource

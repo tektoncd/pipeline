@@ -121,7 +121,6 @@ func Test_BuildGCSGetReplacements(t *testing.T) {
 		"name":     "gcs-resource",
 		"type":     "build-gcs",
 		"location": "gs://fake-bucket",
-		"path":     "",
 	}
 	if d := cmp.Diff(r.Replacements(), expectedReplacementMap); d != "" {
 		t.Errorf("BuildGCS Replacement map mismatch: %s", d)
@@ -137,10 +136,9 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 	}{{
 		name: "valid download protected buckets",
 		resource: &v1alpha1.BuildGCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket",
-			DestinationDir: "/workspace",
-			ArtifactType:   "Archive",
+			Name:         "gcs-valid",
+			Location:     "gs://some-bucket",
+			ArtifactType: "Archive",
 		},
 		wantContainers: []corev1.Container{{
 			Name:    "create-dir-gcs-valid-9l9zj",
@@ -153,19 +151,11 @@ func Test_BuildGCSGetDownloadContainerSpec(t *testing.T) {
 			Args: []string{"--type", "Archive", "--location", "gs://some-bucket",
 				"--dest_dir", "/workspace"},
 		}},
-	}, {
-		name: "invalid no destination directory set",
-		resource: &v1alpha1.BuildGCSResource{
-			Name:         "gcs-invalid",
-			Location:     "gs://some-bucket",
-			ArtifactType: "Archive",
-		},
-		wantErr: true,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
-			gotContainers, err := tc.resource.GetDownloadContainerSpec()
+			gotContainers, err := tc.resource.GetDownloadContainerSpec("/workspace")
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
@@ -185,36 +175,27 @@ func Test_BuildGCSGetUploadContainerSpec(t *testing.T) {
 	}{{
 		name: "valid upload to protected buckets with directory paths",
 		resource: &v1alpha1.BuildGCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket/manifest.json",
-			DestinationDir: "/workspace",
-			ArtifactType:   "Manifest",
+			Name:         "gcs-valid",
+			Location:     "gs://some-bucket/manifest.json",
+			ArtifactType: "Manifest",
 		},
 		wantContainers: []corev1.Container{{
-			Name:  "storage-upload-gcs-valid-9l9zj",
+			Name:  "storage-upload-gcs-valid-mssqb",
 			Image: "gcr.io/cloud-builders/gcs-uploader:latest",
 			Args:  []string{"--location", "gs://some-bucket/manifest.json", "--dir", "/workspace"},
 		}},
 	}, {
 		name: "invalid upload to protected buckets with single file",
 		resource: &v1alpha1.BuildGCSResource{
-			Name:           "gcs-valid",
-			ArtifactType:   "Archive",
-			Location:       "gs://some-bucket",
-			DestinationDir: "/workspace/results.tar",
-		},
-		wantErr: true,
-	}, {
-		name: "invalid upload with no source directory path",
-		resource: &v1alpha1.BuildGCSResource{
-			Name:     "gcs-invalid",
-			Location: "gs://some-bucket/manifest.json",
+			Name:         "gcs-valid",
+			ArtifactType: "Archive",
+			Location:     "gs://some-bucket",
 		},
 		wantErr: true,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.resource.GetUploadContainerSpec()
+			gotContainers, err := tc.resource.GetUploadContainerSpec("/workspace")
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
