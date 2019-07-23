@@ -75,5 +75,6 @@ func InitParams(p cli.Params, cmd *cobra.Command) error {
 	if ns != "" {
 		p.SetNamespace(ns)
 	}
+
 	return nil
 }

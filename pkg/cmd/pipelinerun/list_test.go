@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"fmt"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
@@ -112,6 +113,42 @@ func TestListPipelineRuns(t *testing.T) {
 				"pr1-1",
 				"pr2-2",
 				"pr2-1",
+				"",
+			},
+		},
+		{
+			name:    "limit pipelineruns returned to 1",
+			command: command(t, prs, clock.Now()),
+			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", 1)},
+			expected: []string{
+				"NAME    STARTED          DURATION   STATUS      ",
+				"pr1-1   59 minutes ago   1 minute   Succeeded   ",
+				"",
+			},
+		},
+		{
+			name:    "limit pipelineruns negative case",
+			command: command(t, prs, clock.Now()),
+			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", -1)},
+			expected: []string{
+				"",
+			},
+		},
+		{
+			name:    "limit pipelineruns greater than maximum case",
+			command: command(t, prs, clock.Now()),
+			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", 4)},
+			expected: []string{
+				"",
+			},
+		},
+		{
+			name:    "limit pipelineruns with output flag set",
+			command: command(t, prs, clock.Now()),
+			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "-l", fmt.Sprintf("%d", 2)},
+			expected: []string{
+				"pr1-1",
+				"pr2-2",
 				"",
 			},
 		},

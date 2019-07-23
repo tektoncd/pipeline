@@ -35,7 +35,13 @@ const (
 	emptyMsg = "No pipelineruns found"
 )
 
+type ListOptions struct {
+	Limit int
+}
+
 func listCommand(p cli.Params) *cobra.Command {
+	
+	opts := &ListOptions{Limit: 0}
 	f := cliopts.NewPrintFlags("list")
 	eg := `
 # List all PipelineRuns of Pipeline name 'foo'
@@ -57,7 +63,12 @@ tkn pr list -n foo",
 				pipeline = args[0]
 			}
 
-			prs, err := list(p, pipeline)
+			if opts.Limit < 0 {
+				fmt.Fprintf(os.Stderr, "Limit was %d but must be a positive number\n", opts.Limit)
+				return nil
+			} 
+
+			prs, err := list(p, pipeline, opts.Limit)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to list pipelineruns from %s namespace \n", p.Namespace())
 				return err
@@ -69,14 +80,18 @@ tkn pr list -n foo",
 				return err
 			}
 
-			if output != "" {
+			if output != "" && prs != nil {
 				return printer.PrintObject(cmd.OutOrStdout(), prs, f)
 			}
 			stream := &cli.Stream{
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
-			err = printFormatted(stream, prs, p.Time())
+
+			if prs != nil {
+				err = printFormatted(stream, prs, p.Time())
+			}
+			
 			if err != nil {
 				fmt.Fprint(os.Stderr, "Failed to print Pipelineruns \n")
 				return err
@@ -86,11 +101,12 @@ tkn pr list -n foo",
 	}
 
 	f.AddFlags(c)
+	c.Flags().IntVarP(&opts.Limit, "limit", "l", 0, "limit pipelineruns listed (default: return all pipelineruns)")
 
 	return c
 }
 
-func list(p cli.Params, pipeline string) (*v1alpha1.PipelineRunList, error) {
+func list(p cli.Params, pipeline string, limit int) (*v1alpha1.PipelineRunList, error) {
 	cs, err := p.Clients()
 	if err != nil {
 		return nil, err
@@ -109,8 +125,21 @@ func list(p cli.Params, pipeline string) (*v1alpha1.PipelineRunList, error) {
 		return nil, err
 	}
 
-	if len(prs.Items) != 0 {
+	prslen := len(prs.Items)
+
+	if prslen != 0 {
 		sort.Sort(byStartTime(prs.Items))
+	}
+
+	// Limit after sort since pipelineruns are not in correct order until sorted
+	if limit > prslen {
+		fmt.Fprintf(os.Stderr, "Limit was %d but cannot be greater than %d\n", limit, prslen)
+		return nil, err
+	}
+
+	// Return all pipelineruns if limit is 0 or is same as prslen
+	if limit != 0 && prslen > limit {
+		prs.Items = prs.Items[0:limit]
 	}
 
 	// NOTE: this is required for -o json|yaml to work properly since
