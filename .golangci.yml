@@ -7,3 +7,7 @@ run:
 linters-settings:
   errcheck:
     exclude: .errcheck.txt
+linters:
+  enable:
+  - errcheck
+  - gofmt

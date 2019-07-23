@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/google/go-cmp/cmp/cmpopts"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-github/github"
@@ -284,7 +285,7 @@ func TestUpload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantComments := []*github.IssueComment{comment, &github.IssueComment{
+	wantComments := []*github.IssueComment{comment, {
 		ID:   github.Int64(2),
 		Body: github.String(tektonPR.Comments[1].Text),
 	}}
@@ -465,17 +466,17 @@ func TestUpdateExistingComments(t *testing.T) {
 
 	comments := map[int64]*Comment{
 		// Non-existant comment. Should be ignored.
-		8675309: &Comment{
+		8675309: {
 			ID:   8675309,
 			Text: comment.GetBody(),
 		},
 		// Comment that fails to update. Should not affect later updates.
-		comment2.GetID(): &Comment{
+		comment2.GetID(): {
 			ID:   comment2.GetID(),
 			Text: ErrorKeyword,
 		},
 		// Normal update.
-		comment3.GetID(): &Comment{
+		comment3.GetID(): {
 			ID:   comment3.GetID(),
 			Text: comment3.GetBody(),
 		},
