@@ -53,11 +53,10 @@ const (
 // BuildGCSResource does incremental uploads for files in  directory.
 
 type BuildGCSResource struct {
-	Name           string
-	Type           PipelineResourceType
-	Location       string
-	DestinationDir string
-	ArtifactType   GCSArtifactType
+	Name         string
+	Type         PipelineResourceType
+	Location     string
+	ArtifactType GCSArtifactType
 }
 
 // NewBuildGCSResource creates a new BuildGCS resource to pass to a Task
@@ -116,26 +115,19 @@ func (s *BuildGCSResource) Replacements() map[string]string {
 		"name":     s.Name,
 		"type":     string(s.Type),
 		"location": s.Location,
-		"path":     s.DestinationDir,
 	}
 }
 
-// SetDestinationDirectory sets the destination directory at runtime like where is the resource going to be copied to
-func (s *BuildGCSResource) SetDestinationDirectory(destDir string) { s.DestinationDir = destDir }
-
 // GetDownloadContainerSpec returns an array of container specs to download gcs storage object
-func (s *BuildGCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
-	if s.DestinationDir == "" {
-		return nil, xerrors.Errorf("BuildGCSResource: Expect Destination Directory param to be set %s", s.Name)
-	}
+func (s *BuildGCSResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error) {
 	args := []string{"--type", string(s.ArtifactType), "--location", s.Location}
 	// dest_dir is the destination directory for GCS files to be copies"
-	if s.DestinationDir != "" {
-		args = append(args, "--dest_dir", s.DestinationDir)
+	if sourcePath != "" {
+		args = append(args, "--dest_dir", sourcePath)
 	}
 
 	return []corev1.Container{
-		CreateDirContainer(s.Name, s.DestinationDir), {
+		CreateDirContainer(s.Name, sourcePath), {
 			Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Image: *buildGCSFetcherImage,
 			Args:  args,
@@ -144,14 +136,14 @@ func (s *BuildGCSResource) GetDownloadContainerSpec() ([]corev1.Container, error
 
 // GetUploadContainerSpec gets container spec for gcs resource to be uploaded like
 // set environment variable from secret params and set volume mounts for those secrets
-func (s *BuildGCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
+func (s *BuildGCSResource) GetUploadContainerSpec(sourcePath string) ([]corev1.Container, error) {
 	if s.ArtifactType != GCSManifest {
 		return nil, xerrors.Errorf("BuildGCSResource: Can only upload Artifacts of type Manifest: %s", s.Name)
 	}
-	if s.DestinationDir == "" {
+	if sourcePath == "" {
 		return nil, xerrors.Errorf("BuildGCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
-	args := []string{"--location", s.Location, "--dir", s.DestinationDir}
+	args := []string{"--location", s.Location, "--dir", sourcePath}
 
 	return []corev1.Container{{
 		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-upload-%s", s.Name)),

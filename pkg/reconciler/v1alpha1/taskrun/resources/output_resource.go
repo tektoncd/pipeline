@@ -107,9 +107,8 @@ func AddOutputResources(
 				sourcePath = output.TargetPath
 			}
 		}
-		resource.SetDestinationDirectory(sourcePath)
 
-		resourceContainers, err = resource.GetUploadContainerSpec()
+		resourceContainers, err = resource.GetUploadContainerSpec(sourcePath)
 		if err != nil {
 			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 		}

@@ -63,26 +63,26 @@ type testcase struct {
 	out []corev1.Container
 }
 
+const workspace = "/workspace"
+
 func containerTestCases(mode string) []testcase {
 	return []testcase{{
 		in: &v1alpha1.PullRequestResource{
-			Name:           "nocreds",
-			DestinationDir: "/workspace",
-			URL:            "https://example.com",
+			Name: "nocreds",
+			URL:  "https://example.com",
 		},
 		out: []corev1.Container{{
 			Name:       "pr-source-nocreds-9l9zj",
 			Image:      "override-with-pr:latest",
 			WorkingDir: v1alpha1.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
-			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
+			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode},
 			Env:        []corev1.EnvVar{},
 		}},
 	}, {
 		in: &v1alpha1.PullRequestResource{
-			Name:           "creds",
-			DestinationDir: "/workspace",
-			URL:            "https://example.com",
+			Name: "creds",
+			URL:  "https://example.com",
 			Secrets: []v1alpha1.SecretParam{{
 				FieldName:  "githubToken",
 				SecretName: "github-creds",
@@ -115,7 +115,7 @@ func TestPullRequest_GetDownloadContainerSpec(t *testing.T) {
 
 	for _, tc := range containerTestCases("download") {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
-			got, err := tc.in.GetDownloadContainerSpec()
+			got, err := tc.in.GetDownloadContainerSpec(workspace)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -131,7 +131,7 @@ func TestPullRequest_GetUploadContainerSpec(t *testing.T) {
 
 	for _, tc := range containerTestCases("upload") {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
-			got, err := tc.in.GetUploadContainerSpec()
+			got, err := tc.in.GetUploadContainerSpec(workspace)
 			if err != nil {
 				t.Fatal(err)
 			}

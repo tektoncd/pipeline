@@ -156,7 +156,7 @@ func Test_ClusterResource_GetDownloadContainerSpec(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.clusterResource.GetDownloadContainerSpec()
+			gotContainers, err := tc.clusterResource.GetDownloadContainerSpec("")
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}

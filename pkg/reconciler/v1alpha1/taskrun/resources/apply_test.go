@@ -28,6 +28,20 @@ import (
 )
 
 var simpleTaskSpec = &v1alpha1.TaskSpec{
+	Inputs: &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{
+			{
+				Name: "workspace",
+			},
+		},
+	},
+	Outputs: &v1alpha1.Outputs{
+		Resources: []v1alpha1.TaskResource{
+			{
+				Name: "imageToUse",
+			},
+		},
+	},
 	Steps: []corev1.Container{{
 		Name:  "foo",
 		Image: "${inputs.params.myimage}",
@@ -135,6 +149,11 @@ var volumeMountTaskSpec = &v1alpha1.TaskSpec{
 }
 
 var gcsTaskSpec = &v1alpha1.TaskSpec{
+	Outputs: &v1alpha1.Outputs{
+		Resources: []v1alpha1.TaskResource{{
+			Name: "bucket",
+		}},
+	},
 	Steps: []corev1.Container{{
 		Name:  "foobar",
 		Image: "someImage",
@@ -340,11 +359,6 @@ func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.
 	ts = ts.DeepCopy()
 	f(ts)
 	return ts
-}
-
-func setup() {
-	inputs["workspace"].SetDestinationDirectory("/workspace/workspace")
-	outputs["bucket"].SetDestinationDirectory("/workspace/outputs/bucket")
 }
 
 func TestApplyParameters(t *testing.T) {
@@ -595,7 +609,9 @@ func TestApplyResources(t *testing.T) {
 			r:    make(map[string]v1alpha1.PipelineResourceInterface),
 			rStr: "inputs",
 		},
-		want: simpleTaskSpec,
+		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].WorkingDir = "/workspace/workspace"
+		}),
 	}, {
 		name: "input resource specified",
 		args: args{
@@ -615,6 +631,7 @@ func TestApplyResources(t *testing.T) {
 			rStr: "outputs",
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
 		}),
 	}, {
@@ -625,12 +642,11 @@ func TestApplyResources(t *testing.T) {
 			rStr: "outputs",
 		},
 		want: applyMutation(gcsTaskSpec, func(spec *v1alpha1.TaskSpec) {
-			spec.Steps[0].Args = []string{"/workspace/outputs/bucket"}
+			spec.Steps[0].Args = []string{"/workspace/output/bucket"}
 		}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setup()
 			got := resources.ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
 			if d := cmp.Diff(got, tt.want); d != "" {
 				t.Errorf("ApplyResources() diff %s", d)

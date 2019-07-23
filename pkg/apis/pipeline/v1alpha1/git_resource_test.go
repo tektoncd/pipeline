@@ -100,11 +100,10 @@ func Test_Valid_NewGitResource(t *testing.T) {
 
 func Test_GitResource_Replacements(t *testing.T) {
 	r := &v1alpha1.GitResource{
-		Name:       "git-resource",
-		Type:       v1alpha1.PipelineResourceTypeGit,
-		URL:        "git@github.com:test/test.git",
-		Revision:   "master",
-		TargetPath: "/test/test",
+		Name:     "git-resource",
+		Type:     v1alpha1.PipelineResourceTypeGit,
+		URL:      "git@github.com:test/test.git",
+		Revision: "master",
 	}
 
 	want := map[string]string{
@@ -112,7 +111,6 @@ func Test_GitResource_Replacements(t *testing.T) {
 		"type":     string(v1alpha1.PipelineResourceTypeGit),
 		"url":      "git@github.com:test/test.git",
 		"revision": "master",
-		"path":     "/test/test",
 	}
 
 	got := r.Replacements()
@@ -126,11 +124,10 @@ func Test_GitResource_GetDownloadContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
 	r := &v1alpha1.GitResource{
-		Name:       "git-resource",
-		Type:       v1alpha1.PipelineResourceTypeGit,
-		URL:        "git@github.com:test/test.git",
-		Revision:   "master",
-		TargetPath: "/test/test",
+		Name:     "git-resource",
+		Type:     v1alpha1.PipelineResourceTypeGit,
+		URL:      "git@github.com:test/test.git",
+		Revision: "master",
 	}
 
 	want := []corev1.Container{{
@@ -148,7 +145,7 @@ func Test_GitResource_GetDownloadContainerSpec(t *testing.T) {
 		WorkingDir: "/workspace",
 	}}
 
-	got, err := r.GetDownloadContainerSpec()
+	got, err := r.GetDownloadContainerSpec("/test/test")
 	if err != nil {
 		t.Fatalf("Unexpected error getting DownloadContainerSpec: %s", err)
 	}

@@ -87,7 +87,6 @@ func AddInputResource(
 			copyStepsFromPrevTasks []corev1.Container
 			dPath                  = destinationPath(input.Name, input.TargetPath)
 		)
-		resource.SetDestinationDirectory(dPath)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
@@ -112,7 +111,7 @@ func AddInputResource(
 			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
 			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
 		} else {
-			resourceContainers, err = resource.GetDownloadContainerSpec()
+			resourceContainers, err = resource.GetDownloadContainerSpec(dPath)
 			if err != nil {
 				return nil, xerrors.Errorf("task %q invalid resource download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 			}

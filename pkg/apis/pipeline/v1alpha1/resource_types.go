@@ -56,11 +56,10 @@ type PipelineResourceInterface interface {
 	GetName() string
 	GetType() PipelineResourceType
 	Replacements() map[string]string
-	GetDownloadContainerSpec() ([]corev1.Container, error)
-	GetUploadContainerSpec() ([]corev1.Container, error)
+	GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error)
+	GetUploadContainerSpec(sourcePath string) ([]corev1.Container, error)
 	GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
 	GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
-	SetDestinationDirectory(string)
 }
 
 // SecretParam indicates which secret can be used to populate a field of the resource

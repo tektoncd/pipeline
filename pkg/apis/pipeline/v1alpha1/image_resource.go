@@ -76,17 +76,13 @@ func (s *ImageResource) Replacements() map[string]string {
 }
 
 // GetUploadContainerSpec returns the spec for the upload container
-func (s *ImageResource) GetUploadContainerSpec() ([]corev1.Container, error) {
+func (s *ImageResource) GetUploadContainerSpec(_ string) ([]corev1.Container, error) {
 	return nil, nil
 }
 
 // GetDownloadContainerSpec returns the spec for the download container
-func (s *ImageResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
+func (s *ImageResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error) {
 	return nil, nil
-}
-
-// SetDestinationDirectory sets the destination for the resource
-func (s *ImageResource) SetDestinationDirectory(path string) {
 }
 
 // GetOutputImageDir return the path to get the index.json file

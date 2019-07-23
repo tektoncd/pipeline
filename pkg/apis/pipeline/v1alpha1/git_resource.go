@@ -43,8 +43,7 @@ type GitResource struct {
 	// Git revision (branch, tag, commit SHA or ref) to clone.  See
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
-	Revision   string `json:"revision"`
-	TargetPath string
+	Revision string `json:"revision"`
 }
 
 // NewGitResource creates a new git resource to pass to a Task
@@ -93,16 +92,15 @@ func (s *GitResource) Replacements() map[string]string {
 		"type":     string(s.Type),
 		"url":      s.URL,
 		"revision": s.Revision,
-		"path":     s.TargetPath,
 	}
 }
 
-func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
+func (s *GitResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error) {
 	args := []string{"-url", s.URL,
 		"-revision", s.Revision,
 	}
 
-	args = append(args, []string{"-path", s.TargetPath}...)
+	args = append(args, []string{"-path", sourcePath}...)
 
 	return []corev1.Container{{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
@@ -113,11 +111,7 @@ func (s *GitResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
 	}}, nil
 }
 
-func (s *GitResource) SetDestinationDirectory(path string) {
-	s.TargetPath = path
-}
-
-func (s *GitResource) GetUploadContainerSpec() ([]corev1.Container, error) {
+func (s *GitResource) GetUploadContainerSpec(sourcePath string) ([]corev1.Container, error) {
 	return nil, nil
 }
 

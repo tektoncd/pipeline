@@ -42,7 +42,6 @@ type PullRequestResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
 
-	DestinationDir string `json:"destinationDir"`
 	// GitHub URL pointing to the pull request.
 	// Example: https://github.com/owner/repo/pulls/1
 	URL string `json:"url"`
@@ -94,16 +93,16 @@ func (s *PullRequestResource) Replacements() map[string]string {
 	}
 }
 
-func (s *PullRequestResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
-	return s.getContainerSpec("download")
+func (s *PullRequestResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error) {
+	return s.getContainerSpec("download", sourcePath)
 }
 
-func (s *PullRequestResource) GetUploadContainerSpec() ([]corev1.Container, error) {
-	return s.getContainerSpec("upload")
+func (s *PullRequestResource) GetUploadContainerSpec(sourcePath string) ([]corev1.Container, error) {
+	return s.getContainerSpec("upload", sourcePath)
 }
 
-func (s *PullRequestResource) getContainerSpec(mode string) ([]corev1.Container, error) {
-	args := []string{"-url", s.URL, "-path", s.DestinationDir, "-mode", mode}
+func (s *PullRequestResource) getContainerSpec(mode string, sourcePath string) ([]corev1.Container, error) {
+	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
 
 	evs := []corev1.EnvVar{}
 	for _, sec := range s.Secrets {
@@ -132,11 +131,6 @@ func (s *PullRequestResource) getContainerSpec(mode string) ([]corev1.Container,
 		WorkingDir: WorkspaceDir,
 		Env:        evs,
 	}}, nil
-}
-
-// SetDestinationDirectory sets the destination directory at runtime like where is the resource going to be copied to
-func (s *PullRequestResource) SetDestinationDirectory(dir string) {
-	s.DestinationDir = dir
 }
 
 func (s *PullRequestResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {

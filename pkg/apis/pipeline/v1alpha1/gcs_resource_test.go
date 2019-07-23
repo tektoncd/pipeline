@@ -117,7 +117,6 @@ func Test_GCSGetReplacements(t *testing.T) {
 		"name":     "gcs-resource",
 		"type":     "gcs",
 		"location": "gs://fake-bucket",
-		"path":     "",
 	}
 	if d := cmp.Diff(gcsResource.Replacements(), expectedReplacementMap); d != "" {
 		t.Errorf("GCS Replacement map mismatch: %s", d)
@@ -156,10 +155,9 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 	}{{
 		name: "valid download protected buckets",
 		gcsResource: &v1alpha1.GCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket",
-			DestinationDir: "/workspace",
-			TypeDir:        true,
+			Name:     "gcs-valid",
+			Location: "gs://some-bucket",
+			TypeDir:  true,
 			Secrets: []v1alpha1.SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
@@ -188,9 +186,8 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 	}, {
 		name: "duplicate secret mount paths",
 		gcsResource: &v1alpha1.GCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket",
-			DestinationDir: "/workspace",
+			Name:     "gcs-valid",
+			Location: "gs://some-bucket",
 			Secrets: []v1alpha1.SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "fieldName",
@@ -220,17 +217,10 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 				MountPath: "/var/secret/secretName",
 			}},
 		}},
-	}, {
-		name: "invalid no destination directory set",
-		gcsResource: &v1alpha1.GCSResource{
-			Name:     "gcs-invalid",
-			Location: "gs://some-bucket",
-		},
-		wantErr: true,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.gcsResource.GetDownloadContainerSpec()
+			gotContainers, err := tc.gcsResource.GetDownloadContainerSpec("/workspace")
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
@@ -252,10 +242,9 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 	}{{
 		name: "valid upload to protected buckets with directory paths",
 		gcsResource: &v1alpha1.GCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket",
-			DestinationDir: "/workspace/",
-			TypeDir:        true,
+			Name:     "gcs-valid",
+			Location: "gs://some-bucket",
+			TypeDir:  true,
 			Secrets: []v1alpha1.SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
@@ -276,9 +265,8 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 	}, {
 		name: "duplicate secret mount paths",
 		gcsResource: &v1alpha1.GCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket",
-			DestinationDir: "/workspace",
+			Name:     "gcs-valid",
+			Location: "gs://some-bucket",
 			Secrets: []v1alpha1.SecretParam{{
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
@@ -305,10 +293,9 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 	}, {
 		name: "valid upload to protected buckets with single file",
 		gcsResource: &v1alpha1.GCSResource{
-			Name:           "gcs-valid",
-			Location:       "gs://some-bucket",
-			DestinationDir: "/workspace/",
-			TypeDir:        false,
+			Name:     "gcs-valid",
+			Location: "gs://some-bucket",
+			TypeDir:  false,
 		},
 		wantContainers: []corev1.Container{{
 			Name:    "upload-gcs-valid-mssqb",
@@ -316,17 +303,10 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 			Command: []string{"/ko-app/gsutil"},
 			Args:    []string{"-args", "cp /workspace/* gs://some-bucket"},
 		}},
-	}, {
-		name: "invalid upload with no source directory path",
-		gcsResource: &v1alpha1.GCSResource{
-			Name:     "gcs-invalid",
-			Location: "gs://some-bucket",
-		},
-		wantErr: true,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.gcsResource.GetUploadContainerSpec()
+			gotContainers, err := tc.gcsResource.GetUploadContainerSpec("/workspace/")
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
