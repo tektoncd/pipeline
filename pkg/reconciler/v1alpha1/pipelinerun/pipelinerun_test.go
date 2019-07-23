@@ -26,6 +26,7 @@ import (
 	duckv1beta1 "github.com/knative/pkg/apis/duck/v1beta1"
 	"github.com/knative/pkg/configmap"
 	rtesting "github.com/knative/pkg/reconciler/testing"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ktesting "k8s.io/client-go/testing"
@@ -1004,5 +1005,52 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 
 	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+	}
+}
+
+func TestGetTaskRunTimeout(t *testing.T) {
+	prName := "pipelinerun-timeouts"
+	ns := "foo"
+	p := "pipeline"
+
+	tcs := []struct {
+		name     string
+		pr       *v1alpha1.PipelineRun
+		expected *metav1.Duration
+	}{{
+		name: "nil timeout duration",
+		pr: tb.PipelineRun(prName, ns,
+			tb.PipelineRunSpec(p, tb.PipelineRunNilTimeout),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		expected: &metav1.Duration{Duration: 60 * time.Minute},
+	}, {
+		name: "timeout specified in pr",
+		pr: tb.PipelineRun(prName, ns,
+			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(20*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		expected: &metav1.Duration{Duration: 20 * time.Minute},
+	}, {
+		name: "0 timeout duration",
+		pr: tb.PipelineRun(prName, ns,
+			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(0*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now())),
+		),
+		expected: &metav1.Duration{Duration: 0 * time.Minute},
+	}, {
+		name: "taskrun being created after timeout expired",
+		pr: tb.PipelineRun(prName, ns,
+			tb.PipelineRunSpec(p, tb.PipelineRunTimeout(1*time.Minute)),
+			tb.PipelineRunStatus(tb.PipelineRunStartTime(time.Now().Add(-2*time.Minute)))),
+		expected: &metav1.Duration{Duration: 1 * time.Second},
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			if d := cmp.Diff(getTaskRunTimeout(tc.pr), tc.expected); d != "" {
+				t.Errorf("Unexpected task run timeout. Diff %s", d)
+			}
+		})
 	}
 }
