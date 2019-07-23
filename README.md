@@ -48,6 +48,21 @@ Download the latest binary executable for your operating system:
 
 If you have [go](https://golang.org/) installed, `GO111MODULE="on" go get github.com/tektoncd/cli@v0.1.2` is all you need!
 
+### `tkn` as a `kubectl` plugin
+
+`kubectl` will find any binary named `kubectl-*` on your PATH and consider it as a plugin.
+After installing tkn, create a link as kubectl-tkn
+  ```shell
+$ ln -s /usr/local/bin/tkn /usr/local/bin/kubectl-tkn
+  ```
+
+`kubectl` will find any binary named `kubectl-*` on your `PATH` and consider it as a plugin
+
+  ```shell
+$ ./kubectl plugin list
+/usr/local/bin/kubectl-tkn
+  ```
+
 ### Useful Commands
 
 The following commands help you understand and effectively use the Tekton CLI:
