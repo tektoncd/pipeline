@@ -73,6 +73,8 @@ type Transport struct {
 	crMu sync.Mutex
 	// Receive Mutex
 	reMu sync.Mutex
+
+	middleware []Middleware
 }
 
 func New(opts ...Option) (*Transport, error) {
@@ -174,8 +176,12 @@ func (t *Transport) obsSend(ctx context.Context, event cloudevents.Event) (*clou
 	if m, ok := msg.(*Message); ok {
 		copyHeaders(m.Header, req.Header)
 
-		req.Body = ioutil.NopCloser(bytes.NewBuffer(m.Body))
-		req.ContentLength = int64(len(m.Body))
+		if m.Body != nil {
+			req.Body = ioutil.NopCloser(bytes.NewBuffer(m.Body))
+			req.ContentLength = int64(len(m.Body))
+		} else {
+			req.ContentLength = 0
+		}
 
 		return httpDo(ctx, t.Client, &req, func(resp *http.Response, err error) (*cloudevents.Event, error) {
 			logger := cecontext.LoggerFrom(ctx)
@@ -233,7 +239,7 @@ func (t *Transport) StartReceiver(ctx context.Context) error {
 	addr := fmt.Sprintf(":%d", t.GetPort())
 	t.server = &http.Server{
 		Addr:    addr,
-		Handler: t.Handler,
+		Handler: attachMiddleware(t.Handler, t.middleware),
 	}
 
 	listener, err := net.Listen("tcp", addr)
@@ -268,6 +274,14 @@ func (t *Transport) StartReceiver(ctx context.Context) error {
 	case err := <-errChan:
 		return err
 	}
+}
+
+// attachMiddleware attaches the HTTP middleware to the specified handler.
+func attachMiddleware(h http.Handler, middleware []Middleware) http.Handler {
+	for _, m := range middleware {
+		h = m(h)
+	}
+	return h
 }
 
 type eventError struct {

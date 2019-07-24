@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Package reconciler defines implementations of the Reconciler interface
-// defined at github.com/knative/pkg/controller.Reconciler.  These implement
+// defined at knative.dev/pkg/controller.Reconciler.  These implement
 // the basic workhorse functionality of controllers, while leaving the
 // shared controller implementation to manage things like the workqueue.
 //

@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	logtesting "github.com/knative/pkg/logging/testing"
+	logtesting "knative.dev/pkg/logging/testing"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"

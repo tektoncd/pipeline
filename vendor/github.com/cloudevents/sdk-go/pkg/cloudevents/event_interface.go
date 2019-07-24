@@ -29,6 +29,9 @@ type EventReader interface {
 
 	// Extension Attributes
 
+	// Extensions returns the event.Context.GetExtensions().
+	Extensions() map[string]interface{}
+
 	// ExtensionAs returns event.Context.ExtensionAs(name, obj).
 	ExtensionAs(string, interface{}) error
 

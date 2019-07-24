@@ -3,7 +3,6 @@ package http
 import (
 	"fmt"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/transport"
 )
 
@@ -208,19 +207,4 @@ func (c *Codec) inspectEncoding(msg transport.Message) Encoding {
 
 	// We do not understand the message encoding.
 	return Unknown
-}
-
-// ---------
-// TODO: Should move these somewhere else. the methods are shared for all versions.
-
-func marshalEventData(encoding string, data interface{}) ([]byte, error) {
-	if data == nil {
-		return []byte(nil), nil
-	}
-	// already encoded?
-	if b, ok := data.([]byte); ok {
-		return b, nil
-	}
-
-	return datacodec.Encode(encoding, data)
 }

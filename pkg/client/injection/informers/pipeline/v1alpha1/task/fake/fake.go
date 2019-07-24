@@ -21,10 +21,10 @@ package fake
 import (
 	"context"
 
-	controller "github.com/knative/pkg/controller"
-	injection "github.com/knative/pkg/injection"
 	fake "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/factory/fake"
 	task "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task"
+	controller "knative.dev/pkg/controller"
+	injection "knative.dev/pkg/injection"
 )
 
 var Get = task.Get

@@ -27,9 +27,9 @@ import (
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/client"
 	cecontext "github.com/cloudevents/sdk-go/pkg/cloudevents/context"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
-	"github.com/knative/eventing-sources/pkg/kncloudevents"
-	"github.com/knative/pkg/apis"
 	"go.uber.org/zap"
+	"knative.dev/eventing-contrib/pkg/kncloudevents"
+	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )

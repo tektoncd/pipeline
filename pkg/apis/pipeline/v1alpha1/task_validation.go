@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/knative/pkg/apis"
+	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/merge"
 	"github.com/tektoncd/pipeline/pkg/templating"
 	corev1 "k8s.io/api/core/v1"

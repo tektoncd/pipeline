@@ -1,0 +1,85 @@
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+
+required = [
+  "k8s.io/apimachinery/pkg/util/sets/types",
+  "k8s.io/code-generator/cmd/deepcopy-gen",
+  "k8s.io/code-generator/cmd/defaulter-gen",
+  "k8s.io/code-generator/cmd/client-gen",
+  "k8s.io/code-generator/cmd/lister-gen",
+  "k8s.io/code-generator/cmd/informer-gen",
+  "knative.dev/pkg/codegen/cmd/injection-gen",
+  "github.com/knative/test-infra/scripts",
+  "github.com/knative/test-infra/tools/dep-collector",
+]
+
+[[override]]
+  name = "k8s.io/klog"
+  version = "v0.2.0"
+
+[[override]]
+  name = "k8s.io/gengo"
+  revision = "e17681d19d3ac4837a019ece36c2a0ec31ffe985"
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.12.9"
+
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.12.9"
+
+[[override]]
+  name = "k8s.io/code-generator"
+  version = "kubernetes-1.12.9"
+
+[[override]]
+  name = "k8s.io/client-go"
+  version = "kubernetes-1.12.9"
+
+[[override]]
+  name = "knative.dev/pkg"
+  branch = "master"
+
+[[override]]
+  name = "google.golang.org/genproto"
+  revision = "e7d98fc518a78c9f8b5ee77be7b0b317475d89e1"
+
+[[override]]
+  name = "github.com/census-instrumentation/opencensus-proto"
+  version = "0.1.0"
+
+[[override]]
+  name = "contrib.go.opencensus.io/exporter/stackdriver"
+  # HEAD as of 2019-02-11
+  # Needed because this includes a fix to support Stackdriver built-in metrics
+  revision = "c06c82c832edca4eaf7b0241bd655560a1be0346"
+
+[[override]]
+  name = "contrib.go.opencensus.io/resource"
+  # Needed by the stackdriver exporter.
+  revision = "21591786a5e0c21806209b266cc6dfdfa85b3cdb"
+
+[[override]]
+  name = "go.opencensus.io"
+  # Needed because this includes the appropriate version of metricsdata
+  version = "v0.22.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
+
+[[prune.project]]
+  name = "k8s.io/code-generator"
+  unused-packages = false
+  non-go = false
+
+[[prune.project]]
+  name = "github.com/knative/test-infra"
+  non-go = false
+
+[[prune.project]]
+  name = "knative.dev/pkg"
+  unused-packages = false
+  non-go = false

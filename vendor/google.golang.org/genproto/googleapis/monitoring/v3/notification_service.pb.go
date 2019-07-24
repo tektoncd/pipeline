@@ -59,7 +59,7 @@ func (m *ListNotificationChannelDescriptorsRequest) Reset() {
 func (m *ListNotificationChannelDescriptorsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListNotificationChannelDescriptorsRequest) ProtoMessage()    {}
 func (*ListNotificationChannelDescriptorsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{0}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{0}
 }
 func (m *ListNotificationChannelDescriptorsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListNotificationChannelDescriptorsRequest.Unmarshal(m, b)
@@ -123,7 +123,7 @@ func (m *ListNotificationChannelDescriptorsResponse) String() string {
 }
 func (*ListNotificationChannelDescriptorsResponse) ProtoMessage() {}
 func (*ListNotificationChannelDescriptorsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{1}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{1}
 }
 func (m *ListNotificationChannelDescriptorsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListNotificationChannelDescriptorsResponse.Unmarshal(m, b)
@@ -173,7 +173,7 @@ func (m *GetNotificationChannelDescriptorRequest) Reset() {
 func (m *GetNotificationChannelDescriptorRequest) String() string { return proto.CompactTextString(m) }
 func (*GetNotificationChannelDescriptorRequest) ProtoMessage()    {}
 func (*GetNotificationChannelDescriptorRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{2}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{2}
 }
 func (m *GetNotificationChannelDescriptorRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetNotificationChannelDescriptorRequest.Unmarshal(m, b)
@@ -222,7 +222,7 @@ func (m *CreateNotificationChannelRequest) Reset()         { *m = CreateNotifica
 func (m *CreateNotificationChannelRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateNotificationChannelRequest) ProtoMessage()    {}
 func (*CreateNotificationChannelRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{3}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{3}
 }
 func (m *CreateNotificationChannelRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateNotificationChannelRequest.Unmarshal(m, b)
@@ -263,7 +263,8 @@ type ListNotificationChannelsRequest struct {
 	// in which to look for the notification channels; it does not name a
 	// specific channel. To query a specific channel by REST resource name, use
 	// the
-	// [`GetNotificationChannel`][google.monitoring.v3.NotificationChannelService.GetNotificationChannel] operation.
+	// [`GetNotificationChannel`][google.monitoring.v3.NotificationChannelService.GetNotificationChannel]
+	// operation.
 	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
 	// If provided, this field specifies the criteria that must be met by
 	// notification channels to be included in the response.
@@ -295,7 +296,7 @@ func (m *ListNotificationChannelsRequest) Reset()         { *m = ListNotificatio
 func (m *ListNotificationChannelsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListNotificationChannelsRequest) ProtoMessage()    {}
 func (*ListNotificationChannelsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{4}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{4}
 }
 func (m *ListNotificationChannelsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListNotificationChannelsRequest.Unmarshal(m, b)
@@ -368,7 +369,7 @@ func (m *ListNotificationChannelsResponse) Reset()         { *m = ListNotificati
 func (m *ListNotificationChannelsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListNotificationChannelsResponse) ProtoMessage()    {}
 func (*ListNotificationChannelsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{5}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{5}
 }
 func (m *ListNotificationChannelsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListNotificationChannelsResponse.Unmarshal(m, b)
@@ -416,7 +417,7 @@ func (m *GetNotificationChannelRequest) Reset()         { *m = GetNotificationCh
 func (m *GetNotificationChannelRequest) String() string { return proto.CompactTextString(m) }
 func (*GetNotificationChannelRequest) ProtoMessage()    {}
 func (*GetNotificationChannelRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{6}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{6}
 }
 func (m *GetNotificationChannelRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetNotificationChannelRequest.Unmarshal(m, b)
@@ -461,7 +462,7 @@ func (m *UpdateNotificationChannelRequest) Reset()         { *m = UpdateNotifica
 func (m *UpdateNotificationChannelRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateNotificationChannelRequest) ProtoMessage()    {}
 func (*UpdateNotificationChannelRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{7}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{7}
 }
 func (m *UpdateNotificationChannelRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateNotificationChannelRequest.Unmarshal(m, b)
@@ -514,7 +515,7 @@ func (m *DeleteNotificationChannelRequest) Reset()         { *m = DeleteNotifica
 func (m *DeleteNotificationChannelRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteNotificationChannelRequest) ProtoMessage()    {}
 func (*DeleteNotificationChannelRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{8}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{8}
 }
 func (m *DeleteNotificationChannelRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteNotificationChannelRequest.Unmarshal(m, b)
@@ -565,7 +566,7 @@ func (m *SendNotificationChannelVerificationCodeRequest) String() string {
 }
 func (*SendNotificationChannelVerificationCodeRequest) ProtoMessage() {}
 func (*SendNotificationChannelVerificationCodeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{9}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{9}
 }
 func (m *SendNotificationChannelVerificationCodeRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SendNotificationChannelVerificationCodeRequest.Unmarshal(m, b)
@@ -621,7 +622,7 @@ func (m *GetNotificationChannelVerificationCodeRequest) String() string {
 }
 func (*GetNotificationChannelVerificationCodeRequest) ProtoMessage() {}
 func (*GetNotificationChannelVerificationCodeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{10}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{10}
 }
 func (m *GetNotificationChannelVerificationCodeRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetNotificationChannelVerificationCodeRequest.Unmarshal(m, b)
@@ -679,7 +680,7 @@ func (m *GetNotificationChannelVerificationCodeResponse) String() string {
 }
 func (*GetNotificationChannelVerificationCodeResponse) ProtoMessage() {}
 func (*GetNotificationChannelVerificationCodeResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{11}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{11}
 }
 func (m *GetNotificationChannelVerificationCodeResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetNotificationChannelVerificationCodeResponse.Unmarshal(m, b)
@@ -734,7 +735,7 @@ func (m *VerifyNotificationChannelRequest) Reset()         { *m = VerifyNotifica
 func (m *VerifyNotificationChannelRequest) String() string { return proto.CompactTextString(m) }
 func (*VerifyNotificationChannelRequest) ProtoMessage()    {}
 func (*VerifyNotificationChannelRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_service_e0bdcc277cafcf7d, []int{12}
+	return fileDescriptor_notification_service_e97ab8774c24ef7d, []int{12}
 }
 func (m *VerifyNotificationChannelRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_VerifyNotificationChannelRequest.Unmarshal(m, b)
@@ -1236,10 +1237,10 @@ var _NotificationChannelService_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("google/monitoring/v3/notification_service.proto", fileDescriptor_notification_service_e0bdcc277cafcf7d)
+	proto.RegisterFile("google/monitoring/v3/notification_service.proto", fileDescriptor_notification_service_e97ab8774c24ef7d)
 }
 
-var fileDescriptor_notification_service_e0bdcc277cafcf7d = []byte{
+var fileDescriptor_notification_service_e97ab8774c24ef7d = []byte{
 	// 1020 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x57, 0x41, 0x6f, 0xdc, 0x44,
 	0x14, 0xd6, 0xec, 0x26, 0x69, 0xfa, 0x22, 0x04, 0x9a, 0x86, 0xc8, 0xd9, 0xb6, 0xaa, 0xe5, 0x43,

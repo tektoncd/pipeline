@@ -38,7 +38,7 @@ package test
 import (
 	"testing"
 
-	knativetest "github.com/knative/pkg/test"
+	knativetest "knative.dev/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 )

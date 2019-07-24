@@ -36,6 +36,9 @@ type EventContextReader interface {
 	// the extension does not exist, the extension's type does not match the
 	// provided type, or if the type is not a supported.
 	ExtensionAs(string, interface{}) error
+
+	// GetExtensions returns the full extensions map.
+	GetExtensions() map[string]interface{}
 }
 
 // EventContextWriter are the methods required to be a writer of context

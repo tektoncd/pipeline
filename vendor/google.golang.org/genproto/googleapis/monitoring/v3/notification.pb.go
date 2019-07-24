@@ -60,7 +60,7 @@ func (x NotificationChannel_VerificationStatus) String() string {
 	return proto.EnumName(NotificationChannel_VerificationStatus_name, int32(x))
 }
 func (NotificationChannel_VerificationStatus) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_notification_5449d40305a71b45, []int{1, 0}
+	return fileDescriptor_notification_c86d921090b86dc8, []int{1, 0}
 }
 
 // A description of a notification channel. The descriptor includes
@@ -99,7 +99,7 @@ func (m *NotificationChannelDescriptor) Reset()         { *m = NotificationChann
 func (m *NotificationChannelDescriptor) String() string { return proto.CompactTextString(m) }
 func (*NotificationChannelDescriptor) ProtoMessage()    {}
 func (*NotificationChannelDescriptor) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_5449d40305a71b45, []int{0}
+	return fileDescriptor_notification_c86d921090b86dc8, []int{0}
 }
 func (m *NotificationChannelDescriptor) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NotificationChannelDescriptor.Unmarshal(m, b)
@@ -169,7 +169,9 @@ func (m *NotificationChannelDescriptor) GetSupportedTiers() []ServiceTier {
 // contact info are only partially populated on retrieval.
 type NotificationChannel struct {
 	// The type of the notification channel. This field matches the
-	// value of the [NotificationChannelDescriptor.type][google.monitoring.v3.NotificationChannelDescriptor.type] field.
+	// value of the
+	// [NotificationChannelDescriptor.type][google.monitoring.v3.NotificationChannelDescriptor.type]
+	// field.
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// The full REST resource name for this channel. The syntax is:
 	//
@@ -188,8 +190,8 @@ type NotificationChannel struct {
 	Description string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	// Configuration fields that define the channel and its behavior. The
 	// permissible and required labels are specified in the
-	// [NotificationChannelDescriptor.labels][google.monitoring.v3.NotificationChannelDescriptor.labels] of the
-	// `NotificationChannelDescriptor` corresponding to the `type` field.
+	// [NotificationChannelDescriptor.labels][google.monitoring.v3.NotificationChannelDescriptor.labels]
+	// of the `NotificationChannelDescriptor` corresponding to the `type` field.
 	Labels map[string]string `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// User-supplied key/value data that does not need to conform to
 	// the corresponding `NotificationChannelDescriptor`'s schema, unlike
@@ -237,7 +239,7 @@ func (m *NotificationChannel) Reset()         { *m = NotificationChannel{} }
 func (m *NotificationChannel) String() string { return proto.CompactTextString(m) }
 func (*NotificationChannel) ProtoMessage()    {}
 func (*NotificationChannel) Descriptor() ([]byte, []int) {
-	return fileDescriptor_notification_5449d40305a71b45, []int{1}
+	return fileDescriptor_notification_c86d921090b86dc8, []int{1}
 }
 func (m *NotificationChannel) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_NotificationChannel.Unmarshal(m, b)
@@ -322,10 +324,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("google/monitoring/v3/notification.proto", fileDescriptor_notification_5449d40305a71b45)
+	proto.RegisterFile("google/monitoring/v3/notification.proto", fileDescriptor_notification_c86d921090b86dc8)
 }
 
-var fileDescriptor_notification_5449d40305a71b45 = []byte{
+var fileDescriptor_notification_c86d921090b86dc8 = []byte{
 	// 602 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x54, 0x6d, 0x6b, 0xdb, 0x3c,
 	0x14, 0x7d, 0x9c, 0x34, 0x7d, 0x5a, 0xb9, 0xa4, 0x9d, 0x5a, 0x86, 0xf1, 0xde, 0xd2, 0xee, 0xc3,

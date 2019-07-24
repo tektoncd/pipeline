@@ -19,7 +19,7 @@ import (
 	"context"
 	"flag"
 
-	"github.com/knative/pkg/logging"
+	"knative.dev/pkg/logging"
 )
 
 const (

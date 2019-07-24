@@ -31,9 +31,9 @@ type ListGroupsRequest struct {
 	// The project whose groups are to be listed. The format is
 	// `"projects/{project_id_or_number}"`.
 	Name string `protobuf:"bytes,7,opt,name=name,proto3" json:"name,omitempty"`
-	// An optional filter consisting of a single group name.  The filters limit the
-	// groups returned based on their parent-child relationship with the specified
-	// group. If no filter is specified, all groups are returned.
+	// An optional filter consisting of a single group name.  The filters limit
+	// the groups returned based on their parent-child relationship with the
+	// specified group. If no filter is specified, all groups are returned.
 	//
 	// Types that are valid to be assigned to Filter:
 	//	*ListGroupsRequest_ChildrenOfGroup
@@ -55,7 +55,7 @@ func (m *ListGroupsRequest) Reset()         { *m = ListGroupsRequest{} }
 func (m *ListGroupsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListGroupsRequest) ProtoMessage()    {}
 func (*ListGroupsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_service_c051ad810375e8ee, []int{0}
+	return fileDescriptor_group_service_82592e08754ba7ee, []int{0}
 }
 func (m *ListGroupsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListGroupsRequest.Unmarshal(m, b)
@@ -244,7 +244,7 @@ func (m *ListGroupsResponse) Reset()         { *m = ListGroupsResponse{} }
 func (m *ListGroupsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListGroupsResponse) ProtoMessage()    {}
 func (*ListGroupsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_service_c051ad810375e8ee, []int{1}
+	return fileDescriptor_group_service_82592e08754ba7ee, []int{1}
 }
 func (m *ListGroupsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListGroupsResponse.Unmarshal(m, b)
@@ -292,7 +292,7 @@ func (m *GetGroupRequest) Reset()         { *m = GetGroupRequest{} }
 func (m *GetGroupRequest) String() string { return proto.CompactTextString(m) }
 func (*GetGroupRequest) ProtoMessage()    {}
 func (*GetGroupRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_service_c051ad810375e8ee, []int{2}
+	return fileDescriptor_group_service_82592e08754ba7ee, []int{2}
 }
 func (m *GetGroupRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetGroupRequest.Unmarshal(m, b)
@@ -338,7 +338,7 @@ func (m *CreateGroupRequest) Reset()         { *m = CreateGroupRequest{} }
 func (m *CreateGroupRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateGroupRequest) ProtoMessage()    {}
 func (*CreateGroupRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_service_c051ad810375e8ee, []int{3}
+	return fileDescriptor_group_service_82592e08754ba7ee, []int{3}
 }
 func (m *CreateGroupRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateGroupRequest.Unmarshal(m, b)
@@ -395,7 +395,7 @@ func (m *UpdateGroupRequest) Reset()         { *m = UpdateGroupRequest{} }
 func (m *UpdateGroupRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateGroupRequest) ProtoMessage()    {}
 func (*UpdateGroupRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_service_c051ad810375e8ee, []int{4}
+	return fileDescriptor_group_service_82592e08754ba7ee, []int{4}
 }
 func (m *UpdateGroupRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateGroupRequest.Unmarshal(m, b)
@@ -443,7 +443,7 @@ func (m *DeleteGroupRequest) Reset()         { *m = DeleteGroupRequest{} }
 func (m *DeleteGroupRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteGroupRequest) ProtoMessage()    {}
 func (*DeleteGroupRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_service_c051ad810375e8ee, []int{5}
+	return fileDescriptor_group_service_82592e08754ba7ee, []int{5}
 }
 func (m *DeleteGroupRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteGroupRequest.Unmarshal(m, b)
@@ -503,7 +503,7 @@ func (m *ListGroupMembersRequest) Reset()         { *m = ListGroupMembersRequest
 func (m *ListGroupMembersRequest) String() string { return proto.CompactTextString(m) }
 func (*ListGroupMembersRequest) ProtoMessage()    {}
 func (*ListGroupMembersRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_service_c051ad810375e8ee, []int{6}
+	return fileDescriptor_group_service_82592e08754ba7ee, []int{6}
 }
 func (m *ListGroupMembersRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListGroupMembersRequest.Unmarshal(m, b)
@@ -577,7 +577,7 @@ func (m *ListGroupMembersResponse) Reset()         { *m = ListGroupMembersRespon
 func (m *ListGroupMembersResponse) String() string { return proto.CompactTextString(m) }
 func (*ListGroupMembersResponse) ProtoMessage()    {}
 func (*ListGroupMembersResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_service_c051ad810375e8ee, []int{7}
+	return fileDescriptor_group_service_82592e08754ba7ee, []int{7}
 }
 func (m *ListGroupMembersResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListGroupMembersResponse.Unmarshal(m, b)
@@ -881,10 +881,10 @@ var _GroupService_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("google/monitoring/v3/group_service.proto", fileDescriptor_group_service_c051ad810375e8ee)
+	proto.RegisterFile("google/monitoring/v3/group_service.proto", fileDescriptor_group_service_82592e08754ba7ee)
 }
 
-var fileDescriptor_group_service_c051ad810375e8ee = []byte{
+var fileDescriptor_group_service_82592e08754ba7ee = []byte{
 	// 826 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x55, 0x4d, 0x6f, 0xd3, 0x4c,
 	0x10, 0x7e, 0xdd, 0xa4, 0x69, 0xb2, 0x69, 0xd5, 0x76, 0x55, 0xf5, 0x8d, 0xdc, 0x0f, 0x05, 0xf7,

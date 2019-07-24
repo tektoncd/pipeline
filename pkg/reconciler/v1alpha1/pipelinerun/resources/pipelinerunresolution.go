@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/knative/pkg/apis"
+	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"

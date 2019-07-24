@@ -71,7 +71,7 @@ func (e Event) String() string {
 
 	if e.Data != nil {
 		b.WriteString("Data,\n  ")
-		if strings.HasPrefix(e.DataContentType(), "application/json") {
+		if strings.HasPrefix(e.DataContentType(), ApplicationJSON) {
 			var prettyJSON bytes.Buffer
 
 			data, ok := e.Data.([]byte)

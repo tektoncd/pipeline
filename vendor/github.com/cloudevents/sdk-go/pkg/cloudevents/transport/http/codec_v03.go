@@ -281,26 +281,7 @@ func (v CodecV03) decodeStructured(msg transport.Message) (*cloudevents.Event, e
 		return nil, fmt.Errorf("failed to convert transport.Message to http.Message")
 	}
 
-	ec := cloudevents.EventContextV03{}
-	if err := json.Unmarshal(m.Body, &ec); err != nil {
-		return nil, err
-	}
-
-	raw := make(map[string]json.RawMessage)
-
-	if err := json.Unmarshal(m.Body, &raw); err != nil {
-		return nil, err
-	}
-	var data interface{}
-	if d, ok := raw["data"]; ok {
-		data = []byte(d)
-	}
-
-	return &cloudevents.Event{
-		Context:     &ec,
-		Data:        data,
-		DataEncoded: true,
-	}, nil
+	return codec.JsonDecodeV03(m.Body)
 }
 
 func (v CodecV03) inspectEncoding(msg transport.Message) Encoding {

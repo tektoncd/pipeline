@@ -21,7 +21,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/knative/pkg/apis"
+	"knative.dev/pkg/apis"
 )
 
 const parameterSubstitution = "[_a-zA-Z][_a-zA-Z0-9.-]*"

@@ -84,3 +84,7 @@ func (ec EventContextV02) GetDataContentEncoding() string {
 	}
 	return enc
 }
+
+func (ec EventContextV02) GetExtensions() map[string]interface{} {
+	return ec.Extensions
+}

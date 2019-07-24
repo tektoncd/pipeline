@@ -33,6 +33,8 @@ import (
 
 	"cloud.google.com/go/monitoring/apiv3"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"go.opencensus.io/metric/metricdata"
+	"go.opencensus.io/metric/metricexport"
 	"google.golang.org/api/option"
 	"google.golang.org/api/support/bundler"
 	distributionpb "google.golang.org/genproto/googleapis/api/distribution"
@@ -59,6 +61,7 @@ type statsExporter struct {
 
 	viewDataBundler     *bundler.Bundler
 	protoMetricsBundler *bundler.Bundler
+	metricsBundler      *bundler.Bundler
 
 	createdViewsMu sync.Mutex
 	createdViews   map[string]*metricpb.MetricDescriptor // Views already created remotely
@@ -66,8 +69,14 @@ type statsExporter struct {
 	protoMu                sync.Mutex
 	protoMetricDescriptors map[string]*metricpb.MetricDescriptor // Saves the metric descriptors that were already created remotely
 
+	metricMu          sync.Mutex
+	metricDescriptors map[string]*metricpb.MetricDescriptor // Saves the metric descriptors that were already created remotely
+
 	c             *monitoring.MetricClient
 	defaultLabels map[string]labelValue
+	ir            *metricexport.IntervalReader
+
+	initReaderOnce sync.Once
 }
 
 var (
@@ -83,8 +92,10 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 	}
 
 	opts := append(o.MonitoringClientOptions, option.WithUserAgent(userAgent))
-	ctx, cancel := o.newContextWithTimeout()
-	defer cancel()
+	ctx := o.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	client, err := monitoring.NewMetricClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -94,6 +105,7 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 		o:                      o,
 		createdViews:           make(map[string]*metricpb.MetricDescriptor),
 		protoMetricDescriptors: make(map[string]*metricpb.MetricDescriptor),
+		metricDescriptors:      make(map[string]*metricpb.MetricDescriptor),
 	}
 
 	if o.DefaultMonitoringLabels != nil {
@@ -108,34 +120,53 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 		vds := bundle.([]*view.Data)
 		e.handleUpload(vds...)
 	})
-	e.protoMetricsBundler = bundler.NewBundler((*metricPayload)(nil), func(bundle interface{}) {
-		payloads := bundle.([]*metricPayload)
-		e.handleMetricsUpload(payloads)
+	e.protoMetricsBundler = bundler.NewBundler((*metricProtoPayload)(nil), func(bundle interface{}) {
+		payloads := bundle.([]*metricProtoPayload)
+		e.handleMetricsProtoUpload(payloads)
+	})
+	e.metricsBundler = bundler.NewBundler((*metricdata.Metric)(nil), func(bundle interface{}) {
+		metrics := bundle.([]*metricdata.Metric)
+		e.handleMetricsUpload(metrics)
 	})
 	if delayThreshold := e.o.BundleDelayThreshold; delayThreshold > 0 {
 		e.viewDataBundler.DelayThreshold = delayThreshold
 		e.protoMetricsBundler.DelayThreshold = delayThreshold
+		e.metricsBundler.DelayThreshold = delayThreshold
 	}
 	if countThreshold := e.o.BundleCountThreshold; countThreshold > 0 {
 		e.viewDataBundler.BundleCountThreshold = countThreshold
 		e.protoMetricsBundler.BundleCountThreshold = countThreshold
+		e.metricsBundler.BundleCountThreshold = countThreshold
 	}
 	return e, nil
+}
+
+func (e *statsExporter) startMetricsReader() error {
+	e.initReaderOnce.Do(func() {
+		e.ir, _ = metricexport.NewIntervalReader(&metricexport.Reader{}, e)
+	})
+	e.ir.ReportingInterval = e.o.ReportingInterval
+	return e.ir.Start()
+}
+
+func (e *statsExporter) stopMetricsReader() {
+	if e.ir != nil {
+		e.ir.Stop()
+	}
 }
 
 func (e *statsExporter) getMonitoredResource(v *view.View, tags []tag.Tag) ([]tag.Tag, *monitoredrespb.MonitoredResource) {
 	if get := e.o.GetMonitoredResource; get != nil {
 		newTags, mr := get(v, tags)
 		return newTags, convertMonitoredResourceToPB(mr)
-	} else {
-		resource := e.o.Resource
-		if resource == nil {
-			resource = &monitoredrespb.MonitoredResource{
-				Type: "global",
-			}
-		}
-		return tags, resource
 	}
+	resource := e.o.Resource
+	if resource == nil {
+		resource = &monitoredrespb.MonitoredResource{
+			Type: "global",
+		}
+	}
+	return tags, resource
 }
 
 // ExportView exports to the Stackdriver Monitoring if view data
@@ -180,6 +211,7 @@ func (e *statsExporter) handleUpload(vds ...*view.Data) {
 func (e *statsExporter) Flush() {
 	e.viewDataBundler.Flush()
 	e.protoMetricsBundler.Flush()
+	e.metricsBundler.Flush()
 }
 
 func (e *statsExporter) uploadStats(vds []*view.Data) error {
@@ -208,17 +240,17 @@ func (e *statsExporter) uploadStats(vds []*view.Data) error {
 	return nil
 }
 
-func (se *statsExporter) makeReq(vds []*view.Data, limit int) []*monitoringpb.CreateTimeSeriesRequest {
+func (e *statsExporter) makeReq(vds []*view.Data, limit int) []*monitoringpb.CreateTimeSeriesRequest {
 	var reqs []*monitoringpb.CreateTimeSeriesRequest
 
 	var allTimeSeries []*monitoringpb.TimeSeries
 	for _, vd := range vds {
 		for _, row := range vd.Rows {
-			tags, resource := se.getMonitoredResource(vd.View, append([]tag.Tag(nil), row.Tags...))
+			tags, resource := e.getMonitoredResource(vd.View, append([]tag.Tag(nil), row.Tags...))
 			ts := &monitoringpb.TimeSeries{
 				Metric: &metricpb.Metric{
-					Type:   se.metricType(vd.View),
-					Labels: newLabels(se.defaultLabels, tags),
+					Type:   e.metricType(vd.View),
+					Labels: newLabels(e.defaultLabels, tags),
 				},
 				Resource: resource,
 				Points:   []*monitoringpb.Point{newPoint(vd.View, row, vd.Start, vd.End)},
@@ -231,14 +263,14 @@ func (se *statsExporter) makeReq(vds []*view.Data, limit int) []*monitoringpb.Cr
 	for _, ts := range allTimeSeries {
 		timeSeries = append(timeSeries, ts)
 		if len(timeSeries) == limit {
-			ctsreql := se.combineTimeSeriesToCreateTimeSeriesRequest(timeSeries)
+			ctsreql := e.combineTimeSeriesToCreateTimeSeriesRequest(timeSeries)
 			reqs = append(reqs, ctsreql...)
 			timeSeries = timeSeries[:0]
 		}
 	}
 
 	if len(timeSeries) > 0 {
-		ctsreql := se.combineTimeSeriesToCreateTimeSeriesRequest(timeSeries)
+		ctsreql := e.combineTimeSeriesToCreateTimeSeriesRequest(timeSeries)
 		reqs = append(reqs, ctsreql...)
 	}
 	return reqs
@@ -423,6 +455,7 @@ func newTypedValue(vd *view.View, r *view.Row) *monitoringpb.TypedValue {
 			}}
 		}
 	case *view.DistributionData:
+		insertZeroBound := shouldInsertZeroBound(vd.Aggregation.Buckets...)
 		return &monitoringpb.TypedValue{Value: &monitoringpb.TypedValue_DistributionValue{
 			DistributionValue: &distributionpb.Distribution{
 				Count:                 v.Count,
@@ -436,11 +469,11 @@ func newTypedValue(vd *view.View, r *view.Row) *monitoringpb.TypedValue {
 				BucketOptions: &distributionpb.Distribution_BucketOptions{
 					Options: &distributionpb.Distribution_BucketOptions_ExplicitBuckets{
 						ExplicitBuckets: &distributionpb.Distribution_BucketOptions_Explicit{
-							Bounds: vd.Aggregation.Buckets,
+							Bounds: addZeroBoundOnCondition(insertZeroBound, vd.Aggregation.Buckets...),
 						},
 					},
 				},
-				BucketCounts: v.CountPerBucket,
+				BucketCounts: addZeroBucketCountOnCondition(insertZeroBound, v.CountPerBucket...),
 			},
 		}}
 	case *view.LastValueData:
@@ -458,12 +491,32 @@ func newTypedValue(vd *view.View, r *view.Row) *monitoringpb.TypedValue {
 	return nil
 }
 
+func shouldInsertZeroBound(bounds ...float64) bool {
+	if len(bounds) > 0 && bounds[0] != 0.0 {
+		return true
+	}
+	return false
+}
+
+func addZeroBucketCountOnCondition(insert bool, counts ...int64) []int64 {
+	if insert {
+		return append([]int64{0}, counts...)
+	}
+	return counts
+}
+
+func addZeroBoundOnCondition(insert bool, bounds ...float64) []float64 {
+	if insert {
+		return append([]float64{0.0}, bounds...)
+	}
+	return bounds
+}
+
 func (e *statsExporter) metricType(v *view.View) string {
 	if formatter := e.o.GetMetricType; formatter != nil {
 		return formatter(v)
-	} else {
-		return path.Join("custom.googleapis.com", "opencensus", v.Name)
 	}
+	return path.Join("custom.googleapis.com", "opencensus", v.Name)
 }
 
 func newLabels(defaults map[string]labelValue, tags []tag.Tag) map[string]string {

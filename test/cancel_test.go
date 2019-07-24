@@ -19,13 +19,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/knative/pkg/apis"
-	knativetest "github.com/knative/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	knativetest "knative.dev/pkg/test"
 )
 
 // TestTaskRunPipelineRunCancel is an integration test that will

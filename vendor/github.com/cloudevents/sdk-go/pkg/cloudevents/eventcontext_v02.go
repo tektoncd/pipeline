@@ -1,6 +1,7 @@
 package cloudevents
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/types"
 	"sort"
@@ -31,7 +32,7 @@ type EventContextV02 struct {
 	// TODO: Should an empty string assume `application/json`, `application/octet-stream`, or auto-detect the content?
 	ContentType *string `json:"contenttype,omitempty"`
 	// Additional extension metadata beyond the base spec.
-	Extensions map[string]interface{} `json:"-,omitempty"` // TODO: decide how we want extensions to be inserted
+	Extensions map[string]interface{} `json:"-"`
 }
 
 // Adhere to EventContext
@@ -43,6 +44,17 @@ func (ec EventContextV02) ExtensionAs(name string, obj interface{}) error {
 	if !ok {
 		return fmt.Errorf("extension %q does not exist", name)
 	}
+
+	// Try to unmarshal extension if we find it as a RawMessage.
+	switch v := value.(type) {
+	case json.RawMessage:
+		if err := json.Unmarshal(v, obj); err == nil {
+			// if that worked, return with obj set.
+			return nil
+		}
+	}
+	// else try as a string ptr.
+
 	// Only support *string for now.
 	switch v := obj.(type) {
 	case *string:

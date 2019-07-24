@@ -19,8 +19,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-// An annotation designating that this field designates a One Platform
-// resource.
+// An annotation designating that this field designates a resource.
 //
 // Example:
 //
@@ -58,7 +57,7 @@ func (m *Resource) Reset()         { *m = Resource{} }
 func (m *Resource) String() string { return proto.CompactTextString(m) }
 func (*Resource) ProtoMessage()    {}
 func (*Resource) Descriptor() ([]byte, []int) {
-	return fileDescriptor_resource_1eea87ac7ff402a7, []int{0}
+	return fileDescriptor_resource_232de5e6fd811932, []int{0}
 }
 func (m *Resource) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Resource.Unmarshal(m, b)
@@ -126,9 +125,9 @@ func init() {
 	proto.RegisterExtension(E_ResourceDefinition)
 }
 
-func init() { proto.RegisterFile("google/api/resource.proto", fileDescriptor_resource_1eea87ac7ff402a7) }
+func init() { proto.RegisterFile("google/api/resource.proto", fileDescriptor_resource_232de5e6fd811932) }
 
-var fileDescriptor_resource_1eea87ac7ff402a7 = []byte{
+var fileDescriptor_resource_232de5e6fd811932 = []byte{
 	// 334 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x92, 0xc1, 0x4a, 0xeb, 0x40,
 	0x18, 0x85, 0x49, 0xef, 0xa5, 0xcd, 0x9d, 0xab, 0x82, 0xa3, 0x48, 0x94, 0x16, 0x8a, 0xab, 0x2e,

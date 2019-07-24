@@ -74,7 +74,7 @@ func (x FieldBehavior) String() string {
 	return proto.EnumName(FieldBehavior_name, int32(x))
 }
 func (FieldBehavior) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_field_behavior_11f2d3859577a83d, []int{0}
+	return fileDescriptor_field_behavior_ddf5c982f789c6a3, []int{0}
 }
 
 var E_FieldBehavior = &proto.ExtensionDesc{
@@ -92,10 +92,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("google/api/field_behavior.proto", fileDescriptor_field_behavior_11f2d3859577a83d)
+	proto.RegisterFile("google/api/field_behavior.proto", fileDescriptor_field_behavior_ddf5c982f789c6a3)
 }
 
-var fileDescriptor_field_behavior_11f2d3859577a83d = []byte{
+var fileDescriptor_field_behavior_ddf5c982f789c6a3 = []byte{
 	// 303 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x54, 0x90, 0x4f, 0x4f, 0xb3, 0x30,
 	0x1c, 0xc7, 0x9f, 0xfd, 0x79, 0xcc, 0xac, 0x0e, 0x49, 0x4f, 0xba, 0x44, 0xdd, 0xd1, 0x78, 0x28,

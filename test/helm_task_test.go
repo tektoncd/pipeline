@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	knativetest "github.com/knative/pkg/test"
+	knativetest "knative.dev/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	tb "github.com/tektoncd/pipeline/test/builder"

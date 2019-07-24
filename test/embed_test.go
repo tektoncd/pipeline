@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	knativetest "github.com/knative/pkg/test"
+	knativetest "knative.dev/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
