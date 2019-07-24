@@ -15,7 +15,8 @@ Prints version information
 ### Options
 
 ```
-  -h, --help   help for version
+  -c, --check   check if a newer version is available
+  -h, --help    help for version
 ```
 
 ### SEE ALSO

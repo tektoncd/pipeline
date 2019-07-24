@@ -35,7 +35,13 @@ const (
 	msgNoPREsFound = "No pipelineresources found."
 )
 
+type ListOptions struct {
+	Type string
+}
+
 func listCommand(p cli.Params) *cobra.Command {
+
+	opts := &ListOptions{Type: ""}
 	f := cliopts.NewPrintFlags("list")
 	eg := `
 # List all PipelineResources in a namespaces 'foo'
@@ -54,7 +60,19 @@ tkn pre list -n foo",
 			if err != nil {
 				return err
 			}
-			pres, err := list(cs.Tekton, p.Namespace())
+
+			valid := false
+			for _, allowed := range v1alpha1.AllResourceTypes {
+				if string(allowed) == opts.Type || opts.Type == "" {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return fmt.Errorf("Failed to list pipelineresources. Invalid resource type %s", opts.Type)
+			}
+
+			pres, err := list(cs.Tekton, p.Namespace(), opts.Type)
 			stream := &cli.Stream{
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
@@ -84,17 +102,21 @@ tkn pre list -n foo",
 	}
 
 	f.AddFlags(cmd)
+	cmd.Flags().StringVarP(&opts.Type, "type", "t", "", "Pipeline resource type")
 
 	return cmd
 }
 
-func list(client versioned.Interface, namespace string) (*v1alpha1.PipelineResourceList, error) {
+func list(client versioned.Interface, namespace string, resourceType string) (*v1alpha1.PipelineResourceList, error) {
 
-	options := v1.ListOptions{}
 	prec := client.TektonV1alpha1().PipelineResources(namespace)
-	pres, err := prec.List(options)
+	pres, err := prec.List(v1.ListOptions{})
 	if err != nil {
 		return nil, err
+	}
+
+	if resourceType != "" {
+		pres.Items = filterByType(pres.Items, resourceType)
 	}
 
 	// NOTE: this is required for -o json|yaml to work properly since
@@ -140,4 +162,13 @@ func details(pre v1alpha1.PipelineResource) string {
 	}
 
 	return "---"
+}
+
+func filterByType(resources []v1alpha1.PipelineResource, resourceType string) (ret []v1alpha1.PipelineResource) {
+	for _, resource := range resources {
+		if string(resource.Spec.Type) == resourceType {
+			ret = append(ret, resource)
+		}
+	}
+	return
 }

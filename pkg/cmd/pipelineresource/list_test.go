@@ -26,7 +26,7 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
-func TestPipelineResources(t *testing.T) {
+func TestPipelineResourceList(t *testing.T) {
 
 	pres := []*v1alpha1.PipelineResource{
 		tb.PipelineResource("test-1", "test-ns-1",
@@ -78,6 +78,36 @@ func TestPipelineResources(t *testing.T) {
 			},
 		},
 		{
+			name:    "Single Pipeline Resource by type",
+			command: command(t, pres),
+			args:    []string{"list", "-n", "test-ns-1", "-t", "git"},
+			expected: []string{
+				"NAME     TYPE   DETAILS",
+				"test-2   git    url: git@github.com:tektoncd/cli.git",
+				"",
+			},
+		},
+		{
+			name:    "Multiple Pipeline Resource by type",
+			command: command(t, pres),
+			args:    []string{"list", "-n", "test-ns-1", "-t", "image"},
+			expected: []string{
+				"NAME     TYPE    DETAILS",
+				"test-1   image   URL: quey.io/tekton/controller",
+				"test-3   image   ---",
+				"",
+			},
+		},
+		{
+			name:    "Empty Pipeline Resource by type",
+			command: command(t, pres),
+			args:    []string{"list", "-n", "test-ns-1", "-t", "storage"},
+			expected: []string{
+				"No pipelineresources found.",
+				"",
+			},
+		},
+		{
 			name:    "By template",
 			command: command(t, pres),
 			args:    []string{"list", "-n", "test-ns-1", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
@@ -103,12 +133,26 @@ func TestPipelineResources(t *testing.T) {
 
 }
 
-func TestPipelineResource_empty(t *testing.T) {
+func TestPipelineResourceList_empty(t *testing.T) {
 	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 	pipelineresource := Command(p)
 	out, _ := test.ExecuteCommand(pipelineresource, "list", "-n", "test-ns-3")
 	tu.AssertOutput(t, msgNoPREsFound+"\n", out)
+}
+
+func TestPipelineResourceList_invalidType(t *testing.T) {
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	p := &test.Params{Tekton: cs.Pipeline}
+	c := Command(p)
+
+	_, err := tu.ExecuteCommand(c, "list", "-n", "ns", "-t", "registry")
+
+	if err == nil {
+		t.Error("Expecting an error but it's empty")
+	}
+
+	tu.AssertOutput(t, "Failed to list pipelineresources. Invalid resource type registry", err.Error())
 }
 
 func command(t *testing.T, pres []*v1alpha1.PipelineResource) *cobra.Command {
