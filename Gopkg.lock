@@ -899,8 +899,8 @@
     "storage/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "145d52631d00cbfe68490d19ae4f0f501fd31a95"
-  version = "kubernetes-1.12.6"
+  revision = "9ad12a4af32677db3ae70bef3371bf9b618eb3a0"
+  version = "kubernetes-1.12.9"
 
 [[projects]]
   digest = "1:9cffe4aa65e6b91018eccf8ab86dba8c6e50ec28627a10580049130df9163678"
@@ -956,10 +956,10 @@
   ]
   pruneopts = "NUT"
   revision = "01f179d85dbce0f2e0e4351a92394b38694b7cae"
-  version = "kubernetes-1.12.6"
+  version = "kubernetes-1.12.9"
 
 [[projects]]
-  digest = "1:a38aab1b68b111bf25a71995d92c5ddb869ccb9f84940ee251e87330c239c058"
+  digest = "1:195d76db56287b4b8de466f8e369f1ea19fcba12879ecf858c86079a7c1af656"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1133,8 +1133,8 @@
     "util/workqueue",
   ]
   pruneopts = "NUT"
-  revision = "78295b709ec6fa5be12e35892477a326dea2b5d3"
-  version = "kubernetes-1.12.6"
+  revision = "4f3abb12cae2d6817e1b6d72d9cbc3d3a6ddf965"
+  version = "kubernetes-1.12.9"
 
 [[projects]]
   digest = "1:26b81b5e76e3f84ea5140da4f74649576e470f79091d2ef8e0d1b5000bc636ca"
@@ -1162,7 +1162,7 @@
   ]
   pruneopts = "T"
   revision = "b1289fc74931d4b6b04bd1a259acfc88a2cb0a66"
-  version = "kubernetes-1.12.6"
+  version = "kubernetes-1.12.9"
 
 [[projects]]
   digest = "1:39912eb5f8eaf46486faae0839586c27c93423e552f76875defa048f52c15c15"
