@@ -173,6 +173,10 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error {
+	// We may be reading a version of the object that was stored at an older version
+	// and may not have had all of the assumed default specified.
+	tr.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
+
 	// If the taskrun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)

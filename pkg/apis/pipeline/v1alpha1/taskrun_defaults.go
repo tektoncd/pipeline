@@ -29,11 +29,21 @@ func (tr *TaskRun) SetDefaults(ctx context.Context) {
 }
 
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
+	cfg := config.FromContextOrDefaults(ctx)
 	if trs.TaskRef != nil && trs.TaskRef.Kind == "" {
 		trs.TaskRef.Kind = NamespacedTaskKind
 	}
-	cfg := config.FromContextOrDefaults(ctx)
+
 	if trs.Timeout == nil {
-		trs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+		var timeout *metav1.Duration
+		if IsUpgradeViaDefaulting(ctx) {
+			// This case is for preexisting `TaskRun` before 0.5.0, so let's
+			// add the old default timeout.
+			// Most likely those TaskRun passing here are already done and/or already running
+			timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
+		} else {
+			timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+		}
+		trs.Timeout = timeout
 	}
 }
