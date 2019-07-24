@@ -1,0 +1,68 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Condition
+metadata:
+  name: always-true
+spec:
+ check:
+    image: alpine
+    command: ["/bin/sh"]
+    args: ['-c', 'exit 0']
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: pipeline-git
+spec:
+  type: git
+  params:
+    - name: revision
+      value: master
+    - name: url
+      value: https://github.com/tektoncd/pipeline
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: list-files
+spec:
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+  steps:
+    - name: run-ls
+      image: ubuntu
+      command: ["/bin/bash"]
+      args: ['-c', 'ls -al ${inputs.resources.workspace.path}']
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: list-files-pipeline
+spec:
+  resources:
+    - name: source-repo
+      type: git
+  tasks:
+    - name: list-files-1
+      taskRef:
+        name: list-files
+      conditions:
+        - conditionRef: "always-true"
+      resources:
+        inputs:
+          - name: workspace
+            resource: source-repo
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: demo-condtional-pr
+spec:
+  pipelineRef:
+    name: list-files-pipeline
+  serviceAccount: 'default'
+  resources:
+    - name: source-repo
+      resourceRef:
+        name: pipeline-git

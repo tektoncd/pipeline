@@ -48,6 +48,10 @@ const (
 	// ReasonTimedOut indicates that the PipelineRun has taken longer than its configured
 	// timeout
 	ReasonTimedOut = "PipelineRunTimeout"
+
+	// ReasonConditionCheckFailed indicates that the reason for the failure status is that the
+	// condition check associated to the pipeline task evaluated to false
+	ReasonConditionCheckFailed = "ConditionCheckFailed"
 )
 
 // ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
@@ -57,6 +61,8 @@ type ResolvedPipelineRunTask struct {
 	TaskRun               *v1alpha1.TaskRun
 	PipelineTask          *v1alpha1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
+	// ConditionChecks ~~TaskRuns but for evaling conditions
+	ResolvedConditionChecks TaskConditionCheckState // Could also be a TaskRun or maybe just a Pod?
 }
 
 // PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
@@ -100,7 +106,7 @@ func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.Pi
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
 			status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 			if status != nil && status.IsFalse() {
-				if !(t.TaskRun.IsCancelled() || status.Reason == "TaskRunCancelled") {
+				if !(t.TaskRun.IsCancelled() || status.Reason == v1alpha1.TaskRunSpecStatusCancelled || status.Reason == ReasonConditionCheckFailed) {
 					if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
 						tasks = append(tasks, t)
 					}
@@ -200,6 +206,15 @@ func (e *ResourceNotFoundError) Error() string {
 	return fmt.Sprintf("Couldn't retrieve PipelineResource: %s", e.Msg)
 }
 
+type ConditionNotFoundError struct {
+	Name string
+	Msg  string
+}
+
+func (e *ConditionNotFoundError) Error() string {
+	return fmt.Sprintf("Couldn't retrieve Condition %q: %s", e.Name, e.Msg)
+}
+
 // ResolvePipelineRun retrieves all Tasks instances which are reference by tasks, getting
 // instances from getTask. If it is unable to retrieve an instance of a referenced Task, it
 // will return an error, otherwise it returns a list of all of the Tasks retrieved.
@@ -211,6 +226,7 @@ func ResolvePipelineRun(
 	getTaskRun resources.GetTaskRun,
 	getClusterTask resources.GetClusterTask,
 	getResource resources.GetResource,
+	getCondition GetCondition,
 	tasks []v1alpha1.PipelineTask,
 	providedResources map[string]v1alpha1.PipelineResourceRef,
 ) (PipelineRunState, error) {
@@ -224,7 +240,7 @@ func ResolvePipelineRun(
 			TaskRunName:  getTaskRunName(pipelineRun.Status.TaskRuns, pt.Name, pipelineRun.Name),
 		}
 
-		// Find the Task that this task in the Pipeline this PipelineTask is using
+		// Find the Task that this PipelineTask is using
 		var t v1alpha1.TaskInterface
 		var err error
 		if pt.TaskRef.Kind == v1alpha1.ClusterTaskKind {
@@ -261,10 +277,34 @@ func ResolvePipelineRun(
 		if taskRun != nil {
 			rprt.TaskRun = taskRun
 		}
+
+		// Get all conditions that this pipelineTask will be using, if any
+		if len(pt.Conditions) > 0 {
+			rcc, err := resolveConditionChecks(&pt, pipelineRun.Status.TaskRuns, rprt.TaskRunName, getTaskRun, getCondition)
+			if err != nil {
+				return nil, err
+			}
+			rprt.ResolvedConditionChecks = rcc
+		}
+
 		// Add this task to the state of the PipelineRun
 		state = append(state, &rprt)
 	}
 	return state, nil
+}
+
+// getConditionCheckName should return a unique name for a `ConditionCheck` if one has not already been defined, and the existing one otherwise.
+func getConditionCheckName(taskRunStatus map[string]*v1alpha1.PipelineRunTaskRunStatus, trName, conditionName string) string {
+	trStatus, ok := taskRunStatus[trName]
+	if ok && trStatus.ConditionChecks != nil {
+		for k, v := range trStatus.ConditionChecks {
+			// TODO(1022): Should  we allow multiple conditions of the same type?
+			if conditionName == v.ConditionName {
+				return k
+			}
+		}
+	}
+	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", trName, conditionName))
 }
 
 // getTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
@@ -282,7 +322,6 @@ func getTaskRunName(taskRunsStatus map[string]*v1alpha1.PipelineRunTaskRunStatus
 // updated with, based on the status of the TaskRuns in state.
 func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *zap.SugaredLogger, startTime *metav1.Time,
 	pipelineTimeout *metav1.Duration) *apis.Condition {
-	allFinished := true
 	if !startTime.IsZero() && pipelineTimeout != nil {
 		timeout := pipelineTimeout.Duration
 		runtime := time.Since(startTime.Time)
@@ -298,10 +337,27 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 			}
 		}
 	}
+	allFinished := true
 	for _, rprt := range state {
 		if rprt.TaskRun == nil {
-			logger.Infof("TaskRun %s doesn't have a Status, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
-			allFinished = false
+
+			if rprt.ResolvedConditionChecks == nil {
+				logger.Infof("TaskRun %s doesn't have a Status, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
+				allFinished = false
+				continue
+			}
+			if !rprt.ResolvedConditionChecks.IsDone() {
+				logger.Infof("ConditionChecks for TaskRun %s in progress, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
+				allFinished = false
+				continue
+			}
+			if rprt.ResolvedConditionChecks.IsSuccess() {
+				logger.Infof("ConditionChecks for TaskRun %s successful but TaskRun doesn't have a Status, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
+				allFinished = false
+				continue
+			}
+
+			logger.Info("ConditionChecks for TaskRun %s failed, so PipelineRun %s might be finished unless other TaskRuns are still running", rprt.TaskRunName, prName)
 			continue
 		}
 		c := rprt.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
@@ -388,4 +444,34 @@ func ValidateFrom(state PipelineRunState) error {
 	}
 
 	return nil
+}
+
+func resolveConditionChecks(pt *v1alpha1.PipelineTask,
+	taskRunStatus map[string]*v1alpha1.PipelineRunTaskRunStatus,
+	taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition) ([]*ResolvedConditionCheck, error) {
+	rcc := []*ResolvedConditionCheck{}
+	for j := range pt.Conditions {
+		cName := pt.Conditions[j].ConditionRef
+		c, err := getCondition(cName)
+		if err != nil {
+			return nil, &ConditionNotFoundError{
+				Name: cName,
+				Msg:  err.Error(),
+			}
+		}
+		conditionCheckName := getConditionCheckName(taskRunStatus, taskRunName, cName)
+		cctr, err := getTaskRun(conditionCheckName)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, xerrors.Errorf("error retrieving ConditionCheck %s for taskRun name %s : %w", conditionCheckName, taskRunName, err)
+			}
+		}
+
+		rcc = append(rcc, &ResolvedConditionCheck{
+			Condition:          c,
+			ConditionCheckName: conditionCheckName,
+			ConditionCheck:     v1alpha1.NewConditionCheck(cctr),
+		})
+	}
+	return rcc, nil
 }

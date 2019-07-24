@@ -26,7 +26,7 @@ import (
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	artifacts "github.com/tektoncd/pipeline/pkg/artifacts"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipeline/dag"
@@ -62,6 +62,9 @@ const (
 	// ReasonCouldntGetResource indicates that the reason for the failure status is that the
 	// associated PipelineRun's bound PipelineResources couldn't all be retrieved
 	ReasonCouldntGetResource = "CouldntGetResource"
+	// ReasonCouldntGetCondition indicates that the reason for the failure status is that the
+	// associated Pipeline's Conditions couldn't all be retrieved
+	ReasonCouldntGetCondition = "CouldntGetCondition"
 	// ReasonFailedValidation indicates that the reason for failure status is
 	// that pipelinerun failed runtime validation
 	ReasonFailedValidation = "PipelineValidationFailed"
@@ -93,6 +96,7 @@ type Reconciler struct {
 	taskLister        listers.TaskLister
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    listers.PipelineResourceLister
+	conditionLister   listers.ConditionLister
 	tracker           tracker.Interface
 	configStore       configStore
 	timeoutHandler    *reconciler.TimeoutSet
@@ -278,6 +282,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			return c.clusterTaskLister.Get(name)
 		},
 		c.resourceLister.PipelineResources(pr.Namespace).Get,
+		func(name string) (*v1alpha1.Condition, error) {
+			return c.conditionLister.Conditions(pr.Namespace).Get(name)
+		},
 		p.Spec.Tasks, providedResources,
 	)
 	if err != nil {
@@ -297,6 +304,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 				Status: corev1.ConditionFalse,
 				Reason: ReasonCouldntGetResource,
 				Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
+					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
+			})
+		case *resources.ConditionNotFoundError:
+			pr.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: ReasonCouldntGetCondition,
+				Message: fmt.Sprintf("PipelineRun %s can't be Run; it contains Conditions that don't exist:  %s",
 					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
 			})
 		default:
@@ -353,6 +368,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	if err != nil {
 		c.Logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 	}
+
 	rprts := pipelineState.GetNextTasks(candidateTasks)
 
 	var as artifacts.ArtifactStorageInterface
@@ -362,12 +378,23 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	for _, rprt := range rprts {
-		if rprt != nil {
-			c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
-			rprt.TaskRun, err = c.createTaskRun(c.Logger, rprt, pr, as.StorageBasePath(pr))
+		if rprt == nil {
+			continue
+		}
+		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
+			rprt.TaskRun, err = c.createTaskRun(rprt, pr, as.StorageBasePath(pr))
 			if err != nil {
 				c.Recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
 				return xerrors.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+			}
+		} else if !rprt.ResolvedConditionChecks.HasStarted() {
+			// FIXME: Move this on to its own function
+			for _, rcc := range rprt.ResolvedConditionChecks {
+				rcc.ConditionCheck, err = c.makeConditionCheckContainer(rprt, rcc, pr)
+				if err != nil {
+					c.Recorder.Eventf(pr, corev1.EventTypeWarning, "ConditionCheckCreationFailed", "Failed to create TaskRun %q: %v", rcc.ConditionCheckName, err)
+					return xerrors.Errorf("error creating ConditionCheck container called %s for PipelineTask %s from PipelineRun %s: %w", rcc.ConditionCheckName, rprt.PipelineTask.Name, pr.Name, err)
+				}
 			}
 		}
 	}
@@ -384,21 +411,54 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask) {
 	for _, rprt := range pipelineState {
+		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
+			continue
+		}
+		var prtrs *v1alpha1.PipelineRunTaskRunStatus
 		if rprt.TaskRun != nil {
-			prtrs := pr.Status.TaskRuns[rprt.TaskRun.Name]
-			if prtrs == nil {
-				prtrs = &v1alpha1.PipelineRunTaskRunStatus{
-					PipelineTaskName: rprt.PipelineTask.Name,
-				}
-				pr.Status.TaskRuns[rprt.TaskRun.Name] = prtrs
+			prtrs = pr.Status.TaskRuns[rprt.TaskRun.Name]
+		}
+		if prtrs == nil {
+			prtrs = &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: rprt.PipelineTask.Name,
 			}
+		}
+
+		if rprt.TaskRun != nil {
 			prtrs.Status = &rprt.TaskRun.Status
 		}
+
+		if len(rprt.ResolvedConditionChecks) > 0 {
+			cStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
+			for _, c := range rprt.ResolvedConditionChecks {
+				cStatus[c.ConditionCheckName] = &v1alpha1.PipelineRunConditionCheckStatus{
+					ConditionName: c.Condition.Name,
+				}
+				if c.ConditionCheck != nil {
+					ccStatus := c.NewConditionCheckStatus()
+					cStatus[c.ConditionCheckName].Status = &ccStatus
+				}
+			}
+			prtrs.ConditionChecks = cStatus
+			if rprt.ResolvedConditionChecks.IsDone() && !rprt.ResolvedConditionChecks.IsSuccess() {
+				if prtrs.Status == nil {
+					prtrs.Status = &v1alpha1.TaskRunStatus{}
+				}
+				prtrs.Status.SetCondition(&apis.Condition{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  resources.ReasonConditionCheckFailed,
+					Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", rprt.TaskRunName, pr.Name),
+				})
+			}
+		}
+		pr.Status.TaskRuns[rprt.TaskRunName] = prtrs
 	}
 }
 
 func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) error {
 	for taskRunName := range pr.Status.TaskRuns {
+		// TODO(dibyom): Add conditionCheck statuses here
 		prtrs := pr.Status.TaskRuns[taskRunName]
 		tr, err := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
 		if err != nil {
@@ -410,13 +470,11 @@ func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) erro
 			prtrs.Status = &tr.Status
 		}
 	}
-
 	return nil
 }
 
-func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *v1alpha1.PipelineRun, storageBasePath string) (*v1alpha1.TaskRun, error) {
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(rprt.TaskRunName)
-
 	if tr != nil {
 		//is a retry
 		addRetryHistory(tr)
@@ -451,7 +509,7 @@ func (c *Reconciler) createTaskRun(logger *zap.SugaredLogger, rprt *resources.Re
 		}}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
-
+	c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)
 	return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
 }
 
@@ -557,4 +615,30 @@ func (c *Reconciler) updateLabelsAndAnnotations(pr *v1alpha1.PipelineRun) (*v1al
 		return c.PipelineClientSet.TektonV1alpha1().PipelineRuns(pr.Namespace).Update(newPr)
 	}
 	return newPr, nil
+}
+
+func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1alpha1.PipelineRun) (*v1alpha1.ConditionCheck, error) {
+	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name)
+	labels[pipeline.GroupName+pipeline.PipelineRunConditionCheckKey] = rcc.ConditionCheckName
+
+	tr := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            rcc.ConditionCheckName,
+			Namespace:       pr.Namespace,
+			OwnerReferences: pr.GetOwnerReference(),
+			Labels:          labels,
+			Annotations:     getTaskrunAnnotations(pr), // Propagate annotations from PipelineRun to TaskRun.
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskSpec:       rcc.ConditionToTaskSpec(),
+			ServiceAccount: getServiceAccount(pr, rprt.PipelineTask.Name),
+			Timeout:        getTaskRunTimeout(pr),
+			NodeSelector:   pr.Spec.NodeSelector,
+			Tolerations:    pr.Spec.Tolerations,
+			Affinity:       pr.Spec.Affinity,
+		}}
+
+	cctr, err := c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
+	cc := v1alpha1.ConditionCheck(*cctr)
+	return &cc, err
 }
