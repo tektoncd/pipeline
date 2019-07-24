@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"knative.dev/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
+	"knative.dev/pkg/apis"
 )
 
 func Test_EmitEvent(t *testing.T) {

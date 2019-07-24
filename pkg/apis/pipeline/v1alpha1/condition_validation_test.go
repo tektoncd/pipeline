@@ -20,12 +20,13 @@ package v1alpha1
 
 import (
 	"context"
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"knative.dev/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
+	"knative.dev/pkg/apis"
 )
 
 func TestCondition_Validate(t *testing.T) {

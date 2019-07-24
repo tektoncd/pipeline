@@ -16,10 +16,10 @@ limitations under the License.
 package reconciler
 
 import (
-	"knative.dev/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	"knative.dev/pkg/apis"
 )
 
 // EmitEvent emits success or failed event for object

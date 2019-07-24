@@ -19,8 +19,8 @@ package v1alpha1_test
 import (
 	"testing"
 
-	"knative.dev/pkg/webhook"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"knative.dev/pkg/webhook"
 )
 
 func TestTypes(t *testing.T) {

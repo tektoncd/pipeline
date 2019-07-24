@@ -20,11 +20,6 @@ import (
 	"context"
 	"time"
 
-	"knative.dev/pkg/configmap"
-	"knative.dev/pkg/controller"
-	"knative.dev/pkg/injection/clients/kubeclient"
-	"knative.dev/pkg/logging"
-	"knative.dev/pkg/tracker"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask"
 	pipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipeline"
@@ -35,6 +30,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/config"
 	"k8s.io/client-go/tools/cache"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection/clients/kubeclient"
+	"knative.dev/pkg/logging"
+	"knative.dev/pkg/tracker"
 )
 
 const (

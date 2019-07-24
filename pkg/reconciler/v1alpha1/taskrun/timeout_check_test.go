@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	"knative.dev/pkg/apis"
 )
 
 func TestCheckTimeout(t *testing.T) {

@@ -17,8 +17,8 @@ limitations under the License.
 package reconciler
 
 import (
-	"knative.dev/pkg/controller"
 	"go.uber.org/zap"
+	"knative.dev/pkg/controller"
 )
 
 // MustNewStatsReporter creates a new instance of StatsReporter. Panics if creation fails.

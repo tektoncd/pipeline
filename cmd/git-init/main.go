@@ -18,8 +18,8 @@ package main
 import (
 	"flag"
 
-	"knative.dev/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/git"
+	"knative.dev/pkg/logging"
 )
 
 var (

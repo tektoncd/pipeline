@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
-	knativetest "knative.dev/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 )
 
 // TestDAGPipelineRun creates a graph of arbitrary Tasks, then looks at the corresponding

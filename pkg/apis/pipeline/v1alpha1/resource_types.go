@@ -17,10 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"knative.dev/pkg/apis"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 // PipelineResourceType represents the type of endpoint the pipelineResource is, so that the
