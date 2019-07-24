@@ -39,6 +39,10 @@ import (
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
+var (
+	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
+)
+
 func getRunName(pr *v1alpha1.PipelineRun) string {
 	return strings.Join([]string{pr.Namespace, pr.Name}, "/")
 }
@@ -57,6 +61,12 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.TestAssets, func(
 		),
 		Clients: c,
 	}, cancel
+}
+
+// conditionCheckFromTaskRun converts takes a pointer to a TaskRun and wraps it into a ConditionCheck
+func conditionCheckFromTaskRun(tr *v1alpha1.TaskRun) *v1alpha1.ConditionCheck {
+	cc := v1alpha1.ConditionCheck(*tr)
+	return &cc
 }
 
 func TestReconcile(t *testing.T) {
@@ -264,6 +274,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		tb.Pipeline("a-pipeline-with-array-params", "foo", tb.PipelineSpec(
 			tb.PipelineParamSpec("some-param", v1alpha1.ParamTypeArray),
 			tb.PipelineTask("some-task", "a-task-that-needs-array-params"))),
+		tb.Pipeline("a-pipeline-with-missing-conditions", "foo", tb.PipelineSpec(tb.PipelineTask("some-task", "a-task-that-exists", tb.PipelineTaskCondition("condition-does-not-exist")))),
 	}
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("invalid-pipeline", "foo", tb.PipelineRunSpec("pipeline-not-exist")),
@@ -274,6 +285,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			tb.PipelineRunResourceBinding("a-resource", tb.PipelineResourceBindingRef("missing-resource")))),
 		tb.PipelineRun("pipeline-resources-not-declared", "foo", tb.PipelineRunSpec("a-pipeline-that-should-be-caught-by-admission-control")),
 		tb.PipelineRun("pipeline-mismatching-param-type", "foo", tb.PipelineRunSpec("a-pipeline-with-array-params", tb.PipelineRunParam("some-param", "stringval"))),
+		tb.PipelineRun("pipeline-conditions-missing", "foo", tb.PipelineRunSpec("a-pipeline-with-missing-conditions")),
 	}
 	d := test.Data{
 		Tasks:        ts,
@@ -313,6 +325,10 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			name:        "invalid-pipeline-mismatching-parameter-types",
 			pipelineRun: prs[6],
 			reason:      ReasonParameterTypeMismatch,
+		}, {
+			name:        "invalid-pipeline-missing-conditions-shd-stop-reconciling",
+			pipelineRun: prs[7],
+			reason:      ReasonCouldntGetCondition,
 		},
 	}
 
@@ -429,13 +445,294 @@ func TestUpdateTaskRunsState(t *testing.T) {
 
 }
 
-func TestReconcileOnCompletedPipelineRun(t *testing.T) {
-	prtrs := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
-	taskRunName := "test-pipeline-run-completed-hello-world"
-	prtrs[taskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "hello-world-1",
-		Status:           &v1alpha1.TaskRunStatus{},
+func TestUpdateTaskRunState_WithPassingConditionChecks(t *testing.T) {
+	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
+
+	cond := v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "always-true",
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Check: corev1.Container{},
+		},
 	}
+
+	taskCondition := v1alpha1.PipelineTaskCondition{
+		ConditionRef: "always-true",
+	}
+
+	pipelineTask := v1alpha1.PipelineTask{
+		Name:       "unit-test-1",
+		TaskRef:    v1alpha1.TaskRef{Name: "unit-test-task"},
+		Conditions: []v1alpha1.PipelineTaskCondition{taskCondition},
+	}
+
+	conditioncheck := conditionCheckFromTaskRun(tb.TaskRun("test-pipeline-run-success-unit-test-1-always-true", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskSpec(tb.TaskContainerTemplate()),
+	), tb.TaskRunStatus(
+		tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}),
+		tb.StepState(tb.StateTerminated(0)),
+	)))
+
+	expectedConditionCheckStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
+	expectedConditionCheckStatus[conditioncheck.Name] = &v1alpha1.PipelineRunConditionCheckStatus{
+		ConditionName: cond.Name,
+		Status: &v1alpha1.ConditionCheckStatus{
+			Check: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+			},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}},
+			},
+		},
+	}
+	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+	expectedTaskRunsStatus["test-pipeline-run-success-unit-test-1"] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "unit-test-1",
+		ConditionChecks:  expectedConditionCheckStatus,
+	}
+	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
+		TaskRuns: expectedTaskRunsStatus,
+	}
+
+	state := []*resources.ResolvedPipelineRunTask{{
+		PipelineTask: &pipelineTask,
+		TaskRunName:  "test-pipeline-run-success-unit-test-1",
+		TaskRun:      nil,
+		ResolvedTaskResources: &taskrunresources.ResolvedTaskResources{
+			TaskSpec: &v1alpha1.TaskSpec{},
+		},
+		ResolvedConditionChecks: resources.TaskConditionCheckState{{
+			ConditionCheckName: "test-pipeline-run-success-unit-test-1-always-true",
+			Condition:          &cond,
+			ConditionCheck:     conditioncheck,
+		}},
+	}}
+	pr.Status.InitializeConditions()
+	updateTaskRunsStatus(pr, state)
+	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns); d != "" {
+		t.Fatalf("Expected PipelineRun status to match ConditionCheck(s) status, but got a mismatch: %s", d)
+	}
+}
+
+func TestUpdateTaskRunState_WithFailingConditionChecks(t *testing.T) {
+	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
+
+	cond := v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "always-true",
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Check: corev1.Container{},
+		},
+	}
+
+	taskCondition := v1alpha1.PipelineTaskCondition{
+		ConditionRef: "always-true",
+	}
+
+	pipelineTask := v1alpha1.PipelineTask{
+		Name:       "unit-test-1",
+		TaskRef:    v1alpha1.TaskRef{Name: "unit-test-task"},
+		Conditions: []v1alpha1.PipelineTaskCondition{taskCondition},
+	}
+
+	taskrunName := "test-pipeline-run-success-unit-test-1"
+	conditioncheck := conditionCheckFromTaskRun(tb.TaskRun("test-pipeline-run-success-unit-test-1-always-true", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskSpec(tb.TaskContainerTemplate()),
+	), tb.TaskRunStatus(
+		tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}),
+		tb.StepState(tb.StateTerminated(127)),
+	)))
+
+	expectedConditionCheckStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
+	expectedConditionCheckStatus[conditioncheck.Name] = &v1alpha1.PipelineRunConditionCheckStatus{
+		ConditionName: cond.Name,
+		Status: &v1alpha1.ConditionCheckStatus{
+			Check: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+			},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+			},
+		},
+	}
+
+	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+	expectedTaskRunsStatus["test-pipeline-run-success-unit-test-1"] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "unit-test-1",
+		ConditionChecks:  expectedConditionCheckStatus,
+		Status: &v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Reason:  resources.ReasonConditionCheckFailed,
+					Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", taskrunName, pr.Name),
+				}},
+			},
+		},
+	}
+	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
+		TaskRuns: expectedTaskRunsStatus,
+	}
+
+	state := makePRState(taskrunName, pipelineTask, resources.TaskConditionCheckState{{
+		ConditionCheckName: "test-pipeline-run-success-unit-test-1-always-true",
+		Condition:          &cond,
+		ConditionCheck:     conditioncheck,
+	}})
+	pr.Status.InitializeConditions()
+	updateTaskRunsStatus(pr, state)
+	ignoreLastTransitionTime := cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
+	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("Expected PipelineRun status to match ConditionCheck(s) status, but got a mismatch: %s", d)
+	}
+}
+
+func makePRState(trName string, pt v1alpha1.PipelineTask, tccs resources.TaskConditionCheckState) resources.PipelineRunState {
+	pipelineTask := v1alpha1.PipelineTask{
+		Name:    "unit-test-1",
+		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+	}
+	var ptc []v1alpha1.PipelineTaskCondition
+	for _, rcc := range tccs {
+		ptc = append(ptc, v1alpha1.PipelineTaskCondition{
+			ConditionRef: rcc.Condition.Name,
+		})
+	}
+	pipelineTask.Conditions = ptc
+	state := []*resources.ResolvedPipelineRunTask{{
+		PipelineTask:            &pt,
+		TaskRunName:             trName,
+		ResolvedConditionChecks: tccs,
+	}}
+	return state
+}
+
+func TestUpdateTaskRunState_MultipleConditionChecks(t *testing.T) {
+	taskrunName := "test-pipeline-run-success-unit-test-1"
+	successConditionCheckName := "test-pipeline-run-success-unit-test-1-cond-1"
+	failingConditionCheckName := "test-pipeline-run-success-unit-test-1-cond-2"
+
+	successCondition := v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cond-1",
+		},
+	}
+	failingCondition := v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cond-2",
+		},
+	}
+
+	pipelineTask := v1alpha1.PipelineTask{
+		Name:    "unit-test-1",
+		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+		Conditions: []v1alpha1.PipelineTaskCondition{{
+			ConditionRef: successCondition.Name,
+		}, {
+			ConditionRef: failingCondition.Name,
+		}},
+	}
+
+	successConditionCheck := conditionCheckFromTaskRun(tb.TaskRun(successConditionCheckName, "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskSpec(tb.TaskContainerTemplate()),
+	), tb.TaskRunStatus(
+		tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		}),
+		tb.StepState(tb.StateTerminated(0)),
+	)))
+	failingConditionCheck := conditionCheckFromTaskRun(tb.TaskRun(failingConditionCheckName, "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskSpec(tb.TaskContainerTemplate()),
+	), tb.TaskRunStatus(
+		tb.StatusCondition(apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+		}),
+		tb.StepState(tb.StateTerminated(127)),
+	)))
+
+	successConditionCheckStatus := &v1alpha1.PipelineRunConditionCheckStatus{
+		ConditionName: successCondition.Name,
+		Status: &v1alpha1.ConditionCheckStatus{
+			Check: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+			},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}},
+			},
+		},
+	}
+	failingConditionCheckStatus := &v1alpha1.PipelineRunConditionCheckStatus{
+		ConditionName: failingCondition.Name,
+		Status: &v1alpha1.ConditionCheckStatus{
+			Check: corev1.ContainerState{
+				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+			},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+			},
+		},
+	}
+
+	successrcc := resources.ResolvedConditionCheck{
+		ConditionCheckName: successConditionCheckName,
+		Condition:          &successCondition,
+		ConditionCheck:     successConditionCheck,
+	}
+	failingrcc := resources.ResolvedConditionCheck{
+		ConditionCheckName: failingConditionCheckName,
+		Condition:          &failingCondition,
+		ConditionCheck:     failingConditionCheck,
+	}
+
+	expectedConditionCheckStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
+	expectedConditionCheckStatus[successConditionCheckName] = successConditionCheckStatus
+	expectedConditionCheckStatus[failingConditionCheckName] = failingConditionCheckStatus
+
+	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+
+	//sucessfulTaskRunStatus := v1alpha1.TaskRunStatus{}
+	failedTaskRunStatus := v1alpha1.TaskRunStatus{
+		Status: duckv1beta1.Status{
+			Conditions: []apis.Condition{{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  resources.ReasonConditionCheckFailed,
+				Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", taskrunName, "test-pipeline-run"),
+			}},
+		},
+	}
+
+	expectedTaskRunsStatus[taskrunName] = &v1alpha1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "unit-test-1",
+		ConditionChecks:  expectedConditionCheckStatus,
+		Status:           &failedTaskRunStatus,
+	}
+	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
+		TaskRuns: expectedTaskRunsStatus,
+	}
+
+	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
+	state := makePRState(taskrunName, pipelineTask, resources.TaskConditionCheckState{&successrcc, &failingrcc})
+	pr.Status.InitializeConditions()
+	updateTaskRunsStatus(pr, state)
+	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("Expected PipelineRun status to match ConditionCheck(s) status, but got a mismatch: %s", d)
+	}
+}
+
+func TestReconcileOnCompletedPipelineRun(t *testing.T) {
+	taskRunName := "test-pipeline-run-completed-hello-world"
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
 		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa")),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
@@ -444,7 +741,10 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 			Reason:  resources.ReasonSucceeded,
 			Message: "All Tasks have completed executing",
 		}),
-			tb.PipelineRunTaskRunsStatus(prtrs),
+			tb.PipelineRunTaskRunsStatus(taskRunName, &v1alpha1.PipelineRunTaskRunStatus{
+				PipelineTaskName: "hello-world-1",
+				Status:           &v1alpha1.TaskRunStatus{},
+			}),
 		),
 	)}
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
@@ -510,7 +810,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 
 	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
 	expectedTaskRunsStatus[taskRunName] = &v1alpha1.PipelineRunTaskRunStatus{
-		PipelineTaskName: prtrs[taskRunName].PipelineTaskName,
+		PipelineTaskName: "hello-world-1",
 		Status: &v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
@@ -1061,4 +1361,225 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReconcileWithConditionChecks(t *testing.T) {
+	names.TestingSeed()
+	prName := "test-pipeline-run"
+	conditions := []*v1alpha1.Condition{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cond-1",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Check: corev1.Container{
+				Image: "foo",
+				Args:  []string{"bar"},
+			},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cond-2",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Check: corev1.Container{
+				Image: "foo",
+				Args:  []string{"bar"},
+			},
+		},
+	}}
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("hello-world-1", "hello-world",
+			tb.PipelineTaskCondition("cond-1"),
+			tb.PipelineTaskCondition("cond-2")),
+	))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun(prName, "foo",
+		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccount("test-sa"),
+		),
+	)}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		Conditions:   conditions,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/"+prName)
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get(prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+	ccNameBase := prName + "-hello-world-1-9l9zj"
+	expectedConditionChecks := []*v1alpha1.TaskRun{
+		makeExpectedTr("cond-1", ccNameBase+"-cond-1-mz4c7"),
+		makeExpectedTr("cond-2", ccNameBase+"-cond-2-mssqb"),
+	}
+
+	// Check that the expected TaskRun was created
+	condCheck0 := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
+	condCheck1 := clients.Pipeline.Actions()[1].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
+	if condCheck0 == nil || condCheck1 == nil {
+		t.Errorf("Expected two ConditionCheck TaskRuns to be created, but it wasn't.")
+	}
+
+	actual := []*v1alpha1.TaskRun{condCheck0, condCheck1}
+	if d := cmp.Diff(actual, expectedConditionChecks); d != "" {
+		t.Errorf("expected to see 2 ConditionCheck TaskRuns created. Diff %s", d)
+	}
+}
+
+func TestReconcileWithFailingConditionChecks(t *testing.T) {
+	names.TestingSeed()
+	conditions := []*v1alpha1.Condition{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "always-false",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Check: corev1.Container{
+				Image: "foo",
+				Args:  []string{"bar"},
+			},
+		},
+	}}
+	pipelineRunName := "test-pipeline-run-with-conditions"
+	prccs := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
+
+	conditionCheckName := pipelineRunName + "task-2-always-false-xxxyyy"
+	prccs[conditionCheckName] = &v1alpha1.PipelineRunConditionCheckStatus{
+		ConditionName: "always-false",
+		Status:        &v1alpha1.ConditionCheckStatus{},
+	}
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask("task-1", "hello-world"),
+		tb.PipelineTask("task-2", "hello-world", tb.PipelineTaskCondition("always-false")),
+		tb.PipelineTask("task-3", "hello-world", tb.RunAfter("task-1")),
+	))}
+
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-conditions", "foo",
+		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccount("test-sa"),
+		),
+		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  resources.ReasonRunning,
+			Message: "Not all Tasks in the Pipeline have finished executing",
+		}), tb.PipelineRunTaskRunsStatus(pipelineRunName+"task-1", &v1alpha1.PipelineRunTaskRunStatus{
+			PipelineTaskName: "task-1",
+			Status:           &v1alpha1.TaskRunStatus{},
+		}), tb.PipelineRunTaskRunsStatus(pipelineRunName+"task-2", &v1alpha1.PipelineRunTaskRunStatus{
+			PipelineTaskName: "task-2",
+			Status:           &v1alpha1.TaskRunStatus{},
+			ConditionChecks:  prccs,
+		})),
+	)}
+
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(pipelineRunName+"task-1", "foo",
+			tb.TaskRunOwnerReference("kind", "name"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-with-conditions"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world")),
+			tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			}),
+			),
+		),
+		tb.TaskRun(conditionCheckName, "foo",
+			tb.TaskRunOwnerReference("kind", "name"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-with-conditions"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunConditionCheckKey, conditionCheckName),
+			tb.TaskRunSpec(tb.TaskRunTaskSpec()),
+			tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}),
+			),
+		),
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		Conditions:   conditions,
+		TaskRuns:     trs,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-conditions")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-conditions", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	// Check that the expected TaskRun was created
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
+	if actual == nil {
+		t.Errorf("Expected a ConditionCheck TaskRun to be created, but it wasn't.")
+	}
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-with-conditions-task-3-9l9zj", "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-conditions",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "task-3"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-conditions"),
+		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("hello-world"),
+			tb.TaskRunServiceAccount("test-sa"),
+		),
+	)
+
+	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
+		t.Errorf("expected to see ConditionCheck TaskRun %v created. Diff %s", expectedTaskRun, d)
+	}
+}
+
+func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
+	return tb.TaskRun(ccName, "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run"),
+		tb.TaskRunLabel("tekton.dev/pipelineConditionCheck", ccName),
+		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskSpec(tb.Step("condition-check-"+condName, "foo", tb.Args("bar"))),
+			tb.TaskRunServiceAccount("test-sa"),
+		),
+	)
 }

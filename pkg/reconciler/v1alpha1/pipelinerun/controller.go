@@ -22,6 +22,7 @@ import (
 
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask"
+	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
 	pipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipeline"
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelineresource"
 	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun"
@@ -54,6 +55,7 @@ func NewController(
 	pipelineRunInformer := pipelineruninformer.Get(ctx)
 	pipelineInformer := pipelineinformer.Get(ctx)
 	resourceInformer := resourceinformer.Get(ctx)
+	conditionInformer := conditioninformer.Get(ctx)
 	timeoutHandler := reconciler.NewTimeoutHandler(ctx.Done(), logger)
 
 	opt := reconciler.Options{
@@ -72,6 +74,7 @@ func NewController(
 		clusterTaskLister: clusterTaskInformer.Lister(),
 		taskRunLister:     taskRunInformer.Lister(),
 		resourceLister:    resourceInformer.Lister(),
+		conditionLister:   conditionInformer.Lister(),
 		timeoutHandler:    timeoutHandler,
 	}
 	impl := controller.NewImpl(c, c.Logger, pipelineRunControllerName)

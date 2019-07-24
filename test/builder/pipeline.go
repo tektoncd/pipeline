@@ -211,6 +211,17 @@ func PipelineTaskOutputResource(name, resource string) PipelineTaskOp {
 	}
 }
 
+// PipelineTaskCondition adds a condition to the PipelineTask with the
+// specified conditionRef
+func PipelineTaskCondition(conditionRef string) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		c := v1alpha1.PipelineTaskCondition{
+			ConditionRef: conditionRef,
+		}
+		pt.Conditions = append(pt.Conditions, c)
+	}
+}
+
 // PipelineRun creates a PipelineRun with default values.
 // Any number of PipelineRun modifier can be passed to transform it.
 func PipelineRun(name, namespace string, ops ...PipelineRunOp) *v1alpha1.PipelineRun {
@@ -384,10 +395,13 @@ func PipelineRunCompletionTime(t time.Time) PipelineRunStatusOp {
 	}
 }
 
-// PipelineRunTaskRunsStatus sets the TaskRuns of the PipelineRunStatus.
-func PipelineRunTaskRunsStatus(taskRuns map[string]*v1alpha1.PipelineRunTaskRunStatus) PipelineRunStatusOp {
+// PipelineRunTaskRunsStatus sets the status of TaskRun to the PipelineRunStatus.
+func PipelineRunTaskRunsStatus(taskRunName string, status *v1alpha1.PipelineRunTaskRunStatus) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
-		s.TaskRuns = taskRuns
+		if s.TaskRuns == nil {
+			s.TaskRuns = make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+		}
+		s.TaskRuns[taskRunName] = status
 	}
 }
 

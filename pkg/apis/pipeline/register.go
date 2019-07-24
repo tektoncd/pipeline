@@ -18,10 +18,11 @@ package pipeline
 
 // GroupName is the Kubernetes resource group name for Pipeline types.
 const (
-	GroupName            = "tekton.dev"
-	TaskLabelKey         = "/task"
-	TaskRunLabelKey      = "/taskRun"
-	PipelineLabelKey     = "/pipeline"
-	PipelineRunLabelKey  = "/pipelineRun"
-	PipelineTaskLabelKey = "/pipelineTask"
+	GroupName                    = "tekton.dev"
+	TaskLabelKey                 = "/task"
+	TaskRunLabelKey              = "/taskRun"
+	PipelineLabelKey             = "/pipeline"
+	PipelineRunLabelKey          = "/pipelineRun"
+	PipelineTaskLabelKey         = "/pipelineTask"
+	PipelineRunConditionCheckKey = "/pipelineConditionCheck"
 )
