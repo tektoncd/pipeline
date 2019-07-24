@@ -20,13 +20,13 @@ import (
 	"context"
 	"testing"
 
-	"knative.dev/pkg/apis"
-	rtesting "knative.dev/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestCancelPipelineRun(t *testing.T) {

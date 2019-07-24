@@ -20,13 +20,13 @@ import (
 	"fmt"
 	"time"
 
-	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"

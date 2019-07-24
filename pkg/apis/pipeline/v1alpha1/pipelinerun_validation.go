@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	"knative.dev/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"knative.dev/pkg/apis"
 )
 
 // Validate pipelinerun

@@ -16,12 +16,12 @@ package builder
 import (
 	"time"
 
-	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 // TaskOp is an operation which modify a Task struct.

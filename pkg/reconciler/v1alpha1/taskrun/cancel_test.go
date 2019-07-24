@@ -21,8 +21,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"knative.dev/pkg/apis"
-	rtesting "knative.dev/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -30,6 +28,8 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestCancelTaskRun(t *testing.T) {

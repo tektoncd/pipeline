@@ -24,14 +24,14 @@ import (
 	"testing"
 	"time"
 
-	"knative.dev/pkg/apis"
-	knativetest "knative.dev/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
+	knativetest "knative.dev/pkg/test"
 )
 
 // TestPipelineRunTimeout is an integration test that will

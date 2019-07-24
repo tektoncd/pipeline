@@ -19,9 +19,9 @@ package config
 import (
 	"context"
 
-	"knative.dev/pkg/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
+	"knative.dev/pkg/configmap"
 )
 
 type cfgKey struct{}

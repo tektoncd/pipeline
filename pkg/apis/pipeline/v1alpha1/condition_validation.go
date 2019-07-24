@@ -18,8 +18,9 @@ package v1alpha1
 
 import (
 	"context"
-	"knative.dev/pkg/apis"
+
 	"k8s.io/apimachinery/pkg/api/equality"
+	"knative.dev/pkg/apis"
 )
 
 func (c Condition) Validate(ctx context.Context) *apis.FieldError {

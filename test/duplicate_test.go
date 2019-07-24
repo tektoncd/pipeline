@@ -20,8 +20,8 @@ import (
 	"sync"
 	"testing"
 
-	knativetest "knative.dev/pkg/test"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	tb "github.com/tektoncd/pipeline/test/builder"

@@ -26,15 +26,14 @@ import (
 	"testing"
 
 	"github.com/ghodss/yaml"
-
-	knativetest "knative.dev/pkg/test"
-	"knative.dev/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/logging"
 
 	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"

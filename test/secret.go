@@ -20,10 +20,10 @@ import (
 	"os"
 	"testing"
 
-	knativetest "knative.dev/pkg/test"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 )
 
 // CreateGCPServiceAccountSecret will create a kube secret called secretName in namespace

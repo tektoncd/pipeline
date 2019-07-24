@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestPipelineRun_Invalidate(t *testing.T) {

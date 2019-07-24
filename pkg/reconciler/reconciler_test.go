@@ -22,8 +22,6 @@ import (
 	"strings"
 	"testing"
 
-	"knative.dev/pkg/apis"
-	rtesting "knative.dev/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/test"
@@ -32,6 +30,8 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
+	"knative.dev/pkg/apis"
+	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 // Test case for providing recorder in the option

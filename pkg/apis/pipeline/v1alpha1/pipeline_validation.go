@@ -20,11 +20,11 @@ import (
 	"context"
 	"fmt"
 
-	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/templating"
 	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"knative.dev/pkg/apis"
 )
 
 // Validate checks that the Pipeline structure is valid but does not validate

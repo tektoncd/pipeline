@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"strings"
 
-	"knative.dev/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"knative.dev/pkg/apis"
 )
 
 // Validate taskrun

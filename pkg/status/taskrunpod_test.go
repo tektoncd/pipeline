@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakeclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
@@ -16,6 +14,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
+	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var ignoreVolatileTime = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })

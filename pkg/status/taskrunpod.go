@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
@@ -13,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/apis"
 )
 
 // UpdateStatusFromPod modifies the task run status based on the pod and then returns true if the pod is running and
