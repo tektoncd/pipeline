@@ -1,0 +1,14 @@
+run:
+  build-tags:
+  - e2e
+  skip-dirs:
+  - vendor
+linters-settings:
+  errcheck:
+    exclude: .errcheck.txt
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - errcheck
+    - golint

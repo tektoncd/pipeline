@@ -62,7 +62,7 @@ func Command() *cobra.Command {
 // runCompletionZsh generate completion manually, we are not using cobra
 // completion since it's not flexible enough for us.
 func runCompletionZsh(out io.Writer, tkn *cobra.Command) error {
-	if _, err := out.Write([]byte(zsh_completion)); err != nil {
+	if _, err := out.Write([]byte(zshCompletion)); err != nil {
 		return err
 	}
 	return nil

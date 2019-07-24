@@ -15,8 +15,9 @@
 package formatted
 
 import (
-	"github.com/fatih/color"
 	"io"
+
+	"github.com/fatih/color"
 )
 
 //Color formatter to print the colored output on streams

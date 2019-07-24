@@ -16,11 +16,11 @@ package pipelinerun
 
 import (
 	"fmt"
-	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/helper/pods"
+	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 )
 
 const (

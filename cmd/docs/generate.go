@@ -76,7 +76,9 @@ func loadLongDescription(cmd *cobra.Command, path ...string) error {
 		}
 		fullpath := filepath.Join(path[0], strings.Join(append(path[1:], cmd.Name()), "_")+".md")
 		if cmd.HasSubCommands() {
-			loadLongDescription(cmd, path[0], cmd.Name())
+			if err := loadLongDescription(cmd, path[0], cmd.Name()); err != nil {
+				return err
+			}
 		}
 
 		if _, err := os.Stat(fullpath); err != nil {

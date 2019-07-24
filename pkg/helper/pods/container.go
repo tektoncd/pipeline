@@ -17,8 +17,9 @@ package pods
 import (
 	"bufio"
 	"fmt"
-	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 	"io"
+
+	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 	corev1 "k8s.io/api/core/v1"
 )
 

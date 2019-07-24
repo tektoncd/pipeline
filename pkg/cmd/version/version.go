@@ -76,7 +76,7 @@ func checkRelease(outStream io.Writer) error {
 
 	var response struct {
 		TagName string `json:"tag_name"`
-		HtmlUrl string `json:"html_url"`
+		HTMLURL string `json:"html_url"`
 	}
 	if err := json.Unmarshal(body, &response); err != nil {
 		return errors.Wrap(err, "failed to unmarshal the latest version response body")
@@ -93,7 +93,7 @@ func checkRelease(outStream io.Writer) error {
 	}
 
 	if current.LT(*latest) {
-		fmt.Fprintf(outStream, "A newer version (v%s) of Tekton CLI is available, please check %s\n", latest, response.HtmlUrl)
+		fmt.Fprintf(outStream, "A newer version (v%s) of Tekton CLI is available, please check %s\n", latest, response.HTMLURL)
 	} else {
 		fmt.Fprintf(outStream, "You are running the latest version (v%s) of Tekton CLI\n", latest)
 	}

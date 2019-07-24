@@ -1,6 +1,6 @@
 package completion
 
-var zsh_completion = `
+var zshCompletion = `
 #compdef _tkn tkn
 local -a common_options common_describe_options common_logs_options
 
