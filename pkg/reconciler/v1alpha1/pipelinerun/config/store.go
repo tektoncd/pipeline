@@ -19,7 +19,7 @@ package config
 import (
 	"context"
 
-	"github.com/knative/pkg/configmap"
+	"knative.dev/pkg/configmap"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 )

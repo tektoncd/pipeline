@@ -49,7 +49,7 @@ func (m *ListUptimeCheckConfigsRequest) Reset()         { *m = ListUptimeCheckCo
 func (m *ListUptimeCheckConfigsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListUptimeCheckConfigsRequest) ProtoMessage()    {}
 func (*ListUptimeCheckConfigsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_uptime_service_c74f83143a8cb5a4, []int{0}
+	return fileDescriptor_uptime_service_54cfcb7f292c1e2c, []int{0}
 }
 func (m *ListUptimeCheckConfigsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListUptimeCheckConfigsRequest.Unmarshal(m, b)
@@ -112,7 +112,7 @@ func (m *ListUptimeCheckConfigsResponse) Reset()         { *m = ListUptimeCheckC
 func (m *ListUptimeCheckConfigsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListUptimeCheckConfigsResponse) ProtoMessage()    {}
 func (*ListUptimeCheckConfigsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_uptime_service_c74f83143a8cb5a4, []int{1}
+	return fileDescriptor_uptime_service_54cfcb7f292c1e2c, []int{1}
 }
 func (m *ListUptimeCheckConfigsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListUptimeCheckConfigsResponse.Unmarshal(m, b)
@@ -167,7 +167,7 @@ func (m *GetUptimeCheckConfigRequest) Reset()         { *m = GetUptimeCheckConfi
 func (m *GetUptimeCheckConfigRequest) String() string { return proto.CompactTextString(m) }
 func (*GetUptimeCheckConfigRequest) ProtoMessage()    {}
 func (*GetUptimeCheckConfigRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_uptime_service_c74f83143a8cb5a4, []int{2}
+	return fileDescriptor_uptime_service_54cfcb7f292c1e2c, []int{2}
 }
 func (m *GetUptimeCheckConfigRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetUptimeCheckConfigRequest.Unmarshal(m, b)
@@ -210,7 +210,7 @@ func (m *CreateUptimeCheckConfigRequest) Reset()         { *m = CreateUptimeChec
 func (m *CreateUptimeCheckConfigRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateUptimeCheckConfigRequest) ProtoMessage()    {}
 func (*CreateUptimeCheckConfigRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_uptime_service_c74f83143a8cb5a4, []int{3}
+	return fileDescriptor_uptime_service_54cfcb7f292c1e2c, []int{3}
 }
 func (m *CreateUptimeCheckConfigRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateUptimeCheckConfigRequest.Unmarshal(m, b)
@@ -272,7 +272,7 @@ func (m *UpdateUptimeCheckConfigRequest) Reset()         { *m = UpdateUptimeChec
 func (m *UpdateUptimeCheckConfigRequest) String() string { return proto.CompactTextString(m) }
 func (*UpdateUptimeCheckConfigRequest) ProtoMessage()    {}
 func (*UpdateUptimeCheckConfigRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_uptime_service_c74f83143a8cb5a4, []int{4}
+	return fileDescriptor_uptime_service_54cfcb7f292c1e2c, []int{4}
 }
 func (m *UpdateUptimeCheckConfigRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_UpdateUptimeCheckConfigRequest.Unmarshal(m, b)
@@ -320,7 +320,7 @@ func (m *DeleteUptimeCheckConfigRequest) Reset()         { *m = DeleteUptimeChec
 func (m *DeleteUptimeCheckConfigRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteUptimeCheckConfigRequest) ProtoMessage()    {}
 func (*DeleteUptimeCheckConfigRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_uptime_service_c74f83143a8cb5a4, []int{5}
+	return fileDescriptor_uptime_service_54cfcb7f292c1e2c, []int{5}
 }
 func (m *DeleteUptimeCheckConfigRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteUptimeCheckConfigRequest.Unmarshal(m, b)
@@ -369,7 +369,7 @@ func (m *ListUptimeCheckIpsRequest) Reset()         { *m = ListUptimeCheckIpsReq
 func (m *ListUptimeCheckIpsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListUptimeCheckIpsRequest) ProtoMessage()    {}
 func (*ListUptimeCheckIpsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_uptime_service_c74f83143a8cb5a4, []int{6}
+	return fileDescriptor_uptime_service_54cfcb7f292c1e2c, []int{6}
 }
 func (m *ListUptimeCheckIpsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListUptimeCheckIpsRequest.Unmarshal(m, b)
@@ -424,7 +424,7 @@ func (m *ListUptimeCheckIpsResponse) Reset()         { *m = ListUptimeCheckIpsRe
 func (m *ListUptimeCheckIpsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListUptimeCheckIpsResponse) ProtoMessage()    {}
 func (*ListUptimeCheckIpsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_uptime_service_c74f83143a8cb5a4, []int{7}
+	return fileDescriptor_uptime_service_54cfcb7f292c1e2c, []int{7}
 }
 func (m *ListUptimeCheckIpsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListUptimeCheckIpsResponse.Unmarshal(m, b)
@@ -731,10 +731,10 @@ var _UptimeCheckService_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("google/monitoring/v3/uptime_service.proto", fileDescriptor_uptime_service_c74f83143a8cb5a4)
+	proto.RegisterFile("google/monitoring/v3/uptime_service.proto", fileDescriptor_uptime_service_54cfcb7f292c1e2c)
 }
 
-var fileDescriptor_uptime_service_c74f83143a8cb5a4 = []byte{
+var fileDescriptor_uptime_service_54cfcb7f292c1e2c = []byte{
 	// 747 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x56, 0xcd, 0x6e, 0xd3, 0x4a,
 	0x14, 0xd6, 0x24, 0xbd, 0x55, 0x7b, 0xaa, 0x7b, 0x2f, 0x0c, 0x51, 0x1b, 0x5c, 0x1a, 0x05, 0x23,

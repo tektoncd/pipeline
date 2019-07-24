@@ -2,10 +2,12 @@
 
 
 [[projects]]
-  digest = "1:b9224a63d1a2d5df807655ce63f6103a82ad7621510110b04382aee0da770bf9"
+  digest = "1:4984ef7a594c6ba63142ea35f6bb672e361a3ef5dfcca7b69e4991dd24e57609"
   name = "cloud.google.com/go"
   packages = [
     "compute/metadata",
+    "container/apiv1",
+    "internal/version",
     "monitoring/apiv3",
     "trace/apiv2",
   ]
@@ -14,36 +16,37 @@
   version = "v0.37.2"
 
 [[projects]]
-  digest = "1:f323f98930459f65f4699b5bfba563743680e2633d96e72d61a9732648e2d07c"
-  name = "contrib.go.opencensus.io/exporter/ocagent"
+  digest = "1:642cf8e80572f9dc0677b0f241c8ab2e715c9dccc215270ea873c86ddca0062c"
+  name = "contrib.go.opencensus.io/exporter/prometheus"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "00af367e65149ff1f2f4b93bbfbb84fd9297170d"
-  version = "v0.2.0"
+  revision = "f4a2c1e53ec45636355d35fb9022b64e4bdd4a91"
+  version = "v0.1.0"
 
 [[projects]]
-  digest = "1:b6eb7c2538ec2999a072c0e372a18d7b7e3aedac249f26e159586fa5f892909f"
+  digest = "1:f091d5e3183a972fc45c4279cec2d97e13262bfda5b85cda3280cb41475e1415"
   name = "contrib.go.opencensus.io/exporter/stackdriver"
   packages = [
     ".",
     "monitoredresource",
   ]
   pruneopts = "NUT"
-  revision = "c06c82c832edca4eaf7b0241bd655560a1be0346"
+  revision = "6850d2e00d7dfe4886f7e4773bf9f05e39296d92"
+  version = "v0.12.4"
 
 [[projects]]
-  digest = "1:40649b512eced276e9d279939b1266b8e18d574db10238bba2d2b6964a3a4faf"
+  digest = "1:904c3688aef33a2bf066cf92b2ba44131fed71c894f79c7076ffe2c6ad1ec4ea"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
     "services/containerregistry/mgmt/2017-10-01/containerregistry",
     "version",
   ]
   pruneopts = "NUT"
-  revision = "f686bd664dc30c61b628f074d638540d6b87524f"
-  version = "v26.1.0"
+  revision = "32916f57ad7b421f5fdaab86b73a795632fff117"
+  version = "v21.4.0"
 
 [[projects]]
-  digest = "1:140643c16866ae169363a23cd41304e2fe9d327f8d8ef5ad7e622da02b186181"
+  digest = "1:90df11ad9349a69d46e08211d47eb8db80311bf985a447dd88cb30d5b5f54add"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
@@ -53,11 +56,11 @@
     "autorest/to",
     "autorest/validation",
     "logger",
-    "tracing",
+    "version",
   ]
   pruneopts = "NUT"
-  revision = "36c85dfef6277593be33a29bbc7636a5eb4e4bad"
-  version = "v11.6.0"
+  revision = "1ffcc8896ef6dfe022d90a4317d866f925cf0f9e"
+  version = "v11.1.2"
 
 [[projects]]
   digest = "1:0fb0fc01ca0fb8c5a486a8a1b9092fe546aac68dbfb77919d9a3501b932c5990"
@@ -109,23 +112,22 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
-  digest = "1:7b306d2c6d792f8e71bf123669ee967cdeec633ca8944c627b50db13cc36c5ec"
+  digest = "1:e7d26760c4e7d67a443b082153c4b473ad0b8f7388302a2f788b1360f751abb8"
   name = "github.com/census-instrumentation/opencensus-proto"
   packages = [
     "gen-go/agent/common/v1",
-    "gen-go/agent/trace/v1",
     "gen-go/metrics/v1",
     "gen-go/resource/v1",
-    "gen-go/trace/v1",
   ]
   pruneopts = "NUT"
-  revision = "7f2434bc10da710debe5c4315ed6d4df454b4024"
-  version = "v0.1.0"
+  revision = "d89fa54de508111353cb0b06403c00569be780d8"
+  version = "v0.2.1"
 
 [[projects]]
-  digest = "1:fa1c3e6de410f74eb102fd927c838a66feb5b825fdf63d0e82cbbfd1a16db8a1"
+  digest = "1:0b2ffe5c17b0a3d49cc0a0cc20a13f7e1223fca1cd26587248a6b65c801dd46e"
   name = "github.com/cloudevents/sdk-go"
   packages = [
+    ".",
     "pkg/cloudevents",
     "pkg/cloudevents/client",
     "pkg/cloudevents/codec",
@@ -139,8 +141,8 @@
     "pkg/cloudevents/types",
   ]
   pruneopts = "NUT"
-  revision = "51b1fb67ea02b6edb9c158592f4c996d6edd1493"
-  version = "0.6.0"
+  revision = "56931988abe3adf6792b5c6e575ee5f573e9ccbc"
+  version = "0.7.0"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -206,7 +208,7 @@
   revision = "02826c3e79038b59d737d3b1c0a1d937f71a4433"
 
 [[projects]]
-  digest = "1:4dacf728c83400b3e9d1d3025dd3c1e93e9a1b033726d1b193dc209f3fa9cb7a"
+  digest = "1:f5a98770ab68c1146ee5cc14ed24aafa2bb1a2b3c89cbeadc9eb913b1f9d930a"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -220,7 +222,8 @@
     "ptypes/wrappers",
   ]
   pruneopts = "NUT"
-  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  revision = "6c65a5562fc06764971b7c5d05c76c75e84bdbf7"
+  version = "v1.3.2"
 
 [[projects]]
   branch = "master"
@@ -405,71 +408,6 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
-  digest = "1:9a670ce0109361c513e7103c478dbbea261bb81d41d0f9c822707451bce139bb"
-  name = "github.com/knative/caching"
-  packages = [
-    "pkg/apis/caching",
-    "pkg/apis/caching/v1alpha1",
-    "pkg/client/clientset/versioned",
-    "pkg/client/clientset/versioned/scheme",
-    "pkg/client/clientset/versioned/typed/caching/v1alpha1",
-  ]
-  pruneopts = "T"
-  revision = "3fc06fd3c9880a9ebb5c401f4b20cf6666cc7bc0"
-
-[[projects]]
-  digest = "1:067a241f3d8511e43ae1df08337a3cf2475d82b90c31cb4c43e4936cd5808d3c"
-  name = "github.com/knative/eventing-sources"
-  packages = ["pkg/kncloudevents"]
-  pruneopts = "NUT"
-  revision = "32ce3778fa1bc46ed0b0ade16d5c57f343cafa4d"
-  version = "v0.5.0"
-
-[[projects]]
-  digest = "1:33afd816eb96416e5d7c0a64c1c6412e277720faa03c90739ce1d1fb1764b8de"
-  name = "github.com/knative/pkg"
-  packages = [
-    "apis",
-    "apis/duck",
-    "apis/duck/v1beta1",
-    "changeset",
-    "codegen/cmd/injection-gen",
-    "codegen/cmd/injection-gen/args",
-    "codegen/cmd/injection-gen/generators",
-    "configmap",
-    "controller",
-    "injection",
-    "injection/clients/kubeclient",
-    "injection/clients/kubeclient/fake",
-    "injection/informers/kubeinformers/corev1/pod",
-    "injection/informers/kubeinformers/corev1/pod/fake",
-    "injection/informers/kubeinformers/factory",
-    "injection/informers/kubeinformers/factory/fake",
-    "injection/sharedmain",
-    "kmeta",
-    "kmp",
-    "logging",
-    "logging/logkey",
-    "logging/testing",
-    "metrics",
-    "metrics/metricskey",
-    "reconciler/testing",
-    "signals",
-    "system",
-    "system/testing",
-    "test",
-    "test/ingress",
-    "test/logging",
-    "test/monitoring",
-    "test/spoof",
-    "test/zipkin",
-    "tracker",
-    "webhook",
-  ]
-  pruneopts = "T"
-  revision = "68737b1b4e03d9a888e89ee2a44714a56eefd539"
-
-[[projects]]
   digest = "1:dabd27a263906435d198a5fa9237ff2b14383a1e29964b7006e6dc975134f5e6"
   name = "github.com/knative/test-infra"
   packages = ["tools/dep-collector"]
@@ -638,18 +576,20 @@
   revision = "a51e87c5261fdb718470c077c155e070aca690a8"
 
 [[projects]]
-  digest = "1:e65b395598ef96d96c1df34e3fd3ec4dabe629edb1511de33a59efd9931df0e8"
+  digest = "1:0e3fd52087079d1289983e4fef32268ca965973f5370b69204e2934185527baa"
   name = "go.opencensus.io"
   packages = [
     ".",
-    "exemplar",
-    "exporter/prometheus",
     "internal",
     "internal/tagencoding",
+    "metric/metricdata",
+    "metric/metricexport",
+    "metric/metricproducer",
     "plugin/ocgrpc",
     "plugin/ochttp",
     "plugin/ochttp/propagation/b3",
-    "plugin/ochttp/propagation/tracecontext",
+    "resource",
+    "resource/resourcekeys",
     "stats",
     "stats/internal",
     "stats/view",
@@ -660,8 +600,8 @@
     "trace/tracestate",
   ]
   pruneopts = "NUT"
-  revision = "b7bf3cdb64150a8c8c53b769fdeb2ba581bd4d4b"
-  version = "v0.18.0"
+  revision = "9c377598961b706d1542bd2d84d538b5094d596e"
+  version = "v0.22.0"
 
 [[projects]]
   digest = "1:22f696cee54865fb8e9ff91df7b633f6b8f22037a8015253c6b6a71ca82219c7"
@@ -846,22 +786,23 @@
   version = "v1.5.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:f13a21652a31a08931795226c4506ed9fa3be54a53ac09556ffcb74c1a24bc52"
+  digest = "1:3689f4cc57cc55b4631efc4b778c47d2a888a7060b4108f42cf289a2033be5ba"
   name = "google.golang.org/genproto"
   packages = [
+    "googleapis/api",
     "googleapis/api/annotations",
     "googleapis/api/distribution",
     "googleapis/api/label",
     "googleapis/api/metric",
     "googleapis/api/monitoredres",
+    "googleapis/container/v1",
     "googleapis/devtools/cloudtrace/v2",
     "googleapis/monitoring/v3",
     "googleapis/rpc/status",
     "protobuf/field_mask",
   ]
   pruneopts = "NUT"
-  revision = "fc2db5cae922db113989ef87b5b859cc8a179f59"
+  revision = "357c62f0e4bbba7e6cc403ae09edcf3e2b9028fe"
 
 [[projects]]
   digest = "1:5d01e130da45c5ddbf6501379771ebecb9fe35dac137671be20ba847843b1bbb"
@@ -1270,6 +1211,70 @@
   version = "v1.13.3"
 
 [[projects]]
+  digest = "1:e137525e8c556aad84e7d1ea5b2f77621faaa236313e9ebb76357ee6265c3e32"
+  name = "knative.dev/caching"
+  packages = [
+    "pkg/apis/caching",
+    "pkg/apis/caching/v1alpha1",
+    "pkg/client/clientset/versioned",
+    "pkg/client/clientset/versioned/scheme",
+    "pkg/client/clientset/versioned/typed/caching/v1alpha1",
+  ]
+  pruneopts = "T"
+  revision = "2032732871ff807958e045858b462d372eec9587"
+
+[[projects]]
+  digest = "1:e5d9908c191440c793f44656755ad87e4869a01ee5fcbc8449b0e0ebd7399ecc"
+  name = "knative.dev/eventing-contrib"
+  packages = ["pkg/kncloudevents"]
+  pruneopts = "NUT"
+  revision = "5ce18048c08b19437ac72fbdfeb4bf4a8d17c862"
+
+[[projects]]
+  digest = "1:2f5f32fe8d98f7936a79e575fda9c055b97e52dd78ef2d0b98f4b688383a0831"
+  name = "knative.dev/pkg"
+  packages = [
+    "apis",
+    "apis/duck",
+    "apis/duck/v1beta1",
+    "changeset",
+    "codegen/cmd/injection-gen",
+    "codegen/cmd/injection-gen/args",
+    "codegen/cmd/injection-gen/generators",
+    "configmap",
+    "controller",
+    "injection",
+    "injection/clients/kubeclient",
+    "injection/clients/kubeclient/fake",
+    "injection/informers/kubeinformers/corev1/pod",
+    "injection/informers/kubeinformers/corev1/pod/fake",
+    "injection/informers/kubeinformers/factory",
+    "injection/informers/kubeinformers/factory/fake",
+    "injection/sharedmain",
+    "kmeta",
+    "kmp",
+    "logging",
+    "logging/logkey",
+    "logging/testing",
+    "metrics",
+    "metrics/metricskey",
+    "reconciler/testing",
+    "signals",
+    "system",
+    "system/testing",
+    "test",
+    "test/ingress",
+    "test/logging",
+    "test/monitoring",
+    "test/spoof",
+    "test/zipkin",
+    "tracker",
+    "webhook",
+  ]
+  pruneopts = "T"
+  revision = "e4bc08cc8deda3eac40a8d53984d09c9d0e1ad48"
+
+[[projects]]
   digest = "1:8730e0150dfb2b7e173890c8b9868e7a273082ef8e39f4940e3506a481cf895c"
   name = "sigs.k8s.io/yaml"
   packages = ["."]
@@ -1300,29 +1305,6 @@
     "github.com/gorilla/mux",
     "github.com/hashicorp/go-multierror",
     "github.com/hashicorp/golang-lru",
-    "github.com/knative/caching/pkg/apis/caching",
-    "github.com/knative/caching/pkg/client/clientset/versioned",
-    "github.com/knative/eventing-sources/pkg/kncloudevents",
-    "github.com/knative/pkg/apis",
-    "github.com/knative/pkg/apis/duck/v1beta1",
-    "github.com/knative/pkg/codegen/cmd/injection-gen",
-    "github.com/knative/pkg/configmap",
-    "github.com/knative/pkg/controller",
-    "github.com/knative/pkg/injection",
-    "github.com/knative/pkg/injection/clients/kubeclient",
-    "github.com/knative/pkg/injection/clients/kubeclient/fake",
-    "github.com/knative/pkg/injection/informers/kubeinformers/corev1/pod",
-    "github.com/knative/pkg/injection/informers/kubeinformers/corev1/pod/fake",
-    "github.com/knative/pkg/injection/sharedmain",
-    "github.com/knative/pkg/logging",
-    "github.com/knative/pkg/logging/logkey",
-    "github.com/knative/pkg/logging/testing",
-    "github.com/knative/pkg/reconciler/testing",
-    "github.com/knative/pkg/signals",
-    "github.com/knative/pkg/test",
-    "github.com/knative/pkg/test/logging",
-    "github.com/knative/pkg/tracker",
-    "github.com/knative/pkg/webhook",
     "github.com/knative/test-infra/tools/dep-collector",
     "github.com/mitchellh/go-homedir",
     "github.com/mohae/deepcopy",
@@ -1372,6 +1354,29 @@
     "k8s.io/code-generator/cmd/defaulter-gen",
     "k8s.io/code-generator/cmd/informer-gen",
     "k8s.io/code-generator/cmd/lister-gen",
+    "knative.dev/caching/pkg/apis/caching",
+    "knative.dev/caching/pkg/client/clientset/versioned",
+    "knative.dev/eventing-contrib/pkg/kncloudevents",
+    "knative.dev/pkg/apis",
+    "knative.dev/pkg/apis/duck/v1beta1",
+    "knative.dev/pkg/codegen/cmd/injection-gen",
+    "knative.dev/pkg/configmap",
+    "knative.dev/pkg/controller",
+    "knative.dev/pkg/injection",
+    "knative.dev/pkg/injection/clients/kubeclient",
+    "knative.dev/pkg/injection/clients/kubeclient/fake",
+    "knative.dev/pkg/injection/informers/kubeinformers/corev1/pod",
+    "knative.dev/pkg/injection/informers/kubeinformers/corev1/pod/fake",
+    "knative.dev/pkg/injection/sharedmain",
+    "knative.dev/pkg/logging",
+    "knative.dev/pkg/logging/logkey",
+    "knative.dev/pkg/logging/testing",
+    "knative.dev/pkg/reconciler/testing",
+    "knative.dev/pkg/signals",
+    "knative.dev/pkg/test",
+    "knative.dev/pkg/test/logging",
+    "knative.dev/pkg/tracker",
+    "knative.dev/pkg/webhook",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

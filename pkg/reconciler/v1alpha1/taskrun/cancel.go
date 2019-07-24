@@ -19,7 +19,7 @@ package taskrun
 import (
 	"fmt"
 
-	"github.com/knative/pkg/apis"
+	"knative.dev/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

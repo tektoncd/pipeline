@@ -17,7 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"github.com/knative/pkg/injection/sharedmain"
+	"knative.dev/pkg/injection/sharedmain"
 
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"

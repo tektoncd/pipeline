@@ -24,8 +24,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/knative/pkg/apis"
-	knativetest "github.com/knative/pkg/test"
+	"knative.dev/pkg/apis"
+	knativetest "knative.dev/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"

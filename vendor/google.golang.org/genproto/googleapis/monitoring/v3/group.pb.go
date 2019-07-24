@@ -57,7 +57,8 @@ type Group struct {
 	// The format is `"projects/{project_id_or_number}/groups/{group_id}"`.
 	// For groups with no parent, `parentName` is the empty string, `""`.
 	ParentName string `protobuf:"bytes,3,opt,name=parent_name,json=parentName,proto3" json:"parent_name,omitempty"`
-	// The filter used to determine which monitored resources belong to this group.
+	// The filter used to determine which monitored resources belong to this
+	// group.
 	Filter string `protobuf:"bytes,5,opt,name=filter,proto3" json:"filter,omitempty"`
 	// If true, the members of this group are considered to be a cluster.
 	// The system can perform additional analysis on groups that are clusters.
@@ -71,7 +72,7 @@ func (m *Group) Reset()         { *m = Group{} }
 func (m *Group) String() string { return proto.CompactTextString(m) }
 func (*Group) ProtoMessage()    {}
 func (*Group) Descriptor() ([]byte, []int) {
-	return fileDescriptor_group_da6702aeb6854c5f, []int{0}
+	return fileDescriptor_group_700c5154781dcc4e, []int{0}
 }
 func (m *Group) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Group.Unmarshal(m, b)
@@ -131,10 +132,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("google/monitoring/v3/group.proto", fileDescriptor_group_da6702aeb6854c5f)
+	proto.RegisterFile("google/monitoring/v3/group.proto", fileDescriptor_group_700c5154781dcc4e)
 }
 
-var fileDescriptor_group_da6702aeb6854c5f = []byte{
+var fileDescriptor_group_700c5154781dcc4e = []byte{
 	// 261 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x90, 0xcf, 0x4a, 0x2b, 0x31,
 	0x14, 0x87, 0x49, 0xef, 0xed, 0x60, 0x4f, 0x5d, 0x0d, 0x22, 0x83, 0x20, 0x8e, 0xae, 0xba, 0xca,

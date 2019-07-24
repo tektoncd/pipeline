@@ -46,7 +46,9 @@ func (e Event) DataContentType() string {
 	return e.Context.GetDataContentType()
 }
 
-// DataMediaType implements EventReader.DataMediaType
+// DataMediaType returns the parsed DataMediaType of the event. If parsing
+// fails, the empty string is returned. To retrieve the parsing error, use
+// `Context.GetDataMediaType` instead.
 func (e Event) DataMediaType() string {
 	mediaType, _ := e.Context.GetDataMediaType()
 	return mediaType
@@ -55,4 +57,9 @@ func (e Event) DataMediaType() string {
 // DataContentEncoding implements EventReader.DataContentEncoding
 func (e Event) DataContentEncoding() string {
 	return e.Context.GetDataContentEncoding()
+}
+
+// DataContentEncoding implements EventReader.DataContentEncoding
+func (e Event) Extensions() map[string]interface{} {
+	return e.Context.GetExtensions()
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents"
-	"github.com/cloudevents/sdk-go/pkg/cloudevents/datacodec"
 	"github.com/cloudevents/sdk-go/pkg/cloudevents/observability"
 	"strconv"
 )
@@ -86,15 +85,15 @@ func obsJsonEncodeV03(e cloudevents.Event) ([]byte, error) {
 }
 
 func jsonEncode(ctx cloudevents.EventContextReader, data []byte) ([]byte, error) {
-	ctxb, err := marshalEvent(ctx)
-	if err != nil {
-		return nil, err
+	var b map[string]json.RawMessage
+	var err error
+
+	if ctx.GetSpecVersion() == cloudevents.CloudEventsVersionV01 {
+		b, err = marshalEventLegacy(ctx)
+	} else {
+		b, err = marshalEvent(ctx, ctx.GetExtensions())
 	}
-
-	var body []byte
-
-	b := map[string]json.RawMessage{}
-	if err := json.Unmarshal(ctxb, &b); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -121,7 +120,7 @@ func jsonEncode(ctx cloudevents.EventContextReader, data []byte) ([]byte, error)
 		}
 	}
 
-	body, err = json.Marshal(b)
+	body, err := json.Marshal(b)
 	if err != nil {
 		return nil, err
 	}
@@ -184,14 +183,33 @@ func obsJsonDecodeV02(body []byte) (*cloudevents.Event, error) {
 		return nil, err
 	}
 
-	raw := make(map[string]json.RawMessage)
+	raw := make(map[string]json.RawMessage, 0)
 
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, err
 	}
+
+	// TODO: could use reflection to get these.
+	delete(raw, "specversion")
+	delete(raw, "type")
+	delete(raw, "source")
+	delete(raw, "id")
+	delete(raw, "time")
+	delete(raw, "schemaurl")
+	delete(raw, "contenttype")
+
 	var data interface{}
 	if d, ok := raw["data"]; ok {
 		data = []byte(d)
+	}
+	delete(raw, "data")
+
+	if len(raw) > 0 {
+		extensions := make(map[string]interface{}, len(raw))
+		for k, v := range raw {
+			extensions[k] = v
+		}
+		ec.Extensions = extensions
 	}
 
 	return &cloudevents.Event{
@@ -225,9 +243,30 @@ func obsJsonDecodeV03(body []byte) (*cloudevents.Event, error) {
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, err
 	}
+
+	// TODO: could use reflection to get these.
+	delete(raw, "specversion")
+	delete(raw, "type")
+	delete(raw, "source")
+	delete(raw, "subject")
+	delete(raw, "id")
+	delete(raw, "time")
+	delete(raw, "schemaurl")
+	delete(raw, "datacontenttype")
+	delete(raw, "datacontentencoding")
+
 	var data interface{}
 	if d, ok := raw["data"]; ok {
 		data = []byte(d)
+	}
+	delete(raw, "data")
+
+	if len(raw) > 0 {
+		extensions := make(map[string]interface{}, len(raw))
+		for k, v := range raw {
+			extensions[k] = v
+		}
+		ec.Extensions = extensions
 	}
 
 	return &cloudevents.Event{
@@ -237,22 +276,41 @@ func obsJsonDecodeV03(body []byte) (*cloudevents.Event, error) {
 	}, nil
 }
 
-func marshalEvent(event interface{}) ([]byte, error) {
+func marshalEventLegacy(event interface{}) (map[string]json.RawMessage, error) {
 	b, err := json.Marshal(event)
 	if err != nil {
 		return nil, err
 	}
-	return b, nil
+
+	brm := map[string]json.RawMessage{}
+	if err := json.Unmarshal(b, &brm); err != nil {
+		return nil, err
+	}
+
+	return brm, nil
 }
 
-// TODO: not sure about this location for eventdata.
-func marshalEventData(encoding string, data interface{}) ([]byte, error) {
-	if data == nil {
-		return []byte(nil), nil
+func marshalEvent(event interface{}, extensions map[string]interface{}) (map[string]json.RawMessage, error) {
+	b, err := json.Marshal(event)
+	if err != nil {
+		return nil, err
 	}
-	// already encoded?
-	if b, ok := data.([]byte); ok {
-		return b, nil
+
+	brm := map[string]json.RawMessage{}
+	if err := json.Unmarshal(b, &brm); err != nil {
+		return nil, err
 	}
-	return datacodec.Encode(encoding, data)
+
+	for k, v := range extensions {
+		vb, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		// Don't overwrite spec keys.
+		if _, ok := brm[k]; !ok {
+			brm[k] = vb
+		}
+	}
+
+	return brm, nil
 }

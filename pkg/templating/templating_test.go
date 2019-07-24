@@ -19,7 +19,7 @@ package templating_test
 import (
 	"testing"
 
-	"github.com/knative/pkg/apis"
+	"knative.dev/pkg/apis"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/templating"

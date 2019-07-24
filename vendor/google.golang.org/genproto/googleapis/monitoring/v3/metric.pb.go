@@ -44,7 +44,7 @@ func (m *Point) Reset()         { *m = Point{} }
 func (m *Point) String() string { return proto.CompactTextString(m) }
 func (*Point) ProtoMessage()    {}
 func (*Point) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_27948d2d9b5c61d2, []int{0}
+	return fileDescriptor_metric_0e98e1ce848c2349, []int{0}
 }
 func (m *Point) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Point.Unmarshal(m, b)
@@ -128,7 +128,7 @@ func (m *TimeSeries) Reset()         { *m = TimeSeries{} }
 func (m *TimeSeries) String() string { return proto.CompactTextString(m) }
 func (*TimeSeries) ProtoMessage()    {}
 func (*TimeSeries) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_27948d2d9b5c61d2, []int{1}
+	return fileDescriptor_metric_0e98e1ce848c2349, []int{1}
 }
 func (m *TimeSeries) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_TimeSeries.Unmarshal(m, b)
@@ -196,10 +196,10 @@ func init() {
 }
 
 func init() {
-	proto.RegisterFile("google/monitoring/v3/metric.proto", fileDescriptor_metric_27948d2d9b5c61d2)
+	proto.RegisterFile("google/monitoring/v3/metric.proto", fileDescriptor_metric_0e98e1ce848c2349)
 }
 
-var fileDescriptor_metric_27948d2d9b5c61d2 = []byte{
+var fileDescriptor_metric_0e98e1ce848c2349 = []byte{
 	// 441 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x92, 0x51, 0xab, 0xd3, 0x30,
 	0x14, 0xc7, 0xe9, 0xae, 0x9b, 0x33, 0x03, 0x1f, 0x82, 0x68, 0x99, 0x0a, 0x73, 0xa2, 0x0e, 0x1f,

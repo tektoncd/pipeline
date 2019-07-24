@@ -23,9 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knative/pkg/apis"
-	"github.com/knative/pkg/controller"
-	"github.com/knative/pkg/tracker"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -43,6 +40,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	"knative.dev/pkg/apis"
+	"knative.dev/pkg/controller"
+	"knative.dev/pkg/tracker"
 )
 
 const (

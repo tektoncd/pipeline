@@ -18,7 +18,7 @@ package main
 import (
 	"flag"
 
-	"github.com/knative/pkg/logging"
+	"knative.dev/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/git"
 )
 

@@ -20,7 +20,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/knative/pkg/apis"
+	"knative.dev/pkg/apis"
 	"k8s.io/apimachinery/pkg/api/equality"
 )
 

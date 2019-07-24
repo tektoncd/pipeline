@@ -54,7 +54,7 @@ func (x ListTimeSeriesRequest_TimeSeriesView) String() string {
 	return proto.EnumName(ListTimeSeriesRequest_TimeSeriesView_name, int32(x))
 }
 func (ListTimeSeriesRequest_TimeSeriesView) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{8, 0}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{8, 0}
 }
 
 // The `ListMonitoredResourceDescriptors` request.
@@ -87,7 +87,7 @@ func (m *ListMonitoredResourceDescriptorsRequest) Reset() {
 func (m *ListMonitoredResourceDescriptorsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListMonitoredResourceDescriptorsRequest) ProtoMessage()    {}
 func (*ListMonitoredResourceDescriptorsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{0}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{0}
 }
 func (m *ListMonitoredResourceDescriptorsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMonitoredResourceDescriptorsRequest.Unmarshal(m, b)
@@ -155,7 +155,7 @@ func (m *ListMonitoredResourceDescriptorsResponse) Reset() {
 func (m *ListMonitoredResourceDescriptorsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListMonitoredResourceDescriptorsResponse) ProtoMessage()    {}
 func (*ListMonitoredResourceDescriptorsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{1}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{1}
 }
 func (m *ListMonitoredResourceDescriptorsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMonitoredResourceDescriptorsResponse.Unmarshal(m, b)
@@ -205,7 +205,7 @@ func (m *GetMonitoredResourceDescriptorRequest) Reset()         { *m = GetMonito
 func (m *GetMonitoredResourceDescriptorRequest) String() string { return proto.CompactTextString(m) }
 func (*GetMonitoredResourceDescriptorRequest) ProtoMessage()    {}
 func (*GetMonitoredResourceDescriptorRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{2}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{2}
 }
 func (m *GetMonitoredResourceDescriptorRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetMonitoredResourceDescriptorRequest.Unmarshal(m, b)
@@ -261,7 +261,7 @@ func (m *ListMetricDescriptorsRequest) Reset()         { *m = ListMetricDescript
 func (m *ListMetricDescriptorsRequest) String() string { return proto.CompactTextString(m) }
 func (*ListMetricDescriptorsRequest) ProtoMessage()    {}
 func (*ListMetricDescriptorsRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{3}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{3}
 }
 func (m *ListMetricDescriptorsRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMetricDescriptorsRequest.Unmarshal(m, b)
@@ -327,7 +327,7 @@ func (m *ListMetricDescriptorsResponse) Reset()         { *m = ListMetricDescrip
 func (m *ListMetricDescriptorsResponse) String() string { return proto.CompactTextString(m) }
 func (*ListMetricDescriptorsResponse) ProtoMessage()    {}
 func (*ListMetricDescriptorsResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{4}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{4}
 }
 func (m *ListMetricDescriptorsResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListMetricDescriptorsResponse.Unmarshal(m, b)
@@ -377,7 +377,7 @@ func (m *GetMetricDescriptorRequest) Reset()         { *m = GetMetricDescriptorR
 func (m *GetMetricDescriptorRequest) String() string { return proto.CompactTextString(m) }
 func (*GetMetricDescriptorRequest) ProtoMessage()    {}
 func (*GetMetricDescriptorRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{5}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{5}
 }
 func (m *GetMetricDescriptorRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_GetMetricDescriptorRequest.Unmarshal(m, b)
@@ -421,7 +421,7 @@ func (m *CreateMetricDescriptorRequest) Reset()         { *m = CreateMetricDescr
 func (m *CreateMetricDescriptorRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateMetricDescriptorRequest) ProtoMessage()    {}
 func (*CreateMetricDescriptorRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{6}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{6}
 }
 func (m *CreateMetricDescriptorRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateMetricDescriptorRequest.Unmarshal(m, b)
@@ -471,7 +471,7 @@ func (m *DeleteMetricDescriptorRequest) Reset()         { *m = DeleteMetricDescr
 func (m *DeleteMetricDescriptorRequest) String() string { return proto.CompactTextString(m) }
 func (*DeleteMetricDescriptorRequest) ProtoMessage()    {}
 func (*DeleteMetricDescriptorRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{7}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{7}
 }
 func (m *DeleteMetricDescriptorRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DeleteMetricDescriptorRequest.Unmarshal(m, b)
@@ -543,7 +543,7 @@ func (m *ListTimeSeriesRequest) Reset()         { *m = ListTimeSeriesRequest{} }
 func (m *ListTimeSeriesRequest) String() string { return proto.CompactTextString(m) }
 func (*ListTimeSeriesRequest) ProtoMessage()    {}
 func (*ListTimeSeriesRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{8}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{8}
 }
 func (m *ListTimeSeriesRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListTimeSeriesRequest.Unmarshal(m, b)
@@ -639,7 +639,7 @@ func (m *ListTimeSeriesResponse) Reset()         { *m = ListTimeSeriesResponse{}
 func (m *ListTimeSeriesResponse) String() string { return proto.CompactTextString(m) }
 func (*ListTimeSeriesResponse) ProtoMessage()    {}
 func (*ListTimeSeriesResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{9}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{9}
 }
 func (m *ListTimeSeriesResponse) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ListTimeSeriesResponse.Unmarshal(m, b)
@@ -700,7 +700,7 @@ func (m *CreateTimeSeriesRequest) Reset()         { *m = CreateTimeSeriesRequest
 func (m *CreateTimeSeriesRequest) String() string { return proto.CompactTextString(m) }
 func (*CreateTimeSeriesRequest) ProtoMessage()    {}
 func (*CreateTimeSeriesRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{10}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{10}
 }
 func (m *CreateTimeSeriesRequest) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateTimeSeriesRequest.Unmarshal(m, b)
@@ -752,7 +752,7 @@ func (m *CreateTimeSeriesError) Reset()         { *m = CreateTimeSeriesError{} }
 func (m *CreateTimeSeriesError) String() string { return proto.CompactTextString(m) }
 func (*CreateTimeSeriesError) ProtoMessage()    {}
 func (*CreateTimeSeriesError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metric_service_6b0c3991af8d9a29, []int{11}
+	return fileDescriptor_metric_service_871726c1e2cbafff, []int{11}
 }
 func (m *CreateTimeSeriesError) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateTimeSeriesError.Unmarshal(m, b)
@@ -814,13 +814,17 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type MetricServiceClient interface {
-	// Lists monitored resource descriptors that match a filter. This method does not require a Stackdriver account.
+	// Lists monitored resource descriptors that match a filter. This method does
+	// not require a Stackdriver account.
 	ListMonitoredResourceDescriptors(ctx context.Context, in *ListMonitoredResourceDescriptorsRequest, opts ...grpc.CallOption) (*ListMonitoredResourceDescriptorsResponse, error)
-	// Gets a single monitored resource descriptor. This method does not require a Stackdriver account.
+	// Gets a single monitored resource descriptor. This method does not require a
+	// Stackdriver account.
 	GetMonitoredResourceDescriptor(ctx context.Context, in *GetMonitoredResourceDescriptorRequest, opts ...grpc.CallOption) (*monitoredres.MonitoredResourceDescriptor, error)
-	// Lists metric descriptors that match a filter. This method does not require a Stackdriver account.
+	// Lists metric descriptors that match a filter. This method does not require
+	// a Stackdriver account.
 	ListMetricDescriptors(ctx context.Context, in *ListMetricDescriptorsRequest, opts ...grpc.CallOption) (*ListMetricDescriptorsResponse, error)
-	// Gets a single metric descriptor. This method does not require a Stackdriver account.
+	// Gets a single metric descriptor. This method does not require a Stackdriver
+	// account.
 	GetMetricDescriptor(ctx context.Context, in *GetMetricDescriptorRequest, opts ...grpc.CallOption) (*metric.MetricDescriptor, error)
 	// Creates a new metric descriptor.
 	// User-created metric descriptors define
@@ -829,7 +833,8 @@ type MetricServiceClient interface {
 	// Deletes a metric descriptor. Only user-created
 	// [custom metrics](/monitoring/custom-metrics) can be deleted.
 	DeleteMetricDescriptor(ctx context.Context, in *DeleteMetricDescriptorRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	// Lists time series that match a filter. This method does not require a Stackdriver account.
+	// Lists time series that match a filter. This method does not require a
+	// Stackdriver account.
 	ListTimeSeries(ctx context.Context, in *ListTimeSeriesRequest, opts ...grpc.CallOption) (*ListTimeSeriesResponse, error)
 	// Creates or adds data to one or more time series.
 	// The response is empty if all time series in the request were written.
@@ -920,13 +925,17 @@ func (c *metricServiceClient) CreateTimeSeries(ctx context.Context, in *CreateTi
 
 // MetricServiceServer is the server API for MetricService service.
 type MetricServiceServer interface {
-	// Lists monitored resource descriptors that match a filter. This method does not require a Stackdriver account.
+	// Lists monitored resource descriptors that match a filter. This method does
+	// not require a Stackdriver account.
 	ListMonitoredResourceDescriptors(context.Context, *ListMonitoredResourceDescriptorsRequest) (*ListMonitoredResourceDescriptorsResponse, error)
-	// Gets a single monitored resource descriptor. This method does not require a Stackdriver account.
+	// Gets a single monitored resource descriptor. This method does not require a
+	// Stackdriver account.
 	GetMonitoredResourceDescriptor(context.Context, *GetMonitoredResourceDescriptorRequest) (*monitoredres.MonitoredResourceDescriptor, error)
-	// Lists metric descriptors that match a filter. This method does not require a Stackdriver account.
+	// Lists metric descriptors that match a filter. This method does not require
+	// a Stackdriver account.
 	ListMetricDescriptors(context.Context, *ListMetricDescriptorsRequest) (*ListMetricDescriptorsResponse, error)
-	// Gets a single metric descriptor. This method does not require a Stackdriver account.
+	// Gets a single metric descriptor. This method does not require a Stackdriver
+	// account.
 	GetMetricDescriptor(context.Context, *GetMetricDescriptorRequest) (*metric.MetricDescriptor, error)
 	// Creates a new metric descriptor.
 	// User-created metric descriptors define
@@ -935,7 +944,8 @@ type MetricServiceServer interface {
 	// Deletes a metric descriptor. Only user-created
 	// [custom metrics](/monitoring/custom-metrics) can be deleted.
 	DeleteMetricDescriptor(context.Context, *DeleteMetricDescriptorRequest) (*empty.Empty, error)
-	// Lists time series that match a filter. This method does not require a Stackdriver account.
+	// Lists time series that match a filter. This method does not require a
+	// Stackdriver account.
 	ListTimeSeries(context.Context, *ListTimeSeriesRequest) (*ListTimeSeriesResponse, error)
 	// Creates or adds data to one or more time series.
 	// The response is empty if all time series in the request were written.
@@ -1134,10 +1144,10 @@ var _MetricService_serviceDesc = grpc.ServiceDesc{
 }
 
 func init() {
-	proto.RegisterFile("google/monitoring/v3/metric_service.proto", fileDescriptor_metric_service_6b0c3991af8d9a29)
+	proto.RegisterFile("google/monitoring/v3/metric_service.proto", fileDescriptor_metric_service_871726c1e2cbafff)
 }
 
-var fileDescriptor_metric_service_6b0c3991af8d9a29 = []byte{
+var fileDescriptor_metric_service_871726c1e2cbafff = []byte{
 	// 1049 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xc4, 0x57, 0x4f, 0x6f, 0x1b, 0x45,
 	0x14, 0x67, 0xe2, 0x34, 0x71, 0x9e, 0xd5, 0xd4, 0x9d, 0xb6, 0xae, 0xd9, 0x26, 0x95, 0xbb, 0xa8,

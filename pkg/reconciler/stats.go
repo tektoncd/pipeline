@@ -17,7 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
-	"github.com/knative/pkg/controller"
+	"knative.dev/pkg/controller"
 	"go.uber.org/zap"
 )
 

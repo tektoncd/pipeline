@@ -21,11 +21,6 @@ import (
 	"flag"
 	"log"
 
-	"github.com/knative/pkg/configmap"
-	"github.com/knative/pkg/logging"
-	"github.com/knative/pkg/logging/logkey"
-	"github.com/knative/pkg/signals"
-	"github.com/knative/pkg/webhook"
 	apiconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tklogging "github.com/tektoncd/pipeline/pkg/logging"
@@ -34,6 +29,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/logging"
+	"knative.dev/pkg/logging/logkey"
+	"knative.dev/pkg/signals"
+	"knative.dev/pkg/webhook"
 )
 
 // WebhookLogKey is the name of the logger for the webhook cmd

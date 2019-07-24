@@ -27,8 +27,8 @@ import (
 
 	"github.com/ghodss/yaml"
 
-	knativetest "github.com/knative/pkg/test"
-	"github.com/knative/pkg/test/logging"
+	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/logging"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"

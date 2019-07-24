@@ -1,0 +1,21 @@
+aliases:
+  caching-approvers:
+  - evankanderson
+  - mattmoor
+  - vaikas-google
+
+  productivity-approvers:
+  - adrcunha
+  - chaodaiG
+  - srinivashegde86
+  productivity-reviewers:
+  - adrcunha
+  - chaodaiG
+  - coryrc
+  - dushyanthsc
+  - ericKlawitter
+  - Fredy-Z
+  - nbarthwal
+  - srinivashegde86
+  - steuhs
+  - yt3liu

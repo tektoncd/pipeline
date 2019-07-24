@@ -21,10 +21,10 @@ package client
 import (
 	"context"
 
-	injection "github.com/knative/pkg/injection"
-	logging "github.com/knative/pkg/logging"
 	versioned "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	rest "k8s.io/client-go/rest"
+	injection "knative.dev/pkg/injection"
+	logging "knative.dev/pkg/logging"
 )
 
 func init() {

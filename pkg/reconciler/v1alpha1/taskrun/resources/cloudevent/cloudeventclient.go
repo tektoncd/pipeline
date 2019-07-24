@@ -19,10 +19,10 @@ package cloudevent
 import (
 	"context"
 
-	"github.com/knative/eventing-sources/pkg/kncloudevents"
-	injection "github.com/knative/pkg/injection"
-	logging "github.com/knative/pkg/logging"
 	rest "k8s.io/client-go/rest"
+	"knative.dev/eventing-contrib/pkg/kncloudevents"
+	injection "knative.dev/pkg/injection"
+	logging "knative.dev/pkg/logging"
 )
 
 func init() {
