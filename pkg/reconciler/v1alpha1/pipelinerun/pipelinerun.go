@@ -195,6 +195,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
+	// We may be reading a version of the object that was stored at an older version
+	// and may not have had all of the assumed default specified.
+	pr.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
+
 	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it

@@ -31,6 +31,15 @@ func (pr *PipelineRun) SetDefaults(ctx context.Context) {
 func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	cfg := config.FromContextOrDefaults(ctx)
 	if prs.Timeout == nil {
-		prs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+		var timeout *metav1.Duration
+		if IsUpgradeViaDefaulting(ctx) {
+			// This case is for preexisting `TaskRun` before 0.5.0, so let's
+			// add the old default timeout.
+			// Most likely those TaskRun passing here are already done and/or already running
+			timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
+		} else {
+			timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
+		}
+		prs.Timeout = timeout
 	}
 }
