@@ -42,8 +42,8 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/logging"
 )
@@ -59,8 +59,7 @@ func main() {
 	cmd := exec.Command("sh", "-c", *args)
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
-		logger.Errorf("Error executing command %q with arguments %s", *args, stdoutStderr)
-		log.Fatal(err)
+		logger.Fatalf("Error executing command %q ; error %s; cmd_output %s", strings.Join(cmd.Args, " "), err.Error(), stdoutStderr)
 	}
-	logger.Infof("Successfully executed command %q", *args)
+	logger.Infof("Successfully executed command %q; output %s", strings.Join(cmd.Args, " "), stdoutStderr)
 }
