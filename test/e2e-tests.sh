@@ -41,6 +41,7 @@ tkn() {
  ./tkn "$@"
 }
 
+kubectl get crds|grep tekton\\.dev && fail_test "TektonCD CRDS should not be installed, you should reset them before each runs"
 
 # command before creation of resources
 # ensure that the cluster does not have any pipeline resources and that all
@@ -58,9 +59,7 @@ must_fail  "logs of pipelinerun before installing crd" tkn pipelinerun logs foo
 must_fail  "logs of taskrun before installing crd" tkn taskrun logs foo
 
 
-ci_run &&{
-    install_pipeline_crd
-}
+install_pipeline_crd
 
 # listing objects after CRD is created should not fail
 run_test  "list pipeelinerun for pipeline foo" tkn taskrun list foo
