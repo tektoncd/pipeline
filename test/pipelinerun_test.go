@@ -45,6 +45,7 @@ var (
 	saName             = "service-account"
 	taskName           = "task"
 	task1Name          = "task1"
+	cond1Name          = "cond-1"
 	pipelineRunTimeout = 10 * time.Minute
 )
 
@@ -113,6 +114,32 @@ func TestPipelineRun(t *testing.T) {
 		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 2,
 		pipelineRunFunc:        getHelloWorldPipelineRun,
+	}, {
+		name: "pipeline succeeds when task skipped due to failed condition",
+		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
+			t.Helper()
+			cond := getFailingCondition(namespace)
+			if _, err := c.ConditionClient.Create(cond); err != nil {
+				t.Fatalf("Failed to create Condition `%s`: %s", cond1Name, err)
+			}
+
+			task := tb.Task(getName(taskName, index), namespace, tb.TaskSpec(
+				tb.Step("echo-hello", "ubuntu",
+					tb.Command("/bin/bash"),
+					tb.Args("-c", "echo hello, world"),
+				),
+			))
+			if _, err := c.TaskClient.Create(task); err != nil {
+				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
+			}
+			if _, err := c.PipelineClient.Create(getHelloWorldPipelineWithCondition(index, namespace)); err != nil {
+				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(pipelineName, index), err)
+			}
+		},
+		expectedTaskRuns: []string{},
+		// 1 from PipelineRun; 0 from taskrun since it should not be executed due to condition failing
+		expectedNumberOfEvents: 1,
+		pipelineRunFunc:        getConditionalPipelineRun,
 	}}
 
 	for i, td := range tds {
@@ -505,4 +532,22 @@ func assertAnnotationsMatch(t *testing.T, expectedAnnotations, actualAnnotations
 			t.Errorf("Expected annotations containing %s=%s but annotations were %v", key, expectedVal, actualAnnotations)
 		}
 	}
+}
+
+func getHelloWorldPipelineWithCondition(suffix int, namespace string) *v1alpha1.Pipeline {
+	return tb.Pipeline(getName(pipelineName, suffix), namespace, tb.PipelineSpec(
+		tb.PipelineTask(task1Name, getName(taskName, suffix), tb.PipelineTaskCondition(cond1Name)),
+	))
+}
+
+func getFailingCondition(namespace string) *v1alpha1.Condition {
+	return tb.Condition(cond1Name, namespace, tb.ConditionSpec(tb.ConditionSpecCheck("ubuntu",
+		tb.Command("/bin/bash"), tb.Args("exit 1"))))
+}
+
+func getConditionalPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
+	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
+		tb.PipelineRunLabel("hello-world-key", "hello-world-value"),
+		tb.PipelineRunSpec(getName(pipelineName, suffix)),
+	)
 }

@@ -99,7 +99,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() *v1alpha1.TaskSpec {
 }
 
 // NewConditionCheck status creates a ConditionCheckStatus from a ConditionCheck
-func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() v1alpha1.ConditionCheckStatus {
+func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1alpha1.ConditionCheckStatus {
 	var checkStep corev1.ContainerState
 	trs := rcc.ConditionCheck.Status
 	for _, s := range trs.Steps {
@@ -109,7 +109,7 @@ func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() v1alpha1.ConditionC
 		}
 	}
 
-	return v1alpha1.ConditionCheckStatus{
+	return &v1alpha1.ConditionCheckStatus{
 		Status:         trs.Status,
 		PodName:        trs.PodName,
 		StartTime:      trs.StartTime,

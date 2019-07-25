@@ -22,6 +22,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ktesting "k8s.io/client-go/testing"
+	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/configmap"
+	rtesting "knative.dev/pkg/reconciler/testing"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -30,13 +38,6 @@ import (
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ktesting "k8s.io/client-go/testing"
-	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-	"knative.dev/pkg/configmap"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var (
@@ -438,188 +439,17 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		},
 	}}
 	pr.Status.InitializeConditions()
-	updateTaskRunsStatus(pr, state)
-	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns); d != "" {
+	status := getTaskRunsStatus(pr, state)
+	if d := cmp.Diff(status, expectedPipelineRunStatus.TaskRuns); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
 	}
 
 }
 
-func TestUpdateTaskRunState_WithPassingConditionChecks(t *testing.T) {
-	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
-
-	cond := v1alpha1.Condition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "always-true",
-		},
-		Spec: v1alpha1.ConditionSpec{
-			Check: corev1.Container{},
-		},
-	}
-
-	taskCondition := v1alpha1.PipelineTaskCondition{
-		ConditionRef: "always-true",
-	}
-
-	pipelineTask := v1alpha1.PipelineTask{
-		Name:       "unit-test-1",
-		TaskRef:    v1alpha1.TaskRef{Name: "unit-test-task"},
-		Conditions: []v1alpha1.PipelineTaskCondition{taskCondition},
-	}
-
-	conditioncheck := conditionCheckFromTaskRun(tb.TaskRun("test-pipeline-run-success-unit-test-1-always-true", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskSpec(tb.TaskContainerTemplate()),
-	), tb.TaskRunStatus(
-		tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
-		}),
-		tb.StepState(tb.StateTerminated(0)),
-	)))
-
-	expectedConditionCheckStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
-	expectedConditionCheckStatus[conditioncheck.Name] = &v1alpha1.PipelineRunConditionCheckStatus{
-		ConditionName: cond.Name,
-		Status: &v1alpha1.ConditionCheckStatus{
-			Check: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
-			},
-			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}},
-			},
-		},
-	}
-	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
-	expectedTaskRunsStatus["test-pipeline-run-success-unit-test-1"] = &v1alpha1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "unit-test-1",
-		ConditionChecks:  expectedConditionCheckStatus,
-	}
-	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
-		TaskRuns: expectedTaskRunsStatus,
-	}
-
-	state := []*resources.ResolvedPipelineRunTask{{
-		PipelineTask: &pipelineTask,
-		TaskRunName:  "test-pipeline-run-success-unit-test-1",
-		TaskRun:      nil,
-		ResolvedTaskResources: &taskrunresources.ResolvedTaskResources{
-			TaskSpec: &v1alpha1.TaskSpec{},
-		},
-		ResolvedConditionChecks: resources.TaskConditionCheckState{{
-			ConditionCheckName: "test-pipeline-run-success-unit-test-1-always-true",
-			Condition:          &cond,
-			ConditionCheck:     conditioncheck,
-		}},
-	}}
-	pr.Status.InitializeConditions()
-	updateTaskRunsStatus(pr, state)
-	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns); d != "" {
-		t.Fatalf("Expected PipelineRun status to match ConditionCheck(s) status, but got a mismatch: %s", d)
-	}
-}
-
-func TestUpdateTaskRunState_WithFailingConditionChecks(t *testing.T) {
-	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
-
-	cond := v1alpha1.Condition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "always-true",
-		},
-		Spec: v1alpha1.ConditionSpec{
-			Check: corev1.Container{},
-		},
-	}
-
-	taskCondition := v1alpha1.PipelineTaskCondition{
-		ConditionRef: "always-true",
-	}
-
-	pipelineTask := v1alpha1.PipelineTask{
-		Name:       "unit-test-1",
-		TaskRef:    v1alpha1.TaskRef{Name: "unit-test-task"},
-		Conditions: []v1alpha1.PipelineTaskCondition{taskCondition},
-	}
-
-	taskrunName := "test-pipeline-run-success-unit-test-1"
-	conditioncheck := conditionCheckFromTaskRun(tb.TaskRun("test-pipeline-run-success-unit-test-1-always-true", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskSpec(tb.TaskContainerTemplate()),
-	), tb.TaskRunStatus(
-		tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
-		}),
-		tb.StepState(tb.StateTerminated(127)),
-	)))
-
-	expectedConditionCheckStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
-	expectedConditionCheckStatus[conditioncheck.Name] = &v1alpha1.PipelineRunConditionCheckStatus{
-		ConditionName: cond.Name,
-		Status: &v1alpha1.ConditionCheckStatus{
-			Check: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
-			},
-			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
-			},
-		},
-	}
-
-	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
-	expectedTaskRunsStatus["test-pipeline-run-success-unit-test-1"] = &v1alpha1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "unit-test-1",
-		ConditionChecks:  expectedConditionCheckStatus,
-		Status: &v1alpha1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{{
-					Type:    apis.ConditionSucceeded,
-					Status:  corev1.ConditionFalse,
-					Reason:  resources.ReasonConditionCheckFailed,
-					Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", taskrunName, pr.Name),
-				}},
-			},
-		},
-	}
-	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
-		TaskRuns: expectedTaskRunsStatus,
-	}
-
-	state := makePRState(taskrunName, pipelineTask, resources.TaskConditionCheckState{{
-		ConditionCheckName: "test-pipeline-run-success-unit-test-1-always-true",
-		Condition:          &cond,
-		ConditionCheck:     conditioncheck,
-	}})
-	pr.Status.InitializeConditions()
-	updateTaskRunsStatus(pr, state)
-	ignoreLastTransitionTime := cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
-	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns, ignoreLastTransitionTime); d != "" {
-		t.Fatalf("Expected PipelineRun status to match ConditionCheck(s) status, but got a mismatch: %s", d)
-	}
-}
-
-func makePRState(trName string, pt v1alpha1.PipelineTask, tccs resources.TaskConditionCheckState) resources.PipelineRunState {
-	pipelineTask := v1alpha1.PipelineTask{
-		Name:    "unit-test-1",
-		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
-	}
-	var ptc []v1alpha1.PipelineTaskCondition
-	for _, rcc := range tccs {
-		ptc = append(ptc, v1alpha1.PipelineTaskCondition{
-			ConditionRef: rcc.Condition.Name,
-		})
-	}
-	pipelineTask.Conditions = ptc
-	state := []*resources.ResolvedPipelineRunTask{{
-		PipelineTask:            &pt,
-		TaskRunName:             trName,
-		ResolvedConditionChecks: tccs,
-	}}
-	return state
-}
-
-func TestUpdateTaskRunState_MultipleConditionChecks(t *testing.T) {
-	taskrunName := "test-pipeline-run-success-unit-test-1"
-	successConditionCheckName := "test-pipeline-run-success-unit-test-1-cond-1"
-	failingConditionCheckName := "test-pipeline-run-success-unit-test-1-cond-2"
+func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
+	taskrunName := "task-run"
+	successConditionCheckName := "success-condition"
+	failingConditionCheckName := "fail-condition"
 
 	successCondition := v1alpha1.Condition{
 		ObjectMeta: metav1.ObjectMeta{
@@ -633,7 +463,6 @@ func TestUpdateTaskRunState_MultipleConditionChecks(t *testing.T) {
 	}
 
 	pipelineTask := v1alpha1.PipelineTask{
-		Name:    "unit-test-1",
 		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
 		Conditions: []v1alpha1.PipelineTaskCondition{{
 			ConditionRef: successCondition.Name,
@@ -642,18 +471,14 @@ func TestUpdateTaskRunState_MultipleConditionChecks(t *testing.T) {
 		}},
 	}
 
-	successConditionCheck := conditionCheckFromTaskRun(tb.TaskRun(successConditionCheckName, "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskSpec(tb.TaskContainerTemplate()),
-	), tb.TaskRunStatus(
+	successConditionCheck := conditionCheckFromTaskRun(tb.TaskRun(successConditionCheckName, "foo", tb.TaskRunStatus(
 		tb.StatusCondition(apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		}),
 		tb.StepState(tb.StateTerminated(0)),
 	)))
-	failingConditionCheck := conditionCheckFromTaskRun(tb.TaskRun(failingConditionCheckName, "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskSpec(tb.TaskContainerTemplate()),
-	), tb.TaskRunStatus(
+	failingConditionCheck := conditionCheckFromTaskRun(tb.TaskRun(failingConditionCheckName, "foo", tb.TaskRunStatus(
 		tb.StatusCondition(apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
@@ -695,13 +520,6 @@ func TestUpdateTaskRunState_MultipleConditionChecks(t *testing.T) {
 		ConditionCheck:     failingConditionCheck,
 	}
 
-	expectedConditionCheckStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
-	expectedConditionCheckStatus[successConditionCheckName] = successConditionCheckStatus
-	expectedConditionCheckStatus[failingConditionCheckName] = failingConditionCheckStatus
-
-	expectedTaskRunsStatus := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
-
-	//sucessfulTaskRunStatus := v1alpha1.TaskRunStatus{}
 	failedTaskRunStatus := v1alpha1.TaskRunStatus{
 		Status: duckv1beta1.Status{
 			Conditions: []apis.Condition{{
@@ -713,21 +531,57 @@ func TestUpdateTaskRunState_MultipleConditionChecks(t *testing.T) {
 		},
 	}
 
-	expectedTaskRunsStatus[taskrunName] = &v1alpha1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "unit-test-1",
-		ConditionChecks:  expectedConditionCheckStatus,
-		Status:           &failedTaskRunStatus,
-	}
-	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
-		TaskRuns: expectedTaskRunsStatus,
-	}
+	tcs := []struct {
+		name           string
+		rcc            resources.TaskConditionCheckState
+		expectedStatus v1alpha1.PipelineRunTaskRunStatus
+	}{{
+		name: "success-condition-checks",
+		rcc:  resources.TaskConditionCheckState{&successrcc},
+		expectedStatus: v1alpha1.PipelineRunTaskRunStatus{
+			ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
+				successrcc.ConditionCheck.Name: successConditionCheckStatus,
+			},
+		},
+	}, {
+		name: "failing-condition-checks",
+		rcc:  resources.TaskConditionCheckState{&failingrcc},
+		expectedStatus: v1alpha1.PipelineRunTaskRunStatus{
+			Status: &failedTaskRunStatus,
+			ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
+				failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
+			},
+		},
+	}, {
+		name: "multiple-condition-checks",
+		rcc:  resources.TaskConditionCheckState{&successrcc, &failingrcc},
+		expectedStatus: v1alpha1.PipelineRunTaskRunStatus{
+			Status: &failedTaskRunStatus,
+			ConditionChecks: map[string]*v1alpha1.PipelineRunConditionCheckStatus{
+				successrcc.ConditionCheck.Name: successConditionCheckStatus,
+				failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
+			},
+		},
+	}}
 
-	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
-	state := makePRState(taskrunName, pipelineTask, resources.TaskConditionCheckState{&successrcc, &failingrcc})
-	pr.Status.InitializeConditions()
-	updateTaskRunsStatus(pr, state)
-	if d := cmp.Diff(pr.Status.TaskRuns, expectedPipelineRunStatus.TaskRuns, ignoreLastTransitionTime); d != "" {
-		t.Fatalf("Expected PipelineRun status to match ConditionCheck(s) status, but got a mismatch: %s", d)
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
+
+			state := []*resources.ResolvedPipelineRunTask{{
+				PipelineTask:            &pipelineTask,
+				TaskRunName:             taskrunName,
+				ResolvedConditionChecks: tc.rcc,
+			}}
+			pr.Status.InitializeConditions()
+			status := getTaskRunsStatus(pr, state)
+			expected := map[string]*v1alpha1.PipelineRunTaskRunStatus{
+				taskrunName: &tc.expectedStatus,
+			}
+			if d := cmp.Diff(status, expected, ignoreLastTransitionTime); d != "" {
+				t.Fatalf("Did not get expected status for %s : %s", tc.name, d)
+			}
+		})
 	}
 }
 
