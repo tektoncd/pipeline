@@ -89,7 +89,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Name: "step1",
 			},
 			{
-				Name:    "image-digest-exporter-step1-9l9zj",
+				Name:    "image-digest-exporter-9l9zj",
 				Image:   "override-with-imagedigest-exporter-image:latest",
 				Command: []string{"/ko-app/imagedigestexporter"},
 				Args: []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir),
@@ -154,17 +154,9 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Name: "step1",
 			},
 			{
-				Name:    "image-digest-exporter-step1-9l9zj",
-				Image:   "override-with-imagedigest-exporter-image:latest",
-				Command: []string{"/ko-app/imagedigestexporter"},
-				Args: []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir),
-					"-terminationMessagePath", "/builder/home/image-outputs/termination-log"},
-				TerminationMessagePath:   TerminationMessagePath,
-				TerminationMessagePolicy: "FallbackToLogsOnError",
-			}, {
 				Name: "step2",
 			}, {
-				Name:    "image-digest-exporter-step2-mz4c7",
+				Name:    "image-digest-exporter-9l9zj",
 				Image:   "override-with-imagedigest-exporter-image:latest",
 				Command: []string{"/ko-app/imagedigestexporter"},
 				Args: []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir),

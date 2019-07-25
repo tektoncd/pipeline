@@ -75,10 +75,8 @@ func AddOutputImageDigestExporter(
 				return xerrors.Errorf("Failed to format image resource data for output image exporter: %w", err)
 			}
 
-			for _, s := range taskSpec.Steps {
-				augmentedSteps = append(augmentedSteps, s)
-				augmentedSteps = append(augmentedSteps, imageDigestExporterContainer(s.Name, imagesJSON))
-			}
+			augmentedSteps = append(augmentedSteps, taskSpec.Steps...)
+			augmentedSteps = append(augmentedSteps, imageDigestExporterContainer(imagesJSON))
 
 			taskSpec.Steps = augmentedSteps
 		}
@@ -97,9 +95,9 @@ func UpdateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent
 	return nil
 }
 
-func imageDigestExporterContainer(stepName string, imagesJSON []byte) corev1.Container {
+func imageDigestExporterContainer(imagesJSON []byte) corev1.Container {
 	return corev1.Container{
-		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("image-digest-exporter-" + stepName),
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("image-digest-exporter"),
 		Image:   *imageDigestExporterImage,
 		Command: []string{"/ko-app/imagedigestexporter"},
 		Args: []string{
