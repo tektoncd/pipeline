@@ -311,8 +311,8 @@ func PodName(name string) TaskRunStatusOp {
 	}
 }
 
-// Condition adds a Condition to the TaskRunStatus.
-func Condition(condition apis.Condition) TaskRunStatusOp {
+// StatusCondition adds a StatusCondition to the TaskRunStatus.
+func StatusCondition(condition apis.Condition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
 		s.Conditions = append(s.Conditions, condition)
 	}

@@ -381,7 +381,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 		tb.TaskRunTaskRef("unit-test-task"),
 		tb.TaskRunServiceAccount("test-sa"),
 	), tb.TaskRunStatus(
-		tb.Condition(apis.Condition{Type: apis.ConditionSucceeded}),
+		tb.StatusCondition(apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.StepState(tb.StateTerminated(0)),
 	))
 
@@ -447,7 +447,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world")),
 			tb.TaskRunStatus(
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type: apis.ConditionSucceeded,
 				}),
 			),
@@ -888,7 +888,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 				tb.TaskRun("hello-world-1", "foo",
 					tb.TaskRunStatus(
 						tb.PodName("my-pod-name"),
-						tb.Condition(apis.Condition{
+						tb.StatusCondition(apis.Condition{
 							Type:   apis.ConditionSucceeded,
 							Status: corev1.ConditionFalse,
 						}),

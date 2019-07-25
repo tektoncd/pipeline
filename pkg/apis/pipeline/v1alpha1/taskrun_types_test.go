@@ -91,7 +91,7 @@ func TestTaskRun_HasPipelineRun(t *testing.T) {
 }
 
 func TestTaskRunIsDone(t *testing.T) {
-	tr := tb.TaskRun("", "", tb.TaskRunStatus(tb.Condition(
+	tr := tb.TaskRun("", "", tb.TaskRunStatus(tb.StatusCondition(
 		apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,

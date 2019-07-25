@@ -29,7 +29,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	taskRunTimedout := tb.TaskRun("test-taskrun-run-timedout", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunTimeout(1*time.Second),
-	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 		tb.TaskRunStartTime(time.Now().Add(-10*time.Second)),
@@ -38,7 +38,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	taskRunRunning := tb.TaskRun("test-taskrun-running", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
-	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 		tb.TaskRunStartTime(time.Now()),
@@ -47,7 +47,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	taskRunRunningNilTimeout := tb.TaskRun("test-taskrun-running-nil-timeout", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunNilTimeout,
-	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 		tb.TaskRunStartTime(time.Now()),
@@ -56,7 +56,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 	taskRunDone := tb.TaskRun("test-taskrun-completed", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
-	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionTrue}),
 	))
@@ -65,7 +65,7 @@ func TestTaskRunCheckTimeouts(t *testing.T) {
 		tb.TaskRunTaskRef(simpleTask.Name),
 		tb.TaskRunCancelled,
 		tb.TaskRunTimeout(1*time.Second),
-	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 	))
@@ -270,7 +270,7 @@ func TestWithNoFunc(t *testing.T) {
 	taskRunRunning := tb.TaskRun("test-taskrun-running", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunTimeout(2*time.Second),
-	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 		tb.TaskRunStartTime(time.Now().Add(-10*time.Second)),
@@ -308,7 +308,7 @@ func TestSetTaskRunTimer(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-arbitrary-timer", testNs, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunTimeout(2*time.Second),
-	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown}),
 		tb.TaskRunStartTime(time.Now().Add(-10*time.Second)),

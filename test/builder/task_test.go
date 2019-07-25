@@ -162,7 +162,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 		),
 		tb.TaskRunStatus(
 			tb.PodName("my-pod-name"),
-			tb.Condition(apis.Condition{Type: apis.ConditionSucceeded}),
+			tb.StatusCondition(apis.Condition{Type: apis.ConditionSucceeded}),
 			tb.StepState(tb.StateTerminated(127)),
 		),
 	)
