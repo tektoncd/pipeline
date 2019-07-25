@@ -49,7 +49,7 @@ func TestConditionCheck_IsSuccessful(t *testing.T) {
 	)))
 
 	cc := v1alpha1.ConditionCheck(*tr)
-	if !cc.IsDone() {
+	if !cc.IsSuccessful() {
 		t.Fatal("Expected conditionCheck status to be done")
 	}
 }

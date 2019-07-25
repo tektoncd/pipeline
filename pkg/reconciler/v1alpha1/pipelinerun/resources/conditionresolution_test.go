@@ -117,7 +117,7 @@ func TestTaskConditionCheckState_HasStarted(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.state.HasStarted()
-			if got != tc.want{
+			if got != tc.want {
 				t.Errorf("Expected HasStarted to be %v but got %v for %s", tc.want, got, tc.name)
 			}
 		})

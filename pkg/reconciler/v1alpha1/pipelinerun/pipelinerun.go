@@ -388,7 +388,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 				return xerrors.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
 			}
 		} else if !rprt.ResolvedConditionChecks.HasStarted() {
-			// FIXME: Move this on to its own function
 			for _, rcc := range rprt.ResolvedConditionChecks {
 				rcc.ConditionCheck, err = c.makeConditionCheckContainer(rprt, rcc, pr)
 				if err != nil {
@@ -403,17 +402,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	pr.Status.SetCondition(after)
 	reconciler.EmitEvent(c.Recorder, before, after, pr)
 
-	updateTaskRunsStatus(pr, pipelineState)
+	pr.Status.TaskRuns = getTaskRunsStatus(pr, pipelineState)
 
 	c.Logger.Infof("PipelineRun %s status is being set to %s", pr.Name, pr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
 }
 
-func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.ResolvedPipelineRunTask) {
-	for _, rprt := range pipelineState {
+func getTaskRunsStatus(pr *v1alpha1.PipelineRun, state []*resources.ResolvedPipelineRunTask) map[string]*v1alpha1.PipelineRunTaskRunStatus {
+	status := make(map[string]*v1alpha1.PipelineRunTaskRunStatus)
+	for _, rprt := range state {
 		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
 			continue
 		}
+
 		var prtrs *v1alpha1.PipelineRunTaskRunStatus
 		if rprt.TaskRun != nil {
 			prtrs = pr.Status.TaskRuns[rprt.TaskRun.Name]
@@ -435,8 +436,7 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 					ConditionName: c.Condition.Name,
 				}
 				if c.ConditionCheck != nil {
-					ccStatus := c.NewConditionCheckStatus()
-					cStatus[c.ConditionCheckName].Status = &ccStatus
+					cStatus[c.ConditionCheckName].Status = c.NewConditionCheckStatus()
 				}
 			}
 			prtrs.ConditionChecks = cStatus
@@ -452,8 +452,9 @@ func updateTaskRunsStatus(pr *v1alpha1.PipelineRun, pipelineState []*resources.R
 				})
 			}
 		}
-		pr.Status.TaskRuns[rprt.TaskRunName] = prtrs
+		status[rprt.TaskRunName] = prtrs
 	}
+	return status
 }
 
 func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1alpha1.PipelineRun) error {
