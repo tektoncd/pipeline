@@ -11,3 +11,4 @@ linters:
   enable:
   - errcheck
   - gofmt
+  - goimports
