@@ -41,7 +41,7 @@ func TestWaitForTaskRunStateSucceed(t *testing.T) {
 	d := Data{
 		TaskRuns: []*v1alpha1.TaskRun{
 			tb.TaskRun("foo", waitNamespace, tb.TaskRunStatus(
-				tb.Condition(success),
+				tb.StatusCondition(success),
 			)),
 		},
 	}
@@ -56,7 +56,7 @@ func TestWaitForTaskRunStateFailed(t *testing.T) {
 	d := Data{
 		TaskRuns: []*v1alpha1.TaskRun{
 			tb.TaskRun("foo", waitNamespace, tb.TaskRunStatus(
-				tb.Condition(failure),
+				tb.StatusCondition(failure),
 			)),
 		},
 	}

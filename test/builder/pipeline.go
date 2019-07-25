@@ -378,7 +378,7 @@ func PipelineRunStatus(ops ...PipelineRunStatusOp) PipelineRunOp {
 	}
 }
 
-// PipelineRunStatusCondition adds a Condition to the TaskRunStatus.
+// PipelineRunStatusCondition adds a StatusCondition to the TaskRunStatus.
 func PipelineRunStatusCondition(condition apis.Condition) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
 		s.Conditions = append(s.Conditions, condition)

@@ -1408,7 +1408,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 	}
 	taskRun := tb.TaskRun("test-taskrun-run-success", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name),
-	), tb.TaskRunStatus(tb.Condition(*taskSt)))
+	), tb.TaskRunStatus(tb.StatusCondition(*taskSt)))
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{
 			taskRun,
@@ -1437,7 +1437,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-run-cancelled", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name),
 		tb.TaskRunCancelled,
-	), tb.TaskRunStatus(tb.Condition(apis.Condition{
+	), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 		Type:   apis.ConditionSucceeded,
 		Status: corev1.ConditionUnknown,
 	})))
@@ -1483,7 +1483,7 @@ func TestReconcileTimeouts(t *testing.T) {
 					tb.TaskRunTaskRef(simpleTask.Name),
 					tb.TaskRunTimeout(10*time.Second),
 				),
-				tb.TaskRunStatus(tb.Condition(apis.Condition{
+				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionUnknown}),
 					tb.TaskRunStartTime(time.Now().Add(-15*time.Second)))),
@@ -1499,7 +1499,7 @@ func TestReconcileTimeouts(t *testing.T) {
 				tb.TaskRunSpec(
 					tb.TaskRunTaskRef(simpleTask.Name),
 				),
-				tb.TaskRunStatus(tb.Condition(apis.Condition{
+				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionUnknown}),
 					tb.TaskRunStartTime(time.Now().Add(-61*time.Minute)))),
@@ -1516,7 +1516,7 @@ func TestReconcileTimeouts(t *testing.T) {
 					tb.TaskRunTaskRef(simpleTask.Name),
 					tb.TaskRunNilTimeout,
 				),
-				tb.TaskRunStatus(tb.Condition(apis.Condition{
+				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionUnknown}),
 					tb.TaskRunStartTime(time.Now().Add(-61*time.Minute)))),
@@ -1558,7 +1558,7 @@ func TestHandlePodCreationError(t *testing.T) {
 		tb.TaskRunTaskRef(simpleTask.Name),
 	), tb.TaskRunStatus(
 		tb.TaskRunStartTime(time.Now()),
-		tb.Condition(apis.Condition{
+		tb.StatusCondition(apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		}),

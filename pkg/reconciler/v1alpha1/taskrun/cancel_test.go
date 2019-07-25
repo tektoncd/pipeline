@@ -43,7 +43,7 @@ func TestCancelTaskRun(t *testing.T) {
 		taskRun: tb.TaskRun("test-taskrun-run-cancelled", "foo", tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name),
 			tb.TaskRunCancelled,
-		), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		}))),
@@ -58,7 +58,7 @@ func TestCancelTaskRun(t *testing.T) {
 		taskRun: tb.TaskRun("test-taskrun-run-cancelled", "foo", tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name),
 			tb.TaskRunCancelled,
-		), tb.TaskRunStatus(tb.Condition(apis.Condition{
+		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
 		}), tb.PodName("foo-is-bar"))),
