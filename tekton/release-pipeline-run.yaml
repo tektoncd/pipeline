@@ -1,0 +1,60 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  generateName: run-pipeline-release-
+spec:
+  pipelineRef:
+    name: pipeline-release
+  serviceAccount: 'release-right-meow'
+  params:
+  - name: versionTag
+    value: v0.X.Y # REPLACE with the version you want to release, including `v`. For nightly releases, we might want to use `vYYYYMMDD-commit`
+  - name: imageRegistry
+      value: gcr.io/tekton-releases # REPLACE with your own registry
+    - name: package
+      value: github.com/tektoncd/pipeline
+  resources:
+  - name: source-repo
+    resourceRef:
+      name: tekton-pipelines-git
+  - name: bucket
+    resourceRef:
+      name: tekton-bucket
+  - name: builtBaseImage
+    resourceRef:
+      name: base-image
+  - name: builtEntrypointImage
+    resourceRef:
+      name: entrypoint-image
+  - name: builtKubeconfigWriterImage
+    resourceRef:
+      name: kubeconfigwriter-image
+  - name: builtCredsInitImage
+    resourceRef:
+      name: creds-init-image
+  - name: builtGitInitImage
+    resourceRef:
+      name: git-init-image
+  - name: builtNopImage
+    resourceRef:
+      name: nop-image
+  - name: builtBashImage
+    resourceRef:
+      name: bash-image
+  - name: builtGsutilImage
+    resourceRef:
+      name: gsutil-image
+  - name: builtControllerImage
+    resourceRef:
+      name: controller-image
+  - name: builtWebhookImage
+    resourceRef:
+      name: webhook-image
+  - name: builtDigestExporterImage
+    resourceRef:
+      name: digest-exporter-image
+  - name: builtPullRequestInitImage
+    resourceRef:
+      name: pullrequest-init-image
+

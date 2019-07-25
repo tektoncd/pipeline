@@ -18,13 +18,17 @@ them manually.
 
 ## Pull Request Pipeline
 
-The `Tasks` which are going to make up our Pull Request Pipeline are:
+The pull request pipeline will use the
+[`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
+Tasks from the
+[`tektoncd/catalog`](https://github.com/tektoncd/catalog). To add them
+to your cluster:
 
-- [`ci-unit-test.yaml`](ci-unit-test.yaml) — This `Task` uses `go test` to run
-  the Pipeline unit tests.
-- [`ci-lint.yaml`](ci-lint.yaml) — This `Task` uses
-  [`golangci-lint`](https://github.com/golangci/golangci-lint) to validate the
-  code based on common best practices.
+```
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/lint.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
+```
 
 TODO(#922) & TODO(#860): Add the Pipeline and hook it up with Prow, for now all
 we have are `Tasks` which we can invoke individually by creating
@@ -34,7 +38,19 @@ and
 
 ## Release Pipeline
 
-The `Tasks` which make up our release `Pipeline` are:
+The release pipeline uses the
+[`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
+Tasks from the
+[`tektoncd/catalog`](https://github.com/tektoncd/catalog). To add them
+to your cluster:
+
+```
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/lint.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
+```
+
+The *local* `Tasks` which make up our release `Pipeline` are:
 
 - [`ci-images.yaml`](ci-images.yaml) - This `Task` uses
   [`kaniko`](https://github.com/GoogleContainerTools/kaniko) to build and
@@ -44,7 +60,14 @@ The `Tasks` which make up our release `Pipeline` are:
   [`kaniko`](https://github.com/GoogleContainerTools/kaniko) to build and
   publish base images, and uses
   [`ko`](https://github.com/google/go-containerregistry/tree/master/cmd/ko) to
-  build all of the container images we release and generate the `release.yaml`
+  build all of the container images we release and generate the
+  `release.yaml`
+- [`release-pipeline.yaml`](./release-pipeline.yaml) - This `Pipeline`
+  uses the
+  [`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
+  `Task`s from the
+  [`tektoncd/catalog`](https://github.com/tektoncd/catalog) and
+  [`publish.yaml`](publish.yaml)'s `Task`.
 
 The official releases [are performed from the `prow` cluster in the `tekton-releases`
 GCP project](https://github.com/tektoncd/plumbing#prow). To release you will want to:
@@ -88,6 +111,10 @@ image registry instead.
 - [`publish-run.yaml`](publish-run.yaml) - This example `TaskRun` and
   `PipelineResources` demonstrate how to invoke `publish.yaml` (see
   [Creating a new release](#creating-a-new-release))
+  
+- You can use [`tkn`](https://github.com/tektoncd/cli) to run the [release
+  pipeline](./release-pipeline.yaml) (see [Creating a new
+  release](#creating-a-new-release))
 
 #### Setting up your credentials
 
@@ -155,49 +182,39 @@ access), such as [the production service account](#production-service-account).
 
 To run the `publish-tekton-pipelines` `Task` and create a release:
 
-1. Pick the revision you want to release and replace the value of the
-   `PipelineResource` [`tekton-pipelines` `revision`](publish-run.yaml#11),
-   e.g.:
+1. Pick the revision you want to release and update the
+   [`resources.yaml`](./resources.yaml) file to add a
+   `PipelineResoruce` for it, e.g.:
 
    ```yaml
-   - name: revision
-     value: 67efb48746a9d5d7d3b9b5c5cc210de7a47c6ebc # REPLACE with your own commit
+   apiVersion: tekton.dev/v1alpha1
+   kind: PipelineResource
+   metadata:
+     name: tekton-pipelines-vX-Y-Z
+   spec:
+     type: git
+     params:
+     - name: url
+       value: https://github.com/tektoncd/pipeline # REPLACE with your own fork
+     - name: revision
+       value: vX.Y.Z-invalid-tags-boouuhhh # REPLACE with your own commit
    ```
-
-2. Change the value of the `PipelineRun` [`publish-run`'s `versionTag`
-   parameter], e.g.:
-
-   ```yaml
-   params:
-     - name: versionTag
-       value: v0.22222.0 # REPLACE with the version you want to release
-   ```
-
-   **TODO(#983) Be careful! if you use a tag that has already been released, you
-   can overwrite a previous release!**
-
-3. To run against your own infrastructure (not needed for actual releases), also
-   replace the `imageRegistry` param:
-
-   ```yaml
-   - name: imageRegistry
-     value: gcr.io/tekton-releases # REPLACE with your own registry
-   ```
-
-   And the `location` of the `tekton-bucket`:
-
+   
+   Also, validate that the `tektoncd-bucket` points to the correct
+   bucket if you are running the release on your own infrastructure.
+  
    ```yaml
    - name: location
      value: gs://tekton-releases # REPLACE with your own bucket
    ```
 
-4. To run an official release [using the production cluster](https://github.com/tektoncd/plumbing#prow):
+2. To run an official release [using the production cluster](https://github.com/tektoncd/plumbing#prow):
 
   ```bash
   gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
   ```
 
-5. To run against your own infrastructure (if you are running
+3. To run against your own infrastructure (if you are running
    [in the production cluster](https://github.com/tektoncd/plumbing#prow) the default account should
    already have these creds, this is just a bonus - plus `release-right-meow` might already exist in the
    cluster!), also setup the required credentials for the `release-right-meow` service account, either:
@@ -229,16 +246,68 @@ To run the `publish-tekton-pipelines` `Task` and create a release:
      -p "{\"secrets\": [{\"name\": \"$GENERIC_SECRET\"}]}"
    ```
 
-6. Run the `publish-tekton-pipelines` `Task`:
+4. To run the release you can either create a `PipelineRun` using
+   [`tkn`](https://github.com/tektoncd/cli), or using a yaml file.
 
-   ```bash
-   # If you are running in a cluster you've run this in previously, delete the previous run
+	You will need to set the following parameters:
+	- `versionTag`: to set the tag to use for published images
+	
+	  **TODO(#983) Be careful! if you use a tag that has already been released, you
+	  can overwrite a previous release!**
+	  
+	- `imageRegistry`: the default value points to
+      `gcr.io/tekton-releases`, to run against your own infrastructure
+      (not needed for actual releases) set it to your registry.
 
+6. Run the `release-pipeline`:
+
+   ```shell
+   # If you are running in a cluster you've run this in previously,
+   # delete the previous run and resources
+
+   # Apply golang tasks from the catalog
+   kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/lint.yaml
+   kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
+   kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
+
+   # Apply the publish Task
    kubectl apply -f tekton/publish.yaml
-   kubectl apply -f tekton/publish-run.yaml
 
-   # If you are running this in a shared cluster, delete the pipelinerun
+   # Create the resoruces
+   kubectl apply -f tekton/resources.yaml
    ```
+
+   If you are using [`tkn`](https://github.com/tektoncd/cli), you can
+   run the following command.
+	
+   ```shell
+   # Do not forget to change those environment variables !
+   export VERSION_TAG=v0.X.Y
+
+   tkn pipeline start \
+		--param=versionTag=${VERSION_TAG} \
+		--serviceaccount=release-right-meow \
+		--resource=source-repo=tekton-pipelines-git \
+		--resource=bucket=tekton-bucket \
+		--resource=builtBaseImage=base-image \
+		--resource=builtEntrypointImage=entrypoint-image \
+		--resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
+		--resource=builtCredsInitImage=creds-init-image \
+		--resource=builtGitInitImage=git-init-image \
+		--resource=builtNopImage=nop-image \
+		--resource=builtBashImage=bash-image \
+		--resource=builtGsutilImage=gsutil-image \
+		--resource=builtControllerImage=controller-image \
+		--resource=builtWebhookImage=webhook-image \
+		--resource=builtDigestExporterImage=digest-exporter-image \
+		--resource=builtPullRequestInitImage=pull-request-init-image \
+		pipeline-release
+   ```
+	
+   If you don't want to use `tkn`, you can use
+  [`release-pipeline-run.yaml`](./release-pipeline-run.yaml)'s
+  `PipelineRun`. **Do not forget to update the `params` and the
+  `source-repo` resource**.  
 
 ### Authentication
 
