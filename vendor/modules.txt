@@ -70,6 +70,8 @@ github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1
 github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1
 # github.com/cpuguy83/go-md2man v1.0.10
 github.com/cpuguy83/go-md2man/md2man
+# github.com/creack/pty v1.1.7
+github.com/creack/pty
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -162,7 +164,7 @@ github.com/knative/pkg/metrics/metricskey
 github.com/knative/pkg/test/ingress
 github.com/knative/pkg/test/zipkin
 github.com/knative/pkg/test/monitoring
-# github.com/kr/pty v1.1.4
+# github.com/kr/pty v1.1.8
 github.com/kr/pty
 # github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a
 github.com/mattbaird/jsonpatch

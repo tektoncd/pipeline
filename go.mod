@@ -30,6 +30,7 @@ require (
 	github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3 // indirect
 	github.com/knative/pkg v0.0.0-20190409220258-28cfa161499b
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/kr/pty v1.1.8 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
