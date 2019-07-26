@@ -23,13 +23,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// ConditionOp is an operation which modifies a StatusCondition struct.
+// ConditionOp is an operation which modifies a Condition struct.
 type ConditionOp func(*v1alpha1.Condition)
 
 // ConditionSpecOp is an operation which modifies a ConditionSpec struct.
 type ConditionSpecOp func(spec *v1alpha1.ConditionSpec)
 
-// TaskParamOp is an operation which modify a ParamSpec struct.
+// ConditionParamOp is an operation which modify a ParamSpec struct.
 type ConditionParamOp func(*v1alpha1.ParamSpec)
 
 // Condition creates a Condition with default values.
