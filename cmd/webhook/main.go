@@ -97,6 +97,7 @@ func main() {
 			v1alpha1.SchemeGroupVersion.WithKind("ClusterTask"):      &v1alpha1.ClusterTask{},
 			v1alpha1.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha1.TaskRun{},
 			v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
+			v1alpha1.SchemeGroupVersion.WithKind("Condition"):        &v1alpha1.Condition{},
 		},
 		Logger:                logger,
 		DisallowUnknownFields: true,
