@@ -47,7 +47,7 @@ type GitResource struct {
 	TargetPath string
 }
 
-// NewGitResource create a new git resource to pass to a Task
+// NewGitResource creates a new git resource to pass to a Task
 func NewGitResource(r *PipelineResource) (*GitResource, error) {
 	if r.Spec.Type != PipelineResourceTypeGit {
 		return nil, xerrors.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
@@ -64,7 +64,7 @@ func NewGitResource(r *PipelineResource) (*GitResource, error) {
 			gitResource.Revision = param.Value
 		}
 	}
-	// default revision to master is nothing is provided
+	// default revision to master if nothing is provided
 	if gitResource.Revision == "" {
 		gitResource.Revision = "master"
 	}
