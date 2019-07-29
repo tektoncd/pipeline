@@ -270,7 +270,13 @@ To look at the logs for individual `TaskRuns` or `PipelineRuns`, see
 If you need to add a new CRD type, you will need to add:
 
 1. A yaml definition in [config/](./config)
-1. Add the type to the cluster roles in
-   [200-clusterrole.yaml](./config/200-clusterrole.yaml)
+1. Add the type to the cluster roles in:
+   - [200-clusterrole.yaml](./config/200-clusterrole.yaml)
+   - [clusterrole-aggregate-edit.yaml](./config/clusterrole-aggregate-edit.yaml)
+   - [clusterrole-aggregate-view.yaml](./config/clusterrole-aggregate-view.yaml)
+1. Add go structs for the types in [pkg/apis/pipelines/v1alpha1](./pkg/apis/pipeline/v1alpha1)
+   e.g [condition_types.go](./pkg/apis/pipeline/v1alpha1/condition_types.go)
+1. Register it with the [webhook](./cmd/webhook/main.go)
+1. Add the new type to the [list of known types](./pkg/apis/pipeline/v1alpha1/register.go)
 
 _See [the API compatibility policy](api_compatibility_policy.md)._
