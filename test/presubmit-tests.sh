@@ -33,6 +33,7 @@ function pre_build_tests() {
 
 function post_build_tests() {
     golangci-lint run
+    make cross
 }
 
 # We use the default build, unit and integration test runners.
