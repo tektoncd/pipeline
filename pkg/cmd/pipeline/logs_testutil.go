@@ -18,8 +18,6 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/tektoncd/cli/pkg/cli"
-
 	"github.com/hinshun/vt10x"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -31,7 +29,6 @@ import (
 type promptTest struct {
 	name      string
 	cmdArgs   []string
-	clientset *cli.Params
 	procedure func(*expect.Console) error
 }
 
@@ -50,7 +47,7 @@ func (opts *logOptions) RunPromptTest(t *testing.T, test promptTest) {
 }
 
 func stdio(c *expect.Console) terminal.Stdio {
-	return terminal.Stdio{c.Tty(), c.Tty(), c.Tty()}
+	return terminal.Stdio{In: c.Tty(), Out: c.Tty(), Err: c.Tty()}
 }
 
 func (pt *promptTest) runTest(t *testing.T, procedure func(*expect.Console) error, test func(terminal.Stdio) error) {
@@ -65,7 +62,9 @@ func (pt *promptTest) runTest(t *testing.T, procedure func(*expect.Console) erro
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		procedure(c)
+		if err := procedure(c); err != nil {
+			t.Logf("procedure failed: %v", err)
+		}
 	}()
 
 	err = test(stdio(c))

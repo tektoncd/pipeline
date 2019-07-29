@@ -41,18 +41,10 @@ func init() {
 }
 
 var (
-	answer       = ""
 	pipelineName = "output-pipeline"
 	prName       = "output-pipeline-run"
 	prName2      = "output-pipeline-run-2"
-	prstart      = clockwork.NewFakeClock()
 	ns           = "namespace"
-
-	task1Name    = "output-task"
-	tr1Name      = "output-task-run"
-	tr1StartTime = prstart.Now().Add(20 * time.Second)
-	tr1Pod       = "output-task-pod-123456"
-	tr1Step1Name = "writefile-step"
 )
 
 func TestInteractiveAskPAndPR(t *testing.T) {

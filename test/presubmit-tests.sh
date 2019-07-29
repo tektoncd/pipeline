@@ -31,6 +31,10 @@ function pre_build_tests() {
     go get -u github.com/knative/test-infra/tools/dep-collector
 }
 
+function post_build_tests() {
+    golangci-lint run
+}
+
 # We use the default build, unit and integration test runners.
 
 main $@

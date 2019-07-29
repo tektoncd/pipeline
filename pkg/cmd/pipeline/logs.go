@@ -20,14 +20,13 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"github.com/AlecAivazis/survey/v2/terminal"
-
 )
 
 type logOptions struct {
@@ -59,10 +58,10 @@ func logCommand(p cli.Params) *cobra.Command {
 
    `
 	c := &cobra.Command{
-		Use: "logs",
+		Use:                   "logs",
 		DisableFlagsInUseLine: true,
-		Short:   "Show the logs of latest pipelinerun of given pipeline ",
-		Example: eg,
+		Short:                 "Show the logs of latest pipelinerun of given pipeline ",
+		Example:               eg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.stream = &cli.Stream{
 				Out: cmd.OutOrStdout(),
@@ -114,8 +113,8 @@ func (opts *logOptions) init(args []string) error {
 		opts.runName = args[1]
 
 	default:
-		fmt.Fprintln(opts.stream.Err,"too many arguments")
-		return  nil
+		fmt.Fprintln(opts.stream.Err, "too many arguments")
+		return nil
 
 	}
 	return nil
@@ -175,6 +174,9 @@ func (opts *logOptions) initLastRunName() error {
 		return err
 	}
 	lastrun, err := lastRun(cs, opts.params.Namespace(), opts.pipelineName)
+	if err != nil {
+		return err
+	}
 	opts.runName = lastrun
 	return nil
 }

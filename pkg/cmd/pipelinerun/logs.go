@@ -17,11 +17,10 @@ package pipelinerun
 import (
 	"fmt"
 
-	"github.com/tektoncd/cli/pkg/helper/pods/stream"
-
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/helper/pods"
+	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 )
 
 const (
@@ -56,11 +55,11 @@ func logCommand(p cli.Params) *cobra.Command {
    `
 
 	c := &cobra.Command{
-		Use: "logs",
+		Use:                   "logs",
 		DisableFlagsInUseLine: true,
-		Short:   "Show the logs of PipelineRun",
-		Example: eg,
-		Args:    cobra.ExactArgs(1),
+		Short:                 "Show the logs of PipelineRun",
+		Example:               eg,
+		Args:                  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.PipelineRunName = args[0]
 			opts.Stream = &cli.Stream{
