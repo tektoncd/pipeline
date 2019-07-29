@@ -60,3 +60,5 @@ require (
 	k8s.io/kubernetes v1.13.3 // indirect
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )
+
+replace github.com/kr/pty => github.com/creack/pty v1.1.7
