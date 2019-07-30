@@ -49,7 +49,7 @@ func TestDAGPipelineRun(t *testing.T) {
 	echoTask := tb.Task("echo-task", namespace, tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("repo", v1alpha1.PipelineResourceTypeGit),
-			tb.InputsParamSpec("text", v1alpha1.ParamTypeString, tb.ParamDescription("The text that should be echoed")),
+			tb.InputsParamSpec("text", v1alpha1.ParamTypeString, tb.ParamSpecDescription("The text that should be echoed")),
 		),
 		tb.TaskOutputs(tb.OutputsResource("repo", v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("echo-text", "busybox", tb.Command("echo"), tb.Args("${inputs.params.text}")),

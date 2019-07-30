@@ -80,7 +80,7 @@ func ExampleTaskRun() {
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
-				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamDefault("mydefault")),
+				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
 			),
 			tb.Step("mycontainer", "myimage", tb.Command("/mycmd"),
 				tb.Args("--my-arg=${inputs.params.myarg}"),

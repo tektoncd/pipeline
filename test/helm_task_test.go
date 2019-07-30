@@ -168,8 +168,8 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 		tb.TaskInputs(
 			tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit),
 			tb.InputsResource("image", v1alpha1.PipelineResourceTypeImage),
-			tb.InputsParamSpec("pathToHelmCharts", v1alpha1.ParamTypeString, tb.ParamDescription("Path to the helm charts")),
-			tb.InputsParamSpec("chartname", v1alpha1.ParamTypeString, tb.ParamDefault("")),
+			tb.InputsParamSpec("pathToHelmCharts", v1alpha1.ParamTypeString, tb.ParamSpecDescription("Path to the helm charts")),
+			tb.InputsParamSpec("chartname", v1alpha1.ParamTypeString, tb.ParamSpecDefault("")),
 		),
 		tb.Step("helm-init", "alpine/helm:2.14.0", tb.Args("init", "--wait")),
 		tb.Step("helm-deploy", "alpine/helm:2.14.0", tb.Args(
