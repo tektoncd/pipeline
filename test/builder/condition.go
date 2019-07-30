@@ -29,9 +29,6 @@ type ConditionOp func(*v1alpha1.Condition)
 // ConditionSpecOp is an operation which modifies a ConditionSpec struct.
 type ConditionSpecOp func(spec *v1alpha1.ConditionSpec)
 
-// ConditionParamOp is an operation which modify a ParamSpec struct.
-type ConditionParamOp func(*v1alpha1.ParamSpec)
-
 // Condition creates a Condition with default values.
 // Any number of Condition modifiers can be passed to transform it.
 func Condition(name, namespace string, ops ...ConditionOp) *v1alpha1.Condition {
@@ -73,28 +70,14 @@ func ConditionSpecCheck(image string, ops ...ContainerOp) ConditionSpecOp {
 	}
 }
 
-// ParamSpec adds a param, with specified name, to the Spec.
+// ConditionParamSpec adds a param, with specified name, to the Spec.
 // Any number of ParamSpec modifiers can be passed to transform it.
-func ConditionParam(name string, ops ...ConditionParamOp) ConditionSpecOp {
+func ConditionParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) ConditionSpecOp {
 	return func(ps *v1alpha1.ConditionSpec) {
-		pp := &v1alpha1.ParamSpec{Name: name}
+		pp := &v1alpha1.ParamSpec{Name: name, Type: pt}
 		for _, op := range ops {
 			op(pp)
 		}
 		ps.Params = append(ps.Params, *pp)
-	}
-}
-
-// ConditionParamDescription sets the description to the ParamSpec.
-func ConditionParamDescription(desc string) ConditionParamOp {
-	return func(pp *v1alpha1.ParamSpec) {
-		pp.Description = desc
-	}
-}
-
-// ConditionParamDefault sets the default value to the ParamSpec.
-func ConditionParamDefault(value string) ConditionParamOp {
-	return func(pp *v1alpha1.ParamSpec) {
-		pp.Default = value
 	}
 }

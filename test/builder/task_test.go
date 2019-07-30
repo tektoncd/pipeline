@@ -41,8 +41,8 @@ func TestTask(t *testing.T) {
 	task := tb.Task("test-task", "foo", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit, tb.ResourceTargetPath("/foo/bar")),
-			tb.InputsParamSpec("param", v1alpha1.ParamTypeString, tb.ParamDescription("mydesc"), tb.ParamDefault("default")),
-			tb.InputsParamSpec("array-param", v1alpha1.ParamTypeString, tb.ParamDescription("desc"), tb.ParamDefault("array", "values")),
+			tb.InputsParamSpec("param", v1alpha1.ParamTypeString, tb.ParamSpecDescription("mydesc"), tb.ParamSpecDefault("default")),
+			tb.InputsParamSpec("array-param", v1alpha1.ParamTypeString, tb.ParamSpecDescription("desc"), tb.ParamSpecDefault("array", "values")),
 		),
 		tb.TaskOutputs(tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(

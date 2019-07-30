@@ -127,7 +127,7 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}, {
 		name: "valid array parameter variables",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.PipelineParamDefault("some", "default")),
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("some", "default")),
 			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "${baz}", "and", "${foo-is-baz}")),
@@ -212,14 +212,14 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}, {
 		name: "not defined parameter variable with defined",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParamSpec("foo", v1alpha1.ParamTypeString, tb.PipelineParamDefault("something")),
+			tb.PipelineParamSpec("foo", v1alpha1.ParamTypeString, tb.ParamSpecDefault("something")),
 			tb.PipelineTask("foo", "foo-task",
 				tb.PipelineTaskParam("a-param", "${params.foo} and ${params.does-not-exist}")))),
 		failureExpected: true,
 	}, {
 		name: "invalid parameter type",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParamSpec("baz", "invalidtype", tb.PipelineParamDefault("some", "default")),
+			tb.PipelineParamSpec("baz", "invalidtype", tb.ParamSpecDefault("some", "default")),
 			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "${baz}", "and", "${foo-is-baz}")),
@@ -228,7 +228,7 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}, {
 		name: "array parameter mismatching default type",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.PipelineParamDefault("astring")),
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("astring")),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "arrayelement", "${baz}")),
 		)),
@@ -236,7 +236,7 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}, {
 		name: "string parameter mismatching default type",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString, tb.PipelineParamDefault("anarray", "elements")),
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString, tb.ParamSpecDefault("anarray", "elements")),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "arrayelement", "${baz}")),
 		)),
@@ -244,7 +244,7 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}, {
 		name: "array parameter used as string",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.PipelineParamDefault("anarray", "elements")),
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "${params.baz}")),
 		)),
@@ -252,7 +252,7 @@ func TestPipelineSpec_Validate(t *testing.T) {
 	}, {
 		name: "array parameter string template not isolated",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
-			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.PipelineParamDefault("anarray", "elements")),
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskParam("a-param", "first", "value: ${params.baz}", "last")),
 		)),

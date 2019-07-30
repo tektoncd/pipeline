@@ -80,8 +80,8 @@ func TestReconcile(t *testing.T) {
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("best-image", "image"),
-				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("somethingdifferent")),
-				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				// unit-test-3 uses runAfter to indicate it should run last
 				tb.PipelineTask("unit-test-3", "unit-test-task",
 					funParam, moreFunParam, templatedParam,

@@ -29,9 +29,6 @@ type PipelineOp func(*v1alpha1.Pipeline)
 // PipelineSpecOp is an operation which modify a PipelineSpec struct.
 type PipelineSpecOp func(*v1alpha1.PipelineSpec)
 
-// PipelineParamSpecOp is an operation which modify a ParamSpec struct.
-type PipelineParamSpecOp func(*v1alpha1.ParamSpec)
-
 // PipelineTaskOp is an operation which modify a PipelineTask struct.
 type PipelineTaskOp func(*v1alpha1.PipelineTask)
 
@@ -113,28 +110,13 @@ func PipelineDeclaredResource(name string, t v1alpha1.PipelineResourceType) Pipe
 
 // PipelineParamSpec adds a param, with specified name and type, to the PipelineSpec.
 // Any number of PipelineParamSpec modifiers can be passed to transform it.
-func PipelineParamSpec(name string, pt v1alpha1.ParamType, ops ...PipelineParamSpecOp) PipelineSpecOp {
+func PipelineParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) PipelineSpecOp {
 	return func(ps *v1alpha1.PipelineSpec) {
 		pp := &v1alpha1.ParamSpec{Name: name, Type: pt}
 		for _, op := range ops {
 			op(pp)
 		}
 		ps.Params = append(ps.Params, *pp)
-	}
-}
-
-// PipelineParamDescription sets the description to the ParamSpec.
-func PipelineParamDescription(desc string) PipelineParamSpecOp {
-	return func(pp *v1alpha1.ParamSpec) {
-		pp.Description = desc
-	}
-}
-
-// PipelineParamDefault sets the default value to the ParamSpec.
-func PipelineParamDefault(value string, additionalValues ...string) PipelineParamSpecOp {
-	arrayOrString := ArrayOrString(value, additionalValues...)
-	return func(pp *v1alpha1.ParamSpec) {
-		pp.Default = arrayOrString
 	}
 }
 

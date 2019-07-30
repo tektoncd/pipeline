@@ -30,9 +30,9 @@ import (
 func TestCondition(t *testing.T) {
 	condition := tb.Condition("cond-name", "foo",
 		tb.ConditionSpec(tb.ConditionSpecCheck("ubuntu", tb.Command("exit 0")),
-			tb.ConditionParam("param-1",
-				tb.ConditionParamDefault("default"),
-				tb.ConditionParamDescription("desc"))),
+			tb.ConditionParamSpec("param-1", v1alpha1.ParamTypeString,
+				tb.ParamSpecDefault("default"),
+				tb.ParamSpecDescription("desc"))),
 	)
 
 	expected := &v1alpha1.Condition{
@@ -47,9 +47,12 @@ func TestCondition(t *testing.T) {
 			},
 			Params: []v1alpha1.ParamSpec{{
 				Name:        "param-1",
+				Type:        v1alpha1.ParamTypeString,
 				Description: "desc",
-				Default:     "default",
-			}},
+				Default: &v1alpha1.ArrayOrString{
+					Type:      v1alpha1.ParamTypeString,
+					StringVal: "default",
+				}}},
 		},
 	}
 
