@@ -13,10 +13,10 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: golangci-lint-run
+  name: lint-run
 spec:
   taskRef:
-    name: golangci-lint
+    name: lint
   inputs:
     resources:
     - name: source
