@@ -119,6 +119,9 @@ func TestPipelineRun(t *testing.T) {
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
 		tb.PipelineRunCompletionTime(completedTime),
+		tb.PipelineRunTaskRunsStatus("trname", &v1alpha1.PipelineRunTaskRunStatus{
+			PipelineTaskName: "task-1",
+		}),
 	), tb.PipelineRunLabel("label-key", "label-value"))
 	expectedPipelineRun := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -153,6 +156,9 @@ func TestPipelineRun(t *testing.T) {
 			},
 			StartTime:      &metav1.Time{Time: startTime},
 			CompletionTime: &metav1.Time{Time: completedTime},
+			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+				"trname": {PipelineTaskName: "task-1"},
+			},
 		},
 	}
 	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {

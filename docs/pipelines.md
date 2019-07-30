@@ -45,6 +45,8 @@ following fields:
       - [`retries`](#retries) - Used when the task is wanted to be executed if
         it fails. Could a network error or a missing dependency. It does not
         apply to cancellations.
+      - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
+        conditons are evaluated to be true.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -284,6 +286,28 @@ tasks:
 In this example, the task "build-the-image" will be executed and if the first
 run fails a second one would triggered. But, if that fails no more would
 triggered: a max of two executions.
+
+
+#### conditions
+
+Sometimes you will need to run tasks only when some conditions are true. The `conditions` field 
+allows you to list a series of references to [`Conditions`](./conditions.md) that are run before the task
+is run. If all of the conditions evaluate to true, the task is run. If any of the conditions are false,
+the Task is not run. Its status.ConditionSucceeded is set to False with the reason set to  `ConditionCheckFailed`.
+However, unlike regular task failures, condition failures do not automatically fail the entire pipeline 
+run -- other tasks that are not dependent on the task (via `from` or `runAfter`) are still run.
+
+```yaml
+tasks:
+  - name: conditional-task
+    taskRef:
+      name: build-push
+    conditions:
+      - conditionRef: my-condition
+```
+
+In this example, `my-condition` refers to a [Condition](#conditions) custom resource. The `build-push` 
+task will only be executed if the condition evaluates to true. 
 
 ## Ordering
 
