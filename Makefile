@@ -23,7 +23,7 @@ amd64:
 .PHONY: arm
 arm:
 	GOOS=linux GOARCH=arm go build -o bin/tkn-linux-arm ./cmd/tkn
-	GOOS=windows GOARCH=arm go build -o bin/tkn-windows-arm ./cmd/tkn
+	# GOOS=windows GOARCH=arm go build -o bin/tkn-windows-arm ./cmd/tkn # not support with go 1.11
 
 .PHONY: arm64
 arm64:
