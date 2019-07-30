@@ -55,6 +55,7 @@ type PipelineResourceInterface interface {
 	Replacements() map[string]string
 	GetDownloadContainerSpec() ([]corev1.Container, error)
 	GetUploadContainerSpec() ([]corev1.Container, error)
+	GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
 	SetDestinationDirectory(string)
 }
 
