@@ -24,6 +24,8 @@ import (
 )
 
 const (
+	// unnamedCheckNamePrefix is the prefix added to the name of a condition's
+	// spec.Check.Image if the name is missing
 	unnamedCheckNamePrefix = "condition-check-"
 )
 

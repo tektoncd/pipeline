@@ -1362,7 +1362,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 			tb.TaskRunOwnerReference("kind", "name"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-with-conditions"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
-			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunConditionCheckKey, conditionCheckName),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.ConditionCheckKey, conditionCheckName),
 			tb.TaskRunSpec(tb.TaskRunTaskSpec()),
 			tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
 				Type:   apis.ConditionSucceeded,
@@ -1429,7 +1429,7 @@ func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
 		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
 		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run"),
-		tb.TaskRunLabel("tekton.dev/pipelineConditionCheck", ccName),
+		tb.TaskRunLabel("tekton.dev/conditionCheck", ccName),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(tb.Step("condition-check-"+condName, "foo", tb.Args("bar"))),
