@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -109,29 +108,15 @@ func AddOutputResources(
 			}
 		}
 		resource.SetDestinationDirectory(sourcePath)
-		switch resource.GetType() {
-		case v1alpha1.PipelineResourceTypeStorage:
-			{
-				storageResource, ok := resource.(v1alpha1.PipelineStorageResourceInterface)
-				if !ok {
-					return nil, xerrors.Errorf("task %q invalid storage Pipeline Resource: %q",
-						taskName,
-						boundResource.ResourceRef.Name,
-					)
-				}
-				resourceContainers, resourceVolumes, err = addStoreUploadStep(taskSpec, storageResource)
-				if err != nil {
-					return nil, xerrors.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %w",
-						taskName, boundResource.ResourceRef.Name, err)
-				}
-			}
-		default:
-			{
-				resourceContainers, err = resource.GetUploadContainerSpec()
-				if err != nil {
-					return nil, xerrors.Errorf("task %q invalid download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
-				}
-			}
+
+		resourceContainers, err = resource.GetUploadContainerSpec()
+		if err != nil {
+			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
+		}
+
+		resourceVolumes, err = resource.GetUploadVolumeSpec(taskSpec)
+		if err != nil {
+			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 		}
 
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
@@ -162,40 +147,4 @@ func AddOutputResources(
 		}
 	}
 	return taskSpec, nil
-}
-
-func addStoreUploadStep(spec *v1alpha1.TaskSpec,
-	storageResource v1alpha1.PipelineStorageResourceInterface,
-) ([]corev1.Container, []corev1.Volume, error) {
-
-	gcsContainers, err := storageResource.GetUploadContainerSpec()
-	if err != nil {
-		return nil, nil, err
-	}
-	var storageVol []corev1.Volume
-	mountedSecrets := map[string]string{}
-
-	for _, volume := range spec.Volumes {
-		mountedSecrets[volume.Name] = ""
-	}
-
-	// Map holds list of secrets that are mounted as volumes
-	for _, secretParam := range storageResource.GetSecretParams() {
-		volName := fmt.Sprintf("volume-%s-%s", storageResource.GetName(), secretParam.SecretName)
-
-		gcsSecretVolume := corev1.Volume{
-			Name: volName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretParam.SecretName,
-				},
-			},
-		}
-
-		if _, ok := mountedSecrets[volName]; !ok {
-			storageVol = append(storageVol, gcsSecretVolume)
-			mountedSecrets[volName] = ""
-		}
-	}
-	return gcsContainers, storageVol, nil
 }

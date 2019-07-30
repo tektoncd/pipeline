@@ -120,3 +120,7 @@ func (s *GitResource) SetDestinationDirectory(path string) {
 func (s *GitResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 	return nil, nil
 }
+
+func (s *GitResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
