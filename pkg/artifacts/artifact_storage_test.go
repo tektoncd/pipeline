@@ -39,18 +39,21 @@ var (
 			Name:      "pipelineruntest",
 		},
 	}
-	persistentVolumeClaim = GetPersistentVolumeClaim(DefaultPvcSize)
-	quantityComparer      = cmp.Comparer(func(x, y resource.Quantity) bool {
+	defaultStorageClass   *string = nil
+	customStorageClass            = "custom-storage-class"
+	persistentVolumeClaim         = GetPersistentVolumeClaim(DefaultPvcSize, defaultStorageClass)
+	quantityComparer              = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
 )
 
-func GetPersistentVolumeClaim(size string) *corev1.PersistentVolumeClaim {
+func GetPersistentVolumeClaim(size string, storageClassName *string) *corev1.PersistentVolumeClaim {
 	pvc := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelineruntest-pvc", Namespace: "foo", OwnerReferences: pipelinerun.GetOwnerReference()},
 		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-			Resources:   corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(size)}},
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			Resources:        corev1.ResourceRequirements{Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(size)}},
+			StorageClassName: storageClassName,
 		},
 	}
 	return pvc
@@ -147,7 +150,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage ArtifactStorageInterface
 		storagetype             string
 	}{{
-		desc: "pvc configmap",
+		desc: "pvc configmap size",
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
@@ -160,7 +163,24 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
-			PersistentVolumeClaim: GetPersistentVolumeClaim("10Gi"),
+			PersistentVolumeClaim: GetPersistentVolumeClaim("10Gi", defaultStorageClass),
+		},
+		storagetype: "pvc",
+	}, {
+		desc: "pvc configmap storageclass",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      PvcConfigName,
+			},
+			Data: map[string]string{
+				PvcStorageClassNameKey: customStorageClass,
+			},
+		},
+		pipelinerun: pipelinerun,
+		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+			Name:                  "pipelineruntest",
+			PersistentVolumeClaim: GetPersistentVolumeClaim("5Gi", &customStorageClass),
 		},
 		storagetype: "pvc",
 	}, {
@@ -341,7 +361,7 @@ func TestCleanupArtifactStorage(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap, GetPVCSpec(c.pipelinerun, persistentVolumeClaim.Spec.Resources.Requests["storage"]))
+			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap, GetPVCSpec(c.pipelinerun, persistentVolumeClaim.Spec.Resources.Requests["storage"], defaultStorageClass))
 			_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(c.pipelinerun.Namespace).Get(GetPVCName(c.pipelinerun), metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(c.pipelinerun), c.pipelinerun.Name, err)
