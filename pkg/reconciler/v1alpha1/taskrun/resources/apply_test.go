@@ -552,6 +552,21 @@ func TestApplyParameters(t *testing.T) {
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[0].Image = "mydefault"
 		}),
+	}, {
+		name: "with empty string default parameter",
+		args: args{
+			ts: simpleTaskSpec,
+			tr: &v1alpha1.TaskRun{},
+			dp: []v1alpha1.ParamSpec{
+				{
+					Name:    "myimage",
+					Default: builder.ArrayOrString(""),
+				},
+			},
+		},
+		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
+			spec.Steps[0].Image = ""
+		}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
