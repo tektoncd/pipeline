@@ -21,7 +21,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/templating"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
@@ -74,18 +73,18 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, stringReplacements map[string]st
 	// Apply variable expansion to steps fields.
 	steps := spec.Steps
 	for i := range steps {
-		applyContainerReplacements(&steps[i], stringReplacements, arrayReplacements)
+		templating.ApplyContainerReplacements(&steps[i], stringReplacements, arrayReplacements)
 	}
 
 	// Apply variable expansion to containerTemplate fields.
 	// Should eventually be removed; ContainerTemplate is the deprecated previous name of the StepTemplate field (#977).
 	if spec.ContainerTemplate != nil {
-		applyContainerReplacements(spec.ContainerTemplate, stringReplacements, arrayReplacements)
+		templating.ApplyContainerReplacements(spec.ContainerTemplate, stringReplacements, arrayReplacements)
 	}
 
 	// Apply variable expansion to stepTemplate fields.
 	if spec.StepTemplate != nil {
-		applyContainerReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
+		templating.ApplyContainerReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
 	}
 
 	// Apply variable expansion to the build's volumes
@@ -103,54 +102,4 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, stringReplacements map[string]st
 	}
 
 	return spec
-}
-
-func applyContainerReplacements(container *corev1.Container, stringReplacements map[string]string, arrayReplacements map[string][]string) {
-	container.Name = templating.ApplyReplacements(container.Name, stringReplacements)
-	container.Image = templating.ApplyReplacements(container.Image, stringReplacements)
-
-	//Use ApplyArrayReplacements here, as additional args may be added via an array parameter.
-	var newArgs []string
-	for _, a := range container.Args {
-		newArgs = append(newArgs, templating.ApplyArrayReplacements(a, stringReplacements, arrayReplacements)...)
-	}
-	container.Args = newArgs
-
-	for ie, e := range container.Env {
-		container.Env[ie].Value = templating.ApplyReplacements(e.Value, stringReplacements)
-		if container.Env[ie].ValueFrom != nil {
-			if e.ValueFrom.SecretKeyRef != nil {
-				container.Env[ie].ValueFrom.SecretKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, stringReplacements)
-				container.Env[ie].ValueFrom.SecretKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, stringReplacements)
-			}
-			if e.ValueFrom.ConfigMapKeyRef != nil {
-				container.Env[ie].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, stringReplacements)
-				container.Env[ie].ValueFrom.ConfigMapKeyRef.Key = templating.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, stringReplacements)
-			}
-		}
-	}
-
-	for ie, e := range container.EnvFrom {
-		container.EnvFrom[ie].Prefix = templating.ApplyReplacements(e.Prefix, stringReplacements)
-		if e.ConfigMapRef != nil {
-			container.EnvFrom[ie].ConfigMapRef.LocalObjectReference.Name = templating.ApplyReplacements(e.ConfigMapRef.LocalObjectReference.Name, stringReplacements)
-		}
-		if e.SecretRef != nil {
-			container.EnvFrom[ie].SecretRef.LocalObjectReference.Name = templating.ApplyReplacements(e.SecretRef.LocalObjectReference.Name, stringReplacements)
-		}
-	}
-	container.WorkingDir = templating.ApplyReplacements(container.WorkingDir, stringReplacements)
-
-	//Use ApplyArrayReplacements here, as additional commands may be added via an array parameter.
-	var newCommand []string
-	for _, c := range container.Command {
-		newCommand = append(newCommand, templating.ApplyArrayReplacements(c, stringReplacements, arrayReplacements)...)
-	}
-	container.Command = newCommand
-
-	for iv, v := range container.VolumeMounts {
-		container.VolumeMounts[iv].Name = templating.ApplyReplacements(v.Name, stringReplacements)
-		container.VolumeMounts[iv].MountPath = templating.ApplyReplacements(v.MountPath, stringReplacements)
-		container.VolumeMounts[iv].SubPath = templating.ApplyReplacements(v.SubPath, stringReplacements)
-	}
 }
