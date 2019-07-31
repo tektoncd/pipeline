@@ -177,3 +177,7 @@ func getArtifactType(val string) (GCSArtifactType, error) {
 func (s *BuildGCSResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
 	return getStorageUploadVolumeSpec(s, spec)
 }
+
+func (s *BuildGCSResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return getStorageUploadVolumeSpec(s, spec)
+}

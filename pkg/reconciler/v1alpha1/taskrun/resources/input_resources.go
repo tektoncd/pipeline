@@ -17,7 +17,6 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -113,25 +112,13 @@ func AddInputResource(
 			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
 			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
 		} else {
-			switch resource.GetType() {
-			case v1alpha1.PipelineResourceTypeStorage:
-				{
-					storageResource, ok := resource.(v1alpha1.PipelineStorageResourceInterface)
-					if !ok {
-						return nil, xerrors.Errorf("task %q invalid gcs Pipeline Resource: %q", taskName, boundResource.ResourceRef.Name)
-					}
-					resourceContainers, resourceVolumes, err = addStorageFetchStep(taskSpec, storageResource)
-					if err != nil {
-						return nil, xerrors.Errorf("task %q invalid gcs Pipeline Resource download steps: %q: %w", taskName, boundResource.ResourceRef.Name, err)
-					}
-				}
-			default:
-				{
-					resourceContainers, err = resource.GetDownloadContainerSpec()
-					if err != nil {
-						return nil, xerrors.Errorf("task %q invalid resource download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
-					}
-				}
+			resourceContainers, err = resource.GetDownloadContainerSpec()
+			if err != nil {
+				return nil, xerrors.Errorf("task %q invalid resource download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
+			}
+			resourceVolumes, err = resource.GetDownloadVolumeSpec(taskSpec)
+			if err != nil {
+				return nil, xerrors.Errorf("task %q invalid resource download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 			}
 
 			allResourceContainers = append(allResourceContainers, resourceContainers...)
@@ -144,38 +131,6 @@ func AddInputResource(
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 	}
 	return taskSpec, nil
-}
-
-func addStorageFetchStep(taskSpec *v1alpha1.TaskSpec, storageResource v1alpha1.PipelineStorageResourceInterface) ([]corev1.Container, []corev1.Volume, error) {
-	gcsContainers, err := storageResource.GetDownloadContainerSpec()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var storageVol []corev1.Volume
-	mountedSecrets := map[string]string{}
-	for _, volume := range taskSpec.Volumes {
-		mountedSecrets[volume.Name] = ""
-	}
-
-	for _, secretParam := range storageResource.GetSecretParams() {
-		volName := fmt.Sprintf("volume-%s-%s", storageResource.GetName(), secretParam.SecretName)
-
-		gcsSecretVolume := corev1.Volume{
-			Name: volName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretParam.SecretName,
-				},
-			},
-		}
-
-		if _, ok := mountedSecrets[volName]; !ok {
-			storageVol = append(storageVol, gcsSecretVolume)
-			mountedSecrets[volName] = ""
-		}
-	}
-	return gcsContainers, storageVol, nil
 }
 
 func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {

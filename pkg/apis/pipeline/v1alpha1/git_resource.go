@@ -124,3 +124,7 @@ func (s *GitResource) GetUploadContainerSpec() ([]corev1.Container, error) {
 func (s *GitResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
 	return nil, nil
 }
+
+func (s *GitResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}

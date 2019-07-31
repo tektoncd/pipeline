@@ -142,3 +142,7 @@ func (s *PullRequestResource) SetDestinationDirectory(dir string) {
 func (s *PullRequestResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
 	return nil, nil
 }
+
+func (s *PullRequestResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
