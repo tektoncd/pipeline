@@ -46,7 +46,7 @@ const (
 func getGitResource(namespace string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(kanikoResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("Url", "https://github.com/pivotal-nader-ziada/gohelloworld"),
+		tb.PipelineResourceSpecParam("Url", "https://github.com/GoogleContainerTools/kaniko"),
 	))
 }
 
@@ -56,7 +56,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	}
 	stepOps := []tb.ContainerOp{
 		tb.Args(
-			"--dockerfile=/workspace/gitsource/Dockerfile",
+			"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 			fmt.Sprintf("--destination=%s", repo),
 			"--context=/workspace/gitsource",
 		),
@@ -138,7 +138,7 @@ func TestKanikoTaskRun(t *testing.T) {
 	match := re.FindStringSubmatch(logs)
 	// make sure we found a match and it has the capture group
 	if len(match) != 2 {
-		t.Fatalf("Expected to find an image digest in the build output")
+		t.Fatalf("Expected to find an image digest in the build output: %s", logs)
 	}
 	// match the local digest, which is first capture group against the remote image
 	digest := match[1]
