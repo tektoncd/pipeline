@@ -177,3 +177,7 @@ func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error)
 func (s *ClusterResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
 	return nil, nil
 }
+
+func (s *ClusterResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}

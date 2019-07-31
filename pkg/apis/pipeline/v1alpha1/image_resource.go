@@ -105,3 +105,7 @@ func (s ImageResource) String() string {
 func (s *ImageResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
 	return nil, nil
 }
+
+func (s *ImageResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
