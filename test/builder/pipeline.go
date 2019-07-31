@@ -53,8 +53,11 @@ type PipelineResourceSpecOp func(*v1alpha1.PipelineResourceSpec)
 // PipelineTaskInputResourceOp is an operation which modifies a PipelineTaskInputResource.
 type PipelineTaskInputResourceOp func(*v1alpha1.PipelineTaskInputResource)
 
-// PipelineRunStatusOp is an operation which modify a PipelineRunStatus
+// PipelineRunStatusOp is an operation which modifies a PipelineRunStatus
 type PipelineRunStatusOp func(*v1alpha1.PipelineRunStatus)
+
+// PipelineTaskConditionOp is an operation which modifies a PipelineTaskCondition
+type PipelineTaskConditionOp func(condition *v1alpha1.PipelineTaskCondition)
 
 // Pipeline creates a Pipeline with default values.
 // Any number of Pipeline modifier can be passed to transform it.
@@ -215,13 +218,30 @@ func PipelineTaskOutputResource(name, resource string) PipelineTaskOp {
 }
 
 // PipelineTaskCondition adds a condition to the PipelineTask with the
-// specified conditionRef
-func PipelineTaskCondition(conditionRef string) PipelineTaskOp {
+// specified conditionRef. Any number of PipelineTaskCondition modifiers can be passed
+// to transform it
+func PipelineTaskCondition(conditionRef string, ops ...PipelineTaskConditionOp) PipelineTaskOp {
 	return func(pt *v1alpha1.PipelineTask) {
-		c := v1alpha1.PipelineTaskCondition{
+		c := &v1alpha1.PipelineTaskCondition{
 			ConditionRef: conditionRef,
 		}
-		pt.Conditions = append(pt.Conditions, c)
+		for _, op := range ops {
+			op(c)
+		}
+		pt.Conditions = append(pt.Conditions, *c)
+	}
+}
+
+// PipelineTaskCondition adds a parameter to a PipelineTaskCondition
+func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
+	return func(condition *v1alpha1.PipelineTaskCondition) {
+		if condition.Params == nil {
+			condition.Params = []v1alpha1.Param{}
+		}
+		condition.Params = append(condition.Params, v1alpha1.Param{
+			Name:  name,
+			Value: *ArrayOrString(val),
+		})
 	}
 }
 

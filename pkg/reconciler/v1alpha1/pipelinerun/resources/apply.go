@@ -60,14 +60,19 @@ func ApplyReplacements(p *v1alpha1.Pipeline, replacements map[string]string, arr
 	tasks := p.Spec.Tasks
 
 	for i := range tasks {
-		params := tasks[i].Params
-
-		for j := range params {
-			params[j].Value.ApplyReplacements(replacements, arrayReplacements)
+		tasks[i].Params = replaceParamValues(tasks[i].Params, replacements, arrayReplacements)
+		for j := range tasks[i].Conditions {
+			c := tasks[i].Conditions[j]
+			c.Params = replaceParamValues(c.Params, replacements, arrayReplacements)
 		}
-
-		tasks[i].Params = params
 	}
 
 	return p
+}
+
+func replaceParamValues(params []v1alpha1.Param, stringReplacements map[string]string, arrayReplacements map[string][]string) []v1alpha1.Param {
+	for i := range params {
+		params[i].Value.ApplyReplacements(stringReplacements, arrayReplacements)
+	}
+	return params
 }

@@ -18,9 +18,12 @@
 package resources
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/templating"
 )
 
 const (
@@ -36,9 +39,10 @@ type GetCondition func(string) (*v1alpha1.Condition, error)
 // exists. ConditionCheck can be nil to represent there being no ConditionCheck (i.e the condition
 // has not been evaluated).
 type ResolvedConditionCheck struct {
-	ConditionCheckName string
-	Condition          *v1alpha1.Condition
-	ConditionCheck     *v1alpha1.ConditionCheck
+	ConditionCheckName    string
+	Condition             *v1alpha1.Condition
+	ConditionCheck        *v1alpha1.ConditionCheck
+	PipelineTaskCondition *v1alpha1.PipelineTaskCondition
 }
 
 // TaskConditionCheckState is a slice of ResolvedConditionCheck the represents the current execution
@@ -95,9 +99,20 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() *v1alpha1.TaskSpec {
 		t.Inputs = &v1alpha1.Inputs{
 			Params: rcc.Condition.Spec.Params,
 		}
+		// convert param strings of type ${params.x} to ${inputs.params.x}
+		// in order to apply taskrun substitution
+		convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
 	}
-
 	return t
+}
+
+// Replaces all instances of ${params.x} in the container to ${inputs.params.x} for each param name
+func convertParamTemplates(container *corev1.Container, params []v1alpha1.ParamSpec) {
+	replacements := make(map[string]string)
+	for _, p := range params {
+		replacements[fmt.Sprintf("params.%s", p.Name)] = fmt.Sprintf("${inputs.params.%s}", p.Name)
+		templating.ApplyContainerReplacements(container, replacements, map[string][]string{})
+	}
 }
 
 // NewConditionCheck status creates a ConditionCheckStatus from a ConditionCheck

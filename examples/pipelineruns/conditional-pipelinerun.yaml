@@ -1,12 +1,17 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Condition
 metadata:
-  name: always-true
+  name: strings-equal
 spec:
+ params:
+   - name: "x"
+     type: string
+   - name: "y"
+     type: string
  check:
     image: alpine
     command: ["/bin/sh"]
-    args: ['-c', 'exit 0']
+    args: ['-c', 'echo "Comparing ${params.x} and ${params.y}" && [ "${params.x}" == "${params.y}" ]']
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -43,12 +48,22 @@ spec:
   resources:
     - name: source-repo
       type: git
+  params:
+    - name: "x"
+      default: "abc"
+    - name: "y"
+      default: "abc"
   tasks:
     - name: list-files-1
       taskRef:
         name: list-files
       conditions:
-        - conditionRef: "always-true"
+        - conditionRef: "strings-equal"
+          params:
+            - name: "x"
+              value: "${params.x}"
+            - name: "y"
+              value: "${params.y}"
       resources:
         inputs:
           - name: workspace

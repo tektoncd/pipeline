@@ -633,10 +633,13 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec:       rcc.ConditionToTaskSpec(),
 			ServiceAccount: getServiceAccount(pr, rprt.PipelineTask.Name),
-			Timeout:        getTaskRunTimeout(pr),
-			NodeSelector:   pr.Spec.NodeSelector,
-			Tolerations:    pr.Spec.Tolerations,
-			Affinity:       pr.Spec.Affinity,
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: rcc.PipelineTaskCondition.Params,
+			},
+			Timeout:      getTaskRunTimeout(pr),
+			NodeSelector: pr.Spec.NodeSelector,
+			Tolerations:  pr.Spec.Tolerations,
+			Affinity:     pr.Spec.Affinity,
 		}}
 
 	cctr, err := c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).Create(tr)
