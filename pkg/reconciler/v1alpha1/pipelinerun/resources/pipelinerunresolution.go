@@ -450,8 +450,8 @@ func resolveConditionChecks(pt *v1alpha1.PipelineTask,
 	taskRunStatus map[string]*v1alpha1.PipelineRunTaskRunStatus,
 	taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition) ([]*ResolvedConditionCheck, error) {
 	rcc := []*ResolvedConditionCheck{}
-	for j := range pt.Conditions {
-		cName := pt.Conditions[j].ConditionRef
+	for _, ptc := range pt.Conditions {
+		cName := ptc.ConditionRef
 		c, err := getCondition(cName)
 		if err != nil {
 			return nil, &ConditionNotFoundError{
@@ -468,9 +468,10 @@ func resolveConditionChecks(pt *v1alpha1.PipelineTask,
 		}
 
 		rcc = append(rcc, &ResolvedConditionCheck{
-			Condition:          c,
-			ConditionCheckName: conditionCheckName,
-			ConditionCheck:     v1alpha1.NewConditionCheck(cctr),
+			Condition:             c,
+			ConditionCheckName:    conditionCheckName,
+			ConditionCheck:        v1alpha1.NewConditionCheck(cctr),
+			PipelineTaskCondition: &ptc,
 		})
 	}
 	return rcc, nil

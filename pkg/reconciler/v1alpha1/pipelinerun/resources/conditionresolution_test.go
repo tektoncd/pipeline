@@ -18,6 +18,8 @@
 package resources
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,8 +28,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
-
-	"testing"
 )
 
 var c = tb.Condition("conditionname", "foo")
@@ -214,19 +214,25 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 	}, {
 		name: "with-input-params",
 		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
-			tb.ConditionSpecCheck("", "ubuntu"),
-			tb.ConditionParamSpec("abc", v1alpha1.ParamTypeString),
+			tb.ConditionSpecCheck("${params.name}", "${params.img}",
+				tb.WorkingDir("${params.not.replaced}")),
+			tb.ConditionParamSpec("name", v1alpha1.ParamTypeString),
+			tb.ConditionParamSpec("img", v1alpha1.ParamTypeString),
 		)),
 		want: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
 				Params: []v1alpha1.ParamSpec{{
-					Name: "abc",
+					Name: "name",
+					Type: "string",
+				}, {
+					Name: "img",
 					Type: "string",
 				}},
 			},
 			Steps: []corev1.Container{{
-				Name:  "condition-check-bar",
-				Image: "ubuntu",
+				Name:       "${inputs.params.name}",
+				Image:      "${inputs.params.img}",
+				WorkingDir: "${params.not.replaced}",
 			}},
 		},
 	}}

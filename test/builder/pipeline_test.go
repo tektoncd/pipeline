@@ -21,11 +21,12 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	tb "github.com/tektoncd/pipeline/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestPipeline(t *testing.T) {
@@ -38,7 +39,9 @@ func TestPipeline(t *testing.T) {
 		tb.PipelineTask("foo", "banana",
 			tb.PipelineTaskParam("stringparam", "value"),
 			tb.PipelineTaskParam("arrayparam", "array", "value"),
-			tb.PipelineTaskCondition("some-condition-ref"),
+			tb.PipelineTaskCondition("some-condition-ref",
+				tb.PipelineTaskConditionParam("param-name", "param-value"),
+			),
 		),
 		tb.PipelineTask("bar", "chocolate",
 			tb.PipelineTaskRefKind(v1alpha1.ClusterTaskKind),
@@ -80,7 +83,16 @@ func TestPipeline(t *testing.T) {
 					Name:  "arrayparam",
 					Value: *tb.ArrayOrString("array", "value"),
 				}},
-				Conditions: []v1alpha1.PipelineTaskCondition{{ConditionRef: "some-condition-ref"}},
+				Conditions: []v1alpha1.PipelineTaskCondition{{
+					ConditionRef: "some-condition-ref",
+					Params: []v1alpha1.Param{{
+						Name: "param-name",
+						Value: v1alpha1.ArrayOrString{
+							Type:      "string",
+							StringVal: "param-value",
+						},
+					}},
+				}},
 			}, {
 				Name:    "bar",
 				TaskRef: v1alpha1.TaskRef{Name: "chocolate", Kind: v1alpha1.ClusterTaskKind},

@@ -1492,12 +1492,15 @@ func TestResolveConditionChecks(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{},
 	}
+
+	ptc := v1alpha1.PipelineTaskCondition{
+		ConditionRef: "always-true",
+	}
+
 	pts := []v1alpha1.PipelineTask{{
-		Name:    "mytask1",
-		TaskRef: v1alpha1.TaskRef{Name: "task"},
-		Conditions: []v1alpha1.PipelineTaskCondition{{
-			ConditionRef: "always-true",
-		}},
+		Name:       "mytask1",
+		TaskRef:    v1alpha1.TaskRef{Name: "task"},
+		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
 	}}
 	providedResources := map[string]v1alpha1.PipelineResourceRef{}
 
@@ -1529,9 +1532,10 @@ func TestResolveConditionChecks(t *testing.T) {
 				return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
 			},
 			expectedConditionCheck: TaskConditionCheckState{{
-				ConditionCheckName: "pipelinerun-mytask1-9l9zj-always-true-mz4c7",
-				Condition:          &condition,
-				ConditionCheck:     v1alpha1.NewConditionCheck(cc),
+				ConditionCheckName:    "pipelinerun-mytask1-9l9zj-always-true-mz4c7",
+				Condition:             &condition,
+				ConditionCheck:        v1alpha1.NewConditionCheck(cc),
+				PipelineTaskCondition: &ptc,
 			}},
 		},
 		{
@@ -1545,8 +1549,9 @@ func TestResolveConditionChecks(t *testing.T) {
 				return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
 			},
 			expectedConditionCheck: TaskConditionCheckState{{
-				ConditionCheckName: "pipelinerun-mytask1-mssqb-always-true-78c5n",
-				Condition:          &condition,
+				ConditionCheckName:    "pipelinerun-mytask1-mssqb-always-true-78c5n",
+				Condition:             &condition,
+				PipelineTaskCondition: &ptc,
 			}},
 		},
 	}
@@ -1626,12 +1631,14 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{},
 	}
 
+	ptc := v1alpha1.PipelineTaskCondition{
+		ConditionRef: "always-true",
+	}
+
 	pts := []v1alpha1.PipelineTask{{
-		Name:    "mytask1",
-		TaskRef: v1alpha1.TaskRef{Name: "task"},
-		Conditions: []v1alpha1.PipelineTaskCondition{{
-			ConditionRef: "always-true",
-		}},
+		Name:       "mytask1",
+		TaskRef:    v1alpha1.TaskRef{Name: "task"},
+		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
 	}}
 	providedResources := map[string]v1alpha1.PipelineResourceRef{}
 
@@ -1674,9 +1681,10 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		t.Fatalf("Did not expect error when resolving PipelineRun without Conditions: %v", err)
 	}
 	expectedConditionChecks := TaskConditionCheckState{{
-		ConditionCheckName: ccName,
-		Condition:          &condition,
-		ConditionCheck:     v1alpha1.NewConditionCheck(cc),
+		ConditionCheckName:    ccName,
+		Condition:             &condition,
+		ConditionCheck:        v1alpha1.NewConditionCheck(cc),
+		PipelineTaskCondition: &ptc,
 	}}
 
 	if d := cmp.Diff(pipelineState[0].ResolvedConditionChecks, expectedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
