@@ -47,6 +47,19 @@ var (
 	ns           = "namespace"
 )
 
+func TestNoPipeline(t *testing.T){
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns),
+		}})
+	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	c := Command(p)
+	_, err := tu.ExecuteCommand(c, "logs", "-n", "ns")
+	expected :="No pipelines found in namespace: ns"
+	tu.AssertOutput(t, expected, err.Error())
+}
+
 func TestInteractiveAskPAndPR(t *testing.T) {
 
 	clock := clockwork.NewFakeClock()

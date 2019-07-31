@@ -80,8 +80,7 @@ func logCommand(p cli.Params) *cobra.Command {
 
 func (lo *LogOptions) Run() error {
 	if lo.PipelineRunName == "" {
-		// shouldn't this be pipelinerun instead of taskrun
-		return fmt.Errorf("missing mandatory argument taskrun")
+		return fmt.Errorf("missing mandatory argument pipelinerun")
 	}
 	streamer := pods.NewStream
 	if lo.Streamer != nil {

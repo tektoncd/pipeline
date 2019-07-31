@@ -53,15 +53,25 @@ func logCommand(p cli.Params) *cobra.Command {
 	}
 
 	eg := `
-  # show the logs of the latest pipelinerun of given pipeline
-	tkn pipeline logs foo -n bar
+  # show logs interactively for no inputs
+    tkn pipeline logs -n namespace
 
+  # show logs interactively for given pipeline
+    tkn pipeline logs pipeline_name -n namespace
+
+  # show logs of given pipeline for last run
+    tkn pipeline logs pipeline_name -n namespace --last
+
+  # show logs for given pipeline and pipelinerun
+    tkn pipeline logs pipeline_name pipelinerun_name -n namespace
+  
    `
 	c := &cobra.Command{
 		Use:                   "logs",
 		DisableFlagsInUseLine: true,
-		Short:                 "Show the logs of latest pipelinerun of given pipeline ",
+		Short:                 "Show pipeline logs",
 		Example:               eg,
+		SilenceUsage:          true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.stream = &cli.Stream{
 				Out: cmd.OutOrStdout(),
@@ -113,9 +123,7 @@ func (opts *logOptions) init(args []string) error {
 		opts.runName = args[1]
 
 	default:
-		fmt.Fprintln(opts.stream.Err, "too many arguments")
-		return nil
-
+		return fmt.Errorf("too many arguments")
 	}
 	return nil
 }
@@ -125,6 +133,7 @@ func (opts *logOptions) getAllInputs() error {
 	if err != nil {
 		return err
 	}
+
 	var qs1 = []*survey.Question{{
 		Name: "pipeline",
 		Prompt: &survey.Select{
@@ -148,6 +157,7 @@ func (opts *logOptions) askRunName() error {
 	if err != nil {
 		return err
 	}
+
 	var qs2 = []*survey.Question{
 		{
 			Name: "pipelinerun",
@@ -193,7 +203,9 @@ func allPipelines(p cli.Params) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	if len(ps.Items) == 0 {
+		return nil, fmt.Errorf("No pipelines found in namespace: %s", p.Namespace())
+	}
 	ret := []string{}
 	for _, item := range ps.Items {
 		ret = append(ret, item.ObjectMeta.Name)
