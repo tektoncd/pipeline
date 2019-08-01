@@ -73,6 +73,26 @@ type ConditionSpec struct {
 	// is evaluated
 	// +optional
 	Params []ParamSpec `json:"params,omitempty"`
+
+	// Resources is a list of the ConditionResources required to run the condition.
+	// +optional
+	Resources []ConditionResource `json:"resources,omitempty"`
+}
+
+// ConditionResource defines an input PipelineResource declared as a requirement
+// by a Task. The Name field will be used to refer to these Resources within
+// the Condition definition and  will be the path to the volume mounted containing this
+// Resource as an input (e.g. an Resource named `workspace` will be mounted at `/workspace`).
+type ConditionResource struct {
+	// Name declares the name by which a resource is referenced in the Condition's
+	// definition.
+	Name string `json:"name"`
+	// Type is the type of this resource;
+	Type PipelineResourceType `json:"type"`
+	// TargetPath is the path in workspace directory where the resource
+	// will be copied.
+	// +optional
+	TargetPath string `json:"targetPath"`
 }
 
 // ConditionCheck represents a single evaluation of a Condition step.

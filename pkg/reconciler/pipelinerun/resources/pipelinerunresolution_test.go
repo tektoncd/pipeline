@@ -735,6 +735,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		})
 	}
 }
+
 func TestIsDone(t *testing.T) {
 
 	var taskCancelledByStatusState = PipelineRunState{{
@@ -1077,6 +1078,7 @@ func TestGetResourcesFromBindings_Extra(t *testing.T) {
 		t.Fatalf("Expected error indicating `image-resource` was extra but got no error")
 	}
 }
+
 func TestResolvePipelineRun(t *testing.T) {
 	names.TestingSeed()
 
@@ -1604,7 +1606,6 @@ func TestResolveConditionChecks(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: ccName,
 		},
-		Spec: v1alpha1.TaskRunSpec{},
 	}
 
 	ptc := v1alpha1.PipelineTaskCondition{
@@ -1803,5 +1804,106 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 
 	if d := cmp.Diff(pipelineState[0].ResolvedConditionChecks, expectedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
 		t.Fatalf("ConditionChecks did not resolve as expected : %s", d)
+	}
+}
+
+func TestResolvedConditionCheck_WithResources(t *testing.T) {
+	names.TestingSeed()
+
+	condition := tb.Condition("always-true", "foo", tb.ConditionSpec(
+		tb.ConditionResource("workspace", v1alpha1.PipelineResourceTypeGit),
+	))
+
+	gitResource := tb.PipelineResource("some-repo", "foo", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeGit))
+
+	ptc := v1alpha1.PipelineTaskCondition{
+		ConditionRef: "always-true",
+		Resources: []v1alpha1.PipelineConditionResource{{
+			Name:     "workspace",
+			Resource: "blah", // The name used in the pipeline
+		}},
+	}
+
+	pts := []v1alpha1.PipelineTask{{
+		Name:       "mytask1",
+		TaskRef:    v1alpha1.TaskRef{Name: "task"},
+		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
+	}}
+
+	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		if name == "some-repo" {
+			return gitResource, nil
+		}
+		return nil, xerrors.Errorf("getResource called with unexpected name: %s", name)
+	}
+	getCondition := func(name string) (*v1alpha1.Condition, error) {
+		return condition, nil
+	}
+
+	pr := v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+
+	tcs := []struct {
+		name              string
+		providedResources map[string]v1alpha1.PipelineResourceRef
+		wantErr           bool
+		expected          map[string]*v1alpha1.PipelineResource
+	}{{
+		name: "resource exists",
+		providedResources: map[string]v1alpha1.PipelineResourceRef{
+			"blah": {
+				Name: "some-repo",
+			},
+		},
+		expected: map[string]*v1alpha1.PipelineResource{
+			"workspace": gitResource,
+		},
+	}, {
+		name: "resource does not exist",
+		providedResources: map[string]v1alpha1.PipelineResourceRef{
+			"blah": {
+				Name: "some-other-repo",
+			},
+		},
+		wantErr: true,
+	}, {
+		name: "undeclared resource",
+		providedResources: map[string]v1alpha1.PipelineResourceRef{
+			"foo": {
+				Name: "some-repo",
+			}},
+		wantErr: true,
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, pts, tc.providedResources)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("Did not get error when it was expected for test %s", tc.name)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Unexpected error when no error expected: %v", err)
+				}
+				expectedConditionChecks := TaskConditionCheckState{{
+					ConditionCheckName:    "pipelinerun-mytask1-9l9zj-always-true-mz4c7",
+					Condition:             condition,
+					PipelineTaskCondition: &ptc,
+					ResolvedResources:     tc.expected,
+				}}
+				if d := cmp.Diff(pipelineState[0].ResolvedConditionChecks, expectedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
+					t.Fatalf("ConditionChecks did not resolve as expected : %s", d)
+				}
+			}
+		})
 	}
 }

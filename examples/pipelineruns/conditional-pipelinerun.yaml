@@ -1,17 +1,18 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Condition
 metadata:
-  name: strings-equal
+  name: file-exists
 spec:
- params:
-   - name: "x"
-     type: string
-   - name: "y"
-     type: string
- check:
+  params:
+    - name: "path"
+      type: string
+  resources:
+    - name: workspace
+      type: git
+  check:
     image: alpine
     command: ["/bin/sh"]
-    args: ['-c', 'echo "Comparing ${params.x} and ${params.y}" && [ "${params.x}" == "${params.y}" ]']
+    args: ['-c', 'test -f $(resources.workspace.path)/$(params.path)']
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -38,7 +39,7 @@ spec:
     - name: run-ls
       image: ubuntu
       command: ["/bin/bash"]
-      args: ['-c', 'ls -al ${inputs.resources.workspace.path}']
+      args: ['-c', 'ls -al $(inputs.resources.workspace.path)']
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
@@ -49,21 +50,20 @@ spec:
     - name: source-repo
       type: git
   params:
-    - name: "x"
-      default: "abc"
-    - name: "y"
-      default: "abc"
+    - name: "path"
+      default: "README.md"
   tasks:
     - name: list-files-1
       taskRef:
         name: list-files
       conditions:
-        - conditionRef: "strings-equal"
+        - conditionRef: "file-exists"
           params:
-            - name: "x"
-              value: "${params.x}"
-            - name: "y"
-              value: "${params.y}"
+            - name: "path"
+              value: "$(params.path)"
+          resources:
+            - name: workspace
+              resource: source-repo
       resources:
         inputs:
           - name: workspace

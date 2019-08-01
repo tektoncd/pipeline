@@ -1421,7 +1421,10 @@ func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
 		tb.TaskRunLabel("tekton.dev/conditionCheck", ccName),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
-			tb.TaskRunTaskSpec(tb.Step("condition-check-"+condName, "foo", tb.StepArgs("bar"))),
+			tb.TaskRunTaskSpec(
+				tb.Step("condition-check-"+condName, "foo", tb.StepArgs("bar")),
+				tb.TaskInputs(),
+			),
 			tb.TaskRunServiceAccount("test-sa"),
 		),
 	)

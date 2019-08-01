@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -37,10 +38,13 @@ type GetCondition func(string) (*v1alpha1.Condition, error)
 // exists. ConditionCheck can be nil to represent there being no ConditionCheck (i.e the condition
 // has not been evaluated).
 type ResolvedConditionCheck struct {
+	PipelineTaskCondition *v1alpha1.PipelineTaskCondition
 	ConditionCheckName    string
 	Condition             *v1alpha1.Condition
 	ConditionCheck        *v1alpha1.ConditionCheck
-	PipelineTaskCondition *v1alpha1.PipelineTaskCondition
+	// Resolved resources is a map of pipeline resources for this condition
+	// keyed by the bound resource name (i.e. the name used in PipelineTaskCondition.Resources)
+	ResolvedResources map[string]*v1alpha1.PipelineResource
 }
 
 // TaskConditionCheckState is a slice of ResolvedConditionCheck the represents the current execution
@@ -84,7 +88,7 @@ func (state TaskConditionCheckState) IsSuccess() bool {
 }
 
 // ConditionToTaskSpec creates a TaskSpec from a given Condition
-func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() *v1alpha1.TaskSpec {
+func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, error) {
 	if rcc.Condition.Spec.Check.Name == "" {
 		rcc.Condition.Spec.Check.Name = unnamedCheckNamePrefix + rcc.Condition.Name
 	}
@@ -93,24 +97,63 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() *v1alpha1.TaskSpec {
 		Steps: []v1alpha1.Step{{Container: rcc.Condition.Spec.Check}},
 	}
 
-	if len(rcc.Condition.Spec.Params) > 0 {
-		t.Inputs = &v1alpha1.Inputs{
-			Params: rcc.Condition.Spec.Params,
-		}
-		// convert param strings of type ${params.x} to ${inputs.params.x}
-		// in order to apply taskrun substitution
-		convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
+	t.Inputs = &v1alpha1.Inputs{
+		Params:    rcc.Condition.Spec.Params,
+		Resources: toTaskResouces(rcc.Condition.Spec.Resources),
 	}
-	return t
+
+	// convert param strings of type ${params.x} to ${inputs.params.x}
+	convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
+	// convert resource strings of type ${resources.name.key} to ${inputs.resources.name.key}
+	err := convertResourceTemplateStrings(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources)
+
+	if err != nil {
+		return nil, xerrors.Errorf("Failed to replace resource template strings %w", err)
+	}
+
+	return t, nil
+}
+
+func toTaskResouces(resources []v1alpha1.ConditionResource) []v1alpha1.TaskResource {
+	var tr []v1alpha1.TaskResource
+	for _, r := range resources {
+		tr = append(tr, v1alpha1.TaskResource{
+			Name:       r.Name,
+			Type:       r.Type,
+			TargetPath: r.TargetPath,
+		})
+	}
+	return tr
 }
 
 // Replaces all instances of ${params.x} in the container to ${inputs.params.x} for each param name
 func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 	replacements := make(map[string]string)
 	for _, p := range params {
-		replacements[fmt.Sprintf("params.%s", p.Name)] = fmt.Sprintf("${inputs.params.%s}", p.Name)
+		replacements[fmt.Sprintf("params.%s", p.Name)] = fmt.Sprintf("$(inputs.params.%s)", p.Name)
 		v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
 	}
+
+	v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
+}
+
+// Prepends inputs. to all resource template strings so that they can be replaced by
+// taskrun variable substitution e.g. ${resources.name.key} to ${inputs.resources.name.key}
+func convertResourceTemplateStrings(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ConditionResource) error {
+	replacements := make(map[string]string)
+	for _, cr := range conditionResources {
+		if rSpec, ok := resolvedResources[cr.Name]; ok {
+			r, err := v1alpha1.ResourceFromType(rSpec)
+			if err != nil {
+				return xerrors.Errorf("Error trying to create resource: %w", err)
+			}
+			for replaceKeys := range r.Replacements() {
+				replacements[fmt.Sprintf("resources.%s.%s", cr.Name, replaceKeys)] = fmt.Sprintf("$(inputs.resources.%s.%s)", cr.Name, replaceKeys)
+			}
+		}
+	}
+	v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
+	return nil
 }
 
 // NewConditionCheck status creates a ConditionCheckStatus from a ConditionCheck
@@ -131,4 +174,20 @@ func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1alpha1.Condition
 		CompletionTime: trs.CompletionTime,
 		Check:          checkStep,
 	}
+}
+
+func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1alpha1.TaskResourceBinding {
+	var trb []v1alpha1.TaskResourceBinding
+
+	for name, r := range rcc.ResolvedResources {
+		trb = append(trb, v1alpha1.TaskResourceBinding{
+			Name: name,
+			ResourceRef: v1alpha1.PipelineResourceRef{
+				Name:       r.Name,
+				APIVersion: r.APIVersion,
+			},
+		})
+	}
+
+	return trb
 }

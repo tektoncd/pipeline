@@ -120,6 +120,9 @@ type PipelineTaskCondition struct {
 	// Params declare parameters passed to this Condition
 	// +optional
 	Params []Param `json:"params,omitempty"`
+
+	// Resources declare the resources provided to this Condition as input
+	Resources []PipelineConditionResource `json:"resources,omitempty"`
 }
 
 // PipelineDeclaredResource is used by a Pipeline to declare the types of the
@@ -133,6 +136,15 @@ type PipelineDeclaredResource struct {
 	Name string `json:"name"`
 	// Type is the type of the PipelineResource.
 	Type PipelineResourceType `json:"type"`
+}
+
+// PipelineConditionResource allows a Pipeline to declare how its DeclaredPipelineResources
+// should be provided to a Condition as its inputs.
+type PipelineConditionResource struct {
+	// Name is the name of the PipelineResource as declared by the Condition.
+	Name string `json:"name"`
+	// Resource is the name of the DeclaredPipelineResource to use.
+	Resource string `json:"resource"`
 }
 
 // PipelineTaskResources allows a Pipeline to declare how its DeclaredPipelineResources
