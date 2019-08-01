@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -44,27 +45,23 @@ type startOptions struct {
 }
 
 // NameArg validates that the first argument is a valid pipeline name
-func NameArg(p cli.Params) cobra.PositionalArgs {
-
-	return func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			return errNoPipeline
-		}
-
-		c, err := p.Clients()
-		if err != nil {
-			return err
-		}
-
-		name, ns := args[0], p.Namespace()
-		_, err = c.Tekton.TektonV1alpha1().Pipelines(ns).Get(name, metav1.GetOptions{})
-		if err != nil {
-			return errInvalidPipeline
-		}
-
-		return nil
+func NameArg(cmd *cobra.Command, args []string, p cli.Params) error {
+	if len(args) == 0 {
+		return errNoPipeline
 	}
 
+	c, err := p.Clients()
+	if err != nil {
+		return err
+	}
+
+	name, ns := args[0], p.Namespace()
+	_, err = c.Tekton.TektonV1alpha1().Pipelines(ns).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return errInvalidPipeline
+	}
+
+	return nil
 }
 
 func startCommand(p cli.Params) *cobra.Command {
@@ -80,11 +77,17 @@ func startCommand(p cli.Params) *cobra.Command {
 		Aliases: []string{"trigger"},
 		Short:   "Start pipelines",
 		Example: `
-# start pipeline foo by creating a pipelienrun named "foo-run-xyz123" from the namespace "bar"
+# start pipeline foo by creating a pipelinerun named "foo-run-xyz123" from the namespace "bar"
 tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s ServiceAccountName  -n bar
 `,
 		SilenceUsage: true,
-		Args:         NameArg(p),
+		Args: func(cmd *cobra.Command, args []string) error {
+			initResult := flags.InitParams(p, cmd)
+			if initResult != nil {
+				return initResult
+			}
+			return NameArg(cmd, args, p)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			opt := startOptions{
