@@ -58,9 +58,10 @@ func ConditionSpec(ops ...ConditionSpecOp) ConditionOp {
 
 // ConditionSpecCheck adds a Container, with the specified name and image, to the Condition Spec Check.
 // Any number of Container modifiers can be passed to transform it.
-func ConditionSpecCheck(image string, ops ...ContainerOp) ConditionSpecOp {
+func ConditionSpecCheck(name, image string, ops ...ContainerOp) ConditionSpecOp {
 	return func(spec *v1alpha1.ConditionSpec) {
 		c := &corev1.Container{
+			Name:  name,
 			Image: image,
 		}
 		for _, op := range ops {

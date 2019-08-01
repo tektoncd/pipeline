@@ -25,18 +25,12 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 
 	"testing"
 )
 
-var c = &v1alpha1.Condition{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "conditionname",
-	},
-	Spec: v1alpha1.ConditionSpec{
-		Check: corev1.Container{},
-	},
-}
+var c = tb.Condition("conditionname", "foo")
 
 var notStartedState = TaskConditionCheckState{{
 	ConditionCheckName: "foo",
@@ -193,21 +187,13 @@ func TestTaskConditionCheckState_IsSuccess(t *testing.T) {
 func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 	tcs := []struct {
 		name string
-		cond v1alpha1.Condition
+		cond *v1alpha1.Condition
 		want v1alpha1.TaskSpec
 	}{{
 		name: "user-provided-container-name",
-		cond: v1alpha1.Condition{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "name",
-			},
-			Spec: v1alpha1.ConditionSpec{
-				Check: corev1.Container{
-					Name:  "foo",
-					Image: "ubuntu",
-				},
-			},
-		},
+		cond: tb.Condition("name", "foo", tb.ConditionSpec(
+			tb.ConditionSpecCheck("foo", "ubuntu"),
+		)),
 		want: v1alpha1.TaskSpec{
 			Steps: []corev1.Container{{
 				Name:  "foo",
@@ -216,16 +202,9 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		},
 	}, {
 		name: "default-container-name",
-		cond: v1alpha1.Condition{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "bar",
-			},
-			Spec: v1alpha1.ConditionSpec{
-				Check: corev1.Container{
-					Image: "ubuntu",
-				},
-			},
-		},
+		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
+			tb.ConditionSpecCheck("", "ubuntu"),
+		)),
 		want: v1alpha1.TaskSpec{
 			Steps: []corev1.Container{{
 				Name:  "condition-check-bar",
@@ -234,21 +213,15 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		},
 	}, {
 		name: "with-input-params",
-		cond: v1alpha1.Condition{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "bar",
-			},
-			Spec: v1alpha1.ConditionSpec{
-				Params: []v1alpha1.ParamSpec{{Name: "abc"}},
-				Check: corev1.Container{
-					Image: "ubuntu",
-				},
-			},
-		},
+		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
+			tb.ConditionSpecCheck("", "ubuntu"),
+			tb.ConditionParamSpec("abc", v1alpha1.ParamTypeString),
+		)),
 		want: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
 				Params: []v1alpha1.ParamSpec{{
 					Name: "abc",
+					Type: "string",
 				}},
 			},
 			Steps: []corev1.Container{{
@@ -260,7 +233,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			rcc := &ResolvedConditionCheck{Condition: &tc.cond}
+			rcc := &ResolvedConditionCheck{Condition: tc.cond}
 			if d := cmp.Diff(tc.want, *rcc.ConditionToTaskSpec()); d != "" {
 				t.Errorf("TaskSpec generated from Condition is unexpected -want, +got: %v", d)
 			}

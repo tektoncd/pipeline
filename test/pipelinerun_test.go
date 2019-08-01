@@ -25,17 +25,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/artifacts"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"knative.dev/pkg/apis"
+	knativetest "knative.dev/pkg/test"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
-	knativetest "knative.dev/pkg/test"
 )
 
 var (
@@ -541,7 +541,7 @@ func getHelloWorldPipelineWithCondition(suffix int, namespace string) *v1alpha1.
 }
 
 func getFailingCondition(namespace string) *v1alpha1.Condition {
-	return tb.Condition(cond1Name, namespace, tb.ConditionSpec(tb.ConditionSpecCheck("ubuntu",
+	return tb.Condition(cond1Name, namespace, tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu",
 		tb.Command("/bin/bash"), tb.Args("exit 1"))))
 }
 
