@@ -29,7 +29,7 @@ import (
 
 func TestCondition(t *testing.T) {
 	condition := tb.Condition("cond-name", "foo",
-		tb.ConditionSpec(tb.ConditionSpecCheck("ubuntu", tb.Command("exit 0")),
+		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu", tb.Command("exit 0")),
 			tb.ConditionParamSpec("param-1", v1alpha1.ParamTypeString,
 				tb.ParamSpecDefault("default"),
 				tb.ParamSpecDescription("desc"))),

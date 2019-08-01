@@ -454,16 +454,8 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 	successConditionCheckName := "success-condition"
 	failingConditionCheckName := "fail-condition"
 
-	successCondition := v1alpha1.Condition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "cond-1",
-		},
-	}
-	failingCondition := v1alpha1.Condition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "cond-2",
-		},
-	}
+	successCondition := tb.Condition("cond-1", "foo")
+	failingCondition := tb.Condition("cond-2", "foo")
 
 	pipelineTask := v1alpha1.PipelineTask{
 		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
@@ -514,12 +506,12 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 
 	successrcc := resources.ResolvedConditionCheck{
 		ConditionCheckName: successConditionCheckName,
-		Condition:          &successCondition,
+		Condition:          successCondition,
 		ConditionCheck:     successConditionCheck,
 	}
 	failingrcc := resources.ResolvedConditionCheck{
 		ConditionCheckName: failingConditionCheckName,
-		Condition:          &failingCondition,
+		Condition:          failingCondition,
 		ConditionCheck:     failingConditionCheck,
 	}
 
@@ -1223,29 +1215,14 @@ func TestGetTaskRunTimeout(t *testing.T) {
 func TestReconcileWithConditionChecks(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
-	conditions := []*v1alpha1.Condition{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cond-1",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.ConditionSpec{
-			Check: corev1.Container{
-				Image: "foo",
-				Args:  []string{"bar"},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cond-2",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.ConditionSpec{
-			Check: corev1.Container{
-				Image: "foo",
-				Args:  []string{"bar"},
-			},
-		},
-	}}
+	conditions := []*v1alpha1.Condition{
+		tb.Condition("cond-1", "foo", tb.ConditionSpec(
+			tb.ConditionSpecCheck("", "foo", tb.Args("bar")),
+		)),
+		tb.Condition("cond-2", "foo", tb.ConditionSpec(
+			tb.ConditionSpecCheck("", "foo", tb.Args("bar")),
+		)),
+	}
 	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hello-world",
 			tb.PipelineTaskCondition("cond-1"),
@@ -1302,18 +1279,11 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 
 func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	names.TestingSeed()
-	conditions := []*v1alpha1.Condition{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "always-false",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.ConditionSpec{
-			Check: corev1.Container{
-				Image: "foo",
-				Args:  []string{"bar"},
-			},
-		},
-	}}
+	conditions := []*v1alpha1.Condition{
+		tb.Condition("always-false", "foo", tb.ConditionSpec(
+			tb.ConditionSpecCheck("", "foo", tb.Args("bar")),
+		)),
+	}
 	pipelineRunName := "test-pipeline-run-with-conditions"
 	prccs := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
 

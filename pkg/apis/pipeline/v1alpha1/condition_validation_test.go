@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1alpha1_test
 
 import (
 	"context"
@@ -22,28 +22,19 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestCondition_Validate(t *testing.T) {
-	c := Condition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "taskname",
-		},
-		Spec: ConditionSpec{
-			Check: corev1.Container{
-				Name:  "foo",
-				Image: "bar",
-			},
-			Params: []ParamSpec{
-				{
-					Name: "expected",
-				},
-			},
-		},
-	}
+	c := tb.Condition("condname", "foo",
+		tb.ConditionSpec(
+			tb.ConditionSpecCheck("cname", "ubuntu"),
+			tb.ConditionParamSpec("paramname", v1alpha1.ParamTypeString),
+		))
+
 	if err := c.Validate(context.Background()); err != nil {
 		t.Errorf("Condition.Validate()  unexpected error = %v", err)
 	}
@@ -52,27 +43,20 @@ func TestCondition_Validate(t *testing.T) {
 func TestCondition_Invalidate(t *testing.T) {
 	tcs := []struct {
 		name          string
-		cond          Condition
+		cond          *v1alpha1.Condition
 		expectedError apis.FieldError
 	}{{
 		name: "invalid meta",
-		cond: Condition{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "invalid.,name",
-			},
-		},
+		cond: tb.Condition("invalid.,name", ""),
 		expectedError: apis.FieldError{
 			Message: "Invalid resource name: special character . must not be present",
 			Paths:   []string{"metadata.name"},
 		},
 	}, {
 		name: "no image",
-		cond: Condition{
-			ObjectMeta: metav1.ObjectMeta{Name: "cond"},
-			Spec: ConditionSpec{
-				Check: corev1.Container{},
-			},
-		},
+		cond: tb.Condition("cond", "foo", tb.ConditionSpec(
+			tb.ConditionSpecCheck("", ""),
+		)),
 		expectedError: apis.FieldError{
 			Message: "missing field(s)",
 			Paths:   []string{"Spec.Check.Image"},
