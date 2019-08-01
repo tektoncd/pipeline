@@ -580,7 +580,7 @@ func getTaskRunTimeout(pr *v1alpha1.PipelineRun) *metav1.Duration {
 }
 
 func getServiceAccount(pr *v1alpha1.PipelineRun, pipelineTaskName string) string {
-	// If service account is configured for a given PipelineTask, override PipelineRun's seviceAccount
+	// If service account is configured for a given PipelineTask, override PipelineRun's serviceAccount
 	serviceAccount := pr.Spec.ServiceAccount
 	for _, sa := range pr.Spec.ServiceAccounts {
 		if sa.TaskName == pipelineTaskName {
@@ -625,6 +625,11 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name)
 	labels[pipeline.GroupName+pipeline.ConditionCheckKey] = rcc.ConditionCheckName
 
+	taskSpec, err := rcc.ConditionToTaskSpec()
+	if err != nil {
+		return nil, xerrors.Errorf("Failed to get TaskSpec from Condition: %w", err)
+	}
+
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rcc.ConditionCheckName,
@@ -634,10 +639,11 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 			Annotations:     getTaskrunAnnotations(pr), // Propagate annotations from PipelineRun to TaskRun.
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskSpec:       rcc.ConditionToTaskSpec(),
+			TaskSpec:       taskSpec,
 			ServiceAccount: getServiceAccount(pr, rprt.PipelineTask.Name),
 			Inputs: v1alpha1.TaskRunInputs{
-				Params: rcc.PipelineTaskCondition.Params,
+				Params:    rcc.PipelineTaskCondition.Params,
+				Resources: rcc.ToTaskResourceBindings(),
 			},
 			Timeout:      getTaskRunTimeout(pr),
 			NodeSelector: pr.Spec.NodeSelector,

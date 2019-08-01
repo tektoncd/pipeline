@@ -32,7 +32,10 @@ func TestCondition(t *testing.T) {
 		tb.ConditionSpec(tb.ConditionSpecCheck("", "ubuntu", tb.Command("exit 0")),
 			tb.ConditionParamSpec("param-1", v1alpha1.ParamTypeString,
 				tb.ParamSpecDefault("default"),
-				tb.ParamSpecDescription("desc"))),
+				tb.ParamSpecDescription("desc")),
+			tb.ConditionResource("git-resource", v1alpha1.PipelineResourceTypeGit),
+			tb.ConditionResource("pr", v1alpha1.PipelineResourceTypePullRequest),
+		),
 	)
 
 	expected := &v1alpha1.Condition{
@@ -53,6 +56,13 @@ func TestCondition(t *testing.T) {
 					Type:      v1alpha1.ParamTypeString,
 					StringVal: "default",
 				}}},
+			Resources: []v1alpha1.ConditionResource{{
+				Name: "git-resource",
+				Type: "git",
+			}, {
+				Name: "pr",
+				Type: "pullRequest",
+			}},
 		},
 	}
 

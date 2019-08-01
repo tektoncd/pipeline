@@ -306,6 +306,12 @@ tasks:
       name: build-push
     conditions:
       - conditionRef: my-condition
+        params:
+          - name: my-param
+            value: my-value
+        resources:
+          - name: workspace
+            resource: source-repo
 ```
 
 In this example, `my-condition` refers to a [Condition](#conditions) custom resource. The `build-push` 

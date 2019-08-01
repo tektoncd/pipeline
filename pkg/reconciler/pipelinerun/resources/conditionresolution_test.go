@@ -185,9 +185,10 @@ func TestTaskConditionCheckState_IsSuccess(t *testing.T) {
 
 func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 	tcs := []struct {
-		name string
-		cond *v1alpha1.Condition
-		want v1alpha1.TaskSpec
+		name              string
+		cond              *v1alpha1.Condition
+		resolvedResources map[string]*v1alpha1.PipelineResource
+		want              v1alpha1.TaskSpec
 	}{{
 		name: "user-provided-container-name",
 		cond: tb.Condition("name", "foo", tb.ConditionSpec(
@@ -198,6 +199,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 				Name:  "foo",
 				Image: "ubuntu",
 			}}},
+			Inputs: &v1alpha1.Inputs{},
 		},
 	}, {
 		name: "default-container-name",
@@ -209,6 +211,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 				Name:  "condition-check-bar",
 				Image: "ubuntu",
 			}}},
+			Inputs: &v1alpha1.Inputs{},
 		},
 	}, {
 		name: "with-input-params",
@@ -234,14 +237,64 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 				WorkingDir: "${params.not.replaced}",
 			}}},
 		},
+	}, {
+		name: "with-resources",
+		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
+			tb.ConditionSpecCheck("name", "ubuntu",
+				tb.Args("${resources.git-resource.revision}")),
+			tb.ConditionResource("git-resource", v1alpha1.PipelineResourceTypeGit),
+		)),
+		resolvedResources: map[string]*v1alpha1.PipelineResource{
+			"git-resource": tb.PipelineResource("git-resource", "foo",
+				tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
+					tb.PipelineResourceSpecParam("revision", "master"),
+				)),
+		},
+		want: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "git-resource",
+					Type: "git",
+				}},
+			},
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:  "name",
+				Image: "ubuntu",
+				Args:  []string{"${inputs.resources.git-resource.revision}"},
+			}}},
+		},
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			rcc := &ResolvedConditionCheck{Condition: tc.cond}
-			if d := cmp.Diff(tc.want, *rcc.ConditionToTaskSpec()); d != "" {
+			rcc := &ResolvedConditionCheck{Condition: tc.cond, ResolvedResources: tc.resolvedResources}
+			got, err := rcc.ConditionToTaskSpec()
+			if err != nil {
+				t.Errorf("Unexpected error when converting condition to task spec: %v", err)
+			}
+
+			if d := cmp.Diff(&tc.want, got); d != "" {
 				t.Errorf("TaskSpec generated from Condition is unexpected -want, +got: %v", d)
 			}
 		})
+	}
+}
+
+func TestResolvedConditionCheck_ToTaskResourceBindings(t *testing.T) {
+	rcc := ResolvedConditionCheck{
+		ResolvedResources: map[string]*v1alpha1.PipelineResource{
+			"git-resource": tb.PipelineResource("some-repo", "foo"),
+		},
+	}
+
+	expected := []v1alpha1.TaskResourceBinding{{
+		Name: "git-resource",
+		ResourceRef: v1alpha1.PipelineResourceRef{
+			Name: "some-repo",
+		},
+	}}
+
+	if d := cmp.Diff(expected, rcc.ToTaskResourceBindings()); d != "" {
+		t.Errorf("Did not get expected task resouce binding from condition: %s", d)
 	}
 }
