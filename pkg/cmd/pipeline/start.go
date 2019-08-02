@@ -82,9 +82,9 @@ tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s Ser
 `,
 		SilenceUsage: true,
 		Args: func(cmd *cobra.Command, args []string) error {
-			initResult := flags.InitParams(p, cmd)
-			if initResult != nil {
-				return initResult
+			err := flags.InitParams(p, cmd)
+			if err != nil {
+				return err
 			}
 			return NameArg(args, p)
 		},
