@@ -45,7 +45,7 @@ type startOptions struct {
 }
 
 // NameArg validates that the first argument is a valid pipeline name
-func NameArg(cmd *cobra.Command, args []string, p cli.Params) error {
+func NameArg(args []string, p cli.Params) error {
 	if len(args) == 0 {
 		return errNoPipeline
 	}
@@ -56,6 +56,7 @@ func NameArg(cmd *cobra.Command, args []string, p cli.Params) error {
 	}
 
 	name, ns := args[0], p.Namespace()
+  fmt.Println("Namespace is: ", ns)
 	_, err = c.Tekton.TektonV1alpha1().Pipelines(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return errInvalidPipeline
@@ -86,7 +87,7 @@ tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s Ser
 			if initResult != nil {
 				return initResult
 			}
-			return NameArg(cmd, args, p)
+			return NameArg(args, p)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 
