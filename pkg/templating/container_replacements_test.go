@@ -123,5 +123,25 @@ func TestApplyContainerReplacements(t *testing.T) {
 	if d := cmp.Diff(expected, c); d != "" {
 		t.Errorf("Container replacements failed: %s", d)
 	}
+}
 
+func TestApplyContainerReplacements_NotDefined(t *testing.T) {
+	c := corev1.Container{
+		Name: "${params.not.defined}",
+	}
+	replacements := map[string]string{
+		"replace.me": "replaced!",
+	}
+
+	arrayReplacements := map[string][]string{
+		"array.replace.me": {"val1", "val2"},
+	}
+
+	expected := corev1.Container{
+		Name: "${params.not.defined}",
+	}
+	templating.ApplyContainerReplacements(&c, replacements, arrayReplacements)
+	if d := cmp.Diff(expected, c); d != "" {
+		t.Errorf("Unexpected container replacement: %s", d)
+	}
 }
