@@ -384,7 +384,7 @@ func Test_start_pipeline_client_error(t *testing.T) {
 	pipelineName := "test-pipeline"
 
 	ps := []*v1alpha1.Pipeline{
-		tb.Pipeline(pipelineName, "foo",
+		tb.Pipeline(pipelineName, "namespace",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
@@ -410,7 +410,7 @@ func Test_start_pipeline_client_error(t *testing.T) {
 		"-r=source=scaffold-git",
 		"-p=key1=value1",
 		"-s=svc1",
-		"-n=ns")
+		"-n=namespace")
 
 	expected := "Error: mock error\n"
 	tu.AssertOutput(t, expected, got)
@@ -421,7 +421,7 @@ func Test_start_pipeline_resource_error(t *testing.T) {
 	pipelineName := "test-pipeline"
 
 	ps := []*v1alpha1.Pipeline{
-		tb.Pipeline(pipelineName, "foo",
+		tb.Pipeline(pipelineName, "namespace",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
@@ -443,7 +443,7 @@ func Test_start_pipeline_resource_error(t *testing.T) {
 		"-r scaffold-git",
 		"-p=key1=value1",
 		"-s=svc1",
-		"-n=ns")
+		"-n=namespace")
 	expected := "Error: invalid resource parameter:  scaffold-git\n Please pass resource as -p ResourceName=ResourceRef\n"
 
 	tu.AssertOutput(t, expected, got)
@@ -454,7 +454,7 @@ func Test_start_pipeline_param_error(t *testing.T) {
 	pipelineName := "test-pipeline"
 
 	ps := []*v1alpha1.Pipeline{
-		tb.Pipeline(pipelineName, "foo",
+		tb.Pipeline(pipelineName, "namespace",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
@@ -477,7 +477,7 @@ func Test_start_pipeline_param_error(t *testing.T) {
 		"-r=source=scaffold-git",
 		"-p value1",
 		"-s=svc1",
-		"-n=ns")
+		"-n=namespace")
 	expected := "Error: invalid param parameter:  value1\n Please pass resource as -r ParamName=ParamValue\n"
 
 	tu.AssertOutput(t, expected, got)
