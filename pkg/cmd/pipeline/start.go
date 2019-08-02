@@ -56,7 +56,6 @@ func NameArg(args []string, p cli.Params) error {
 	}
 
 	name, ns := args[0], p.Namespace()
-  fmt.Println("Namespace is: ", ns)
 	_, err = c.Tekton.TektonV1alpha1().Pipelines(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return errInvalidPipeline
