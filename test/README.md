@@ -203,6 +203,14 @@ To run the YAML e2e tests, run the following command:
 ./test/e2e-tests-yaml.sh
 ```
 
+### Running upgrade tests
+
+To run the upgrade tests, run the following command:
+
+```bash
+./test/e2e-tests-upgrade.sh
+```
+
 ### Adding integration tests
 
 In the [`test`](/test/) dir you will find several libraries in the `test`
