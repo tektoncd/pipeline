@@ -46,6 +46,9 @@ func Command() *cobra.Command {
 		Long:      desc,
 		ValidArgs: []string{"bash", "zsh"},
 		Example:   eg,
+		Annotations: map[string]string{
+			"commandType": "utility",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {
 			case "bash":

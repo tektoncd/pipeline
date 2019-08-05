@@ -25,6 +25,9 @@ func Command(p cli.Params) *cobra.Command {
 		Use:     "taskrun",
 		Aliases: []string{"tr", "taskruns"},
 		Short:   "Manage taskruns",
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
 		},

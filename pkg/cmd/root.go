@@ -30,6 +30,33 @@ import (
 	"github.com/tektoncd/cli/pkg/cmd/version"
 )
 
+const usageTemplate = `Usage:{{if .Runnable}}
+{{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
+{{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+{{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+Available Commands:{{range .Commands}}{{if (eq .Annotations.commandType "main")}}
+{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}
+{{range .Commands}}{{if or (eq .Annotations.commandType "utility") (eq .Name "help")}}
+{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+{{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
 func Root(p cli.Params) *cobra.Command {
 	// Reset CommandLine so we don't get the flags from the libraries, i.e:
 	// azure library adding --azure-container-registry-config
@@ -41,6 +68,7 @@ func Root(p cli.Params) *cobra.Command {
 		Long:                   ``,
 		BashCompletionFunction: completion.BashCompletionFunc,
 	}
+	cmd.SetUsageTemplate(usageTemplate)
 
 	cmd.AddCommand(
 		completion.Command(),

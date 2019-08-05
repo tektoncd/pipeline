@@ -25,6 +25,9 @@ func Command(p cli.Params) *cobra.Command {
 		Use:     "resource",
 		Aliases: []string{"res", "resources"},
 		Short:   "Manage pipeline resources",
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
 		},

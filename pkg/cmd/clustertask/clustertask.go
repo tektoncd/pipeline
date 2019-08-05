@@ -25,6 +25,9 @@ func Command(p cli.Params) *cobra.Command {
 		Use:     "clustertask",
 		Aliases: []string{"ct", "clustertasks"},
 		Short:   "Manage clustertasks",
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return flags.InitParams(p, cmd)
 		},

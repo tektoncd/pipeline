@@ -41,6 +41,9 @@ func Command() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "version",
 		Short: "Prints version information",
+		Annotations: map[string]string{
+			"commandType": "utility",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(cmd.OutOrStdout(), "Client version: %s\n", clientVersion)
 
