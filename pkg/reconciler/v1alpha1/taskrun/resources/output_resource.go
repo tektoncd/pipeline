@@ -129,6 +129,10 @@ func AddOutputResources(
 			resourceVolumes = append(resourceVolumes, as.GetSecretsVolumes()...)
 		}
 
+		// Add containers to mkdir each output directory. This should run before the build steps themselves.
+		mkdirStep := []corev1.Container{v1alpha1.CreateDirContainer(boundResource.Name, sourcePath)}
+		taskSpec.Steps = append(mkdirStep, taskSpec.Steps...)
+
 		taskSpec.Steps = append(taskSpec.Steps, resourceContainers...)
 		taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
 
