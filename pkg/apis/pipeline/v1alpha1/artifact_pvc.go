@@ -90,7 +90,7 @@ func GetPvcMount(name string) corev1.VolumeMount {
 // CreateDirContainer returns a container step to create a dir
 func CreateDirContainer(name, destinationPath string) corev1.Container {
 	return corev1.Container{
-		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", name)),
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", strings.ToLower(name))),
 		Image:   *BashNoopImage,
 		Command: []string{"/ko-app/bash"},
 		Args:    []string{"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " ")},
