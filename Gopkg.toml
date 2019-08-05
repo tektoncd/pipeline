@@ -2,16 +2,18 @@
 # for detailed Gopkg.toml documentation.
 
 required = [
+  "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+  "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-uploader",
+  "github.com/knative/test-infra/tools/dep-collector",
+  "github.com/tektoncd/plumbing/scripts",
   "k8s.io/apimachinery/pkg/util/sets/types",
+  "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/deepcopy-gen",
   "k8s.io/code-generator/cmd/defaulter-gen",
-  "k8s.io/code-generator/cmd/client-gen",
-  "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
-  "knative.dev/pkg/codegen/cmd/injection-gen",
+  "k8s.io/code-generator/cmd/lister-gen",
   "knative.dev/caching/pkg/apis/caching",
-  "github.com/tektoncd/plumbing/scripts",
-  "github.com/knative/test-infra/tools/dep-collector",
+  "knative.dev/pkg/codegen/cmd/injection-gen",
 ]
 
 [[override]]
@@ -51,6 +53,11 @@ required = [
   revision = "1c9583448a9c3aa0f9a6a5241bf73c0bd8aafded"
 
 [[override]]
+  name = "github.com/GoogleCloudPlatform/cloud-builders"
+  # HEAD as of 2019-08-12
+  revision = "073e4daa3d0dcb50173fdac5581709a17b97e9ed"
+
+[[override]]
   name = "github.com/json-iterator/go"
   # This is the commit at which k8s depends on this in 1.11
   # It seems to be broken at HEAD.
@@ -80,7 +87,7 @@ required = [
   name = "knative.dev/pkg"
   # HEAD as of 2019-07-23 💖
   revision = "e4bc08cc8deda3eac40a8d53984d09c9d0e1ad48"
-  
+
 [[override]]
   name = "knative.dev/eventing-contrib"
   # HEAD as of 2019-07-23
@@ -141,7 +148,7 @@ required = [
   name = "github.com/tektoncd/plumbing"
   non-go = false
 
- [[prune.project]]
+[[prune.project]]
   name = "knative.dev/pkg"
   unused-packages = false
   non-go = false

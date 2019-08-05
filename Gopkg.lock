@@ -2,13 +2,18 @@
 
 
 [[projects]]
-  digest = "1:4984ef7a594c6ba63142ea35f6bb672e361a3ef5dfcca7b69e4991dd24e57609"
+  digest = "1:bb5d1defe2272a59e9a16fc2f120bb89c2e30b89c946c20c20d7e751deba456a"
   name = "cloud.google.com/go"
   packages = [
     "compute/metadata",
     "container/apiv1",
+    "iam",
+    "internal",
+    "internal/optional",
+    "internal/trace",
     "internal/version",
     "monitoring/apiv3",
+    "storage",
     "trace/apiv2",
   ]
   pruneopts = "NUT"
@@ -61,6 +66,19 @@
   pruneopts = "NUT"
   revision = "1ffcc8896ef6dfe022d90a4317d866f925cf0f9e"
   version = "v11.1.2"
+
+[[projects]]
+  digest = "1:114566651114ab2375768593255e8b0590e36e603c3903399c20a590bcf9af85"
+  name = "github.com/GoogleCloudPlatform/cloud-builders"
+  packages = [
+    "gcs-fetcher/cmd/gcs-fetcher",
+    "gcs-fetcher/cmd/gcs-uploader",
+    "gcs-fetcher/pkg/common",
+    "gcs-fetcher/pkg/fetcher",
+    "gcs-fetcher/pkg/uploader",
+  ]
+  pruneopts = "NUT"
+  revision = "073e4daa3d0dcb50173fdac5581709a17b97e9ed"
 
 [[projects]]
   digest = "1:0fb0fc01ca0fb8c5a486a8a1b9092fe546aac68dbfb77919d9a3501b932c5990"
@@ -748,13 +766,17 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f287c9d58e1a591510d69f14e2cebce953e003e0acdcca900bf2d7bc5627c06a"
+  digest = "1:ef0144000c413fdaab3f94116a11e6a2e3994fcb085b052ecf01fcb312e99a13"
   name = "google.golang.org/api"
   packages = [
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates",
     "googleapi/transport",
     "internal",
     "iterator",
     "option",
+    "storage/v1",
     "support/bundler",
     "transport",
     "transport/grpc",
@@ -786,7 +808,7 @@
   version = "v1.5.0"
 
 [[projects]]
-  digest = "1:3689f4cc57cc55b4631efc4b778c47d2a888a7060b4108f42cf289a2033be5ba"
+  digest = "1:62fdc2bd22fa211e2f1d83f8b492de1bd38f5bee70fca5bba1a1850a88ddc2b3"
   name = "google.golang.org/genproto"
   packages = [
     "googleapis/api",
@@ -797,7 +819,9 @@
     "googleapis/api/monitoredres",
     "googleapis/container/v1",
     "googleapis/devtools/cloudtrace/v2",
+    "googleapis/iam/v1",
     "googleapis/monitoring/v3",
+    "googleapis/rpc/code",
     "googleapis/rpc/status",
     "protobuf/field_mask",
   ]
@@ -1286,6 +1310,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+    "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-uploader",
     "github.com/cloudevents/sdk-go/pkg/cloudevents",
     "github.com/cloudevents/sdk-go/pkg/cloudevents/client",
     "github.com/cloudevents/sdk-go/pkg/cloudevents/context",
