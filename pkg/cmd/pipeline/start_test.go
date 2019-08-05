@@ -144,6 +144,7 @@ func Test_start_pipeline(t *testing.T) {
 		"-r=source=scaffold-git",
 		"-p=key1=value1",
 		"-s=svc1",
+		"-serviceaccounts=task1=svc1",
 		"-n", "ns")
 
 	expected := "Pipelinerun started: \n"
@@ -255,6 +256,8 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 			tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
 			tb.PipelineRunSpec(pipelineName,
 				tb.PipelineRunServiceAccount("test-sa"),
+				tb.PipelineRunServiceAccountTask("task1", "task1svc"),
+				tb.PipelineRunServiceAccountTask("task3", "task3svc"),
 				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
 				tb.PipelineRunResourceBinding("build-image", tb.PipelineResourceBindingRef("some-image")),
 				tb.PipelineRunParam("pipeline-param-1", "somethingmorefun"),
@@ -279,6 +282,8 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 		"-r=git-repo=scaffold-git",
 		"-p=rev-param=revision2",
 		"-s=svc1",
+		"--task-serviceaccount=task3=task3svc3",
+		"--task-serviceaccount=task5=task3svc5",
 		"-n=ns")
 
 	expected := "Pipelinerun started: random\n"
@@ -301,6 +306,13 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 			tu.AssertOutput(t, "revision2", v.Value)
 		}
 	}
+
+	for _, v := range pr.Spec.ServiceAccounts {
+		if v.TaskName == "task3" {
+			tu.AssertOutput(t, "task3svc3", v.ServiceAccount)
+		}
+	}
+
 	tu.AssertOutput(t, "svc1", pr.Spec.ServiceAccount)
 }
 
@@ -444,7 +456,8 @@ func Test_start_pipeline_resource_error(t *testing.T) {
 		"-p=key1=value1",
 		"-s=svc1",
 		"-n=namespace")
-	expected := "Error: invalid resource parameter:  scaffold-git\n Please pass resource as -p ResourceName=ResourceRef\n"
+
+	expected := "Error: invalid resource parameter:  scaffold-git\nPlease pass resource as -r ResourceName=ResourceRef\n"
 
 	tu.AssertOutput(t, expected, got)
 }
@@ -478,7 +491,42 @@ func Test_start_pipeline_param_error(t *testing.T) {
 		"-p value1",
 		"-s=svc1",
 		"-n=namespace")
-	expected := "Error: invalid param parameter:  value1\n Please pass resource as -r ParamName=ParamValue\n"
+
+	expected := "Error: invalid param parameter:  value1\nPlease pass param as -p ParamName=ParamValue\n"
+
+	tu.AssertOutput(t, expected, got)
+}
+
+func Test_start_pipeline_task_svc_error(t *testing.T) {
+
+	pipelineName := "test-pipeline"
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, "foo",
+			tb.PipelineSpec(
+				tb.PipelineDeclaredResource("git-repo", "git"),
+				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
+				tb.PipelineTask("unit-test-1", "unit-test-task",
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+				),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
+
+	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pipeline := Command(p)
+	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+		"--task-serviceaccount=task3svc3",
+		"-n=foo")
+
+	expected := "Error: invalid service account parameter: task3svc3\n" +
+		"Please pass task service accounts as --task-serviceaccount" +
+		" TaskName=ServiceAccount\n"
 
 	tu.AssertOutput(t, expected, got)
 }
@@ -567,6 +615,47 @@ func Test_parseParam(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseParam() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_parseTaskSvc(t *testing.T) {
+	type args struct {
+		p []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    map[string]v1alpha1.PipelineRunSpecServiceAccount
+		wantErr bool
+	}{{
+		name: "Test_parseParam No Err",
+		args: args{
+			p: []string{"key1=value1", "key2=value2"},
+		},
+		want: map[string]v1alpha1.PipelineRunSpecServiceAccount{
+			"key1": {TaskName: "key1", ServiceAccount: "value1"},
+			"key2": {TaskName: "key2", ServiceAccount: "value2"},
+		},
+		wantErr: false,
+	}, {
+		name: "Test_parseParam Err",
+		args: args{
+			p: []string{"value1", "value2"},
+		},
+		wantErr: true,
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseTaskSvc(tt.args.p)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseSvc() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseSvc() = %v, want %v", got, tt.want)
 			}
 		})
 	}

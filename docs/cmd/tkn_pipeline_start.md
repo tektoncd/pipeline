@@ -36,11 +36,12 @@ two parameters (foo and bar)
 ### Options
 
 ```
-  -h, --help                    help for start
-  -l, --last                    re-run the pipeline using last pipelinerun values
-  -p, --param strings           pass the param
-  -r, --resource strings        pass the resource name and ref
-  -s, --serviceaccount string   pass the serviceaccount name
+  -h, --help                          help for start
+  -l, --last                          re-run the pipeline using last pipelinerun values
+  -p, --param strings                 pass the param
+  -r, --resource strings              pass the resource name and ref
+  -s, --serviceaccount string         pass the serviceaccount name
+      --task-serviceaccount strings   pass the service account corresponding to the task
 ```
 
 ### Options inherited from parent commands

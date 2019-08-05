@@ -35,12 +35,14 @@ var (
 const (
 	invalidResource = "invalid resource parameter: "
 	invalidParam    = "invalid param parameter: "
+	invalidSvc      = "invalid service account parameter: "
 )
 
 type startOptions struct {
 	Params             []string
 	Resources          []string
 	ServiceAccountName string
+	ServiceAccounts    []string
 	Last               bool
 }
 
@@ -70,6 +72,7 @@ func startCommand(p cli.Params) *cobra.Command {
 		params []string
 		svc    string
 		last   bool
+		svcs   []string
 	)
 
 	c := &cobra.Command{
@@ -94,6 +97,7 @@ tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s Ser
 				Resources:          res,
 				Params:             params,
 				ServiceAccountName: svc,
+				ServiceAccounts:    svcs,
 				Last:               last,
 			}
 			return startPipeline(cmd.OutOrStdout(), opt, p, args[0])
@@ -103,6 +107,7 @@ tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s Ser
 	c.Flags().StringSliceVarP(&res, "resource", "r", []string{}, "pass the resource name and ref")
 	c.Flags().StringSliceVarP(&params, "param", "p", []string{}, "pass the param")
 	c.Flags().StringVarP(&svc, "serviceaccount", "s", svc, "pass the serviceaccount name")
+	c.Flags().StringSliceVar(&svcs, "task-serviceaccount", []string{}, "pass the service account corresponding to the task")
 	c.Flags().BoolVarP(&last, "last", "l", false, "re-run the pipeline using last pipelinerun values")
 	return c
 }
@@ -131,6 +136,7 @@ func startPipeline(out io.Writer, opt startOptions, p cli.Params, pName string) 
 		pr.Spec.Resources = prLast.Spec.Resources
 		pr.Spec.Params = prLast.Spec.Params
 		pr.Spec.ServiceAccount = prLast.Spec.ServiceAccount
+		pr.Spec.ServiceAccounts = prLast.Spec.ServiceAccounts
 	}
 
 	if err := mergeRes(pr, opt.Resources); err != nil {
@@ -138,6 +144,10 @@ func startPipeline(out io.Writer, opt startOptions, p cli.Params, pName string) 
 	}
 
 	if err := mergeParam(pr, opt.Params); err != nil {
+		return err
+	}
+
+	if err := mergeSvc(pr, opt.ServiceAccounts); err != nil {
 		return err
 	}
 
@@ -200,6 +210,30 @@ func mergeParam(pr *v1alpha1.PipelineRun, optPar []string) error {
 	return nil
 }
 
+func mergeSvc(pr *v1alpha1.PipelineRun, optSvc []string) error {
+	svcs, err := parseTaskSvc(optSvc)
+	if err != nil {
+		return err
+	}
+
+	if len(svcs) == 0 {
+		return nil
+	}
+
+	for i := range pr.Spec.ServiceAccounts {
+		if v, ok := svcs[pr.Spec.ServiceAccounts[i].TaskName]; ok {
+			pr.Spec.ServiceAccounts[i] = v
+			delete(svcs, v.TaskName)
+		}
+	}
+
+	for _, v := range svcs {
+		pr.Spec.ServiceAccounts = append(pr.Spec.ServiceAccounts, v)
+	}
+
+	return nil
+}
+
 func lastPipelineRun(cs *cli.Clients, pipeline, ns string) (*v1alpha1.PipelineRun, error) {
 	options := metav1.ListOptions{}
 	if pipeline != "" {
@@ -233,7 +267,7 @@ func parseRes(res []string) (map[string]v1alpha1.PipelineResourceBinding, error)
 		r := strings.Split(v, "=")
 		if len(r) != 2 || len(r[0]) == 0 {
 			errMsg := invalidResource + v +
-				"\n Please pass resource as -p ResourceName=ResourceRef"
+				"\nPlease pass resource as -r ResourceName=ResourceRef"
 			return nil, errors.New(errMsg)
 		}
 		resources[r[0]] = v1alpha1.PipelineResourceBinding{
@@ -252,7 +286,7 @@ func parseParam(p []string) (map[string]v1alpha1.Param, error) {
 		r := strings.Split(v, "=")
 		if len(r) != 2 || len(r[0]) == 0 {
 			errMsg := invalidParam + v +
-				"\n Please pass resource as -r ParamName=ParamValue"
+				"\nPlease pass param as -p ParamName=ParamValue"
 			return nil, errors.New(errMsg)
 		}
 		params[r[0]] = v1alpha1.Param{
@@ -261,4 +295,22 @@ func parseParam(p []string) (map[string]v1alpha1.Param, error) {
 		}
 	}
 	return params, nil
+}
+
+func parseTaskSvc(s []string) (map[string]v1alpha1.PipelineRunSpecServiceAccount, error) {
+	svcs := map[string]v1alpha1.PipelineRunSpecServiceAccount{}
+	for _, v := range s {
+		r := strings.Split(v, "=")
+		if len(r) != 2 || len(r[0]) == 0 {
+			errMsg := invalidSvc + v +
+				"\nPlease pass task service accounts as " +
+				"--task-serviceaccount TaskName=ServiceAccount"
+			return nil, errors.New(errMsg)
+		}
+		svcs[r[0]] = v1alpha1.PipelineRunSpecServiceAccount{
+			TaskName:       r[0],
+			ServiceAccount: r[1],
+		}
+	}
+	return svcs, nil
 }
