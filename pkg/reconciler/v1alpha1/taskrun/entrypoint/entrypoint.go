@@ -187,11 +187,34 @@ func getWaitFile(stepNum int) string {
 // GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
 // to look for. If the cache does not contain the digest, it will lookup the
 // metadata from the images registry, and then commit that to the cache
-func GetRemoteEntrypoint(cache *Cache, digest string, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun) ([]string, error) {
+func GetRemoteEntrypoint(cache *Cache, image string, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun) ([]string, error) {
+	ref, err := name.ParseReference(image, name.WeakValidation)
+	if err != nil {
+		return nil, xerrors.Errorf("Failed to parse image %s: %w", image, err)
+	}
+
+	var digest string
+	// If the image is specified as a digest, we can just take the digest from the name and use that in our cache.
+	// Otherwise we first have to resolve the tag to a digest.
+	if d, ok := ref.(name.Digest); ok {
+		digest = d.String()
+	} else {
+		img, err := getRemoteImage(image, kubeclient, taskRun)
+		if err != nil {
+			return nil, xerrors.Errorf("Failed to fetch remote image %s: %w", digest, err)
+		}
+		d, err := img.Digest()
+		if err != nil {
+			return nil, xerrors.Errorf("Failed to get digest for image %s: %w", image, err)
+		}
+		digest = d.String()
+	}
+
 	if ep, ok := cache.get(digest); ok {
 		return ep, nil
 	}
-	img, err := getRemoteImage(digest, kubeclient, taskRun)
+
+	img, err := getRemoteImage(image, kubeclient, taskRun)
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to fetch remote image %s: %w", digest, err)
 	}
