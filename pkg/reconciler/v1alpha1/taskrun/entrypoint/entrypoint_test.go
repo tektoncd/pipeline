@@ -213,19 +213,14 @@ func getDigestAsString(image v1.Image) string {
 	return digestHash.String()
 }
 
-func TestGetRemoteEntrypoint(t *testing.T) {
-	expectedEntrypoint := []string{"/bin/expected", "entrypoint"}
-	img := getImage(t, &v1.ConfigFile{
-		Config: v1.Config{
-			Entrypoint: expectedEntrypoint,
-		},
-	})
+func getServer(t *testing.T, img v1.Image) *httptest.Server {
 	expectedRepo := "image"
-	digetsSha := getDigestAsString(img)
-	configPath := fmt.Sprintf("/v2/%s/blobs/%s", expectedRepo, mustConfigName(t, img))
-	manifestPath := fmt.Sprintf("/v2/%s/manifests/%s", expectedRepo, digetsSha)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	configPath := fmt.Sprintf("/v2/%s/blobs/%s", expectedRepo, mustConfigName(t, img))
+	manifestPath := fmt.Sprintf("/v2/%s/manifests/%s", expectedRepo, getDigestAsString(img))
+	latestPath := fmt.Sprintf("/v2/%s/manifests/latest", expectedRepo)
+
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/v2/":
 			w.WriteHeader(http.StatusOK)
@@ -236,7 +231,7 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 			if _, err := w.Write(mustRawConfigFile(t, img)); err != nil {
 				t.Fatal(err)
 			}
-		case manifestPath:
+		case manifestPath, latestPath:
 			if r.Method != http.MethodGet {
 				t.Errorf("Method; got %v, want %v", r.Method, http.MethodGet)
 			}
@@ -247,6 +242,19 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 			t.Fatalf("Unexpected path: %v", r.URL.Path)
 		}
 	}))
+}
+
+func TestGetRemoteEntrypoint(t *testing.T) {
+	expectedEntrypoint := []string{"/bin/expected", "entrypoint"}
+	img := getImage(t, &v1.ConfigFile{
+		Config: v1.Config{
+			Entrypoint: expectedEntrypoint,
+		},
+	})
+	expectedRepo := "image"
+	digetsSha := getDigestAsString(img)
+
+	server := getServer(t, img)
 	defer server.Close()
 	image := path.Join(strings.TrimPrefix(server.URL, "http://"), expectedRepo)
 	finalDigest := image + "@" + digetsSha
@@ -283,6 +291,68 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 	}
 	if !reflect.DeepEqual(ep, expectedEntrypoint) {
 		t.Errorf("entrypoints do not match: %s should be %s", ep[0], expectedEntrypoint)
+	}
+}
+
+func TestGetRemoteEntrypointStale(t *testing.T) {
+	initialEntrypoint := []string{"/bin/expected", "entrypoint"}
+	img := getImage(t, &v1.ConfigFile{
+		Config: v1.Config{
+			Entrypoint: initialEntrypoint,
+		},
+	})
+
+	server := getServer(t, img)
+	defer server.Close()
+	expectedRepo := "image"
+	image := path.Join(strings.TrimPrefix(server.URL, "http://"), expectedRepo) + ":latest"
+
+	entrypointCache, err := NewCache()
+	if err != nil {
+		t.Fatalf("couldn't create new entrypoint cache: %v", err)
+	}
+	taskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "taskRun",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			ServiceAccount: "default",
+		},
+	}
+	c := fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: "foo",
+		},
+	})
+	ep1, err := GetRemoteEntrypoint(entrypointCache, image, c, taskRun)
+	if err != nil {
+		t.Errorf("couldn't get entrypoint remote: %v", err)
+	}
+	server.Close()
+
+	// Now change the image
+	secondEntrypoint := []string{"/bin/expected", "entrypoint2"}
+	img = getImage(t, &v1.ConfigFile{
+		Config: v1.Config{
+			Entrypoint: secondEntrypoint,
+		},
+	})
+	server2 := getServer(t, img)
+	image = path.Join(strings.TrimPrefix(server2.URL, "http://"), expectedRepo) + ":latest"
+	defer server2.Close()
+	ep2, err := GetRemoteEntrypoint(entrypointCache, image, c, taskRun)
+	if err != nil {
+		t.Fatalf("couldn't get entrypoint remote: %v", err)
+	}
+
+	if !reflect.DeepEqual(ep1, initialEntrypoint) {
+		t.Errorf("entrypoints do not match: %s should be %s", ep1, initialEntrypoint)
+	}
+
+	if !reflect.DeepEqual(ep2, secondEntrypoint) {
+		t.Errorf("entrypoints do not match: %s should be %s", ep2, secondEntrypoint)
 	}
 }
 
