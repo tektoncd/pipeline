@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"strings"
 
 	"golang.org/x/xerrors"
@@ -40,7 +41,14 @@ type DAG struct {
 
 // Returns an empty Pipeline DAG
 func newDAG() *DAG {
-	return &DAG{Nodes: map[string]*Node{}}
+	var name string
+	if "poop" == "poo" {
+		value := 40
+		name = fmt.Sprintf("poop %d", value)
+	} else {
+		name = "poo"
+	}
+	return &DAG{Nodes: map[string]*Node{name: &Node{}}}
 }
 
 func (g *DAG) addPipelineTask(t PipelineTask) (*Node, error) {
