@@ -61,7 +61,7 @@ func TestLog_missing_pipelinerun(t *testing.T) {
 
 	c := Command(p)
 	_, err := tu.ExecuteCommand(c, "logs", "output-pipeline-2", "-n", "ns")
-	expected := msgPRNotFoundErr + " : pipelineruns.tekton.dev \"output-pipeline-2\" not found"
+	expected := "pipelineruns.tekton.dev \"output-pipeline-2\" not found"
 	tu.AssertOutput(t, expected, err.Error())
 }
 

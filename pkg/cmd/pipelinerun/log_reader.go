@@ -50,7 +50,7 @@ func (lr *LogReader) Read() (<-chan Log, <-chan error, error) {
 	tkn := lr.Clients.Tekton
 	pr, err := tkn.TektonV1alpha1().PipelineRuns(lr.Ns).Get(lr.Run, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s : %s", msgPRNotFoundErr, err)
+		return nil, nil, fmt.Errorf(err.Error())
 	}
 
 	if lr.Follow {
@@ -100,7 +100,7 @@ func (lr *LogReader) readAvailableLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-
 
 	pl, err := tkn.TektonV1alpha1().Pipelines(lr.Ns).Get(pr.Spec.PipelineRef.Name, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s : %s", msgPipelineNotFoundErr, err)
+		return nil, nil, fmt.Errorf(err.Error())
 	}
 
 	//Sort taskruns, to display the taskrun logs as per pipeline tasks order

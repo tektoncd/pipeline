@@ -53,17 +53,17 @@ func logCommand(p cli.Params) *cobra.Command {
 	}
 
 	eg := `
-  # show logs interactively for no inputs
+  # interactive mode: shows logs of the selected pipeline run
     tkn pipeline logs -n namespace
 
-  # show logs interactively for given pipeline
-    tkn pipeline logs pipeline_name -n namespace
+  # interactive mode: shows logs of the selected pipelinerun of the given pipeline
+    tkn pipeline logs pipeline -n namespace
 
   # show logs of given pipeline for last run
-    tkn pipeline logs pipeline_name -n namespace --last
+    tkn pipeline logs pipeline -n namespace --last
 
   # show logs for given pipeline and pipelinerun
-    tkn pipeline logs pipeline_name pipelinerun_name -n namespace
+    tkn pipeline logs pipeline run -n namespace
   
    `
 	c := &cobra.Command{
@@ -91,6 +91,10 @@ func (opts *logOptions) run(args []string) error {
 		return err
 	}
 
+	if opts.pipelineName == "" || opts.runName == "" {
+		return nil
+	}
+
 	runLogOpts := &pipelinerun.LogOptions{
 		PipelineName:    opts.pipelineName,
 		PipelineRunName: opts.runName,
@@ -113,6 +117,10 @@ func (opts *logOptions) init(args []string) error {
 
 	case 1: // pipeline name provided
 		opts.pipelineName = args[0]
+		err := verify(opts.pipelineName, opts.params)
+		if err != nil {
+			return err
+		}
 		if opts.last {
 			return opts.initLastRunName()
 		}
@@ -129,9 +137,14 @@ func (opts *logOptions) init(args []string) error {
 }
 
 func (opts *logOptions) getAllInputs() error {
-	ps, err := allPipelines(opts.params)
+	ps, err := allPipelines(opts)
 	if err != nil {
 		return err
+	}
+
+	if len(ps) < 1 {
+		fmt.Fprintln(opts.stream.Err, "No pipelines found in namespace:", opts.params.Namespace())
+		return nil
 	}
 
 	var qs1 = []*survey.Question{{
@@ -153,11 +166,15 @@ func (opts *logOptions) getAllInputs() error {
 
 func (opts *logOptions) askRunName() error {
 	var ans string
+
 	prs, err := allRuns(opts.params, opts.pipelineName)
 	if err != nil {
 		return err
 	}
-
+	if len(prs) < 1 {
+		fmt.Fprintln(opts.stream.Err, "No pipelineruns found for pipeline:", opts.pipelineName)
+		return nil
+	}
 	var qs2 = []*survey.Question{
 		{
 			Name: "pipelinerun",
@@ -168,13 +185,25 @@ func (opts *logOptions) askRunName() error {
 		},
 	}
 
-	err = survey.Ask(qs2, &ans, opts.askOpts)
-	if err != nil {
+	if err = survey.Ask(qs2, &ans, opts.askOpts); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
-	opts.runName = strings.Fields(ans)[0]
 
+	opts.runName = strings.Fields(ans)[0]
+	return nil
+}
+
+func verify(pname string, params cli.Params) error {
+	cs, err := params.Clients()
+	if err != nil {
+		return err
+	}
+
+	tkn := cs.Tekton.TektonV1alpha1()
+	if _, err = tkn.Pipelines(params.Namespace()).Get(pname, metav1.GetOptions{}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -191,21 +220,18 @@ func (opts *logOptions) initLastRunName() error {
 	return nil
 }
 
-func allPipelines(p cli.Params) ([]string, error) {
-
-	cs, err := p.Clients()
+func allPipelines(opts *logOptions) ([]string, error) {
+	cs, err := opts.params.Clients()
 	if err != nil {
 		return nil, err
 	}
 
 	tkn := cs.Tekton.TektonV1alpha1()
-	ps, err := tkn.Pipelines(p.Namespace()).List(metav1.ListOptions{})
+	ps, err := tkn.Pipelines(opts.params.Namespace()).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	if len(ps.Items) == 0 {
-		return nil, fmt.Errorf("No pipelines found in namespace: %s", p.Namespace())
-	}
+
 	ret := []string{}
 	for _, item := range ps.Items {
 		ret = append(ret, item.ObjectMeta.Name)
@@ -227,9 +253,6 @@ func allRuns(p cli.Params, pName string) ([]string, error) {
 		return nil, err
 	}
 
-	if len(runs.Items) == 0 {
-		return nil, fmt.Errorf("No pipeline runs found in namespace: %s", p.Namespace())
-	}
 	ret := []string{}
 	for i, run := range runs.Items {
 		if i < 5 {
@@ -259,6 +282,5 @@ func lastRun(cs *cli.Clients, ns, pName string) (string, error) {
 			latest = run
 		}
 	}
-
 	return latest.ObjectMeta.Name, nil
 }

@@ -23,11 +23,6 @@ import (
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 )
 
-const (
-	msgPipelineNotFoundErr = "Error in retrieving Pipeline"
-	msgPRNotFoundErr       = "Error in retrieving PipelineRun"
-)
-
 type LogOptions struct {
 	AllSteps        bool
 	Follow          bool

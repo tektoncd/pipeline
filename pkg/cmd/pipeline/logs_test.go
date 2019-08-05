@@ -47,7 +47,7 @@ var (
 	ns           = "namespace"
 )
 
-func TestNoPipeline(t *testing.T){
+func TestLogs_no_pipeline(t *testing.T) {
 	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
@@ -55,12 +55,59 @@ func TestNoPipeline(t *testing.T){
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	_, err := tu.ExecuteCommand(c, "logs", "-n", "ns")
-	expected :="No pipelines found in namespace: ns"
+	out, err := tu.ExecuteCommand(c, "logs", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := "No pipelines found in namespace: ns\n"
+	tu.AssertOutput(t, expected, out)
+}
+
+func TestLogs_no_runs(t *testing.T) {
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns),
+		}})
+	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	c := Command(p)
+	out, err := tu.ExecuteCommand(c, "logs", pipelineName, "-n", ns)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := "No pipelineruns found for pipeline: output-pipeline\n"
+	tu.AssertOutput(t, expected, out)
+}
+
+func TestLogs_wrong_pipeline(t *testing.T) {
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns),
+		}})
+	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	c := Command(p)
+	_, err := tu.ExecuteCommand(c, "logs", "pipeline", "-n", ns)
+
+	expected := "pipelines.tekton.dev \"pipeline\" not found"
 	tu.AssertOutput(t, expected, err.Error())
 }
 
-func TestInteractiveAskPAndPR(t *testing.T) {
+func TestLogs_wrong_run(t *testing.T) {
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns),
+		}})
+	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	c := Command(p)
+	_, err := tu.ExecuteCommand(c, "logs", "pipeline", "pipelinerun", "-n", "ns")
+
+	expected := "pipelineruns.tekton.dev \"pipelinerun\" not found"
+	tu.AssertOutput(t, expected, err.Error())
+}
+
+func TestLogs_interactive_get_all_inputs(t *testing.T) {
 
 	clock := clockwork.NewFakeClock()
 
@@ -112,54 +159,53 @@ func TestInteractiveAskPAndPR(t *testing.T) {
 			cmdArgs: []string{},
 
 			procedure: func(c *expect.Console) error {
-				_, err := c.ExpectString("Select pipeline :")
-				if err != nil {
+				if _, err := c.ExpectString("Select pipeline :"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyArrowDown))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
 					return err
 				}
-				_, err = c.ExpectString("output-pipeline")
-				if err != nil {
+				if _, err := c.ExpectString("output-pipeline"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyEnter))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
-				_, err = c.ExpectString("Select pipelinerun :")
-				if err != nil {
+
+				if _, err := c.ExpectString("Select pipelinerun :"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyArrowDown))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
 					return err
 				}
-				_, err = c.ExpectString(prName + " started 5 minutes ago")
-				if err != nil {
+
+				if _, err := c.ExpectString(prName + " started 5 minutes ago"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyArrowDown))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
 					return err
 				}
-				_, err = c.ExpectString(prName2 + " started 3 minutes ago")
-				if err != nil {
+
+				if _, err := c.ExpectString(prName2 + " started 3 minutes ago"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyArrowUp))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyArrowUp)); err != nil {
 					return err
 				}
-				_, err = c.ExpectString(prName + " started 5 minutes ago")
-				if err != nil {
+
+				if _, err := c.ExpectString(prName + " started 5 minutes ago"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyEnter))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
+
 				return nil
 			},
 		},
@@ -173,7 +219,7 @@ func TestInteractiveAskPAndPR(t *testing.T) {
 	}
 }
 
-func TestInteractiveAskPR(t *testing.T) {
+func TestLogs_interactive_ask_runs(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
 	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
@@ -224,30 +270,30 @@ func TestInteractiveAskPR(t *testing.T) {
 			cmdArgs: []string{pipelineName},
 
 			procedure: func(c *expect.Console) error {
-				_, err := c.ExpectString("Select pipelinerun :")
-				if err != nil {
+				if _, err := c.ExpectString("Select pipelinerun :"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyArrowDown))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
 					return err
 				}
-				_, err = c.ExpectString(prName + " started 5 minutes ago")
-				if err != nil {
+
+				if _, err := c.ExpectString(prName + " started 5 minutes ago"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyArrowDown))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
 					return err
 				}
-				_, err = c.ExpectString(prName2 + "started 3 minutes ago")
-				if err != nil {
+
+				if _, err := c.ExpectString(prName2 + "started 3 minutes ago"); err != nil {
 					return err
 				}
-				_, err = c.SendLine(string(terminal.KeyEnter))
-				if err != nil {
+
+				if _, err := c.SendLine(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
+
 				return nil
 			},
 		},
