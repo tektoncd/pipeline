@@ -109,7 +109,7 @@ The PVC option can be configured using a ConfigMap with the name
 `config-artifact-pvc` and the following attributes:
 
 - size: the size of the volume (5Gi by default)
-- storageClassName: the storage class of the volume (default storage class by default)
+- storageClassName: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
 
 The GCS storage bucket can be configured using a ConfigMap with the name
 `config-artifact-bucket` with the following attributes:
