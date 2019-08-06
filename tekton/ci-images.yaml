@@ -23,5 +23,5 @@ spec:
     - /kaniko/executor
     args:
     - --dockerfile=/workspace/source/tekton/ko/Dockerfile
-    - --destination=${inputs.params.imageRegistry}/${outputs.resources.builtKoImage.url}
+    - --destination=$(inputs.params.imageRegistry)/$(outputs.resources.builtKoImage.url)
     - --context=/workspace/source

@@ -431,7 +431,7 @@ spec:
       secretName: target-cluster-secrets
 ```
 
-Example usage of the cluster resource in a Task:
+Example usage of the cluster resource in a Task, using [variable substitution](tasks.md#variable-substitution):
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -455,8 +455,8 @@ spec:
       args:
         - "-c"
         - kubectl --kubeconfig
-          /workspace/${inputs.resources.testCluster.Name}/kubeconfig --context
-          ${inputs.resources.testCluster.Name} apply -f /workspace/service.yaml'
+          /workspace/$(inputs.resources.testCluster.Name)/kubeconfig --context
+          $(inputs.resources.testCluster.Name) apply -f /workspace/service.yaml'
 ```
 
 ### Storage Resource

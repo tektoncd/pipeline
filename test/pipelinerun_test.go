@@ -101,7 +101,8 @@ func TestPipelineRun(t *testing.T) {
 				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
 				tb.Step("config-docker", "quay.io/rhpipeline/skopeo:alpine",
 					tb.Command("skopeo"),
-					tb.Args("copy", "${inputs.params.path}", "${inputs.params.dest}"),
+					// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
+					tb.Args("copy", "${inputs.params.path}", "$(inputs.params.dest)"),
 				),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
@@ -235,7 +236,9 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alph
 		tb.PipelineParamSpec("dest", v1alpha1.ParamTypeString),
 		tb.PipelineTask(task1Name, getName(taskName, suffix),
 			tb.PipelineTaskParam("path", "${params.path}"),
-			tb.PipelineTaskParam("dest", "${params.dest}")),
+			// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
+			// In the next release we will remove support for $() entirely.
+			tb.PipelineTaskParam("dest", "$(params.dest)")),
 	))
 }
 
@@ -249,9 +252,11 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			)),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("write-data-task-0-step-0", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "echo stuff > ${inputs.resources.workspace.path}/stuff"),
+				tb.Args("-c", "echo stuff > $(inputs.resources.workspace.path)/stuff"),
 			),
 			tb.Step("write-data-task-0-step-1", "ubuntu", tb.Command("/bin/bash"),
+				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
+				// In the next release we will remove support for $() entirely.
 				tb.Args("-c", "echo other > ${inputs.resources.workspace.path}/other"),
 			),
 		)),
@@ -259,20 +264,22 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
+				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
+				// In the next release we will remove support for $() entirely.
 				tb.Args("-c", "[[ stuff == $(cat ${inputs.resources.workspace.path}/stuff) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "echo something > ${inputs.resources.workspace.path}/something"),
+				tb.Args("-c", "echo something > $(inputs.resources.workspace.path)/something"),
 			),
 		)),
 		tb.Task("check-create-files-exists-2", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "[[ other == $(cat ${inputs.resources.workspace.path}/other) ]]"),
+				tb.Args("-c", "[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "echo else > ${inputs.resources.workspace.path}/else"),
+				tb.Args("-c", "echo else > $(inputs.resources.workspace.path)/else"),
 			),
 		)),
 		tb.Task("read-files", namespace, tb.TaskSpec(
@@ -280,12 +287,14 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.ResourceTargetPath("readingspace"),
 			)),
 			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "[[ stuff == $(cat ${inputs.resources.workspace.path}/stuff) ]]"),
+				tb.Args("-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"),
 			),
 			tb.Step("read-from-task-1", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "[[ something == $(cat ${inputs.resources.workspace.path}/something) ]]"),
+				tb.Args("-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"),
 			),
 			tb.Step("read-from-task-2", "ubuntu", tb.Command("/bin/bash"),
+				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
+				// In the next release we will remove support for $() entirely.
 				tb.Args("-c", "[[ else == $(cat ${inputs.resources.workspace.path}/else) ]]"),
 			),
 		)),

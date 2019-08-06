@@ -152,7 +152,7 @@ spec:
 
 The following is a `Task` with inputs and outputs. The input resource is a
 GitHub repository and the output is the image produced from that source. The
-args of the task command support templating so that the definition of task is
+args of the task command support variable substitution so that the definition of task is
 constant and the value of parameters can change in runtime.
 
 ```yaml
@@ -190,13 +190,13 @@ spec:
       command:
         - /kaniko/executor
       args:
-        - --dockerfile=${inputs.params.pathToDockerFile}
-        - --destination=${outputs.resources.builtImage.url}
-        - --context=${inputs.params.pathToContext}
+        - --dockerfile=$(inputs.params.pathToDockerFile}
+        - --destination=$(outputs.resources.builtImage.url}
+        - --context=$(inputs.params.pathToContext}
 ```
 
 `TaskRun` binds the inputs and outputs to already defined `PipelineResources`,
-sets values to the parameters used for templating in addition to executing the
+sets values to the parameters used for variable substitution in addition to executing the
 task steps.
 
 ```yaml
@@ -325,7 +325,7 @@ A [`Pipeline`](pipelines.md) defines a list of tasks to execute in order, while
 also indicating if any outputs should be used as inputs of a following task by
 using [the `from` field](pipelines.md#from) and also indicating
 [the order of executing (using the `runAfter` and `from` fields)](pipelines.md#ordering).
-The same templating you used in tasks is also available in pipeline.
+The same variable substitution you used in tasks is also available in pipeline.
 
 For example:
 
@@ -411,10 +411,10 @@ spec:
       args:
         - "w"
         - "-i"
-        - "${inputs.params.yqArg}"
-        - "${inputs.params.path}"
-        - "${inputs.params.yamlPathToImage}"
-        - "${inputs.resources.image.url}"
+        - "$(inputs.params.yqArg)"
+        - "$(inputs.params.path)"
+        - "$(inputs.params.yamlPathToImage)"
+        - "$(inputs.resources.image.url)"
     - name: run-kubectl
       image: lachlanevenson/k8s-kubectl
       command: ["kubectl"]

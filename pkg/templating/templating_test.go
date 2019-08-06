@@ -41,7 +41,7 @@ func TestValidateVariables(t *testing.T) {
 	}{{
 		name: "valid variable",
 		args: args{
-			input:         "--flag=${inputs.params.baz}",
+			input:         "--flag=$(inputs.params.baz)",
 			prefix:        "params",
 			contextPrefix: "inputs.",
 			locationName:  "step",
@@ -54,7 +54,7 @@ func TestValidateVariables(t *testing.T) {
 	}, {
 		name: "multiple variables",
 		args: args{
-			input:         "--flag=${inputs.params.baz} ${input.params.foo}",
+			input:         "--flag=$(inputs.params.baz) $(input.params.foo)",
 			prefix:        "params",
 			contextPrefix: "inputs.",
 			locationName:  "step",
@@ -68,7 +68,7 @@ func TestValidateVariables(t *testing.T) {
 	}, {
 		name: "different context and prefix",
 		args: args{
-			input:        "--flag=${something.baz}",
+			input:        "--flag=$(something.baz)",
 			prefix:       "something",
 			locationName: "step",
 			path:         "taskspec.steps",
@@ -79,6 +79,81 @@ func TestValidateVariables(t *testing.T) {
 		expectedError: nil,
 	}, {
 		name: "undefined variable",
+		args: args{
+			input:         "--flag=$(inputs.params.baz)",
+			prefix:        "params",
+			contextPrefix: "inputs.",
+			locationName:  "step",
+			path:          "taskspec.steps",
+			vars: map[string]struct{}{
+				"foo": {},
+			},
+		},
+		expectedError: &apis.FieldError{
+			Message: `non-existent variable in "--flag=$(inputs.params.baz)" for step somefield`,
+			Paths:   []string{"taskspec.steps.somefield"},
+		},
+	}, {
+		name: "undefined variable and defined variable",
+		args: args{
+			input:         "--flag=$(inputs.params.baz) $(input.params.foo)",
+			prefix:        "params",
+			contextPrefix: "inputs.",
+			locationName:  "step",
+			path:          "taskspec.steps",
+			vars: map[string]struct{}{
+				"foo": {},
+			},
+		},
+		expectedError: &apis.FieldError{
+			Message: `non-existent variable in "--flag=$(inputs.params.baz) $(input.params.foo)" for step somefield`,
+			Paths:   []string{"taskspec.steps.somefield"},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated valid variable",
+		args: args{
+			input:         "--flag=${inputs.params.baz}",
+			prefix:        "params",
+			contextPrefix: "inputs.",
+			locationName:  "step",
+			path:          "taskspec.steps",
+			vars: map[string]struct{}{
+				"baz": {},
+			},
+		},
+		expectedError: nil,
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated multiple variables",
+		args: args{
+			input:         "--flag=${inputs.params.baz} ${input.params.foo}",
+			prefix:        "params",
+			contextPrefix: "inputs.",
+			locationName:  "step",
+			path:          "taskspec.steps",
+			vars: map[string]struct{}{
+				"baz": {},
+				"foo": {},
+			},
+		},
+		expectedError: nil,
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated different context and prefix",
+		args: args{
+			input:        "--flag=${something.baz}",
+			prefix:       "something",
+			locationName: "step",
+			path:         "taskspec.steps",
+			vars: map[string]struct{}{
+				"baz": {},
+			},
+		},
+		expectedError: nil,
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated undefined variable",
 		args: args{
 			input:         "--flag=${inputs.params.baz}",
 			prefix:        "params",
@@ -94,7 +169,8 @@ func TestValidateVariables(t *testing.T) {
 			Paths:   []string{"taskspec.steps.somefield"},
 		},
 	}, {
-		name: "undefined variable and defined variable",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated undefined variable and defined variable",
 		args: args{
 			input:         "--flag=${inputs.params.baz} ${input.params.foo}",
 			prefix:        "params",

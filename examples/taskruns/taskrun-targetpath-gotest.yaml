@@ -35,7 +35,7 @@ spec:
       - '-v'
       - '-count=1'
       - './...'
-      workingDir: "${inputs.resources.gitspace.path}"
+      workingDir: "$(inputs.resources.gitspace.path)"
       env:
       - name: GOPATH
         value: /workspace/go

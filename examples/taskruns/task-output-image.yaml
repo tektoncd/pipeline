@@ -6,7 +6,7 @@ spec:
   type: image
   params:
   - name: url
-    value: gcr.io/christiewilson-catfactory/leeroy-web # Replace this URL with ${KO_DOCKER_REPO}
+    value: gcr.io/christiewilson-catfactory/leeroy-web # Replace this URL with $KO_DOCKER_REPO
 ---
 # This demo modifies the cluster (deploys to it) you must use a service
 # account with permission to admin the cluster (or make your default user an admin
@@ -62,7 +62,7 @@ spec:
     - -ce
     - |
       set -e
-      cat <<EOF > ${inputs.resources.sourcerepo.path}/index.json
+      cat <<EOF > $(inputs.resources.sourcerepo.path)/index.json
       {
         "schemaVersion": 2,
         "manifests": [
@@ -82,7 +82,7 @@ spec:
     - -ce
     - |
       set -e
-      cat ${inputs.resources.sourcerepo.path}/index.json
+      cat $(inputs.resources.sourcerepo.path)/index.json
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun

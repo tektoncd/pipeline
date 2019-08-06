@@ -87,8 +87,8 @@ func TestReconcile(t *testing.T) {
 		),
 	}
 	funParam := tb.PipelineTaskParam("foo", "somethingfun")
-	moreFunParam := tb.PipelineTaskParam("bar", "${params.bar}")
-	templatedParam := tb.PipelineTaskParam("templatedparam", "${inputs.workspace.${params.rev-param}}")
+	moreFunParam := tb.PipelineTaskParam("bar", "$(params.bar)")
+	templatedParam := tb.PipelineTaskParam("templatedparam", "$(inputs.workspace.$(params.rev-param))")
 	ps := []*v1alpha1.Pipeline{
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
@@ -211,7 +211,7 @@ func TestReconcile(t *testing.T) {
 			tb.TaskRunInputs(
 				tb.TaskRunInputsParam("foo", "somethingfun"),
 				tb.TaskRunInputsParam("bar", "somethingmorefun"),
-				tb.TaskRunInputsParam("templatedparam", "${inputs.workspace.revision}"),
+				tb.TaskRunInputsParam("templatedparam", "$(inputs.workspace.revision)"),
 				tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("some-repo")),
 			),
 			tb.TaskRunOutputs(

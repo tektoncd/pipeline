@@ -86,7 +86,7 @@ func ExampleTaskRun() {
 				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
 			),
 			tb.Step("mycontainer", "myimage", tb.Command("/mycmd"),
-				tb.Args("--my-arg=${inputs.params.myarg}"),
+				tb.Args("--my-arg=$(inputs.params.myarg)"),
 			),
 		),
 	))

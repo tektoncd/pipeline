@@ -89,9 +89,11 @@ Each declared parameter has a `type` field, assumed to be `string` if not provid
 The following example shows how `Pipeline`s can be parameterized, and these
 parameters can be passed to the `Pipeline` from a `PipelineRun`.
 
-Input parameters in the form of `${params.foo}` are replaced inside of the
+Input parameters in the form of `$(params.foo)` are replaced inside of the
 [`PipelineTask` parameters' values](#pipeline-tasks) (see also
-[templating](tasks.md#templating)).
+[variable substitution](tasks.md#variable-substitution)). _As with
+[variable substitution](tasks.md#variable-substitution)), the deprecated syntax
+`${params.foo}` will be supported until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._
 
 The following `Pipeline` declares an input parameter called 'context', and uses
 it in the `PipelineTask`'s parameter. The `description` and `default` fields for
@@ -118,7 +120,7 @@ spec:
         - name: pathToDockerFile
           value: Dockerfile
         - name: pathToContext
-          value: "${params.context}"
+          value: "$(params.context)"
 ```
 
 The following `PipelineRun` supplies a value for `context`:

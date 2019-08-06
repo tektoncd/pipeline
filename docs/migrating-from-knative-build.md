@@ -20,7 +20,8 @@ Pipeline, and provide additional flexibility and reusability.
 * BuildTemplate
   [`parameters`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md#parameters)
   are moved inside Task's `input.params` field, and parameter placeholder
-  strings (e.g., `${FOO}`) must be specified like `${input.parameters.FOO}`.
+  strings (e.g., `${FOO}`) must be specified like `$(input.parameters.FOO)`
+  (see [variable substitution](tasks.md#variable-substitution)).
 
 * Tasks must specify
   [`input.resources`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md#input-resources)
@@ -99,7 +100,7 @@ spec:
   - name: go-test  # <-- the step must specify a name.
     image: golang
     workingDir: /workspace/source  # <-- set workingdir
-    command: ['go', 'test', '${inputs.params.TARGET}']  # <-- specify inputs.params.TARGET
+    command: ['go', 'test', '$(inputs.params.TARGET)']  # <-- specify inputs.params.TARGET
 ```
 
 ### Build -> TaskRun

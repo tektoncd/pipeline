@@ -161,7 +161,7 @@ func getCreateImageTask(namespace string) *v1alpha1.Task {
 		tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.9.0", tb.Args(
 			"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
 			"--context=/workspace/gitsource/",
-			"--destination=${outputs.resources.builtimage.url}",
+			"--destination=$(outputs.resources.builtimage.url)",
 		)),
 	))
 }
@@ -178,10 +178,10 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 		tb.Step("helm-deploy", "alpine/helm:2.14.0", tb.Args(
 			"install",
 			"--debug",
-			"--name=${inputs.params.chartname}",
-			"${inputs.params.pathToHelmCharts}",
+			"--name=$(inputs.params.chartname)",
+			"$(inputs.params.pathToHelmCharts)",
 			"--set",
-			"image.repository=${inputs.resources.image.url}",
+			"image.repository=$(inputs.resources.image.url)",
 		)),
 	))
 }
@@ -199,7 +199,7 @@ func getHelmDeployPipeline(namespace string) *v1alpha1.Pipeline {
 			tb.PipelineTaskInputResource("gitsource", "git-repo"),
 			tb.PipelineTaskInputResource("image", "the-image", tb.From("push-image")),
 			tb.PipelineTaskParam("pathToHelmCharts", "/workspace/gitsource/test/gohelloworld/gohelloworld-chart"),
-			tb.PipelineTaskParam("chartname", "${params.chartname}"),
+			tb.PipelineTaskParam("chartname", "$(params.chartname)"),
 		),
 	))
 }

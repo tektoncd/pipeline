@@ -38,7 +38,8 @@ func TestApplyParameters(t *testing.T) {
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString),
 				tb.PipelineTask("first-task-1", "first-task",
-					tb.PipelineTaskParam("first-task-first-param", "${params.first-param}"),
+					tb.PipelineTaskParam("first-task-first-param", "$(params.first-param)"),
+					// TODO(#1170): Remove support for ${} syntax
 					tb.PipelineTaskParam("first-task-second-param", "${params.second-param}"),
 					tb.PipelineTaskParam("first-task-third-param", "static value"),
 				))),
@@ -59,16 +60,21 @@ func TestApplyParameters(t *testing.T) {
 		original: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
+				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineTask("first-task-1", "first-task",
-					tb.PipelineTaskParam("first-task-first-param", "${input.workspace.${params.first-param}}"),
+					tb.PipelineTaskParam("first-task-first-param", "$(input.workspace.$(params.first-param))"),
+					// TODO(#1170): Remove support for ${} syntax
+					tb.PipelineTaskParam("first-task-second-param", "${input.workspace.${params.second-param}}"),
 				))),
 		run: tb.PipelineRun("test-pipeline-run", "foo",
 			tb.PipelineRunSpec("test-pipeline")),
 		expected: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
+				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
 				tb.PipelineTask("first-task-1", "first-task",
-					tb.PipelineTaskParam("first-task-first-param", "${input.workspace.default-value}"),
+					tb.PipelineTaskParam("first-task-first-param", "$(input.workspace.default-value)"),
+					tb.PipelineTaskParam("first-task-second-param", "${input.workspace.default-value}"),
 				))),
 	}, {
 		name: "parameters in task condition",
@@ -78,7 +84,8 @@ func TestApplyParameters(t *testing.T) {
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeString),
 				tb.PipelineTask("first-task-1", "first-task",
 					tb.PipelineTaskCondition("task-condition",
-						tb.PipelineTaskConditionParam("cond-first-param", "${params.first-param}"),
+						tb.PipelineTaskConditionParam("cond-first-param", "$(params.first-param)"),
+						// TODO(#1170): Remove support for ${} syntax
 						tb.PipelineTaskConditionParam("cond-second-param", "${params.second-param}"),
 					),
 				))),
@@ -96,29 +103,35 @@ func TestApplyParameters(t *testing.T) {
 					),
 				))),
 	}, {
-		name: "single array parameter",
+		name: "array parameter",
 		original: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeArray, tb.ParamSpecDefault(
 					"default", "array", "value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeArray),
+				tb.PipelineParamSpec("fourth-param", v1alpha1.ParamTypeArray),
 				tb.PipelineTask("first-task-1", "first-task",
-					tb.PipelineTaskParam("first-task-first-param", "firstelement", "${params.first-param}"),
-					tb.PipelineTaskParam("first-task-second-param", "first", "${params.second-param}"),
+					tb.PipelineTaskParam("first-task-first-param", "firstelement", "$(params.first-param)"),
+					tb.PipelineTaskParam("first-task-second-param", "first", "$(params.second-param)"),
 					tb.PipelineTaskParam("first-task-third-param", "static value"),
+					// TODO(#1170): Remove support for ${} syntax
+					tb.PipelineTaskParam("first-task-fourth-param", "first", "${params.fourth-param}"),
 				))),
 		run: tb.PipelineRun("test-pipeline-run", "foo",
 			tb.PipelineRunSpec("test-pipeline",
-				tb.PipelineRunParam("second-param", "second-value", "array"))),
+				tb.PipelineRunParam("second-param", "second-value", "array"),
+				tb.PipelineRunParam("fourth-param", "fourth-value", "array"))),
 		expected: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeArray, tb.ParamSpecDefault(
 					"default", "array", "value")),
 				tb.PipelineParamSpec("second-param", v1alpha1.ParamTypeArray),
+				tb.PipelineParamSpec("fourth-param", v1alpha1.ParamTypeArray),
 				tb.PipelineTask("first-task-1", "first-task",
 					tb.PipelineTaskParam("first-task-first-param", "firstelement", "default", "array", "value"),
 					tb.PipelineTaskParam("first-task-second-param", "first", "second-value", "array"),
 					tb.PipelineTaskParam("first-task-third-param", "static value"),
+					tb.PipelineTaskParam("first-task-fourth-param", "first", "fourth-value", "array"),
 				))),
 	}}
 	for _, tt := range tests {

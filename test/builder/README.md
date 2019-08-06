@@ -94,7 +94,7 @@ func MyTest(t *testing.T) {
                 tb.InputsParam("myarg", tb.ParamDefault("mydefault")),
             ),
             tb.Step("mycontainer", "myimage", tb.Command("/mycmd"),
-                tb.Args("--my-arg=${inputs.params.myarg}"),
+                tb.Args("--my-arg=$(inputs.params.myarg)"),
             ),
         ),
     ))

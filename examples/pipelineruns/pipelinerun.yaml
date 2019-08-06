@@ -100,9 +100,9 @@ spec:
     command:
     - /kaniko/executor
     args:
-    - --dockerfile=${inputs.params.pathToDockerFile}
-    - --destination=${outputs.resources.builtImage.url}
-    - --context=${inputs.params.pathToContext}
+    - --dockerfile=$(inputs.params.pathToDockerFile)
+    - --destination=$(outputs.resources.builtImage.url)
+    - --context=$(inputs.params.pathToContext)
 ---
 #This task deploys with kubectl apply -f <filename>
 apiVersion: tekton.dev/v1alpha1
@@ -130,17 +130,17 @@ spec:
     args:
     - "w"
     - "-i"
-    - "${inputs.params.yqArg}"
-    - "${inputs.params.path}"
-    - "${inputs.params.yamlPathToImage}"
-    - "${inputs.resources.image.url}"
+    - "$(inputs.params.yqArg)"
+    - "$(inputs.params.path)"
+    - "$(inputs.params.yamlPathToImage)"
+    - "$(inputs.resources.image.url)"
   - name: run-kubectl
     image: lachlanevenson/k8s-kubectl
     command: ['kubectl']
     args:
     - 'apply'
     - '-f'
-    - '${inputs.params.path}'
+    - '$(inputs.params.path)'
 ---
 # This Pipeline Builds two microservice images(https://github.com/GoogleContainerTools/skaffold/tree/master/examples/microservices)
 # from the Skaffold repo (https://github.com/GoogleContainerTools/skaffold) and deploys them to the repo currently running Tekton Pipelines.
