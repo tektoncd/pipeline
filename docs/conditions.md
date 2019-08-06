@@ -57,7 +57,7 @@ only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
 parameter name, `barIsBa$` or `0banana` are not.
  
 Each declared parameter has a type field, assumed to be string if not provided by the user. 
-The other possible type is array — useful, checking a pushed branch name doesn't match any of 
+The other possible type is array — useful,checking a pushed branch name doesn't match any of 
 multiple protected branch names. When the actual parameter value is supplied, its parsed type 
 is validated against the type field.
 

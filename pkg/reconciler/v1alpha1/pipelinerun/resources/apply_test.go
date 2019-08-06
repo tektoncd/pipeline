@@ -71,7 +71,7 @@ func TestApplyParameters(t *testing.T) {
 					tb.PipelineTaskParam("first-task-first-param", "${input.workspace.default-value}"),
 				))),
 	}, {
-		name: "parameters in task condition",
+		name: "single parameter in task condition",
 		original: tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
@@ -94,6 +94,24 @@ func TestApplyParameters(t *testing.T) {
 						tb.PipelineTaskConditionParam("cond-first-param", "default-value"),
 						tb.PipelineTaskConditionParam("cond-second-param", "second-value"),
 					),
+				))),
+	}, {
+		name: "pipeline parameter nested inside condition parameter",
+		original: tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskCondition("cond",
+						tb.PipelineTaskConditionParam("cond-first-param", "${params.first-param}")),
+				))),
+		run: tb.PipelineRun("test-pipeline-run", "foo",
+			tb.PipelineRunSpec("test-pipeline")),
+		expected: tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineParamSpec("first-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("default-value")),
+				tb.PipelineTask("first-task-1", "first-task",
+					tb.PipelineTaskCondition("cond",
+						tb.PipelineTaskConditionParam("cond-first-param", "default-value")),
 				))),
 	}, {
 		name: "single array parameter",
