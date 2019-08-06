@@ -16,6 +16,7 @@ package pipelinerun
 
 import (
 	"fmt"
+	"sort"
 
 	"text/tabwriter"
 	"text/template"
@@ -67,12 +68,12 @@ NAME	VALUE
 {{- end }}
 
 Taskruns
-{{- $l := len .PipelineRun.Status.TaskRuns }}{{ if eq $l 0 }}
+{{- $l := len .TaskRunList }}{{ if eq $l 0 }}
 No taskruns
 {{- else }}
 NAME	TASK NAME	STARTED	DURATION	STATUS
-{{- range $taskrunname, $taskrun := .PipelineRun.Status.TaskRuns }}
-{{ $taskrunname }}	{{ $taskrun.PipelineTaskName }}	{{ formatAge $taskrun.Status.StartTime $.Params.Time }}	{{ formatDuration $taskrun.Status.StartTime $taskrun.Status.CompletionTime }}	{{ formatCondition $taskrun.Status.Conditions }}
+{{- range $taskrun := .TaskRunList }}
+{{ $taskrun.TaskRunName }}	{{ $taskrun.PipelineTaskName }}	{{ formatAge $taskrun.Status.StartTime $.Params.Time }}	{{ formatDuration $taskrun.Status.StartTime $taskrun.Status.CompletionTime }}	{{ formatCondition $taskrun.Status.Conditions }}
 {{- end }}
 {{- end }}
 `
@@ -118,12 +119,21 @@ func printPipelineRunDescription(s *cli.Stream, prName string, p cli.Params) err
 		return fmt.Errorf("Failed to find pipelinerun %q", prName)
 	}
 
+	var trl taskrunList
+
+	if len(pr.Status.TaskRuns) != 0 {
+		trl = newTaskrunListFromMap(pr.Status.TaskRuns)
+		sort.Sort(trl)
+	}
+
 	var data = struct {
 		PipelineRun *v1alpha1.PipelineRun
 		Params      cli.Params
+		TaskrunList taskrunList
 	}{
 		PipelineRun: pr,
 		Params:      p,
+		TaskrunList: trl,
 	}
 
 	funcMap := template.FuncMap{
@@ -153,4 +163,32 @@ func hasFailed(pr *v1alpha1.PipelineRun) string {
 		return pr.Status.Conditions[0].Message
 	}
 	return ""
+}
+
+type taskrunList []struct {
+	TaskrunName string
+	*v1alpha1.PipelineRunTaskRunStatus
+}
+
+func newTaskrunListFromMap(statusMap map[string]*v1alpha1.PipelineRunTaskRunStatus) taskrunList {
+
+	var trl taskrunList
+
+	for taskrunName, taskrunStatus := range statusMap {
+		trl = append(trl, struct {
+			TaskrunName string
+			*v1alpha1.PipelineRunTaskRunStatus
+		}{
+			taskrunName,
+			taskrunStatus,
+		})
+	}
+
+	return trl
+}
+
+func (s taskrunList) Len() int      { return len(s) }
+func (s taskrunList) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s taskrunList) Less(i, j int) bool {
+	return s[j].Status.StartTime.Before(s[i].Status.StartTime)
 }
