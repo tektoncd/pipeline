@@ -84,7 +84,7 @@ func TestPipelineRun(t *testing.T) {
 		// 1 from PipelineRun and 4 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 5,
 	}, {
-		name: "service account propagation",
+		name: "service account propagation and pipeline param",
 		testSetup: func(t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
 			if _, err := c.KubeClient.Kube.CoreV1().Secrets(namespace).Create(getPipelineRunSecret(index, namespace)); err != nil {
@@ -96,10 +96,12 @@ func TestPipelineRun(t *testing.T) {
 			}
 
 			task := tb.Task(getName(taskName, index), namespace, tb.TaskSpec(
+				tb.TaskInputs(tb.InputsParamSpec("path", v1alpha1.ParamTypeString),
+					tb.InputsParamSpec("dest", v1alpha1.ParamTypeString)),
 				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
 				tb.Step("config-docker", "quay.io/rhpipeline/skopeo:alpine",
 					tb.Command("skopeo"),
-					tb.Args("copy", "docker://gcr.io/build-crd-testing/secret-sauce", "dir:///tmp/"),
+					tb.Args("copy", "${inputs.params.path}", "${inputs.params.dest}"),
 				),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
@@ -229,7 +231,11 @@ func TestPipelineRun(t *testing.T) {
 
 func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(getName(pipelineName, suffix), namespace, tb.PipelineSpec(
-		tb.PipelineTask(task1Name, getName(taskName, suffix)),
+		tb.PipelineParamSpec("path", v1alpha1.ParamTypeString),
+		tb.PipelineParamSpec("dest", v1alpha1.ParamTypeString),
+		tb.PipelineTask(task1Name, getName(taskName, suffix),
+			tb.PipelineTaskParam("path", "${params.path}"),
+			tb.PipelineTaskParam("dest", "${params.dest}")),
 	))
 }
 
@@ -370,6 +376,8 @@ func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRu
 	return tb.PipelineRun(getName(pipelineRunName, suffix), namespace,
 		tb.PipelineRunLabel("hello-world-key", "hello-world-value"),
 		tb.PipelineRunSpec(getName(pipelineName, suffix),
+			tb.PipelineRunParam("path", "docker://gcr.io/build-crd-testing/secret-sauce"),
+			tb.PipelineRunParam("dest", "dir:///tmp/"),
 			tb.PipelineRunServiceAccount(fmt.Sprintf("%s%d", saName, suffix)),
 		),
 	)
