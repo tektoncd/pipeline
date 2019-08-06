@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/templating"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
@@ -55,7 +55,7 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
 }
 
-// ApplyResources applies the templating from values in resources which are referenced in spec as subitems
+// ApplyResources applies the substitution from values in resources which are referenced in spec as subitems
 // of the replacementStr.
 func ApplyResources(spec *v1alpha1.TaskSpec, resolvedResources map[string]v1alpha1.PipelineResourceInterface, replacementStr string) *v1alpha1.TaskSpec {
 	replacements := map[string]string{}
@@ -94,25 +94,25 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, stringReplacements map[string]st
 	// Apply variable expansion to steps fields.
 	steps := spec.Steps
 	for i := range steps {
-		templating.ApplyContainerReplacements(&steps[i], stringReplacements, arrayReplacements)
+		substitution.ApplyContainerReplacements(&steps[i], stringReplacements, arrayReplacements)
 	}
 
 	// Apply variable expansion to stepTemplate fields.
 	if spec.StepTemplate != nil {
-		templating.ApplyContainerReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
+		substitution.ApplyContainerReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
 	}
 
 	// Apply variable expansion to the build's volumes
 	for i, v := range spec.Volumes {
-		spec.Volumes[i].Name = templating.ApplyReplacements(v.Name, stringReplacements)
+		spec.Volumes[i].Name = substitution.ApplyReplacements(v.Name, stringReplacements)
 		if v.VolumeSource.ConfigMap != nil {
-			spec.Volumes[i].ConfigMap.Name = templating.ApplyReplacements(v.ConfigMap.Name, stringReplacements)
+			spec.Volumes[i].ConfigMap.Name = substitution.ApplyReplacements(v.ConfigMap.Name, stringReplacements)
 		}
 		if v.VolumeSource.Secret != nil {
-			spec.Volumes[i].Secret.SecretName = templating.ApplyReplacements(v.Secret.SecretName, stringReplacements)
+			spec.Volumes[i].Secret.SecretName = substitution.ApplyReplacements(v.Secret.SecretName, stringReplacements)
 		}
 		if v.PersistentVolumeClaim != nil {
-			spec.Volumes[i].PersistentVolumeClaim.ClaimName = templating.ApplyReplacements(v.PersistentVolumeClaim.ClaimName, stringReplacements)
+			spec.Volumes[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(v.PersistentVolumeClaim.ClaimName, stringReplacements)
 		}
 	}
 

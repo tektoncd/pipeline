@@ -14,15 +14,14 @@
  limitations under the License.
 */
 
-package templating_test
+package substitution_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/tektoncd/pipeline/pkg/templating"
 )
 
 func TestApplyContainerReplacements(t *testing.T) {
@@ -119,7 +118,7 @@ func TestApplyContainerReplacements(t *testing.T) {
 			SubPath:   "replaced!",
 		}},
 	}
-	templating.ApplyContainerReplacements(&c, replacements, arrayReplacements)
+	substitution.ApplyContainerReplacements(&c, replacements, arrayReplacements)
 	if d := cmp.Diff(expected, c); d != "" {
 		t.Errorf("Container replacements failed: %s", d)
 	}
@@ -140,7 +139,7 @@ func TestApplyContainerReplacements_NotDefined(t *testing.T) {
 	expected := corev1.Container{
 		Name: "${params.not.defined}",
 	}
-	templating.ApplyContainerReplacements(&c, replacements, arrayReplacements)
+	substitution.ApplyContainerReplacements(&c, replacements, arrayReplacements)
 	if d := cmp.Diff(expected, c); d != "" {
 		t.Errorf("Unexpected container replacement: %s", d)
 	}

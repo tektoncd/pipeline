@@ -240,7 +240,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	// Ensure that the parameters from the PipelineRun are overriding Pipeline parameters with the same type.
-	// Weird templating issues can occur if this is not validated (ApplyParameters() does not verify type).
+	// Weird substitution issues can occur if this is not validated (ApplyParameters() does not verify type).
 	err = resources.ValidateParamTypesMatching(p, pr)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
@@ -254,7 +254,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		return nil
 	}
 
-	// Apply parameter templating from the PipelineRun
+	// Apply parameter substitution from the PipelineRun
 	p = resources.ApplyParameters(p, pr)
 
 	// Propagate labels from Pipeline to PipelineRun.

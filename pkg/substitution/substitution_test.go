@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package templating_test
+package substitution_test
 
 import (
 	"testing"
@@ -22,7 +22,7 @@ import (
 	"knative.dev/pkg/apis"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/templating"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 func TestValidateVariables(t *testing.T) {
@@ -188,7 +188,7 @@ func TestValidateVariables(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := templating.ValidateVariable("somefield", tt.args.input, tt.args.prefix, tt.args.contextPrefix, tt.args.locationName, tt.args.path, tt.args.vars)
+			got := substitution.ValidateVariable("somefield", tt.args.input, tt.args.prefix, tt.args.contextPrefix, tt.args.locationName, tt.args.path, tt.args.vars)
 
 			if d := cmp.Diff(got, tt.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("ValidateVariable() error did not match expected error %s", d)
@@ -250,7 +250,7 @@ func TestApplyReplacements(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualOutput := templating.ApplyReplacements(tt.args.input, tt.args.replacements)
+			actualOutput := substitution.ApplyReplacements(tt.args.input, tt.args.replacements)
 			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
 				t.Errorf("ApplyReplacements() output did not match expected value %s", d)
 			}
@@ -308,7 +308,7 @@ func TestApplyArrayReplacements(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualOutput := templating.ApplyArrayReplacements(tt.args.input, tt.args.stringReplacements, tt.args.arrayReplacements)
+			actualOutput := substitution.ApplyArrayReplacements(tt.args.input, tt.args.stringReplacements, tt.args.arrayReplacements)
 			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
 				t.Errorf("ApplyArrayReplacements() output did not match expected value %s", d)
 			}

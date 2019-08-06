@@ -108,7 +108,7 @@ var (
 			tb.EnvVar("FRUIT", "LEMON"),
 			tb.Command("/mycmd"))))
 
-	templatedTask = tb.Task("test-task-with-templating", "foo", tb.TaskSpec(
+	templatedTask = tb.Task("test-task-with-substitution", "foo", tb.TaskSpec(
 		tb.TaskInputs(
 			tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
 			tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString), tb.InputsParamSpec("myarghasdefault", v1alpha1.ParamTypeString, tb.ParamSpecDefault("dont see me")),
@@ -264,7 +264,7 @@ func TestReconcile(t *testing.T) {
 	taskRunTaskEnv := tb.TaskRun("test-taskrun-task-env", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(taskEnvTask.Name, tb.TaskRefAPIVersion("a1")),
 	))
-	taskRunTemplating := tb.TaskRun("test-taskrun-templating", "foo", tb.TaskRunSpec(
+	taskRunSubstitution := tb.TaskRun("test-taskrun-substitution", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(templatedTask.Name, tb.TaskRefAPIVersion("a1")),
 		tb.TaskRunInputs(
 			tb.TaskRunInputsParam("myarg", "foo"),
@@ -391,7 +391,7 @@ func TestReconcile(t *testing.T) {
 
 	taskruns := []*v1alpha1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
-		taskRunTemplating, taskRunInputOutput,
+		taskRunSubstitution, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
 		taskRunWithLabels, taskRunWithAnnotations, taskRunWithResourceRequests, taskRunTaskEnv, taskRunWithPod,
 	}
@@ -471,12 +471,12 @@ func TestReconcile(t *testing.T) {
 		),
 	}, {
 		name:    "params",
-		taskRun: taskRunTemplating,
-		wantPod: tb.Pod("test-taskrun-templating-pod-123456", "foo",
+		taskRun: taskRunSubstitution,
+		wantPod: tb.Pod("test-taskrun-substitution-pod-123456", "foo",
 			tb.PodAnnotation("tekton.dev/ready", ""),
-			tb.PodLabel(taskNameLabelKey, "test-task-with-templating"),
-			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-templating"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-templating",
+			tb.PodLabel(taskNameLabelKey, "test-task-with-substitution"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-substitution"),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(corev1.Volume{

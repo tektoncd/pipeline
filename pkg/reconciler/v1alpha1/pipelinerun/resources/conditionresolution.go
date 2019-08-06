@@ -23,7 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/templating"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 const (
@@ -111,7 +111,7 @@ func convertParamTemplates(container *corev1.Container, params []v1alpha1.ParamS
 	replacements := make(map[string]string)
 	for _, p := range params {
 		replacements[fmt.Sprintf("params.%s", p.Name)] = fmt.Sprintf("${inputs.params.%s}", p.Name)
-		templating.ApplyContainerReplacements(container, replacements, map[string][]string{})
+		substitution.ApplyContainerReplacements(container, replacements, map[string][]string{})
 	}
 }
 

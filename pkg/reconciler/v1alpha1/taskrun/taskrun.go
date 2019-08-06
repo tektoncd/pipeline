@@ -385,7 +385,7 @@ func (c *Reconciler) updateReady(pod *corev1.Pod) error {
 }
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
-// TODO(dibyom): Refactor resource setup/templating logic to its own function in the resources package
+// TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
 	ts := rtr.TaskSpec.DeepCopy()
 	inputResources, err := resourceImplBinding(rtr.Inputs)
@@ -428,10 +428,10 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	if ts.Inputs != nil {
 		defaults = append(defaults, ts.Inputs.Params...)
 	}
-	// Apply parameter templating from the taskrun.
+	// Apply parameter substitution from the taskrun.
 	ts = resources.ApplyParameters(ts, tr, defaults...)
 
-	// Apply bound resource templating from the taskrun.
+	// Apply bound resource substitution from the taskrun.
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
