@@ -46,11 +46,14 @@ spec:
     - name: workspace
       type: git
       targetPath: newworkspace
+    params:
+    - name: args
+      type: array
   steps:
   - name: read
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'cat /workspace/newworkspace/stuff'] # tests that new targetpath and previous task output is dumped
+    args: ['${inputs.params.args}'] # tests that new targetpath and previous task output is dumped
 ---
 #The Output of the first Task (git resource) create-file is given as an `Input`
 # to the next `Task` check-stuff-file-exists using`from` clause.
@@ -77,6 +80,11 @@ spec:
   - name: then-check                 # 2.  check file exists
     taskRef:
       name: check-stuff-file-exists
+    params:
+    - name: args
+      value:
+      - '-c'
+      - 'cat /workspace/newworkspace/stuff'
     resources:
       inputs:
       - name: workspace
