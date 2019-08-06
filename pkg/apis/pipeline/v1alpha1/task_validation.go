@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/merge"
-	"github.com/tektoncd/pipeline/pkg/templating"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -287,15 +287,15 @@ func validateVariables(steps []corev1.Container, prefix string, vars map[string]
 }
 
 func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return templating.ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
+	return substitution.ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
 }
 
 func validateTaskNoArrayReferenced(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return templating.ValidateVariableProhibited(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
+	return substitution.ValidateVariableProhibited(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
 }
 
 func validateTaskArraysIsolated(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return templating.ValidateVariableIsolated(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
+	return substitution.ValidateVariableIsolated(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {
