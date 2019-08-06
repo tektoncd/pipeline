@@ -44,35 +44,51 @@ var simpleTaskSpec = &v1alpha1.TaskSpec{
 	},
 	Steps: []corev1.Container{{
 		Name:  "foo",
-		Image: "${inputs.params.myimage}",
+		Image: "$(inputs.params.myimage)",
 	}, {
 		Name:       "baz",
 		Image:      "bat",
+		WorkingDir: "$(inputs.resources.workspace.path)",
+		Args:       []string{"$(inputs.resources.workspace.url)"},
+	}, {
+		Name:  "qux",
+		Image: "quux",
+		Args:  []string{"$(outputs.resources.imageToUse.url)"},
+	}, {
+		Name: "foo",
+		// TODO(#1170): Remove support for ${} syntax
+		Image: "${inputs.params.myimage}",
+	}, {
+		Name:  "baz",
+		Image: "bat",
+		// TODO(#1170): Remove support for ${} syntax
 		WorkingDir: "${inputs.resources.workspace.path}",
 		Args:       []string{"${inputs.resources.workspace.url}"},
 	}, {
 		Name:  "qux",
 		Image: "quux",
-		Args:  []string{"${outputs.resources.imageToUse.url}"},
+		// TODO(#1170): Remove support for ${} syntax
+		Args: []string{"${outputs.resources.imageToUse.url}"},
 	}},
 }
 
 var envTaskSpec = &v1alpha1.TaskSpec{
 	Steps: []corev1.Container{{
 		Name:  "foo",
-		Image: "busybox:${inputs.params.FOO}",
+		Image: "busybox:$(inputs.params.FOO)",
 		Env: []corev1.EnvVar{{
 			Name:  "foo",
-			Value: "value-${inputs.params.FOO}",
+			Value: "value-$(inputs.params.FOO)",
 		}, {
 			Name: "bar",
 			ValueFrom: &corev1.EnvVarSource{
 				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "config-${inputs.params.FOO}"},
-					Key:                  "config-key-${inputs.params.FOO}",
+					LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
+					Key:                  "config-key-$(inputs.params.FOO)",
 				},
 			},
 		}, {
+			// TODO(#1170): Remove support for ${} syntax
 			Name: "baz",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
@@ -82,11 +98,12 @@ var envTaskSpec = &v1alpha1.TaskSpec{
 			},
 		}},
 		EnvFrom: []corev1.EnvFromSource{{
-			Prefix: "prefix-0-${inputs.params.FOO}",
+			Prefix: "prefix-0-$(inputs.params.FOO)",
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "config-${inputs.params.FOO}"},
+				LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
 			},
 		}, {
+			// TODO(#1170): Remove support for ${} syntax
 			Prefix: "prefix-1-${inputs.params.FOO}",
 			SecretRef: &corev1.SecretEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{Name: "secret-${inputs.params.FOO}"},
@@ -99,12 +116,12 @@ var stepTemplateTaskSpec = &v1alpha1.TaskSpec{
 	StepTemplate: &corev1.Container{
 		Env: []corev1.EnvVar{{
 			Name:  "template-var",
-			Value: "${inputs.params.FOO}",
+			Value: "$(inputs.params.FOO)",
 		}},
 	},
 	Steps: []corev1.Container{{
 		Name:  "simple-image",
-		Image: "${inputs.params.myimage}",
+		Image: "$(inputs.params.myimage)",
 	}, {
 		Name:  "image-with-env-specified",
 		Image: "some-other-image",
@@ -118,11 +135,11 @@ var stepTemplateTaskSpec = &v1alpha1.TaskSpec{
 var volumeMountTaskSpec = &v1alpha1.TaskSpec{
 	Steps: []corev1.Container{{
 		Name:  "foo",
-		Image: "busybox:${inputs.params.FOO}",
+		Image: "busybox:$(inputs.params.FOO)",
 		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "${inputs.params.FOO}",
-			MountPath: "path/to/${inputs.params.FOO}",
-			SubPath:   "sub/${inputs.params.FOO}/path",
+			Name:      "$(inputs.params.FOO)",
+			MountPath: "path/to/$(inputs.params.FOO)",
+			SubPath:   "sub/$(inputs.params.FOO)/path",
 		}},
 	}},
 }
@@ -136,7 +153,7 @@ var gcsTaskSpec = &v1alpha1.TaskSpec{
 	Steps: []corev1.Container{{
 		Name:  "foobar",
 		Image: "someImage",
-		Args:  []string{"${outputs.resources.bucket.path}"},
+		Args:  []string{"$(outputs.resources.bucket.path)"},
 	}},
 }
 
@@ -148,7 +165,7 @@ var arrayParamTaskSpec = &v1alpha1.TaskSpec{
 		Name:    "image-with-args-specified",
 		Image:   "some-other-image",
 		Command: []string{"echo"},
-		Args:    []string{"first", "second", "${inputs.params.array-param}", "last"},
+		Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
 	}},
 }
 
@@ -160,7 +177,7 @@ var arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{
 		Name:    "image-with-args-specified",
 		Image:   "some-other-image",
 		Command: []string{"echo"},
-		Args:    []string{"${inputs.params.normal-param}", "second", "${inputs.params.array-param}", "last"},
+		Args:    []string{"$(inputs.params.normal-param)", "second", "$(inputs.params.array-param)", "last"},
 	}},
 }
 
@@ -171,20 +188,20 @@ var multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{
 	}, {
 		Name:    "image-with-args-specified",
 		Image:   "some-other-image",
-		Command: []string{"cmd", "${inputs.params.another-array-param}"},
-		Args:    []string{"first", "second", "${inputs.params.array-param}", "last"},
+		Command: []string{"cmd", "$(inputs.params.another-array-param)"},
+		Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
 	}},
 }
 
 var multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{
 	Steps: []corev1.Container{{
 		Name:  "simple-image",
-		Image: "image-${inputs.params.string-param2}",
+		Image: "image-$(inputs.params.string-param2)",
 	}, {
 		Name:    "image-with-args-specified",
 		Image:   "some-other-image",
-		Command: []string{"cmd", "${inputs.params.array-param1}"},
-		Args:    []string{"${inputs.params.array-param2}", "second", "${inputs.params.array-param1}", "${inputs.params.string-param1}", "last"},
+		Command: []string{"cmd", "$(inputs.params.array-param1)"},
+		Args:    []string{"$(inputs.params.array-param2)", "second", "$(inputs.params.array-param1)", "$(inputs.params.string-param1)", "last"},
 	}},
 }
 
@@ -358,6 +375,7 @@ func TestApplyParameters(t *testing.T) {
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[0].Image = "bar"
+			spec.Steps[3].Image = "bar"
 		}),
 	}, {
 		name: "array parameter with 0 elements",
@@ -518,6 +536,7 @@ func TestApplyParameters(t *testing.T) {
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[0].Image = "mydefault"
+			spec.Steps[3].Image = "mydefault"
 		}),
 	}, {
 		name: "with empty string default parameter",
@@ -533,6 +552,7 @@ func TestApplyParameters(t *testing.T) {
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[0].Image = ""
+			spec.Steps[3].Image = ""
 		}),
 	}}
 	for _, tt := range tests {
@@ -564,6 +584,7 @@ func TestApplyResources(t *testing.T) {
 		},
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
+			spec.Steps[4].WorkingDir = "/workspace/workspace"
 		}),
 	}, {
 		name: "input resource specified",
@@ -575,6 +596,8 @@ func TestApplyResources(t *testing.T) {
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[1].Args = []string{"https://git-repo"}
+			spec.Steps[4].WorkingDir = "/workspace/workspace"
+			spec.Steps[4].Args = []string{"https://git-repo"}
 		}),
 	}, {
 		name: "output resource specified",
@@ -586,6 +609,8 @@ func TestApplyResources(t *testing.T) {
 		want: applyMutation(simpleTaskSpec, func(spec *v1alpha1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
+			spec.Steps[4].WorkingDir = "/workspace/workspace"
+			spec.Steps[5].Args = []string{"gcr.io/hans/sandwiches"}
 		}),
 	}, {
 		name: "output resource specified with path replacement",
@@ -602,7 +627,7 @@ func TestApplyResources(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := resources.ApplyResources(tt.args.ts, tt.args.r, tt.args.rStr)
 			if d := cmp.Diff(got, tt.want); d != "" {
-				t.Errorf("ApplyResources() diff %s", d)
+				t.Errorf("ApplyResources() -want, +got: %v", d)
 			}
 		})
 	}
@@ -618,7 +643,7 @@ func TestVolumeReplacement(t *testing.T) {
 		name: "volume replacement",
 		ts: &v1alpha1.TaskSpec{
 			Volumes: []corev1.Volume{{
-				Name: "${foo}",
+				Name: "$(foo)",
 			}},
 		},
 		repl: map[string]string{"foo": "bar"},
@@ -629,6 +654,103 @@ func TestVolumeReplacement(t *testing.T) {
 		},
 	}, {
 		name: "volume configmap",
+		ts: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "$(name)",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(configmapname)",
+						},
+					},
+				}},
+			},
+		},
+		repl: map[string]string{
+			"name":          "myname",
+			"configmapname": "cfgmapname",
+		},
+		want: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "myname",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "cfgmapname",
+						},
+					},
+				}},
+			},
+		},
+	}, {
+		name: "volume secretname",
+		ts: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "$(name)",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "$(secretname)",
+					},
+				}},
+			},
+		},
+		repl: map[string]string{
+			"name":       "mysecret",
+			"secretname": "totallysecure",
+		},
+		want: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "mysecret",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: "totallysecure",
+					},
+				}},
+			},
+		},
+	}, {
+		name: "volume PVC name",
+		ts: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "$(name)",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "$(FOO)",
+					},
+				},
+			}},
+		},
+		repl: map[string]string{
+			"name": "mypvc",
+			"FOO":  "pvcrocks",
+		},
+		want: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "mypvc",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "pvcrocks",
+					},
+				},
+			}},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated volume replacement",
+		ts: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "${foo}",
+			}},
+		},
+		repl: map[string]string{"foo": "bar"},
+		want: &v1alpha1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "bar",
+			}},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated volume configmap",
 		ts: &v1alpha1.TaskSpec{
 			Volumes: []corev1.Volume{{
 				Name: "${name}",
@@ -658,7 +780,8 @@ func TestVolumeReplacement(t *testing.T) {
 			},
 		},
 	}, {
-		name: "volume secretname",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated volume secretname",
 		ts: &v1alpha1.TaskSpec{
 			Volumes: []corev1.Volume{{
 				Name: "${name}",
@@ -684,7 +807,8 @@ func TestVolumeReplacement(t *testing.T) {
 			},
 		},
 	}, {
-		name: "volume PVC name",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated volume PVC name",
 		ts: &v1alpha1.TaskSpec{
 			Volumes: []corev1.Volume{{
 				Name: "${name}",

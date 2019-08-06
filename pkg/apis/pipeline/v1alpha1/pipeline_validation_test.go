@@ -121,7 +121,7 @@ func TestPipelineSpec_Validate(t *testing.T) {
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString),
 			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeString),
 			tb.PipelineTask("bar", "bar-task",
-				tb.PipelineTaskParam("a-param", "${baz} and ${foo-is-baz}")),
+				tb.PipelineTaskParam("a-param", "$(baz) and $(foo-is-baz)")),
 		)),
 		failureExpected: false,
 	}, {
@@ -130,11 +130,40 @@ func TestPipelineSpec_Validate(t *testing.T) {
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("some", "default")),
 			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
 			tb.PipelineTask("bar", "bar-task",
-				tb.PipelineTaskParam("a-param", "${baz}", "and", "${foo-is-baz}")),
+				tb.PipelineTaskParam("a-param", "$(baz)", "and", "$(foo-is-baz)")),
 		)),
 		failureExpected: false,
 	}, {
 		name: "pipeline parameter nested in task parameter",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "$(input.workspace.$(baz))")),
+		)),
+		failureExpected: false,
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated valid parameter variables",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString),
+			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeString),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "${baz} and ${foo-is-baz}")),
+		)),
+		failureExpected: false,
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated valid array parameter variables",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("some", "default")),
+			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "${baz}", "and", "${foo-is-baz}")),
+		)),
+		failureExpected: false,
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated pipeline parameter nested in task parameter",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString),
 			tb.PipelineTask("bar", "bar-task",
@@ -207,9 +236,65 @@ func TestPipelineSpec_Validate(t *testing.T) {
 		name: "not defined parameter variable",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineTask("foo", "foo-task",
+				tb.PipelineTaskParam("a-param", "$(params.does-not-exist)")))),
+		failureExpected: true,
+	}, {
+		name: "not defined parameter variable with defined",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("foo", v1alpha1.ParamTypeString, tb.ParamSpecDefault("something")),
+			tb.PipelineTask("foo", "foo-task",
+				tb.PipelineTaskParam("a-param", "$(params.foo) and $(params.does-not-exist)")))),
+		failureExpected: true,
+	}, {
+		name: "invalid parameter type",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", "invalidtype", tb.ParamSpecDefault("some", "default")),
+			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "$(baz)", "and", "$(foo-is-baz)")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "array parameter mismatching default type",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("astring")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "arrayelement", "$(baz)")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "string parameter mismatching default type",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString, tb.ParamSpecDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "arrayelement", "$(baz)")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "array parameter used as string",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "$(params.baz)")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "array parameter string template not isolated",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskParam("a-param", "first", "value: $(params.baz)", "last")),
+		)),
+		failureExpected: true,
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated not defined parameter variable",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("foo", "foo-task",
 				tb.PipelineTaskParam("a-param", "${params.does-not-exist}")))),
 		failureExpected: true,
 	}, {
+		// TODO(#1170): Remove support for ${} syntax
 		name: "not defined parameter variable with defined",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("foo", v1alpha1.ParamTypeString, tb.ParamSpecDefault("something")),
@@ -217,7 +302,8 @@ func TestPipelineSpec_Validate(t *testing.T) {
 				tb.PipelineTaskParam("a-param", "${params.foo} and ${params.does-not-exist}")))),
 		failureExpected: true,
 	}, {
-		name: "invalid parameter type",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated invalid parameter type",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", "invalidtype", tb.ParamSpecDefault("some", "default")),
 			tb.PipelineParamSpec("foo-is-baz", v1alpha1.ParamTypeArray),
@@ -226,7 +312,8 @@ func TestPipelineSpec_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
-		name: "array parameter mismatching default type",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated array parameter mismatching default type",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("astring")),
 			tb.PipelineTask("bar", "bar-task",
@@ -234,7 +321,8 @@ func TestPipelineSpec_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
-		name: "string parameter mismatching default type",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated string parameter mismatching default type",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeString, tb.ParamSpecDefault("anarray", "elements")),
 			tb.PipelineTask("bar", "bar-task",
@@ -242,7 +330,8 @@ func TestPipelineSpec_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
-		name: "array parameter used as string",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated array parameter used as string",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
 			tb.PipelineTask("bar", "bar-task",
@@ -250,7 +339,8 @@ func TestPipelineSpec_Validate(t *testing.T) {
 		)),
 		failureExpected: true,
 	}, {
-		name: "array parameter string template not isolated",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated array parameter string template not isolated",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
 			tb.PipelineParamSpec("baz", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("anarray", "elements")),
 			tb.PipelineTask("bar", "bar-task",

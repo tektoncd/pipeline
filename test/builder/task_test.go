@@ -49,7 +49,7 @@ func TestTask(t *testing.T) {
 		),
 		tb.TaskOutputs(tb.OutputsResource("myotherimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
-			"--my-other-arg=${inputs.resources.workspace.url}",
+			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
 		tb.TaskVolume("foo", tb.VolumeSource(corev1.VolumeSource{
 			HostPath: &corev1.HostPathVolumeSource{Path: "/foo/bar"},
@@ -65,7 +65,7 @@ func TestTask(t *testing.T) {
 				Name:    "mycontainer",
 				Image:   "myimage",
 				Command: []string{"/mycmd"},
-				Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
+				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
 			}},
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
@@ -112,7 +112,7 @@ func TestTask(t *testing.T) {
 func TestClusterTask(t *testing.T) {
 	task := tb.ClusterTask("test-clustertask", tb.ClusterTaskSpec(
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
-			"--my-other-arg=${inputs.resources.workspace.url}",
+			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
 	))
 	expectedTask := &v1alpha1.ClusterTask{
@@ -122,7 +122,7 @@ func TestClusterTask(t *testing.T) {
 				Name:    "mycontainer",
 				Image:   "myimage",
 				Command: []string{"/mycmd"},
-				Args:    []string{"--my-other-arg=${inputs.resources.workspace.url}"},
+				Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
 			}},
 		},
 	}

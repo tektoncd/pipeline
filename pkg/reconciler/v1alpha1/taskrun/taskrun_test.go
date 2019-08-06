@@ -117,18 +117,19 @@ var (
 		),
 		tb.TaskOutputs(tb.OutputsResource("myimage", v1alpha1.PipelineResourceTypeImage)),
 		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
-			"--my-arg=${inputs.params.myarg}",
-			"--my-arg-with-default=${inputs.params.myarghasdefault}",
-			"--my-arg-with-default2=${inputs.params.myarghasdefault2}",
+			"--my-arg=$(inputs.params.myarg)",
+			"--my-arg-with-default=$(inputs.params.myarghasdefault)",
+			"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
+			// TODO(#1170): Remove support for ${} syntax
 			"--my-additional-arg=${outputs.resources.myimage.url}",
 		)),
 		tb.Step("myothercontainer", "myotherimage", tb.Command("/mycmd"), tb.Args(
-			"--my-other-arg=${inputs.resources.workspace.url}",
+			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
 		tb.TaskVolume("volume-configmap", tb.VolumeSource(corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "${inputs.params.configmapname}",
+					Name: "$(inputs.params.configmapname)",
 				},
 			},
 		})),
@@ -305,7 +306,7 @@ func TestReconcile(t *testing.T) {
 				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
 			),
 			tb.Step("mycontainer", "myimage", tb.Command("/mycmd"),
-				tb.Args("--my-arg=${inputs.params.myarg}"),
+				tb.Args("--my-arg=$(inputs.params.myarg)"),
 			),
 		),
 	))

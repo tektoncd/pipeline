@@ -26,7 +26,7 @@ spec:
   volumes:
   - name: custom
     configMap:
-      name: "${inputs.params.CFGNAME}"
+      name: "$(inputs.params.CFGNAME)"
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun

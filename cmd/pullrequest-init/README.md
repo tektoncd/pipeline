@@ -71,7 +71,7 @@ GitHub pull requests will output these additional files:
 
 For now, these files are *read-only*.
 
-The binary will look for GitHub credentials in the `${GITHUBTOKEN}` environment
+The binary will look for GitHub credentials in the `$GITHUBTOKEN` environment
 variable. This should generally be specified as a secret with the field name
 `githubToken` in the `PullRequestResource` definition.
 

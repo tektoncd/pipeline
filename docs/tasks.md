@@ -24,7 +24,7 @@ entire Kubernetes cluster.
   - [Volumes](#volumes)
   - [Container Template **deprecated**](#step-template)
   - [Step Template](#step-template)
-  - [Templating](#templating)
+  - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
 
 ## ClusterTask
@@ -172,7 +172,7 @@ The following example shows how Tasks can be parameterized, and these parameters
 can be passed to the `Task` from a `TaskRun`.
 
 Input parameters in the form of `${inputs.params.foo}` are replaced inside of
-the [`steps`](#steps) (see also [templating](#templating)).
+the [`steps`](#steps) (see also [variable substitution](#variable-substitution)).
 
 The following `Task` declares an input parameter called 'flags', and uses it in
 the `steps.args` list.
@@ -227,7 +227,7 @@ Input resources, like source code (git) or artifacts, are dumped at path
 [volume](https://kubernetes.io/docs/concepts/storage/volumes/) and is available
 to all [`steps`](#steps) of your `Task`. The path that the resources are mounted
 at can be overridden with the `targetPath` value. Steps can use the `path`
-[template](#Templating) key to refer to the local path to the mounted resource.
+[variable substitution](#variable-substitution) key to refer to the local path to the mounted resource.
 
 ### Outputs
 
@@ -346,7 +346,7 @@ For example, use volumes to accomplish one of the following common tasks:
 Specifies a [`Container`](https://kubernetes.io/docs/concepts/containers/)
 configuration that will be used as the basis for all [`steps`](#steps) in your
 `Task`. Configuration in an individual step will override or merge with the
-container template's configuration.
+step template's configuration.
 
 In the example below, the `Task` specifies a `stepTemplate` with the
 environment variable `FOO` set to `bar`. The first step will use that value for
@@ -369,9 +369,10 @@ steps:
         value: "baz"
 ```
 
-### Templating
 
-`Tasks` support templating using values from all [`inputs`](#inputs) and
+### Variable Subtituation
+
+`Tasks` support string replacement using values from all [`inputs`](#inputs) and
 [`outputs`](#outputs).
 
 [`PipelineResources`](resources.md) can be referenced in a `Task` spec like
@@ -379,29 +380,32 @@ this, where `<name>` is the Resource Name and `<key>` is a one of the resource's
 `params`:
 
 ```shell
-${inputs.resources.<name>.<key>}
+$(inputs.resources.<name>.<key>)
 ```
 
 Or for an output resource:
 
 ```shell
-${outputs.resources.<name>.<key>}
+$(outputs.resources.<name>.<key>)
 ```
 
 The local path to a resource on the mounted volume can be accessed using the
 `path` key:
 
 ```shell
-${inputs.resouces.<name>.path}
+$(inputs.resouces.<name>.path)
 ```
 
 To access an input parameter, replace `resources` with `params`.
 
 ```shell
-${inputs.params.<name>}
+$(inputs.params.<name>)
 ```
 
-#### Templating Parameters of Type `Array`
+_The deprecated syntax `${}`, e.g. `${inputs.params.<name>}` will be supported
+until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._
+
+#### Variable Substitution with Parameters of Type `Array`
 
 Referenced parameters of type `array` will expand to insert the array elements in the reference string's spot.
 
@@ -423,17 +427,17 @@ Note that array parameters __*must*__ be referenced in a completely isolated str
 Any other attempt to reference an array is invalid and will throw an error. 
 
 For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because 
-the template string isn't isolated:
+the string isn't isolated:
 ```
  - name: build-step
       image: gcr.io/cloud-builders/some-image
-      args: ["build", "additionalArg ${inputs.params.build-args}"]
+      args: ["build", "additionalArg $(inputs.params.build-args)"]
 ```
 
 Similarly, referencing `build-args` in a non-array field is also invalid:
 ```
  - name: build-step
-      image: "${inputs.params.build-args}"
+      image: "$(inputs.params.build-args)"
       args: ["build", "args"]
 ```
 
@@ -441,10 +445,10 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
 ```
  - name: build-step
       image: gcr.io/cloud-builders/some-image
-      args: ["build", "${inputs.params.build-args}", "additonalArg"]
+      args: ["build", "$(inputs.params.build-args)", "additonalArg"]
 ```
 
-#### Templating Volumes
+#### Variable Substitution within Volumes
 
 Task volume names and different
 [types of volumes](https://kubernetes.io/docs/concepts/storage/volumes/#types-of-volumes)
@@ -521,7 +525,7 @@ spec:
         - name: docker-socket
           mountPath: /var/run/docker.sock
 
-  # As an implementation detail, this template mounts the host's daemon socket.
+  # As an implementation detail, this Task mounts the host's daemon socket.
   volumes:
     - name: docker-socket
       hostPath:

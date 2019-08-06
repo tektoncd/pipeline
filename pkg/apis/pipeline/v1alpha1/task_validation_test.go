@@ -148,13 +148,66 @@ func TestTaskSpecValidate(t *testing.T) {
 			},
 			BuildSteps: []corev1.Container{{
 				Name:       "mystep",
+				Image:      "$(inputs.resources.foo.url)",
+				Args:       []string{"--flag=$(inputs.params.baz) && $(input.params.foo-is-baz)"},
+				WorkingDir: "/foo/bar/$(outputs.resources.source)",
+			}},
+		},
+	}, {
+		name: "valid array template variable",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "$(inputs.resources.foo.url)",
+				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.params.foo-is-baz)"},
+				WorkingDir: "/foo/bar/$(outputs.resources.source)",
+			}},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated valid template variable",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+				}, {
+					Name: "foo-is-baz",
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
 				Image:      "${inputs.resources.foo.url}",
 				Args:       []string{"--flag=${inputs.params.baz} && ${input.params.foo-is-baz}"},
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
 			}},
 		},
 	}, {
-		name: "valid array template variable",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated valid array template variable",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
@@ -419,6 +472,20 @@ func TestTaskSpecValidateError(t *testing.T) {
 			BuildSteps: []corev1.Container{{
 				Name:  "mystep",
 				Image: "myimage",
+				Args:  []string{"--flag=$(inputs.params.inexistent)"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "--flag=$(inputs.params.inexistent)" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated inexistent input param variable",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage",
 				Args:  []string{"--flag=${inputs.params.inexistent}"},
 			}},
 		},
@@ -447,14 +514,14 @@ func TestTaskSpecValidateError(t *testing.T) {
 			},
 			BuildSteps: []corev1.Container{{
 				Name:       "mystep",
-				Image:      "${inputs.params.baz}",
-				Command:    []string{"${inputs.param.foo-is-baz}"},
-				Args:       []string{"${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				Image:      "$(inputs.params.baz)",
+				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable type invalid in "${inputs.params.baz}" for step image`,
+			Message: `variable type invalid in "$(inputs.params.baz)" for step image`,
 			Paths:   []string{"taskspec.steps.image"},
 		},
 	}, {
@@ -479,13 +546,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			BuildSteps: []corev1.Container{{
 				Name:       "mystep",
 				Image:      "someimage",
-				Command:    []string{"${inputs.param.foo-is-baz}"},
-				Args:       []string{"not isolated: ${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Args:       []string{"not isolated: $(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable is not properly isolated in "not isolated: ${inputs.params.baz}" for step arg[0]`,
+			Message: `variable is not properly isolated in "not isolated: $(inputs.params.baz)" for step arg[0]`,
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {
@@ -510,13 +577,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			BuildSteps: []corev1.Container{{
 				Name:       "mystep",
 				Image:      "someimage",
-				Command:    []string{"${inputs.param.foo-is-baz}"},
-				Args:       []string{"not isolated: ${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
-				WorkingDir: "/foo/bar/${outputs.resources.source}",
+				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Args:       []string{"not isolated: $(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
+				WorkingDir: "/foo/bar/$(outputs.resources.source)",
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `variable is not properly isolated in "not isolated: ${inputs.params.baz}" for step arg[0]`,
+			Message: `variable is not properly isolated in "not isolated: $(inputs.params.baz)" for step arg[0]`,
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {
@@ -524,11 +591,11 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			BuildSteps: []corev1.Container{{
 				Name:  "mystep",
-				Image: "myimage:${inputs.resources.inputs}",
+				Image: "myimage:$(inputs.resources.inputs)",
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `non-existent variable in "myimage:${inputs.resources.inputs}" for step image`,
+			Message: `non-existent variable in "myimage:$(inputs.resources.inputs)" for step image`,
 			Paths:   []string{"taskspec.steps.image"},
 		},
 	}, {
@@ -559,6 +626,117 @@ func TestTaskSpecValidateError(t *testing.T) {
 			BuildSteps: []corev1.Container{{
 				Name:       "mystep",
 				Image:      "someimage",
+				Command:    []string{"$(inputs.param.foo-is-baz)"},
+				Args:       []string{"not isolated: $(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
+				WorkingDir: "/foo/bar/$(outputs.resources.source)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: $(inputs.params.baz)" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
+		name: "inexistent input resource variable",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage:$(inputs.resources.inputs)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "myimage:$(inputs.resources.inputs)" for step image`,
+			Paths:   []string{"taskspec.steps.image"},
+		},
+	}, {
+		name: "inexistent output param variable",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "myimage",
+				WorkingDir: "/foo/bar/$(outputs.resources.inexistent)",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "/foo/bar/$(outputs.resources.inexistent)" for step workingDir`,
+			Paths:   []string{"taskspec.steps.workingDir"},
+		},
+	}, {
+		name: "Inexistent param variable with existing",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Params: []v1alpha1.ParamSpec{
+					{
+						Name:        "foo",
+						Description: "param",
+						Default:     builder.ArrayOrString("default"),
+					},
+				},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"$(inputs.params.foo) && $(inputs.params.inexistent)"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(inputs.params.foo) && $(inputs.params.inexistent)" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprected array used in unaccepted field",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "${inputs.params.baz}",
+				Command:    []string{"${inputs.param.foo-is-baz}"},
+				Args:       []string{"${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "${inputs.params.baz}" for step image`,
+			Paths:   []string{"taskspec.steps.image"},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "depreated array not properly isolated",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "someimage",
 				Command:    []string{"${inputs.param.foo-is-baz}"},
 				Args:       []string{"not isolated: ${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
@@ -569,7 +747,40 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
 	}, {
-		name: "inexistent input resource variable",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated array not properly isolated",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Type: v1alpha1.ParamTypeArray,
+				}, {
+					Name: "foo-is-baz",
+					Type: v1alpha1.ParamTypeArray,
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"${inputs.param.foo-is-baz}"},
+				Args:       []string{"not isolated: ${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: ${inputs.params.baz}" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated inexistent input resource variable",
 		fields: fields{
 			BuildSteps: []corev1.Container{{
 				Name:  "mystep",
@@ -581,7 +792,59 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"taskspec.steps.image"},
 		},
 	}, {
-		name: "inexistent output param variable",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated inferred array not properly isolated",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					Name: "foo",
+					Type: v1alpha1.PipelineResourceTypeImage,
+				}},
+				Params: []v1alpha1.ParamSpec{{
+					Name: "baz",
+					Default: &v1alpha1.ArrayOrString{
+						Type:     v1alpha1.ParamTypeArray,
+						ArrayVal: []string{"implied", "array", "type"},
+					},
+				}, {
+					Name: "foo-is-baz",
+					Default: &v1alpha1.ArrayOrString{
+						Type:     v1alpha1.ParamTypeArray,
+						ArrayVal: []string{"implied", "array", "type"},
+					},
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{validResource},
+			},
+			BuildSteps: []corev1.Container{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"${inputs.param.foo-is-baz}"},
+				Args:       []string{"not isolated: ${inputs.params.baz}", "middle string", "${input.resources.foo.url}"},
+				WorkingDir: "/foo/bar/${outputs.resources.source}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: ${inputs.params.baz}" for step arg[0]`,
+			Paths:   []string{"taskspec.steps.arg[0]"},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated inexistent input resource variable",
+		fields: fields{
+			BuildSteps: []corev1.Container{{
+				Name:  "mystep",
+				Image: "myimage:${inputs.resources.inputs}",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "myimage:${inputs.resources.inputs}" for step image`,
+			Paths:   []string{"taskspec.steps.image"},
+		},
+	}, {
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated inexistent output param variable",
 		fields: fields{
 			BuildSteps: []corev1.Container{{
 				Name:       "mystep",
@@ -594,7 +857,8 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"taskspec.steps.workingDir"},
 		},
 	}, {
-		name: "Inexistent param variable with existing",
+		// TODO(#1170): Remove support for ${} syntax
+		name: "deprecated Inexistent param variable with existing",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Params: []v1alpha1.ParamSpec{

@@ -10,7 +10,7 @@ In few examples to demonstrate tasks that push image to registry, sample URL
 will need to change the values of this sample registry URL to a registry you can
 push to from inside your cluster. If you are following instructions
 [here](../DEVELOPMENT.md#getting-started) to setup then use the value of
-`${KO_DOCKER_REPO}` instead of `gcr.io/christiewilson-catfactory`.
+`$KO_DOCKER_REPO` instead of `gcr.io/christiewilson-catfactory`.
 
 ```bash
 # To invoke the build-push Task only
