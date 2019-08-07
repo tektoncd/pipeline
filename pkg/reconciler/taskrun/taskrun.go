@@ -35,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/sidecars"
 	"github.com/tektoncd/pipeline/pkg/status"
+
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -81,6 +82,10 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
+	// In case of reconcile errors, we store the error in a multierror, attempt
+	// to update, and return the original error combined with any update error
+	var merr error
+
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -154,9 +159,9 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// updates regardless of whether the reconciliation errored out.
 	if err := c.reconcile(ctx, tr); err != nil {
 		c.Logger.Errorf("Reconcile error: %v", err.Error())
-		return err
+		merr = multierror.Append(merr, err)
 	}
-	return c.updateStatusLabelsAndAnnotations(tr, original)
+	return multierror.Append(merr, c.updateStatusLabelsAndAnnotations(tr, original)).ErrorOrNil()
 }
 
 func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.TaskRun) error {

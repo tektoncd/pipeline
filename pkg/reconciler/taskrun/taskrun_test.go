@@ -1520,12 +1520,8 @@ func TestReconcilePodFetchError(t *testing.T) {
 	c := testAssets.Controller
 	clients := testAssets.Clients
 
-	clients.Kube.PrependReactor("*", "*", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
-		if action.GetVerb() == "get" && action.GetResource().Resource == "pods" {
-			// handled fetching pods
-			return true, nil, xerrors.New("induce failure fetching pods")
-		}
-		return false, nil, nil
+	clients.Kube.PrependReactor("get", "pods", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, nil, xerrors.New("induce failure fetching pods")
 	})
 
 	if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", taskRun.Namespace, taskRun.Name)); err == nil {

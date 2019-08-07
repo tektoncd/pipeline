@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -103,8 +104,10 @@ type Reconciler struct {
 	metrics           *Recorder
 }
 
-// Check that our Reconciler implements controller.Reconciler
-var _ controller.Reconciler = (*Reconciler)(nil)
+var (
+	// Check that our Reconciler implements controller.Reconciler
+	_ controller.Reconciler = (*Reconciler)(nil)
+)
 
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Pipeline Run
@@ -146,6 +149,10 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		pr.Status.InitializeConditions()
 	}
 
+	// In case of reconcile errors, we store the error in a multierror, attempt
+	// to update, and return the original error combined with any update error
+	var merr error
+
 	if pr.IsDone() {
 		if err := artifacts.CleanupArtifactStorage(pr, c.KubeClientSet, c.Logger); err != nil {
 			c.Logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
@@ -173,7 +180,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		// updates regardless of whether the reconciliation errored out.
 		if err = c.reconcile(ctx, pr); err != nil {
 			c.Logger.Errorf("Reconcile error: %v", err.Error())
-			return err
+			merr = multierror.Append(merr, err)
 		}
 	}
 
@@ -182,7 +189,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		if _, err := c.updateStatus(pr); err != nil {
 			c.Logger.Warn("Failed to update PipelineRun status", zap.Error(err))
 			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update")
-			return err
+			return multierror.Append(merr, err)
 		}
 		updated = true
 	}
@@ -193,7 +200,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		if _, err := c.updateLabelsAndAnnotations(pr); err != nil {
 			c.Logger.Warn("Failed to update PipelineRun labels/annotations", zap.Error(err))
 			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update labels/annotations")
-			return err
+			return multierror.Append(merr, err)
 		}
 		updated = true
 	}
@@ -207,7 +214,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		}(c.metrics)
 	}
 
-	return err
+	return merr
 }
 
 func (c *Reconciler) getPipelineFunc(tr *v1alpha1.PipelineRun) resources.GetPipeline {
