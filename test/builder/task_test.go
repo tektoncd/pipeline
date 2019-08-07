@@ -57,10 +57,6 @@ func TestTask(t *testing.T) {
 		tb.TaskStepTemplate(
 			tb.EnvVar("FRUIT", "BANANA"),
 		),
-		// The ContainerTemplate field is deprecated (#977)
-		tb.TaskContainerTemplate(
-			tb.EnvVar("JUICE", "MELON"),
-		),
 	))
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
@@ -104,13 +100,6 @@ func TestTask(t *testing.T) {
 				Env: []corev1.EnvVar{{
 					Name:  "FRUIT",
 					Value: "BANANA",
-				}},
-			},
-			// The ContainerTemplate field is deprecated (#977)
-			ContainerTemplate: &corev1.Container{
-				Env: []corev1.EnvVar{{
-					Name:  "JUICE",
-					Value: "MELON",
 				}},
 			},
 		},

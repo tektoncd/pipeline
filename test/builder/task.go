@@ -166,19 +166,6 @@ func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
 	}
 }
 
-// TaskContainerTemplate adds the deprecated (#977) base container for
-// all steps in the task. ContainerTemplate is now StepTemplate.
-func TaskContainerTemplate(ops ...ContainerOp) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		base := &corev1.Container{}
-
-		for _, op := range ops {
-			op(base)
-		}
-		spec.ContainerTemplate = base
-	}
-}
-
 // TaskVolume adds a volume with specified name to the TaskSpec.
 // Any number of Volume modifier can be passed to transform it.
 func TaskVolume(name string, ops ...VolumeOp) TaskSpecOp {

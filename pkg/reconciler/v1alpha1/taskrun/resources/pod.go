@@ -324,16 +324,6 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 		return nil, err
 	}
 
-	// The ContainerTemplate field is deprecated (#977)
-	mergedInitContainers, err = merge.CombineStepsWithStepTemplate(taskSpec.ContainerTemplate, mergedInitContainers)
-	if err != nil {
-		return nil, err
-	}
-	mergedPodContainers, err = merge.CombineStepsWithStepTemplate(taskSpec.ContainerTemplate, mergedPodContainers)
-	if err != nil {
-		return nil, err
-	}
-
 	podTemplate := v1alpha1.CombinedPodTemplate(taskRun.Spec.PodTemplate, taskRun.Spec.NodeSelector, taskRun.Spec.Tolerations, taskRun.Spec.Affinity)
 
 	return &corev1.Pod{

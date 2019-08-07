@@ -55,15 +55,6 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	// The ContainerTemplate field is deprecated (#977)
-	mergedSteps, err = merge.CombineStepsWithStepTemplate(ts.ContainerTemplate, mergedSteps)
-	if err != nil {
-		return &apis.FieldError{
-			Message: fmt.Sprintf("error merging containerTemplate and steps: %s", err),
-			Paths:   []string{"stepTemplate"},
-		}
-	}
-
 	if err := validateSteps(mergedSteps).ViaField("steps"); err != nil {
 		return err
 	}
