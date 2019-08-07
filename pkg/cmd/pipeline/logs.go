@@ -40,6 +40,20 @@ type logOptions struct {
 	runName      string
 }
 
+func nameArg(args []string, p cli.Params) error {
+	if len(args) == 1 {
+		c, err := p.Clients()
+		if err != nil {
+			return err
+		}
+		name, ns := args[0], p.Namespace()
+		if _, err = c.Tekton.TektonV1alpha1().Pipelines(ns).Get(name, metav1.GetOptions{}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func logCommand(p cli.Params) *cobra.Command {
 	opts := &logOptions{params: p,
 		askOpts: func(opt *survey.AskOptions) error {
@@ -72,6 +86,9 @@ func logCommand(p cli.Params) *cobra.Command {
 		Short:                 "Show pipeline logs",
 		Example:               eg,
 		SilenceUsage:          true,
+		Args: func(cmd *cobra.Command, args []string) error {
+			return nameArg(args, p)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.stream = &cli.Stream{
 				Out: cmd.OutOrStdout(),
@@ -100,6 +117,8 @@ func (opts *logOptions) run(args []string) error {
 		PipelineRunName: opts.runName,
 		Stream:          opts.stream,
 		Params:          opts.params,
+		Follow:          opts.follow,
+		AllSteps:        opts.allSteps,
 	}
 
 	return runLogOpts.Run()
@@ -117,10 +136,6 @@ func (opts *logOptions) init(args []string) error {
 
 	case 1: // pipeline name provided
 		opts.pipelineName = args[0]
-		err := verify(opts.pipelineName, opts.params)
-		if err != nil {
-			return err
-		}
 		if opts.last {
 			return opts.initLastRunName()
 		}
@@ -142,7 +157,7 @@ func (opts *logOptions) getAllInputs() error {
 		return err
 	}
 
-	if len(ps) < 1 {
+	if len(ps) == 0 {
 		fmt.Fprintln(opts.stream.Err, "No pipelines found in namespace:", opts.params.Namespace())
 		return nil
 	}
@@ -171,7 +186,7 @@ func (opts *logOptions) askRunName() error {
 	if err != nil {
 		return err
 	}
-	if len(prs) < 1 {
+	if len(prs) == 0 {
 		fmt.Fprintln(opts.stream.Err, "No pipelineruns found for pipeline:", opts.pipelineName)
 		return nil
 	}
@@ -191,19 +206,6 @@ func (opts *logOptions) askRunName() error {
 	}
 
 	opts.runName = strings.Fields(ans)[0]
-	return nil
-}
-
-func verify(pname string, params cli.Params) error {
-	cs, err := params.Clients()
-	if err != nil {
-		return err
-	}
-
-	tkn := cs.Tekton.TektonV1alpha1()
-	if _, err = tkn.Pipelines(params.Namespace()).Get(pname, metav1.GetOptions{}); err != nil {
-		return err
-	}
 	return nil
 }
 
