@@ -1801,11 +1801,6 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 		*out = new(v1.Container)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ContainerTemplate != nil {
-		in, out := &in.ContainerTemplate, &out.ContainerTemplate
-		*out = new(v1.Container)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 

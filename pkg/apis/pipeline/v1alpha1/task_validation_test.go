@@ -51,11 +51,10 @@ var invalidBuildSteps = []corev1.Container{{
 
 func TestTaskSpecValidate(t *testing.T) {
 	type fields struct {
-		Inputs            *v1alpha1.Inputs
-		Outputs           *v1alpha1.Outputs
-		BuildSteps        []corev1.Container
-		StepTemplate      *corev1.Container
-		ContainerTemplate *corev1.Container
+		Inputs       *v1alpha1.Inputs
+		Outputs      *v1alpha1.Outputs
+		BuildSteps   []corev1.Container
+		StepTemplate *corev1.Container
 	}
 	tests := []struct {
 		name   string
@@ -193,45 +192,14 @@ func TestTaskSpecValidate(t *testing.T) {
 				Image: "some-image",
 			},
 		},
-	}, {
-		name: "deprecated (#977) container template included in validation",
-		fields: fields{
-			BuildSteps: []corev1.Container{{
-				Name:    "astep",
-				Command: []string{"echo"},
-				Args:    []string{"hello"},
-			}},
-			ContainerTemplate: &corev1.Container{
-				Image: "some-image",
-			},
-		},
-	}, {
-		name: "deprecated (#977) container template supported with step template",
-		fields: fields{
-			BuildSteps: []corev1.Container{{
-				Name:    "astep",
-				Command: []string{"echo"},
-				Args:    []string{"hello"},
-			}},
-			StepTemplate: &corev1.Container{
-				Env: []corev1.EnvVar{{
-					Name:  "somevar",
-					Value: "someval",
-				}},
-			},
-			ContainerTemplate: &corev1.Container{
-				Image: "some-image",
-			},
-		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1alpha1.TaskSpec{
-				Inputs:            tt.fields.Inputs,
-				Outputs:           tt.fields.Outputs,
-				Steps:             tt.fields.BuildSteps,
-				StepTemplate:      tt.fields.StepTemplate,
-				ContainerTemplate: tt.fields.ContainerTemplate,
+				Inputs:       tt.fields.Inputs,
+				Outputs:      tt.fields.Outputs,
+				Steps:        tt.fields.BuildSteps,
+				StepTemplate: tt.fields.StepTemplate,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)

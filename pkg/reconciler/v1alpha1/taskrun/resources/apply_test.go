@@ -95,27 +95,6 @@ var envTaskSpec = &v1alpha1.TaskSpec{
 	}},
 }
 
-// containerTemplate is deprecated but is functional (and tested) for now (#977).
-var containerTemplateTaskSpec = &v1alpha1.TaskSpec{
-	ContainerTemplate: &corev1.Container{
-		Env: []corev1.EnvVar{{
-			Name:  "template-var",
-			Value: "${inputs.params.FOO}",
-		}},
-	},
-	Steps: []corev1.Container{{
-		Name:  "simple-image",
-		Image: "${inputs.params.myimage}",
-	}, {
-		Name:  "image-with-env-specified",
-		Image: "some-other-image",
-		Env: []corev1.EnvVar{{
-			Name:  "template-var",
-			Value: "overridden-value",
-		}},
-	}},
-}
-
 var stepTemplateTaskSpec = &v1alpha1.TaskSpec{
 	StepTemplate: &corev1.Container{
 		Env: []corev1.EnvVar{{
@@ -499,32 +478,6 @@ func TestApplyParameters(t *testing.T) {
 			spec.Steps[0].EnvFrom[1].Prefix = "prefix-1-world"
 			spec.Steps[0].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
 			spec.Steps[0].Image = "busybox:world"
-		}),
-	}, {
-		// containerTemplate is deprecated but is functional (and tested) for now (#977).
-		name: "containerTemplate parameter",
-		args: args{
-			ts: containerTemplateTaskSpec,
-			tr: &v1alpha1.TaskRun{
-				Spec: v1alpha1.TaskRunSpec{
-					Inputs: v1alpha1.TaskRunInputs{
-						Params: []v1alpha1.Param{{
-							Name:  "FOO",
-							Value: *builder.ArrayOrString("BAR"),
-						}},
-					},
-				},
-			},
-			dp: []v1alpha1.ParamSpec{
-				{
-					Name:    "myimage",
-					Default: builder.ArrayOrString("replaced-image-name"),
-				},
-			},
-		},
-		want: applyMutation(containerTemplateTaskSpec, func(spec *v1alpha1.TaskSpec) {
-			spec.ContainerTemplate.Env[0].Value = "BAR"
-			spec.Steps[0].Image = "replaced-image-name"
 		}),
 	}, {
 		name: "stepTemplate parameter",

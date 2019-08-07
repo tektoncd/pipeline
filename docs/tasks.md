@@ -77,7 +77,6 @@ following fields:
     available to your `Task`'s steps.
   - [`stepTemplate`](#step-template) - Specifies a `Container` step
     definition to use as the basis for all steps within your `Task`.
-  - [`containerTemplate`](#step-template) - **deprecated** Previous name of `stepTemplate`.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -369,9 +368,6 @@ steps:
       - name: "FOO"
         value: "baz"
 ```
-
-_The field `containerTemplate` provides the same functionality but is **deprecated**
-and will be removed in a future release ([#977](https://github.com/tektoncd/pipeline/issues/977))._
 
 ### Templating
 

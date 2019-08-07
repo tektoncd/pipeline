@@ -97,12 +97,6 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, stringReplacements map[string]st
 		templating.ApplyContainerReplacements(&steps[i], stringReplacements, arrayReplacements)
 	}
 
-	// Apply variable expansion to containerTemplate fields.
-	// Should eventually be removed; ContainerTemplate is the deprecated previous name of the StepTemplate field (#977).
-	if spec.ContainerTemplate != nil {
-		templating.ApplyContainerReplacements(spec.ContainerTemplate, stringReplacements, arrayReplacements)
-	}
-
 	// Apply variable expansion to stepTemplate fields.
 	if spec.StepTemplate != nil {
 		templating.ApplyContainerReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
