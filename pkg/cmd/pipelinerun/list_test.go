@@ -15,12 +15,11 @@
 package pipelinerun
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
-	"fmt"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/spf13/cobra"
@@ -43,6 +42,10 @@ func TestListPipelineRuns(t *testing.T) {
 	pr3Started := clock.Now().Add(-1 * time.Hour)
 
 	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun("pr0-1", "namespace",
+			tb.PipelineRunLabel("tekton.dev/pipeline", "random"),
+			tb.PipelineRunStatus(),
+		),
 		tb.PipelineRun("pr1-1", "namespace",
 			tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
 			tb.PipelineRunStatus(
@@ -75,6 +78,10 @@ func TestListPipelineRuns(t *testing.T) {
 				cb.PipelineRunCompletionTime(pr3Started.Add(runDuration)),
 			),
 		),
+		tb.PipelineRun("pr3-1", "namespace",
+			tb.PipelineRunLabel("tekton.dev/pipeline", "random"),
+			tb.PipelineRunStatus(),
+		),
 	}
 
 	tests := []struct {
@@ -99,6 +106,8 @@ func TestListPipelineRuns(t *testing.T) {
 			args:    []string{"list", "-n", "namespace"},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS               ",
+				"pr0-1   ---              ---        ---                  ",
+				"pr3-1   ---              ---        ---                  ",
 				"pr1-1   59 minutes ago   1 minute   Succeeded            ",
 				"pr2-2   2 hours ago      1 minute   Failed               ",
 				"pr2-1   3 hours ago      ---        Succeeded(Running)   ",
@@ -110,6 +119,8 @@ func TestListPipelineRuns(t *testing.T) {
 			command: command(t, prs, clock.Now()),
 			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
+				"pr0-1",
+				"pr3-1",
 				"pr1-1",
 				"pr2-2",
 				"pr2-1",
@@ -121,8 +132,8 @@ func TestListPipelineRuns(t *testing.T) {
 			command: command(t, prs, clock.Now()),
 			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", 1)},
 			expected: []string{
-				"NAME    STARTED          DURATION   STATUS      ",
-				"pr1-1   59 minutes ago   1 minute   Succeeded   ",
+				"NAME    STARTED   DURATION   STATUS   ",
+				"pr0-1   ---       ---        ---      ",
 				"",
 			},
 		},
@@ -137,7 +148,7 @@ func TestListPipelineRuns(t *testing.T) {
 		{
 			name:    "limit pipelineruns greater than maximum case",
 			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", 4)},
+			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", 7)},
 			expected: []string{
 				"",
 			},
@@ -147,8 +158,8 @@ func TestListPipelineRuns(t *testing.T) {
 			command: command(t, prs, clock.Now()),
 			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "-l", fmt.Sprintf("%d", 2)},
 			expected: []string{
-				"pr1-1",
-				"pr2-2",
+				"pr0-1",
+				"pr3-1",
 				"",
 			},
 		},
@@ -161,9 +172,7 @@ func TestListPipelineRuns(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
-			if d := cmp.Diff(strings.Join(td.expected, "\n"), got); d != "" {
-				t.Errorf("Unexpected output mismatch: \n%s\n", d)
-			}
+			test.AssertOutput(t, strings.Join(td.expected, "\n"), got)
 		})
 	}
 }

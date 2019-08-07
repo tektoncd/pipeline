@@ -90,7 +90,7 @@ func printTaskDetails(s *cli.Stream, p cli.Params) error {
 	for _, task := range tasks.Items {
 		fmt.Fprintf(w, body,
 			task.Name,
-			formatted.Age(task.CreationTimestamp, p.Time()),
+			formatted.Age(&task.CreationTimestamp, p.Time()),
 		)
 	}
 	return w.Flush()

@@ -256,7 +256,7 @@ func allRuns(p cli.Params, pName string) ([]string, error) {
 	ret := []string{}
 	for i, run := range runs.Items {
 		if i < 5 {
-			ret = append(ret, run.ObjectMeta.Name+" started "+formatted.Age(*run.Status.StartTime, p.Time()))
+			ret = append(ret, run.ObjectMeta.Name+" started "+formatted.Age(run.Status.StartTime, p.Time()))
 		}
 	}
 	return ret, nil

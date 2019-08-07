@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/spf13/cobra"
@@ -38,6 +37,16 @@ func TestListTaskRuns(t *testing.T) {
 	twoMinute, _ := time.ParseDuration("2m")
 
 	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr0-1", "foo",
+			tb.TaskRunLabel("tekton.dev/task", "random"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
+			tb.TaskRunStatus(
+				tb.Condition(apis.Condition{
+					Status: corev1.ConditionTrue,
+					Reason: resources.ReasonSucceeded,
+				}),
+			),
+		),
 		tb.TaskRun("tr1-1", "foo",
 			tb.TaskRunLabel("tekton.dev/task", "bar"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("bar")),
@@ -73,6 +82,16 @@ func TestListTaskRuns(t *testing.T) {
 				taskRunCompletionTime(now.Add(twoMinute)),
 			),
 		),
+		tb.TaskRun("tr3-1", "foo",
+			tb.TaskRunLabel("tekton.dev/Task", "random"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
+			tb.TaskRunStatus(
+				tb.Condition(apis.Condition{
+					Status: corev1.ConditionFalse,
+					Reason: resources.ReasonFailed,
+				}),
+			),
+		),
 	}
 
 	tests := []struct {
@@ -97,6 +116,8 @@ func TestListTaskRuns(t *testing.T) {
 			args:    []string{"list", "-n", "foo"},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS      ",
+				"tr0-1   ---              ---        Succeeded   ",
+				"tr3-1   ---              ---        Failed      ",
 				"tr2-2   59 minutes ago   1 minute   Failed      ",
 				"tr1-1   1 hour ago       1 minute   Succeeded   ",
 				"tr2-1   1 hour ago       ---        Running     ",
@@ -108,6 +129,8 @@ func TestListTaskRuns(t *testing.T) {
 			command: command(t, trs, now),
 			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
+				"tr0-1",
+				"tr3-1",
 				"tr2-2",
 				"tr1-1",
 				"tr2-1",
@@ -129,9 +152,7 @@ func TestListTaskRuns(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
-			if d := cmp.Diff(strings.Join(td.expected, "\n"), got); d != "" {
-				t.Errorf("Unexpected output mismatch: \n%s\n", d)
-			}
+			test.AssertOutput(t, strings.Join(td.expected, "\n"), got)
 		})
 	}
 }
@@ -153,20 +174,15 @@ func TestListTaskRuns_no_condition(t *testing.T) {
 
 	cmd := command(t, trs, now)
 	got, err := test.ExecuteCommand(cmd, "list", "bar", "-n", "foo")
-
-	expected := []string{
-		"NAME    STARTED      DURATION   STATUS    ",
-		"tr1-1   1 hour ago   1 minute   Running   ",
-		"",
-	}
-
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	if d := cmp.Diff(strings.Join(expected, "\n"), got); d != "" {
-		t.Errorf("Unexpected output mismatch: \n%s\n", d)
-	}
 
+	expected := `NAME    STARTED      DURATION   STATUS   
+tr1-1   1 hour ago   1 minute   ---      
+`
+
+	test.AssertOutput(t, expected, got)
 }
 
 func command(t *testing.T, trs []*v1alpha1.TaskRun, now time.Time) *cobra.Command {

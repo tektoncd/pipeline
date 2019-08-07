@@ -56,7 +56,7 @@ No runs
 {{- else }}
 NAME	STARTED	DURATION	STATUS
 {{- range $i, $pr := .PipelineRuns.Items }}
-{{ $pr.Name }}	{{ formatAge $pr.Status.StartTime $.Params.Time }}	{{ formatDuration $pr.Status.StartTime $pr.Status.CompletionTime }}	{{ index $pr.Status.Conditions 0 | formatCondition }}
+{{ $pr.Name }}	{{ formatAge $pr.Status.StartTime $.Params.Time }}	{{ formatDuration $pr.Status.StartTime $pr.Status.CompletionTime }}	{{ formatCondition $pr.Status.Conditions }}
 {{- end }}
 {{- end }}
 `

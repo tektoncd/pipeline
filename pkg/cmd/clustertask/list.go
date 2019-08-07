@@ -90,7 +90,7 @@ func printClusterTaskDetails(s *cli.Stream, p cli.Params) error {
 	for _, clustertask := range clustertasks.Items {
 		fmt.Fprintf(w, body,
 			clustertask.Name,
-			formatted.Age(clustertask.CreationTimestamp, p.Time()),
+			formatted.Age(&clustertask.CreationTimestamp, p.Time()),
 		)
 	}
 	return w.Flush()

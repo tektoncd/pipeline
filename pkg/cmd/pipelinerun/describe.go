@@ -38,7 +38,7 @@ Service Account:	{{ .PipelineRun.Spec.ServiceAccount }}
 
 Status
 STARTED	DURATION	STATUS
-{{ formatAge .PipelineRun.Status.StartTime  .Params.Time }}	{{ formatDuration .PipelineRun.Status.StartTime .PipelineRun.Status.CompletionTime }}	{{ index .PipelineRun.Status.Conditions 0 | formatCondition }}
+{{ formatAge .PipelineRun.Status.StartTime  .Params.Time }}	{{ formatDuration .PipelineRun.Status.StartTime .PipelineRun.Status.CompletionTime }}	{{ formatCondition .PipelineRun.Status.Conditions }}
 {{- $msg := hasFailed .PipelineRun -}}
 {{-  if ne $msg "" }}
 
@@ -72,7 +72,7 @@ No taskruns
 {{- else }}
 NAME	TASK NAME	STARTED	DURATION	STATUS
 {{- range $taskrunname, $taskrun := .PipelineRun.Status.TaskRuns }}
-{{ $taskrunname }}	{{ $taskrun.PipelineTaskName }}	{{ formatAge $taskrun.Status.StartTime $.Params.Time }}	{{ formatDuration $taskrun.Status.StartTime $taskrun.Status.CompletionTime }}	{{ index $taskrun.Status.Conditions 0 | formatCondition }}
+{{ $taskrunname }}	{{ $taskrun.PipelineTaskName }}	{{ formatAge $taskrun.Status.StartTime $.Params.Time }}	{{ formatDuration $taskrun.Status.StartTime $taskrun.Status.CompletionTime }}	{{ formatCondition $taskrun.Status.Conditions }}
 {{- end }}
 {{- end }}
 `
@@ -145,6 +145,10 @@ func printPipelineRunDescription(s *cli.Stream, prName string, p cli.Params) err
 }
 
 func hasFailed(pr *v1alpha1.PipelineRun) string {
+	if len(pr.Status.Conditions) == 0 {
+		return ""
+	}
+
 	if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
 		return pr.Status.Conditions[0].Message
 	}

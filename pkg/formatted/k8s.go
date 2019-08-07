@@ -6,9 +6,14 @@ import (
 )
 
 // Condition returns a human readable text based on the status of the Condition
-func Condition(c apis.Condition) string {
+func Condition(c []apis.Condition) string {
+
 	var status string
-	switch c.Status {
+	if len(c) == 0 {
+		return "---"
+	}
+
+	switch c[0].Status {
 	case corev1.ConditionFalse:
 		status = "Failed"
 	case corev1.ConditionTrue:
@@ -16,8 +21,9 @@ func Condition(c apis.Condition) string {
 	case corev1.ConditionUnknown:
 		status = "Running"
 	}
-	if c.Reason != "" && c.Reason != status {
-		status = status + "(" + c.Reason + ")"
+
+	if c[0].Reason != "" && c[0].Reason != status {
+		status = status + "(" + c[0].Reason + ")"
 	}
 
 	return status

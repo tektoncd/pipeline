@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/test"
@@ -110,10 +109,8 @@ Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
-	if d := cmp.Diff(expected, actual); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
 
+	tu.AssertOutput(t, expected, actual)
 }
 
 func TestPipelineRunDescribe_failed(t *testing.T) {
@@ -190,10 +187,8 @@ Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Failed
 `
-	if d := cmp.Diff(expected, actual); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
 
+	tu.AssertOutput(t, expected, actual)
 }
 
 func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
@@ -271,8 +266,49 @@ Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
-	if d := cmp.Diff(expected, actual); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
 
+	tu.AssertOutput(t, expected, actual)
+}
+
+func TestPipelineRunDescribe_without_start_time(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("pipeline-run", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunSpec("pipeline"),
+				tb.PipelineRunStatus(),
+			),
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+
+	pipelinerun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:           pipeline-run
+Namespace:      ns
+Pipeline Ref:   pipeline
+
+Status
+STARTED   DURATION   STATUS
+---       ---        ---
+
+Resources
+No resources
+
+Params
+No params
+
+Taskruns
+No taskruns
+`
+
+	tu.AssertOutput(t, expected, actual)
 }

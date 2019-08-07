@@ -6,7 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Age(t metav1.Time, c clockwork.Clock) string {
+func Age(t *metav1.Time, c clockwork.Clock) string {
 	if t.IsZero() {
 		return "---"
 	}
