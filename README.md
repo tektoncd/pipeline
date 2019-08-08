@@ -74,6 +74,7 @@ The following commands help you understand and effectively use the Tekton CLI:
  * [`tkn pipelinerun:`](docs/cmd/tkn_pipelinerun.md) Parent command of the Pipelinerun command group.
  * [`tkn task:`](docs/cmd/tkn_task.md) Parent command of the Task command group.
  * [`tkn taskrun:`](docs/cmd/tkn_taskrun.md) Parent command of the Taskrun command group.
+ * [`tkn clustertask:`](docs/cmd/tkn_clustertask.md) Parent command of the ClusterTask command group.
 
 For every `tkn` command, you can use `-h` or `--help` flags to display specific help for that command.
 
