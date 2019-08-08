@@ -33,9 +33,11 @@ function pre_build_tests() {
 
 function post_build_tests() {
     golangci-lint run
-    make cross
 }
 
 # We use the default build, unit and integration test runners.
-
-main $@
+if [[ "$1" == "--build-cross-tests" ]]; then
+    make cross
+else
+    main $@
+fi
