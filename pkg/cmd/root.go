@@ -42,7 +42,8 @@ Examples:
 
 Available Commands:{{range .Commands}}{{if (eq .Annotations.commandType "main")}}
 {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}
-{{range .Commands}}{{if or (eq .Annotations.commandType "utility") (eq .Name "help")}}
+
+Other Commands:{{range .Commands}}{{if or (eq .Annotations.commandType "utility") (eq .Name "help")}}
 {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 Flags:
