@@ -24,6 +24,7 @@ on:
   [reviews](https://github.com/tektoncd/community/blob/master/process.md#reviews)
   and
   [becoming an OWNER](https://github.com/tektoncd/community/blob/master/process.md#owners)
+- [Making API changes](api_compatibility_policy.md#approving-api-changes)
 
 You can find details on our automation infrastructure in
 [the plumbing repo](https://github.com/tektoncd/plumbing).

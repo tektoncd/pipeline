@@ -40,48 +40,38 @@ The API is considered to consist of:
 - The spec if the CRDs
 - The order that `PipelineResources` declared within a `Task` are applied in
 
-## `TaskRun`, `Task`, and `ClusterTask`
+### Getting to beta
 
-The CRD types
-[`Task`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md),
-[`ClusterTask`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md#clustertask),
-and
-[`TaskRun`](https://github.com/tektoncd/pipeline/blob/master/docs/taskruns.md)
-should be considered `alpha`, however these types are more stable than
-`Pipeline`, `PipelineRun`, and `PipelineResource`.
+[This document](https://docs.google.com/document/d/1H8I2Rk4kLdQaR4mV0A71Qbk-1FxXFrmvisEAjLKT6H0/edit#)
+(visible to members of [the mailing list](https://github.com/tektoncd/community/blob/master/contact.md#mailing-list))
+describes our plan to get to beta.
 
-### Possibly `beta` in 0.3
+#### Backwards compatible changes first
 
-The status of these types will be revisited ~2 releases (i.e. 0.3) and see if
-they can be promoted to `beta`.
-
-Once these types are promoted to `beta`, any backwards incompatible changes must
+At this point, any backwards incompatible changes must
 be introduced in a backwards compatible manner first, with a deprecation warning
 in the release notes, for at least one full release before the backward
 incompatible change is made.
 
-There are two reasons for this:
+## Approving API changes
 
-- `Task` and `TaskRun` are considered upgraded versions of [Build](https://github.com/knative/docs/blob/master/docs/build/builds.md#source) and [BuildTemplate](https://github.com/knative/docs/blob/master/docs/build/build-templates.md), meaning that the APIs benefit from a significant amount of user feedback and iteration
-- Going forward users should use `TaskRun` and `Task` instead of `Build` and `BuildTemplate`, those users should not expect the API to be changed on them
-  without warning
+API changes must be approved by [OWNERS](OWNERS). The policy is slightly different
+for [additive changes](#additive-changes) vs.
+[backwards incompatible changes](#backwards-incompatible-changes).
 
-The exception to this is that `PipelineResource` definitions can be embedded in
-`TaskRuns`, and since the `PipelineResource` definitions are considered less
-stable, changes to the spec of the embedded `PipelineResource` can be introduced
-between releases.
+### Additive changes
 
-## `PipelineRun`, `Pipeline` and `PipelineResource`
+Additive changes are changes that add to the API and do not cause problems for users
+of previous versions of the API.
 
-The CRD types
-[`Pipeline`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md),
-[`PipelineRun`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md)
-and
-[`PipelineResource`](https://github.com/tektoncd/pipeline/blob/master/docs/resources.md#pipelineresources)
-should be considered `alpha`, i.e. the API should be considered unstable.
-Backwards incompatible changes can be introduced between releases, however they
-must include a backwards incompatibility warning in the release notes.
+These changes must be approved by at least 2 [OWNERS](OWNERS).
 
-The reason for this is not yet having enough user feedback to commit to the APIs
-as they currently exist. Once significant user input has been given into the API
-design, we can upgrade these CRDs to `beta`.
+### Backwards incompatible changes
+
+Backwards incompatible changes change the API, e.g. by removing fields from a CRD
+spec. These changes will mean that folks using a previous version of the API will need
+to adjust their usage in order to use the new version.
+
+These changes must be make [in a backwards compatible manner first](#backwards-compatible-changes-first),
+and they must be improved by [more than half of the project OWNERS](OWNERS)
+(i.e. 50% + 1).
