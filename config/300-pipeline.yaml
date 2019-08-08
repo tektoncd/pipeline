@@ -29,3 +29,207 @@ spec:
   subresources:
     status: {}
   version: v1alpha1
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            params:
+              description: Params declares a list of input parameters that must be
+                supplied when this Pipeline is run.
+              items:
+                properties:
+                  default:
+                    description: Default is the value a parameter takes if no input
+                      value is supplied. If default is set, a Task may be executed
+                      without a supplied value for the parameter.
+                    type: object
+                  description:
+                    description: Description is a user-facing description of the parameter
+                      that may be used to populate a UI.
+                    type: string
+                  name:
+                    description: Name declares the name by which a parameter is referenced.
+                    type: string
+                  type:
+                    description: Type is the user-specified type of the parameter.
+                      The possible types are currently "string" and "array", and "string"
+                      is the default.
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            resources:
+              description: Resources declares the names and types of the resources
+                given to the Pipeline's tasks as inputs and outputs.
+              items:
+                properties:
+                  name:
+                    description: Name is the name that will be used by the Pipeline
+                      to refer to this resource. It does not directly correspond to
+                      the name of any PipelineResources Task inputs or outputs, and
+                      it does not correspond to the actual names of the PipelineResources
+                      that will be bound in the PipelineRun.
+                    type: string
+                  type:
+                    description: Type is the type of the PipelineResource.
+                    type: string
+                required:
+                - name
+                - type
+                type: object
+              type: array
+            tasks:
+              description: Tasks declares the graph of Tasks that execute when this
+                Pipeline is run.
+              items:
+                properties:
+                  conditions:
+                    description: Conditions is a list of conditions that need to be
+                      true for the task to run
+                    items:
+                      properties:
+                        conditionRef:
+                          description: ConditionRef is the name of the Condition to
+                            use for the conditionCheck
+                          type: string
+                        params:
+                          description: Params declare parameters passed to this Condition
+                          items:
+                            properties:
+                              name:
+                                type: string
+                              value:
+                                type: object
+                            required:
+                            - name
+                            - value
+                            type: object
+                          type: array
+                      required:
+                      - conditionRef
+                      type: object
+                    type: array
+                  name:
+                    description: Name is the name of this task within the context
+                      of a Pipeline. Name is used as a coordinate with the `from`
+                      and `runAfter` fields to establish the execution order of tasks
+                      relative to one another.
+                    type: string
+                  params:
+                    description: Parameters declares parameters passed to this task.
+                    items:
+                      properties:
+                        name:
+                          type: string
+                        value:
+                          type: object
+                      required:
+                      - name
+                      - value
+                      type: object
+                    type: array
+                  resources:
+                    description: Resources declares the resources given to this task
+                      as inputs and outputs.
+                    properties:
+                      inputs:
+                        description: Inputs holds the mapping from the PipelineResources
+                          declared in DeclaredPipelineResources to the input PipelineResources
+                          required by the Task.
+                        items:
+                          properties:
+                            from:
+                              description: From is the list of PipelineTask names
+                                that the resource has to come from. (Implies an ordering
+                                in the execution graph.)
+                              items:
+                                type: string
+                              type: array
+                            name:
+                              description: Name is the name of the PipelineResource
+                                as declared by the Task.
+                              type: string
+                            resource:
+                              description: Resource is the name of the DeclaredPipelineResource
+                                to use.
+                              type: string
+                          required:
+                          - name
+                          - resource
+                          type: object
+                        type: array
+                      outputs:
+                        description: Outputs holds the mapping from the PipelineResources
+                          declared in DeclaredPipelineResources to the input PipelineResources
+                          required by the Task.
+                        items:
+                          properties:
+                            name:
+                              description: Name is the name of the PipelineResource
+                                as declared by the Task.
+                              type: string
+                            resource:
+                              description: Resource is the name of the DeclaredPipelienResource
+                                to use.
+                              type: string
+                          required:
+                          - name
+                          - resource
+                          type: object
+                        type: array
+                    type: object
+                  retries:
+                    description: 'Retries represents how many times this task should
+                      be retried in case of task failure: ConditionSucceeded set to
+                      False'
+                    format: int64
+                    type: integer
+                  runAfter:
+                    description: RunAfter is the list of PipelineTask names that should
+                      be executed before this Task executes. (Used to force a specific
+                      ordering in graph execution.)
+                    items:
+                      type: string
+                    type: array
+                  taskRef:
+                    description: TaskRef is a reference to a task definition.
+                    properties:
+                      apiVersion:
+                        description: API version of the referent
+                        type: string
+                      kind:
+                        description: TaskKind inficates the kind of the task, namespaced
+                          or cluster scoped.
+                        type: string
+                      name:
+                        description: 'Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                        type: string
+                    type: object
+                required:
+                - taskRef
+                type: object
+              type: array
+          type: object
+        status:
+          properties:
+            done:
+              description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                of cluster Important: Run "operator-sdk generate k8s" to regenerate
+                code after modifying this file Add custom validation using kubebuilder
+                tags: https://book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: string
+          type: object
