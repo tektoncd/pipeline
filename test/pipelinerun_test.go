@@ -132,7 +132,7 @@ func TestPipelineRun(t *testing.T) {
 			if _, err := c.TaskClient.Create(task); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
 			}
-			if _, err := c.PipelineClient.Create(getHelloWorldPipelineWithCondition(index, namespace)); err != nil {
+			if _, err := c.PipelineClient.Create(getPipelineWithFailingCondition(index, namespace)); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(pipelineName, index), err)
 			}
 		},
@@ -534,9 +534,10 @@ func assertAnnotationsMatch(t *testing.T, expectedAnnotations, actualAnnotations
 	}
 }
 
-func getHelloWorldPipelineWithCondition(suffix int, namespace string) *v1alpha1.Pipeline {
+func getPipelineWithFailingCondition(suffix int, namespace string) *v1alpha1.Pipeline {
 	return tb.Pipeline(getName(pipelineName, suffix), namespace, tb.PipelineSpec(
 		tb.PipelineTask(task1Name, getName(taskName, suffix), tb.PipelineTaskCondition(cond1Name)),
+		tb.PipelineTask("task2", getName(taskName, suffix), tb.RunAfter(task1Name)),
 	))
 }
 
