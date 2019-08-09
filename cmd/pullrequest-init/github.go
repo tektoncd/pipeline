@@ -133,41 +133,39 @@ func writeJSON(path string, i interface{}) error {
 }
 
 // Download fetches and stores the desired pull request.
-func (h *GitHubHandler) Download(ctx context.Context, path string) error {
+func (h *GitHubHandler) Download(ctx context.Context, path string) (*PullRequest, error) {
 	rawPrefix := filepath.Join(path, "github")
 	if err := os.MkdirAll(rawPrefix, 0755); err != nil {
-		return err
+		return nil, err
 	}
 
 	gpr, _, err := h.PullRequests.Get(ctx, h.owner, h.repo, h.prNum)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pr := baseGitHubPullRequest(gpr)
 
 	rawStatus := filepath.Join(rawPrefix, "status.json")
 	statuses, err := h.getStatuses(ctx, pr.Head.SHA, rawStatus)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pr.RawStatus = rawStatus
 	pr.Statuses = statuses
 
 	rawPR := filepath.Join(rawPrefix, "pr.json")
 	if err := writeJSON(rawPR, gpr); err != nil {
-		return err
+		return nil, err
 	}
 	pr.Raw = rawPR
 
 	// Comments
 	pr.Comments, err = h.downloadComments(ctx, rawPrefix)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	prPath := filepath.Join(path, prFile)
-	h.Logger.Infof("Writing pull request to file: %s", prPath)
-	return writeJSON(prPath, pr)
+	return pr, nil
 }
 
 func baseGitHubPullRequest(pr *github.PullRequest) *PullRequest {
@@ -241,17 +239,10 @@ func readJSON(path string, i interface{}) error {
 
 // Upload takes files stored on the filesystem and uploads new changes to
 // GitHub.
-func (h *GitHubHandler) Upload(ctx context.Context, path string) error {
-	h.Logger.Infof("Syncing path: %s to pr %d", path, h.prNum)
+func (h *GitHubHandler) Upload(ctx context.Context, pr *PullRequest) error {
+	h.Logger.Infof("Syncing path: %s to pr %d", pr, h.prNum)
 
 	// TODO: Allow syncing from GitHub specific sources.
-
-	prPath := filepath.Join(path, prFile)
-	pr := new(PullRequest)
-	if err := readJSON(prPath, pr); err != nil {
-		return err
-	}
-
 	var merr error
 
 	if err := h.uploadStatuses(ctx, pr.Head.SHA, pr.Statuses); err != nil {

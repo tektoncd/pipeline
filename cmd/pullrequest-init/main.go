@@ -22,10 +22,6 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-const (
-	prFile = "pr.json"
-)
-
 var (
 	prURL = flag.String("url", "", "The url of the pull request to initialize.")
 	path  = flag.String("path", "", "Path of directory under which PR will be copied")
@@ -46,12 +42,21 @@ func main() {
 	switch *mode {
 	case "download":
 		logger.Info("RUNNING DOWNLOAD!")
-		if err := client.Download(ctx, *path); err != nil {
+		pr, err := client.Download(ctx, *path)
+		if err != nil {
 			logger.Fatal(err)
 		}
+		if err := ToDisk(pr, *path); err != nil {
+			logger.Fatal(err)
+		}
+
 	case "upload":
 		logger.Info("RUNNING UPLOAD!")
-		if err := client.Upload(ctx, *path); err != nil {
+		pr, err := FromDisk(*path)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		if err := client.Upload(ctx, pr); err != nil {
 			logger.Fatal(err)
 		}
 	}
