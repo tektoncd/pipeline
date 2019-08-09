@@ -68,12 +68,12 @@ NAME	VALUE
 {{- end }}
 
 Taskruns
-{{- $l := len .TaskRunList }}{{ if eq $l 0 }}
+{{- $l := len .TaskrunList }}{{ if eq $l 0 }}
 No taskruns
 {{- else }}
 NAME	TASK NAME	STARTED	DURATION	STATUS
-{{- range $taskrun := .TaskRunList }}
-{{ $taskrun.TaskRunName }}	{{ $taskrun.PipelineTaskName }}	{{ formatAge $taskrun.Status.StartTime $.Params.Time }}	{{ formatDuration $taskrun.Status.StartTime $taskrun.Status.CompletionTime }}	{{ formatCondition $taskrun.Status.Conditions }}
+{{- range $taskrun := .TaskrunList }}
+{{ $taskrun.TaskrunName }}	{{ $taskrun.PipelineTaskName }}	{{ formatAge $taskrun.Status.StartTime $.Params.Time }}	{{ formatDuration $taskrun.Status.StartTime $taskrun.Status.CompletionTime }}	{{ formatCondition $taskrun.Status.Conditions }}
 {{- end }}
 {{- end }}
 `

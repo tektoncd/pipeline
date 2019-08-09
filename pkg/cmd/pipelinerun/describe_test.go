@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/test"
@@ -111,6 +112,93 @@ tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
 
 	tu.AssertOutput(t, expected, actual)
+}
+
+func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
+				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				tb.Condition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+			),
+		),
+		tb.TaskRun("tr-2", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clock.Now().Add(5*time.Minute)),
+				cb.TaskRunCompletionTime(clock.Now().Add(9*time.Minute)),
+				tb.Condition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+			),
+		),
+	}
+
+	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("pipeline-run", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunSpec("pipeline"),
+				tb.PipelineRunStatus(
+					tb.PipelineRunTaskRunsStatus(map[string]*v1alpha1.PipelineRunTaskRunStatus{
+						"tr-1": {
+							PipelineTaskName: "t-1",
+							Status:           &trs[0].Status,
+						},
+						"tr-2": {
+							PipelineTaskName: "t-2",
+							Status:           &trs[1].Status,
+						},
+					}),
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					tb.PipelineRunStartTime(clock.Now()),
+					cb.PipelineRunCompletionTime(clock.Now().Add(15*time.Minute)),
+				),
+			),
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+
+	pipelinerun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:           pipeline-run
+Namespace:      ns
+Pipeline Ref:   pipeline
+
+Status
+STARTED          DURATION     STATUS
+10 minutes ago   15 minutes   Succeeded
+
+Resources
+No resources
+
+Params
+No params
+
+Taskruns
+NAME   TASK NAME   STARTED         DURATION    STATUS
+tr-2   t-2         5 minutes ago   4 minutes   Succeeded
+tr-1   t-1         8 minutes ago   3 minutes   Succeeded
+`
+	if d := cmp.Diff(expected, actual); d != "" {
+		t.Errorf("Unexpected output mismatch: %s", d)
+	}
+
 }
 
 func TestPipelineRunDescribe_failed(t *testing.T) {
