@@ -19,7 +19,6 @@ package resources
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -64,6 +63,18 @@ var pts = []v1alpha1.PipelineTask{{
 	Conditions: []v1alpha1.PipelineTaskCondition{{
 		ConditionRef: "always-true",
 	}},
+}, {
+	Name:     "mytask7",
+	TaskRef:  v1alpha1.TaskRef{Name: "taskWithOneParent"},
+	RunAfter: []string{"mytask6"},
+}, {
+	Name:     "mytask8",
+	TaskRef:  v1alpha1.TaskRef{Name: "taskWithTwoParents"},
+	RunAfter: []string{"mytask1", "mytask6"},
+}, {
+	Name:     "mytask9",
+	TaskRef:  v1alpha1.TaskRef{Name: "taskHasParentWithRunAfter"},
+	RunAfter: []string{"mytask8"},
 }}
 
 var p = &v1alpha1.Pipeline{
@@ -272,6 +283,18 @@ var allFinishedState = PipelineRunState{{
 	},
 }}
 
+var successTaskConditionCheckState = TaskConditionCheckState{{
+	ConditionCheckName: "myconditionCheck",
+	Condition:          &condition,
+	ConditionCheck:     v1alpha1.NewConditionCheck(makeSucceeded(conditionChecks[0])),
+}}
+
+var failedTaskConditionCheckState = TaskConditionCheckState{{
+	ConditionCheckName: "myconditionCheck",
+	Condition:          &condition,
+	ConditionCheck:     v1alpha1.NewConditionCheck(makeFailed(conditionChecks[0])),
+}}
+
 var conditionCheckSuccessNoTaskStartedState = PipelineRunState{{
 	PipelineTask: &pts[5],
 	TaskRunName:  "pipeleinerun-conditionaltask",
@@ -279,11 +302,7 @@ var conditionCheckSuccessNoTaskStartedState = PipelineRunState{{
 	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
-	ResolvedConditionChecks: TaskConditionCheckState{{
-		ConditionCheckName: "myconditionCheck",
-		Condition:          &condition,
-		ConditionCheck:     v1alpha1.NewConditionCheck(makeSucceeded(conditionChecks[0])),
-	}},
+	ResolvedConditionChecks: successTaskConditionCheckState,
 }}
 
 var conditionCheckStartedState = PipelineRunState{{
@@ -307,11 +326,7 @@ var conditionCheckFailedWithNoOtherTasksState = PipelineRunState{{
 	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
-	ResolvedConditionChecks: TaskConditionCheckState{{
-		ConditionCheckName: "myconditionCheck",
-		Condition:          &condition,
-		ConditionCheck:     v1alpha1.NewConditionCheck(makeFailed(conditionChecks[0])),
-	}},
+	ResolvedConditionChecks: failedTaskConditionCheckState,
 }}
 
 var conditionCheckFailedWithOthersPassedState = PipelineRunState{{
@@ -321,11 +336,7 @@ var conditionCheckFailedWithOthersPassedState = PipelineRunState{{
 	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
-	ResolvedConditionChecks: TaskConditionCheckState{{
-		ConditionCheckName: "myconditionCheck",
-		Condition:          &condition,
-		ConditionCheck:     v1alpha1.NewConditionCheck(makeFailed(conditionChecks[0])),
-	}},
+	ResolvedConditionChecks: failedTaskConditionCheckState,
 },
 	{
 		PipelineTask: &pts[0],
@@ -344,11 +355,7 @@ var conditionCheckFailedWithOthersFailedState = PipelineRunState{{
 	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},
-	ResolvedConditionChecks: TaskConditionCheckState{{
-		ConditionCheckName: "myconditionCheck",
-		Condition:          &condition,
-		ConditionCheck:     v1alpha1.NewConditionCheck(makeFailed(conditionChecks[0])),
-	}},
+	ResolvedConditionChecks: failedTaskConditionCheckState,
 },
 	{
 		PipelineTask: &pts[0],
@@ -360,6 +367,82 @@ var conditionCheckFailedWithOthersFailedState = PipelineRunState{{
 	},
 }
 
+// skipped == condition check failure
+// task -> parent.cc skipped
+var taskWithParentSkippedState = PipelineRunState{{
+	TaskRunName:             "taskrunName",
+	PipelineTask:            &pts[5],
+	ResolvedConditionChecks: failedTaskConditionCheckState,
+}, {
+	TaskRunName:  "childtaskrun",
+	PipelineTask: &pts[6],
+}}
+
+// task -> 2 parents -> one of which is skipped
+var taskWithMultipleParentsSkippedState = PipelineRunState{{
+	TaskRunName:  "task0taskrun",
+	PipelineTask: &pts[0],
+	TaskRun:      makeSucceeded(trs[0]), // This parent is successful
+}, {
+	TaskRunName:             "taskrunName",
+	PipelineTask:            &pts[5],
+	ResolvedConditionChecks: failedTaskConditionCheckState, // This one was skipped
+}, {
+	TaskRunName:  "childtaskrun",
+	PipelineTask: &pts[7], // This should also be skipped.
+}}
+
+// task -> parent -> grandparent is a skipped task
+var taskWithGrandParentSkippedState = PipelineRunState{{
+	TaskRunName:  "task0taskrun",
+	PipelineTask: &pts[0],
+	TaskRun:      makeSucceeded(trs[0]), // Passed
+}, {
+	TaskRunName:             "skippedTaskRun",
+	PipelineTask:            &pts[5],
+	ResolvedConditionChecks: failedTaskConditionCheckState, // Skipped
+}, {
+	TaskRunName:  "anothertaskrun",
+	PipelineTask: &pts[7], // Should be skipped
+}, {
+	TaskRunName:  "taskrun",
+	PipelineTask: &pts[8], // Should also be skipped
+}}
+
+var taskWithGrandParentsOneFailedState = PipelineRunState{{
+	TaskRunName:  "task0taskrun",
+	PipelineTask: &pts[0],
+	TaskRun:      makeSucceeded(trs[0]), // Passed
+}, {
+	TaskRunName:             "skippedTaskRun",
+	PipelineTask:            &pts[5],
+	TaskRun:                 makeFailed(trs[0]), // Failed; so pipeline should fail
+	ResolvedConditionChecks: successTaskConditionCheckState,
+}, {
+	TaskRunName:  "anothertaskrun",
+	PipelineTask: &pts[7],
+}, {
+	TaskRunName:  "taskrun",
+	PipelineTask: &pts[8],
+}}
+
+var taskWithGrandParentsOneNotRunState = PipelineRunState{{
+	TaskRunName:  "task0taskrun",
+	PipelineTask: &pts[0],
+	TaskRun:      makeSucceeded(trs[0]), // Passed
+}, {
+	TaskRunName:  "skippedTaskRun",
+	PipelineTask: &pts[5],
+	// No TaskRun so task has not been run, and pipeline should be running
+	ResolvedConditionChecks: successTaskConditionCheckState,
+}, {
+	TaskRunName:  "anothertaskrun",
+	PipelineTask: &pts[7],
+}, {
+	TaskRunName:  "taskrun",
+	PipelineTask: &pts[8],
+}}
+
 var taskCancelled = PipelineRunState{{
 	PipelineTask: &pts[4],
 	TaskRunName:  "pipelinerun-mytask1",
@@ -368,6 +451,14 @@ var taskCancelled = PipelineRunState{{
 		TaskSpec: &task.Spec,
 	},
 }}
+
+func DagFromState(state PipelineRunState) (*v1alpha1.DAG, error) {
+	pts := []v1alpha1.PipelineTask{}
+	for _, rprt := range state {
+		pts = append(pts, *rprt.PipelineTask)
+	}
+	return v1alpha1.BuildDAG(pts)
+}
 
 func TestGetNextTasks(t *testing.T) {
 	tcs := []struct {
@@ -903,11 +994,35 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		name:           "one-retry-needed",
 		state:          taskRetriedState,
 		expectedStatus: corev1.ConditionUnknown,
+	}, {
+		name:           "task skipped due to condition failure in parent",
+		state:          taskWithParentSkippedState,
+		expectedStatus: corev1.ConditionTrue,
+	}, {
+		name:           "task with multiple parent tasks -> one of which is skipped",
+		state:          taskWithMultipleParentsSkippedState,
+		expectedStatus: corev1.ConditionTrue,
+	}, {
+		name:           "task with grand parent task skipped",
+		state:          taskWithGrandParentSkippedState,
+		expectedStatus: corev1.ConditionTrue,
+	}, {
+		name:           "task with grand parents; one parent failed",
+		state:          taskWithGrandParentsOneFailedState,
+		expectedStatus: corev1.ConditionFalse,
+	}, {
+		name:           "task with grand parents; one not run yet",
+		state:          taskWithGrandParentsOneNotRunState,
+		expectedStatus: corev1.ConditionUnknown,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			c := GetPipelineConditionStatus("somepipelinerun", tc.state, zap.NewNop().Sugar(), &metav1.Time{Time: time.Now()},
-				nil)
+			pr := tb.PipelineRun("somepipelinerun", "foo")
+			dag, err := DagFromState(tc.state)
+			if err != nil {
+				t.Fatalf("Unexpected error while buildig DAG for state %v: %v", tc.state, err)
+			}
+			c := GetPipelineConditionStatus(pr, tc.state, zap.NewNop().Sugar(), dag)
 			if c.Status != tc.expectedStatus {
 				t.Fatalf("Expected to get status %s but got %s for state %v", tc.expectedStatus, c.Status, tc.state)
 			}
