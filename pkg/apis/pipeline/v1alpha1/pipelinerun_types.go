@@ -256,3 +256,18 @@ func (pr *PipelineRun) IsCancelled() bool {
 func (pr *PipelineRun) GetRunKey() string {
 	return fmt.Sprintf("%s/%s/%s", pipelineRunControllerName, pr.Namespace, pr.Name)
 }
+
+// IsTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
+func (pr *PipelineRun) IsTimedOut() bool {
+	pipelineTimeout := pr.Spec.Timeout
+	startTime := pr.Status.StartTime
+
+	if !startTime.IsZero() && pipelineTimeout != nil {
+		timeout := pipelineTimeout.Duration
+		runtime := time.Since(startTime.Time)
+		if runtime > timeout {
+			return true
+		}
+	}
+	return false
+}

@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -174,6 +175,42 @@ func TestPipelineRunHasStarted(t *testing.T) {
 			}
 			if pr.HasStarted() != tc.expectedValue {
 				t.Fatalf("Expected pipelinerun HasStarted() to return %t but got %t", tc.expectedValue, pr.HasStarted())
+			}
+		})
+	}
+}
+
+func TestPipelineRunHasTimedOut(t *testing.T) {
+	tcs := []struct {
+		name      string
+		timeout   time.Duration
+		starttime time.Time
+		expected  bool
+	}{{
+		name:      "timedout",
+		timeout:   1 * time.Second,
+		starttime: time.Now().AddDate(0, 0, -1),
+		expected:  true,
+	}, {
+		name:      "nottimedout",
+		timeout:   25 * time.Hour,
+		starttime: time.Now().AddDate(0, 0, -1),
+		expected:  false,
+	}}
+
+	for _, tc := range tcs {
+		t.Run(t.Name(), func(t *testing.T) {
+			pr := tb.PipelineRun("pr", "foo",
+				tb.PipelineRunSpec("test-pipeline",
+					tb.PipelineRunTimeout(tc.timeout),
+				),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStartTime(tc.starttime),
+				),
+			)
+
+			if pr.IsTimedOut() != tc.expected {
+				t.Fatalf("Expected isTimedOut to be %t", tc.expected)
 			}
 		})
 	}
