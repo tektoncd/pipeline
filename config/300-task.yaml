@@ -29,3 +29,152 @@ spec:
   subresources:
     status: {}
   version: v1alpha1
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            inputs:
+              description: Inputs is an optional set of parameters and resources which
+                must be supplied by the user when a Task is executed by a TaskRun.
+              properties:
+                paramspecs:
+                  description: Params is a list of input parameters required to run
+                    the task. Params must be supplied as inputs in TaskRuns unless
+                    they declare a default value.
+                  items:
+                    properties:
+                      default:
+                        description: Default is the value a parameter takes if no
+                          input value is supplied. If default is set, a Task may be
+                          executed without a supplied value for the parameter.
+                        type: object
+                      description:
+                        description: Description is a user-facing description of the
+                          parameter that may be used to populate a UI.
+                        type: string
+                      name:
+                        description: Name declares the name by which a parameter is
+                          referenced.
+                        type: string
+                      type:
+                        description: Type is the user-specified type of the parameter.
+                          The possible types are currently "string" and "array", and
+                          "string" is the default.
+                        type: string
+                    required:
+                    - name
+                    type: object
+                  type: array
+                taskresources:
+                  description: Resources is a list of the input resources required
+                    to run the task. Resources are represented in TaskRuns as bindings
+                    to instances of PipelineResources.
+                  items:
+                    properties:
+                      name:
+                        description: Name declares the name by which a resource is
+                          referenced in the Task's definition. Resources may be referenced
+                          by name in the definition of a Task's steps.
+                        type: string
+                      outputImageDir:
+                        description: Path to the index.json file for output container
+                          images.
+                        type: string
+                      pipelineresourcetype:
+                        description: Type is the type of this resource;
+                        type: string
+                      targetPath:
+                        description: TargetPath is the path in workspace directory
+                          where the task resource will be copied.
+                        type: string
+                    required:
+                    - name
+                    - pipelineresourcetype
+                    - targetPath
+                    - outputImageDir
+                    type: object
+                  type: array
+              type: object
+            outputs:
+              description: Outputs is an optional set of resources and results produced
+                when this Task is run.
+              properties:
+                resources:
+                  items:
+                    properties:
+                      name:
+                        description: Name declares the name by which a resource is
+                          referenced in the Task's definition. Resources may be referenced
+                          by name in the definition of a Task's steps.
+                        type: string
+                      outputImageDir:
+                        description: Path to the index.json file for output container
+                          images.
+                        type: string
+                      pipelineresourcetype:
+                        description: Type is the type of this resource;
+                        type: string
+                      targetPath:
+                        description: TargetPath is the path in workspace directory
+                          where the task resource will be copied.
+                        type: string
+                    required:
+                    - name
+                    - pipelineresourcetype
+                    - targetPath
+                    - outputImageDir
+                    type: object
+                  type: array
+                results:
+                  items:
+                    properties:
+                      format:
+                        description: 'TODO: maybe this is an enum with types like
+                          "go test", "junit", etc.'
+                        type: string
+                      name:
+                        description: Name declares the name by which a result is referenced
+                          in the Task's definition. Results may be referenced by name
+                          in the definition of a Task's steps.
+                        type: string
+                      path:
+                        type: string
+                    required:
+                    - name
+                    - format
+                    - path
+                    type: object
+                  type: array
+              type: object
+            stepTemplate:
+              description: StepTemplate can be used as the basis for all step containers
+                within the Task, so that the steps inherit settings on the base container.
+              type: object
+            steps:
+              description: Steps are the steps of the build; each step is run sequentially
+                with the source mounted into /workspace.
+              items:
+                type: object
+              type: array
+            volumes:
+              description: Volumes is a collection of volumes that are available to
+                mount into the steps of the build.
+              items:
+                type: object
+              type: array
+          type: object
+        status:
+          type: object
