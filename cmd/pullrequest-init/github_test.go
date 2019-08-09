@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http/httptest"
 	"net/url"
@@ -190,11 +189,11 @@ func TestGitHub(t *testing.T) {
 	defer close()
 
 	dir := os.TempDir()
-	if err := h.Download(ctx, dir); err != nil {
+	pullRequest, err := h.Download(ctx, dir)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	prPath := filepath.Join(dir, "pr.json")
 	rawStatusPath := filepath.Join(dir, "github/status.json")
 	rawPRPath := filepath.Join(dir, "github/pr.json")
 	rawCommentPath := filepath.Join(dir, "github/comments/1.json")
@@ -224,15 +223,8 @@ func TestGitHub(t *testing.T) {
 		RawStatus: rawStatusPath,
 	}
 
-	gotPR := new(PullRequest)
-	diffFile(t, prPath, wantPR, gotPR)
-	diffFile(t, rawPRPath, pr, new(github.PullRequest))
-	if rawPRPath != gotPR.Raw {
-		t.Errorf("Raw PR path: want [%s], got [%s]", rawPRPath, gotPR.Raw)
-	}
-	diffFile(t, rawCommentPath, comment, new(github.IssueComment))
-	if rawCommentPath != gotPR.Comments[0].Raw {
-		t.Errorf("Raw PR path: want [%s], got [%s]", rawCommentPath, gotPR.Comments[0].Raw)
+	if diff := cmp.Diff(wantPR, pullRequest); diff != "" {
+		t.Errorf("Get PullRequest: -want +got: %s", diff)
 	}
 }
 
@@ -271,17 +263,8 @@ func TestUpload(t *testing.T) {
 			URL:         "https://tekton.dev",
 		}},
 	}
-	dir := os.TempDir()
-	prPath := filepath.Join(dir, "pr.json")
-	f, err := os.Create(prPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.NewEncoder(f).Encode(tektonPR); err != nil {
-		t.Fatal(err)
-	}
 
-	if err := h.Upload(ctx, dir); err != nil {
+	if err := h.Upload(ctx, tektonPR); err != nil {
 		t.Fatal(err)
 	}
 
@@ -325,20 +308,6 @@ func TestUpload(t *testing.T) {
 	}
 	if diff := cmp.Diff(wantStatus, gotStatus); diff != "" {
 		t.Errorf("GetCombinedStatus: -want +got: %s", diff)
-	}
-}
-
-func diffFile(t *testing.T, path string, want interface{}, got interface{}) {
-	t.Helper()
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := json.NewDecoder(f).Decode(got); err != nil {
-		t.Fatal(err)
-	}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("PR -want +got: %s", diff)
 	}
 }
 
