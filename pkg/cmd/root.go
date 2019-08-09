@@ -32,19 +32,19 @@ import (
 
 const usageTemplate = `Usage:{{if .Runnable}}
 {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-{{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
 
 Aliases:
-{{.NameAndAliases}}{{end}}{{if .HasExample}}
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
 
 Examples:
-{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
 
 Available Commands:{{range .Commands}}{{if (eq .Annotations.commandType "main")}}
-{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}
 
 Other Commands:{{range .Commands}}{{if (eq .Annotations.commandType "utility")}}
-{{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 Flags:
 {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
