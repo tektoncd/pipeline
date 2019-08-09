@@ -29,3 +29,59 @@ spec:
   subresources:
     status: {}
   version: v1alpha1
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            params:
+              items:
+                properties:
+                  name:
+                    type: string
+                  value:
+                    type: string
+                required:
+                - name
+                - value
+                type: object
+              type: array
+            secrets:
+              description: Secrets to fetch to populate some of resource fields
+              items:
+                properties:
+                  fieldName:
+                    type: string
+                  secretKey:
+                    type: string
+                  secretName:
+                    type: string
+                required:
+                - fieldName
+                - secretKey
+                - secretName
+                type: object
+              type: array
+            type:
+              description: 'Important: Run "operator-sdk generate k8s" to regenerate
+                code after modifying this file Add custom validation using kubebuilder
+                tags: https://book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: string
+          required:
+          - type
+          - params
+          type: object
+        status:
+          type: object
