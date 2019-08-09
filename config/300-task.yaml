@@ -93,16 +93,16 @@ spec:
                         description: Path to the index.json file for output container
                           images.
                         type: string
-                      pipelineresourcetype:
-                        description: Type is the type of this resource;
-                        type: string
                       targetPath:
                         description: TargetPath is the path in workspace directory
                           where the task resource will be copied.
                         type: string
+                      type:
+                        description: Type is the type of this resource;
+                        type: string
                     required:
                     - name
-                    - pipelineresourcetype
+                    - type
                     - targetPath
                     - outputImageDir
                     type: object
@@ -124,16 +124,16 @@ spec:
                         description: Path to the index.json file for output container
                           images.
                         type: string
-                      pipelineresourcetype:
-                        description: Type is the type of this resource;
-                        type: string
                       targetPath:
                         description: TargetPath is the path in workspace directory
                           where the task resource will be copied.
                         type: string
+                      type:
+                        description: Type is the type of this resource;
+                        type: string
                     required:
                     - name
-                    - pipelineresourcetype
+                    - type
                     - targetPath
                     - outputImageDir
                     type: object
