@@ -55,7 +55,7 @@ spec:
                     description: Default is the value a parameter takes if no input
                       value is supplied. If default is set, a Task may be executed
                       without a supplied value for the parameter.
-                    type: object
+                    type: string
                   description:
                     description: Description is a user-facing description of the parameter
                       that may be used to populate a UI.
