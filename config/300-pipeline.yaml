@@ -136,7 +136,7 @@ spec:
                         name:
                           type: string
                         value:
-                          type: object
+                          type: string
                       required:
                       - name
                       - value
