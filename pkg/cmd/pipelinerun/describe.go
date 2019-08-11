@@ -165,7 +165,9 @@ func hasFailed(pr *v1alpha1.PipelineRun) string {
 	return ""
 }
 
-type taskrunList []struct {
+type taskrunList []tkr
+
+type tkr struct {
 	TaskrunName string
 	*v1alpha1.PipelineRunTaskRunStatus
 }
@@ -175,10 +177,7 @@ func newTaskrunListFromMap(statusMap map[string]*v1alpha1.PipelineRunTaskRunStat
 	var trl taskrunList
 
 	for taskrunName, taskrunStatus := range statusMap {
-		trl = append(trl, struct {
-			TaskrunName string
-			*v1alpha1.PipelineRunTaskRunStatus
-		}{
+		trl = append(trl, tkr{
 			taskrunName,
 			taskrunStatus,
 		})
