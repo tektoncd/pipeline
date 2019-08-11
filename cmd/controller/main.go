@@ -28,7 +28,7 @@ import (
 
 const (
 	// ControllerLogKey is the name of the logger for the controller cmd
-	ControllerLogKey = "controller"
+	ControllerLogKey = "tekton"
 )
 
 var (

@@ -56,6 +56,10 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 		resourceInformer := resourceinformer.Get(ctx)
 		conditionInformer := conditioninformer.Get(ctx)
 		timeoutHandler := reconciler.NewTimeoutHandler(ctx.Done(), logger)
+		metrics, err := NewRecorder()
+		if err != nil {
+			logger.Errorf("Failed to create pipelinerun metrics recorder %v", err)
+		}
 
 		opt := reconciler.Options{
 			KubeClientSet:     kubeclientset,
@@ -75,6 +79,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			resourceLister:    resourceInformer.Lister(),
 			conditionLister:   conditionInformer.Lister(),
 			timeoutHandler:    timeoutHandler,
+			metrics:           metrics,
 		}
 		impl := controller.NewImpl(c, c.Logger, pipelineRunControllerName)
 

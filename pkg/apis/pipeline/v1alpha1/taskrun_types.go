@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -290,4 +291,19 @@ func (tr *TaskRun) GetServiceAccountName() string {
 		name = tr.Spec.DeprecatedServiceAccount
 	}
 	return name
+
+}
+
+// IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
+// It also return the name of Pipeline and PipelineRun
+func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
+	if tr == nil || len(tr.Labels) == 0 {
+		return false, "", ""
+	}
+
+	if pl, ok := tr.Labels[pipeline.GroupName+pipeline.PipelineLabelKey]; ok {
+		return true, pl, tr.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey]
+	}
+
+	return false, "", ""
 }

@@ -335,6 +335,13 @@ func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 	}
 }
 
+// TaskRunCompletionTime sets the start time to the TaskRunStatus.
+func TaskRunCompletionTime(completionTime time.Time) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.CompletionTime = &metav1.Time{Time: completionTime}
+	}
+}
+
 // TaskRunCloudEvent adds an event to the TaskRunStatus.
 func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {

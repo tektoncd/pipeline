@@ -100,6 +100,7 @@ type Reconciler struct {
 	tracker           tracker.Interface
 	configStore       configStore
 	timeoutHandler    *reconciler.TimeoutSet
+	metrics           *Recorder
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -109,7 +110,6 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 // converge the two. It then updates the Status block of the Pipeline Run
 // resource with the current status of the resource.
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
-
 	c.Logger.Infof("Reconciling %v", time.Now())
 
 	// Convert the namespace/name string into a distinct namespace and name
@@ -156,6 +156,12 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			c.Logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
 			return err
 		}
+		go func(metrics *Recorder) {
+			err := metrics.DurationAndCount(pr)
+			if err != nil {
+				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
 	} else {
 		if err := c.tracker.Track(pr.GetTaskRunRef(), pr); err != nil {
 			c.Logger.Errorf("Failed to create tracker for TaskRuns for PipelineRun %s: %v", pr.Name, err)
@@ -171,16 +177,16 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		}
 	}
 
-	if equality.Semantic.DeepEqual(original.Status, pr.Status) {
-		// If we didn't change anything then don't call updateStatus.
-		// This is important because the copy we loaded from the informer's
-		// cache may be stale and we don't want to overwrite a prior update
-		// to status with this stale state.
-	} else if _, err := c.updateStatus(pr); err != nil {
-		c.Logger.Warn("Failed to update PipelineRun status", zap.Error(err))
-		c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update")
-		return err
+	var updated bool
+	if !equality.Semantic.DeepEqual(original.Status, pr.Status) {
+		if _, err := c.updateStatus(pr); err != nil {
+			c.Logger.Warn("Failed to update PipelineRun status", zap.Error(err))
+			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update")
+			return err
+		}
+		updated = true
 	}
+
 	// Since we are using the status subresource, it is not possible to update
 	// the status and labels/annotations simultaneously.
 	if !reflect.DeepEqual(original.ObjectMeta.Labels, pr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, pr.ObjectMeta.Annotations) {
@@ -189,6 +195,16 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			c.Recorder.Event(pr, corev1.EventTypeWarning, eventReasonFailed, "PipelineRun failed to update labels/annotations")
 			return err
 		}
+		updated = true
+	}
+
+	if updated {
+		go func(metrics *Recorder) {
+			err := metrics.RunningPipelineRuns(c.pipelineRunLister)
+			if err != nil {
+				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
 	}
 
 	return err

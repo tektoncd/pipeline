@@ -54,6 +54,10 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 		podInformer := podinformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
 		timeoutHandler := reconciler.NewTimeoutHandler(ctx.Done(), logger)
+		metrics, err := NewRecorder()
+		if err != nil {
+			logger.Errorf("Failed to create taskrun metrics recorder %v", err)
+		}
 
 		opt := reconciler.Options{
 			KubeClientSet:     kubeclientset,
@@ -71,6 +75,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			resourceLister:    resourceInformer.Lister(),
 			timeoutHandler:    timeoutHandler,
 			cloudEventClient:  cloudeventclient.Get(ctx),
+			metrics:           metrics,
 		}
 		impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
