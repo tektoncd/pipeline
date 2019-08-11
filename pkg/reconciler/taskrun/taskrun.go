@@ -71,6 +71,7 @@ type Reconciler struct {
 	tracker           tracker.Interface
 	cache             *entrypoint.Cache
 	timeoutHandler    *reconciler.TimeoutSet
+	metrics           *Recorder
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -94,7 +95,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Infof("task run %q in work queue no longer exists", key)
 		return nil
 	} else if err != nil {
-		c.Logger.Errorf("Error retreiving TaskRun %q: %s", name, err)
+		c.Logger.Errorf("Error retrieving TaskRun %q: %s", name, err)
 		return err
 	}
 
@@ -111,6 +112,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	if tr.IsDone() {
+		c.Logger.Infof("taskrun done : %s \n", tr.Name)
 		var merr *multierror.Error
 		// Try to send cloud events first
 		cloudEventErr := cloudevent.SendCloudEvents(tr, c.cloudEventClient, c.Logger)
@@ -134,6 +136,18 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			c.Logger.Errorf("Error stopping sidecars for TaskRun %q: %v", name, err)
 			merr = multierror.Append(merr, err)
 		}
+
+		go func(metrics *Recorder) {
+			err := metrics.DurationAndCount(tr)
+			if err != nil {
+				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			}
+			err = metrics.RecordPodLatency(pod, tr)
+			if err != nil {
+				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
+
 		return merr.ErrorOrNil()
 	}
 	// Reconcile this copy of the task run and then write back any status
@@ -146,25 +160,40 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 }
 
 func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.TaskRun) error {
-	var err error
-	if equality.Semantic.DeepEqual(original.Status, tr.Status) {
+	var updated bool
+
+	if !equality.Semantic.DeepEqual(original.Status, tr.Status) {
 		// If we didn't change anything then don't call updateStatus.
 		// This is important because the copy we loaded from the informer's
 		// cache may be stale and we don't want to overwrite a prior update
 		// to status with this stale state.
-	} else if _, err := c.updateStatus(tr); err != nil {
-		c.Logger.Warn("Failed to update taskRun status", zap.Error(err))
-		return err
+		if _, err := c.updateStatus(tr); err != nil {
+			c.Logger.Warn("Failed to update taskRun status", zap.Error(err))
+			return err
+		}
+		updated = true
 	}
+
 	// Since we are using the status subresource, it is not possible to update
 	// the status and labels/annotations simultaneously.
-	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) {
+	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, tr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(tr); err != nil {
 			c.Logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
 			return err
 		}
+		updated = true
 	}
-	return err
+
+	if updated {
+		go func(metrics *Recorder) {
+			err := metrics.RunningTaskRuns(c.taskRunLister)
+			if err != nil {
+				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
+	}
+
+	return nil
 }
 
 func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alpha1.TaskKind) {

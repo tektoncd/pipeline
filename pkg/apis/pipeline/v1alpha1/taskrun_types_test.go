@@ -22,12 +22,12 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestTaskRun_GetBuildPodRef(t *testing.T) {
@@ -177,5 +177,45 @@ func TestTaskRunGetServiceAccountName(t *testing.T) {
 		if e, a := tt.expectedSA, tt.tr.GetServiceAccountName(); e != a {
 			t.Errorf("%s: wrong service account name: got: %q want: %q", tt.name, a, e)
 		}
+	}
+}
+
+func TestTaskRunIsOfPipelinerun(t *testing.T) {
+	tests := []struct {
+		name                  string
+		tr                    *v1alpha1.TaskRun
+		expectedValue         bool
+		expetectedPipeline    string
+		expetectedPipelineRun string
+	}{{
+		name: "yes",
+		tr: tb.TaskRun("taskrunname", "testns",
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "pipeline"),
+			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "pipelinerun"),
+		),
+		expectedValue:         true,
+		expetectedPipeline:    "pipeline",
+		expetectedPipelineRun: "pipelinerun",
+	}, {
+		name:          "no",
+		tr:            tb.TaskRun("taskrunname", "testns"),
+		expectedValue: false,
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			value, pipeline, pipelineRun := test.tr.IsPartOfPipeline()
+			if value != test.expectedValue {
+				t.Fatalf("Expecting %v got %v", test.expectedValue, value)
+			}
+
+			if pipeline != test.expetectedPipeline {
+				t.Fatalf("Mismatch in pipeline: got %s expected %s", pipeline, test.expetectedPipeline)
+			}
+
+			if pipelineRun != test.expetectedPipelineRun {
+				t.Fatalf("Mismatch in pipelinerun: got %s expected %s", pipelineRun, test.expetectedPipelineRun)
+			}
+		})
 	}
 }
