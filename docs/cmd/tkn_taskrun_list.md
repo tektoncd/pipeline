@@ -21,7 +21,7 @@ Lists taskruns in a namespace
 tkn taskrun list  foo -n bar
 
 # List all taskruns in a namespaces 'foo'
-tkn pr list -n foo \n",
+tkn tr list -n foo \n",
 
 
 ### Options

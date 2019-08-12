@@ -42,7 +42,7 @@ func listCommand(p cli.Params) *cobra.Command {
 tkn taskrun list  foo -n bar
 
 # List all taskruns in a namespaces 'foo'
-tkn pr list -n foo \n",
+tkn tr list -n foo \n",
 `
 
 	c := &cobra.Command{
