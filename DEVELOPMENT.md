@@ -142,7 +142,7 @@ You can stand up a version of this controller on-cluster (to your
 `kubectl config current-context`):
 
 - using a `release.yaml` file from the Tekton pipelines
-  [releases](https://github.com/tektoncd/cli/releases)
+  [releases](https://github.com/tektoncd/pipeline/releases)
 - using [tektoncd/cli](https://github.com/tektoncd/cli)
   sources, following
   [DEVELOPMENT.md](https://github.com/tektoncd/cli/blob/master/DEVELOPMENT.md).
