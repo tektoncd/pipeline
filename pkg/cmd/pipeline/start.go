@@ -17,14 +17,18 @@ package pipeline
 import (
 	"errors"
 	"fmt"
-	"io"
+	"os"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -33,17 +37,28 @@ var (
 )
 
 const (
-	invalidResource = "invalid resource parameter: "
-	invalidParam    = "invalid param parameter: "
+	invalidResource = "invalid input format for resource parameter : "
+	invalidParam    = "invalid input format for param parameter : "
 	invalidSvc      = "invalid service account parameter: "
 )
 
 type startOptions struct {
+	cliparams          cli.Params
+	stream             *cli.Stream
+	askOpts            survey.AskOpt
 	Params             []string
 	Resources          []string
 	ServiceAccountName string
 	ServiceAccounts    []string
 	Last               bool
+}
+
+type resourceOptionsFilter struct {
+	git         []string
+	image       []string
+	cluster     []string
+	storage     []string
+	pullRequest []string
 }
 
 // NameArg validates that the first argument is a valid pipeline name
@@ -67,13 +82,17 @@ func NameArg(args []string, p cli.Params) error {
 }
 
 func startCommand(p cli.Params) *cobra.Command {
-	var (
-		res    []string
-		params []string
-		svc    string
-		last   bool
-		svcs   []string
-	)
+	opt := startOptions{
+		cliparams: p,
+		askOpts: func(opt *survey.AskOptions) error {
+			opt.Stdio = terminal.Stdio{
+				In:  os.Stdin,
+				Out: os.Stdout,
+				Err: os.Stderr,
+			}
+			return nil
+		},
+	}
 
 	c := &cobra.Command{
 		Use:     "start pipeline [RESOURCES...] [PARAMS...] [SERVICEACCOUNT]",
@@ -84,7 +103,10 @@ func startCommand(p cli.Params) *cobra.Command {
 		},
 		Example: `
 # start pipeline foo by creating a pipelinerun named "foo-run-xyz123" from the namespace "bar"
-tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s ServiceAccountName  -n bar
+tkn pipeline start foo -s ServiceAccountName -n bar
+
+For params value, if you want to provide multiple values, provide them comma separated
+like cat,foo.bar
 `,
 		SilenceUsage: true,
 		Args: func(cmd *cobra.Command, args []string) error {
@@ -95,35 +117,214 @@ tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s Ser
 			return NameArg(args, p)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			opt := startOptions{
-				Resources:          res,
-				Params:             params,
-				ServiceAccountName: svc,
-				ServiceAccounts:    svcs,
-				Last:               last,
+			opt.stream = &cli.Stream{
+				Out: cmd.OutOrStdout(),
+				Err: cmd.OutOrStderr(),
 			}
-			return startPipeline(cmd.OutOrStdout(), opt, p, args[0])
+			return opt.run(args[0])
 		},
 	}
 
-	c.Flags().StringSliceVarP(&res, "resource", "r", []string{}, "pass the resource name and ref")
-	c.Flags().StringSliceVarP(&params, "param", "p", []string{}, "pass the param")
-	c.Flags().StringVarP(&svc, "serviceaccount", "s", svc, "pass the serviceaccount name")
+	c.Flags().StringSliceVarP(&opt.Resources, "resource", "r", []string{}, "pass the resource name and ref as name=ref")
+	c.Flags().StringSliceVarP(&opt.Params, "param", "p", []string{}, "pass the param as key=value")
+	c.Flags().StringVarP(&opt.ServiceAccountName, "serviceaccount", "s", "", "pass the serviceaccount name")
 	flags.AddShellCompletion(c.Flags().Lookup("serviceaccount"), "__kubectl_get_serviceaccount")
-	c.Flags().StringSliceVar(&svcs, "task-serviceaccount", []string{}, "pass the service account corresponding to the task")
+	c.Flags().StringSliceVar(&opt.ServiceAccounts, "task-serviceaccount", []string{}, "pass the service account corresponding to the task")
 	flags.AddShellCompletion(c.Flags().Lookup("task-serviceaccount"), "__kubectl_get_serviceaccount")
-
-	c.Flags().BoolVarP(&last, "last", "l", false, "re-run the pipeline using last pipelinerun values")
+	c.Flags().BoolVarP(&opt.Last, "last", "l", false, "re-run the pipeline using last pipelinerun values")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
+
 	return c
 }
 
-func startPipeline(out io.Writer, opt startOptions, p cli.Params, pName string) error {
+func (opt *startOptions) run(pName string) error {
+	if err := opt.getInput(pName); err != nil {
+		return err
+	}
+
+	return opt.startPipeline(pName)
+}
+
+func (opt *startOptions) getInput(pname string) error {
+	cs, err := opt.cliparams.Clients()
+	if err != nil {
+		return err
+	}
+
+	pipeline, err := getPipeline(cs.Tekton, opt.cliparams.Namespace(), pname)
+	if err != nil {
+		fmt.Fprintf(opt.stream.Err, "failed to get pipeline %s from %s namespace \n", pname, opt.cliparams.Namespace())
+		return err
+	}
+
+	if len(opt.Resources) == 0 {
+		pres, err := getPipelineResources(cs.Tekton, opt.cliparams.Namespace())
+		if err != nil {
+			fmt.Fprintf(opt.stream.Err, "failed to list pipelineresources from %s namespace \n", opt.cliparams.Namespace())
+			return err
+		}
+
+		resources := getPipelineResourcesByFormat(pres.Items)
+
+		err = opt.getInputResources(resources, pipeline)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(opt.Params) == 0 {
+		err = opt.getInputParams(pipeline)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (opt *startOptions) getInputResources(resources resourceOptionsFilter, pipeline *v1alpha1.Pipeline) error {
+	var ans string
+	for _, res := range pipeline.Spec.Resources {
+		options := getOptionsByType(resources, string(res.Type))
+		if len(options) == 0 {
+			return fmt.Errorf("no pipeline resource of type %s found in namespace: %s",
+				string(res.Type), opt.cliparams.Namespace())
+		}
+
+		var qs = []*survey.Question{
+			{
+				Name: "pipelineresource",
+				Prompt: &survey.Select{
+					Message: fmt.Sprintf("Which %s resource to use for %s ?", res.Type, res.Name),
+					Options: options,
+				},
+			},
+		}
+
+		if err := survey.Ask(qs, &ans, opt.askOpts); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		name := strings.TrimSpace(strings.Split(ans, " ")[0])
+		opt.Resources = append(opt.Resources, res.Name+"="+name)
+	}
+	return nil
+}
+
+func (opt *startOptions) getInputParams(pipeline *v1alpha1.Pipeline) error {
+	for _, param := range pipeline.Spec.Params {
+		var ans string
+		var qs = []*survey.Question{
+			{
+				Name: "pipeline param",
+				Prompt: &survey.Input{
+					Message: fmt.Sprintf("Value of param `%s` ? (Default is %s)", param.Name, param.Default.StringVal),
+					Default: param.Default.StringVal,
+				},
+			},
+		}
+
+		if err := survey.Ask(qs, &ans, opt.askOpts); err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
+		opt.Params = append(opt.Params, param.Name+"="+ans)
+	}
+	return nil
+}
+
+func getPipelineResources(client versioned.Interface, namespace string) (*v1alpha1.PipelineResourceList, error) {
+	pres, err := client.TektonV1alpha1().PipelineResources(namespace).List(v1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pres, nil
+}
+
+func getPipeline(client versioned.Interface, namespace string, pname string) (*v1alpha1.Pipeline, error) {
+	pipeline, err := client.TektonV1alpha1().Pipelines(namespace).Get(pname, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pipeline, nil
+}
+
+func getPipelineResourcesByFormat(resources []v1alpha1.PipelineResource) (ret resourceOptionsFilter) {
+	for _, res := range resources {
+		output := ""
+		switch string(res.Spec.Type) {
+		case "git":
+			for _, param := range res.Spec.Params {
+				if param.Name == "url" {
+					output = param.Value + output
+				}
+				if param.Name == "revision" && param.Value != "master" {
+					output = output + "#" + param.Value
+				}
+			}
+			ret.git = append(ret.git, fmt.Sprintf("%s (%s)", res.Name, output))
+		case "image":
+			for _, param := range res.Spec.Params {
+				if param.Name == "url" {
+					output = param.Value + output
+				}
+			}
+			ret.image = append(ret.image, fmt.Sprintf("%s (%s)", res.Name, output))
+		case "pullRequest":
+			for _, param := range res.Spec.Params {
+				if param.Name == "url" {
+					output = param.Value + output
+				}
+			}
+			ret.pullRequest = append(ret.pullRequest, fmt.Sprintf("%s (%s)", res.Name, output))
+		case "storage":
+			for _, param := range res.Spec.Params {
+				if param.Name == "location" {
+					output = param.Value + output
+				}
+			}
+			ret.storage = append(ret.storage, fmt.Sprintf("%s (%s)", res.Name, output))
+		case "cluster":
+			for _, param := range res.Spec.Params {
+				if param.Name == "url" {
+					output = param.Value + output
+				}
+				if param.Name == "user" {
+					output = output + "#" + param.Value
+				}
+			}
+			ret.cluster = append(ret.cluster, fmt.Sprintf("%s (%s)", res.Name, output))
+		}
+	}
+	return
+}
+
+func getOptionsByType(resources resourceOptionsFilter, restype string) []string {
+	if restype == "git" {
+		return resources.git
+	}
+	if restype == "image" {
+		return resources.image
+	}
+	if restype == "pullRequest" {
+		return resources.pullRequest
+	}
+	if restype == "cluster" {
+		return resources.cluster
+	}
+	if restype == "storage" {
+		return resources.storage
+	}
+	return []string{}
+}
+
+func (opt *startOptions) startPipeline(pName string) error {
 	pr := &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    p.Namespace(),
+			Namespace:    opt.cliparams.Namespace(),
 			GenerateName: pName + "-run-",
 		},
 		Spec: v1alpha1.PipelineRunSpec{
@@ -131,13 +332,13 @@ func startPipeline(out io.Writer, opt startOptions, p cli.Params, pName string) 
 		},
 	}
 
-	cs, err := p.Clients()
+	cs, err := opt.cliparams.Clients()
 	if err != nil {
 		return err
 	}
 
 	if opt.Last {
-		prLast, err := lastPipelineRun(cs, pName, p.Namespace())
+		prLast, err := lastPipelineRun(cs, pName, opt.cliparams.Namespace())
 		if err != nil {
 			return err
 		}
@@ -163,15 +364,13 @@ func startPipeline(out io.Writer, opt startOptions, p cli.Params, pName string) 
 		pr.Spec.ServiceAccount = opt.ServiceAccountName
 	}
 
-	pr, err = cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Create(pr)
+	prCreated, err := cs.Tekton.TektonV1alpha1().PipelineRuns(opt.cliparams.Namespace()).Create(pr)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(out, `Pipelinerun started: %s
-
-In order to track the pipelinerun progress run:
-tkn pipelinerune logs %s -f\n`, pr.Name, pr.Name)
+	fmt.Fprintf(opt.stream.Out, "Pipelinerun started: %s\n\n"+
+		"In order to track the pipelinerun progress run:\ntkn pipelinerune logs %s -f\n", prCreated.Name, prCreated.Name)
 	return nil
 }
 
@@ -259,7 +458,7 @@ func lastPipelineRun(cs *cli.Clients, pipeline, ns string) (*v1alpha1.PipelineRu
 	}
 
 	if len(runs.Items) == 0 {
-		return nil, fmt.Errorf("No pipelineruns found in namespace: %s", ns)
+		return nil, fmt.Errorf("no pipelineruns found in namespace: %s", ns)
 	}
 
 	latest := runs.Items[0]
@@ -275,11 +474,9 @@ func lastPipelineRun(cs *cli.Clients, pipeline, ns string) (*v1alpha1.PipelineRu
 func parseRes(res []string) (map[string]v1alpha1.PipelineResourceBinding, error) {
 	resources := map[string]v1alpha1.PipelineResourceBinding{}
 	for _, v := range res {
-		r := strings.Split(v, "=")
-		if len(r) != 2 || len(r[0]) == 0 {
-			errMsg := invalidResource + v +
-				"\nPlease pass resource as -r ResourceName=ResourceRef"
-			return nil, errors.New(errMsg)
+		r := strings.SplitN(v, "=", 2)
+		if len(r) != 2 {
+			return nil, errors.New(invalidResource + v)
 		}
 		resources[r[0]] = v1alpha1.PipelineResourceBinding{
 			Name: r[0],
@@ -294,18 +491,28 @@ func parseRes(res []string) (map[string]v1alpha1.PipelineResourceBinding, error)
 func parseParam(p []string) (map[string]v1alpha1.Param, error) {
 	params := map[string]v1alpha1.Param{}
 	for _, v := range p {
-		r := strings.Split(v, "=")
-		if len(r) != 2 || len(r[0]) == 0 {
-			errMsg := invalidParam + v +
-				"\nPlease pass param as -p ParamName=ParamValue"
-			return nil, errors.New(errMsg)
+		r := strings.SplitN(v, "=", 2)
+		if len(r) != 2 {
+			return nil, errors.New(invalidParam + v)
 		}
-		params[r[0]] = v1alpha1.Param{
-			Name: r[0],
-			Value: v1alpha1.ArrayOrString{
-				Type:      v1alpha1.ParamTypeString,
-				StringVal: r[1],
-			},
+		values := strings.Split(r[1], ",")
+		if len(values) == 1 {
+			params[r[0]] = v1alpha1.Param{
+				Name: r[0],
+				Value: v1alpha1.ArrayOrString{
+					Type:      v1alpha1.ParamTypeString,
+					StringVal: r[1],
+				},
+			}
+		}
+		if len(values) > 1 {
+			params[r[0]] = v1alpha1.Param{
+				Name: r[0],
+				Value: v1alpha1.ArrayOrString{
+					Type:     v1alpha1.ParamTypeArray,
+					ArrayVal: values,
+				},
+			}
 		}
 	}
 	return params, nil

@@ -24,6 +24,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/Netflix/go-expect"
 	"github.com/stretchr/testify/require"
+	"github.com/tektoncd/cli/pkg/cli"
 )
 
 type promptTest struct {
@@ -38,6 +39,24 @@ func (opts *logOptions) RunPromptTest(t *testing.T, test promptTest) {
 		var err error
 		opts.askOpts = WithStdio(stdio)
 		err = opts.run(test.cmdArgs)
+		if err != nil {
+			return err
+		}
+
+		return err
+	})
+}
+
+func (opts *startOptions) RunPromptTest(t *testing.T, test promptTest) {
+
+	test.runTest(t, test.procedure, func(stdio terminal.Stdio) error {
+		var err error
+		opts.askOpts = WithStdio(stdio)
+		opts.stream = &cli.Stream{
+			Out: stdio.Out,
+			Err: stdio.Err,
+		}
+		err = opts.run(test.cmdArgs[0])
 		if err != nil {
 			return err
 		}
