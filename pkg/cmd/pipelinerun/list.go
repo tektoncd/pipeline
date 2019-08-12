@@ -131,10 +131,9 @@ func list(p cli.Params, pipeline string, limit int) (*v1alpha1.PipelineRunList, 
 		sort.Sort(byStartTime(prs.Items))
 	}
 
-	// Limit after sort since pipelineruns are not in correct order until sorted
+	// If greater than maximum amount of pipelineruns, return all pipelineruns by setting limit to default
 	if limit > prslen {
-		fmt.Fprintf(os.Stderr, "Limit was %d but cannot be greater than %d\n", limit, prslen)
-		return nil, err
+		limit = 0
 	}
 
 	// Return all pipelineruns if limit is 0 or is same as prslen

@@ -15,6 +15,7 @@
 package taskrun
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -142,6 +143,48 @@ func TestListTaskRuns(t *testing.T) {
 			command:  command(t, trs, now),
 			args:     []string{"list", "-n", "random"},
 			expected: []string{emptyMsg, ""},
+		},
+		{
+			name:    "limit taskruns returned to 1",
+			command: command(t, trs, now),
+			args:    []string{"list", "-n", "foo", "-l", fmt.Sprintf("%d", 1)},
+			expected: []string{
+				"NAME    STARTED   DURATION   STATUS      ",
+				"tr0-1   ---       ---        Succeeded   ",
+				"",
+			},
+		},
+		{
+			name:    "limit taskruns negative case",
+			command: command(t, trs, now),
+			args:    []string{"list", "-n", "foo", "-l", fmt.Sprintf("%d", -1)},
+			expected: []string{
+				"",
+			},
+		},
+		{
+			name:    "limit taskruns greater than maximum case",
+			command: command(t, trs, now),
+			args:    []string{"list", "-n", "foo", "-l", fmt.Sprintf("%d", 7)},
+			expected: []string{
+				"NAME    STARTED          DURATION   STATUS      ",
+				"tr0-1   ---              ---        Succeeded   ",
+				"tr3-1   ---              ---        Failed      ",
+				"tr2-2   59 minutes ago   1 minute   Failed      ",
+				"tr1-1   1 hour ago       1 minute   Succeeded   ",
+				"tr2-1   1 hour ago       ---        Running     ",
+				"",
+			},
+		},
+		{
+			name:    "limit taskruns with output flag set",
+			command: command(t, trs, now),
+			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "-l", fmt.Sprintf("%d", 2)},
+			expected: []string{
+				"tr0-1",
+				"tr3-1",
+				"",
+			},
 		},
 	}
 

@@ -35,7 +35,13 @@ const (
 	emptyMsg = "No taskruns found"
 )
 
+type ListOptions struct {
+	Limit int
+}
+
 func listCommand(p cli.Params) *cobra.Command {
+
+	opts := &ListOptions{Limit: 0}
 	f := cliopts.NewPrintFlags("list")
 	eg := `
 # List all TaskRuns of Task name 'foo'
@@ -57,7 +63,12 @@ tkn tr list -n foo \n",
 				task = args[0]
 			}
 
-			trs, err := list(p, task)
+			if opts.Limit < 0 {
+				fmt.Fprintf(os.Stderr, "Limit was %d but must be a positive number\n", opts.Limit)
+				return nil
+			}
+
+			trs, err := list(p, task, opts.Limit)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to list taskruns from %s namespace \n", p.Namespace())
 				return err
@@ -69,28 +80,35 @@ tkn tr list -n foo \n",
 				return err
 			}
 
-			if output != "" {
+			if output != "" && trs != nil {
 				return printer.PrintObject(cmd.OutOrStdout(), trs, f)
 			}
+
 			stream := &cli.Stream{
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
-			err = printFormatted(stream, trs, p.Time())
+
+			if trs != nil {
+				err = printFormatted(stream, trs, p.Time())
+			}
+
 			if err != nil {
-				fmt.Fprint(os.Stderr, "Failed to print Taskruns \n")
+				fmt.Fprint(os.Stderr, "Failed to print taskruns \n")
 				return err
 			}
+
 			return nil
 		},
 	}
 
 	f.AddFlags(c)
+	c.Flags().IntVarP(&opts.Limit, "limit", "l", 0, "limit taskruns listed (default: return all taskruns)")
 
 	return c
 }
 
-func list(p cli.Params, task string) (*v1alpha1.TaskRunList, error) {
+func list(p cli.Params, task string, limit int) (*v1alpha1.TaskRunList, error) {
 	cs, err := p.Clients()
 	if err != nil {
 		return nil, err
@@ -109,8 +127,20 @@ func list(p cli.Params, task string) (*v1alpha1.TaskRunList, error) {
 		return nil, err
 	}
 
-	if len(trs.Items) != 0 {
+	trslen := len(trs.Items)
+
+	if trslen != 0 {
 		sort.Sort(byStartTime(trs.Items))
+	}
+
+	// If greater than maximum amount of taskruns, return all taskruns by setting limit to default
+	if limit > trslen {
+		limit = 0
+	}
+
+	// Return all taskruns if limit is 0 or is same as trslen
+	if limit != 0 && trslen > limit {
+		trs.Items = trs.Items[0:limit]
 	}
 
 	// NOTE: this is required for -o json|yaml to work properly since

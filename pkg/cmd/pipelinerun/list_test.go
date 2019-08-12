@@ -150,6 +150,12 @@ func TestListPipelineRuns(t *testing.T) {
 			command: command(t, prs, clock.Now()),
 			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", 7)},
 			expected: []string{
+				"NAME    STARTED          DURATION   STATUS               ",
+				"pr0-1   ---              ---        ---                  ",
+				"pr3-1   ---              ---        ---                  ",
+				"pr1-1   59 minutes ago   1 minute   Succeeded            ",
+				"pr2-2   2 hours ago      1 minute   Failed               ",
+				"pr2-1   3 hours ago      ---        Succeeded(Running)   ",
 				"",
 			},
 		},
