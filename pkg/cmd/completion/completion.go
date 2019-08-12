@@ -50,11 +50,13 @@ func Command() *cobra.Command {
 			"commandType": "utility",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			switch args[0] {
-			case "bash":
-				return cmd.Root().GenBashCompletion(os.Stdout)
-			case "zsh":
-				return runCompletionZsh(os.Stdout, cmd.Parent())
+			if len(args) == 1 {
+				switch args[0] {
+				case "bash":
+					return cmd.Root().GenBashCompletion(os.Stdout)
+				case "zsh":
+					return runCompletionZsh(os.Stdout, cmd.Parent())
+				}
 			}
 			return nil
 		},
