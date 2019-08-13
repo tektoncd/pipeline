@@ -44,6 +44,7 @@ type GitResource struct {
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
 	Revision string `json:"revision"`
+	PipelineResourceBase
 }
 
 // NewGitResource creates a new git resource to pass to a Task
@@ -110,7 +111,3 @@ func (s *GitResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 		WorkingDir: WorkspaceDir,
 	}}}, nil
 }
-
-func (s *GitResource) GetUploadSteps(sourcePath string) ([]Step, error)              { return nil, nil }
-func (s *GitResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)   { return nil, nil }
-func (s *GitResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) { return nil, nil }

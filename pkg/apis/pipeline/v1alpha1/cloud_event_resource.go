@@ -19,8 +19,6 @@ package v1alpha1
 import (
 	"fmt"
 	"strings"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 // CloudEventResource is an event sink to which events are delivered when a TaskRun has finished
@@ -31,6 +29,7 @@ type CloudEventResource struct {
 	Type PipelineResourceType `json:"type"`
 	// TargetURI is the URI of the sink which the cloud event is develired to
 	TargetURI string `json:"targetURI"`
+	PipelineResourceBase
 }
 
 // NewCloudEventResource creates a new CloudEvent resource to pass to a Task
@@ -78,11 +77,4 @@ func (s *CloudEventResource) Replacements() map[string]string {
 		"type":       string(s.Type),
 		"target-uri": s.TargetURI,
 	}
-}
-
-func (s *CloudEventResource) GetUploadSteps(string) ([]Step, error)                  { return nil, nil }
-func (s *CloudEventResource) GetDownloadSteps(string) ([]Step, error)                { return nil, nil }
-func (s *CloudEventResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }
-func (s *CloudEventResource) GetDownloadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
 }

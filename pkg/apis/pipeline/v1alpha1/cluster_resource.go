@@ -54,6 +54,7 @@ type ClusterResource struct {
 	CAData []byte `json:"cadata"`
 	//Secrets holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
+	PipelineResourceBase
 }
 
 // NewClusterResource create a new k8s cluster resource to pass to a pipeline task
@@ -166,6 +167,3 @@ func (s *ClusterResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 		Env: envVars,
 	}}}, nil
 }
-
-func (s *ClusterResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error)   { return nil, nil }
-func (s *ClusterResource) GetDownloadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }

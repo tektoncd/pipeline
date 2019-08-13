@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"golang.org/x/xerrors"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // NewImageResource creates a new ImageResource from a PipelineResource.
@@ -53,6 +52,7 @@ type ImageResource struct {
 	URL            string               `json:"url"`
 	Digest         string               `json:"digest"`
 	OutputImageDir string
+	PipelineResourceBase
 }
 
 // GetName returns the name of the resource
@@ -74,11 +74,6 @@ func (s *ImageResource) Replacements() map[string]string {
 		"digest": s.Digest,
 	}
 }
-
-func (s *ImageResource) GetUploadSteps(string) ([]Step, error)                    { return nil, nil }
-func (s *ImageResource) GetDownloadSteps(string) ([]Step, error)                  { return nil, nil }
-func (s *ImageResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error)   { return nil, nil }
-func (s *ImageResource) GetDownloadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }
 
 // GetOutputImageDir return the path to get the index.json file
 func (s *ImageResource) GetOutputImageDir() string {

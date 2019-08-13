@@ -47,6 +47,7 @@ type PullRequestResource struct {
 	URL string `json:"url"`
 	// Secrets holds a struct to indicate a field name and corresponding secret name to populate it.
 	Secrets []SecretParam `json:"secrets"`
+	PipelineResourceBase
 }
 
 // NewPullRequestResource create a new git resource to pass to a Task
@@ -130,12 +131,4 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) ([]Step, 
 		WorkingDir: WorkspaceDir,
 		Env:        evs,
 	}}}, nil
-}
-
-func (s *PullRequestResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
-}
-
-func (s *PullRequestResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
 }

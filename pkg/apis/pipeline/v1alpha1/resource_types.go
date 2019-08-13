@@ -62,6 +62,26 @@ type PipelineResourceInterface interface {
 	GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
 }
 
+// PipelineResourceBase is a struct that can be used to simplify implementations.
+type PipelineResourceBase struct {
+}
+
+func (p *PipelineResourceBase) GetDownloadSteps(sourcePath string) ([]Step, error) {
+	return nil, nil
+}
+
+func (p *PipelineResourceBase) GetUploadSteps(sourcePath string) ([]Step, error) {
+	return nil, nil
+}
+
+func (p *PipelineResourceBase) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
+
+func (p *PipelineResourceBase) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
+
 // SecretParam indicates which secret can be used to populate a field of the resource
 type SecretParam struct {
 	FieldName  string `json:"fieldName"`
