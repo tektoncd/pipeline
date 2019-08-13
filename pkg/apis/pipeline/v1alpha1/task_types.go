@@ -58,6 +58,8 @@ type TaskSpec struct {
 	StepTemplate *corev1.Container `json:"stepTemplate,omitempty"`
 }
 
+// Step embeds the Container type, which allows it to include fields not
+// provided by Container.
 type Step struct {
 	corev1.Container
 }
