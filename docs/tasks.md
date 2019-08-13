@@ -109,10 +109,10 @@ spec:
       args: ["ubuntu-build-example", "SECRETS-example.md"]
     - image: gcr.io/example-builders/build-example
       command: ["echo"]
-      args: ["${inputs.params.pathToDockerFile}"]
+      args: ["$(inputs.params.pathToDockerFile)"]
     - name: dockerfile-pushexample
       image: gcr.io/example-builders/push-example
-      args: ["push", "${outputs.resources.builtImage.url}"]
+      args: ["push", "$(outputs.resources.builtImage.url)"]
       volumeMounts:
         - name: docker-socket-example
           mountPath: /var/run/docker.sock
@@ -171,7 +171,7 @@ Each declared parameter has a `type` field, assumed to be `string` if not provid
 The following example shows how Tasks can be parameterized, and these parameters
 can be passed to the `Task` from a `TaskRun`.
 
-Input parameters in the form of `${inputs.params.foo}` are replaced inside of
+Input parameters in the form of `$(inputs.params.foo)` are replaced inside of
 the [`steps`](#steps) (see also [variable substitution](#variable-substitution)).
 
 The following `Task` declares an input parameter called 'flags', and uses it in
@@ -192,7 +192,7 @@ spec:
   steps:
     - name: build
       image: my-builder
-      args: ["build", "${inputs.params.flags}", "url=${someURL}"]
+      args: ["build", "$(inputs.params.flags)", "url=$(inputs.params.someURL)"]
 ```
 
 The following `TaskRun` supplies a dynamic number of strings within the `flags` parameter:
@@ -503,15 +503,15 @@ spec:
   steps:
     - name: dockerfile-build
       image: gcr.io/cloud-builders/docker
-      workingDir: "${inputs.params.directory}"
+      workingDir: "$(inputs.params.directory)"
       args:
         [
           "build",
           "--no-cache",
           "--tag",
-          "${outputs.resources.image}",
+          "$(outputs.resources.image)",
           "--file",
-          "${inputs.params.dockerfileName}",
+          "$(inputs.params.dockerfileName)",
           ".",
         ]
       volumeMounts:
@@ -520,7 +520,7 @@ spec:
 
     - name: dockerfile-push
       image: gcr.io/cloud-builders/docker
-      args: ["push", "${outputs.resources.image}"]
+      args: ["push", "$(outputs.resources.image)"]
       volumeMounts:
         - name: docker-socket
           mountPath: /var/run/docker.sock
@@ -575,13 +575,13 @@ spec:
       entrypoint: ["bash"]
       args: ["-c", "cat /var/configmap/test"]
       volumeMounts:
-        - name: "${inputs.params.volumeName}"
+        - name: "$(inputs.params.volumeName)"
           mountPath: /var/configmap
 
   volumes:
-    - name: "${inputs.params.volumeName}"
+    - name: "$(inputs.params.volumeName)"
       configMap:
-        name: "${inputs.params.CFGNAME}"
+        name: "$(inputs.params.CFGNAME)"
 ```
 
 #### Using secret as environment source
@@ -604,11 +604,11 @@ spec:
     resources:
     - name: source
       type: git
-      targetPath: src/${inputs.params.package}
+      targetPath: src/$(inputs.params.package)
   steps:
   - name: release
     image: goreleaser/goreleaser
-    workingdir: /workspace/src/${inputs.params.package}
+    workingdir: /workspace/src/$(inputs.params.package)
     command:
     - goreleaser
     args:
@@ -619,7 +619,7 @@ spec:
     - name: GITHUB_TOKEN
       valueFrom:
         secretKeyRef:
-          name: ${inputs.params.github-token-secret}
+          name: $(inputs.params.github-token-secret)
           key: bot-token
 ```
 
