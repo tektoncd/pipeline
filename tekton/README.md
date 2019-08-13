@@ -90,6 +90,15 @@ GCP project](https://github.com/tektoncd/plumbing#prow). To release you will wan
    we often just [create the release](#creating-a-new-release) and we skip the bit where we publish
    the ci images (which rarely change anyway). Hashtag lazy manual anti-pattern.
 
+3. Create the new tag and release in GitHub
+   ([see one of way of doing that here](https://github.com/tektoncd/pipeline/issues/530#issuecomment-477409459)).
+   _TODO(#530): Automate as much of this as possible with Tekton._
+
+4. Add an entry to [the README](../README.md) at `HEAD` for docs and examples for the new release
+   ([README.md#read-the-docs](README.md#read-the-docs)).
+
+5. Update the new release in GitHub with the same links to the docs and examples, see
+   [v0.1.0](https://github.com/tektoncd/pipeline/releases/tag/v0.1.0) for example.
 
 ### Run the Pipeline
 

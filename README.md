@@ -28,8 +28,20 @@ Tekton Pipelines are **Typed**:
 
 - [Installing Tekton Pipelines](docs/install.md)
 - Jump in with [the tutorial!](docs/tutorial.md)
-- [Read about it](/docs/README.md)
-- Look at [some examples](/examples)
+
+### Read the docs
+
+| Version | Docs | Examples |
+| ------- | ---- | -------- |
+| [HEAD](DEVELOPMENT.md#install-pipeline) | [Docs @ HEAD](/docs/README.md) | [Examples @ HEAD](/examples) |
+| [v0.5.2](https://github.com/tektoncd/pipeline/releases/tag/v0.5.2) | [Docs @ v0.5.2](https://github.com/tektoncd/pipeline/tree/v0.5.2/docs#tekton-pipelines) | [Examples @ v0.5.2](https://github.com/tektoncd/pipeline/tree/v0.5.2/examples#examples) |
+| [v0.5.1](https://github.com/tektoncd/pipeline/releases/tag/v0.5.1) | [Docs @ v0.5.1](https://github.com/tektoncd/pipeline/tree/v0.5.1/docs#tekton-pipelines) | [Examples @ v0.5.1](https://github.com/tektoncd/pipeline/tree/v0.5.1/examples#examples) |
+| [v0.5.0](https://github.com/tektoncd/pipeline/releases/tag/v0.5.0) | [Docs @ v0.5.0](https://github.com/tektoncd/pipeline/tree/v0.5.0/docs#tekton-pipelines) | [Examples @ v0.5.0](https://github.com/tektoncd/pipeline/tree/v0.5.0/examples#examples) |
+| [v0.4.0](https://github.com/tektoncd/pipeline/releases/tag/v0.4.0) | [Docs @ v0.4.0](https://github.com/tektoncd/pipeline/tree/v0.4.0/docs#tekton-pipelines) | [Examples @ v0.4.0](https://github.com/tektoncd/pipeline/tree/v0.4.0/examples#examples) |
+| [v0.3.1](https://github.com/tektoncd/pipeline/releases/tag/v0.3.1) | [Docs @ v0.3.1](https://github.com/tektoncd/pipeline/tree/v0.3.1/docs#tekton-pipelines) | [Examples @ v0.3.1](https://github.com/tektoncd/pipeline/tree/v0.3.1/examples#examples) |
+| [v0.3.0](https://github.com/tektoncd/pipeline/releases/tag/v0.3.0) | [Docs @ v0.3.0](https://github.com/tektoncd/pipeline/tree/v0.3.0/docs#tekton-pipelines) | [Examples @ v0.3.0](https://github.com/tektoncd/pipeline/tree/v0.3.0/examples#examples) |
+| [v0.2.0](https://github.com/tektoncd/pipeline/releases/tag/v0.2.0) | [Docs @ v0.2.0](https://github.com/tektoncd/pipeline/tree/v0.2.0/docs#tekton-pipelines) | [Examples @ v0.2.0](https://github.com/tektoncd/pipeline/tree/v0.2.0/examples#examples) |
+| [v0.1.0](https://github.com/tektoncd/pipeline/releases/tag/v0.1.0) | [Docs @ v0.1.0](https://github.com/tektoncd/pipeline/tree/v0.1.0/docs#tekton-pipelines) | [Examples @ v0.1.0](https://github.com/tektoncd/pipeline/tree/v0.1.0/examples#examples) |
 
 _See [our API compatibility policy](api_compatibility_policy.md) for info on the
 stability level of the API._
