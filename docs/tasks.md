@@ -370,7 +370,7 @@ steps:
 ```
 
 
-### Variable Subtituation
+### Variable Substitution
 
 `Tasks` support string replacement using values from all [`inputs`](#inputs) and
 [`outputs`](#outputs).
@@ -419,7 +419,7 @@ inputs:
           - "array"
           - "elements"
 ```
-then `command: ["first", "inputs.params.array-param", "last"]` will become 
+then `command: ["first", "$(inputs.params.array-param)", "last"]` will become 
 `command: ["first", "some", "array", "elements", "last"]`
 
 

@@ -78,7 +78,7 @@ spec:
 during a `PipelineRun`. Pipeline parameters can be used to replace template
 values in [`PipelineTask` parameters' values](#pipeline-tasks).
 
-Parameters name are limited to alpha-numeric characters, `-` and `_` and can
+Parameter names are limited to alpha-numeric characters, `-` and `_` and can
 only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
 parameter name, `barIsBa$` or `0banana` are not.
 
@@ -92,7 +92,7 @@ parameters can be passed to the `Pipeline` from a `PipelineRun`.
 Input parameters in the form of `$(params.foo)` are replaced inside of the
 [`PipelineTask` parameters' values](#pipeline-tasks) (see also
 [variable substitution](tasks.md#variable-substitution)). _As with
-[variable substitution](tasks.md#variable-substitution)), the deprecated syntax
+[variable substitution](tasks.md#variable-substitution), the deprecated syntax
 `${params.foo}` will be supported until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._
 
 The following `Pipeline` declares an input parameter called 'context', and uses
@@ -268,12 +268,12 @@ spec.
 
 #### retries
 
-Sometimes is needed some policy for retrying tasks for various reasons such as
-network errors, missing dependencies or upload problems. Any of those issue must
+Sometimes you need a policy for retrying tasks which have problems such as
+network errors, missing dependencies or upload problems. Any of those issues must
 be reflected as False (corev1.ConditionFalse) within the TaskRun Status
 Succeeded Condition. For that reason there is an optional attribute called
 `retries` which declares how many times that task should be retried in case of
-failure,
+failure.
 
 By default and in its absence there are no retries; its value is 0.
 
@@ -315,7 +315,7 @@ task will only be executed if the condition evaluates to true.
 
 The [Pipeline Tasks](#pipeline-tasks) in a `Pipeline` can be connected and run
 in a graph, specifically a _Directed Acyclic Graph_ or DAG. Each of the Pipeline
-Tasks is a node, which can be connected (i.e. a _Graph_) such that one will run
+Tasks is a node, which can be connected with an edge (i.e. a _Graph_) such that one will run
 before another (i.e. _Directed_), and the execution will eventually complete
 (i.e. _Acyclic_, it will not get caught in infinite loops).
 
