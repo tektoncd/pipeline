@@ -40,10 +40,10 @@ func getEmbeddedTask(namespace string, args []string) *v1alpha1.Task {
 		tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
 			tb.Step("read", "ubuntu",
-				tb.Command("/bin/bash"),
-				tb.Args("-c", "cat /workspace/docs/LICENSE"),
+				tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "cat /workspace/docs/LICENSE"),
 			),
-			tb.Step("helloworld-busybox", "busybox", tb.Command(args...)),
+			tb.Step("helloworld-busybox", "busybox", tb.StepCommand(args...)),
 		))
 }
 

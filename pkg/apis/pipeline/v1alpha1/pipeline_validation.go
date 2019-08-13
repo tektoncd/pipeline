@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/list"
-	"github.com/tektoncd/pipeline/pkg/substitution"
 	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
@@ -213,13 +212,13 @@ func validatePipelineVariables(tasks []PipelineTask, prefix string, paramNames m
 }
 
 func validatePipelineVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariable(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
+	return ValidateVariable(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
 }
 
 func validatePipelineNoArrayReferenced(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariableProhibited(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
+	return ValidateVariableProhibited(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
 }
 
 func validatePipelineArraysIsolated(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariableIsolated(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
+	return ValidateVariableIsolated(name, value, prefix, "", "task parameter", "pipelinespec.params", vars)
 }

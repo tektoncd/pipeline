@@ -43,17 +43,14 @@ const (
 )
 
 func TestRewriteSteps(t *testing.T) {
-	inputs := []corev1.Container{
-		{
-			Image:   "image",
-			Command: []string{"abcd"},
-		},
-		{
-			Image:   "my.registry.svc/image:tag",
-			Command: []string{"abcd"},
-			Args:    []string{"efgh"},
-		},
-	}
+	inputs := []v1alpha1.Step{{Container: corev1.Container{
+		Image:   "image",
+		Command: []string{"abcd"},
+	}}, {Container: corev1.Container{
+		Image:   "my.registry.svc/image:tag",
+		Command: []string{"abcd"},
+		Args:    []string{"efgh"},
+	}}}
 	taskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
@@ -61,11 +58,11 @@ func TestRewriteSteps(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Image:   "ubuntu",
 					Command: []string{"echo"},
 					Args:    []string{"hello"},
-				}},
+				}}},
 			},
 		},
 	}
@@ -271,11 +268,11 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			ServiceAccount: "default",
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Image:   "ubuntu",
 					Command: []string{"echo"},
 					Args:    []string{"hello"},
-				}},
+				}}},
 			},
 		},
 	}
@@ -406,11 +403,11 @@ func TestGetRemoteEntrypointWithNonDefaultSA(t *testing.T) {
 		Spec: v1alpha1.TaskRunSpec{
 			ServiceAccount: "some-other-sa",
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Image:   "ubuntu",
 					Command: []string{"echo"},
 					Args:    []string{"hello"},
-				}},
+				}}},
 			},
 		},
 	}
@@ -456,11 +453,11 @@ func TestEntrypointCacheLRU(t *testing.T) {
 
 func TestAddCopyStep(t *testing.T) {
 	ts := &v1alpha1.TaskSpec{
-		Steps: []corev1.Container{{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name: "test",
-		}, {
+		}}, {Container: corev1.Container{
 			Name: "test",
-		}},
+		}}},
 	}
 
 	expectedSteps := len(ts.Steps) + 1

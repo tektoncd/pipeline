@@ -21,14 +21,13 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
-
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func Test_Invalid_NewStorageResource(t *testing.T) {
-	testcases := []struct {
+	for _, tc := range []struct {
 		name             string
 		pipelineResource *v1alpha1.PipelineResource
 	}{{
@@ -67,8 +66,7 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 				tb.PipelineResourceSpecParam("type", "gcs"),
 			),
 		),
-	}}
-	for _, tc := range testcases {
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := v1alpha1.NewStorageResource(tc.pipelineResource)
 			if err == nil {
@@ -144,14 +142,14 @@ func Test_GetParams(t *testing.T) {
 	}
 }
 
-func Test_GetDownloadContainerSpec(t *testing.T) {
+func Test_GetDownloadSteps(t *testing.T) {
 	names.TestingSeed()
 
-	testcases := []struct {
-		name           string
-		gcsResource    *v1alpha1.GCSResource
-		wantContainers []corev1.Container
-		wantErr        bool
+	for _, tc := range []struct {
+		name        string
+		gcsResource *v1alpha1.GCSResource
+		wantSteps   []v1alpha1.Step
+		wantErr     bool
 	}{{
 		name: "valid download protected buckets",
 		gcsResource: &v1alpha1.GCSResource{
@@ -164,12 +162,12 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 				SecretKey:  "key.json",
 			}},
 		},
-		wantContainers: []corev1.Container{{
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-9l9zj",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace"},
-		}, {
+		}}, {Container: corev1.Container{
 			Name:    "fetch-gcs-valid-mz4c7",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
@@ -182,7 +180,7 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
 			}},
-		}},
+		}}},
 	}, {
 		name: "duplicate secret mount paths",
 		gcsResource: &v1alpha1.GCSResource{
@@ -198,12 +196,12 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
-		wantContainers: []corev1.Container{{
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-mssqb",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace"},
-		}, {
+		}}, {Container: corev1.Container{
 			Name:    "fetch-gcs-valid-78c5n",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
@@ -216,29 +214,28 @@ func Test_GetDownloadContainerSpec(t *testing.T) {
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
 			}},
-		}},
-	}}
-	for _, tc := range testcases {
+		}}},
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.gcsResource.GetDownloadContainerSpec("/workspace")
+			gotContainers, err := tc.gcsResource.GetDownloadSteps("/workspace")
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
-			if d := cmp.Diff(gotContainers, tc.wantContainers); d != "" {
+			if d := cmp.Diff(gotContainers, tc.wantSteps); d != "" {
 				t.Errorf("Error mismatch between download containers spec: %s", d)
 			}
 		})
 	}
 }
 
-func Test_GetUploadContainerSpec(t *testing.T) {
+func Test_GetUploadSteps(t *testing.T) {
 	names.TestingSeed()
 
-	testcases := []struct {
-		name           string
-		gcsResource    *v1alpha1.GCSResource
-		wantContainers []corev1.Container
-		wantErr        bool
+	for _, tc := range []struct {
+		name        string
+		gcsResource *v1alpha1.GCSResource
+		wantSteps   []v1alpha1.Step
+		wantErr     bool
 	}{{
 		name: "valid upload to protected buckets with directory paths",
 		gcsResource: &v1alpha1.GCSResource{
@@ -251,7 +248,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 				SecretKey:  "key.json",
 			}},
 		},
-		wantContainers: []corev1.Container{{
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-9l9zj",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
@@ -261,7 +258,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
 			}},
-		}},
+		}}},
 	}, {
 		name: "duplicate secret mount paths",
 		gcsResource: &v1alpha1.GCSResource{
@@ -277,7 +274,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 		},
-		wantContainers: []corev1.Container{{
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mz4c7",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
@@ -289,7 +286,7 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
 			}},
-		}},
+		}}},
 	}, {
 		name: "valid upload to protected buckets with single file",
 		gcsResource: &v1alpha1.GCSResource{
@@ -297,21 +294,20 @@ func Test_GetUploadContainerSpec(t *testing.T) {
 			Location: "gs://some-bucket",
 			TypeDir:  false,
 		},
-		wantContainers: []corev1.Container{{
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mssqb",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
 			Args:    []string{"-args", "cp /workspace/* gs://some-bucket"},
-		}},
-	}}
-	for _, tc := range testcases {
+		}}},
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.gcsResource.GetUploadContainerSpec("/workspace/")
+			gotContainers, err := tc.gcsResource.GetUploadSteps("/workspace/")
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
 
-			if d := cmp.Diff(gotContainers, tc.wantContainers); d != "" {
+			if d := cmp.Diff(gotContainers, tc.wantSteps); d != "" {
 				t.Errorf("Error mismatch between upload containers spec: %s", d)
 			}
 		})

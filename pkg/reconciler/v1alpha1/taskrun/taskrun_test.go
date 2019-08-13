@@ -26,6 +26,15 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/status"
+	"github.com/tektoncd/pipeline/pkg/system"
+	"github.com/tektoncd/pipeline/test"
+	tb "github.com/tektoncd/pipeline/test/builder"
+	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	"golang.org/x/xerrors"
@@ -41,16 +50,6 @@ import (
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
 	rtesting "knative.dev/pkg/reconciler/testing"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
-	"github.com/tektoncd/pipeline/pkg/status"
-	"github.com/tektoncd/pipeline/pkg/system"
-	"github.com/tektoncd/pipeline/test"
-	tb "github.com/tektoncd/pipeline/test/builder"
-	"github.com/tektoncd/pipeline/test/names"
 )
 
 const (
@@ -74,17 +73,17 @@ var (
 		return x.Cmp(y) == 0
 	})
 
-	simpleStep        = tb.Step("simple-step", "foo", tb.Command("/mycmd"))
+	simpleStep        = tb.Step("simple-step", "foo", tb.StepCommand("/mycmd"))
 	simpleTask        = tb.Task("test-task", "foo", tb.TaskSpec(simpleStep))
 	taskMultipleSteps = tb.Task("test-task-multi-steps", "foo", tb.TaskSpec(
 		tb.Step("z-step", "foo",
-			tb.Command("/mycmd"),
+			tb.StepCommand("/mycmd"),
 		),
 		tb.Step("v-step", "foo",
-			tb.Command("/mycmd"),
+			tb.StepCommand("/mycmd"),
 		),
 		tb.Step("x-step", "foo",
-			tb.Command("/mycmd"),
+			tb.StepCommand("/mycmd"),
 		),
 	))
 	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
@@ -97,16 +96,16 @@ var (
 		tb.TaskOutputs(tb.OutputsResource(gitResource.Name, v1alpha1.PipelineResourceTypeGit)),
 	))
 
-	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("sa-step", "foo", tb.Command("/mycmd"))))
+	saTask = tb.Task("test-with-sa", "foo", tb.TaskSpec(tb.Step("sa-step", "foo", tb.StepCommand("/mycmd"))))
 
 	taskEnvTask = tb.Task("test-task-env", "foo", tb.TaskSpec(
 		tb.TaskStepTemplate(
 			tb.EnvVar("FRUIT", "APPLE"),
 		),
 		tb.Step("env-step", "foo",
-			tb.EnvVar("ANOTHER", "VARIABLE"),
-			tb.EnvVar("FRUIT", "LEMON"),
-			tb.Command("/mycmd"))))
+			tb.StepEnvVar("ANOTHER", "VARIABLE"),
+			tb.StepEnvVar("FRUIT", "LEMON"),
+			tb.StepCommand("/mycmd"))))
 
 	templatedTask = tb.Task("test-task-with-substitution", "foo", tb.TaskSpec(
 		tb.TaskInputs(
@@ -116,14 +115,14 @@ var (
 			tb.InputsParamSpec("configmapname", v1alpha1.ParamTypeString),
 		),
 		tb.TaskOutputs(tb.OutputsResource("myimage", v1alpha1.PipelineResourceTypeImage)),
-		tb.Step("mycontainer", "myimage", tb.Command("/mycmd"), tb.Args(
+		tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-arg=$(inputs.params.myarg)",
 			"--my-arg-with-default=$(inputs.params.myarghasdefault)",
 			"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
 			// TODO(#1170): Remove support for ${} syntax
 			"--my-additional-arg=${outputs.resources.myimage.url}",
 		)),
-		tb.Step("myothercontainer", "myotherimage", tb.Command("/mycmd"), tb.Args(
+		tb.Step("myothercontainer", "myotherimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",
 		)),
 		tb.TaskVolume("volume-configmap", tb.VolumeSource(corev1.VolumeSource{
@@ -305,8 +304,8 @@ func TestReconcile(t *testing.T) {
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit),
 				tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
 			),
-			tb.Step("mycontainer", "myimage", tb.Command("/mycmd"),
-				tb.Args("--my-arg=$(inputs.params.myarg)"),
+			tb.Step("mycontainer", "myimage", tb.StepCommand("/mycmd"),
+				tb.StepArgs("--my-arg=$(inputs.params.myarg)"),
 			),
 		),
 	))
@@ -327,7 +326,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunTaskSpec(
 			tb.TaskInputs(
 				tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
-			tb.Step("mystep", "ubuntu", tb.Command("/mycmd")),
+			tb.Step("mystep", "ubuntu", tb.StepCommand("/mycmd")),
 		),
 	))
 
@@ -354,8 +353,8 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(
 				tb.Step("step1", "foo",
-					tb.Command("/mycmd"),
-					tb.Resources(
+					tb.StepCommand("/mycmd"),
+					tb.StepResources(
 						tb.Limits(
 							tb.CPU("8"),
 							tb.Memory("10Gi"),
@@ -367,8 +366,8 @@ func TestReconcile(t *testing.T) {
 					),
 				),
 				tb.Step("step2", "foo",
-					tb.Command("/mycmd"),
-					tb.Resources(
+					tb.StepCommand("/mycmd"),
+					tb.StepResources(
 						tb.Limits(tb.Memory("5Gi")),
 						tb.Requests(
 							tb.CPU("2"),
@@ -378,7 +377,7 @@ func TestReconcile(t *testing.T) {
 					),
 				),
 				tb.Step("step3", "foo",
-					tb.Command("/mycmd"),
+					tb.StepCommand("/mycmd"),
 				),
 			),
 		),
@@ -1380,8 +1379,8 @@ func TestCreateRedirectedTaskSpec(t *testing.T) {
 		tb.TaskRunServiceAccount("sa"),
 	))
 	task := tb.Task("tr-ts", "tr", tb.TaskSpec(
-		tb.Step("foo1", "bar1", tb.Command("abcd"), tb.Args("efgh")),
-		tb.Step("foo2", "bar2", tb.Command("abcd"), tb.Args("efgh")),
+		tb.Step("foo1", "bar1", tb.StepCommand("abcd"), tb.StepArgs("efgh")),
+		tb.Step("foo2", "bar2", tb.StepCommand("abcd"), tb.StepArgs("efgh")),
 		tb.TaskVolume("v"),
 	))
 

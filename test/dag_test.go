@@ -55,7 +55,7 @@ func TestDAGPipelineRun(t *testing.T) {
 			tb.InputsParamSpec("text", v1alpha1.ParamTypeString, tb.ParamSpecDescription("The text that should be echoed")),
 		),
 		tb.TaskOutputs(tb.OutputsResource("repo", v1alpha1.PipelineResourceTypeGit)),
-		tb.Step("echo-text", "busybox", tb.Command("echo"), tb.Args("$(inputs.params.text)")),
+		tb.Step("echo-text", "busybox", tb.StepCommand("echo"), tb.StepArgs("$(inputs.params.text)")),
 	))
 	if _, err := c.TaskClient.Create(echoTask); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)

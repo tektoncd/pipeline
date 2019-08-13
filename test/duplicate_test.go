@@ -23,11 +23,10 @@ import (
 	"sync"
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	knativetest "knative.dev/pkg/test"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 )
 
 // TestDuplicatePodTaskRun creates 10 builds and checks that each of them has only one build pod.
@@ -46,8 +45,8 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 
 		taskrun := tb.TaskRun(taskrunName, namespace, tb.TaskRunSpec(
 			tb.TaskRunTaskSpec(tb.Step("echo", "busybox",
-				tb.Command("/bin/echo"),
-				tb.Args("simple"),
+				tb.StepCommand("/bin/echo"),
+				tb.StepArgs("simple"),
 			)),
 		))
 		if _, err := c.TaskRunClient.Create(taskrun); err != nil {

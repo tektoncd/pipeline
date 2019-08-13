@@ -47,7 +47,7 @@ type TaskSpec struct {
 
 	// Steps are the steps of the build; each step is run sequentially with the
 	// source mounted into /workspace.
-	Steps []corev1.Container `json:"steps,omitempty"`
+	Steps []Step `json:"steps,omitempty"`
 
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
@@ -56,6 +56,10 @@ type TaskSpec struct {
 	// StepTemplate can be used as the basis for all step containers within the
 	// Task, so that the steps inherit settings on the base container.
 	StepTemplate *corev1.Container `json:"stepTemplate,omitempty"`
+}
+
+type Step struct {
+	corev1.Container
 }
 
 // Check that Task may be validated and defaulted.

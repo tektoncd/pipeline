@@ -19,72 +19,52 @@ package v1alpha1_test
 import (
 	"testing"
 
-	"github.com/tektoncd/pipeline/test/names"
-
 	"github.com/google/go-cmp/cmp"
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	"github.com/tektoncd/pipeline/test/names"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func Test_Invalid_NewGitResource(t *testing.T) {
-	cases := []struct {
-		desc             string
-		pipelineResource *v1alpha1.PipelineResource
-	}{
-		{
-			desc:             "Wrong resource type",
-			pipelineResource: tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGCS)),
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.desc, func(t *testing.T) {
-			_, err := v1alpha1.NewGitResource(tc.pipelineResource)
-			if err == nil {
-				t.Error("Expected error creating Git resource")
-			}
-		})
+	if _, err := v1alpha1.NewGitResource(tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGCS))); err == nil {
+		t.Error("Expected error creating Git resource")
 	}
 }
 
 func Test_Valid_NewGitResource(t *testing.T) {
-	cases := []struct {
+	for _, tc := range []struct {
 		desc             string
 		pipelineResource *v1alpha1.PipelineResource
 		want             *v1alpha1.GitResource
-	}{
-		{
-			desc: "With Revision",
-			pipelineResource: tb.PipelineResource("git-resource", "default",
-				tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
-					tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-					tb.PipelineResourceSpecParam("Revision", "test"),
-				),
+	}{{
+		desc: "With Revision",
+		pipelineResource: tb.PipelineResource("git-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
+				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
+				tb.PipelineResourceSpecParam("Revision", "test"),
 			),
-			want: &v1alpha1.GitResource{
-				Name:     "git-resource",
-				Type:     v1alpha1.PipelineResourceTypeGit,
-				URL:      "git@github.com:test/test.git",
-				Revision: "test",
-			},
+		),
+		want: &v1alpha1.GitResource{
+			Name:     "git-resource",
+			Type:     v1alpha1.PipelineResourceTypeGit,
+			URL:      "git@github.com:test/test.git",
+			Revision: "test",
 		},
-		{
-			desc: "Without Revision",
-			pipelineResource: tb.PipelineResource("git-resource", "default",
-				tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
-					tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				),
+	}, {
+		desc: "Without Revision",
+		pipelineResource: tb.PipelineResource("git-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
+				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
 			),
-			want: &v1alpha1.GitResource{
-				Name:     "git-resource",
-				Type:     v1alpha1.PipelineResourceTypeGit,
-				URL:      "git@github.com:test/test.git",
-				Revision: "master",
-			},
+		),
+		want: &v1alpha1.GitResource{
+			Name:     "git-resource",
+			Type:     v1alpha1.PipelineResourceTypeGit,
+			URL:      "git@github.com:test/test.git",
+			Revision: "master",
 		},
-	}
-	for _, tc := range cases {
+	}} {
 		t.Run(tc.desc, func(t *testing.T) {
 			got, err := v1alpha1.NewGitResource(tc.pipelineResource)
 			if err != nil {
@@ -120,7 +100,7 @@ func Test_GitResource_Replacements(t *testing.T) {
 	}
 }
 
-func Test_GitResource_GetDownloadContainerSpec(t *testing.T) {
+func Test_GitResource_GetDownloadSteps(t *testing.T) {
 	names.TestingSeed()
 
 	r := &v1alpha1.GitResource{
@@ -130,7 +110,7 @@ func Test_GitResource_GetDownloadContainerSpec(t *testing.T) {
 		Revision: "master",
 	}
 
-	want := []corev1.Container{{
+	want := []v1alpha1.Step{{Container: corev1.Container{
 		Name:    "git-source-git-resource-9l9zj",
 		Image:   "override-with-git:latest",
 		Command: []string{"/ko-app/git-init"},
@@ -143,9 +123,9 @@ func Test_GitResource_GetDownloadContainerSpec(t *testing.T) {
 			"/test/test",
 		},
 		WorkingDir: "/workspace",
-	}}
+	}}}
 
-	got, err := r.GetDownloadContainerSpec("/test/test")
+	got, err := r.GetDownloadSteps("/test/test")
 	if err != nil {
 		t.Fatalf("Unexpected error getting DownloadContainerSpec: %s", err)
 	}

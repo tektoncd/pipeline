@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package merge
+package v1alpha1
 
 import (
 	"testing"
@@ -24,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-func TestCombineStepsWithStepTemplate(t *testing.T) {
+func TestMergeStepsWithStepTemplate(t *testing.T) {
 	resourceQuantityCmp := cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
@@ -32,89 +32,83 @@ func TestCombineStepsWithStepTemplate(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		template *corev1.Container
-		steps    []corev1.Container
-		expected []corev1.Container
+		steps    []Step
+		expected []Step
 	}{{
 		name:     "nil-template",
 		template: nil,
-		steps: []corev1.Container{{
+		steps: []Step{{Container: corev1.Container{
 			Image: "some-image",
-		}},
-		expected: []corev1.Container{{
+		}}},
+		expected: []Step{{Container: corev1.Container{
 			Image: "some-image",
-		}},
+		}}},
 	}, {
 		name: "not-overlapping",
 		template: &corev1.Container{
 			Command: []string{"/somecmd"},
 		},
-		steps: []corev1.Container{{
+		steps: []Step{{Container: corev1.Container{
 			Image: "some-image",
-		}},
-		expected: []corev1.Container{{
+		}}},
+		expected: []Step{{Container: corev1.Container{
 			Command: []string{"/somecmd"},
 			Image:   "some-image",
-		}},
+		}}},
 	}, {
 		name: "overwriting-one-field",
 		template: &corev1.Container{
 			Image:   "some-image",
 			Command: []string{"/somecmd"},
 		},
-		steps: []corev1.Container{{
+		steps: []Step{{Container: corev1.Container{
 			Image: "some-other-image",
-		}},
-		expected: []corev1.Container{{
+		}}},
+		expected: []Step{{Container: corev1.Container{
 			Command: []string{"/somecmd"},
 			Image:   "some-other-image",
-		}},
+		}}},
 	}, {
 		name: "merge-and-overwrite-slice",
 		template: &corev1.Container{
-			Env: []corev1.EnvVar{
-				{
-					Name:  "KEEP_THIS",
-					Value: "A_VALUE",
-				}, {
-					Name:  "SOME_KEY",
-					Value: "ORIGINAL_VALUE",
-				},
-			},
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}, {
+				Name:  "SOME_KEY",
+				Value: "ORIGINAL_VALUE",
+			}},
 		},
-		steps: []corev1.Container{{
-			Env: []corev1.EnvVar{
-				{
-					Name:  "NEW_KEY",
-					Value: "A_VALUE",
-				}, {
-					Name:  "SOME_KEY",
-					Value: "NEW_VALUE",
-				},
-			},
-		}},
-		expected: []corev1.Container{{
-			Env: []corev1.EnvVar{
-				{
-					Name:  "NEW_KEY",
-					Value: "A_VALUE",
-				}, {
-					Name:  "KEEP_THIS",
-					Value: "A_VALUE",
-				}, {
-					Name:  "SOME_KEY",
-					Value: "NEW_VALUE",
-				},
-			},
-		}},
+		steps: []Step{{Container: corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name:  "NEW_KEY",
+				Value: "A_VALUE",
+			}, {
+				Name:  "SOME_KEY",
+				Value: "NEW_VALUE",
+			}},
+		}}},
+		expected: []Step{{Container: corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name:  "NEW_KEY",
+				Value: "A_VALUE",
+			}, {
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}, {
+				Name:  "SOME_KEY",
+				Value: "NEW_VALUE",
+			}},
+		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := CombineStepsWithStepTemplate(tc.template, tc.steps)
+			result, err := MergeStepsWithStepTemplate(tc.template, tc.steps)
 			if err != nil {
 				t.Errorf("expected no error. Got error %v", err)
 			}
 
 			if d := cmp.Diff(tc.expected, result, resourceQuantityCmp); d != "" {
-				t.Errorf("Combined steps don't match, diff: %s", d)
+				t.Errorf("merged steps don't match, diff: %s", d)
 			}
 		})
 	}

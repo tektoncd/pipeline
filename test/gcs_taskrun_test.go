@@ -78,8 +78,8 @@ func getGCSStorageTask(namespace string) *v1alpha1.Task {
 		tb.TaskInputs(tb.InputsResource("gcsbucket", v1alpha1.PipelineResourceTypeStorage,
 			tb.ResourceTargetPath("gcs-workspace"),
 		)),
-		tb.Step("read-gcs-bucket", "ubuntu", tb.Command("/bin/bash"),
-			tb.Args("-c", "ls -la /workspace/gcs-workspace/rules_docker-master.zip"),
+		tb.Step("read-gcs-bucket", "ubuntu", tb.StepCommand("/bin/bash"),
+			tb.StepArgs("-c", "ls -la /workspace/gcs-workspace/rules_docker-master.zip"),
 		),
 	))
 }

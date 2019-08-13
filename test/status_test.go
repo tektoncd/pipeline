@@ -21,9 +21,8 @@ package test
 import (
 	"testing"
 
-	knativetest "knative.dev/pkg/test"
-
 	tb "github.com/tektoncd/pipeline/test/builder"
+	knativetest "knative.dev/pkg/test"
 )
 
 // TestTaskRunPipelineRunStatus is an integration test that will
@@ -38,7 +37,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := tb.Task("banana", namespace, tb.TaskSpec(
-		tb.Step("foo", "busybox", tb.Command("ls", "-la")),
+		tb.Step("foo", "busybox", tb.StepCommand("ls", "-la")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)

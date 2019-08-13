@@ -49,8 +49,8 @@ const (
 // ArtifactStorageInterface is an interface to define the steps to copy
 // an pipeline artifact to/from temporary storage
 type ArtifactStorageInterface interface {
-	GetCopyToStorageFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
-	GetCopyFromStorageToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
+	GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1alpha1.Step
+	GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1alpha1.Step
 	GetSecretsVolumes() []corev1.Volume
 	GetType() string
 	StorageBasePath(pr *v1alpha1.PipelineRun) string

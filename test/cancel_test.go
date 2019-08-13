@@ -68,7 +68,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 
 			t.Logf("Creating Task in namespace %s", namespace)
 			task := tb.Task("banana", namespace, tb.TaskSpec(
-				tb.Step("foo", "ubuntu", tb.Command("/bin/bash"), tb.Args("-c", "sleep 5000")),
+				tb.Step("foo", "ubuntu", tb.StepCommand("/bin/bash"), tb.StepArgs("-c", "sleep 5000")),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
 				t.Fatalf("Failed to create Task `banana`: %s", err)

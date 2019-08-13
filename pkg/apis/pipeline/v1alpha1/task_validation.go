@@ -21,8 +21,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/merge"
-	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -47,7 +45,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
 		return err
 	}
-	mergedSteps, err := merge.CombineStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
+	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
 	if err != nil {
 		return &apis.FieldError{
 			Message: fmt.Sprintf("error merging step template and steps: %s", err),
@@ -118,7 +116,7 @@ func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	return nil
 }
 
-func validateSteps(steps []corev1.Container) *apis.FieldError {
+func validateSteps(steps []Step) *apis.FieldError {
 	// Task must not have duplicate step names.
 	names := map[string]struct{}{}
 	for _, s := range steps {
@@ -165,7 +163,7 @@ func validateInputParameterTypes(inputs *Inputs) *apis.FieldError {
 	return nil
 }
 
-func validateInputParameterVariables(steps []corev1.Container, inputs *Inputs) *apis.FieldError {
+func validateInputParameterVariables(steps []Step, inputs *Inputs) *apis.FieldError {
 	parameterNames := map[string]struct{}{}
 	arrayParameterNames := map[string]struct{}{}
 
@@ -184,7 +182,7 @@ func validateInputParameterVariables(steps []corev1.Container, inputs *Inputs) *
 	return validateArrayUsage(steps, "params", arrayParameterNames)
 }
 
-func validateResourceVariables(steps []corev1.Container, inputs *Inputs, outputs *Outputs) *apis.FieldError {
+func validateResourceVariables(steps []Step, inputs *Inputs, outputs *Outputs) *apis.FieldError {
 	resourceNames := map[string]struct{}{}
 	if inputs != nil {
 		for _, r := range inputs.Resources {
@@ -204,7 +202,7 @@ func validateResourceVariables(steps []corev1.Container, inputs *Inputs, outputs
 	return validateVariables(steps, "resources", resourceNames)
 }
 
-func validateArrayUsage(steps []corev1.Container, prefix string, vars map[string]struct{}) *apis.FieldError {
+func validateArrayUsage(steps []Step, prefix string, vars map[string]struct{}) *apis.FieldError {
 	for _, step := range steps {
 		if err := validateTaskNoArrayReferenced("name", step.Name, prefix, vars); err != nil {
 			return err
@@ -245,7 +243,7 @@ func validateArrayUsage(steps []corev1.Container, prefix string, vars map[string
 	return nil
 }
 
-func validateVariables(steps []corev1.Container, prefix string, vars map[string]struct{}) *apis.FieldError {
+func validateVariables(steps []Step, prefix string, vars map[string]struct{}) *apis.FieldError {
 	for _, step := range steps {
 		if err := validateTaskVariable("name", step.Name, prefix, vars); err != nil {
 			return err
@@ -287,15 +285,15 @@ func validateVariables(steps []corev1.Container, prefix string, vars map[string]
 }
 
 func validateTaskVariable(name, value, prefix string, vars map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
+	return ValidateVariable(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", vars)
 }
 
 func validateTaskNoArrayReferenced(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariableProhibited(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
+	return ValidateVariableProhibited(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
 }
 
 func validateTaskArraysIsolated(name, value, prefix string, arrayNames map[string]struct{}) *apis.FieldError {
-	return substitution.ValidateVariableIsolated(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
+	return ValidateVariableIsolated(name, value, prefix, "(?:inputs|outputs).", "step", "taskspec.steps", arrayNames)
 }
 
 func checkForDuplicates(resources []TaskResource, path string) *apis.FieldError {

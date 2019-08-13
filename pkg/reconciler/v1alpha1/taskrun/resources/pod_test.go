@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/names"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,9 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/test/names"
 )
 
 var (
@@ -129,10 +128,10 @@ func TestMakePod(t *testing.T) {
 	}{{
 		desc: "simple",
 		ts: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "name",
 				Image: "image",
-			}},
+			}}},
 		},
 		bAnnotations: map[string]string{
 			"simple-annotation-key": "simple-annotation-val",
@@ -161,17 +160,16 @@ func TestMakePod(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-			},
+			}},
 			Volumes: implicitVolumes,
 		},
 	}, {
 		desc: "with-service-account",
 		ts: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "name",
 				Image: "image",
-			}},
+			}}},
 		},
 		trs: v1alpha1.TaskRunSpec{
 			ServiceAccount: "service-account",
@@ -206,17 +204,16 @@ func TestMakePod(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-			},
+			}},
 			Volumes: implicitVolumesWithSecrets,
 		},
 	}, {
 		desc: "very-long-step-name",
 		ts: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "a-very-very-long-character-step-name-to-trigger-max-len----and-invalid-characters",
 				Image: "image",
-			}},
+			}}},
 		},
 		bAnnotations: map[string]string{
 			"simple-annotation-key": "simple-annotation-val",
@@ -245,17 +242,16 @@ func TestMakePod(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-			},
+			}},
 			Volumes: implicitVolumes,
 		},
 	}, {
 		desc: "step-name-ends-with-non-alphanumeric",
 		ts: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "ends-with-invalid-%%__$$",
 				Image: "image",
-			}},
+			}}},
 		},
 		bAnnotations: map[string]string{
 			"simple-annotation-key": "simple-annotation-val",
@@ -284,18 +280,17 @@ func TestMakePod(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-			},
+			}},
 			Volumes: implicitVolumes,
 		},
 	}, {
 		desc: "working-dir-in-workspace-dir",
 		ts: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "name",
 				Image:      "image",
 				WorkingDir: filepath.Join(workspaceDir, "test"),
-			}},
+			}}},
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
@@ -329,8 +324,7 @@ func TestMakePod(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-			},
+			}},
 			Volumes: implicitVolumes,
 		},
 	}} {
@@ -394,56 +388,31 @@ func TestMakePod(t *testing.T) {
 }
 
 func TestAddReadyAnnotation(t *testing.T) {
-	type testcase struct {
-		desc       string
-		pod        *corev1.Pod
-		updateFunc UpdatePod
+	pod := &corev1.Pod{}
+	updateFunc := func(p *corev1.Pod) (*corev1.Pod, error) { return p, nil }
+	if err := AddReadyAnnotation(pod, updateFunc); err != nil {
+		t.Errorf("error received: %v", err)
 	}
-	for _, c := range []testcase{{
-		desc:       "missing ready annotation is added to provided pod",
-		pod:        &corev1.Pod{},
-		updateFunc: func(p *corev1.Pod) (*corev1.Pod, error) { return p, nil },
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			err := AddReadyAnnotation(c.pod, c.updateFunc)
-			if err != nil {
-				t.Errorf("error received: %v", err)
-			}
-			if v := c.pod.ObjectMeta.Annotations[ReadyAnnotation]; v != readyAnnotationValue {
-				t.Errorf("Annotation %q=%q missing from Pod", ReadyAnnotation, readyAnnotationValue)
-			}
-		})
+	if v := pod.ObjectMeta.Annotations[ReadyAnnotation]; v != readyAnnotationValue {
+		t.Errorf("Annotation %q=%q missing from Pod", ReadyAnnotation, readyAnnotationValue)
 	}
 }
 
 func TestAddReadyAnnotationUpdateError(t *testing.T) {
-	type testcase struct {
-		desc       string
-		pod        *corev1.Pod
-		updateFunc UpdatePod
-	}
 	testerror := xerrors.New("error updating pod")
-	for _, c := range []testcase{{
-		desc:       "errors experienced during update are returned",
-		pod:        &corev1.Pod{},
-		updateFunc: func(p *corev1.Pod) (*corev1.Pod, error) { return p, testerror },
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			err := AddReadyAnnotation(c.pod, c.updateFunc)
-			if err != testerror {
-				t.Errorf("expected %v received %v", testerror, err)
-			}
-		})
+	pod := &corev1.Pod{}
+	updateFunc := func(p *corev1.Pod) (*corev1.Pod, error) { return p, testerror }
+	if err := AddReadyAnnotation(pod, updateFunc); err != testerror {
+		t.Errorf("expected %v received %v", testerror, err)
 	}
 }
 
 func TestMakeAnnotations(t *testing.T) {
-	type testcase struct {
+	for _, c := range []struct {
 		desc                     string
 		taskRun                  *v1alpha1.TaskRun
 		expectedAnnotationSubset map[string]string
-	}
-	for _, c := range []testcase{{
+	}{{
 		desc: "a taskruns annotations are copied to the pod",
 		taskRun: &v1alpha1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -486,131 +455,115 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 	randReader = strings.NewReader(strings.Repeat("a", 10000))
 	defer func() { randReader = rand.Reader }()
 
-	for _, c := range []struct {
-		desc         string
-		trs          v1alpha1.TaskRunSpec
-		ts           v1alpha1.TaskSpec
-		bAnnotations map[string]string
-		want         *corev1.PodSpec
-		wantErr      error
-	}{{
-		desc: "task-with-output-image-resource",
-		trs: v1alpha1.TaskRunSpec{
-			Outputs: v1alpha1.TaskRunOutputs{
-				Resources: []v1alpha1.TaskResourceBinding{{
+	trs := v1alpha1.TaskRunSpec{
+		Outputs: v1alpha1.TaskRunOutputs{
+			Resources: []v1alpha1.TaskResourceBinding{{
+				Name: "outputimage",
+				ResourceRef: v1alpha1.PipelineResourceRef{
 					Name: "outputimage",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: "outputimage",
-					},
-				}},
-			},
-		},
-		ts: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
-				Name:  "task-with-output-image",
-				Image: "image",
+				},
 			}},
-			Outputs: &v1alpha1.Outputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name:           "outputimage",
-					OutputImageDir: fmt.Sprintf("%s/outputimage", v1alpha1.TaskOutputImageDefaultDir),
-				}},
-			},
 		},
-		bAnnotations: map[string]string{
-			"simple-annotation-key": "simple-annotation-val",
-		},
-		want: &corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
-			}, {
-				Name:         "create-dir-default-image-output-mz4c7",
-				Image:        "override-with-bash-noop:latest",
-				Command:      []string{"/ko-app/bash"},
-				Args:         []string{"-args", "mkdir -p /builder/home/image-outputs/outputimage"},
-				VolumeMounts: implicitVolumeMounts,
+	}
+	ts := v1alpha1.TaskSpec{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "task-with-output-image",
+			Image: "image",
+		}}},
+		Outputs: &v1alpha1.Outputs{
+			Resources: []v1alpha1.TaskResource{{
+				Name:           "outputimage",
+				OutputImageDir: fmt.Sprintf("%s/outputimage", v1alpha1.TaskOutputImageDefaultDir),
 			}},
-			Containers: []corev1.Container{{
-				Name:         "step-task-with-output-image",
-				Image:        "image",
-				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
-			},
-			},
-			Volumes: implicitVolumes,
 		},
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			names.TestingSeed()
-			cs := fakek8s.NewSimpleClientset(
-				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "service-account"},
-					Secrets: []corev1.ObjectReference{{
-						Name: "multi-creds",
-					}},
+	}
+	bAnnotations := map[string]string{
+		"simple-annotation-key": "simple-annotation-val",
+	}
+	want := &corev1.PodSpec{
+		RestartPolicy: corev1.RestartPolicyNever,
+		InitContainers: []corev1.Container{{
+			Name:         containerPrefix + credsInit + "-9l9zj",
+			Image:        *credsImage,
+			Command:      []string{"/ko-app/creds-init"},
+			Args:         []string{},
+			Env:          implicitEnvVars,
+			VolumeMounts: implicitVolumeMounts,
+			WorkingDir:   workspaceDir,
+		}, {
+			Name:         "create-dir-default-image-output-mz4c7",
+			Image:        "override-with-bash-noop:latest",
+			Command:      []string{"/ko-app/bash"},
+			Args:         []string{"-args", "mkdir -p /builder/home/image-outputs/outputimage"},
+			VolumeMounts: implicitVolumeMounts,
+		}},
+		Containers: []corev1.Container{{
+			Name:         "step-task-with-output-image",
+			Image:        "image",
+			Env:          implicitEnvVars,
+			VolumeMounts: implicitVolumeMounts,
+			WorkingDir:   workspaceDir,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:              resource.MustParse("0"),
+					corev1.ResourceMemory:           resource.MustParse("0"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "multi-creds",
-						Annotations: map[string]string{
-							"tekton.dev/docker-0": "https://us.gcr.io",
-							"tekton.dev/docker-1": "https://docker.io",
-							"tekton.dev/git-0":    "github.com",
-							"tekton.dev/git-1":    "gitlab.com",
-						}},
-					Type: "kubernetes.io/basic-auth",
-					Data: map[string][]byte{
-						"username": []byte("foo"),
-						"password": []byte("BestEver"),
-					},
-				},
-			)
-			tr := &v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        "taskrun-name",
-					Annotations: c.bAnnotations,
-				},
-				Spec: c.trs,
-			}
-			got, err := MakePod(tr, c.ts, cs)
-			if err != c.wantErr {
-				t.Fatalf("MakePod: %v", err)
-			}
+			},
+		}},
+		Volumes: implicitVolumes,
+	}
+	names.TestingSeed()
+	cs := fakek8s.NewSimpleClientset(
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "service-account"},
+			Secrets: []corev1.ObjectReference{{
+				Name: "multi-creds",
+			}},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "multi-creds",
+				Annotations: map[string]string{
+					"tekton.dev/docker-0": "https://us.gcr.io",
+					"tekton.dev/docker-1": "https://docker.io",
+					"tekton.dev/git-0":    "github.com",
+					"tekton.dev/git-1":    "gitlab.com",
+				}},
+			Type: "kubernetes.io/basic-auth",
+			Data: map[string][]byte{
+				"username": []byte("foo"),
+				"password": []byte("BestEver"),
+			},
+		},
+	)
+	tr := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "taskrun-name",
+			Annotations: bAnnotations,
+		},
+		Spec: trs,
+	}
+	got, err := MakePod(tr, ts, cs)
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
+	}
 
-			// Generated name from hexlifying a stream of 'a's.
-			wantName := "taskrun-name-pod-616161"
-			if got.Name != wantName {
-				t.Errorf("Pod name got %q, want %q", got.Name, wantName)
-			}
+	// Generated name from hexlifying a stream of 'a's.
+	wantName := "taskrun-name-pod-616161"
+	if got.Name != wantName {
+		t.Errorf("Pod name got %q, want %q", got.Name, wantName)
+	}
 
-			if d := cmp.Diff(&got.Spec, c.want, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff spec:\n%s", d)
-			}
+	if d := cmp.Diff(&got.Spec, want, resourceQuantityCmp); d != "" {
+		t.Errorf("Diff spec:\n%s", d)
+	}
 
-			wantAnnotations := map[string]string{"simple-annotation-key": "simple-annotation-val", ReadyAnnotation: ""}
-			if c.bAnnotations != nil {
-				for key, val := range c.bAnnotations {
-					wantAnnotations[key] = val
-				}
-			}
-			if d := cmp.Diff(got.Annotations, wantAnnotations); d != "" {
-				t.Errorf("Diff annotations:\n%s", d)
-			}
-		})
+	wantAnnotations := map[string]string{"simple-annotation-key": "simple-annotation-val", ReadyAnnotation: ""}
+	for key, val := range bAnnotations {
+		wantAnnotations[key] = val
+	}
+	if d := cmp.Diff(got.Annotations, wantAnnotations); d != "" {
+		t.Errorf("Diff annotations:\n%s", d)
 	}
 }
 

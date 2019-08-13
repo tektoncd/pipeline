@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package merge
+package v1alpha1
 
 import (
 	"encoding/json"
@@ -23,28 +23,30 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
-// CombineStepsWithStepTemplate takes a possibly nil container template and a list of step containers, merging each
-// of the step containers onto the container template, if it's not nil, and returning the resulting list.
-func CombineStepsWithStepTemplate(template *v1.Container, steps []v1.Container) ([]v1.Container, error) {
+// MergeStepsWithStepTemplate takes a possibly nil container template and a
+// list of steps, merging each of the steps with the container template, if
+// it's not nil, and returning the resulting list.
+func MergeStepsWithStepTemplate(template *v1.Container, steps []Step) ([]Step, error) {
 	if template == nil {
 		return steps, nil
 	}
 
-	// We need JSON bytes to generate a patch to merge the step containers onto the template container, so marshal the template.
+	// We need JSON bytes to generate a patch to merge the step containers
+	// onto the template container, so marshal the template.
 	templateAsJSON, err := json.Marshal(template)
 	if err != nil {
 		return nil, err
 	}
-	// We need to do a three-way merge to actually combine the template and step containers, so we need an empty container
-	// as the "original"
+	// We need to do a three-way merge to actually merge the template and
+	// step containers, so we need an empty container as the "original"
 	emptyAsJSON, err := json.Marshal(&v1.Container{})
 	if err != nil {
 		return nil, err
 	}
 
 	for i, s := range steps {
-		// Marshal the step to JSON
-		stepAsJSON, err := json.Marshal(s)
+		// Marshal the step's to JSON
+		stepAsJSON, err := json.Marshal(s.Container)
 		if err != nil {
 			return nil, err
 		}
@@ -82,7 +84,7 @@ func CombineStepsWithStepTemplate(template *v1.Container, steps []v1.Container) 
 			merged.Args = []string{}
 		}
 
-		steps[i] = *merged
+		steps[i] = Step{Container: *merged}
 	}
 	return steps, nil
 }
