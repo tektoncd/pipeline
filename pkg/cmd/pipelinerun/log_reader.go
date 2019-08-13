@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/taskrun"
@@ -25,7 +26,9 @@ import (
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 	trh "github.com/tektoncd/cli/pkg/helper/taskrun"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 )
 
 type LogReader struct {
@@ -33,6 +36,7 @@ type LogReader struct {
 	Ns       string
 	Clients  *cli.Clients
 	Streamer stream.NewStreamerFunc
+	Stream   *cli.Stream
 	AllSteps bool
 	Follow   bool
 	Tasks    []string
@@ -90,14 +94,21 @@ func (lr *LogReader) readLiveLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-chan 
 		}
 
 		wg.Wait()
+
+		if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+			errC <- fmt.Errorf(pr.Status.Conditions[0].Message)
+		}
 	}()
 
 	return logC, errC, nil
 }
 
 func (lr *LogReader) readAvailableLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-chan error, error) {
-	tkn := lr.Clients.Tekton
+	if err := lr.waitUntilAvailable(10); err != nil {
+		return nil, nil, err
+	}
 
+	tkn := lr.Clients.Tekton
 	pl, err := tkn.TektonV1alpha1().Pipelines(lr.Ns).Get(pr.Spec.PipelineRef.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, nil, fmt.Errorf(err.Error())
@@ -121,9 +132,56 @@ func (lr *LogReader) readAvailableLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-
 
 			pipeLogs(logC, errC, tlr)
 		}
+		if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+			errC <- fmt.Errorf(pr.Status.Conditions[0].Message)
+		}
 	}()
 
 	return logC, errC, nil
+}
+
+// reading of logs should wait till the status of run is unknown
+// only if run status is unknown, open a watch channel on run
+// and keep checking the status until it changes to true|false
+// or the reach timeout
+func (lr *LogReader) waitUntilAvailable(timeout time.Duration) error {
+	var first = true
+	opts := metav1.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector("metadata.name", lr.Run).String(),
+	}
+	tkn := lr.Clients.Tekton
+	run, err := tkn.TektonV1alpha1().PipelineRuns(lr.Ns).Get(lr.Run, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if empty(run.Status) {
+		return nil
+	}
+	if run.Status.Conditions[0].Status != corev1.ConditionUnknown {
+		return nil
+	}
+
+	watchRun, err := tkn.TektonV1alpha1().PipelineRuns(lr.Ns).Watch(opts)
+	if err != nil {
+		return err
+	}
+	for {
+		select {
+		case event := <-watchRun.ResultChan():
+			if event.Object.(*v1alpha1.PipelineRun).IsDone() {
+				watchRun.Stop()
+				return nil
+			}
+			if first {
+				first = false
+				fmt.Fprintln(lr.Stream.Out, "Pipeline still running ...")
+			}
+		case <-time.After(timeout * time.Second):
+			watchRun.Stop()
+			fmt.Fprintln(lr.Stream.Err, "No logs found")
+			return nil
+		}
+	}
 }
 
 func pipeLogs(logC chan<- Log, errC chan<- error, tlr *taskrun.LogReader) {
@@ -150,4 +208,8 @@ func pipeLogs(logC chan<- Log, errC chan<- error, tlr *taskrun.LogReader) {
 			errC <- fmt.Errorf("failed to get logs for task %s : %s", tlr.Task, e)
 		}
 	}
+}
+
+func empty(status v1alpha1.PipelineRunStatus) bool {
+	return len(status.Conditions) == 0
 }

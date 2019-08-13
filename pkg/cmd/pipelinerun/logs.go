@@ -95,6 +95,7 @@ func (lo *LogOptions) Run() error {
 		Ns:       lo.Params.Namespace(),
 		Clients:  cs,
 		Streamer: streamer,
+		Stream:   lo.Stream,
 		Follow:   lo.Follow,
 		AllSteps: lo.AllSteps,
 		Tasks:    lo.Tasks,

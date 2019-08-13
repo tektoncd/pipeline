@@ -31,6 +31,8 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/watch"
+	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 )
 
@@ -44,7 +46,7 @@ func TestLog_no_pipelinerun_argument(t *testing.T) {
 	}
 }
 
-func TestLog_missing_pipelinerun(t *testing.T) {
+func TestLog_run_not_found(t *testing.T) {
 	pr := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("output-pipeline-1", "ns",
 			tb.PipelineRunLabel("tekton.dev/pipeline", "output-pipeline-1"),
@@ -467,6 +469,266 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
 	test.AssertOutput(t, expected, output)
+}
+
+func TestLogs_error_log(t *testing.T) {
+	var (
+		pipelineName = "errlogs-pipeline"
+		prName       = "errlogs-run"
+		ns           = "namespace"
+		taskName     = "errlogs-task"
+		errMsg       = "Pipeline tektoncd/errlog-pipeline can't be Run; it contains Tasks that don't exist: Couldn't retrieve Task errlog-tasks: task.tekton.dev errlog-tasks not found"
+	)
+
+	ts := []*v1alpha1.Task{
+		tb.Task(taskName, ns,
+			tb.TaskSpec()),
+	}
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, ns,
+			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
+			tb.PipelineRunSpec(pipelineName),
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(apis.Condition{
+					Status:  corev1.ConditionFalse,
+					Message: errMsg,
+				}),
+			),
+		),
+	}
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, ns,
+			tb.PipelineSpec(
+				tb.PipelineTask(taskName, taskName),
+			),
+		),
+	}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps, Tasks: ts})
+	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
+	output, err := fetchLogs(prlo)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	test.AssertOutput(t, errMsg+"\n", output)
+}
+
+func TestLogs_nologs(t *testing.T) {
+	var (
+		pipelineName = "nologs-pipeline"
+		prName       = "nologs-run"
+		ns           = "namespace"
+		taskName     = "nologs-task"
+	)
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, ns,
+			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
+			tb.PipelineRunSpec(pipelineName),
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(apis.Condition{
+					Status:  corev1.ConditionUnknown,
+					Message: "Running",
+				}),
+			),
+		),
+	}
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, ns,
+			tb.PipelineSpec(
+				tb.PipelineTask(taskName, taskName),
+			),
+		),
+	}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps})
+	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
+	output, err := fetchLogs(prlo)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	test.AssertOutput(t, "No logs found\n", output)
+}
+
+func TestLog_run_failed_with_and_without_follow(t *testing.T) {
+	var (
+		pipelineName = "fail-pipeline"
+		prName       = "fail-run"
+		ns           = "namespace"
+		taskName     = "fail-task"
+		failMessage  = "Failed because I wanted"
+	)
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, ns,
+			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
+			tb.PipelineRunSpec(pipelineName),
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(apis.Condition{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionFalse,
+					Message: failMessage,
+				}),
+			),
+		),
+	}
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, ns,
+			tb.PipelineSpec(
+				tb.PipelineTask(taskName, taskName),
+			),
+		),
+	}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps})
+
+	// follow mode disabled
+	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
+	output, err := fetchLogs(prlo)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	test.AssertOutput(t, failMessage+"\n", output)
+
+	// follow mode enabled
+	prlo = logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, true)
+	output, err = fetchLogs(prlo)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	test.AssertOutput(t, failMessage+"\n", output)
+}
+
+func TestLog_pipeline_still_running(t *testing.T) {
+	var (
+		pipelineName = "inprogress-pipeline"
+		prName       = "inprogress-run"
+		ns           = "namespace"
+		taskName     = "inprogress-task"
+	)
+
+	initialPRs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, ns,
+			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
+			tb.PipelineRunSpec(pipelineName),
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(apis.Condition{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Message: "Running",
+				}),
+			),
+		),
+	}
+
+	finalPRs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, ns,
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(apis.Condition{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Message: "Running",
+				}),
+			),
+		),
+
+		tb.PipelineRun(prName, ns,
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(apis.Condition{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Message: "Running",
+				}),
+			),
+		),
+	}
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, ns,
+			tb.PipelineSpec(
+				tb.PipelineTask(taskName, taskName),
+			),
+		),
+	}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: initialPRs, Pipelines: ps})
+	watcher := watch.NewFake()
+	cs.Pipeline.PrependWatchReactor("pipelineruns", k8stest.DefaultWatchReactor(watcher, nil))
+	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
+
+	updatePR(finalPRs, watcher)
+
+	output, err := fetchLogs(prlo)
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	test.AssertOutput(t, "Pipeline still running ..."+"\n", output)
+}
+
+func TestLog_pipeline_status_done(t *testing.T) {
+	var (
+		pipelineName = "done-pipeline"
+		prName       = "done-run"
+		ns           = "namespace"
+		taskName     = "done-task"
+	)
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, ns,
+			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
+			tb.PipelineRunSpec(pipelineName),
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(apis.Condition{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionUnknown,
+					Message: "Running",
+				}),
+			),
+		),
+	}
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, ns,
+			tb.PipelineSpec(
+				tb.PipelineTask(taskName, taskName),
+			),
+		),
+	}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps})
+	watcher := watch.NewFake()
+	cs.Pipeline.PrependWatchReactor("pipelineruns", k8stest.DefaultWatchReactor(watcher, nil))
+	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
+
+	go func() {
+		time.Sleep(time.Second * 1)
+		for _, pr := range prs {
+			pr.Status.Conditions[0].Status = corev1.ConditionTrue
+			pr.Status.Conditions[0].Message = "completed"
+			watcher.Modify(pr)
+		}
+	}()
+
+	start := time.Now()
+	output, err := fetchLogs(prlo)
+	elapsed := time.Since(start).Seconds()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if elapsed > 10 {
+		t.Errorf("Timed out")
+	}
+	test.AssertOutput(t, "", output)
+}
+
+func updatePR(finalRuns []*v1alpha1.PipelineRun, watcher *watch.FakeWatcher) {
+	go func() {
+		for _, pr := range finalRuns {
+			time.Sleep(time.Second * 1)
+			watcher.Modify(pr)
+		}
+	}()
 }
 
 func logOpts(name string, ns string, cs pipelinetest.Clients, streamer stream.NewStreamerFunc, allSteps bool, follow bool, onlyTasks ...string) *LogOptions {
