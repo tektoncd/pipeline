@@ -56,8 +56,8 @@ type PipelineResourceInterface interface {
 	GetName() string
 	GetType() PipelineResourceType
 	Replacements() map[string]string
-	GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error)
-	GetUploadContainerSpec(sourcePath string) ([]corev1.Container, error)
+	GetDownloadSteps(sourcePath string) ([]Step, error)
+	GetUploadSteps(sourcePath string) ([]Step, error)
 	GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
 	GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
 }

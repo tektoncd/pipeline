@@ -46,7 +46,7 @@ func TestPipelineRunTimeout(t *testing.T) {
 
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := tb.Task("banana", namespace, tb.TaskSpec(
-		tb.Step("foo", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 10"))))
+		tb.Step("foo", "busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 10"))))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
 	}
@@ -192,7 +192,7 @@ func TestPipelineRunFailedAndRetry(t *testing.T) {
 
 	t.Logf("Creating Task in namespace %s", namespace)
 	task := tb.Task("banana", namespace, tb.TaskSpec(
-		tb.Step("foo", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "exit 1")),
+		tb.Step("foo", "busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "exit 1")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "banana", err)
@@ -244,7 +244,7 @@ func TestTaskRunTimeout(t *testing.T) {
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	if _, err := c.TaskClient.Create(tb.Task("giraffe", namespace,
-		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.Command("/bin/sh"), tb.Args("-c", "sleep 3000"))))); err != nil {
+		tb.TaskSpec(tb.Step("amazing-busybox", "busybox", tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 3000"))))); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "giraffe", err)
 	}
 	if _, err := c.TaskRunClient.Create(tb.TaskRun("run-giraffe", namespace, tb.TaskRunSpec(tb.TaskRunTaskRef("giraffe"),

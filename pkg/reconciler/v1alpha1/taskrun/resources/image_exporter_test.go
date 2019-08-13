@@ -35,7 +35,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 		desc      string
 		task      *v1alpha1.Task
 		taskRun   *v1alpha1.TaskRun
-		wantSteps []corev1.Container
+		wantSteps []v1alpha1.Step
 	}{{
 		desc: "image resource declared as both input and output",
 		task: &v1alpha1.Task{
@@ -57,10 +57,9 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 						OutputImageDir: currentDir,
 					}},
 				},
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name: "step1",
-				},
-				},
+				}}},
 			},
 		},
 		taskRun: &v1alpha1.TaskRun{
@@ -87,19 +86,17 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []corev1.Container{
-			{
-				Name: "step1",
-			},
-			{
-				Name:    "image-digest-exporter-9l9zj",
-				Image:   "override-with-imagedigest-exporter-image:latest",
-				Command: []string{"/ko-app/imagedigestexporter"},
-				Args: []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir),
-					"-terminationMessagePath", "/builder/home/image-outputs/termination-log"},
-				TerminationMessagePath:   TerminationMessagePath,
-				TerminationMessagePolicy: "FallbackToLogsOnError",
-			}},
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
+			Name: "step1",
+		}}, {Container: corev1.Container{
+			Name:    "image-digest-exporter-9l9zj",
+			Image:   "override-with-imagedigest-exporter-image:latest",
+			Command: []string{"/ko-app/imagedigestexporter"},
+			Args: []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir),
+				"-terminationMessagePath", "/builder/home/image-outputs/termination-log"},
+			TerminationMessagePath:   TerminationMessagePath,
+			TerminationMessagePolicy: "FallbackToLogsOnError",
+		}}},
 	}, {
 		desc: "image resource in task with multiple steps",
 		task: &v1alpha1.Task{
@@ -121,11 +118,11 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 						OutputImageDir: currentDir,
 					}},
 				},
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name: "step1",
-				}, {
+				}}, {Container: corev1.Container{
 					Name: "step2",
-				}},
+				}}},
 			},
 		},
 		taskRun: &v1alpha1.TaskRun{
@@ -152,22 +149,19 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []corev1.Container{
-			{
-				Name: "step1",
-			},
-			{
-				Name: "step2",
-			}, {
-				Name:    "image-digest-exporter-9l9zj",
-				Image:   "override-with-imagedigest-exporter-image:latest",
-				Command: []string{"/ko-app/imagedigestexporter"},
-				Args: []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir),
-					"-terminationMessagePath", "/builder/home/image-outputs/termination-log"},
-				TerminationMessagePath:   TerminationMessagePath,
-				TerminationMessagePolicy: "FallbackToLogsOnError",
-			},
-		},
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
+			Name: "step1",
+		}}, {Container: corev1.Container{
+			Name: "step2",
+		}}, {Container: corev1.Container{
+			Name:    "image-digest-exporter-9l9zj",
+			Image:   "override-with-imagedigest-exporter-image:latest",
+			Command: []string{"/ko-app/imagedigestexporter"},
+			Args: []string{"-images", fmt.Sprintf("[{\"name\":\"source-image-1\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"%s\"}]", currentDir),
+				"-terminationMessagePath", "/builder/home/image-outputs/termination-log"},
+			TerminationMessagePath:   TerminationMessagePath,
+			TerminationMessagePolicy: "FallbackToLogsOnError",
+		}}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
@@ -347,9 +341,9 @@ func TestTaskRunHasOutputImageResource(t *testing.T) {
 						Type: "image",
 					}},
 				},
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name: "step1",
-				}},
+				}}},
 			},
 		},
 		taskRun: &v1alpha1.TaskRun{

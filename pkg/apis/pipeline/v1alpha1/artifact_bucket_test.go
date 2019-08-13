@@ -46,21 +46,21 @@ var (
 func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
-	want := []corev1.Container{{
+	want := []v1alpha1.Step{{Container: corev1.Container{
 		Name:    "artifact-dest-mkdir-workspace-9l9zj",
 		Image:   "override-with-bash-noop:latest",
 		Command: []string{"/ko-app/bash"},
 		Args:    []string{"-args", "mkdir -p /workspace/destination"},
-	}, {
+	}}, {Container: corev1.Container{
 		Name:         "artifact-copy-from-workspace-mz4c7",
 		Image:        "override-with-gsutil-image:latest",
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         []string{"-args", "cp -P -r gs://fake-bucket/src-path/* /workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: fmt.Sprintf("/var/bucketsecret/%s/serviceaccount", secretName)}},
 		VolumeMounts: []corev1.VolumeMount{{Name: expectedVolumeName, MountPath: fmt.Sprintf("/var/bucketsecret/%s", secretName)}},
-	}}
+	}}}
 
-	got := bucket.GetCopyFromStorageToContainerSpec("workspace", "src-path", "/workspace/destination")
+	got := bucket.GetCopyFromStorageToSteps("workspace", "src-path", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
@@ -68,16 +68,16 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 
 func TestBucketGetCopyToContainerSpec(t *testing.T) {
 	names.TestingSeed()
-	want := []corev1.Container{{
+	want := []v1alpha1.Step{{Container: corev1.Container{
 		Name:         "artifact-copy-to-workspace-9l9zj",
 		Image:        "override-with-gsutil-image:latest",
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         []string{"-args", "cp -P -r src-path gs://fake-bucket/workspace/destination"},
 		Env:          []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: fmt.Sprintf("/var/bucketsecret/%s/serviceaccount", secretName)}},
 		VolumeMounts: []corev1.VolumeMount{{Name: expectedVolumeName, MountPath: fmt.Sprintf("/var/bucketsecret/%s", secretName)}},
-	}}
+	}}}
 
-	got := bucket.GetCopyToStorageFromContainerSpec("workspace", "src-path", "workspace/destination")
+	got := bucket.GetCopyToStorageFromSteps("workspace", "src-path", "workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}

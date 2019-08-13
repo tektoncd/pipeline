@@ -20,10 +20,8 @@ package resources
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -92,7 +90,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() *v1alpha1.TaskSpec {
 	}
 
 	t := &v1alpha1.TaskSpec{
-		Steps: []corev1.Container{rcc.Condition.Spec.Check},
+		Steps: []v1alpha1.Step{{Container: rcc.Condition.Spec.Check}},
 	}
 
 	if len(rcc.Condition.Spec.Params) > 0 {
@@ -107,11 +105,11 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() *v1alpha1.TaskSpec {
 }
 
 // Replaces all instances of ${params.x} in the container to ${inputs.params.x} for each param name
-func convertParamTemplates(container *corev1.Container, params []v1alpha1.ParamSpec) {
+func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 	replacements := make(map[string]string)
 	for _, p := range params {
 		replacements[fmt.Sprintf("params.%s", p.Name)] = fmt.Sprintf("${inputs.params.%s}", p.Name)
-		substitution.ApplyContainerReplacements(container, replacements, map[string][]string{})
+		v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
 	}
 }
 

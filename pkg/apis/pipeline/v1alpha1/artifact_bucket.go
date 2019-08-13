@@ -53,9 +53,7 @@ const (
 	ArtifactStoragePVCType = "pvc"
 )
 
-var (
-	secretVolumeMountPath = "/var/bucketsecret"
-)
+var secretVolumeMountPath = "/var/bucketsecret"
 
 // ArtifactBucket contains the Storage bucket configuration defined in the
 // Bucket config map.
@@ -75,43 +73,43 @@ func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
 	return fmt.Sprintf("%s-%s-bucket", pr.Name, pr.Namespace)
 }
 
-// GetCopyFromStorageToContainerSpec returns a container used to download artifacts from temporary storage
-func (b *ArtifactBucket) GetCopyFromStorageToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
+// GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage
+func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []Step {
 	args := []string{"-args", fmt.Sprintf("cp -P -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
-	return []corev1.Container{{
+	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
 		Image:   *BashNoopImage,
 		Command: []string{"/ko-app/bash"},
 		Args: []string{
 			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),
 		},
-	}, {
+	}}, {Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-from-%s", name)),
 		Image:        *gsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
-	}}
+	}}}
 }
 
-// GetCopyToStorageFromContainerSpec returns a container used to upload artifacts for temporary storage
-func (b *ArtifactBucket) GetCopyToStorageFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container {
+// GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage
+func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []Step {
 	args := []string{"-args", fmt.Sprintf("cp -P -r %s %s", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath))}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
-	return []corev1.Container{{
+	return []Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-to-%s", name)),
 		Image:        *gsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
-	}}
+	}}}
 }
 
 // GetSecretsVolumes returns the list of volumes for secrets to be mounted

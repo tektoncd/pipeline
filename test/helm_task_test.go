@@ -158,7 +158,7 @@ func getCreateImageTask(namespace string) *v1alpha1.Task {
 	return tb.Task(createImageTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource("builtimage", v1alpha1.PipelineResourceTypeImage)),
-		tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.9.0", tb.Args(
+		tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.9.0", tb.StepArgs(
 			"--dockerfile=/workspace/gitsource/test/gohelloworld/Dockerfile",
 			"--context=/workspace/gitsource/",
 			"--destination=$(outputs.resources.builtimage.url)",
@@ -174,8 +174,8 @@ func getHelmDeployTask(namespace string) *v1alpha1.Task {
 			tb.InputsParamSpec("pathToHelmCharts", v1alpha1.ParamTypeString, tb.ParamSpecDescription("Path to the helm charts")),
 			tb.InputsParamSpec("chartname", v1alpha1.ParamTypeString, tb.ParamSpecDefault("")),
 		),
-		tb.Step("helm-init", "alpine/helm:2.14.0", tb.Args("init", "--wait")),
-		tb.Step("helm-deploy", "alpine/helm:2.14.0", tb.Args(
+		tb.Step("helm-init", "alpine/helm:2.14.0", tb.StepArgs("init", "--wait")),
+		tb.Step("helm-deploy", "alpine/helm:2.14.0", tb.StepArgs(
 			"install",
 			"--debug",
 			"--name=$(inputs.params.chartname)",
@@ -306,8 +306,8 @@ func helmCleanup(c *clients, t *testing.T, namespace string) {
 func removeAllHelmReleases(c *clients, t *testing.T, namespace string) {
 	helmRemoveAllTaskName := "helm-remove-all-task"
 	helmRemoveAllTask := tb.Task(helmRemoveAllTaskName, namespace, tb.TaskSpec(
-		tb.Step("helm-remove-all", "alpine/helm:2.14.0", tb.Command("/bin/sh"),
-			tb.Args("-c", "helm ls --short --all | xargs -n1 helm del --purge"),
+		tb.Step("helm-remove-all", "alpine/helm:2.14.0", tb.StepCommand("/bin/sh"),
+			tb.StepArgs("-c", "helm ls --short --all | xargs -n1 helm del --purge"),
 		),
 	))
 
@@ -335,7 +335,7 @@ func removeAllHelmReleases(c *clients, t *testing.T, namespace string) {
 func removeHelmFromCluster(c *clients, t *testing.T, namespace string) {
 	helmResetTaskName := "helm-reset-task"
 	helmResetTask := tb.Task(helmResetTaskName, namespace, tb.TaskSpec(
-		tb.Step("helm-reset", "alpine/helm:2.14.0", tb.Args("reset", "--force")),
+		tb.Step("helm-reset", "alpine/helm:2.14.0", tb.StepArgs("reset", "--force")),
 	))
 
 	helmResetTaskRunName := "helm-reset-taskrun"

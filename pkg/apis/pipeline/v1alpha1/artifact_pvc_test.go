@@ -32,14 +32,14 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 	pvc := v1alpha1.ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
-	want := []corev1.Container{{
+	want := []v1alpha1.Step{{Container: corev1.Container{
 		Name:    "source-copy-workspace-9l9zj",
 		Image:   "override-with-bash-noop:latest",
 		Command: []string{"/ko-app/bash"},
 		Args:    []string{"-args", "cp -r src-path/. /workspace/destination"},
-	}}
+	}}}
 
-	got := pvc.GetCopyFromStorageToContainerSpec("workspace", "src-path", "/workspace/destination")
+	got := pvc.GetCopyFromStorageToSteps("workspace", "src-path", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
@@ -51,21 +51,21 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 	pvc := v1alpha1.ArtifactPVC{
 		Name: "pipelinerun-pvc",
 	}
-	want := []corev1.Container{{
+	want := []v1alpha1.Step{{Container: corev1.Container{
 		Name:         "source-mkdir-workspace-9l9zj",
 		Image:        "override-with-bash-noop:latest",
 		Command:      []string{"/ko-app/bash"},
 		Args:         []string{"-args", "mkdir -p /workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-	}, {
+	}}, {Container: corev1.Container{
 		Name:         "source-copy-workspace-mz4c7",
 		Image:        "override-with-bash-noop:latest",
 		Command:      []string{"/ko-app/bash"},
 		Args:         []string{"-args", "cp -r src-path/. /workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-	}}
+	}}}
 
-	got := pvc.GetCopyToStorageFromContainerSpec("workspace", "src-path", "/workspace/destination")
+	got := pvc.GetCopyToStorageFromSteps("workspace", "src-path", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}
@@ -86,16 +86,16 @@ func TestPVCGetPvcMount(t *testing.T) {
 	}
 }
 
-func TestPVCGetMakeDirContainerSpec(t *testing.T) {
+func TestPVCGetMakeStep(t *testing.T) {
 	names.TestingSeed()
 
-	want := corev1.Container{
+	want := v1alpha1.Step{Container: corev1.Container{
 		Name:    "create-dir-workspace-9l9zj",
 		Image:   "override-with-bash-noop:latest",
 		Command: []string{"/ko-app/bash"},
 		Args:    []string{"-args", "mkdir -p /workspace/destination"},
-	}
-	got := v1alpha1.CreateDirContainer("workspace", "/workspace/destination")
+	}}
+	got := v1alpha1.CreateDirStep("workspace", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}

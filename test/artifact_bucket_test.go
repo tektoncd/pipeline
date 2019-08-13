@@ -72,10 +72,10 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 			},
 		})),
 		tb.Step("step1", "google/cloud-sdk:alpine",
-			tb.Command("/bin/bash"),
-			tb.Args("-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil mb gs://%s", bucketName)),
-			tb.VolumeMount("bucket-secret-volume", fmt.Sprintf("/var/secret/%s", bucketSecretName)),
-			tb.EnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey)),
+			tb.StepCommand("/bin/bash"),
+			tb.StepArgs("-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil mb gs://%s", bucketName)),
+			tb.StepVolumeMount("bucket-secret-volume", fmt.Sprintf("/var/secret/%s", bucketSecretName)),
+			tb.StepEnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey)),
 		),
 	),
 	)
@@ -131,11 +131,11 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	addFileTask := tb.Task(addFileTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
-		tb.Step("addfile", "ubuntu", tb.Command("/bin/bash"),
-			tb.Args("-c", "'#!/bin/bash\necho hello' > /workspace/helloworldgit/newfile"),
+		tb.Step("addfile", "ubuntu", tb.StepCommand("/bin/bash"),
+			tb.StepArgs("-c", "'#!/bin/bash\necho hello' > /workspace/helloworldgit/newfile"),
 		),
-		tb.Step("make-executable", "ubuntu", tb.Command("chmod"),
-			tb.Args("+x", "/workspace/helloworldgit/newfile")),
+		tb.Step("make-executable", "ubuntu", tb.StepCommand("chmod"),
+			tb.StepArgs("+x", "/workspace/helloworldgit/newfile")),
 	))
 	if _, err := c.TaskClient.Create(addFileTask); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", addFileTaskName, err)
@@ -144,7 +144,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	t.Logf("Creating Task %s", runFileTaskName)
 	readFileTask := tb.Task(runFileTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
-		tb.Step("runfile", "ubuntu", tb.Command("/workspace/helloworld/newfile")),
+		tb.Step("runfile", "ubuntu", tb.StepCommand("/workspace/helloworld/newfile")),
 	))
 	if _, err := c.TaskClient.Create(readFileTask); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", runFileTaskName, err)
@@ -238,10 +238,10 @@ func runTaskToDeleteBucket(c *clients, t *testing.T, namespace, bucketName, buck
 			},
 		})),
 		tb.Step("step1", "google/cloud-sdk:alpine",
-			tb.Command("/bin/bash"),
-			tb.Args("-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil rm -r gs://%s", bucketName)),
-			tb.VolumeMount("bucket-secret-volume", fmt.Sprintf("/var/secret/%s", bucketSecretName)),
-			tb.EnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey)),
+			tb.StepCommand("/bin/bash"),
+			tb.StepArgs("-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil rm -r gs://%s", bucketName)),
+			tb.StepVolumeMount("bucket-secret-volume", fmt.Sprintf("/var/secret/%s", bucketSecretName)),
+			tb.StepEnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey)),
 		),
 	),
 	)

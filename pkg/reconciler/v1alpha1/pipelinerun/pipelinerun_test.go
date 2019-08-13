@@ -25,14 +25,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	ktesting "k8s.io/client-go/testing"
-	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-	"knative.dev/pkg/configmap"
-	rtesting "knative.dev/pkg/reconciler/testing"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -41,6 +33,13 @@ import (
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ktesting "k8s.io/client-go/testing"
+	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/configmap"
+	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var (
@@ -1422,7 +1421,7 @@ func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
 		tb.TaskRunLabel("tekton.dev/conditionCheck", ccName),
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
-			tb.TaskRunTaskSpec(tb.Step("condition-check-"+condName, "foo", tb.Args("bar"))),
+			tb.TaskRunTaskSpec(tb.Step("condition-check-"+condName, "foo", tb.StepArgs("bar"))),
 			tb.TaskRunServiceAccount("test-sa"),
 		),
 	)

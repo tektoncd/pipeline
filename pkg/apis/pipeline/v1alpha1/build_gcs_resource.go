@@ -118,25 +118,26 @@ func (s *BuildGCSResource) Replacements() map[string]string {
 	}
 }
 
-// GetDownloadContainerSpec returns an array of container specs to download gcs storage object
-func (s *BuildGCSResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error) {
+// GetDownloadSteps returns an array of container specs to download gcs storage object
+func (s *BuildGCSResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 	args := []string{"--type", string(s.ArtifactType), "--location", s.Location}
 	// dest_dir is the destination directory for GCS files to be copies"
 	if sourcePath != "" {
 		args = append(args, "--dest_dir", sourcePath)
 	}
 
-	return []corev1.Container{
-		CreateDirContainer(s.Name, sourcePath), {
+	return []Step{
+		CreateDirStep(s.Name, sourcePath),
+		{Container: corev1.Container{
 			Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Image: *buildGCSFetcherImage,
 			Args:  args,
-		}}, nil
+		}}}, nil
 }
 
-// GetUploadContainerSpec gets container spec for gcs resource to be uploaded like
+// GetUploadSteps gets container spec for gcs resource to be uploaded like
 // set environment variable from secret params and set volume mounts for those secrets
-func (s *BuildGCSResource) GetUploadContainerSpec(sourcePath string) ([]corev1.Container, error) {
+func (s *BuildGCSResource) GetUploadSteps(sourcePath string) ([]Step, error) {
 	if s.ArtifactType != GCSManifest {
 		return nil, xerrors.Errorf("BuildGCSResource: Can only upload Artifacts of type Manifest: %s", s.Name)
 	}
@@ -145,11 +146,11 @@ func (s *BuildGCSResource) GetUploadContainerSpec(sourcePath string) ([]corev1.C
 	}
 	args := []string{"--location", s.Location, "--dir", sourcePath}
 
-	return []corev1.Container{{
+	return []Step{{Container: corev1.Container{
 		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-upload-%s", s.Name)),
 		Image: *buildGCSUploaderImage,
 		Args:  args,
-	}}, nil
+	}}}, nil
 }
 
 func getArtifactType(val string) (GCSArtifactType, error) {

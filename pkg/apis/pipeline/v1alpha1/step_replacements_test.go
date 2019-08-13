@@ -14,17 +14,17 @@
  limitations under the License.
 */
 
-package substitution_test
+package v1alpha1_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
-func TestApplyContainerReplacements(t *testing.T) {
+func TestApplyStepReplacements(t *testing.T) {
 	replacements := map[string]string{
 		"replace.me": "replaced!",
 	}
@@ -33,7 +33,7 @@ func TestApplyContainerReplacements(t *testing.T) {
 		"array.replace.me": {"val1", "val2"},
 	}
 
-	c := corev1.Container{
+	s := v1alpha1.Step{Container: corev1.Container{
 		Name:       "${replace.me}",
 		Image:      "${replace.me}",
 		Command:    []string{"${array.replace.me}"},
@@ -74,9 +74,9 @@ func TestApplyContainerReplacements(t *testing.T) {
 			MountPath: "${replace.me}",
 			SubPath:   "${replace.me}",
 		}},
-	}
+	}}
 
-	expected := corev1.Container{
+	expected := v1alpha1.Step{Container: corev1.Container{
 		Name:       "replaced!",
 		Image:      "replaced!",
 		Command:    []string{"val1", "val2"},
@@ -117,17 +117,17 @@ func TestApplyContainerReplacements(t *testing.T) {
 			MountPath: "replaced!",
 			SubPath:   "replaced!",
 		}},
-	}
-	substitution.ApplyContainerReplacements(&c, replacements, arrayReplacements)
-	if d := cmp.Diff(expected, c); d != "" {
+	}}
+	v1alpha1.ApplyStepReplacements(&s, replacements, arrayReplacements)
+	if d := cmp.Diff(s, expected); d != "" {
 		t.Errorf("Container replacements failed: %s", d)
 	}
 }
 
-func TestApplyContainerReplacements_NotDefined(t *testing.T) {
-	c := corev1.Container{
+func TestApplyStepReplacements_NotDefined(t *testing.T) {
+	s := v1alpha1.Step{Container: corev1.Container{
 		Name: "${params.not.defined}",
-	}
+	}}
 	replacements := map[string]string{
 		"replace.me": "replaced!",
 	}
@@ -136,11 +136,11 @@ func TestApplyContainerReplacements_NotDefined(t *testing.T) {
 		"array.replace.me": {"val1", "val2"},
 	}
 
-	expected := corev1.Container{
+	expected := v1alpha1.Step{Container: corev1.Container{
 		Name: "${params.not.defined}",
-	}
-	substitution.ApplyContainerReplacements(&c, replacements, arrayReplacements)
-	if d := cmp.Diff(expected, c); d != "" {
+	}}
+	v1alpha1.ApplyStepReplacements(&s, replacements, arrayReplacements)
+	if d := cmp.Diff(s, expected); d != "" {
 		t.Errorf("Unexpected container replacement: %s", d)
 	}
 }

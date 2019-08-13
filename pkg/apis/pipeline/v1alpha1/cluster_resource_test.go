@@ -21,10 +21,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
-
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestNewClusterResource(t *testing.T) {
@@ -117,52 +116,40 @@ func TestNewClusterResource(t *testing.T) {
 	}
 }
 
-func Test_ClusterResource_GetDownloadContainerSpec(t *testing.T) {
+func Test_ClusterResource_GetDownloadSteps(t *testing.T) {
 	names.TestingSeed()
-	testcases := []struct {
-		name            string
-		clusterResource *v1alpha1.ClusterResource
-		wantContainers  []corev1.Container
-		wantErr         bool
-	}{{
-		name: "valid cluster resource config",
-		clusterResource: &v1alpha1.ClusterResource{
-			Name: "test-cluster-resource",
-			Type: v1alpha1.PipelineResourceTypeCluster,
-			URL:  "http://10.10.10.10",
-			Secrets: []v1alpha1.SecretParam{{
-				FieldName:  "cadata",
-				SecretKey:  "cadatakey",
-				SecretName: "secret1",
-			}},
-		},
-		wantContainers: []corev1.Container{{
-			Name:    "kubeconfig-9l9zj",
-			Image:   "override-with-kubeconfig-writer:latest",
-			Command: []string{"/ko-app/kubeconfigwriter"},
-			Args:    []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
-			Env: []corev1.EnvVar{{
-				Name: "CADATA",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "secret1",
-						},
-						Key: "cadatakey",
-					},
-				},
-			}},
+	clusterResource := &v1alpha1.ClusterResource{
+		Name: "test-cluster-resource",
+		Type: v1alpha1.PipelineResourceTypeCluster,
+		URL:  "http://10.10.10.10",
+		Secrets: []v1alpha1.SecretParam{{
+			FieldName:  "cadata",
+			SecretKey:  "cadatakey",
+			SecretName: "secret1",
 		}},
-	}}
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.clusterResource.GetDownloadContainerSpec("")
-			if tc.wantErr && err == nil {
-				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
-			}
-			if d := cmp.Diff(gotContainers, tc.wantContainers); d != "" {
-				t.Errorf("Error mismatch between download containers spec: %s", d)
-			}
-		})
+	}
+	wantSteps := []v1alpha1.Step{{Container: corev1.Container{
+		Name:    "kubeconfig-9l9zj",
+		Image:   "override-with-kubeconfig-writer:latest",
+		Command: []string{"/ko-app/kubeconfigwriter"},
+		Args:    []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
+		Env: []corev1.EnvVar{{
+			Name: "CADATA",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "secret1",
+					},
+					Key: "cadatakey",
+				},
+			},
+		}},
+	}}}
+	got, err := clusterResource.GetDownloadSteps("")
+	if err != nil {
+		t.Fatalf("GetDownloadSteps: %v", err)
+	}
+	if d := cmp.Diff(got, wantSteps); d != "" {
+		t.Errorf("Error mismatch between download steps: %s", d)
 	}
 }

@@ -20,7 +20,6 @@ import (
 	"sort"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // StepStateSorter implements a sorting mechanism to align the order of the steps in TaskRun
@@ -30,14 +29,14 @@ type StepStateSorter struct {
 	mapForSort   map[string]int
 }
 
-func (trt *StepStateSorter) Init(taskRunSteps []v1alpha1.StepState, taskSpecSteps []corev1.Container) {
+func (trt *StepStateSorter) Init(taskRunSteps []v1alpha1.StepState, taskSpecSteps []v1alpha1.Step) {
 	trt.taskRunSteps = taskRunSteps
 	trt.mapForSort = trt.constructTaskStepsSorter(taskSpecSteps)
 }
 
 // constructTaskStepsSorter constructs a map matching the names of
 // the steps to their indices for a task.
-func (trt *StepStateSorter) constructTaskStepsSorter(taskSpecSteps []corev1.Container) map[string]int {
+func (trt *StepStateSorter) constructTaskStepsSorter(taskSpecSteps []v1alpha1.Step) map[string]int {
 	sorter := make(map[string]int)
 	for index, step := range taskSpecSteps {
 		sorter[step.Name] = index
@@ -77,7 +76,7 @@ func (trt *StepStateSorter) Less(i, j int) bool {
 	return true
 }
 
-func SortTaskRunStepOrder(taskRunSteps []v1alpha1.StepState, taskSpecSteps []corev1.Container) {
+func SortTaskRunStepOrder(taskRunSteps []v1alpha1.StepState, taskSpecSteps []v1alpha1.Step) {
 	trt := new(StepStateSorter)
 	trt.Init(taskRunSteps, taskSpecSteps)
 	sort.Sort(trt)

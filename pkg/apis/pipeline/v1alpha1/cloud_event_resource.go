@@ -80,22 +80,9 @@ func (s *CloudEventResource) Replacements() map[string]string {
 	}
 }
 
-// GetUploadContainerSpec returns nothing as the cloud event is sent by the controller once the POD execution is completed
-func (s *CloudEventResource) GetUploadContainerSpec(_ string) ([]corev1.Container, error) {
-	return nil, nil
-}
-
-// GetDownloadContainerSpec returns nothing, cloud events cannot be used as input resource
-func (s *CloudEventResource) GetDownloadContainerSpec(_ string) ([]corev1.Container, error) {
-	return nil, nil
-}
-
-// GetUploadVolumeSpec - no upload from volume for CloudEvent resource
-func (s *CloudEventResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
-}
-
-// GetDownloadVolumeSpec - no download from volume for CloudEvent resource
-func (s *CloudEventResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+func (s *CloudEventResource) GetUploadSteps(string) ([]Step, error)                  { return nil, nil }
+func (s *CloudEventResource) GetDownloadSteps(string) ([]Step, error)                { return nil, nil }
+func (s *CloudEventResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }
+func (s *CloudEventResource) GetDownloadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) {
 	return nil, nil
 }

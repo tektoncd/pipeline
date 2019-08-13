@@ -21,13 +21,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 var c = tb.Condition("conditionname", "foo")
@@ -195,10 +194,10 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 			tb.ConditionSpecCheck("foo", "ubuntu"),
 		)),
 		want: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "foo",
 				Image: "ubuntu",
-			}},
+			}}},
 		},
 	}, {
 		name: "default-container-name",
@@ -206,10 +205,10 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 			tb.ConditionSpecCheck("", "ubuntu"),
 		)),
 		want: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "condition-check-bar",
 				Image: "ubuntu",
-			}},
+			}}},
 		},
 	}, {
 		name: "with-input-params",
@@ -229,11 +228,11 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 					Type: "string",
 				}},
 			},
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "${inputs.params.name}",
 				Image:      "${inputs.params.img}",
 				WorkingDir: "${params.not.replaced}",
-			}},
+			}}},
 		},
 	}}
 

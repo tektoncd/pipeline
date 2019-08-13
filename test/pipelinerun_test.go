@@ -25,17 +25,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 var (
@@ -100,9 +99,9 @@ func TestPipelineRun(t *testing.T) {
 					tb.InputsParamSpec("dest", v1alpha1.ParamTypeString)),
 				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
 				tb.Step("config-docker", "quay.io/rhpipeline/skopeo:alpine",
-					tb.Command("skopeo"),
+					tb.StepCommand("skopeo"),
 					// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-					tb.Args("copy", "${inputs.params.path}", "$(inputs.params.dest)"),
+					tb.StepArgs("copy", "${inputs.params.path}", "$(inputs.params.dest)"),
 				),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
@@ -128,8 +127,8 @@ func TestPipelineRun(t *testing.T) {
 
 			task := tb.Task(getName(taskName, index), namespace, tb.TaskSpec(
 				tb.Step("echo-hello", "ubuntu",
-					tb.Command("/bin/bash"),
-					tb.Args("-c", "echo hello, world"),
+					tb.StepCommand("/bin/bash"),
+					tb.StepArgs("-c", "echo hello, world"),
 				),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
@@ -251,51 +250,51 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.ResourceTargetPath("brandnewspace"),
 			)),
 			tb.TaskOutputs(outWorkspaceResource),
-			tb.Step("write-data-task-0-step-0", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "echo stuff > $(inputs.resources.workspace.path)/stuff"),
+			tb.Step("write-data-task-0-step-0", "ubuntu", tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "echo stuff > $(inputs.resources.workspace.path)/stuff"),
 			),
-			tb.Step("write-data-task-0-step-1", "ubuntu", tb.Command("/bin/bash"),
+			tb.Step("write-data-task-0-step-1", "ubuntu", tb.StepCommand("/bin/bash"),
 				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
 				// In the next release we will remove support for $() entirely.
-				tb.Args("-c", "echo other > ${inputs.resources.workspace.path}/other"),
+				tb.StepArgs("-c", "echo other > ${inputs.resources.workspace.path}/other"),
 			),
 		)),
 		tb.Task("check-create-files-exists", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
-			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
+			tb.Step("read-from-task-0", "ubuntu", tb.StepCommand("/bin/bash"),
 				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
 				// In the next release we will remove support for $() entirely.
-				tb.Args("-c", "[[ stuff == $(cat ${inputs.resources.workspace.path}/stuff) ]]"),
+				tb.StepArgs("-c", "[[ stuff == $(cat ${inputs.resources.workspace.path}/stuff) ]]"),
 			),
-			tb.Step("write-data-task-1", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "echo something > $(inputs.resources.workspace.path)/something"),
+			tb.Step("write-data-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "echo something > $(inputs.resources.workspace.path)/something"),
 			),
 		)),
 		tb.Task("check-create-files-exists-2", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
-			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]"),
+			tb.Step("read-from-task-0", "ubuntu", tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]"),
 			),
-			tb.Step("write-data-task-1", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "echo else > $(inputs.resources.workspace.path)/else"),
+			tb.Step("write-data-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "echo else > $(inputs.resources.workspace.path)/else"),
 			),
 		)),
 		tb.Task("read-files", namespace, tb.TaskSpec(
 			tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit,
 				tb.ResourceTargetPath("readingspace"),
 			)),
-			tb.Step("read-from-task-0", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"),
+			tb.Step("read-from-task-0", "ubuntu", tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"),
 			),
-			tb.Step("read-from-task-1", "ubuntu", tb.Command("/bin/bash"),
-				tb.Args("-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"),
+			tb.Step("read-from-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
+				tb.StepArgs("-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"),
 			),
-			tb.Step("read-from-task-2", "ubuntu", tb.Command("/bin/bash"),
+			tb.Step("read-from-task-2", "ubuntu", tb.StepCommand("/bin/bash"),
 				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
 				// In the next release we will remove support for $() entirely.
-				tb.Args("-c", "[[ else == $(cat ${inputs.resources.workspace.path}/else) ]]"),
+				tb.StepArgs("-c", "[[ else == $(cat ${inputs.resources.workspace.path}/else) ]]"),
 			),
 		)),
 	}

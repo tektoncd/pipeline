@@ -23,7 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -90,10 +89,7 @@ func AddOutputResources(
 		if !ok || resource == nil {
 			return nil, xerrors.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)
 		}
-		var (
-			resourceContainers []corev1.Container
-			resourceVolumes    []corev1.Volume
-		)
+
 		// if resource is declared in input then copy outputs to pvc
 		// To build copy step it needs source path(which is targetpath of input resourcemap) from task input source
 		sourcePath := inputResourceMap[boundResource.Name]
@@ -108,31 +104,29 @@ func AddOutputResources(
 			}
 		}
 
-		resourceContainers, err = resource.GetUploadContainerSpec(sourcePath)
+		resourceSteps, err := resource.GetUploadSteps(sourcePath)
 		if err != nil {
 			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 		}
 
-		resourceVolumes, err = resource.GetUploadVolumeSpec(taskSpec)
+		resourceVolumes, err := resource.GetUploadVolumeSpec(taskSpec)
 		if err != nil {
 			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 		}
 
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
-			var newSteps []corev1.Container
+			var newSteps []v1alpha1.Step
 			for _, dPath := range boundResource.Paths {
-				containers := as.GetCopyToStorageFromContainerSpec(resource.GetName(), sourcePath, dPath)
-				newSteps = append(newSteps, containers...)
+				newSteps = append(newSteps, as.GetCopyToStorageFromSteps(resource.GetName(), sourcePath, dPath)...)
 			}
-			resourceContainers = append(resourceContainers, newSteps...)
+			resourceSteps = append(resourceSteps, newSteps...)
 			resourceVolumes = append(resourceVolumes, as.GetSecretsVolumes()...)
 		}
 
 		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirStep := []corev1.Container{v1alpha1.CreateDirContainer(boundResource.Name, sourcePath)}
-		taskSpec.Steps = append(mkdirStep, taskSpec.Steps...)
-
-		taskSpec.Steps = append(taskSpec.Steps, resourceContainers...)
+		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(boundResource.Name, sourcePath)}
+		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
+		taskSpec.Steps = append(taskSpec.Steps, resourceSteps...)
 		taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
 
 		if as.GetType() == v1alpha1.ArtifactStoragePVCType {

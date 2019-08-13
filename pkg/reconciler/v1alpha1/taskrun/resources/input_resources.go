@@ -70,8 +70,7 @@ func AddInputResource(
 		return nil, err
 	}
 
-	allResourceContainers := []corev1.Container{}
-
+	var allResourceSteps []v1alpha1.Step
 	for _, input := range taskSpec.Inputs.Resources {
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
 		if err != nil {
@@ -81,28 +80,25 @@ func AddInputResource(
 		if !ok || resource == nil {
 			return nil, xerrors.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
 		}
-		var (
-			resourceContainers     []corev1.Container
-			resourceVolumes        []corev1.Volume
-			copyStepsFromPrevTasks []corev1.Container
-			dPath                  = destinationPath(input.Name, input.TargetPath)
-		)
+		var resourceVolumes []corev1.Volume
+		var copyStepsFromPrevTasks []v1alpha1.Step
+		dPath := destinationPath(input.Name, input.TargetPath)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
-				cpContainers := as.GetCopyFromStorageToContainerSpec(boundResource.Name, path, dPath)
+				cpSteps := as.GetCopyFromStorageToSteps(boundResource.Name, path, dPath)
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
-
 					mountPVC = true
-					for _, ct := range cpContainers {
-						ct.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
-						createAndCopyContainers := []corev1.Container{v1alpha1.CreateDirContainer(boundResource.Name, dPath), ct}
-						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, createAndCopyContainers...)
+					for _, s := range cpSteps {
+						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
+						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
+							v1alpha1.CreateDirStep(boundResource.Name, dPath),
+							s)
 					}
 				} else {
 					// bucket
-					copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpContainers...)
+					copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpSteps...)
 				}
 			}
 		}
@@ -111,7 +107,7 @@ func AddInputResource(
 			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
 			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
 		} else {
-			resourceContainers, err = resource.GetDownloadContainerSpec(dPath)
+			resourceSteps, err := resource.GetDownloadSteps(dPath)
 			if err != nil {
 				return nil, xerrors.Errorf("task %q invalid resource download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 			}
@@ -120,11 +116,11 @@ func AddInputResource(
 				return nil, xerrors.Errorf("task %q invalid resource download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 			}
 
-			allResourceContainers = append(allResourceContainers, resourceContainers...)
+			allResourceSteps = append(allResourceSteps, resourceSteps...)
 			taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
 		}
 	}
-	taskSpec.Steps = append(allResourceContainers, taskSpec.Steps...)
+	taskSpec.Steps = append(allResourceSteps, taskSpec.Steps...)
 
 	if mountPVC {
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))

@@ -31,9 +31,9 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 			Name: "orchestrate",
 		},
 		Spec: v1alpha1.TaskSpec{
-			Steps: []corev1.Container{{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name: "step1",
-			}},
+			}}},
 		},
 	}
 	tr := &v1alpha1.TaskRun{
@@ -69,9 +69,9 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name: "step1",
-				}},
+				}}},
 			},
 		},
 	}

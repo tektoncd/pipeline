@@ -42,38 +42,38 @@ var simpleTaskSpec = &v1alpha1.TaskSpec{
 			},
 		},
 	},
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "foo",
 		Image: "$(inputs.params.myimage)",
-	}, {
+	}}, {Container: corev1.Container{
 		Name:       "baz",
 		Image:      "bat",
 		WorkingDir: "$(inputs.resources.workspace.path)",
 		Args:       []string{"$(inputs.resources.workspace.url)"},
-	}, {
+	}}, {Container: corev1.Container{
 		Name:  "qux",
 		Image: "quux",
 		Args:  []string{"$(outputs.resources.imageToUse.url)"},
-	}, {
+	}}, {Container: corev1.Container{
 		Name: "foo",
 		// TODO(#1170): Remove support for ${} syntax
 		Image: "${inputs.params.myimage}",
-	}, {
+	}}, {Container: corev1.Container{
 		Name:  "baz",
 		Image: "bat",
 		// TODO(#1170): Remove support for ${} syntax
 		WorkingDir: "${inputs.resources.workspace.path}",
 		Args:       []string{"${inputs.resources.workspace.url}"},
-	}, {
+	}}, {Container: corev1.Container{
 		Name:  "qux",
 		Image: "quux",
 		// TODO(#1170): Remove support for ${} syntax
 		Args: []string{"${outputs.resources.imageToUse.url}"},
-	}},
+	}}},
 }
 
 var envTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "foo",
 		Image: "busybox:$(inputs.params.FOO)",
 		Env: []corev1.EnvVar{{
@@ -109,7 +109,7 @@ var envTaskSpec = &v1alpha1.TaskSpec{
 				LocalObjectReference: corev1.LocalObjectReference{Name: "secret-${inputs.params.FOO}"},
 			},
 		}},
-	}},
+	}}},
 }
 
 var stepTemplateTaskSpec = &v1alpha1.TaskSpec{
@@ -119,21 +119,21 @@ var stepTemplateTaskSpec = &v1alpha1.TaskSpec{
 			Value: "$(inputs.params.FOO)",
 		}},
 	},
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "simple-image",
 		Image: "$(inputs.params.myimage)",
-	}, {
+	}}, {Container: corev1.Container{
 		Name:  "image-with-env-specified",
 		Image: "some-other-image",
 		Env: []corev1.EnvVar{{
 			Name:  "template-var",
 			Value: "overridden-value",
 		}},
-	}},
+	}}},
 }
 
 var volumeMountTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "foo",
 		Image: "busybox:$(inputs.params.FOO)",
 		VolumeMounts: []corev1.VolumeMount{{
@@ -141,7 +141,7 @@ var volumeMountTaskSpec = &v1alpha1.TaskSpec{
 			MountPath: "path/to/$(inputs.params.FOO)",
 			SubPath:   "sub/$(inputs.params.FOO)/path",
 		}},
-	}},
+	}}},
 }
 
 var gcsTaskSpec = &v1alpha1.TaskSpec{
@@ -150,59 +150,59 @@ var gcsTaskSpec = &v1alpha1.TaskSpec{
 			Name: "bucket",
 		}},
 	},
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "foobar",
 		Image: "someImage",
 		Args:  []string{"$(outputs.resources.bucket.path)"},
-	}},
+	}}},
 }
 
 var arrayParamTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "simple-image",
 		Image: "some-image",
-	}, {
+	}}, {Container: corev1.Container{
 		Name:    "image-with-args-specified",
 		Image:   "some-other-image",
 		Command: []string{"echo"},
 		Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
-	}},
+	}}},
 }
 
 var arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "simple-image",
 		Image: "some-image",
-	}, {
+	}}, {Container: corev1.Container{
 		Name:    "image-with-args-specified",
 		Image:   "some-other-image",
 		Command: []string{"echo"},
 		Args:    []string{"$(inputs.params.normal-param)", "second", "$(inputs.params.array-param)", "last"},
-	}},
+	}}},
 }
 
 var multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "simple-image",
 		Image: "some-image",
-	}, {
+	}}, {Container: corev1.Container{
 		Name:    "image-with-args-specified",
 		Image:   "some-other-image",
 		Command: []string{"cmd", "$(inputs.params.another-array-param)"},
 		Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
-	}},
+	}}},
 }
 
 var multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []corev1.Container{{
+	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "simple-image",
 		Image: "image-$(inputs.params.string-param2)",
-	}, {
+	}}, {Container: corev1.Container{
 		Name:    "image-with-args-specified",
 		Image:   "some-other-image",
 		Command: []string{"cmd", "$(inputs.params.array-param1)"},
 		Args:    []string{"$(inputs.params.array-param2)", "second", "$(inputs.params.array-param1)", "$(inputs.params.string-param1)", "last"},
-	}},
+	}}},
 }
 
 var paramTaskRun = &v1alpha1.TaskRun{

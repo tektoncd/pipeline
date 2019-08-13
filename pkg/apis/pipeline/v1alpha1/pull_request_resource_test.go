@@ -21,10 +21,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
-
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestPullRequest_NewResource(t *testing.T) {
@@ -60,7 +59,7 @@ func TestPullRequest_NewResource_error(t *testing.T) {
 
 type testcase struct {
 	in  *v1alpha1.PullRequestResource
-	out []corev1.Container
+	out []v1alpha1.Step
 }
 
 const workspace = "/workspace"
@@ -71,14 +70,14 @@ func containerTestCases(mode string) []testcase {
 			Name: "nocreds",
 			URL:  "https://example.com",
 		},
-		out: []corev1.Container{{
+		out: []v1alpha1.Step{{Container: corev1.Container{
 			Name:       "pr-source-nocreds-9l9zj",
 			Image:      "override-with-pr:latest",
 			WorkingDir: v1alpha1.WorkspaceDir,
 			Command:    []string{"/ko-app/pullrequest-init"},
 			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode},
 			Env:        []corev1.EnvVar{},
-		}},
+		}}},
 	}, {
 		in: &v1alpha1.PullRequestResource{
 			Name: "creds",
@@ -89,7 +88,7 @@ func containerTestCases(mode string) []testcase {
 				SecretKey:  "token",
 			}},
 		},
-		out: []corev1.Container{{
+		out: []v1alpha1.Step{{Container: corev1.Container{
 			Name:       "pr-source-creds-mz4c7",
 			Image:      "override-with-pr:latest",
 			WorkingDir: v1alpha1.WorkspaceDir,
@@ -106,16 +105,16 @@ func containerTestCases(mode string) []testcase {
 					},
 				},
 			}},
-		}},
+		}}},
 	}}
 }
 
-func TestPullRequest_GetDownloadContainerSpec(t *testing.T) {
+func TestPullRequest_GetDownloadSteps(t *testing.T) {
 	names.TestingSeed()
 
 	for _, tc := range containerTestCases("download") {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
-			got, err := tc.in.GetDownloadContainerSpec(workspace)
+			got, err := tc.in.GetDownloadSteps(workspace)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -126,12 +125,12 @@ func TestPullRequest_GetDownloadContainerSpec(t *testing.T) {
 	}
 }
 
-func TestPullRequest_GetUploadContainerSpec(t *testing.T) {
+func TestPullRequest_GetUploadSteps(t *testing.T) {
 	names.TestingSeed()
 
 	for _, tc := range containerTestCases("upload") {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
-			got, err := tc.in.GetUploadContainerSpec(workspace)
+			got, err := tc.in.GetUploadSteps(workspace)
 			if err != nil {
 				t.Fatal(err)
 			}

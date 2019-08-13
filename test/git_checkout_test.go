@@ -155,7 +155,7 @@ func getGitPipelineResource(namespace, revision string) *v1alpha1.PipelineResour
 func getGitCheckTask(namespace string, t *testing.T) *v1alpha1.Task {
 	return tb.Task(gitTestTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
-		tb.Step("git", "alpine/git", tb.Args("--git-dir=/workspace/gitsource/.git", "show")),
+		tb.Step("git", "alpine/git", tb.StepArgs("--git-dir=/workspace/gitsource/.git", "show")),
 	))
 }
 

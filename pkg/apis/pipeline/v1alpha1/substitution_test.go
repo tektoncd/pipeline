@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Tekton Authors
+	"github.com/tektoncd/pipeline/pkg/substitution"
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,15 +15,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package substitution_test
+package v1alpha1_test
 
 import (
 	"testing"
 
-	"knative.dev/pkg/apis"
-
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"knative.dev/pkg/apis"
 )
 
 func TestValidateVariables(t *testing.T) {
@@ -34,7 +34,7 @@ func TestValidateVariables(t *testing.T) {
 		path          string
 		vars          map[string]struct{}
 	}
-	tests := []struct {
+	for _, tc := range []struct {
 		name          string
 		args          args
 		expectedError *apis.FieldError
@@ -185,12 +185,11 @@ func TestValidateVariables(t *testing.T) {
 			Message: `non-existent variable in "--flag=${inputs.params.baz} ${input.params.foo}" for step somefield`,
 			Paths:   []string{"taskspec.steps.somefield"},
 		},
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := substitution.ValidateVariable("somefield", tt.args.input, tt.args.prefix, tt.args.contextPrefix, tt.args.locationName, tt.args.path, tt.args.vars)
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := v1alpha1.ValidateVariable("somefield", tc.args.input, tc.args.prefix, tc.args.contextPrefix, tc.args.locationName, tc.args.path, tc.args.vars)
 
-			if d := cmp.Diff(got, tt.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
+			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("ValidateVariable() error did not match expected error %s", d)
 			}
 		})
@@ -250,7 +249,7 @@ func TestApplyReplacements(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualOutput := substitution.ApplyReplacements(tt.args.input, tt.args.replacements)
+			actualOutput := v1alpha1.ApplyReplacements(tt.args.input, tt.args.replacements)
 			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
 				t.Errorf("ApplyReplacements() output did not match expected value %s", d)
 			}
@@ -264,52 +263,46 @@ func TestApplyArrayReplacements(t *testing.T) {
 		stringReplacements map[string]string
 		arrayReplacements  map[string][]string
 	}
-	tests := []struct {
+	for _, tc := range []struct {
 		name           string
 		args           args
 		expectedOutput []string
-	}{
-		{
-			name: "no replacements requested",
-			args: args{
-				input:              "this is a string",
-				stringReplacements: map[string]string{},
-				arrayReplacements:  map[string][]string{},
-			},
-			expectedOutput: []string{"this is a string"},
+	}{{
+		name: "no replacements requested",
+		args: args{
+			input:              "this is a string",
+			stringReplacements: map[string]string{},
+			arrayReplacements:  map[string][]string{},
 		},
-		{
-			name: "multiple replacements requested nothing replaced",
-			args: args{
-				input:              "this is a string",
-				stringReplacements: map[string]string{"key": "replacement", "anotherkey": "foo"},
-				arrayReplacements:  map[string][]string{"key2": {"replacement", "a"}, "key3": {"1", "2"}},
-			},
-			expectedOutput: []string{"this is a string"},
+		expectedOutput: []string{"this is a string"},
+	}, {
+		name: "multiple replacements requested nothing replaced",
+		args: args{
+			input:              "this is a string",
+			stringReplacements: map[string]string{"key": "replacement", "anotherkey": "foo"},
+			arrayReplacements:  map[string][]string{"key2": {"replacement", "a"}, "key3": {"1", "2"}},
 		},
-		{
-			name: "multiple replacements only string replacement possible",
-			args: args{
-				input:              "${string}rep${lacement}${string}",
-				stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
-				arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "string": {"1", "2"}},
-			},
-			expectedOutput: []string{"wordreplacementsword"},
+		expectedOutput: []string{"this is a string"},
+	}, {
+		name: "multiple replacements only string replacement possible",
+		args: args{
+			input:              "${string}rep${lacement}${string}",
+			stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
+			arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "string": {"1", "2"}},
 		},
-		{
-			name: "array replacement",
-			args: args{
-				input:              "${match}",
-				stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
-				arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "match": {"1", "2"}},
-			},
-			expectedOutput: []string{"1", "2"},
+		expectedOutput: []string{"wordreplacementsword"},
+	}, {
+		name: "array replacement",
+		args: args{
+			input:              "${match}",
+			stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
+			arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "match": {"1", "2"}},
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			actualOutput := substitution.ApplyArrayReplacements(tt.args.input, tt.args.stringReplacements, tt.args.arrayReplacements)
-			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
+		expectedOutput: []string{"1", "2"},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			actualOutput := v1alpha1.ApplyArrayReplacements(tc.args.input, tc.args.stringReplacements, tc.args.arrayReplacements)
+			if d := cmp.Diff(actualOutput, tc.expectedOutput); d != "" {
 				t.Errorf("ApplyArrayReplacements() output did not match expected value %s", d)
 			}
 		})

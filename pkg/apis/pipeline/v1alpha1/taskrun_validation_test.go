@@ -21,15 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/test/builder"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/test/builder"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestTaskRun_Invalidate(t *testing.T) {
@@ -90,10 +88,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Name: "taskrefname",
 			},
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "mystep",
 					Image: "myimage",
-				}},
+				}}},
 			},
 		},
 		wantErr: apis.ErrDisallowedFields("spec.taskspec", "spec.taskref"),
@@ -110,10 +108,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		name: "invalid taskspec",
 		spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "invalid-name-with-$weird-char*/%",
 					Image: "myimage",
-				}},
+				}}},
 			},
 		},
 		wantErr: &apis.FieldError{
@@ -140,10 +138,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "taskspec without a taskRef",
 		spec: v1alpha1.TaskRunSpec{
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "mystep",
 					Image: "myimage",
-				}},
+				}}},
 			},
 		},
 	}, {
@@ -151,10 +149,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		spec: v1alpha1.TaskRunSpec{
 			Timeout: &metav1.Duration{Duration: 0},
 			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []corev1.Container{{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name:  "mystep",
 					Image: "myimage",
-				}},
+				}}},
 			},
 		},
 	}}

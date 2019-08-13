@@ -97,10 +97,9 @@ func (s *GCSResource) Replacements() map[string]string {
 	}
 }
 
-// GetUploadContainerSpec gets container spec for gcs resource to be uploaded like
+// GetUploadSteps gets container spec for gcs resource to be uploaded like
 // set environment variable from secret params and set volume mounts for those secrets
-func (s *GCSResource) GetUploadContainerSpec(sourcePath string) ([]corev1.Container, error) {
-
+func (s *GCSResource) GetUploadSteps(sourcePath string) ([]Step, error) {
 	var args []string
 	if s.TypeDir {
 		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", sourcePath, s.Location)}
@@ -110,18 +109,18 @@ func (s *GCSResource) GetUploadContainerSpec(sourcePath string) ([]corev1.Contai
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
-	return []corev1.Container{{
+	return []Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        *gsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
 		Env:          envVars,
-	}}, nil
+	}}}, nil
 }
 
-// GetDownloadContainerSpec returns an array of container specs to download gcs storage object
-func (s *GCSResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error) {
+// GetDownloadSteps returns an array of container specs to download gcs storage object
+func (s *GCSResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 	if sourcePath == "" {
 		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
@@ -133,15 +132,16 @@ func (s *GCSResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Cont
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
-	return []corev1.Container{
-		CreateDirContainer(s.Name, sourcePath), {
+	return []Step{
+		CreateDirStep(s.Name, sourcePath),
+		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        *gsutilImage,
 			Command:      []string{"/ko-app/gsutil"},
 			Args:         args,
 			Env:          envVars,
 			VolumeMounts: secretVolumeMount,
-		}}, nil
+		}}}, nil
 }
 
 func (s *GCSResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {

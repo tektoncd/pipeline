@@ -28,13 +28,13 @@ import (
 func TestSortTaskRunStepOrder(t *testing.T) {
 	task := tb.Task("failing-task", "default", tb.TaskSpec(
 		tb.Step("hello", "busybox",
-			tb.Command("/bin/sh"), tb.Args("-c", "echo hello"),
+			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "echo hello"),
 		),
 		tb.Step("exit", "busybox",
-			tb.Command("/bin/sh"), tb.Args("-c", "exit 1"),
+			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "exit 1"),
 		),
 		tb.Step("world", "busybox",
-			tb.Command("/bin/sh"), tb.Args("-c", "sleep 30s"),
+			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 30s"),
 		),
 	))
 

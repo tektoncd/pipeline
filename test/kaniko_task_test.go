@@ -26,18 +26,16 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/client-go/kubernetes"
-
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	tb "github.com/tektoncd/pipeline/test/builder"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 const (
@@ -57,8 +55,8 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	taskSpecOps := []tb.TaskSpecOp{
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 	}
-	stepOps := []tb.ContainerOp{
-		tb.Args(
+	stepOps := []tb.StepOp{
+		tb.StepArgs(
 			"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 			fmt.Sprintf("--destination=%s", repo),
 			"--context=/workspace/gitsource",
@@ -66,8 +64,8 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	}
 	if withSecretConfig {
 		stepOps = append(stepOps,
-			tb.VolumeMount("kaniko-secret", "/secrets"),
-			tb.EnvVar("GOOGLE_APPLICATION_CREDENTIALS", "/secrets/config.json"),
+			tb.StepVolumeMount("kaniko-secret", "/secrets"),
+			tb.StepEnvVar("GOOGLE_APPLICATION_CREDENTIALS", "/secrets/config.json"),
 		)
 		taskSpecOps = append(taskSpecOps, tb.TaskVolume("kaniko-secret", tb.VolumeSource(corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{

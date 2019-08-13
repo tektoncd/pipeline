@@ -21,9 +21,8 @@ package test
 import (
 	"testing"
 
-	knativetest "knative.dev/pkg/test"
-
 	tb "github.com/tektoncd/pipeline/test/builder"
+	knativetest "knative.dev/pkg/test"
 )
 
 const (
@@ -44,8 +43,8 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := tb.Task(epTaskName, namespace, tb.TaskSpec(
-		tb.Step("step1", "ubuntu", tb.Args("-c", "sleep 3 && touch foo")),
-		tb.Step("step2", "ubuntu", tb.Args("-c", "ls", "foo")),
+		tb.Step("step1", "ubuntu", tb.StepArgs("-c", "sleep 3 && touch foo")),
+		tb.Step("step2", "ubuntu", tb.StepArgs("-c", "ls", "foo")),
 	))
 	if _, err := c.TaskClient.Create(task); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)

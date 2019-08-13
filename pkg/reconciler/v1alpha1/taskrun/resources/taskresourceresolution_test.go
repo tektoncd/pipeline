@@ -63,9 +63,10 @@ func TestResolveTaskRun(t *testing.T) {
 	taskName := "orchestrate"
 	kind := v1alpha1.NamespacedTaskKind
 	taskSpec := v1alpha1.TaskSpec{
-		Steps: []corev1.Container{{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name: "step1",
-		}}}
+		}}},
+	}
 
 	resources := []*v1alpha1.PipelineResource{{
 		ObjectMeta: metav1.ObjectMeta{
@@ -193,9 +194,10 @@ func TestResolveTaskRun_missingInput(t *testing.T) {
 
 func TestResolveTaskRun_noResources(t *testing.T) {
 	taskSpec := v1alpha1.TaskSpec{
-		Steps: []corev1.Container{{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
 			Name: "step1",
-		}}}
+		}}},
+	}
 
 	gr := func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
 

@@ -95,30 +95,22 @@ func (s *GitResource) Replacements() map[string]string {
 	}
 }
 
-func (s *GitResource) GetDownloadContainerSpec(sourcePath string) ([]corev1.Container, error) {
+func (s *GitResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 	args := []string{"-url", s.URL,
 		"-revision", s.Revision,
 	}
 
 	args = append(args, []string{"-path", sourcePath}...)
 
-	return []corev1.Container{{
+	return []Step{{Container: corev1.Container{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
 		Image:      *gitImage,
 		Command:    []string{"/ko-app/git-init"},
 		Args:       args,
 		WorkingDir: WorkspaceDir,
-	}}, nil
+	}}}, nil
 }
 
-func (s *GitResource) GetUploadContainerSpec(sourcePath string) ([]corev1.Container, error) {
-	return nil, nil
-}
-
-func (s *GitResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
-}
-
-func (s *GitResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
-}
+func (s *GitResource) GetUploadSteps(sourcePath string) ([]Step, error)              { return nil, nil }
+func (s *GitResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)   { return nil, nil }
+func (s *GitResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) { return nil, nil }
