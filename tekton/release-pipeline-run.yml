@@ -7,7 +7,7 @@ spec:
   type: git
   params:
   - name: revision
-    value: v0.2.0
+    value: v0.2.2
   - name: url
     value: https://github.com/tektoncd/cli
 ---
