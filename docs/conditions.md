@@ -49,7 +49,7 @@ spec:
     - name: image
       default: ubuntu
   check:
-    image: ${params.image}
+    image: $(params.image)
 ```
 
 Parameters name are limited to alpha-numeric characters, `-` and `_` and can

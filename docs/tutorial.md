@@ -421,7 +421,7 @@ spec:
       args:
         - "apply"
         - "-f"
-        - "${inputs.params.path}"
+        - "$(inputs.params.path)"
 ```
 
 To run the `Pipeline`, create a [`PipelineRun`](pipelineruns.md) as follows:
