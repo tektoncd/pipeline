@@ -466,6 +466,16 @@ func PipelineResourceSpecParam(name, value string) PipelineResourceSpecOp {
 	}
 }
 
+// PipelineResourceSpecParam adds a ResourceRuntimeParam, with specified name and value, to the PipelineResourceSpec.
+func PipelineResourceSpecRuntimeParam(name, value string) PipelineResourceSpecOp {
+	return func(spec *v1alpha1.PipelineResourceSpec) {
+		spec.RuntimeParams = append(spec.RuntimeParams, v1alpha1.ResourceParam{
+			Name:  name,
+			Value: value,
+		})
+	}
+}
+
 // PipelineResourceSpecSecretParam adds a SecretParam, with specified fieldname, secretKey and secretName, to the PipelineResourceSpec.
 func PipelineResourceSpecSecretParam(fieldname, secretName, secretKey string) PipelineResourceSpecOp {
 	return func(spec *v1alpha1.PipelineResourceSpec) {

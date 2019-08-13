@@ -83,6 +83,22 @@ func Test_Valid_NewGitResource(t *testing.T) {
 				Revision: "master",
 			},
 		},
+		{
+			desc: "With runtime param",
+			pipelineResource: tb.PipelineResource("git-resource", "default",
+				tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
+					tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
+					tb.PipelineResourceSpecParam("Revision", "test"),
+					tb.PipelineResourceSpecRuntimeParam("Revision", "sit"),
+				),
+			),
+			want: &v1alpha1.GitResource{
+				Name:     "git-resource",
+				Type:     v1alpha1.PipelineResourceTypeGit,
+				URL:      "git@github.com:test/test.git",
+				Revision: "sit",
+			},
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.desc, func(t *testing.T) {
