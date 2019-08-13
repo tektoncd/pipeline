@@ -297,14 +297,16 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		PipelineRuns: prs,
 	}
 	tcs := []struct {
-		name        string
-		pipelineRun *v1alpha1.PipelineRun
-		reason      string
+		name               string
+		pipelineRun        *v1alpha1.PipelineRun
+		reason             string
+		hasNoDefaultLabels bool
 	}{
 		{
-			name:        "invalid-pipeline-shd-be-stop-reconciling",
-			pipelineRun: prs[0],
-			reason:      ReasonCouldntGetPipeline,
+			name:               "invalid-pipeline-shd-be-stop-reconciling",
+			pipelineRun:        prs[0],
+			reason:             ReasonCouldntGetPipeline,
+			hasNoDefaultLabels: true,
 		}, {
 			name:        "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
 			pipelineRun: prs[1],
@@ -360,6 +362,21 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			}
 			if condition != nil && condition.Reason != tc.reason {
 				t.Errorf("Expected failure to be because of reason %q but was %s", tc.reason, condition.Reason)
+			}
+			if !tc.hasNoDefaultLabels {
+				expectedLabels := map[string]string{pipeline.GroupName + pipeline.PipelineLabelKey: tc.pipelineRun.Spec.PipelineRef.Name}
+				if len(tc.pipelineRun.ObjectMeta.Labels) != len(expectedLabels) {
+					t.Errorf("Expected labels : %v, got %v", expectedLabels, tc.pipelineRun.ObjectMeta.Labels)
+				}
+				for k, ev := range expectedLabels {
+					if v, ok := tc.pipelineRun.ObjectMeta.Labels[k]; ok {
+						if ev != v {
+							t.Errorf("Expected labels %s=%s, but was %s", k, ev, v)
+						}
+					} else {
+						t.Errorf("Expected labels %s=%v, but was not present", k, ev)
+					}
+				}
 			}
 		})
 	}
