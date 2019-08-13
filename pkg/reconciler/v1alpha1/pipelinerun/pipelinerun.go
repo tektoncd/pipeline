@@ -211,8 +211,24 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		})
 		return nil
 	}
-
 	p = p.DeepCopy()
+
+	// Propagate labels from Pipeline to PipelineRun.
+	if pr.ObjectMeta.Labels == nil {
+		pr.ObjectMeta.Labels = make(map[string]string, len(p.ObjectMeta.Labels)+1)
+	}
+	for key, value := range p.ObjectMeta.Labels {
+		pr.ObjectMeta.Labels[key] = value
+	}
+	pr.ObjectMeta.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = p.Name
+
+	// Propagate annotations from Pipeline to PipelineRun.
+	if pr.ObjectMeta.Annotations == nil {
+		pr.ObjectMeta.Annotations = make(map[string]string, len(p.ObjectMeta.Annotations))
+	}
+	for key, value := range p.ObjectMeta.Annotations {
+		pr.ObjectMeta.Annotations[key] = value
+	}
 
 	d, err := v1alpha1.BuildDAG(p.Spec.Tasks)
 	if err != nil {
@@ -256,23 +272,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	// Apply parameter substitution from the PipelineRun
 	p = resources.ApplyParameters(p, pr)
-
-	// Propagate labels from Pipeline to PipelineRun.
-	if pr.ObjectMeta.Labels == nil {
-		pr.ObjectMeta.Labels = make(map[string]string, len(p.ObjectMeta.Labels)+1)
-	}
-	for key, value := range p.ObjectMeta.Labels {
-		pr.ObjectMeta.Labels[key] = value
-	}
-	pr.ObjectMeta.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = p.Name
-
-	// Propagate annotations from Pipeline to PipelineRun.
-	if pr.ObjectMeta.Annotations == nil {
-		pr.ObjectMeta.Annotations = make(map[string]string, len(p.ObjectMeta.Annotations))
-	}
-	for key, value := range p.ObjectMeta.Annotations {
-		pr.ObjectMeta.Annotations[key] = value
-	}
 
 	pipelineState, err := resources.ResolvePipelineRun(
 		*pr,
