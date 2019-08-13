@@ -112,11 +112,8 @@ spec:
                             properties:
                               name:
                                 type: string
-                              value:
-                                type: string
                             required:
                             - name
-                            - value
                             type: object
                           type: array
                       required:
@@ -135,11 +132,8 @@ spec:
                       properties:
                         name:
                           type: string
-                        value:
-                          type: string
                       required:
                       - name
-                      - value
                       type: object
                     type: array
                   resources:
