@@ -139,7 +139,17 @@ func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1
 	}
 
 	if r.ResourceRef.Name != "" {
-		return getter(r.ResourceRef.Name)
+		resource, err := getter(r.ResourceRef.Name)
+		if err != nil {
+			return &v1alpha1.PipelineResource{}, err
+		} else {
+			resourceCopy := resource.DeepCopy()
+			if len(r.ResourceRef.RuntimeParams) > 0 {
+				//inject the runtime params here, params will be used when the resource is created
+				resourceCopy.Spec.RuntimeParams = r.ResourceRef.RuntimeParams
+			}
+			return resourceCopy, err
+		}
 	}
 	if r.ResourceSpec != nil {
 		return &v1alpha1.PipelineResource{

@@ -96,6 +96,9 @@ type PipelineResourceRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
+	// Params to inject into pipeline resource at runtime
+	// +optional
+	RuntimeParams []ResourceParam `json:"runtimeParams,omitempty"`
 }
 
 // PipelineRef can be used to refer to a specific instance of a Pipeline.

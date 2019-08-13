@@ -48,8 +48,9 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 		taskInputResource := v1alpha1.TaskResourceBinding{
 			Name: name,
 			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name:       inputResource.Name,
-				APIVersion: inputResource.APIVersion,
+				Name:          inputResource.Name,
+				APIVersion:    inputResource.APIVersion,
+				RuntimeParams: inputResource.Spec.RuntimeParams,
 			},
 		}
 

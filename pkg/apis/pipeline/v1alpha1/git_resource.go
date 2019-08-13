@@ -63,6 +63,14 @@ func NewGitResource(r *PipelineResource) (*GitResource, error) {
 			gitResource.Revision = param.Value
 		}
 	}
+	//process runtime params here
+	//replace the revision with runtime params, ingore any other param
+	for _, param := range r.Spec.RuntimeParams {
+		switch {
+		case strings.EqualFold(param.Name, "Revision"):
+			gitResource.Revision = param.Value
+		}
+	}
 	// default revision to master if nothing is provided
 	if gitResource.Revision == "" {
 		gitResource.Revision = "master"

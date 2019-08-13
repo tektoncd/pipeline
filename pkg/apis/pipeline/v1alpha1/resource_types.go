@@ -76,6 +76,9 @@ type PipelineResourceSpec struct {
 	// Secrets to fetch to populate some of resource fields
 	// +optional
 	SecretParams []SecretParam `json:"secrets,omitempty"`
+	// Params injected at run time
+	// +optional
+	RuntimeParams []ResourceParam `json:"runtimeParams,omitempty"`
 }
 
 // PipelineResourceStatus does not contain anything because Resources on their own
