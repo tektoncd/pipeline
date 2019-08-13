@@ -303,10 +303,10 @@ spec:
 
 ## Status
 
-As a TaskRun completes, it's `status` field is filled in with relevant information for
+As a TaskRun completes, its `status` field is filled in with relevant information for
 the overall run, as well as each step.
 
-The following example shows a completed TaskRun and it's `status` field:
+The following example shows a completed TaskRun and its `status` field:
 
 ```yaml
 completionTime: "2019-08-12T18:22:57Z"
@@ -330,7 +330,7 @@ steps:
     startedAt: "2019-08-12T18:22:54Z"
   ```
 
-Fields include start and stop times for the `TaskRun` and each `Step`, and exit codes.
+Fields include start and stop times for the `TaskRun` and each `Step` and exit codes.
 For each step we also include the fully-qualified image used, with the digest.
 
 ### Steps
