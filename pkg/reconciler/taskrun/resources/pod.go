@@ -50,6 +50,8 @@ const (
 	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
 	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
 	ManagedByLabelValue = "tekton-pipelines"
+
+	scriptsDir = "/builder/scripts"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -87,6 +89,17 @@ var (
 	// Random byte reader used for pod name generation.
 	// var for testing.
 	randReader = rand.Reader
+
+	// Volume definition attached to Pods generated from TaskRuns that have
+	// steps that specify a Script.
+	scriptsVolume = corev1.Volume{
+		Name:         "place-scripts",
+		VolumeSource: emptyVolumeSource,
+	}
+	scriptsVolumeMount = corev1.VolumeMount{
+		Name:      "place-scripts",
+		MountPath: scriptsDir,
+	}
 )
 
 const (
@@ -259,6 +272,16 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 
+	placeScripts := false
+	placeScriptsStep := v1alpha1.Step{Container: corev1.Container{
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("place-scripts"),
+		Image:        images.BashNoopImage,
+		TTY:          true,
+		Command:      []string{"/ko-app/bash"},
+		Args:         []string{"-args", ""},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+	}}
+
 	for i, s := range taskSpec.Steps {
 		s.Env = append(implicitEnvVars, s.Env...)
 		// TODO(mattmoor): Check that volumeMounts match volumes.
@@ -275,6 +298,43 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			}
 		}
 
+		// If the step specifies a Script, generate and invoke an
+		// executable script file containing each item in the script.
+		if s.Script != "" {
+			placeScripts = true
+			// Append to the place-scripts script to place the
+			// script file in a known location in the scripts volume.
+			tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("script-%d", i)))
+			// NOTE: quotes around 'EOF' are important. Without
+			// them, ${}s in the file are interpreted as env vars
+			// and likely end up replaced with empty strings. See
+			// https://stackoverflow.com/a/27921346
+			placeScriptsStep.Args[1] += fmt.Sprintf(`tmpfile="%s"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'EOF'
+%s
+EOF
+`, tmpFile, s.Script)
+			// The entrypoint redirecter has already run on this
+			// step, so we just need to replace the image's
+			// entrypoint (if any) with the script to run.
+			// Validation prevents step args from being passed, but
+			// just to be careful we'll replace any that survived
+			// entrypoint redirection here.
+
+			// TODO(jasonhall): It's confusing that entrypoint
+			// redirection isn't done as part of MakePod, and the
+			// interaction of these two modifications to container
+			// args might be confusing to debug in the future.
+			s.Args = append(s.Args, tmpFile)
+			for i := 0; i < len(s.Args); i++ {
+				if s.Args[i] == "-entrypoint" {
+					s.Args = append(s.Args[:i+1], tmpFile)
+				}
+			}
+			s.VolumeMounts = append(s.VolumeMounts, scriptsVolumeMount)
+		}
+
 		if s.WorkingDir == "" {
 			s.WorkingDir = workspaceDir
 		}
@@ -283,7 +343,8 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		} else {
 			s.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, s.Name))
 		}
-		// use the container name to add the entrypoint biary as an init container
+		// use the container name to add the entrypoint binary as an
+		// init container.
 		if s.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
 			initSteps = append(initSteps, s)
 		} else {
@@ -291,12 +352,21 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			podSteps = append(podSteps, s)
 		}
 	}
+
 	// Add podTemplate Volumes to the explicitly declared use volumes
 	volumes := append(taskSpec.Volumes, taskRun.Spec.PodTemplate.Volumes...)
 	// Add our implicit volumes and any volumes needed for secrets to the explicitly
 	// declared user volumes.
 	volumes = append(volumes, implicitVolumes...)
 	volumes = append(volumes, secrets...)
+
+	// Add the volume shared to place a script file, if any step specified
+	// a script.
+	if placeScripts {
+		volumes = append(volumes, scriptsVolume)
+		initSteps = append(initSteps, placeScriptsStep)
+	}
+
 	if err := v1alpha1.ValidateVolumes(volumes); err != nil {
 		return nil, err
 	}

@@ -127,6 +127,21 @@ func validateSteps(steps []Step) *apis.FieldError {
 			return apis.ErrMissingField("Image")
 		}
 
+		if s.Script != "" {
+			if len(s.Args) > 0 || len(s.Command) > 0 {
+				return &apis.FieldError{
+					Message: "script cannot be used with args or command",
+					Paths:   []string{"script"},
+				}
+			}
+			if !strings.HasPrefix(strings.TrimSpace(s.Script), "#!") {
+				return &apis.FieldError{
+					Message: "script must start with a shebang (#!)",
+					Paths:   []string{"script"},
+				}
+			}
+		}
+
 		if s.Name == "" {
 			continue
 		}

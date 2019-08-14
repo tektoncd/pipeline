@@ -427,7 +427,6 @@ func TestMakePod(t *testing.T) {
 			Volumes: implicitVolumes,
 		},
 	}, {
-
 		desc: "additional-sidecar-container",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -463,16 +462,100 @@ func TestMakePod(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-				{
-					Name:  "sidecar-name",
-					Image: "sidecar-image",
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
+			}, {
+				Name:  "sidecar-name",
+				Image: "sidecar-image",
+				Resources: corev1.ResourceRequirements{
+					Requests: nil,
+				},
+			}},
+			Volumes: implicitVolumes,
+		},
+	}, {
+		desc: "step with script",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Name:    "one",
+					Image:   "image",
+					Command: []string{"entrypointer"},
+					Args:    []string{"wait-file", "out-file", "-entrypoint", "image-entrypoint", "--"},
+				},
+				Script: "echo hello from step one",
+			}, {
+				Container: corev1.Container{
+					Name:         "two",
+					Image:        "image",
+					VolumeMounts: []corev1.VolumeMount{{Name: "i-have-a-volume-mount"}},
+					Command:      []string{"entrypointer"},
+					// args aren't valid, but just in case they end up here we'll replace them.
+					Args: []string{"wait-file", "out-file", "-entrypoint", "image-entrypoint", "--", "args", "somehow"},
+				},
+				Script: `#!/usr/bin/env python
+print("Hello from Python")`,
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{{
+				Name:         containerPrefix + credsInit + "-9l9zj",
+				Image:        credsImage,
+				Command:      []string{"/ko-app/creds-init"},
+				Args:         []string{},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+			}, {
+				Name:    "place-scripts-mz4c7",
+				Image:   images.BashNoopImage,
+				Command: []string{"/ko-app/bash"},
+				TTY:     true,
+				Args: []string{"-args", `tmpfile="/builder/scripts/script-0-mssqb"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'EOF'
+echo hello from step one
+EOF
+tmpfile="/builder/scripts/script-1-78c5n"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'EOF'
+#!/usr/bin/env python
+print("Hello from Python")
+EOF
+`},
+				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+			}},
+			Containers: []corev1.Container{{
+				Name:         "step-one",
+				Image:        "image",
+				Command:      []string{"entrypointer"},
+				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-0-mssqb"},
+				Env:          implicitEnvVars,
+				VolumeMounts: append(implicitVolumeMounts, scriptsVolumeMount),
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-			Volumes: implicitVolumes,
+			}, {
+				Name:         "step-two",
+				Image:        "image",
+				Command:      []string{"entrypointer"},
+				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-1-78c5n"},
+				Env:          implicitEnvVars,
+				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}}, append(implicitVolumeMounts, scriptsVolumeMount)...),
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}},
+			Volumes: append(implicitVolumes, scriptsVolume),
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
