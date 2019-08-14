@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: step-script
+spec:
+  taskSpec:
+    steps:
+    - image: ubuntu
+      env:
+      - name: FOO
+        value: foooooooo
+      script:
+      - '#!/bin/bash'
+      - 'set -euxo pipefail'
+      - 'echo "Hello from Bash!"'
+      # Environment variables are available.
+      - 'echo FOO is ${FOO}'
+      # Multiline strings work.
+      - |
+        for i in {1..10}; do
+          echo line $i
+        done
+    - image: node
+      script:
+      - '#!/usr/bin/env node'
+      - 'console.log("Hello from Node!")'
+    - image: python
+      script:
+      - '#!/usr/bin/env python3'
+      - 'print("Hello from Python!")'
+    - image: perl
+      script:
+      - '#!/usr/bin/perl'
+      - 'print "Hello from Perl!"'

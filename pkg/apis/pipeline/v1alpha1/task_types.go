@@ -66,6 +66,15 @@ type TaskSpec struct {
 // provided by Container.
 type Step struct {
 	corev1.Container
+
+	// Script is a list of commands to run in sequence inside the
+	// container.
+	//
+	// If any script invocation fails, the step fails without executing
+	// the rest.
+	//
+	// If Script is not empty, the Step cannot have an Command or Args.
+	Script []string `json:"script,omitempty"`
 }
 
 // Check that Task may be validated and defaulted.

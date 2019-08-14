@@ -1432,6 +1432,11 @@ func (in *SecretParam) DeepCopy() *SecretParam {
 func (in *Step) DeepCopyInto(out *Step) {
 	*out = *in
 	in.Container.DeepCopyInto(&out.Container)
+	if in.Script != nil {
+		in, out := &in.Script, &out.Script
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

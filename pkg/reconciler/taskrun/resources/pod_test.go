@@ -328,7 +328,6 @@ func TestMakePod(t *testing.T) {
 			Volumes: implicitVolumes,
 		},
 	}, {
-
 		desc: "additional-sidecar-container",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -373,6 +372,58 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			},
+			Volumes: implicitVolumes,
+		},
+	}, {
+		desc: "step with script",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Name:  "name",
+					Image: "image",
+				},
+				Script: []string{
+					"echo hello",
+					"echo goodbye",
+					"echo farewell",
+				},
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{{
+				Name:         containerPrefix + credsInit + "-9l9zj",
+				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
+				Args:         []string{},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+			}},
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				TTY:     true,
+				Command: []string{"/bin/sh"},
+				Args: []string{
+					"-c",
+					`tmpfile=$(mktemp); chmod +x $tmpfile
+echo "echo hello" >> $tmpfile
+echo "echo goodbye" >> $tmpfile
+echo "echo farewell" >> $tmpfile
+$tmpfile`,
+				},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}},
 			Volumes: implicitVolumes,
 		},
 	}} {

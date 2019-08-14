@@ -282,6 +282,19 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			}
 		}
 
+		// If the step specifies a Script, generate and invoke an
+		// executable script file containing each item in the script.
+		if len(s.Script) > 0 {
+			s.TTY = true
+			s.Command = []string{"/bin/sh"}
+			script := "tmpfile=$(mktemp); chmod +x $tmpfile\n" // Create a new executable script file.
+			for _, i := range s.Script {
+				script += fmt.Sprintf("echo %q >> $tmpfile\n", i) // Append each script item to the script file.
+			}
+			script += "$tmpfile" // Invoke the executable script file.
+			s.Args = []string{"-c", script}
+		}
+
 		if s.WorkingDir == "" {
 			s.WorkingDir = workspaceDir
 		}
@@ -290,7 +303,8 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 		} else {
 			s.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, s.Name))
 		}
-		// use the container name to add the entrypoint biary as an init container
+		// use the container name to add the entrypoint binary as an
+		// init container.
 		if s.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
 			initSteps = append(initSteps, s)
 		} else {
