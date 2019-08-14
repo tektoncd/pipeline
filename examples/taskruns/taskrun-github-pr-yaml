@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: tekton-pr
+spec:
+  type: pullRequest
+  params:
+  - name: url
+    # I just picked a random PR. The first couple didn't have any interesting comments or labels.
+    value: https://github.com/tektoncd/pipeline/pull/100
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: dump-pr-task
+spec:
+  inputs:
+    resources:
+    - name: pr
+      type: pullRequest
+  steps:
+  - name: dump-workspace
+    image: ubuntu
+    command: ["sh"]
+    args: ["-c", "find $(inputs.resources.pr.path)/* -type f | xargs tail -n +1"]
+  - name: ensure-approved
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+    - -c
+    - |
+      if [ -f "$(inputs.resources.pr.path)/labels/approved" ]; then
+        echo "PR is approved!"
+      else
+        echo "PR is not approved!"
+        exit 1
+      fi
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: dump-pr-task-run
+spec:
+  inputs:
+    resources:
+    - name: pr
+      resourceRef:
+        name: tekton-pr
+  taskRef:
+    name: dump-pr-task
+---

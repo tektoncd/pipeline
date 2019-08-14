@@ -19,8 +19,11 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strconv"
 	"testing"
 
@@ -48,6 +51,12 @@ func TestToDisk(t *testing.T) {
 				Description: "foobar",
 				URL:         "https://foo.bar",
 			},
+			{
+				ID:          "cla/foo",
+				Code:        Success,
+				Description: "bazbat",
+				URL:         "https://baz.bat",
+			},
 		},
 		Comments: []*Comment{
 			{
@@ -59,6 +68,7 @@ func TestToDisk(t *testing.T) {
 		Labels: []*Label{
 			{Text: "help"},
 			{Text: "me"},
+			{Text: "foo/bar"},
 		},
 	}
 
@@ -111,7 +121,11 @@ func TestToDisk(t *testing.T) {
 	}
 	labels := map[string]struct{}{}
 	for _, fi := range fis {
-		labels[fi.Name()] = struct{}{}
+		text, err := url.QueryUnescape(fi.Name())
+		if err != nil {
+			t.Errorf("Error decoding label text: %s", fi.Name())
+		}
+		labels[text] = struct{}{}
 	}
 
 	for _, l := range tektonPr.Labels {
@@ -198,7 +212,7 @@ func TestFromDisk(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(d, "labels"), 0750); err != nil {
 		t.Fatal(err)
 	}
-	labels := []string{"hey", "you"}
+	labels := []string{"hey", "you", "size%2Flgtm"}
 	for _, l := range labels {
 		if err := ioutil.WriteFile(filepath.Join(d, l), []byte{}, 0700); err != nil {
 			t.Fatal(err)
@@ -264,7 +278,8 @@ func TestFromDisk(t *testing.T) {
 		labelsMap[l] = struct{}{}
 	}
 	for _, l := range pr.Labels {
-		if diff := cmp.Diff(labelsMap[l.Text], &l); diff != "" {
+		key := url.QueryEscape(l.Text)
+		if diff := cmp.Diff(labelsMap[key], &l); diff != "" {
 			t.Errorf("Get labels: -want +got: %s", diff)
 		}
 	}
@@ -289,5 +304,217 @@ func readAndUnmarshal(t *testing.T, p string, v interface{}) {
 	}
 	if err := json.Unmarshal(b, v); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func Test_labelsToDisk(t *testing.T) {
+	type args struct {
+		labels []*Label
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantFiles []string
+	}{
+		{
+			name: "single label",
+			args: args{
+				labels: []*Label{
+					{Text: "foo"},
+				},
+			},
+			wantFiles: []string{
+				"foo",
+			},
+		},
+		{
+			name: "multiple labels",
+			args: args{
+				labels: []*Label{
+					{Text: "foo"},
+					{Text: "bar"},
+				},
+			},
+			wantFiles: []string{
+				"foo",
+				"bar",
+			},
+		},
+		{
+			name: "complex labels",
+			args: args{
+				labels: []*Label{
+					{Text: "foo/bar"},
+					{Text: "help wanted"},
+					{Text: "simple"},
+				},
+			},
+			wantFiles: []string{
+				"foo%2Fbar",
+				"help+wanted",
+				"simple",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := ioutil.TempDir("", "")
+			if err != nil {
+				t.Fatalf("Error creating temp dir: %s", err)
+			}
+			defer os.RemoveAll(d)
+			if err := labelsToDisk(d, tt.args.labels); err != nil {
+				t.Errorf("labelsToDisk() error = %v", err)
+			}
+			for _, f := range tt.wantFiles {
+				if _, err := os.Stat(filepath.Join(d, f)); err != nil {
+					t.Errorf("expected file %s to exist", f)
+				}
+			}
+		})
+	}
+}
+
+func Test_statusToDisk(t *testing.T) {
+	type args struct {
+		statuses []*Status
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantFiles []string
+	}{
+		{
+			name: "single status",
+			args: args{
+				statuses: []*Status{
+					{ID: "foo"},
+				},
+			},
+			wantFiles: []string{
+				"foo.json",
+			},
+		},
+		{
+			name: "multiple statuses",
+			args: args{
+				statuses: []*Status{
+					{ID: "foo"},
+					{ID: "bar"},
+				},
+			},
+			wantFiles: []string{
+				"foo.json",
+				"bar.json",
+			},
+		},
+		{
+			name: "complex statuses",
+			args: args{
+				statuses: []*Status{
+					{ID: "foo/bar"},
+					{ID: "help wanted"},
+					{ID: "simple"},
+				},
+			},
+			wantFiles: []string{
+				"foo%2Fbar.json",
+				"help+wanted.json",
+				"simple.json",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := ioutil.TempDir("", "")
+			if err != nil {
+				t.Fatalf("Error creating temp dir: %s", err)
+			}
+			defer os.RemoveAll(d)
+			if err := statusToDisk(d, tt.args.statuses); err != nil {
+				t.Errorf("statusToDisk() error = %v", err)
+			}
+			for _, f := range tt.wantFiles {
+				if _, err := os.Stat(filepath.Join(d, f)); err != nil {
+					t.Errorf("expected file %s to exist", f)
+				}
+			}
+		})
+	}
+}
+
+func Test_labelsFromDisk(t *testing.T) {
+	type args struct {
+		fileNames []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []Label
+	}{
+		{
+			name: "single label",
+			args: args{
+				fileNames: []string{"foo"},
+			},
+			want: []Label{
+				{Text: "foo"},
+			},
+		},
+		{
+			name: "multiple labels",
+			args: args{
+				fileNames: []string{"foo", "bar"},
+			},
+			want: []Label{
+				{Text: "foo"},
+				{Text: "bar"},
+			},
+		},
+		{
+			name: "complex labels",
+			args: args{
+				fileNames: []string{"foo%2Fbar", "bar+bat"},
+			},
+			want: []Label{
+				{Text: "foo/bar"},
+				{Text: "bar bat"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := ioutil.TempDir("", "")
+			if err != nil {
+				t.Fatalf("Error creating temp dir: %s", err)
+			}
+			defer os.RemoveAll(d)
+
+			for _, l := range tt.args.fileNames {
+				if err := ioutil.WriteFile(filepath.Join(d, l), []byte{}, 0700); err != nil {
+					t.Errorf("Error creating label: %s", err)
+				}
+			}
+			got, err := labelsFromDisk(d)
+			if err != nil {
+				t.Errorf("labelsFromDisk() error = %v", err)
+			}
+
+			derefed := []Label{}
+			for _, l := range got {
+				derefed = append(derefed, *l)
+			}
+
+			sort.Slice(derefed, func(i, j int) bool {
+				return derefed[i].Text < derefed[j].Text
+			})
+			sort.Slice(tt.want, func(i, j int) bool {
+				return tt.want[i].Text < tt.want[j].Text
+			})
+
+			if !reflect.DeepEqual(derefed, tt.want) {
+				t.Errorf("labelsFromDisk() = %v, want %v", derefed, tt.want)
+			}
+		})
 	}
 }
