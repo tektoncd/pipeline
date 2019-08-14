@@ -19,6 +19,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -36,6 +37,8 @@ import (
 // /workspace/<resource>/comments/<comment>.json
 // /workspace/<resource>/head.json
 // /workspace/<resource>/base.json
+
+// Filenames for labels and statuses are URL encoded for safety.
 
 // ToDisk converts a PullRequest object to an on-disk representation at the specified path.
 func ToDisk(pr *PullRequest, path string) error {
@@ -92,7 +95,8 @@ func commentsToDisk(path string, comments []*Comment) error {
 
 func labelsToDisk(path string, labels []*Label) error {
 	for _, l := range labels {
-		labelPath := filepath.Join(path, l.Text)
+		name := url.QueryEscape(l.Text)
+		labelPath := filepath.Join(path, name)
 		if err := ioutil.WriteFile(labelPath, []byte{}, 0700); err != nil {
 			return err
 		}
@@ -102,7 +106,8 @@ func labelsToDisk(path string, labels []*Label) error {
 
 func statusToDisk(path string, statuses []*Status) error {
 	for _, s := range statuses {
-		statusPath := filepath.Join(path, s.ID+".json")
+		statusName := url.QueryEscape(s.ID) + ".json"
+		statusPath := filepath.Join(path, statusName)
 		b, err := json.Marshal(s)
 		if err != nil {
 			return err
@@ -191,7 +196,11 @@ func labelsFromDisk(path string) ([]*Label, error) {
 	}
 	labels := []*Label{}
 	for _, fi := range fis {
-		labels = append(labels, &Label{fi.Name()})
+		text, err := url.QueryUnescape(fi.Name())
+		if err != nil {
+			return nil, err
+		}
+		labels = append(labels, &Label{Text: text})
 	}
 	return labels, nil
 }
