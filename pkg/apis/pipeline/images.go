@@ -16,7 +16,8 @@ limitations under the License.
 
 package pipeline
 
-// Images holds the images reference for a number of container images used accross tektoncd pipelines
+// Images holds the images reference for a number of container images used
+// across tektoncd pipelines.
 type Images struct {
 	// EntryPointImage is container image containing our entrypoint binary.
 	EntryPointImage string

@@ -66,6 +66,11 @@ type TaskSpec struct {
 // provided by Container.
 type Step struct {
 	corev1.Container
+
+	// Script is the contents of an executable file to execute.
+	//
+	// If Script is not empty, the Step cannot have an Command or Args.
+	Script string `json:"script,omitempty"`
 }
 
 // Check that Task may be validated and defaulted.

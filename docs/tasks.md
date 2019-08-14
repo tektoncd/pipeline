@@ -129,7 +129,7 @@ The `steps` field is required. You define one or more `steps` fields to define
 the body of a `Task`.
 
 If multiple `steps` are defined, they will be executed in the same order as they
-are defined, if the `Task` is invoked by a [TaskRun](taskruns.md).
+are defined, if the `Task` is invoked by a [`TaskRun`](taskruns.md).
 
 Each `steps` in a `Task` must specify a container image that adheres to the
 [container contract](./container-contract.md). For each of the `steps` fields,
@@ -145,6 +145,67 @@ or container images that you define:
   will only request the resources necessary to execute any single container
   image in the Task, rather than requesting the sum of all of the container
   image's resource requests.
+
+#### Step Script
+
+To simplify executing scripts inside a container, a step can specify a `script`.
+If this field is present, the step cannot specify `command` or `args`.
+
+When specified, a `script` gets invoked as if it were the contents of a file in
+the container. Scripts should start with a
+[shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) line to declare what
+tool should be used to interpret the script. That tool must then also be
+available within the step's container.
+
+This allows you to execute a Bash script, if the image includes `bash`:
+
+```yaml
+steps:
+- image: ubuntu  # contains bash
+  script: |
+    #!/usr/bin/env bash
+    echo "Hello from Bash!"
+```
+
+...or to execute a Python script, if the image includes `python`:
+
+```yaml
+steps:
+- image: python  # contains python
+  script: |
+    #!/usr/bin/env python3
+    print("Hello from Python!")
+```
+
+...or to execute a Node script, if the image includes `node`:
+
+```yaml
+steps:
+- image: node  # contains node
+  script: |
+    #!/usr/bin/env node
+    console.log("Hello from Node!")
+```
+
+This also simplifies executing script files in the workspace:
+
+```yaml
+steps:
+- image: ubuntu
+  script: |
+    #!/usr/bin/env bash
+    /workspace/my-script.sh  # provided by an input resource
+```
+
+...or in the container image:
+
+```yaml
+steps:
+- image: my-image  # contains /bin/my-binary
+  script: |
+    #!/usr/bin/env bash
+    /bin/my-binary
+```
 
 ### Inputs
 
