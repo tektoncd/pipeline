@@ -41,6 +41,10 @@ spec:
     type: image
   - name: builtPullRequestInitImage
     type: image
+  - name: builtGcsFetcherImage
+    type: image
+  - name: builtGcsUploaderImage
+    type: image
   tasks:
     - name: lint
       taskRef:
@@ -120,4 +124,7 @@ spec:
             resource: builtDigestExporterImage
           - name: builtPullRequestInitImage
             resource: builtPullRequestInitImage
-
+          - name: builtGcsFetcherImage
+            resource: builtGcsFetcherImage
+          - name: builtGcsUploaderImage
+            resource: builtGcsUploaderImage

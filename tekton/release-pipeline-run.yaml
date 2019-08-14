@@ -11,9 +11,9 @@ spec:
   - name: versionTag
     value: v0.X.Y # REPLACE with the version you want to release, including `v`. For nightly releases, we might want to use `vYYYYMMDD-commit`
   - name: imageRegistry
-      value: gcr.io/tekton-releases # REPLACE with your own registry
-    - name: package
-      value: github.com/tektoncd/pipeline
+    value: gcr.io/tekton-releases # REPLACE with your own registry
+  - name: package
+    value: github.com/tektoncd/pipeline
   resources:
   - name: source-repo
     resourceRef:
@@ -56,5 +56,10 @@ spec:
       name: digest-exporter-image
   - name: builtPullRequestInitImage
     resourceRef:
-      name: pullrequest-init-image
-
+      name: pull-request-init-image
+  - name: builtGcsFetcherImage
+    resourceRef:
+      name: gcs-fetcher-image
+  - name: builtGcsUploaderImage
+    resourceRef:
+      name: gcs-uploader-image
