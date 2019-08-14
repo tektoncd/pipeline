@@ -48,20 +48,20 @@ Show pipeline logs
 
 .SH EXAMPLE
 .PP
-# show logs interactively for no inputs
+# interactive mode: shows logs of the selected pipeline run
     tkn pipeline logs \-n namespace
 
 .PP
-# show logs interactively for given pipeline
-    tkn pipeline logs pipeline\_name \-n namespace
+# interactive mode: shows logs of the selected pipelinerun of the given pipeline
+    tkn pipeline logs pipeline \-n namespace
 
 .PP
 # show logs of given pipeline for last run
-    tkn pipeline logs pipeline\_name \-n namespace \-\-last
+    tkn pipeline logs pipeline \-n namespace \-\-last
 
 .PP
 # show logs for given pipeline and pipelinerun
-    tkn pipeline logs pipeline\_name pipelinerun\_name \-n namespace
+    tkn pipeline logs pipeline run \-n namespace
 
 
 .SH SEE ALSO

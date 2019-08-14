@@ -28,6 +28,10 @@ Lists taskruns in a namespace
     help for list
 
 .PP
+\fB\-l\fP, \fB\-\-limit\fP=0
+    limit taskruns listed (default: return all taskruns)
+
+.PP
 \fB\-o\fP, \fB\-\-output\fP=""
     Output format. One of: json|yaml|name|go\-template|go\-template\-file|template|templatefile|jsonpath|jsonpath\-file.
 
@@ -56,7 +60,7 @@ tkn taskrun list  foo \-n bar
 
 .SH List all taskruns in a namespaces 'foo'
 .PP
-tkn pr list \-n foo \\n",
+tkn tr list \-n foo \\n",
 
 
 .SH SEE ALSO

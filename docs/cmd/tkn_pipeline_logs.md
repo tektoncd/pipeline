@@ -15,17 +15,17 @@ Show pipeline logs
 ### Examples
 
 
-  # show logs interactively for no inputs
+  # interactive mode: shows logs of the selected pipeline run
     tkn pipeline logs -n namespace
 
-  # show logs interactively for given pipeline
-    tkn pipeline logs pipeline_name -n namespace
+  # interactive mode: shows logs of the selected pipelinerun of the given pipeline
+    tkn pipeline logs pipeline -n namespace
 
   # show logs of given pipeline for last run
-    tkn pipeline logs pipeline_name -n namespace --last
+    tkn pipeline logs pipeline -n namespace --last
 
   # show logs for given pipeline and pipelinerun
-    tkn pipeline logs pipeline_name pipelinerun_name -n namespace
+    tkn pipeline logs pipeline run -n namespace
   
    
 
