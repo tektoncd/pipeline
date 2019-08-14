@@ -14,6 +14,8 @@ Creation of a `PipelineRun` will trigger the creation of
 - [Syntax](#syntax)
   - [Resources](#resources)
   - [Service account](#service-account)
+  - [Service accounts](#service-accounts)
+  - [Pod Template](#pod-template)
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
 - [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
 - [Logs](logs.md)
@@ -46,16 +48,9 @@ following fields:
     there is no timeout. `PipelineRun` shares the same default timeout as `TaskRun`. You can
     follow the instruction [here](taskruns.md#Configuring-default-timeout) to configure the
     default timeout, the same way as `TaskRun`.
-  - [`nodeSelector`] - A selector which must be true for the pod to fit on a
-    node. The selector which must match a node's labels for the pod to be
-    scheduled on that node. More info:
-    <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/>
-  - [`tolerations`] - Tolerations are applied to pods, and allow (but do not
-    require) the pods to schedule onto nodes with matching taints. More info:
-    <https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/>
-  - [`affinity`] - The pod's scheduling constraints. More info:
-
-    <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature>
+  - [`podTemplate`](#pod-template) - Specifies a subset of
+    [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
+	configuration that will be used as the basis for the `Task` pod.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -130,6 +125,71 @@ spec:
     - name: test-task
       taskRef:
         name: test
+```
+
+### Pod Template
+
+Specifies a subset of
+[`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
+configuration that will be used as the basis for the `Task` pod. This
+allows to customize some Pod specific field per `Task` execution, aka
+`TaskRun`. The current field supported are:
+
+- `nodeSelector`: a selector which must be true for the pod to fit on
+  a node, see [here](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/).
+- `tolerations`: allow (but do not require) the pods to schedule onto
+  nodes with matching taints.
+- `affinity`: allow to constrain which nodes your pod is eligible to
+  be scheduled on, based on labels on the node.
+- `securityContext`: pod-level security attributes and common
+  container settings, like `runAsUser` or `selinux`.
+- `volumes`: list of volumes that can be mounted by containers
+  belonging to the pod. This lets the user of a Task define which type
+  of volume to use for a Task `volumeMount`
+
+In the following example, the Task is defined with a `volumeMount`
+(`my-cache`), that is provided by the PipelineRun, using a
+PersistenceVolumeClaim. The Pod will also run as a non-root user.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: myTask
+spec:
+  steps:
+    - name: write something
+      image: ubuntu
+      command: ["bash", "-c"]
+      args: ["echo 'foo' > /my-cache/bar"]
+      volumeMounts:
+        - name: my-cache
+          mountPath: /my-cache
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: myPipeline
+spec:
+  tasks:
+    - name: task1
+      taskRef:
+      name: myTask
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: myPipelineRun
+spec:
+  pipelineRef:
+    name: myPipeline
+  podTemplate:
+    securityContext:
+      runAsNonRoot: true
+    volumes:
+    - name: my-cache
+      persistentVolumeClaim:
+        claimName: my-volume-claim
 ```
 
 ## Cancelling a PipelineRun
