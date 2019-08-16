@@ -190,9 +190,9 @@ spec:
       command:
         - /kaniko/executor
       args:
-        - --dockerfile=$(inputs.params.pathToDockerFile}
-        - --destination=$(outputs.resources.builtImage.url}
-        - --context=$(inputs.params.pathToContext}
+        - --dockerfile=$(inputs.params.pathToDockerFile)
+        - --destination=$(outputs.resources.builtImage.url)
+        - --context=$(inputs.params.pathToContext)
 ```
 
 `TaskRun` binds the inputs and outputs to already defined `PipelineResources`,
