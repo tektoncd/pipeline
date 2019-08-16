@@ -3,7 +3,6 @@
 
 required = [
   "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
-  "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-uploader",
   "github.com/knative/test-infra/tools/dep-collector",
   "github.com/tektoncd/plumbing/scripts",
   "k8s.io/apimachinery/pkg/util/sets/types",

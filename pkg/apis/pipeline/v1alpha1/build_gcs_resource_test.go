@@ -126,71 +126,49 @@ func Test_BuildGCSGetReplacements(t *testing.T) {
 }
 
 func Test_BuildGCSGetDownloadSteps(t *testing.T) {
-	resource := &v1alpha1.BuildGCSResource{
-		Name:         "gcs-valid",
-		Location:     "gs://some-bucket",
-		ArtifactType: "Archive",
-	}
-	wantSteps := []v1alpha1.Step{{Container: corev1.Container{
-		Name:    "create-dir-gcs-valid-9l9zj",
-		Image:   "override-with-bash-noop:latest",
-		Command: []string{"/ko-app/bash"},
-		Args:    []string{"-args", "mkdir -p /workspace"},
-	}}, {Container: corev1.Container{
-		Name:  "storage-fetch-gcs-valid-mz4c7",
-		Image: "gcr.io/cloud-builders/gcs-fetcher:latest",
-		Args: []string{"--type", "Archive", "--location", "gs://some-bucket",
-			"--dest_dir", "/workspace"},
-	}}}
-	names.TestingSeed()
-	got, err := resource.GetDownloadSteps("/workspace")
-	if err != nil {
-		t.Fatalf("GetDownloadSteps: %v", err)
-	}
-	if d := cmp.Diff(got, wantSteps); d != "" {
-		t.Errorf("Error mismatch between download steps: %s", d)
+	for _, at := range []v1alpha1.GCSArtifactType{
+		v1alpha1.GCSArchive,
+		v1alpha1.GCSZipArchive,
+		v1alpha1.GCSTarGzArchive,
+		v1alpha1.GCSManifest,
+	} {
+		t.Run(string(at), func(t *testing.T) {
+			resource := &v1alpha1.BuildGCSResource{
+				Name:         "gcs-valid",
+				Location:     "gs://some-bucket",
+				ArtifactType: at,
+			}
+			wantSteps := []v1alpha1.Step{{Container: corev1.Container{
+				Name:    "create-dir-gcs-valid-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace"},
+			}}, {Container: corev1.Container{
+				Name:    "storage-fetch-gcs-valid-mz4c7",
+				Image:   "gcr.io/cloud-builders/gcs-fetcher:latest",
+				Args:    []string{"--type", string(at), "--location", "gs://some-bucket", "--dest_dir", "/workspace"},
+				Command: []string{"/ko-app/gcs-fetcher"},
+			}}}
+			names.TestingSeed()
+			got, err := resource.GetDownloadSteps("/workspace")
+			if err != nil {
+				t.Fatalf("GetDownloadSteps: %v", err)
+			}
+			if d := cmp.Diff(got, wantSteps); d != "" {
+				t.Errorf("Error mismatch between download steps: %s", d)
+			}
+		})
 	}
 }
 
-func Test_BuildGCSGetUploadSteps(t *testing.T) {
-	for _, tc := range []struct {
-		name      string
-		resource  *v1alpha1.BuildGCSResource
-		wantSteps []v1alpha1.Step
-		wantErr   bool
-	}{{
-		name: "valid upload to protected buckets with directory paths",
-		resource: &v1alpha1.BuildGCSResource{
-			Name:         "gcs-valid",
-			Location:     "gs://some-bucket/manifest.json",
-			ArtifactType: "Manifest",
-		},
-		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:  "storage-upload-gcs-valid-mssqb",
-			Image: "gcr.io/cloud-builders/gcs-uploader:latest",
-			Args:  []string{"--location", "gs://some-bucket/manifest.json", "--dir", "/workspace"},
-		}}},
-	}, {
-		name: "invalid upload to protected buckets with single file",
-		resource: &v1alpha1.BuildGCSResource{
-			Name:         "gcs-valid",
-			ArtifactType: "Archive",
-			Location:     "gs://some-bucket",
-		},
-		wantErr: true,
-	}} {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := tc.resource.GetUploadSteps("/workspace")
-			if tc.wantErr && err == nil {
-				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
-			}
-			if !tc.wantErr && err != nil {
-				t.Fatalf("GetUploadSteps: %v", err)
-			}
-
-			if d := cmp.Diff(got, tc.wantSteps); d != "" {
-				t.Errorf("Error mismatch between upload steps: %s", d)
-			}
-		})
+func TestBuildGCS_InvalidArtifactType(t *testing.T) {
+	pr := tb.PipelineResource("build-gcs-resource", "default", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeStorage,
+		tb.PipelineResourceSpecParam("Location", "gs://fake-bucket"),
+		tb.PipelineResourceSpecParam("type", "build-gcs"),
+		tb.PipelineResourceSpecParam("ArtifactType", "InVaLiD"),
+	))
+	if _, err := v1alpha1.NewBuildGCSResource(pr); err == nil {
+		t.Error("NewBuildGCSResource: expected error")
 	}
 }

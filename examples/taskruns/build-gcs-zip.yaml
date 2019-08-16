@@ -1,27 +1,25 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: list-file
+  name: build-gcs-zip
 spec:
   taskSpec:
     inputs:
       resources:
-      - name: rules
+      - name: source
         type: storage
     steps:
-    - name: list
-      image: ubuntu
-      command: ["/bin/bash"]
-      args: ['-c', 'ls -al /workspace/rules/rules_docker-master'] # tests build-gcs resource
+    - image: ubuntu
+      command: ['cat', 'source/file.txt']  # tests build-gcs resource
   inputs:
     resources:
-    - name: rules
+    - name: source
       resourceSpec:
         type: storage
         params:
           - name: location
-            value: gs://build-crd-tests/rules_docker-master.zip
+            value: gs://build-crd-tests/archive.zip
           - name: artifactType
-            value: Archive
+            value: ZipArchive
           - name: type
             value: build-gcs
