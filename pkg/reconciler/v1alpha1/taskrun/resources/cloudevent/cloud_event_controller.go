@@ -28,7 +28,7 @@ import (
 // InitializeCloudEvents initializes the CloudEvents part of the
 // TaskRunStatus from a slice of PipelineResources
 func InitializeCloudEvents(tr *v1alpha1.TaskRun, prs []*v1alpha1.PipelineResource) {
-	// FIXME(afrittoli) If there are no events this is run every time
+	// If there are no cloud event resources, this check will run on every reconcile
 	if len(tr.Status.CloudEvents) == 0 {
 		var targets []string
 		for _, output := range prs {
@@ -44,7 +44,6 @@ func InitializeCloudEvents(tr *v1alpha1.TaskRun, prs []*v1alpha1.PipelineResourc
 }
 
 func cloudEventDeliveryFromTargets(targets []string) []v1alpha1.CloudEventDelivery {
-	// len(nil slice) is 0
 	if len(targets) > 0 {
 		initialState := v1alpha1.CloudEventDeliveryState{
 			Condition:  v1alpha1.CloudEventConditionUnknown,

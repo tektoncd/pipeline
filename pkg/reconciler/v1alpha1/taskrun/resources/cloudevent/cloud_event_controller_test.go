@@ -247,5 +247,3 @@ func TestInitializeCloudEvents(t *testing.T) {
 		})
 	}
 }
-
-// TBD: TestSendCloudEvents error tests
