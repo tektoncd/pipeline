@@ -590,18 +590,15 @@ Params that can be added are the following:
 1.  `artifactType`: represent the type of GCS resource. Right now, we support
     following types:
 
-    -   `Archive`:
-        -   Archive indicates that resource fetched is an archive file.
-            Currently, Build GCS resource only supports `.zip` archive.
-        -   It unzips the archive and places all the files in the directory
-            which is set at runtime.
-        -   If `artifactType` is set to `Archive`, `location` should point to a
-            `.zip` file.
-    -   [`Manifest`](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests):
-        -   Manifest indicates that resource should be fetched using a source
-            manifest file.
-        -   If `artifactType` is set to `Manifest`, `location` should point to a
-            source manifest file.
+* `ZipArchive`:
+  * ZipArchive indicates that resource fetched is an archive file in the zip format.
+  * It unzips the archive and places all the files in the directory which is set at runtime.
+  * `Archive` is also supported and is equivalent to `ZipArchive`, but is deprecated.
+* `TarGzArchive`:
+  * TarGzArchive indicates that resource fetched is a gzipped archive file in the tar format.
+  * It unzips the archive and places all the files in the directory which is set at runtime.
+* [`Manifest`](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests):
+  * Manifest indicates that resource should be fetched using a source manifest file.
 
 Private buckets other than ones accessible by
 [TaskRun Service Account](./taskruns.md#service-account) can not be configured

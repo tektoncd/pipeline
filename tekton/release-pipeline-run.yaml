@@ -60,6 +60,3 @@ spec:
   - name: builtGcsFetcherImage
     resourceRef:
       name: gcs-fetcher-image
-  - name: builtGcsUploaderImage
-    resourceRef:
-      name: gcs-uploader-image

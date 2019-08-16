@@ -68,14 +68,12 @@
   version = "v11.1.2"
 
 [[projects]]
-  digest = "1:114566651114ab2375768593255e8b0590e36e603c3903399c20a590bcf9af85"
+  digest = "1:81ed671dd39c40361f18453874283bf8a4824cbed76387dff4954005a221e40e"
   name = "github.com/GoogleCloudPlatform/cloud-builders"
   packages = [
     "gcs-fetcher/cmd/gcs-fetcher",
-    "gcs-fetcher/cmd/gcs-uploader",
     "gcs-fetcher/pkg/common",
     "gcs-fetcher/pkg/fetcher",
-    "gcs-fetcher/pkg/uploader",
   ]
   pruneopts = "NUT"
   revision = "073e4daa3d0dcb50173fdac5581709a17b97e9ed"
@@ -1311,7 +1309,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
-    "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-uploader",
     "github.com/cloudevents/sdk-go/pkg/cloudevents",
     "github.com/cloudevents/sdk-go/pkg/cloudevents/client",
     "github.com/cloudevents/sdk-go/pkg/cloudevents/context",
