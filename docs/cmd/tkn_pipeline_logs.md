@@ -26,7 +26,7 @@ Show pipeline logs
 
   # show logs for given pipeline and pipelinerun
     tkn pipeline logs pipeline run -n namespace
-  
+
    
 
 ### Options

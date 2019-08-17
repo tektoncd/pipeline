@@ -18,7 +18,7 @@ Show taskruns logs
 # show the logs of TaskRun named "foo" from the namespace "bar"
 tkn taskrun logs foo -n bar
 
-# show the live logs of TaskRun named "foo" from the namespace "bar" 
+# show the live logs of TaskRun named "foo" from the namespace "bar"
 tkn taskrun logs -f foo -n bar
 
 

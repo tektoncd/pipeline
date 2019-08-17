@@ -21,7 +21,7 @@ Show the logs of PipelineRun
   # show the logs of PipelineRun named "microservice-1" for task "build" only, from the namespace "bar"
     tkn pr logs microservice-1 -t build -n bar
 
-  # show the logs of PipelineRun named "microservice-1" for all tasks and steps (including init steps), 
+  # show the logs of PipelineRun named "microservice-1" for all tasks and steps (including init steps),
     from the namespace "foo"
     tkn pr logs microservice-1 -a -n foo
    
