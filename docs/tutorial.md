@@ -370,8 +370,6 @@ spec:
       params:
         - name: path
           value: /workspace/source/examples/microservices/leeroy-web/kubernetes/deployment.yaml #configure: may change according to your source
-        - name: yqArg
-          value: "-d1"
         - name: yamlPathToImage
           value: "spec.template.spec.containers[0].image"
 ```
@@ -395,11 +393,6 @@ spec:
       - name: path
         type: string
         description: Path to the manifest to apply
-      - name: yqArg
-        type: string
-        description:
-          Okay this is a hack, but I didn't feel right hard-coding `-d1` down
-          below
       - name: yamlPathToImage
         type: string
         description:
@@ -411,7 +404,6 @@ spec:
       args:
         - "w"
         - "-i"
-        - "$(inputs.params.yqArg)"
         - "$(inputs.params.path)"
         - "$(inputs.params.yamlPathToImage)"
         - "$(inputs.resources.image.url)"
