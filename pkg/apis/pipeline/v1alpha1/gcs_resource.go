@@ -41,6 +41,9 @@ type GCSResource struct {
 	TypeDir  bool                 `json:"typeDir"`
 	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
+
+	// Initialize an empty output directory
+	EmptyDirOutputResource
 }
 
 // NewGCSResource creates a new GCS resource to pass to a Task

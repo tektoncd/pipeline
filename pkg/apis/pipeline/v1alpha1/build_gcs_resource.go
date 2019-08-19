@@ -70,6 +70,9 @@ type BuildGCSResource struct {
 	Type         PipelineResourceType
 	Location     string
 	ArtifactType GCSArtifactType
+
+	// Initialize an empty output directory
+	EmptyDirOutputResource
 }
 
 // NewBuildGCSResource creates a new BuildGCS resource to pass to a Task

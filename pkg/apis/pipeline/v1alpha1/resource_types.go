@@ -57,6 +57,7 @@ type PipelineResourceInterface interface {
 	GetType() PipelineResourceType
 	Replacements() map[string]string
 	GetDownloadSteps(sourcePath string) ([]Step, error)
+	GetOutputInitializationSteps(name, sourcePath string) []Step
 	GetUploadSteps(sourcePath string) ([]Step, error)
 	GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
 	GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
@@ -151,4 +152,14 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 		return NewCloudEventResource(r)
 	}
 	return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
+}
+
+// EmptyDirOutputResource is a partial struct that can be embedded into other resources.
+// The behavior is to create an empty output directory.
+type EmptyDirOutputResource struct {
+}
+
+// GetOutputInitializationSteps returns a set of steps to be used to initialize an output directory.
+func (e *EmptyDirOutputResource) GetOutputInitializationSteps(name, sourcePath string) []Step {
+	return []Step{CreateDirStep(name, sourcePath)}
 }

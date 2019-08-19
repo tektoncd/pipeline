@@ -44,6 +44,9 @@ type GitResource struct {
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
 	Revision string `json:"revision"`
+
+	// Initialize an empty output directory
+	EmptyDirOutputResource
 }
 
 // NewGitResource creates a new git resource to pass to a Task

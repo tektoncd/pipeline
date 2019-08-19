@@ -31,6 +31,8 @@ type CloudEventResource struct {
 	Type PipelineResourceType `json:"type"`
 	// TargetURI is the URI of the sink which the cloud event is develired to
 	TargetURI string `json:"targetURI"`
+	// Initialize an empty output directory
+	EmptyDirOutputResource
 }
 
 // NewCloudEventResource creates a new CloudEvent resource to pass to a Task

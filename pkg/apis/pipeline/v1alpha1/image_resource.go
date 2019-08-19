@@ -53,6 +53,9 @@ type ImageResource struct {
 	URL            string               `json:"url"`
 	Digest         string               `json:"digest"`
 	OutputImageDir string
+
+	// Initialize an empty output directory
+	EmptyDirOutputResource
 }
 
 // GetName returns the name of the resource

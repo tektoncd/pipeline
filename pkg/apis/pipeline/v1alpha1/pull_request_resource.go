@@ -47,6 +47,9 @@ type PullRequestResource struct {
 	URL string `json:"url"`
 	// Secrets holds a struct to indicate a field name and corresponding secret name to populate it.
 	Secrets []SecretParam `json:"secrets"`
+
+	// Initialize an empty output directory
+	EmptyDirOutputResource
 }
 
 // NewPullRequestResource create a new git resource to pass to a Task

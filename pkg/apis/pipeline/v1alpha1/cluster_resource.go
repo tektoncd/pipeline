@@ -54,6 +54,9 @@ type ClusterResource struct {
 	CAData []byte `json:"cadata"`
 	//Secrets holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
+
+	// Initialize an empty output directory
+	EmptyDirOutputResource
 }
 
 // NewClusterResource create a new k8s cluster resource to pass to a pipeline task
