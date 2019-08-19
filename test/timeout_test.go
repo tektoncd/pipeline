@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"

@@ -29,7 +29,7 @@ import (
 	taskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/config"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/config"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
