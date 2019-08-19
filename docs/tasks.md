@@ -2,7 +2,7 @@
 
 A `Task` (or a [`ClusterTask`](#clustertask)) is a collection of sequential
 steps you would want to run as part of your continuous integration flow. A task
-will run inside a container on your cluster.
+will run inside a pod on your cluster.
 
 A `Task` declares:
 
