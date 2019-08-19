@@ -23,7 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -19,8 +19,8 @@ package main
 import (
 	"knative.dev/pkg/injection/sharedmain"
 
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 )
 
 const (

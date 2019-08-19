@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
