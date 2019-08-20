@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: gcs-resource
+spec:
+  taskSpec:
+    inputs:
+      resources:
+      - name: source
+        type: storage
+    steps:
+    - image: alpine
+      command: ['unzip', 'source/archive.zip']
+    - image: alpine
+      command: ['cat', 'file.txt']
+  inputs:
+    resources:
+    - name: source
+      resourceSpec:
+        type: storage
+        params:
+          - name: location
+            value: gs://build-crd-tests/archive.zip
+          - name: type
+            value: gcs
