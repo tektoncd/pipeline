@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,13 +41,16 @@ const (
 
 	// DefaultPvcSize is the default size of the PVC to create
 	DefaultPvcSize = "5Gi"
+
+	// PvcStorageClassNameKey is the name of the configmap entry that specifies the storage class of the PVC to create
+	PvcStorageClassNameKey = "storageClassName"
 )
 
 // ArtifactStorageInterface is an interface to define the steps to copy
 // an pipeline artifact to/from temporary storage
 type ArtifactStorageInterface interface {
-	GetCopyToStorageFromContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
-	GetCopyFromStorageToContainerSpec(name, sourcePath, destinationPath string) []corev1.Container
+	GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1alpha1.Step
+	GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1alpha1.Step
 	GetSecretsVolumes() []corev1.Volume
 	GetType() string
 	StorageBasePath(pr *v1alpha1.PipelineRun) string
@@ -163,8 +166,10 @@ func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (*corev1.Persis
 				return nil, xerrors.Errorf("failed to get PVC ConfigMap %s for %q due to error: %w", PvcConfigName, pr.Name, err)
 			}
 			var pvcSizeStr string
+			var pvcStorageClassNameStr string
 			if configMap != nil {
 				pvcSizeStr = configMap.Data[PvcSizeKey]
+				pvcStorageClassNameStr = configMap.Data[PvcStorageClassNameKey]
 			}
 			if pvcSizeStr == "" {
 				pvcSizeStr = DefaultPvcSize
@@ -173,7 +178,14 @@ func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (*corev1.Persis
 			if err != nil {
 				return nil, xerrors.Errorf("failed to create Persistent Volume spec for %q due to error: %w", pr.Name, err)
 			}
-			pvcSpec := GetPVCSpec(pr, pvcSize)
+			var pvcStorageClassName *string
+			if pvcStorageClassNameStr == "" {
+				pvcStorageClassName = nil
+			} else {
+				pvcStorageClassName = &pvcStorageClassNameStr
+			}
+
+			pvcSpec := GetPVCSpec(pr, pvcSize, pvcStorageClassName)
 			pvc, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Create(pvcSpec)
 			if err != nil {
 				return nil, xerrors.Errorf("failed to claim Persistent Volume %q due to error: %w", pr.Name, err)
@@ -197,7 +209,7 @@ func deletePVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) error {
 }
 
 // GetPVCSpec returns the PVC to create for a given PipelineRun
-func GetPVCSpec(pr *v1alpha1.PipelineRun, pvcSize resource.Quantity) *corev1.PersistentVolumeClaim {
+func GetPVCSpec(pr *v1alpha1.PipelineRun, pvcSize resource.Quantity, storageClassName *string) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       pr.Namespace,
@@ -211,6 +223,7 @@ func GetPVCSpec(pr *v1alpha1.PipelineRun, pvcSize resource.Quantity) *corev1.Per
 					corev1.ResourceStorage: pvcSize,
 				},
 			},
+			StorageClassName: storageClassName,
 		},
 	}
 }

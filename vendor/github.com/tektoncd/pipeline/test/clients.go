@@ -1,9 +1,12 @@
 /*
-Copyright 2018 Knative Authors LLC
+Copyright 2019 The Tekton Authors
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,9 +41,9 @@ package test
 import (
 	"testing"
 
-	knativetest "github.com/knative/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
+	knativetest "knative.dev/pkg/test"
 )
 
 // clients holds instances of interfaces for making requests to the Pipeline controllers.
@@ -52,6 +55,7 @@ type clients struct {
 	TaskRunClient          v1alpha1.TaskRunInterface
 	PipelineRunClient      v1alpha1.PipelineRunInterface
 	PipelineResourceClient v1alpha1.PipelineResourceInterface
+	ConditionClient        v1alpha1.ConditionInterface
 }
 
 // newClients instantiates and returns several clientsets required for making requests to the
@@ -81,5 +85,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.TaskRunClient = cs.TektonV1alpha1().TaskRuns(namespace)
 	c.PipelineRunClient = cs.TektonV1alpha1().PipelineRuns(namespace)
 	c.PipelineResourceClient = cs.TektonV1alpha1().PipelineResources(namespace)
+	c.ConditionClient = cs.TektonV1alpha1().Conditions(namespace)
 	return c
 }

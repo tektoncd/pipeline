@@ -21,16 +21,15 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestListPipelineRuns(t *testing.T) {
@@ -184,16 +183,16 @@ func TestListPipelineRuns(t *testing.T) {
 }
 
 func TestListPipeline_empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
-	p := &tu.Params{Tekton: cs.Pipeline}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
-	output, err := tu.ExecuteCommand(pipeline, "list", "-n", "ns")
+	output, err := test.ExecuteCommand(pipeline, "list", "-n", "ns")
 
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	tu.AssertOutput(t, emptyMsg+"\n", output)
+	test.AssertOutput(t, emptyMsg+"\n", output)
 }
 
 func command(t *testing.T, prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Command {
@@ -201,7 +200,7 @@ func command(t *testing.T, prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Co
 	clock := clockwork.NewFakeClockAt(now)
 	clock.Advance(time.Duration(60) * time.Minute)
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
 
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 

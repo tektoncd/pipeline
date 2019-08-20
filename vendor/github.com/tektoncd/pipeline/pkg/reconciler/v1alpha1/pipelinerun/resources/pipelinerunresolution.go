@@ -18,18 +18,17 @@ package resources
 
 import (
 	"fmt"
-	"time"
+	"reflect"
 
-	"github.com/knative/pkg/apis"
-	"github.com/tektoncd/pipeline/pkg/names"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
+	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 )
 
@@ -48,6 +47,10 @@ const (
 	// ReasonTimedOut indicates that the PipelineRun has taken longer than its configured
 	// timeout
 	ReasonTimedOut = "PipelineRunTimeout"
+
+	// ReasonConditionCheckFailed indicates that the reason for the failure status is that the
+	// condition check associated to the pipeline task evaluated to false
+	ReasonConditionCheckFailed = "ConditionCheckFailed"
 )
 
 // ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
@@ -57,6 +60,8 @@ type ResolvedPipelineRunTask struct {
 	TaskRun               *v1alpha1.TaskRun
 	PipelineTask          *v1alpha1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
+	// ConditionChecks ~~TaskRuns but for evaling conditions
+	ResolvedConditionChecks TaskConditionCheckState // Could also be a TaskRun or maybe just a Pod?
 }
 
 // PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
@@ -73,6 +78,41 @@ func (t ResolvedPipelineRunTask) IsDone() (isDone bool) {
 	retries := t.PipelineTask.Retries
 	isDone = status.IsTrue() || status.IsFalse() && retriesDone >= retries
 	return
+}
+
+// IsSuccessful returns true only if the taskrun itself has completed successfully
+func (t ResolvedPipelineRunTask) IsSuccessful() bool {
+	if t.TaskRun == nil {
+		return false
+	}
+	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+	if c == nil {
+		return false
+	}
+
+	if c.Status == corev1.ConditionTrue {
+		return true
+	}
+	return false
+}
+
+// IsFailed returns true only if the taskrun itself has failed
+func (t ResolvedPipelineRunTask) IsFailure() bool {
+	if t.TaskRun == nil {
+		return false
+	}
+	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+	retriesDone := len(t.TaskRun.Status.RetriesStatus)
+	retries := t.PipelineTask.Retries
+	return c.IsFalse() && retriesDone >= retries
+}
+
+func (state PipelineRunState) toMap() map[string]*ResolvedPipelineRunTask {
+	m := make(map[string]*ResolvedPipelineRunTask)
+	for _, rprt := range state {
+		m[rprt.PipelineTask.Name] = rprt
+	}
+	return m
 }
 
 func (state PipelineRunState) IsDone() (isDone bool) {
@@ -100,7 +140,7 @@ func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.Pi
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun != nil {
 			status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 			if status != nil && status.IsFalse() {
-				if !(t.TaskRun.IsCancelled() || status.Reason == "TaskRunCancelled") {
+				if !(t.TaskRun.IsCancelled() || status.Reason == v1alpha1.TaskRunSpecStatusCancelled || status.Reason == ReasonConditionCheckFailed) {
 					if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
 						tasks = append(tasks, t)
 					}
@@ -200,6 +240,15 @@ func (e *ResourceNotFoundError) Error() string {
 	return fmt.Sprintf("Couldn't retrieve PipelineResource: %s", e.Msg)
 }
 
+type ConditionNotFoundError struct {
+	Name string
+	Msg  string
+}
+
+func (e *ConditionNotFoundError) Error() string {
+	return fmt.Sprintf("Couldn't retrieve Condition %q: %s", e.Name, e.Msg)
+}
+
 // ResolvePipelineRun retrieves all Tasks instances which are reference by tasks, getting
 // instances from getTask. If it is unable to retrieve an instance of a referenced Task, it
 // will return an error, otherwise it returns a list of all of the Tasks retrieved.
@@ -211,6 +260,7 @@ func ResolvePipelineRun(
 	getTaskRun resources.GetTaskRun,
 	getClusterTask resources.GetClusterTask,
 	getResource resources.GetResource,
+	getCondition GetCondition,
 	tasks []v1alpha1.PipelineTask,
 	providedResources map[string]v1alpha1.PipelineResourceRef,
 ) (PipelineRunState, error) {
@@ -224,7 +274,7 @@ func ResolvePipelineRun(
 			TaskRunName:  getTaskRunName(pipelineRun.Status.TaskRuns, pt.Name, pipelineRun.Name),
 		}
 
-		// Find the Task that this task in the Pipeline this PipelineTask is using
+		// Find the Task that this PipelineTask is using
 		var t v1alpha1.TaskInterface
 		var err error
 		if pt.TaskRef.Kind == v1alpha1.ClusterTaskKind {
@@ -261,10 +311,34 @@ func ResolvePipelineRun(
 		if taskRun != nil {
 			rprt.TaskRun = taskRun
 		}
+
+		// Get all conditions that this pipelineTask will be using, if any
+		if len(pt.Conditions) > 0 {
+			rcc, err := resolveConditionChecks(&pt, pipelineRun.Status.TaskRuns, rprt.TaskRunName, getTaskRun, getCondition)
+			if err != nil {
+				return nil, err
+			}
+			rprt.ResolvedConditionChecks = rcc
+		}
+
 		// Add this task to the state of the PipelineRun
 		state = append(state, &rprt)
 	}
 	return state, nil
+}
+
+// getConditionCheckName should return a unique name for a `ConditionCheck` if one has not already been defined, and the existing one otherwise.
+func getConditionCheckName(taskRunStatus map[string]*v1alpha1.PipelineRunTaskRunStatus, trName, conditionName string) string {
+	trStatus, ok := taskRunStatus[trName]
+	if ok && trStatus.ConditionChecks != nil {
+		for k, v := range trStatus.ConditionChecks {
+			// TODO(1022): Should  we allow multiple conditions of the same type?
+			if conditionName == v.ConditionName {
+				return k
+			}
+		}
+	}
+	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", trName, conditionName))
 }
 
 // getTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
@@ -280,40 +354,26 @@ func getTaskRunName(taskRunsStatus map[string]*v1alpha1.PipelineRunTaskRunStatus
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
-func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *zap.SugaredLogger, startTime *metav1.Time,
-	pipelineTimeout *metav1.Duration) *apis.Condition {
-	allFinished := true
-	if !startTime.IsZero() && pipelineTimeout != nil {
-		timeout := pipelineTimeout.Duration
-		runtime := time.Since(startTime.Time)
-		if runtime > timeout {
-			logger.Infof("PipelineRun %q has timed out(runtime %s over %s)", prName, runtime, timeout)
+func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState, logger *zap.SugaredLogger, dag *v1alpha1.DAG) *apis.Condition {
+	// We have 4 different states here:
+	// 1. Timed out -> Failed
+	// 2. Any one TaskRun has failed - >Failed. This should change with #1020 and #1023
+	// 3. All tasks are done or are skipped (i.e. condition check failed).-> Success
+	// 4. A Task or Condition is running right now  or there are things left to run -> Running
 
-			timeoutMsg := fmt.Sprintf("PipelineRun %q failed to finish within %q", prName, timeout.String())
-			return &apis.Condition{
-				Type:    apis.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Reason:  ReasonTimedOut,
-				Message: timeoutMsg,
-			}
+	if pr.IsTimedOut() {
+		return &apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  ReasonTimedOut,
+			Message: fmt.Sprintf("PipelineRun %q failed to finish within %q", pr.Name, pr.Spec.Timeout.String()),
 		}
 	}
+
+	// A single failed task mean we fail the pipeline
 	for _, rprt := range state {
-		if rprt.TaskRun == nil {
-			logger.Infof("TaskRun %s doesn't have a Status, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
-			allFinished = false
-			continue
-		}
-		c := rprt.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-		if c == nil {
-			logger.Infof("TaskRun %s doesn't have a condition, so PipelineRun %s isn't finished", rprt.TaskRunName, prName)
-			allFinished = false
-			continue
-		}
-		logger.Infof("TaskRun %s status : %v", rprt.TaskRunName, c.Status)
-		// If any TaskRuns have failed, we should halt execution and consider the run failed
-		if c.Status == corev1.ConditionFalse && rprt.IsDone() {
-			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed, retries done: %b", rprt.TaskRunName, prName, len(rprt.TaskRun.Status.RetriesStatus))
+		if rprt.IsFailure() { //IsDone ensures we have crossed the retry limit
+			logger.Infof("TaskRun %s has failed, so PipelineRun %s has failed, retries done: %b", rprt.TaskRunName, pr.Name, len(rprt.TaskRun.Status.RetriesStatus))
 			return &apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
@@ -321,27 +381,66 @@ func GetPipelineConditionStatus(prName string, state PipelineRunState, logger *z
 				Message: fmt.Sprintf("TaskRun %s has failed", rprt.TaskRun.Name),
 			}
 		}
-		if c.Status != corev1.ConditionTrue {
-			logger.Infof("TaskRun %s is still running so PipelineRun %s is still running", rprt.TaskRunName, prName)
-			allFinished = false
+	}
+
+	allTasks := []string{}
+	successOrSkipTasks := []string{}
+
+	// Check to see if all tasks are success or skipped
+	for _, rprt := range state {
+		allTasks = append(allTasks, rprt.PipelineTask.Name)
+		if rprt.IsSuccessful() || isSkipped(rprt, state.toMap(), dag) {
+			successOrSkipTasks = append(successOrSkipTasks, rprt.PipelineTask.Name)
 		}
 	}
-	if !allFinished {
-		logger.Infof("PipelineRun %s still has running TaskRuns so it isn't yet done", prName)
+
+	if reflect.DeepEqual(allTasks, successOrSkipTasks) {
+		logger.Infof("All TaskRuns have finished for PipelineRun %s so it has finished", pr.Name)
 		return &apis.Condition{
 			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonRunning,
-			Message: "Not all Tasks in the Pipeline have finished executing",
+			Status:  corev1.ConditionTrue,
+			Reason:  ReasonSucceeded,
+			Message: "All Tasks have completed executing",
 		}
 	}
-	logger.Infof("All TaskRuns have finished for PipelineRun %s so it has finished", prName)
+
+	// Hasn't timed out; no taskrun failed yet; and not all tasks have finished....
+	// Must keep running then....
 	return &apis.Condition{
 		Type:    apis.ConditionSucceeded,
-		Status:  corev1.ConditionTrue,
-		Reason:  ReasonSucceeded,
-		Message: "All Tasks have completed executing",
+		Status:  corev1.ConditionUnknown,
+		Reason:  ReasonRunning,
+		Message: "Not all Tasks in the Pipeline have finished executing",
 	}
+}
+
+// isSkipped returns true if a Task in a TaskRun will not be run either because
+//  its Condition Checks failed or because one of the parent tasks's conditions failed
+// Note that this means isSkipped returns false if a conditionCheck is in progress
+func isSkipped(rprt *ResolvedPipelineRunTask, stateMap map[string]*ResolvedPipelineRunTask, d *v1alpha1.DAG) bool {
+	// Taskrun not skipped if it already exists
+	if rprt.TaskRun != nil {
+		return false
+	}
+
+	// Check if conditionChecks have failed, if so task is skipped
+	if len(rprt.ResolvedConditionChecks) > 0 {
+		// isSkipped is only true iof
+		if rprt.ResolvedConditionChecks.IsDone() && !rprt.ResolvedConditionChecks.IsSuccess() {
+			return true
+		}
+	}
+
+	// Recursively look at parent tasks to see if they have been skipped,
+	// if any of the parents have been skipped, skip as well
+	node := d.Nodes[rprt.PipelineTask.Name]
+	for _, p := range node.Prev {
+		skip := isSkipped(stateMap[p.Task.Name], stateMap, d)
+		if skip {
+			return true
+		}
+	}
+	return false
 }
 
 func findReferencedTask(pb string, state []*ResolvedPipelineRunTask) *ResolvedPipelineRunTask {
@@ -388,4 +487,35 @@ func ValidateFrom(state PipelineRunState) error {
 	}
 
 	return nil
+}
+
+func resolveConditionChecks(pt *v1alpha1.PipelineTask,
+	taskRunStatus map[string]*v1alpha1.PipelineRunTaskRunStatus,
+	taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition) ([]*ResolvedConditionCheck, error) {
+	rcc := []*ResolvedConditionCheck{}
+	for _, ptc := range pt.Conditions {
+		cName := ptc.ConditionRef
+		c, err := getCondition(cName)
+		if err != nil {
+			return nil, &ConditionNotFoundError{
+				Name: cName,
+				Msg:  err.Error(),
+			}
+		}
+		conditionCheckName := getConditionCheckName(taskRunStatus, taskRunName, cName)
+		cctr, err := getTaskRun(conditionCheckName)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, xerrors.Errorf("error retrieving ConditionCheck %s for taskRun name %s : %w", conditionCheckName, taskRunName, err)
+			}
+		}
+
+		rcc = append(rcc, &ResolvedConditionCheck{
+			Condition:             c,
+			ConditionCheckName:    conditionCheckName,
+			ConditionCheck:        v1alpha1.NewConditionCheck(cctr),
+			PipelineTaskCondition: &ptc,
+		})
+	}
+	return rcc, nil
 }

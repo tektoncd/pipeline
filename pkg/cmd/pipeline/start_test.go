@@ -22,14 +22,13 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/cli"
-	tu "github.com/tektoncd/cli/pkg/test"
+	"github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
-	"github.com/tektoncd/pipeline/test"
+	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	k8stest "k8s.io/client-go/testing"
+	"knative.dev/pkg/apis"
 )
 
 func newPipelineClient(objs ...runtime.Object) *fakepipelineclientset.Clientset {
@@ -83,9 +83,9 @@ func newPipelineClient(objs ...runtime.Object) *fakepipelineclientset.Clientset 
 }
 
 func Test_start_has_pipeline_arg(t *testing.T) {
-	c := Command(&tu.Params{})
+	c := Command(&test.Params{})
 
-	_, err := tu.ExecuteCommand(c, "start", "-n", "ns")
+	_, err := test.ExecuteCommand(c, "start", "-n", "ns")
 
 	if err == nil {
 		t.Error("Expecting an error but it's empty")
@@ -97,8 +97,8 @@ func Test_start_pipeline_not_found(t *testing.T) {
 		tb.Pipeline("test-pipeline", "foo",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
-				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -108,13 +108,13 @@ func Test_start_pipeline_not_found(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", "test-pipeline-2", "-n", "ns")
+	got, _ := test.ExecuteCommand(pipeline, "start", "test-pipeline-2", "-n", "ns")
 	expected := "Error: " + errInvalidPipeline.Error() + "\n"
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 }
 
 func Test_start_pipeline(t *testing.T) {
@@ -125,8 +125,8 @@ func Test_start_pipeline(t *testing.T) {
 		tb.Pipeline(pipelineName, "ns",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
-				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -136,11 +136,11 @@ func Test_start_pipeline(t *testing.T) {
 		), // pipeline
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 	pipeline := Command(p)
 
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"-r=source=scaffold-git",
 		"-p=key1=value1",
 		"-s=svc1",
@@ -148,7 +148,7 @@ func Test_start_pipeline(t *testing.T) {
 		"-n", "ns")
 
 	expected := "Pipelinerun started: \n"
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 
 	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns("ns").List(v1.ListOptions{})
 	if err != nil {
@@ -169,8 +169,8 @@ func Test_start_pipeline_last(t *testing.T) {
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("build-image", "image"),
-				tb.PipelineParam("pipeline-param-1", tb.PipelineParamDefault("somethingdifferent-1")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param-1", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent-1")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -196,20 +196,20 @@ func Test_start_pipeline_last(t *testing.T) {
 	objs := []runtime.Object{ps[0], prs[0]}
 	pClient := newPipelineClient(objs...)
 
-	cs := test.Clients{
+	cs := pipelinetest.Clients{
 		Pipeline: pClient,
 		Kube:     fakekubeclientset.NewSimpleClientset(),
 	}
 
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--last",
 		"-nns")
 
 	expected := "Pipelinerun started: random\n"
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 
 	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns(p.Namespace()).Get("random", v1.GetOptions{})
 
@@ -219,16 +219,16 @@ func Test_start_pipeline_last(t *testing.T) {
 
 	for _, v := range pr.Spec.Resources {
 		if v.Name == "git-repo" {
-			tu.AssertOutput(t, "some-repo", v.ResourceRef.Name)
+			test.AssertOutput(t, "some-repo", v.ResourceRef.Name)
 		}
 	}
 
 	for _, v := range pr.Spec.Params {
 		if v.Name == "rev-param" {
-			tu.AssertOutput(t, "revision1", v.Value)
+			test.AssertOutput(t, v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeString, StringVal: "revision1"}, v.Value)
 		}
 	}
-	tu.AssertOutput(t, "test-sa", pr.Spec.ServiceAccount)
+	test.AssertOutput(t, "test-sa", pr.Spec.ServiceAccount)
 }
 
 func Test_start_pipeline_last_merge(t *testing.T) {
@@ -240,8 +240,8 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("build-image", "image"),
-				tb.PipelineParam("pipeline-param-1", tb.PipelineParamDefault("somethingdifferent-1")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent-1")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -269,15 +269,15 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 	objs := []runtime.Object{ps[0], prs[0]}
 	pClient := newPipelineClient(objs...)
 
-	cs := test.Clients{
+	cs := pipelinetest.Clients{
 		Pipeline: pClient,
 		Kube:     fakekubeclientset.NewSimpleClientset(),
 	}
 
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--last",
 		"-r=git-repo=scaffold-git",
 		"-p=rev-param=revision2",
@@ -287,7 +287,7 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 		"-n=ns")
 
 	expected := "Pipelinerun started: random\n"
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 
 	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns(p.Namespace()).Get("random", v1.GetOptions{})
 
@@ -297,23 +297,23 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 
 	for _, v := range pr.Spec.Resources {
 		if v.Name == "git-repo" {
-			tu.AssertOutput(t, "scaffold-git", v.ResourceRef.Name)
+			test.AssertOutput(t, "scaffold-git", v.ResourceRef.Name)
 		}
 	}
 
 	for _, v := range pr.Spec.Params {
 		if v.Name == "rev-param" {
-			tu.AssertOutput(t, "revision2", v.Value)
+			test.AssertOutput(t, v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeString, StringVal: "revision2"}, v.Value)
 		}
 	}
 
 	for _, v := range pr.Spec.ServiceAccounts {
 		if v.TaskName == "task3" {
-			tu.AssertOutput(t, "task3svc3", v.ServiceAccount)
+			test.AssertOutput(t, "task3svc3", v.ServiceAccount)
 		}
 	}
 
-	tu.AssertOutput(t, "svc1", pr.Spec.ServiceAccount)
+	test.AssertOutput(t, "svc1", pr.Spec.ServiceAccount)
 }
 
 func Test_start_pipeline_last_no_pipelineruns(t *testing.T) {
@@ -325,8 +325,8 @@ func Test_start_pipeline_last_no_pipelineruns(t *testing.T) {
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("build-image", "image"),
-				tb.PipelineParam("pipeline-param-1", tb.PipelineParamDefault("somethingdifferent-1")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param-1", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent-1")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -339,20 +339,20 @@ func Test_start_pipeline_last_no_pipelineruns(t *testing.T) {
 	objs := []runtime.Object{ps[0]}
 	pClient := newPipelineClient(objs...)
 
-	cs := test.Clients{
+	cs := pipelinetest.Clients{
 		Pipeline: pClient,
 		Kube:     fakekubeclientset.NewSimpleClientset(),
 	}
 
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--last",
 		"-nns")
 
 	expected := "Error: No pipelineruns found in namespace: ns\n"
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 }
 
 func Test_start_pipeline_last_list_err(t *testing.T) {
@@ -364,8 +364,8 @@ func Test_start_pipeline_last_list_err(t *testing.T) {
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineDeclaredResource("build-image", "image"),
-				tb.PipelineParam("pipeline-param-1", tb.PipelineParamDefault("somethingdifferent-1")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param-1", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent-1")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -375,20 +375,20 @@ func Test_start_pipeline_last_list_err(t *testing.T) {
 		), // pipeline
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	cs.Pipeline.PrependReactor("list", "pipelineruns", func(action k8stest.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("test generated error")
 	})
 
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--last",
 		"-nns")
 
 	expected := "Error: test generated error\n"
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 }
 
 func Test_start_pipeline_client_error(t *testing.T) {
@@ -399,8 +399,8 @@ func Test_start_pipeline_client_error(t *testing.T) {
 		tb.Pipeline(pipelineName, "namespace",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
-				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -410,22 +410,22 @@ func Test_start_pipeline_client_error(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
 
 	cs.Pipeline.PrependReactor("create", "*", func(_ k8stest.Action) (bool, runtime.Object, error) {
 		return true, nil, fmt.Errorf("mock error")
 	})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"-r=source=scaffold-git",
 		"-p=key1=value1",
 		"-s=svc1",
 		"-n=namespace")
 
 	expected := "Error: mock error\n"
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 }
 
 func Test_start_pipeline_resource_error(t *testing.T) {
@@ -436,8 +436,8 @@ func Test_start_pipeline_resource_error(t *testing.T) {
 		tb.Pipeline(pipelineName, "namespace",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
-				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -447,11 +447,11 @@ func Test_start_pipeline_resource_error(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
 
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"-r scaffold-git",
 		"-p=key1=value1",
 		"-s=svc1",
@@ -459,7 +459,7 @@ func Test_start_pipeline_resource_error(t *testing.T) {
 
 	expected := "Error: invalid resource parameter:  scaffold-git\nPlease pass resource as -r ResourceName=ResourceRef\n"
 
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 }
 
 func Test_start_pipeline_param_error(t *testing.T) {
@@ -470,8 +470,8 @@ func Test_start_pipeline_param_error(t *testing.T) {
 		tb.Pipeline(pipelineName, "namespace",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
-				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
-				tb.PipelineParam("rev-param", tb.PipelineParamDefault("revision")),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -481,12 +481,12 @@ func Test_start_pipeline_param_error(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
 
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"-r=source=scaffold-git",
 		"-p value1",
 		"-s=svc1",
@@ -494,7 +494,7 @@ func Test_start_pipeline_param_error(t *testing.T) {
 
 	expected := "Error: invalid param parameter:  value1\nPlease pass param as -p ParamName=ParamValue\n"
 
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 }
 
 func Test_start_pipeline_task_svc_error(t *testing.T) {
@@ -505,7 +505,7 @@ func Test_start_pipeline_task_svc_error(t *testing.T) {
 		tb.Pipeline(pipelineName, "foo",
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
-				tb.PipelineParam("pipeline-param", tb.PipelineParamDefault("somethingdifferent")),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -515,12 +515,12 @@ func Test_start_pipeline_task_svc_error(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{Pipelines: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
 
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
-	got, _ := tu.ExecuteCommand(pipeline, "start", pipelineName,
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--task-serviceaccount=task3svc3",
 		"-n=foo")
 
@@ -528,7 +528,7 @@ func Test_start_pipeline_task_svc_error(t *testing.T) {
 		"Please pass task service accounts as --task-serviceaccount" +
 		" TaskName=ServiceAccount\n"
 
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 }
 
 func Test_parseRes(t *testing.T) {
@@ -594,8 +594,16 @@ func Test_parseParam(t *testing.T) {
 			p: []string{"key1=value1", "key2=value2"},
 		},
 		want: map[string]v1alpha1.Param{
-			"key1": {Name: "key1", Value: "value1"},
-			"key2": {Name: "key2", Value: "value2"},
+			"key1": {Name: "key1", Value: v1alpha1.ArrayOrString{
+				Type:      v1alpha1.ParamTypeString,
+				StringVal: "value1",
+			},
+			},
+			"key2": {Name: "key2", Value: v1alpha1.ArrayOrString{
+				Type:      v1alpha1.ParamTypeString,
+				StringVal: "value2",
+			},
+			},
 		},
 		wantErr: false,
 	}, {
@@ -715,11 +723,11 @@ func Test_lastPipelineRun(t *testing.T) {
 			name: "lastPipelineRun Test No Err",
 			args: args{
 				pipeline: "test",
-				p: func() *tu.Params {
+				p: func() *test.Params {
 					clock.Advance(time.Duration(60) * time.Minute)
 
-					cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs})
-					p := &tu.Params{Tekton: cs.Pipeline, Clock: clock}
+					cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+					p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 					p.SetNamespace("namespace")
 					return p
 
@@ -732,9 +740,9 @@ func Test_lastPipelineRun(t *testing.T) {
 			name: "lastPipelineRun Test Err",
 			args: args{
 				pipeline: "test",
-				p: func() *tu.Params {
-					cs, _ := test.SeedTestData(t, test.Data{})
-					p := &tu.Params{Tekton: cs.Pipeline}
+				p: func() *test.Params {
+					cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+					p := &test.Params{Tekton: cs.Pipeline}
 					p.SetNamespace("namespace")
 					return p
 
@@ -752,7 +760,7 @@ func Test_lastPipelineRun(t *testing.T) {
 				t.Errorf("lastPipelineRun() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			} else if err == nil {
-				tu.AssertOutput(t, tt.want, got.Name)
+				test.AssertOutput(t, tt.want, got.Name)
 			}
 		})
 	}

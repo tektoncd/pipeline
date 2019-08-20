@@ -21,23 +21,23 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/helper/pods/fake"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
-	tu "github.com/tektoncd/cli/pkg/test"
+	"github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
-	"github.com/tektoncd/pipeline/test"
+	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestLog_no_pipelinerun_argument(t *testing.T) {
-	c := Command(&tu.Params{})
+	c := Command(&test.Params{})
 
-	_, err := tu.ExecuteCommand(c, "logs", "-n", "ns")
+	_, err := test.ExecuteCommand(c, "logs", "-n", "ns")
 
 	if err == nil {
 		t.Error("Expecting an error but it's empty")
@@ -56,13 +56,13 @@ func TestLog_missing_pipelinerun(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: pr})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: pr})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	_, err := tu.ExecuteCommand(c, "logs", "output-pipeline-2", "-n", "ns")
+	_, err := test.ExecuteCommand(c, "logs", "output-pipeline-2", "-n", "ns")
 	expected := "pipelineruns.tekton.dev \"output-pipeline-2\" not found"
-	tu.AssertOutput(t, expected, err.Error())
+	test.AssertOutput(t, expected, err.Error())
 }
 
 func TestPipelinerunLogs(t *testing.T) {
@@ -97,7 +97,7 @@ func TestPipelinerunLogs(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.PodName(tr1Pod),
 				tb.TaskRunStartTime(tr1StartTime),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -121,7 +121,7 @@ func TestPipelinerunLogs(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.PodName(tr2Pod),
 				tb.TaskRunStartTime(tr2StartTime),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -140,17 +140,6 @@ func TestPipelinerunLogs(t *testing.T) {
 		),
 	}
 
-	prtrs := map[string]*v1alpha1.PipelineRunTaskRunStatus{
-		tr1Name: {
-			PipelineTaskName: task1Name,
-			Status:           &trs[0].Status,
-		},
-		tr2Name: {
-			PipelineTaskName: task2Name,
-			Status:           &trs[1].Status,
-		},
-	}
-
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun(prName, ns,
 			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
@@ -159,9 +148,14 @@ func TestPipelinerunLogs(t *testing.T) {
 					Status: corev1.ConditionTrue,
 					Reason: resources.ReasonSucceeded,
 				}),
-				tb.PipelineRunTaskRunsStatus(
-					prtrs,
-				),
+				tb.PipelineRunTaskRunsStatus(tr1Name, &v1alpha1.PipelineRunTaskRunStatus{
+					PipelineTaskName: task1Name,
+					Status:           &trs[0].Status,
+				}),
+				tb.PipelineRunTaskRunsStatus(tr2Name, &v1alpha1.PipelineRunTaskRunStatus{
+					PipelineTaskName: task2Name,
+					Status:           &trs[1].Status,
+				}),
 			),
 		),
 	}
@@ -250,14 +244,14 @@ func TestPipelinerunLogs(t *testing.T) {
 
 	for _, s := range scenarios {
 		t.Run(s.name, func(t *testing.T) {
-			cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+			cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
 
 			prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogs), s.allSteps, false, s.tasks...)
 			output, _ := fetchLogs(prlo)
 
 			expected := strings.Join(s.expectedLogs, "\n") + "\n"
 
-			tu.AssertOutput(t, expected, output)
+			test.AssertOutput(t, expected, output)
 		})
 	}
 }
@@ -293,7 +287,7 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.PodName(tr1Pod),
 				tb.TaskRunStartTime(tr1StartTime),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -312,13 +306,6 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 		),
 	}
 
-	prtrs := map[string]*v1alpha1.PipelineRunTaskRunStatus{
-		tr1Name: {
-			PipelineTaskName: task1Name,
-			Status:           &trs[0].Status,
-		},
-	}
-
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun(prName, ns,
 			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
@@ -327,9 +314,10 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 					Status: corev1.ConditionTrue,
 					Reason: resources.ReasonRunning,
 				}),
-				tb.PipelineRunTaskRunsStatus(
-					prtrs,
-				),
+				tb.PipelineRunTaskRunsStatus(tr1Name, &v1alpha1.PipelineRunTaskRunStatus{
+					PipelineTaskName: task1Name,
+					Status:           &trs[0].Status,
+				}),
 			),
 		),
 	}
@@ -362,7 +350,7 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
 	prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogStream), false, false)
 	output, _ := fetchLogs(prlo)
 
@@ -372,7 +360,7 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
-	tu.AssertOutput(t, expected, output)
+	test.AssertOutput(t, expected, output)
 }
 
 func TestPipelinerunLog_follow_mode(t *testing.T) {
@@ -397,7 +385,7 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.PodName(tr1Pod),
 				tb.TaskRunStartTime(tr1StartTime),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -416,13 +404,6 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 		),
 	}
 
-	prtrs := map[string]*v1alpha1.PipelineRunTaskRunStatus{
-		tr1Name: {
-			PipelineTaskName: task1Name,
-			Status:           &trs[0].Status,
-		},
-	}
-
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun(prName, ns,
 			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
@@ -431,9 +412,10 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 					Status: corev1.ConditionTrue,
 					Reason: resources.ReasonRunning,
 				}),
-				tb.PipelineRunTaskRunsStatus(
-					prtrs,
-				),
+				tb.PipelineRunTaskRunsStatus(tr1Name, &v1alpha1.PipelineRunTaskRunStatus{
+					PipelineTaskName: task1Name,
+					Status:           &trs[0].Status,
+				}),
 			),
 		),
 	}
@@ -471,7 +453,7 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
 	prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogStream), false, true)
 	output, _ := fetchLogs(prlo)
 
@@ -484,11 +466,11 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
-	tu.AssertOutput(t, expected, output)
+	test.AssertOutput(t, expected, output)
 }
 
-func logOpts(name string, ns string, cs test.Clients, streamer stream.NewStreamerFunc, allSteps bool, follow bool, onlyTasks ...string) *LogOptions {
-	p := tu.Params{
+func logOpts(name string, ns string, cs pipelinetest.Clients, streamer stream.NewStreamerFunc, allSteps bool, follow bool, onlyTasks ...string) *LogOptions {
+	p := test.Params{
 		Kube:   cs.Kube,
 		Tekton: cs.Pipeline,
 	}

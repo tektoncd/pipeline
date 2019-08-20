@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package config
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -27,6 +28,7 @@ const (
 	// ConfigName is the name of the configmap
 	DefaultsConfigName       = "config-defaults"
 	DefaultTimeoutMinutes    = 60
+	NoTimeoutDuration        = 0 * time.Minute
 	defaultTimeoutMinutesKey = "default-timeout-minutes"
 )
 

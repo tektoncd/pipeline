@@ -18,7 +18,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/test"
+	rtesting "knative.dev/pkg/reconciler/testing"
 )
+
+func SeedTestData(t *testing.T, d test.Data) (test.Clients, test.Informers) {
+	ctx, _ := rtesting.SetupFakeContext(t)
+	return test.SeedTestData(t, ctx, d)
+}
 
 func AssertOutput(t *testing.T, expected, actual interface{}) {
 	t.Helper()

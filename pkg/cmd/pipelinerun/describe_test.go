@@ -20,19 +20,18 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestPipelineRunDescribe_not_found(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipelinerun := Command(p)
@@ -41,7 +40,7 @@ func TestPipelineRunDescribe_not_found(t *testing.T) {
 		t.Errorf("Expected error, did not get any")
 	}
 	expected := "Failed to find pipelinerun \"bar\""
-	tu.AssertOutput(t, expected, err.Error())
+	test.AssertOutput(t, expected, err.Error())
 }
 
 func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
@@ -52,7 +51,7 @@ func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
 				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -60,18 +59,16 @@ func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),
 				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
 				tb.PipelineRunSpec("pipeline"),
 				tb.PipelineRunStatus(
-					tb.PipelineRunTaskRunsStatus(map[string]*v1alpha1.PipelineRunTaskRunStatus{
-						"tr-1": {
-							PipelineTaskName: "t-1",
-							Status:           &trs[0].Status,
-						},
+					tb.PipelineRunTaskRunsStatus("tr-1", &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: "t-1",
+						Status:           &trs[0].Status,
 					}),
 					tb.PipelineRunStatusCondition(apis.Condition{
 						Status: corev1.ConditionTrue,
@@ -111,7 +108,7 @@ NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
 
-	tu.AssertOutput(t, expected, actual)
+	test.AssertOutput(t, expected, actual)
 }
 
 func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
@@ -122,7 +119,7 @@ func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
 				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -132,7 +129,7 @@ func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.TaskRunStartTime(clock.Now().Add(5*time.Minute)),
 				cb.TaskRunCompletionTime(clock.Now().Add(9*time.Minute)),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -140,22 +137,20 @@ func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),
 				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
 				tb.PipelineRunSpec("pipeline"),
 				tb.PipelineRunStatus(
-					tb.PipelineRunTaskRunsStatus(map[string]*v1alpha1.PipelineRunTaskRunStatus{
-						"tr-1": {
-							PipelineTaskName: "t-1",
-							Status:           &trs[0].Status,
-						},
-						"tr-2": {
-							PipelineTaskName: "t-2",
-							Status:           &trs[1].Status,
-						},
+					tb.PipelineRunTaskRunsStatus("tr-1", &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: "t-1",
+						Status:           &trs[0].Status,
+					}),
+					tb.PipelineRunTaskRunsStatus("tr-2", &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: "t-2",
+						Status:           &trs[0].Status,
 					}),
 					tb.PipelineRunStatusCondition(apis.Condition{
 						Status: corev1.ConditionTrue,
@@ -169,9 +164,8 @@ func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
 	})
 
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
-
 	pipelinerun := Command(p)
-	clock.Advance(10 * time.Minute)
+	clock.Advance(9 * time.Minute)
 	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -181,8 +175,8 @@ Namespace:      ns
 Pipeline Ref:   pipeline
 
 Status
-STARTED          DURATION     STATUS
-10 minutes ago   15 minutes   Succeeded
+STARTED         DURATION     STATUS
+9 minutes ago   15 minutes   Succeeded
 
 Resources
 No resources
@@ -192,8 +186,8 @@ No params
 
 Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
-tr-2   t-2         5 minutes ago   4 minutes   Succeeded
-tr-1   t-1         8 minutes ago   3 minutes   Succeeded
+tr-2   t-2         7 minutes ago   3 minutes   Succeeded
+tr-1   t-1         7 minutes ago   3 minutes   Succeeded
 `
 	if d := cmp.Diff(expected, actual); d != "" {
 		t.Errorf("Unexpected output mismatch: %s", d)
@@ -209,7 +203,7 @@ func TestPipelineRunDescribe_failed(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
 				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Status:  corev1.ConditionFalse,
 					Reason:  resources.ReasonFailed,
 					Message: "Testing tr failed",
@@ -218,7 +212,7 @@ func TestPipelineRunDescribe_failed(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),
@@ -227,11 +221,9 @@ func TestPipelineRunDescribe_failed(t *testing.T) {
 					tb.PipelineRunServiceAccount("test-sa"),
 				),
 				tb.PipelineRunStatus(
-					tb.PipelineRunTaskRunsStatus(map[string]*v1alpha1.PipelineRunTaskRunStatus{
-						"tr-1": {
-							PipelineTaskName: "t-1",
-							Status:           &trs[0].Status,
-						},
+					tb.PipelineRunTaskRunsStatus("tr-1", &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: "t-1",
+						Status:           &trs[0].Status,
 					}),
 					tb.PipelineRunStatusCondition(apis.Condition{
 						Status:  corev1.ConditionFalse,
@@ -276,7 +268,7 @@ NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Failed
 `
 
-	tu.AssertOutput(t, expected, actual)
+	test.AssertOutput(t, expected, actual)
 }
 
 func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
@@ -287,7 +279,7 @@ func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
 				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -295,7 +287,7 @@ func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),
@@ -308,11 +300,9 @@ func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
 					),
 				),
 				tb.PipelineRunStatus(
-					tb.PipelineRunTaskRunsStatus(map[string]*v1alpha1.PipelineRunTaskRunStatus{
-						"tr-1": {
-							PipelineTaskName: "t-1",
-							Status:           &trs[0].Status,
-						},
+					tb.PipelineRunTaskRunsStatus("tr-1", &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: "t-1",
+						Status:           &trs[0].Status,
 					}),
 					tb.PipelineRunStatusCondition(apis.Condition{
 						Status: corev1.ConditionTrue,
@@ -355,13 +345,13 @@ NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
 
-	tu.AssertOutput(t, expected, actual)
+	test.AssertOutput(t, expected, actual)
 }
 
 func TestPipelineRunDescribe_without_start_time(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		PipelineRuns: []*v1alpha1.PipelineRun{
 			tb.PipelineRun("pipeline-run", "ns",
 				cb.PipelineRunCreationTimestamp(clock.Now()),
@@ -398,5 +388,5 @@ Taskruns
 No taskruns
 `
 
-	tu.AssertOutput(t, expected, actual)
+	test.AssertOutput(t, expected, actual)
 }

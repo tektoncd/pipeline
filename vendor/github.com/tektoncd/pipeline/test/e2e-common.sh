@@ -123,7 +123,7 @@ function install_pipeline_crd() {
   ko apply -f config/ || fail_test "Build pipeline installation failed"
 
   # Make sure thateveything is cleaned up in the current namespace.
-  for res in pipelineresources tasks pipelines taskruns pipelineruns; do
+  for res in conditions pipelineresources tasks pipelines taskruns pipelineruns; do
     kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
   done
 

@@ -63,7 +63,11 @@ No params
 {{- else }}
 NAME	VALUE
 {{- range $i, $p := .PipelineRun.Spec.Params }}
-{{ $p.Name }}	{{ $p.Value }}
+{{- if eq $p.Value.Type "string" }}
+{{ $p.Name }}	{{ $p.Value.StringVal }}
+{{- else }}
+{{ $p.Name }}	{{ $p.Value.ArrayVal }}
+{{- end }}
 {{- end }}
 {{- end }}
 

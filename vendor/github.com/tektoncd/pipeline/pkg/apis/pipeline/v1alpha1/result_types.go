@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/knative/pkg/apis"
+	"knative.dev/pkg/apis"
 )
 
 // AllResultTargetTypes is a list of all ResultTargetTypes, used for validation

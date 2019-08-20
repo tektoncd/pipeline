@@ -19,14 +19,13 @@ import (
 	"testing"
 
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestPipelineResourceDescribe_Empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	res := Command(p)
@@ -35,7 +34,7 @@ func TestPipelineResourceDescribe_Empty(t *testing.T) {
 		t.Errorf("Error expected here")
 	}
 	expected := "Failed to find pipelineresource \"bar\""
-	tu.AssertOutput(t, expected, err.Error())
+	test.AssertOutput(t, expected, err.Error())
 }
 
 func TestPipelineResourceDescribe_WithParams(t *testing.T) {
@@ -47,7 +46,7 @@ func TestPipelineResourceDescribe_WithParams(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
 	p := &test.Params{Tekton: cs.Pipeline}
 	pipelineresource := Command(p)
 	out, _ := test.ExecuteCommand(pipelineresource, "desc", "test-1", "-n", "test-ns-1")
@@ -64,7 +63,7 @@ func TestPipelineResourceDescribe_WithParams(t *testing.T) {
 		"No secret params",
 		"",
 	}
-	tu.AssertOutput(t, strings.Join(expected, "\n"), out)
+	test.AssertOutput(t, strings.Join(expected, "\n"), out)
 }
 
 func TestPipelineResourceDescribe_WithSecretParams(t *testing.T) {
@@ -78,7 +77,7 @@ func TestPipelineResourceDescribe_WithSecretParams(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
 	p := &test.Params{Tekton: cs.Pipeline}
 	pipelineresource := Command(p)
 	out, _ := test.ExecuteCommand(pipelineresource, "desc", "test-1", "-n", "test-ns-1")
@@ -97,5 +96,5 @@ func TestPipelineResourceDescribe_WithSecretParams(t *testing.T) {
 		"githubToken   github-secrets",
 		"",
 	}
-	tu.AssertOutput(t, strings.Join(expected, "\n"), out)
+	test.AssertOutput(t, strings.Join(expected, "\n"), out)
 }

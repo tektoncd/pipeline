@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -69,16 +69,14 @@ func AddOutputImageDigestExporter(
 		}
 
 		if len(output) > 0 {
-			augmentedSteps := []corev1.Container{}
+			augmentedSteps := []v1alpha1.Step{}
 			imagesJSON, err := json.Marshal(output)
 			if err != nil {
 				return xerrors.Errorf("Failed to format image resource data for output image exporter: %w", err)
 			}
 
-			for _, s := range taskSpec.Steps {
-				augmentedSteps = append(augmentedSteps, s)
-				augmentedSteps = append(augmentedSteps, imageDigestExporterContainer(s.Name, imagesJSON))
-			}
+			augmentedSteps = append(augmentedSteps, taskSpec.Steps...)
+			augmentedSteps = append(augmentedSteps, imageDigestExporterStep(imagesJSON))
 
 			taskSpec.Steps = augmentedSteps
 		}
@@ -97,9 +95,9 @@ func UpdateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent
 	return nil
 }
 
-func imageDigestExporterContainer(stepName string, imagesJSON []byte) corev1.Container {
-	return corev1.Container{
-		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("image-digest-exporter-" + stepName),
+func imageDigestExporterStep(imagesJSON []byte) v1alpha1.Step {
+	return v1alpha1.Step{Container: corev1.Container{
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("image-digest-exporter"),
 		Image:   *imageDigestExporterImage,
 		Command: []string{"/ko-app/imagedigestexporter"},
 		Args: []string{
@@ -108,7 +106,7 @@ func imageDigestExporterContainer(stepName string, imagesJSON []byte) corev1.Con
 		},
 		TerminationMessagePath:   TerminationMessagePath,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-	}
+	}}
 }
 
 // TaskRunHasOutputImageResource return true if the task has any output resources of type image

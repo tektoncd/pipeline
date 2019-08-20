@@ -1,11 +1,14 @@
 // +build e2e
 
 /*
-Copyright 2019 Tekton Authors LLC
+Copyright 2019 The Tekton Authors
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,10 +23,10 @@ import (
 	"os"
 	"testing"
 
-	knativetest "github.com/knative/pkg/test"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	knativetest "knative.dev/pkg/test"
 )
 
 // CreateGCPServiceAccountSecret will create a kube secret called secretName in namespace

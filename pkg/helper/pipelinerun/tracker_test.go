@@ -18,17 +18,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/knative/pkg/apis"
 	trh "github.com/tektoncd/cli/pkg/helper/taskrun"
+	"github.com/tektoncd/cli/pkg/test"
 	clitest "github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
-	"github.com/tektoncd/pipeline/test"
+	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	k8stest "k8s.io/client-go/testing"
+	"knative.dev/pkg/apis"
 )
 
 func TestTracker_pipelinerun_complete(t *testing.T) {
@@ -99,13 +100,6 @@ func TestTracker_pipelinerun_complete(t *testing.T) {
 			),
 		}
 
-		initialTRStatus := map[string]*v1alpha1.PipelineRunTaskRunStatus{
-			tr1Name: {
-				PipelineTaskName: task1Name,
-				Status:           &taskruns[0].Status,
-			},
-		}
-
 		initialPR := []*v1alpha1.PipelineRun{
 			tb.PipelineRun(prName, ns,
 				tb.PipelineRunLabel("tekton.dev/pipeline", prName),
@@ -114,48 +108,37 @@ func TestTracker_pipelinerun_complete(t *testing.T) {
 						Status: corev1.ConditionUnknown,
 						Reason: resources.ReasonRunning,
 					}),
-					tb.PipelineRunTaskRunsStatus(
-						initialTRStatus,
-					),
+					tb.PipelineRunTaskRunsStatus(tr1Name, &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: task1Name,
+						Status:           &taskruns[0].Status,
+					}),
 				),
 			),
 		}
 
-		finalTRStatus := map[string]*v1alpha1.PipelineRunTaskRunStatus{
-			tr1Name: {
+		prStatusFn := tb.PipelineRunStatus(
+			tb.PipelineRunStatusCondition(apis.Condition{
+				Status: corev1.ConditionTrue,
+				Reason: resources.ReasonSucceeded,
+			}),
+			tb.PipelineRunTaskRunsStatus(tr1Name, &v1alpha1.PipelineRunTaskRunStatus{
 				PipelineTaskName: task1Name,
 				Status:           &taskruns[0].Status,
-			},
-			tr2Name: {
+			}),
+			tb.PipelineRunTaskRunsStatus(tr2Name, &v1alpha1.PipelineRunTaskRunStatus{
 				PipelineTaskName: task2Name,
 				Status:           &taskruns[1].Status,
-			},
-		}
+			}),
+		)
+		pr := &v1alpha1.PipelineRun{}
+		prStatusFn(pr)
 
-		finalPRStatus := prStatus(corev1.ConditionTrue, resources.ReasonSucceeded, finalTRStatus)
-
-		tc := startPipelineRun(t, test.Data{PipelineRuns: initialPR, TaskRuns: taskruns}, finalPRStatus)
+		tc := startPipelineRun(t, pipelinetest.Data{PipelineRuns: initialPR, TaskRuns: taskruns}, pr.Status)
 		tracker := NewTracker(pipelineName, ns, tc)
 		output := taskRunsFor(s.tasks, tracker)
 
 		clitest.AssertOutput(t, s.expected, output)
 	}
-}
-
-func prStatus(status corev1.ConditionStatus, reason string, trStatus map[string]*v1alpha1.PipelineRunTaskRunStatus) v1alpha1.PipelineRunStatus {
-	s := tb.PipelineRunStatus(
-		tb.PipelineRunStatusCondition(apis.Condition{
-			Status: status,
-			Reason: reason,
-		}),
-		tb.PipelineRunTaskRunsStatus(
-			trStatus,
-		),
-	)
-
-	pr := &v1alpha1.PipelineRun{}
-	s(pr)
-	return pr.Status
 }
 
 func taskRunsFor(onlyTasks []string, tracker *Tracker) []trh.Run {
@@ -166,7 +149,7 @@ func taskRunsFor(onlyTasks []string, tracker *Tracker) []trh.Run {
 	return output
 }
 
-func startPipelineRun(t *testing.T, data test.Data, prStatus ...v1alpha1.PipelineRunStatus) versioned.Interface {
+func startPipelineRun(t *testing.T, data pipelinetest.Data, prStatus ...v1alpha1.PipelineRunStatus) versioned.Interface {
 	cs, _ := test.SeedTestData(t, data)
 
 	// to keep pushing the taskrun over the period(simulate watch)

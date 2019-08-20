@@ -22,17 +22,16 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/Netflix/go-expect"
 
-	tu "github.com/tektoncd/cli/pkg/test"
+	"github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 func init() {
@@ -48,70 +47,70 @@ var (
 )
 
 func TestLogs_no_pipeline(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
 		}})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	out, err := tu.ExecuteCommand(c, "logs", "-n", "ns")
+	out, err := test.ExecuteCommand(c, "logs", "-n", "ns")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 	expected := "No pipelines found in namespace: ns\n"
-	tu.AssertOutput(t, expected, out)
+	test.AssertOutput(t, expected, out)
 }
 
 func TestLogs_no_runs(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
 		}})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	out, err := tu.ExecuteCommand(c, "logs", pipelineName, "-n", ns)
+	out, err := test.ExecuteCommand(c, "logs", pipelineName, "-n", ns)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 	expected := "No pipelineruns found for pipeline: output-pipeline\n"
-	tu.AssertOutput(t, expected, out)
+	test.AssertOutput(t, expected, out)
 }
 
 func TestLogs_wrong_pipeline(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
 		}})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	_, err := tu.ExecuteCommand(c, "logs", "pipeline", "-n", ns)
+	_, err := test.ExecuteCommand(c, "logs", "pipeline", "-n", ns)
 
 	expected := "pipelines.tekton.dev \"pipeline\" not found"
-	tu.AssertOutput(t, expected, err.Error())
+	test.AssertOutput(t, expected, err.Error())
 }
 
 func TestLogs_wrong_run(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
 		}})
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	_, err := tu.ExecuteCommand(c, "logs", "pipeline", "pipelinerun", "-n", "ns")
+	_, err := test.ExecuteCommand(c, "logs", "pipeline", "pipelinerun", "-n", "ns")
 
 	expected := "pipelineruns.tekton.dev \"pipelinerun\" not found"
-	tu.AssertOutput(t, expected, err.Error())
+	test.AssertOutput(t, expected, err.Error())
 }
 
 func TestLogs_interactive_get_all_inputs(t *testing.T) {
 
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns,
 				// created  15 minutes back
@@ -222,7 +221,7 @@ func TestLogs_interactive_get_all_inputs(t *testing.T) {
 func TestLogs_interactive_ask_runs(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns,
 				// created  15 minutes back
@@ -306,8 +305,8 @@ func TestLogs_interactive_ask_runs(t *testing.T) {
 	}
 }
 
-func logOpts(name string, ns string, cs test.Clients) *logOptions {
-	p := tu.Params{
+func logOpts(name string, ns string, cs pipelinetest.Clients) *logOptions {
+	p := test.Params{
 		Kube:   cs.Kube,
 		Tekton: cs.Pipeline,
 	}

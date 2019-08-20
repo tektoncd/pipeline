@@ -7,10 +7,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
+	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -21,7 +20,7 @@ import (
 
 func TestPipelinesList_empty(t *testing.T) {
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
@@ -29,7 +28,7 @@ func TestPipelinesList_empty(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	tu.AssertOutput(t, "No pipelines\n", output)
+	test.AssertOutput(t, "No pipelines\n", output)
 }
 
 func TestPipelineList_only_pipelines(t *testing.T) {
@@ -66,7 +65,7 @@ func TestPipelineList_only_pipelines(t *testing.T) {
 func TestPipelinesList_with_single_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back
@@ -142,7 +141,7 @@ func TestPipelinesList_latest_run(t *testing.T) {
 		secondRunCompleted = secondRunStarted.Add(runDuration) // takes less thus completes
 	)
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back
@@ -217,5 +216,5 @@ func seedPipelines(t *testing.T, clock clockwork.Clock, ps []pipelineDetails, ns
 		)
 	}
 
-	return pipelinetest.SeedTestData(t, pipelinetest.Data{Pipelines: pipelines})
+	return test.SeedTestData(t, pipelinetest.Data{Pipelines: pipelines})
 }

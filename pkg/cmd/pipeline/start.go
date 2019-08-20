@@ -292,8 +292,11 @@ func parseParam(p []string) (map[string]v1alpha1.Param, error) {
 			return nil, errors.New(errMsg)
 		}
 		params[r[0]] = v1alpha1.Param{
-			Name:  r[0],
-			Value: r[1],
+			Name: r[0],
+			Value: v1alpha1.ArrayOrString{
+				Type:      v1alpha1.ParamTypeString,
+				StringVal: r[1],
+			},
 		}
 	}
 	return params, nil

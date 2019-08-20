@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -138,13 +138,9 @@ func (s ClusterResource) String() string {
 	return string(json)
 }
 
-func (s *ClusterResource) GetUploadContainerSpec() ([]corev1.Container, error) {
-	return nil, nil
-}
+func (s *ClusterResource) GetUploadSteps(string) ([]Step, error) { return nil, nil }
 
-func (s *ClusterResource) SetDestinationDirectory(path string) {
-}
-func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
+func (s *ClusterResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 	var envVars []corev1.EnvVar
 	for _, sec := range s.Secrets {
 		ev := corev1.EnvVar{
@@ -160,8 +156,7 @@ func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error)
 		}
 		envVars = append(envVars, ev)
 	}
-
-	clusterContainer := corev1.Container{
+	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("kubeconfig"),
 		Image:   *kubeconfigWriterImage,
 		Command: []string{"/ko-app/kubeconfigwriter"},
@@ -169,7 +164,8 @@ func (s *ClusterResource) GetDownloadContainerSpec() ([]corev1.Container, error)
 			"-clusterConfig", s.String(),
 		},
 		Env: envVars,
-	}
-
-	return []corev1.Container{clusterContainer}, nil
+	}}}, nil
 }
+
+func (s *ClusterResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error)   { return nil, nil }
+func (s *ClusterResource) GetDownloadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }

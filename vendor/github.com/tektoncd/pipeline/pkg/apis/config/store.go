@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package config
 import (
 	"context"
 
-	"github.com/knative/pkg/configmap"
+	"knative.dev/pkg/configmap"
 )
 
 type cfgKey struct{}

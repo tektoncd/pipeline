@@ -22,7 +22,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
@@ -30,7 +29,7 @@ import (
 )
 
 func TestTaskList_Empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	task := Command(p)
@@ -38,7 +37,7 @@ func TestTaskList_Empty(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	tu.AssertOutput(t, emptyMsg+"\n", output)
+	test.AssertOutput(t, emptyMsg+"\n", output)
 }
 
 func TestTaskListOnlyTasks(t *testing.T) {
@@ -49,7 +48,7 @@ func TestTaskListOnlyTasks(t *testing.T) {
 		tb.Task("bananas", "namespace", cb.TaskCreationTime(clock.Now().Add(-512*time.Hour))),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 
 	task := Command(p)

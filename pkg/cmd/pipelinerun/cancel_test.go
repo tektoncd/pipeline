@@ -4,8 +4,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/test"
+	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stest "k8s.io/client-go/testing"
@@ -30,7 +31,7 @@ func Test_cancel_pipelinerun(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pRun := Command(p)
@@ -44,7 +45,7 @@ func Test_cancel_pipelinerun_not_found(t *testing.T) {
 
 	prName := "test-pipeline-run-123"
 
-	cs, _ := test.SeedTestData(t, test.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pRun := Command(p)
@@ -72,7 +73,7 @@ func Test_cancel_pipelinerun_client_err(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, test.Data{PipelineRuns: prs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	cs.Pipeline.PrependReactor("update", "pipelineruns", func(action k8stest.Action) (bool, runtime.Object, error) {

@@ -21,19 +21,18 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestPipelineDescribe_Empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	pipeline := Command(p)
@@ -42,13 +41,13 @@ func TestPipelineDescribe_Empty(t *testing.T) {
 		t.Errorf("Error expected here")
 	}
 	expected := "pipelines.tekton.dev \"bar\" not found"
-	tu.AssertOutput(t, expected, err.Error())
+	test.AssertOutput(t, expected, err.Error())
 }
 
 func TestPipelinesDescribe_with_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back
@@ -109,7 +108,7 @@ func TestPipelinesDescribe_with_run(t *testing.T) {
 func TestPipelinesDescribe_with_task_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back
@@ -175,7 +174,7 @@ func TestPipelinesDescribe_with_task_run(t *testing.T) {
 func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline("pipeline", "ns",
 				// created  5 minutes back

@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,7 +42,6 @@ type PullRequestResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
 
-	DestinationDir string `json:"destinationDir"`
 	// GitHub URL pointing to the pull request.
 	// Example: https://github.com/owner/repo/pulls/1
 	URL string `json:"url"`
@@ -94,16 +93,15 @@ func (s *PullRequestResource) Replacements() map[string]string {
 	}
 }
 
-func (s *PullRequestResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
-	return s.getContainerSpec("download")
+func (s *PullRequestResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
+	return s.getSteps("download", sourcePath)
+}
+func (s *PullRequestResource) GetUploadSteps(sourcePath string) ([]Step, error) {
+	return s.getSteps("upload", sourcePath)
 }
 
-func (s *PullRequestResource) GetUploadContainerSpec() ([]corev1.Container, error) {
-	return s.getContainerSpec("upload")
-}
-
-func (s *PullRequestResource) getContainerSpec(mode string) ([]corev1.Container, error) {
-	args := []string{"-url", s.URL, "-path", s.DestinationDir, "-mode", mode}
+func (s *PullRequestResource) getSteps(mode string, sourcePath string) ([]Step, error) {
+	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
 
 	evs := []corev1.EnvVar{}
 	for _, sec := range s.Secrets {
@@ -124,17 +122,20 @@ func (s *PullRequestResource) getContainerSpec(mode string) ([]corev1.Container,
 		}
 	}
 
-	return []corev1.Container{{
+	return []Step{{Container: corev1.Container{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(prSource + "-" + s.Name),
 		Image:      *prImage,
 		Command:    []string{"/ko-app/pullrequest-init"},
 		Args:       args,
 		WorkingDir: WorkspaceDir,
 		Env:        evs,
-	}}, nil
+	}}}, nil
 }
 
-// SetDestinationDirectory sets the destination directory at runtime like where is the resource going to be copied to
-func (s *PullRequestResource) SetDestinationDirectory(dir string) {
-	s.DestinationDir = dir
+func (s *PullRequestResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
+}
+
+func (s *PullRequestResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return nil, nil
 }

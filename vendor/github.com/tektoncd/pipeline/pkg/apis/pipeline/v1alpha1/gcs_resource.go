@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,11 +35,10 @@ var (
 // GCSResource is a GCS endpoint from which to get artifacts which is required
 // by a Build/Task for context (e.g. a archive from which to build an image).
 type GCSResource struct {
-	Name           string               `json:"name"`
-	Type           PipelineResourceType `json:"type"`
-	Location       string               `json:"location"`
-	TypeDir        bool                 `json:"typeDir"`
-	DestinationDir string               `json:"destinationDir"`
+	Name     string               `json:"name"`
+	Type     PipelineResourceType `json:"type"`
+	Location string               `json:"location"`
+	TypeDir  bool                 `json:"typeDir"`
 	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
 }
@@ -95,58 +94,60 @@ func (s *GCSResource) Replacements() map[string]string {
 		"name":     s.Name,
 		"type":     string(s.Type),
 		"location": s.Location,
-		"path":     s.DestinationDir,
 	}
 }
 
-// SetDestinationDirectory sets the destination directory at runtime like where is the resource going to be copied to
-func (s *GCSResource) SetDestinationDirectory(destDir string) { s.DestinationDir = destDir }
-
-// GetUploadContainerSpec gets container spec for gcs resource to be uploaded like
+// GetUploadSteps gets container spec for gcs resource to be uploaded like
 // set environment variable from secret params and set volume mounts for those secrets
-func (s *GCSResource) GetUploadContainerSpec() ([]corev1.Container, error) {
-	if s.DestinationDir == "" {
-		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set: %s", s.Name)
-	}
+func (s *GCSResource) GetUploadSteps(sourcePath string) ([]Step, error) {
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.DestinationDir, s.Location)}
+		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", sourcePath, s.Location)}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(s.DestinationDir, "*"), s.Location)}
+		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(sourcePath, "*"), s.Location)}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
-	return []corev1.Container{{
+	return []Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        *gsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
 		Env:          envVars,
-	}}, nil
+	}}}, nil
 }
 
-// GetDownloadContainerSpec returns an array of container specs to download gcs storage object
-func (s *GCSResource) GetDownloadContainerSpec() ([]corev1.Container, error) {
-	if s.DestinationDir == "" {
+// GetDownloadSteps returns an array of container specs to download gcs storage object
+func (s *GCSResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
+	if sourcePath == "" {
 		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.Location, s.DestinationDir)}
+		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.Location, sourcePath)}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, s.DestinationDir)}
+		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, sourcePath)}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
-	return []corev1.Container{
-		CreateDirContainer(s.Name, s.DestinationDir), {
+	return []Step{
+		CreateDirStep(s.Name, sourcePath),
+		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        *gsutilImage,
 			Command:      []string{"/ko-app/gsutil"},
 			Args:         args,
 			Env:          envVars,
 			VolumeMounts: secretVolumeMount,
-		}}, nil
+		}}}, nil
+}
+
+func (s *GCSResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return getStorageUploadVolumeSpec(s, spec)
+}
+
+func (s *GCSResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
+	return getStorageUploadVolumeSpec(s, spec)
 }

@@ -1,9 +1,12 @@
 /*
 Copyright 2019 The Tekton Authors
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,12 +19,12 @@ package builder
 import (
 	"time"
 
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 // TaskOp is an operation which modify a Task struct.
@@ -38,9 +41,6 @@ type InputsOp func(*v1alpha1.Inputs)
 
 // OutputsOp is an operation which modify an Outputs struct.
 type OutputsOp func(*v1alpha1.Outputs)
-
-// TaskParamOp is an operation which modify a ParamSpec struct.
-type TaskParamOp func(*v1alpha1.ParamSpec)
 
 // TaskRunOp is an operation which modify a TaskRun struct.
 type TaskRunOp func(*v1alpha1.TaskRun)
@@ -138,19 +138,19 @@ func TaskSpec(ops ...TaskSpecOp) TaskOp {
 
 // Step adds a step with the specified name and image to the TaskSpec.
 // Any number of Container modifier can be passed to transform it.
-func Step(name, image string, ops ...ContainerOp) TaskSpecOp {
+func Step(name, image string, ops ...StepOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
 		if spec.Steps == nil {
-			spec.Steps = []corev1.Container{}
+			spec.Steps = []v1alpha1.Step{}
 		}
-		step := &corev1.Container{
+		step := v1alpha1.Step{Container: corev1.Container{
 			Name:  name,
 			Image: image,
-		}
+		}}
 		for _, op := range ops {
-			op(step)
+			op(&step)
 		}
-		spec.Steps = append(spec.Steps, *step)
+		spec.Steps = append(spec.Steps, step)
 	}
 }
 
@@ -158,24 +158,10 @@ func Step(name, image string, ops ...ContainerOp) TaskSpecOp {
 func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
 		base := &corev1.Container{}
-
 		for _, op := range ops {
 			op(base)
 		}
 		spec.StepTemplate = base
-	}
-}
-
-// TaskContainerTemplate adds the deprecated (#977) base container for
-// all steps in the task. ContainerTemplate is now StepTemplate.
-func TaskContainerTemplate(ops ...ContainerOp) TaskSpecOp {
-	return func(spec *v1alpha1.TaskSpec) {
-		base := &corev1.Container{}
-
-		for _, op := range ops {
-			op(base)
-		}
-		spec.ContainerTemplate = base
 	}
 }
 
@@ -249,29 +235,15 @@ func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) Ou
 	}
 }
 
-// InputsParam adds a param, with specified name, to the Inputs.
-// Any number of ParamSpec modifier can be passed to transform it.
-func InputsParam(name string, ops ...TaskParamOp) InputsOp {
+// InputsParamSpec adds a ParamSpec, with specified name and type, to the Inputs.
+// Any number of TaskParamSpec modifier can be passed to transform it.
+func InputsParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) InputsOp {
 	return func(i *v1alpha1.Inputs) {
-		tp := &v1alpha1.ParamSpec{Name: name}
+		ps := &v1alpha1.ParamSpec{Name: name, Type: pt}
 		for _, op := range ops {
-			op(tp)
+			op(ps)
 		}
-		i.Params = append(i.Params, *tp)
-	}
-}
-
-// ParamDescripiton sets the description to the ParamSpec.
-func ParamDescription(desc string) TaskParamOp {
-	return func(tp *v1alpha1.ParamSpec) {
-		tp.Description = desc
-	}
-}
-
-// ParamDefault sets the default value to the ParamSpec.
-func ParamDefault(value string) TaskParamOp {
-	return func(tp *v1alpha1.ParamSpec) {
-		tp.Default = value
+		i.Params = append(i.Params, *ps)
 	}
 }
 
@@ -311,8 +283,8 @@ func PodName(name string) TaskRunStatusOp {
 	}
 }
 
-// Condition adds a Condition to the TaskRunStatus.
-func Condition(condition apis.Condition) TaskRunStatusOp {
+// StatusCondition adds a StatusCondition to the TaskRunStatus.
+func StatusCondition(condition apis.Condition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
 		s.Conditions = append(s.Conditions, condition)
 	}
@@ -509,11 +481,12 @@ func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
 }
 
 // TaskRunInputsParam add a param, with specified name and value, to the TaskRunInputs.
-func TaskRunInputsParam(name, value string) TaskRunInputsOp {
+func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunInputsOp {
+	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(i *v1alpha1.TaskRunInputs) {
 		i.Params = append(i.Params, v1alpha1.Param{
 			Name:  name,
-			Value: value,
+			Value: *arrayOrString,
 		})
 	}
 }

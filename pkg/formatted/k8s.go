@@ -1,12 +1,12 @@
 package formatted
 
 import (
-	"github.com/knative/pkg/apis"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis/duck/v1beta1"
 )
 
 // Condition returns a human readable text based on the status of the Condition
-func Condition(c []apis.Condition) string {
+func Condition(c v1beta1.Conditions) string {
 
 	var status string
 	if len(c) == 0 {

@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,14 +17,12 @@ limitations under the License.
 package resources
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -91,57 +89,44 @@ func AddOutputResources(
 		if !ok || resource == nil {
 			return nil, xerrors.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)
 		}
-		var (
-			resourceContainers []corev1.Container
-			resourceVolumes    []corev1.Volume
-		)
+
 		// if resource is declared in input then copy outputs to pvc
 		// To build copy step it needs source path(which is targetpath of input resourcemap) from task input source
 		sourcePath := inputResourceMap[boundResource.Name]
-		if sourcePath == "" {
+		if sourcePath != "" {
+			logger.Warn(`This task uses the same resource as an input and output. The behavior of this will change in a future release.
+		See https://github.com/tektoncd/pipeline/issues/1118 for more information.`)
+		} else {
 			if output.TargetPath == "" {
 				sourcePath = filepath.Join(outputDir, boundResource.Name)
 			} else {
 				sourcePath = output.TargetPath
 			}
 		}
-		resource.SetDestinationDirectory(sourcePath)
-		switch resource.GetType() {
-		case v1alpha1.PipelineResourceTypeStorage:
-			{
-				storageResource, ok := resource.(v1alpha1.PipelineStorageResourceInterface)
-				if !ok {
-					return nil, xerrors.Errorf("task %q invalid storage Pipeline Resource: %q",
-						taskName,
-						boundResource.ResourceRef.Name,
-					)
-				}
-				resourceContainers, resourceVolumes, err = addStoreUploadStep(taskSpec, storageResource)
-				if err != nil {
-					return nil, xerrors.Errorf("task %q invalid Pipeline Resource: %q; invalid upload steps err: %w",
-						taskName, boundResource.ResourceRef.Name, err)
-				}
-			}
-		default:
-			{
-				resourceContainers, err = resource.GetUploadContainerSpec()
-				if err != nil {
-					return nil, xerrors.Errorf("task %q invalid download spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
-				}
-			}
+
+		resourceSteps, err := resource.GetUploadSteps(sourcePath)
+		if err != nil {
+			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
+		}
+
+		resourceVolumes, err := resource.GetUploadVolumeSpec(taskSpec)
+		if err != nil {
+			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
 		}
 
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
-			var newSteps []corev1.Container
+			var newSteps []v1alpha1.Step
 			for _, dPath := range boundResource.Paths {
-				containers := as.GetCopyToStorageFromContainerSpec(resource.GetName(), sourcePath, dPath)
-				newSteps = append(newSteps, containers...)
+				newSteps = append(newSteps, as.GetCopyToStorageFromSteps(resource.GetName(), sourcePath, dPath)...)
 			}
-			resourceContainers = append(resourceContainers, newSteps...)
+			resourceSteps = append(resourceSteps, newSteps...)
 			resourceVolumes = append(resourceVolumes, as.GetSecretsVolumes()...)
 		}
 
-		taskSpec.Steps = append(taskSpec.Steps, resourceContainers...)
+		// Add containers to mkdir each output directory. This should run before the build steps themselves.
+		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(boundResource.Name, sourcePath)}
+		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
+		taskSpec.Steps = append(taskSpec.Steps, resourceSteps...)
 		taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
 
 		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
@@ -159,40 +144,4 @@ func AddOutputResources(
 		}
 	}
 	return taskSpec, nil
-}
-
-func addStoreUploadStep(spec *v1alpha1.TaskSpec,
-	storageResource v1alpha1.PipelineStorageResourceInterface,
-) ([]corev1.Container, []corev1.Volume, error) {
-
-	gcsContainers, err := storageResource.GetUploadContainerSpec()
-	if err != nil {
-		return nil, nil, err
-	}
-	var storageVol []corev1.Volume
-	mountedSecrets := map[string]string{}
-
-	for _, volume := range spec.Volumes {
-		mountedSecrets[volume.Name] = ""
-	}
-
-	// Map holds list of secrets that are mounted as volumes
-	for _, secretParam := range storageResource.GetSecretParams() {
-		volName := fmt.Sprintf("volume-%s-%s", storageResource.GetName(), secretParam.SecretName)
-
-		gcsSecretVolume := corev1.Volume{
-			Name: volName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: secretParam.SecretName,
-				},
-			},
-		}
-
-		if _, ok := mountedSecrets[volName]; !ok {
-			storageVol = append(storageVol, gcsSecretVolume)
-			mountedSecrets[volName] = ""
-		}
-	}
-	return gcsContainers, storageVol, nil
 }

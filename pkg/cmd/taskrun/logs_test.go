@@ -21,24 +21,24 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/helper/pods/fake"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
-	tu "github.com/tektoncd/cli/pkg/test"
+	"github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/test"
+	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	k8stest "k8s.io/client-go/testing"
+	"knative.dev/pkg/apis"
 )
 
 func TestLog_no_taskrun_arg(t *testing.T) {
-	c := Command(&tu.Params{})
+	c := Command(&test.Params{})
 
-	_, err := tu.ExecuteCommand(c, "logs", "-n", "ns")
+	_, err := test.ExecuteCommand(c, "logs", "-n", "ns")
 	if err == nil {
 		t.Error("Expecting an error but it's empty")
 	}
@@ -48,15 +48,15 @@ func TestLog_missing_taskrun(t *testing.T) {
 	tr := []*v1alpha1.TaskRun{
 		tb.TaskRun("output-taskrun-1", "ns"),
 	}
-	cs, _ := test.SeedTestData(t, test.Data{TaskRuns: tr})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: tr})
 	watcher := watch.NewFake()
 	cs.Kube.PrependWatchReactor("pods", k8stest.DefaultWatchReactor(watcher, nil))
-	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	got, _ := tu.ExecuteCommand(c, "logs", "output-taskrun-2", "-n", "ns")
+	got, _ := test.ExecuteCommand(c, "logs", "output-taskrun-2", "-n", "ns")
 	expected := "Error: " + msgTRNotFoundErr + " : taskruns.tekton.dev \"output-taskrun-2\" not found\n"
-	tu.AssertOutput(t, expected, got)
+	test.AssertOutput(t, expected, got)
 }
 
 func TestLog_taskrun_logs(t *testing.T) {
@@ -75,7 +75,7 @@ func TestLog_taskrun_logs(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.PodName(trPod),
 				tb.TaskRunStartTime(trStartTime),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -112,7 +112,7 @@ func TestLog_taskrun_logs(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, test.Data{TaskRuns: trs, Pods: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: ps})
 	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, false)
 	output, _ := fetchLogs(trlo)
 
@@ -122,7 +122,7 @@ func TestLog_taskrun_logs(t *testing.T) {
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
-	tu.AssertOutput(t, expected, output)
+	test.AssertOutput(t, expected, output)
 }
 
 func TestLog_taskrun_all_steps(t *testing.T) {
@@ -145,7 +145,7 @@ func TestLog_taskrun_all_steps(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.PodName(trPod),
 				tb.TaskRunStartTime(trStartTime),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -189,7 +189,7 @@ func TestLog_taskrun_all_steps(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, test.Data{TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p})
 
 	trl := logOpts(trName, ns, cs, fake.Streamer(logs), true, false)
 	output, _ := fetchLogs(trl)
@@ -202,7 +202,7 @@ func TestLog_taskrun_all_steps(t *testing.T) {
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
-	tu.AssertOutput(t, expected, output)
+	test.AssertOutput(t, expected, output)
 }
 
 func TestLog_taskrun_follow_mode(t *testing.T) {
@@ -224,7 +224,7 @@ func TestLog_taskrun_follow_mode(t *testing.T) {
 			tb.TaskRunStatus(
 				tb.PodName(trPod),
 				tb.TaskRunStartTime(trStartTime),
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}),
@@ -268,7 +268,7 @@ func TestLog_taskrun_follow_mode(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, test.Data{TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p})
 
 	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, true)
 	output, _ := fetchLogs(trlo)
@@ -279,11 +279,11 @@ func TestLog_taskrun_follow_mode(t *testing.T) {
 	}
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
-	tu.AssertOutput(t, expected, output)
+	test.AssertOutput(t, expected, output)
 }
 
-func logOpts(run, ns string, cs test.Clients, streamer stream.NewStreamerFunc, allSteps bool, follow bool) *LogOptions {
-	p := tu.Params{
+func logOpts(run, ns string, cs pipelinetest.Clients, streamer stream.NewStreamerFunc, allSteps bool, follow bool) *LogOptions {
+	p := test.Params{
 		Kube:   cs.Kube,
 		Tekton: cs.Pipeline,
 	}

@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,5 +35,14 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 				}
 			}
 		}
+	}
+	if ts.Inputs != nil {
+		ts.Inputs.SetDefaults(ctx)
+	}
+}
+
+func (inputs *Inputs) SetDefaults(ctx context.Context) {
+	for i := range inputs.Params {
+		inputs.Params[i].SetDefaults(ctx)
 	}
 }

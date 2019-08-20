@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,13 +48,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/knative/pkg/apis"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"knative.dev/pkg/apis"
 )
 
 const (

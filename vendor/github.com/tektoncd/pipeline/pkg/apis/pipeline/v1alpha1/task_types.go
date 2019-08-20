@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,9 +18,8 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/knative/pkg/apis"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func (t *Task) TaskSpec() TaskSpec {
@@ -48,7 +47,7 @@ type TaskSpec struct {
 
 	// Steps are the steps of the build; each step is run sequentially with the
 	// source mounted into /workspace.
-	Steps []corev1.Container `json:"steps,omitempty"`
+	Steps []Step `json:"steps,omitempty"`
 
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
@@ -57,10 +56,12 @@ type TaskSpec struct {
 	// StepTemplate can be used as the basis for all step containers within the
 	// Task, so that the steps inherit settings on the base container.
 	StepTemplate *corev1.Container `json:"stepTemplate,omitempty"`
+}
 
-	// ContainerTemplate is the deprecated previous name of the StepTemplate
-	// field (#977).
-	ContainerTemplate *corev1.Container `json:"containerTemplate,omitempty"`
+// Step embeds the Container type, which allows it to include fields not
+// provided by Container.
+type Step struct {
+	corev1.Container
 }
 
 // Check that Task may be validated and defaulted.

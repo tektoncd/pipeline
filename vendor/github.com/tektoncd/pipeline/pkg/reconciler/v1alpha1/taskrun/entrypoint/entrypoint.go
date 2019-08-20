@@ -105,15 +105,14 @@ func AddCopyStep(spec *v1alpha1.TaskSpec) {
 		Args:         []string{"-c", fmt.Sprintf("cp /ko-app/entrypoint %s", BinaryLocation)},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
-	spec.Steps = append([]corev1.Container{cp}, spec.Steps...)
-
+	spec.Steps = append([]v1alpha1.Step{{Container: cp}}, spec.Steps...)
 }
 
 // RedirectSteps will modify each of the steps/containers such that
 // the binary being run is no longer the one specified by the Command
 // and the Args, but is instead the entrypoint binary, which will
 // itself invoke the Command and Args, but also capture logs.
-func RedirectSteps(cache *Cache, steps []corev1.Container, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun, logger *zap.SugaredLogger) error {
+func RedirectSteps(cache *Cache, steps []v1alpha1.Step, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun, logger *zap.SugaredLogger) error {
 	for i := range steps {
 		step := &steps[i]
 		if err := RedirectStep(cache, i, step, kubeclient, taskRun, logger); err != nil {
@@ -128,7 +127,7 @@ func RedirectSteps(cache *Cache, steps []corev1.Container, kubeclient kubernetes
 // the binary being run is no longer the one specified by the Command
 // and the Args, but is instead the entrypoint binary, which will
 // itself invoke the Command and Args, but also capture logs.
-func RedirectStep(cache *Cache, stepNum int, step *corev1.Container, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun, logger *zap.SugaredLogger) error {
+func RedirectStep(cache *Cache, stepNum int, step *v1alpha1.Step, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun, logger *zap.SugaredLogger) error {
 	if len(step.Command) == 0 {
 		logger.Infof("Getting Cmd from remote entrypoint for step: %s", step.Name)
 		var err error
@@ -187,11 +186,34 @@ func getWaitFile(stepNum int) string {
 // GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
 // to look for. If the cache does not contain the digest, it will lookup the
 // metadata from the images registry, and then commit that to the cache
-func GetRemoteEntrypoint(cache *Cache, digest string, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun) ([]string, error) {
+func GetRemoteEntrypoint(cache *Cache, image string, kubeclient kubernetes.Interface, taskRun *v1alpha1.TaskRun) ([]string, error) {
+	ref, err := name.ParseReference(image, name.WeakValidation)
+	if err != nil {
+		return nil, xerrors.Errorf("Failed to parse image %s: %w", image, err)
+	}
+
+	var digest string
+	// If the image is specified as a digest, we can just take the digest from the name and use that in our cache.
+	// Otherwise we first have to resolve the tag to a digest.
+	if d, ok := ref.(name.Digest); ok {
+		digest = d.String()
+	} else {
+		img, err := getRemoteImage(image, kubeclient, taskRun)
+		if err != nil {
+			return nil, xerrors.Errorf("Failed to fetch remote image %s: %w", digest, err)
+		}
+		d, err := img.Digest()
+		if err != nil {
+			return nil, xerrors.Errorf("Failed to get digest for image %s: %w", image, err)
+		}
+		digest = d.String()
+	}
+
 	if ep, ok := cache.get(digest); ok {
 		return ep, nil
 	}
-	img, err := getRemoteImage(digest, kubeclient, taskRun)
+
+	img, err := getRemoteImage(image, kubeclient, taskRun)
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to fetch remote image %s: %w", digest, err)
 	}

@@ -5,11 +5,13 @@ go 1.12
 require (
 	cloud.google.com/go v0.37.2 // indirect
 	contrib.go.opencensus.io/exporter/ocagent v0.2.0 // indirect
+	contrib.go.opencensus.io/exporter/prometheus v0.1.0 // indirect
 	contrib.go.opencensus.io/exporter/stackdriver v0.9.1 // indirect
 	github.com/AlecAivazis/survey/v2 v2.0.1
 	github.com/Azure/azure-sdk-for-go v26.1.0+incompatible // indirect
 	github.com/Azure/go-autorest v11.6.0+incompatible // indirect
 	github.com/Netflix/go-expect v0.0.0-20180928190340-9d1f4485533b
+	github.com/apache/thrift v0.12.0 // indirect
 	github.com/aws/aws-sdk-go v1.19.11 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/census-instrumentation/opencensus-proto v0.1.0 // indirect
@@ -19,30 +21,32 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
-	github.com/google/go-cmp v0.2.0
+	github.com/google/go-cmp v0.3.1
 	github.com/google/go-containerregistry v0.0.0-20190320210540-8d4083db9aa0 // indirect
 	github.com/google/gofuzz v0.0.0-20161122191042-44d81051d367 // indirect
+	github.com/google/uuid v1.1.1 // indirect
 	github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d // indirect
 	github.com/hako/durafmt v0.0.0-20180520121703-7b7ae1e72ead
 	github.com/hinshun/vt10x v0.0.0-20180809195222-d55458df857c
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/jonboulle/clockwork v0.1.1-0.20190114141812-62fb9bc030d1
 	github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3 // indirect
-	github.com/knative/pkg v0.0.0-20190409220258-28cfa161499b
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
+	github.com/openzipkin/zipkin-go v0.1.6 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829 // indirect
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/stretchr/testify v1.2.2
-	github.com/tektoncd/pipeline v0.5.2
+	github.com/tektoncd/pipeline v0.6.0
 	github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
@@ -58,6 +62,7 @@ require (
 	k8s.io/klog v0.2.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20171101183504-39a7bf85c140 // indirect
 	k8s.io/kubernetes v1.13.3 // indirect
+	knative.dev/pkg v0.0.0-20190719141030-e4bc08cc8ded
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )
 

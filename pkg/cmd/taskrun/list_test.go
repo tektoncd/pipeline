@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/knative/pkg/apis"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -30,6 +29,7 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestListTaskRuns(t *testing.T) {
@@ -42,7 +42,7 @@ func TestListTaskRuns(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/task", "random"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
 			tb.TaskRunStatus(
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Status: corev1.ConditionTrue,
 					Reason: resources.ReasonSucceeded,
 				}),
@@ -52,7 +52,7 @@ func TestListTaskRuns(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/task", "bar"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("bar")),
 			tb.TaskRunStatus(
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Status: corev1.ConditionTrue,
 					Reason: resources.ReasonSucceeded,
 				}),
@@ -64,7 +64,7 @@ func TestListTaskRuns(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/Task", "random"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
 			tb.TaskRunStatus(
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Status: corev1.ConditionUnknown,
 					Reason: resources.ReasonRunning,
 				}),
@@ -75,7 +75,7 @@ func TestListTaskRuns(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/Task", "random"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
 			tb.TaskRunStatus(
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Status: corev1.ConditionFalse,
 					Reason: resources.ReasonFailed,
 				}),
@@ -87,7 +87,7 @@ func TestListTaskRuns(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/Task", "random"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
 			tb.TaskRunStatus(
-				tb.Condition(apis.Condition{
+				tb.StatusCondition(apis.Condition{
 					Status: corev1.ConditionFalse,
 					Reason: resources.ReasonFailed,
 				}),
@@ -233,7 +233,7 @@ func command(t *testing.T, trs []*v1alpha1.TaskRun, now time.Time) *cobra.Comman
 	clock := clockwork.NewFakeClockAt(now)
 	clock.Advance(time.Duration(60) * time.Minute)
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{TaskRuns: trs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs})
 
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 

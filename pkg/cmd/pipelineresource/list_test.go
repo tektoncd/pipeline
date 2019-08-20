@@ -20,7 +20,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -127,36 +126,36 @@ func TestPipelineResourceList(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
-			tu.AssertOutput(t, strings.Join(td.expected, "\n"), out)
+			test.AssertOutput(t, strings.Join(td.expected, "\n"), out)
 		})
 	}
 
 }
 
 func TestPipelineResourceList_empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 	pipelineresource := Command(p)
 	out, _ := test.ExecuteCommand(pipelineresource, "list", "-n", "test-ns-3")
-	tu.AssertOutput(t, msgNoPREsFound+"\n", out)
+	test.AssertOutput(t, msgNoPREsFound+"\n", out)
 }
 
 func TestPipelineResourceList_invalidType(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 	c := Command(p)
 
-	_, err := tu.ExecuteCommand(c, "list", "-n", "ns", "-t", "registry")
+	_, err := test.ExecuteCommand(c, "list", "-n", "ns", "-t", "registry")
 
 	if err == nil {
 		t.Error("Expecting an error but it's empty")
 	}
 
-	tu.AssertOutput(t, "Failed to list pipelineresources. Invalid resource type registry", err.Error())
+	test.AssertOutput(t, "Failed to list pipelineresources. Invalid resource type registry", err.Error())
 }
 
 func command(t *testing.T, pres []*v1alpha1.PipelineResource) *cobra.Command {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
 	p := &test.Params{Tekton: cs.Pipeline}
 	return Command(p)
 }

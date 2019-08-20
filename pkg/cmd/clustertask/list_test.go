@@ -22,7 +22,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
@@ -30,7 +29,7 @@ import (
 )
 
 func TestClusterTaskList_Empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	clustertask := Command(p)
@@ -38,7 +37,7 @@ func TestClusterTaskList_Empty(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	tu.AssertOutput(t, emptyMsg+"\n", output)
+	test.AssertOutput(t, emptyMsg+"\n", output)
 }
 
 func TestClusterTaskListOnlyClusterTasks(t *testing.T) {
@@ -49,7 +48,7 @@ func TestClusterTaskListOnlyClusterTasks(t *testing.T) {
 		tb.ClusterTask("pineapple", cb.ClusterTaskCreationTime(clock.Now().Add(-512*time.Hour))),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{ClusterTasks: clustertasks})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{ClusterTasks: clustertasks})
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 
 	clustertask := Command(p)

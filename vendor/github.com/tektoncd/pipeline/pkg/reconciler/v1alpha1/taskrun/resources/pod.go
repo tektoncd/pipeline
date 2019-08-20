@@ -29,22 +29,19 @@ import (
 	"sort"
 	"strings"
 
-	"go.uber.org/zap"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/credentials"
+	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
+	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
+	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
-
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/credentials"
-	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
-	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
-	"github.com/tektoncd/pipeline/pkg/merge"
-	"github.com/tektoncd/pipeline/pkg/names"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint"
 )
 
 const (
@@ -107,7 +104,7 @@ var (
 		"The container image for preparing our Build's credentials.")
 )
 
-func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*corev1.Container, []corev1.Volume, error) {
+func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*v1alpha1.Step, []corev1.Volume, error) {
 	if serviceAccountName == "" {
 		serviceAccountName = "default"
 	}
@@ -154,7 +151,7 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 		}
 	}
 
-	return &corev1.Container{
+	return &v1alpha1.Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + credsInit),
 		Image:        *credsImage,
 		Command:      []string{"/ko-app/creds-init"},
@@ -162,7 +159,7 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 		VolumeMounts: volumeMounts,
 		Env:          implicitEnvVars,
 		WorkingDir:   workspaceDir,
-	}, volumes, nil
+	}}, volumes, nil
 }
 
 func makeWorkingDirScript(workingDirs map[string]bool) string {
@@ -190,14 +187,14 @@ func makeWorkingDirScript(workingDirs map[string]bool) string {
 	return script
 }
 
-func makeWorkingDirInitializer(steps []corev1.Container) *corev1.Container {
+func makeWorkingDirInitializer(steps []v1alpha1.Step) *v1alpha1.Step {
 	workingDirs := make(map[string]bool)
 	for _, step := range steps {
 		workingDirs[step.WorkingDir] = true
 	}
 
 	if script := makeWorkingDirScript(workingDirs); script != "" {
-		return &corev1.Container{
+		return &v1alpha1.Step{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + workingDirInit),
 			Image:        *v1alpha1.BashNoopImage,
 			Command:      []string{"/ko-app/bash"},
@@ -205,24 +202,23 @@ func makeWorkingDirInitializer(steps []corev1.Container) *corev1.Container {
 			VolumeMounts: implicitVolumeMounts,
 			Env:          implicitEnvVars,
 			WorkingDir:   workspaceDir,
-		}
+		}}
 	}
-
 	return nil
 }
 
 // initOutputResourcesDefaultDir checks if there are any output image resources expecting a default path
 // and creates an init container to create that folder
-func initOutputResourcesDefaultDir(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec) []corev1.Container {
-	makeDirSteps := []corev1.Container{}
+func initOutputResourcesDefaultDir(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec) []v1alpha1.Step {
+	var makeDirSteps []v1alpha1.Step
 	if len(taskRun.Spec.Outputs.Resources) > 0 {
 		for _, r := range taskRun.Spec.Outputs.Resources {
 			for _, o := range taskSpec.Outputs.Resources {
 				if o.Name == r.Name {
 					if strings.HasPrefix(o.OutputImageDir, v1alpha1.TaskOutputImageDefaultDir) {
-						cn := v1alpha1.CreateDirContainer("default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name))
-						cn.VolumeMounts = append(cn.VolumeMounts, implicitVolumeMounts...)
-						makeDirSteps = append(makeDirSteps, cn)
+						s := v1alpha1.CreateDirStep("default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name))
+						s.VolumeMounts = append(s.VolumeMounts, implicitVolumeMounts...)
+						makeDirSteps = append(makeDirSteps, s)
 					}
 				}
 			}
@@ -250,58 +246,59 @@ func TryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp GetPod) (*corev1.Pod, er
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
-func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*corev1.Pod, error) {
+func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
 	cred, secrets, err := makeCredentialInitializer(taskRun.Spec.ServiceAccount, taskRun.Namespace, kubeclient)
 	if err != nil {
 		return nil, err
 	}
-	initContainers := []corev1.Container{*cred}
-	podContainers := []corev1.Container{}
+	initSteps := []v1alpha1.Step{*cred}
+	var podSteps []v1alpha1.Step
 
 	if workingDir := makeWorkingDirInitializer(taskSpec.Steps); workingDir != nil {
-		initContainers = append(initContainers, *workingDir)
+		initSteps = append(initSteps, *workingDir)
 	}
 
-	initContainers = append(initContainers, initOutputResourcesDefaultDir(taskRun, taskSpec)...)
+	initSteps = append(initSteps, initOutputResourcesDefaultDir(taskRun, taskSpec)...)
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 
-	for i := range taskSpec.Steps {
-		step := &taskSpec.Steps[i]
-		step.Env = append(implicitEnvVars, step.Env...)
+	for i, s := range taskSpec.Steps {
+		s.Env = append(implicitEnvVars, s.Env...)
 		// TODO(mattmoor): Check that volumeMounts match volumes.
 
 		// Add implicit volume mounts, unless the user has requested
 		// their own volume mount at that path.
 		requestedVolumeMounts := map[string]bool{}
-		for _, vm := range step.VolumeMounts {
+		for _, vm := range s.VolumeMounts {
 			requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
 		}
 		for _, imp := range implicitVolumeMounts {
 			if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
-				step.VolumeMounts = append(step.VolumeMounts, imp)
+				s.VolumeMounts = append(s.VolumeMounts, imp)
 			}
 		}
 
-		if step.WorkingDir == "" {
-			step.WorkingDir = workspaceDir
+		if s.WorkingDir == "" {
+			s.WorkingDir = workspaceDir
 		}
-		if step.Name == "" {
-			step.Name = fmt.Sprintf("%v%d", unnamedInitContainerPrefix, i)
+		if s.Name == "" {
+			s.Name = fmt.Sprintf("%v%d", unnamedInitContainerPrefix, i)
 		} else {
-			step.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, step.Name))
+			s.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, s.Name))
 		}
-		// use the step name to add the entrypoint biary as an init container
-		if step.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
-			initContainers = append(initContainers, *step)
+		// use the container name to add the entrypoint biary as an init container
+		if s.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
+			initSteps = append(initSteps, s)
 		} else {
-			zeroNonMaxResourceRequests(step, i, maxIndicesByResource)
-			podContainers = append(podContainers, *step)
+			zeroNonMaxResourceRequests(&s, i, maxIndicesByResource)
+			podSteps = append(podSteps, s)
 		}
 	}
+	// Add podTemplate Volumes to the explicitly declared use volumes
+	volumes := append(taskSpec.Volumes, taskRun.Spec.PodTemplate.Volumes...)
 	// Add our implicit volumes and any volumes needed for secrets to the explicitly
 	// declared user volumes.
-	volumes := append(taskSpec.Volumes, implicitVolumes...)
+	volumes = append(volumes, implicitVolumes...)
 	volumes = append(volumes, secrets...)
 	if err := v1alpha1.ValidateVolumes(volumes); err != nil {
 		return nil, err
@@ -314,24 +311,24 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	}
 	gibberish := hex.EncodeToString(b)
 
-	mergedInitContainers, err := merge.CombineStepsWithStepTemplate(taskSpec.StepTemplate, initContainers)
+	mergedInitSteps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, initSteps)
 	if err != nil {
 		return nil, err
 	}
-	mergedPodContainers, err := merge.CombineStepsWithStepTemplate(taskSpec.StepTemplate, podContainers)
+	var mergedInitContainers []corev1.Container
+	for _, s := range mergedInitSteps {
+		mergedInitContainers = append(mergedInitContainers, s.Container)
+	}
+	mergedPodSteps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, podSteps)
 	if err != nil {
 		return nil, err
+	}
+	var mergedPodContainers []corev1.Container
+	for _, s := range mergedPodSteps {
+		mergedPodContainers = append(mergedPodContainers, s.Container)
 	}
 
-	// The ContainerTemplate field is deprecated (#977)
-	mergedInitContainers, err = merge.CombineStepsWithStepTemplate(taskSpec.ContainerTemplate, mergedInitContainers)
-	if err != nil {
-		return nil, err
-	}
-	mergedPodContainers, err = merge.CombineStepsWithStepTemplate(taskSpec.ContainerTemplate, mergedPodContainers)
-	if err != nil {
-		return nil, err
-	}
+	podTemplate := v1alpha1.CombinedPodTemplate(taskRun.Spec.PodTemplate, taskRun.Spec.NodeSelector, taskRun.Spec.Tolerations, taskRun.Spec.Affinity)
 
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -356,9 +353,10 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			Containers:         mergedPodContainers,
 			ServiceAccountName: taskRun.Spec.ServiceAccount,
 			Volumes:            volumes,
-			NodeSelector:       taskRun.Spec.NodeSelector,
-			Tolerations:        taskRun.Spec.Tolerations,
-			Affinity:           taskRun.Spec.Affinity,
+			NodeSelector:       podTemplate.NodeSelector,
+			Tolerations:        podTemplate.Tolerations,
+			Affinity:           podTemplate.Affinity,
+			SecurityContext:    podTemplate.SecurityContext,
 		},
 	}, nil
 }
@@ -413,30 +411,30 @@ func makeAnnotations(s *v1alpha1.TaskRun) map[string]string {
 // one at a time, so we want pods to only request the maximum resources needed
 // at any single point in time. If no container has an explicit resource
 // request, all requests are set to 0.
-func zeroNonMaxResourceRequests(container *corev1.Container, containerIndex int, maxIndicesByResource map[corev1.ResourceName]int) {
-	if container.Resources.Requests == nil {
-		container.Resources.Requests = corev1.ResourceList{}
+func zeroNonMaxResourceRequests(step *v1alpha1.Step, stepIndex int, maxIndicesByResource map[corev1.ResourceName]int) {
+	if step.Resources.Requests == nil {
+		step.Resources.Requests = corev1.ResourceList{}
 	}
 	for name, maxIdx := range maxIndicesByResource {
-		if maxIdx != containerIndex {
-			container.Resources.Requests[name] = zeroQty
+		if maxIdx != stepIndex {
+			step.Resources.Requests[name] = zeroQty
 		}
 	}
 }
 
 // findMaxResourceRequest returns the index of the container with the maximum
 // request for the given resource from among the given set of containers.
-func findMaxResourceRequest(containers []corev1.Container, resourceNames ...corev1.ResourceName) map[corev1.ResourceName]int {
+func findMaxResourceRequest(steps []v1alpha1.Step, resourceNames ...corev1.ResourceName) map[corev1.ResourceName]int {
 	maxIdxs := make(map[corev1.ResourceName]int, len(resourceNames))
 	maxReqs := make(map[corev1.ResourceName]resource.Quantity, len(resourceNames))
 	for _, name := range resourceNames {
 		maxIdxs[name] = -1
 		maxReqs[name] = zeroQty
 	}
-	for i, c := range containers {
+	for i, s := range steps {
 		for _, name := range resourceNames {
 			maxReq := maxReqs[name]
-			req, exists := c.Resources.Requests[name]
+			req, exists := s.Container.Resources.Requests[name]
 			if exists && req.Cmp(maxReq) > 0 {
 				maxIdxs[name] = i
 				maxReqs[name] = req

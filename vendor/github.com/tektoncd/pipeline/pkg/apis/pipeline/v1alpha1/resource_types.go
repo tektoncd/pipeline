@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors.
+Copyright 2019 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"github.com/knative/pkg/apis"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 // PipelineResourceType represents the type of endpoint the pipelineResource is, so that the
@@ -43,19 +43,23 @@ const (
 
 	// PipelineResourceTypePullRequest indicates that this source is a SCM Pull Request.
 	PipelineResourceTypePullRequest PipelineResourceType = "pullRequest"
+
+	// PipelineResourceTypeCloudEvent indicates that this source is a cloud event URI
+	PipelineResourceTypeCloudEvent PipelineResourceType = "cloudEvent"
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypeCluster, PipelineResourceTypePullRequest}
+var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypeCluster, PipelineResourceTypePullRequest, PipelineResourceTypeCloudEvent}
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {
 	GetName() string
 	GetType() PipelineResourceType
 	Replacements() map[string]string
-	GetDownloadContainerSpec() ([]corev1.Container, error)
-	GetUploadContainerSpec() ([]corev1.Container, error)
-	SetDestinationDirectory(string)
+	GetDownloadSteps(sourcePath string) ([]Step, error)
+	GetUploadSteps(sourcePath string) ([]Step, error)
+	GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
+	GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
 }
 
 // SecretParam indicates which secret can be used to populate a field of the resource
@@ -68,7 +72,7 @@ type SecretParam struct {
 // PipelineResourceSpec defines  an individual resources used in the pipeline.
 type PipelineResourceSpec struct {
 	Type   PipelineResourceType `json:"type"`
-	Params []Param              `json:"params"`
+	Params []ResourceParam      `json:"params"`
 	// Secrets to fetch to populate some of resource fields
 	// +optional
 	SecretParams []SecretParam `json:"secrets,omitempty"`
@@ -143,6 +147,8 @@ func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 		return NewStorageResource(r)
 	case PipelineResourceTypePullRequest:
 		return NewPullRequestResource(r)
+	case PipelineResourceTypeCloudEvent:
+		return NewCloudEventResource(r)
 	}
 	return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }
