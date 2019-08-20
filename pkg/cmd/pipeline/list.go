@@ -51,9 +51,12 @@ func listCommand(p cli.Params) *cobra.Command {
 	f := cliopts.NewPrintFlags("list")
 
 	c := &cobra.Command{
-		Use:          "list",
-		Aliases:      []string{"ls"},
-		Short:        "Lists pipelines in a namespace",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "Lists pipelines in a namespace",
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output, err := cmd.LocalFlags().GetString("output")

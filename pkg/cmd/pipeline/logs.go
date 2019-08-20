@@ -86,6 +86,9 @@ func logCommand(p cli.Params) *cobra.Command {
 		Short:                 "Show pipeline logs",
 		Example:               eg,
 		SilenceUsage:          true,
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		Args: func(cmd *cobra.Command, args []string) error {
 			return nameArg(args, p)
 		},

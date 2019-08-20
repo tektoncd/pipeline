@@ -55,6 +55,9 @@ tkn pr list -n foo",
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "Lists pipelineruns in a namespace",
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		Example: eg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var pipeline string

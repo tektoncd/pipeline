@@ -20,7 +20,10 @@ func cancelCommand(p cli.Params) *cobra.Command {
 		Short:        "Cancel the PipelineRun",
 		Example:      eg,
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pr := args[0]
 			s := &cli.Stream{

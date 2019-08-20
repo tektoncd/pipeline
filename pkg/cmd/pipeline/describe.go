@@ -65,9 +65,12 @@ func describeCommand(p cli.Params) *cobra.Command {
 	f := cliopts.NewPrintFlags("describe")
 
 	c := &cobra.Command{
-		Use:          "describe",
-		Aliases:      []string{"desc"},
-		Short:        "Describes a pipeline in a namespace",
+		Use:     "describe",
+		Aliases: []string{"desc"},
+		Short:   "Describes a pipeline in a namespace",
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		Args:         cobra.MinimumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

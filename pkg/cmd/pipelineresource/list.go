@@ -54,7 +54,10 @@ tkn pre list -n foo",
 		Short:        "Lists pipeline resources in a namespace",
 		Example:      eg,
 		SilenceUsage: true,
-		Args:         cobra.MinimumNArgs(0),
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
+		Args: cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cs, err := p.Clients()
 			if err != nil {

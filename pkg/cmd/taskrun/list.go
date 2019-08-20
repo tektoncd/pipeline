@@ -55,6 +55,9 @@ tkn tr list -n foo \n",
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "Lists taskruns in a namespace",
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		Example: eg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var task string

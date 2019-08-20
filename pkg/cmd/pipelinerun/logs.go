@@ -53,8 +53,11 @@ func logCommand(p cli.Params) *cobra.Command {
 		Use:                   "logs",
 		DisableFlagsInUseLine: true,
 		Short:                 "Show the logs of PipelineRun",
-		Example:               eg,
-		Args:                  cobra.ExactArgs(1),
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
+		Example: eg,
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.PipelineRunName = args[0]
 			opts.Stream = &cli.Stream{

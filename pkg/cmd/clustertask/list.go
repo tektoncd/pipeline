@@ -44,6 +44,9 @@ func listCommand(p cli.Params) *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "Lists clustertasks in a namespace",
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output, err := cmd.LocalFlags().GetString("output")
 			if err != nil {

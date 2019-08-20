@@ -98,6 +98,9 @@ tkn pr desc foo -n bar",
 		Example:      eg,
 		Args:         cobra.MinimumNArgs(1),
 		SilenceUsage: true,
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := &cli.Stream{
 				Out: cmd.OutOrStdout(),

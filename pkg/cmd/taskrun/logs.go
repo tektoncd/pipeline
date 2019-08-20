@@ -52,7 +52,10 @@ tkn taskrun logs -f foo -n bar
 		Short:        "Show taskruns logs",
 		Example:      eg,
 		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
+		Annotations: map[string]string{
+			"commandType": "main",
+		},
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.taskrunName = args[0]
 			opts.stream = &cli.Stream{
