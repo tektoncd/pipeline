@@ -122,10 +122,10 @@ type TaskResource struct {
 	// TargetPath is the path in workspace directory where the task resource
 	// will be copied.
 	// +optional
-	TargetPath string `json:"targetPath"`
+	TargetPath string `json:"targetPath,omitempty"`
 	// Path to the index.json file for output container images.
 	// +optional
-	OutputImageDir string `json:"outputImageDir"`
+	OutputImageDir string `json:"outputImageDir,omitempty"`
 }
 
 // Outputs allow a task to declare what data the Build/Task will be producing,
