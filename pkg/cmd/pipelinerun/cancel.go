@@ -32,7 +32,7 @@ func cancelCommand(p cli.Params) *cobra.Command {
 		},
 	}
 
-	c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipelinerun")
+	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipelinerun")
 	return c
 }
 

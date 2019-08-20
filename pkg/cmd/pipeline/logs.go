@@ -81,11 +81,11 @@ func logCommand(p cli.Params) *cobra.Command {
 
    `
 	c := &cobra.Command{
-		Use: "logs",
+		Use:                   "logs",
 		DisableFlagsInUseLine: true,
-		Short:        "Show pipeline logs",
-		Example:      eg,
-		SilenceUsage: true,
+		Short:                 "Show pipeline logs",
+		Example:               eg,
+		SilenceUsage:          true,
 		Args: func(cmd *cobra.Command, args []string) error {
 			return nameArg(args, p)
 		},
@@ -101,7 +101,7 @@ func logCommand(p cli.Params) *cobra.Command {
 	c.Flags().BoolVarP(&opts.allSteps, "all", "a", false, "show all logs including init steps injected by tekton")
 	c.Flags().BoolVarP(&opts.follow, "follow", "f", false, "stream live logs")
 
-	c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
+	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
 	return c
 }
 

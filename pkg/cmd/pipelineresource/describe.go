@@ -75,7 +75,8 @@ tkn res desc foo -n bar",
 			return printPipelineResourceDescription(s, p, args[0])
 		},
 	}
-	c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipelineresource")
+
+	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipelineresource")
 	f.AddFlags(c)
 	return c
 }

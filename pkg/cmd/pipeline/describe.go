@@ -74,8 +74,8 @@ func describeCommand(p cli.Params) *cobra.Command {
 			return printPipelineDescription(cmd.OutOrStdout(), p, args[0])
 		},
 	}
-	c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
 
+	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
 	f.AddFlags(c)
 	return c
 }

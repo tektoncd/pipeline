@@ -103,7 +103,7 @@ tkn pr desc foo -n bar",
 		},
 	}
 
-	c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipelinerun")
+	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipelinerun")
 	f.AddFlags(c)
 
 	return c
