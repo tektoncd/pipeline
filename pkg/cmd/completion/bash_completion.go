@@ -18,7 +18,7 @@ var (
 	// BashCompletionFlags this maps between a flag (ie: namespace) to a custom
 	// zsh completion
 	BashCompletionFlags = map[string]string{
-		"namespace":  "__kubectl_get_object namespace",
+		"namespace":  "__kubectl_get_namespace",
 		"kubeconfig": "_filedir",
 	}
 )
@@ -50,6 +50,7 @@ __kubectl_get_object()
         COMPREPLY=( $( compgen -W "${kubectl_out}" -- "$cur" ) )
     fi
 }
+__kubectl_get_namespace() { __kubectl_get_object namespace }
 
 __custom_func() {
 	case ${last_command} in

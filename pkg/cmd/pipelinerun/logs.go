@@ -44,17 +44,17 @@ func logCommand(p cli.Params) *cobra.Command {
   # show the logs of PipelineRun named "microservice-1" for task "build" only, from the namespace "bar"
     tkn pr logs microservice-1 -t build -n bar
 
-  # show the logs of PipelineRun named "microservice-1" for all tasks and steps (including init steps), 
+  # show the logs of PipelineRun named "microservice-1" for all tasks and steps (including init steps),
     from the namespace "foo"
     tkn pr logs microservice-1 -a -n foo
    `
 
 	c := &cobra.Command{
-		Use:                   "logs",
+		Use: "logs",
 		DisableFlagsInUseLine: true,
-		Short:                 "Show the logs of PipelineRun",
-		Example:               eg,
-		Args:                  cobra.ExactArgs(1),
+		Short:   "Show the logs of PipelineRun",
+		Example: eg,
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.PipelineRunName = args[0]
 			opts.Stream = &cli.Stream{
@@ -70,6 +70,7 @@ func logCommand(p cli.Params) *cobra.Command {
 	c.Flags().BoolVarP(&opts.Follow, "follow", "f", false, "stream live logs")
 	c.Flags().StringSliceVarP(&opts.Tasks, "only-tasks", "t", []string{}, "show logs for mentioned tasks only")
 
+	c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipelinerun")
 	return c
 }
 

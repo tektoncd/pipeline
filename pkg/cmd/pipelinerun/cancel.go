@@ -31,6 +31,8 @@ func cancelCommand(p cli.Params) *cobra.Command {
 			return cancelPipelineRun(p, s, pr)
 		},
 	}
+
+	c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipelinerun")
 	return c
 }
 

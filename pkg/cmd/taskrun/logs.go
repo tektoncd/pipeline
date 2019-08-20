@@ -44,7 +44,7 @@ func logCommand(p cli.Params) *cobra.Command {
 # show the logs of TaskRun named "foo" from the namespace "bar"
 tkn taskrun logs foo -n bar
 
-# show the live logs of TaskRun named "foo" from the namespace "bar" 
+# show the live logs of TaskRun named "foo" from the namespace "bar"
 tkn taskrun logs -f foo -n bar
 `
 	c := &cobra.Command{
@@ -67,7 +67,7 @@ tkn taskrun logs -f foo -n bar
 
 	c.Flags().BoolVarP(&opts.allSteps, "all", "a", false, "show all logs including init steps injected by tekton")
 	c.Flags().BoolVarP(&opts.follow, "follow", "f", false, "stream live logs")
-
+	c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_taskrun")
 	return c
 }
 
