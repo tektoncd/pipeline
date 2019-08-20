@@ -16,8 +16,8 @@ func TestCommand_no_global_flags(t *testing.T) {
 	p := &test.Params{}
 	pipelinerun := Root(p)
 	out, err := test.ExecuteCommand(pipelinerun)
-	if err != nil {
-		t.Errorf("An error has occured. Output: %s", out)
+	if err == nil {
+		t.Errorf("test should have command with an error: `subcommand is required` Output: `%s`", out)
 	}
 
 	if strings.Contains(out, unwantedflag) {
