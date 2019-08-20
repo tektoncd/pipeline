@@ -18,14 +18,13 @@ import (
 	"testing"
 
 	"github.com/tektoncd/cli/pkg/test"
-	tu "github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
 func TestPipelineResourceDelete_Empty(t *testing.T) {
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
 	res := Command(p)
@@ -34,7 +33,7 @@ func TestPipelineResourceDelete_Empty(t *testing.T) {
 		t.Errorf("Error expected here")
 	}
 	expected := "Failed to delete pipelineresource \"bar\": pipelineresources.tekton.dev \"bar\" not found"
-	tu.AssertOutput(t, expected, err.Error())
+	test.AssertOutput(t, expected, err.Error())
 }
 
 func TestPipelineResourceDelete_WithParams(t *testing.T) {
@@ -46,10 +45,10 @@ func TestPipelineResourceDelete_WithParams(t *testing.T) {
 		),
 	}
 
-	cs, _ := pipelinetest.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
 	p := &test.Params{Tekton: cs.Pipeline}
 	pipelineresource := Command(p)
 	out, _ := test.ExecuteCommand(pipelineresource, "rm", "test-1", "-n", "test-ns-1")
 	expected := "PipelineResource deleted: test-1\n"
-	tu.AssertOutput(t, expected, out)
+	test.AssertOutput(t, expected, out)
 }

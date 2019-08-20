@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
@@ -150,7 +149,7 @@ func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
 					}),
 					tb.PipelineRunTaskRunsStatus("tr-2", &v1alpha1.PipelineRunTaskRunStatus{
 						PipelineTaskName: "t-2",
-						Status:           &trs[0].Status,
+						Status:           &trs[1].Status,
 					}),
 					tb.PipelineRunStatusCondition(apis.Condition{
 						Status: corev1.ConditionTrue,
@@ -165,7 +164,7 @@ func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
 
 	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
 	pipelinerun := Command(p)
-	clock.Advance(9 * time.Minute)
+	clock.Advance(10 * time.Minute)
 	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -175,8 +174,8 @@ Namespace:      ns
 Pipeline Ref:   pipeline
 
 Status
-STARTED         DURATION     STATUS
-9 minutes ago   15 minutes   Succeeded
+STARTED          DURATION     STATUS
+10 minutes ago   15 minutes   Succeeded
 
 Resources
 No resources
@@ -186,12 +185,10 @@ No params
 
 Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
-tr-2   t-2         7 minutes ago   3 minutes   Succeeded
-tr-1   t-1         7 minutes ago   3 minutes   Succeeded
+tr-2   t-2         5 minutes ago   4 minutes   Succeeded
+tr-1   t-1         8 minutes ago   3 minutes   Succeeded
 `
-	if d := cmp.Diff(expected, actual); d != "" {
-		t.Errorf("Unexpected output mismatch: %s", d)
-	}
+	test.AssertOutput(t, expected, actual)
 
 }
 
