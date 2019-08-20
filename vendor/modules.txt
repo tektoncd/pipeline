@@ -202,7 +202,7 @@ github.com/prometheus/procfs/xfs
 github.com/prometheus/procfs/internal/util
 # github.com/russross/blackfriday v1.5.2
 github.com/russross/blackfriday
-# github.com/spf13/cobra v0.0.5
+# github.com/spf13/cobra v0.0.5 => github.com/chmouel/cobra v0.0.0-20190820110723-8f09bb39b20d
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag

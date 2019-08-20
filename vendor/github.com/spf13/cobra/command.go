@@ -17,6 +17,7 @@ package cobra
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +27,8 @@ import (
 
 	flag "github.com/spf13/pflag"
 )
+
+var ErrSubCommandRequired = errors.New("subcommand is required")
 
 // FParseErrWhitelist configures Flag parse errors to be ignored
 type FParseErrWhitelist flag.ParseErrorsWhitelist
@@ -67,6 +70,9 @@ type Command struct {
 
 	// BashCompletionFunction is custom functions used by the bash autocompletion generator.
 	BashCompletionFunction string
+
+	// ZshCompletionFunction is custom functions used by the zsh autocompletion generator.
+	ZshCompletionFunction string
 
 	// Deprecated defines, if this command is deprecated and should print this string when used.
 	Deprecated string
@@ -228,7 +234,7 @@ func (c *Command) SetErr(newErr io.Writer) {
 	c.errWriter = newErr
 }
 
-// SetOut sets the source for input data
+// SetIn sets the source for input data
 // If newIn is nil, os.Stdin is used.
 func (c *Command) SetIn(newIn io.Reader) {
 	c.inReader = newIn
@@ -297,7 +303,7 @@ func (c *Command) ErrOrStderr() io.Writer {
 	return c.getErr(os.Stderr)
 }
 
-// ErrOrStderr returns output to stderr
+// InOrStdin returns output to stderr
 func (c *Command) InOrStdin() io.Reader {
 	return c.getIn(os.Stdin)
 }
@@ -369,7 +375,7 @@ func (c *Command) HelpFunc() func(*Command, []string) {
 	}
 	return func(c *Command, a []string) {
 		c.mergePersistentFlags()
-		err := tmpl(c.OutOrStdout(), c.HelpTemplate(), c)
+		err := tmpl(c.OutOrStderr(), c.HelpTemplate(), c)
 		if err != nil {
 			c.Println(err)
 		}
@@ -786,7 +792,7 @@ func (c *Command) execute(a []string) (err error) {
 	}
 
 	if !c.Runnable() {
-		return flag.ErrHelp
+		return ErrSubCommandRequired
 	}
 
 	c.preRun()
@@ -918,6 +924,14 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 		if err == flag.ErrHelp {
 			cmd.HelpFunc()(cmd, args)
 			return cmd, nil
+		}
+
+		// If command wasn't runnable, show full help, but do return the error.
+		// This will result in apps by default returning a non-success exit code, but also gives them the option to
+		// handle specially.
+		if err == ErrSubCommandRequired {
+			cmd.HelpFunc()(cmd, args)
+			return cmd, err
 		}
 
 		// If root command has SilentErrors flagged,

@@ -62,3 +62,5 @@ require (
 )
 
 replace github.com/kr/pty => github.com/creack/pty v1.1.7
+
+replace github.com/spf13/cobra => github.com/chmouel/cobra v0.0.0-20190820110723-8f09bb39b20d

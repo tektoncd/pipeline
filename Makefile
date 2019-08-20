@@ -45,7 +45,7 @@ lint: ## run linter(s)
 .PHONY: test-unit
 test-unit: ./vendor ## run unit tests
 	@echo "Running unit tests..."
-	@go test -v -cover ./...
+	@go test -failfast -v -cover ./...
 
 .PHONY: test-e2e
 test-e2e: ./vendor ## run e2e tests
