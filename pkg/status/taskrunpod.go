@@ -40,7 +40,7 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
 			Reason:  ReasonRunning,
-			Message: ReasonRunning,
+			Message: "Not all Steps in the Task have finished executing",
 		})
 	}
 
@@ -98,7 +98,7 @@ func updateIncompleteTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 		taskRun.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonBuilding,
+			Reason:  ReasonRunning,
 			Message: "Not all Steps in the Task have finished executing",
 		})
 	case corev1.PodPending:

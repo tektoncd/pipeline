@@ -1363,8 +1363,8 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), &apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
-		Message: "Running",
 		Reason:  "Running",
+		Message: "Not all Steps in the Task have finished executing",
 	}, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("-got, +want: %v", d)
 	}

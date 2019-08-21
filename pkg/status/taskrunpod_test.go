@@ -41,19 +41,13 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
 		Reason:  ReasonRunning,
-		Message: ReasonRunning,
+		Message: "Not all Steps in the Task have finished executing",
 	}
 	conditionTrue := apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
 		Reason:  ReasonSucceeded,
 		Message: "All Steps have completed executing",
-	}
-	conditionBuilding := apis.Condition{
-		Type:    apis.ConditionSucceeded,
-		Status:  corev1.ConditionUnknown,
-		Reason:  ReasonBuilding,
-		Message: "Not all Steps in the Task have finished executing",
 	}
 	for _, c := range []struct {
 		desc      string
@@ -176,7 +170,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		},
 		want: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{conditionBuilding},
+				Conditions: []apis.Condition{conditionRunning},
 			},
 			Steps: []v1alpha1.StepState{{
 				ContainerState: corev1.ContainerState{
@@ -390,7 +384,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		},
 		want: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{conditionBuilding},
+				Conditions: []apis.Condition{conditionRunning},
 			},
 			Steps: []v1alpha1.StepState{{
 				ContainerState: corev1.ContainerState{
