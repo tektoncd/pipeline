@@ -46,7 +46,8 @@ following fields:
 
   - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
-    information.
+    information. When a `ServiceAccount` isn't specified, the `default-service-account`
+    specified in the configmap - config-defaults will be applied.
   - [`inputs`] - Specifies [input parameters](#input-parameters) and
     [input resources](#providing-resources)
   - [`outputs`] - Specifies [output resources](#providing-resources)
@@ -157,10 +158,10 @@ default, if `default-timeout-minutes` is set to 0.
 Specifies the `name` of a `ServiceAccount` resource object. Use the
 `serviceAccount` field to run your `Task` with the privileges of the specified
 service account. If no `serviceAccount` field is specified, your `Task` runs
-using the
+using the  service account specified in the ConfigMap `configmap-defaults`
+which if absent will default to
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
-that is in the
-[namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+that is in the [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 of the `TaskRun` resource object.
 
 For examples and more information about specifying service accounts, see the

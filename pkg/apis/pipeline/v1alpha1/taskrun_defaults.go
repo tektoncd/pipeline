@@ -46,4 +46,9 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 		}
 		trs.Timeout = timeout
 	}
+
+	defaultSA := cfg.Defaults.DefaultServiceAccount
+	if trs.ServiceAccount == "" && defaultSA != "" {
+		trs.ServiceAccount = defaultSA
+	}
 }

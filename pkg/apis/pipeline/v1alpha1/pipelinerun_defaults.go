@@ -42,4 +42,9 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 		}
 		prs.Timeout = timeout
 	}
+
+	defaultSA := cfg.Defaults.DefaultServiceAccount
+	if prs.ServiceAccount == "" && defaultSA != "" {
+		prs.ServiceAccount = defaultSA
+	}
 }
