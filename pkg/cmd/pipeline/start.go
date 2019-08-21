@@ -107,7 +107,10 @@ tkn pipeline start foo --param NAME=VALUE --resource source=scaffold-git  -s Ser
 	c.Flags().StringSliceVarP(&res, "resource", "r", []string{}, "pass the resource name and ref")
 	c.Flags().StringSliceVarP(&params, "param", "p", []string{}, "pass the param")
 	c.Flags().StringVarP(&svc, "serviceaccount", "s", svc, "pass the serviceaccount name")
+	flags.AddShellCompletion(c.Flags().Lookup("serviceaccount"), "__kubectl_get_serviceaccount")
 	c.Flags().StringSliceVar(&svcs, "task-serviceaccount", []string{}, "pass the service account corresponding to the task")
+	flags.AddShellCompletion(c.Flags().Lookup("task-serviceaccount"), "__kubectl_get_serviceaccount")
+
 	c.Flags().BoolVarP(&last, "last", "l", false, "re-run the pipeline using last pipelinerun values")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")

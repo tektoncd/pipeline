@@ -16,6 +16,7 @@ package flags
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/completion"
 )
@@ -39,15 +40,7 @@ func AddTektonOptions(cmd *cobra.Command) {
 	// bashCompletionFlags map
 	for name, completion := range completion.ShellCompletionMap {
 		pflag := cmd.PersistentFlags().Lookup(name)
-		if pflag != nil {
-			if pflag.Annotations == nil {
-				pflag.Annotations = map[string][]string{}
-			}
-			pflag.Annotations[cobra.BashCompCustom] = append(
-				pflag.Annotations[cobra.BashCompCustom],
-				completion,
-			)
-		}
+		AddShellCompletion(pflag, completion)
 	}
 }
 
@@ -77,4 +70,12 @@ func InitParams(p cli.Params, cmd *cobra.Command) error {
 	}
 
 	return nil
+}
+
+// AddShellCompletion add a hint to the cobra flag annotation for how to do a completion
+func AddShellCompletion(pflag *pflag.Flag, shellfunction string) {
+	if pflag.Annotations == nil {
+		pflag.Annotations = map[string][]string{}
+	}
+	pflag.Annotations[cobra.BashCompCustom] = append(pflag.Annotations[cobra.BashCompCustom], shellfunction)
 }

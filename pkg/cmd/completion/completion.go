@@ -61,13 +61,14 @@ function __tkn_get_object() {
         tkn_out=($(tkn ${type} ls -o template --template="${template}" 2>/dev/null))
     fi
 
-    if ((${tkn_out})); then
+    if [[ -n ${tkn_out} ]]; then
         [[ -n ${BASH_VERSION} ]] && COMPREPLY=( $( compgen -W "${tkn_out}" -- "$cur" ) )
         [[ -n ${ZSH_VERSION} ]] && compadd ${tkn_out}
     fi
 }
 
 function __kubectl_get_namespace() { __tkn_get_object namespace kubectl}
+function __kubectl_get_serviceaccount() { __tkn_get_object serviceaccount kubectl}
 function __tkn_get_pipeline() { __tkn_get_object pipeline tkn }
 function __tkn_get_pipelinerun() { __tkn_get_object pipelinerun tkn }
 function __tkn_get_taskrun() { __tkn_get_object taskrun tkn}
