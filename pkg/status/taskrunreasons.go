@@ -33,10 +33,6 @@ const (
 	// is just starting to be reconciled
 	ReasonRunning = "Running"
 
-	// reasonBuilding indicates that the reason for the in-progress status is that the TaskRun
-	// is just being built
-	ReasonBuilding = "Building"
-
 	// reasonTimedOut indicates that the TaskRun has taken longer than its configured timeout
 	ReasonTimedOut = "TaskRunTimeout"
 
