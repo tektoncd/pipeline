@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
@@ -270,6 +271,166 @@ func getTaskRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
 		),
 		Clients: c,
 	}, cancel
+}
+
+func TestReconcile_ExplicitDefaultSA(t *testing.T) {
+	taskRunSuccess := tb.TaskRun("test-taskrun-run-success", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
+	))
+	taskRunWithSaSuccess := tb.TaskRun("test-taskrun-with-sa-run-success", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")),
+		tb.TaskRunServiceAccount("test-sa"),
+	))
+	taskruns := []*v1alpha1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
+	d := test.Data{
+		TaskRuns: taskruns,
+		Tasks:    []*v1alpha1.Task{simpleTask, saTask},
+	}
+
+	defaultSAName := "pipelines"
+	defaultCfg := &config.Config{
+		Defaults: &config.Defaults{
+			DefaultServiceAccount: defaultSAName,
+			DefaultTimeoutMinutes: 60,
+		},
+	}
+
+	for _, tc := range []struct {
+		name    string
+		taskRun *v1alpha1.TaskRun
+		wantPod *corev1.Pod
+	}{{
+		name:    "success",
+		taskRun: taskRunSuccess,
+		wantPod: tb.Pod("test-taskrun-run-success-pod-123456", "foo",
+			tb.PodAnnotation("tekton.dev/ready", ""),
+			tb.PodLabel(taskNameLabelKey, "test-task"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
+				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+			tb.PodSpec(
+				tb.PodServiceAccountName(defaultSAName),
+				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getCredentialsInitContainer("9l9zj"),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("step-simple-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/builder/downward/ready", "-post_file", "/builder/tools/0", "-wait_file_content", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("downward", "/builder/downward"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
+				),
+			),
+		),
+	}, {
+		name:    "serviceaccount",
+		taskRun: taskRunWithSaSuccess,
+		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-123456", "foo",
+			tb.PodAnnotation("tekton.dev/ready", ""),
+			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
+				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+			tb.PodSpec(
+				tb.PodServiceAccountName("test-sa"),
+				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getCredentialsInitContainer("9l9zj"),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("step-sa-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/builder/downward/ready", "-post_file", "/builder/tools/0", "-wait_file_content", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("downward", "/builder/downward"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
+				),
+			),
+		),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+			saName := tc.taskRun.Spec.ServiceAccount
+			if saName == "" {
+				saName = defaultSAName
+			}
+			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      saName,
+					Namespace: tc.taskRun.Namespace,
+				},
+			}); err != nil {
+				t.Fatal(err)
+			}
+
+			ctx := config.ToContext(context.Background(), defaultCfg)
+			if err := c.Reconciler.Reconcile(ctx, getRunName(tc.taskRun)); err != nil {
+				t.Errorf("expected no error. Got error %v", err)
+			}
+			if len(clients.Kube.Actions()) == 0 {
+				t.Errorf("Expected actions to be logged in the kubeclient, got none")
+			}
+
+			namespace, name, err := cache.SplitMetaNamespaceKey(tc.taskRun.Name)
+			if err != nil {
+				t.Errorf("Invalid resource key: %v", err)
+			}
+
+			tr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
+			}
+			if condition != nil && condition.Reason != status.ReasonRunning {
+				t.Errorf("Expected reason %q but was %s", status.ReasonRunning, condition.Reason)
+			}
+
+			if tr.Status.PodName == "" {
+				t.Fatalf("Reconcile didn't set pod name")
+			}
+
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to fetch build pod: %v", err)
+			}
+
+			if d := cmp.Diff(pod.ObjectMeta, tc.wantPod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
+				t.Errorf("Pod metadata doesn't match, diff: %s", d)
+			}
+
+			if d := cmp.Diff(pod.Spec, tc.wantPod.Spec, resourceQuantityCmp); d != "" {
+				t.Errorf("Pod spec doesn't match, diff: %s", d)
+			}
+			if len(clients.Kube.Actions()) == 0 {
+				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
+			}
+		})
+	}
 }
 
 func TestReconcile(t *testing.T) {

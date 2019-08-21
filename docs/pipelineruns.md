@@ -40,8 +40,9 @@ following fields:
     [`PipelineResources`](resources.md) to use for this `PipelineRun`.
   - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
-    information.
-  - [`serviceAccounts`](#service-accounts) - Specifies a list of `ServiceAccount` 
+    information. When a `ServiceAccount` isn't specified, the `default-service-account`
+    specified in the configmap - config-defaults will be applied.
+  - [`serviceAccounts`](#service-accounts) - Specifies a list of `ServiceAccount`
     and `PipelineTask` pairs that enable you to overwrite `ServiceAccount` for concrete `PipelineTask`.
   - [`timeout`] - Specifies timeout after which the `PipelineRun` will fail. If the value of
     `timeout` is empty, the default timeout will be applied. If the value is set to 0,
@@ -118,10 +119,10 @@ spec:
 Specifies the `name` of a `ServiceAccount` resource object. Use the
 `serviceAccount` field to run your `Pipeline` with the privileges of the
 specified service account. If no `serviceAccount` field is specified, your
-resulting `TaskRuns` run using the
+resulting `TaskRuns` run using the service account specified in the ConfigMap
+`configmap-defaults` which if absent will default to
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
-that is in the
-[namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+that is in the [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 of the `TaskRun` resource object.
 
 For examples and more information about specifying service accounts, see the
@@ -129,8 +130,8 @@ For examples and more information about specifying service accounts, see the
 
 ### Service Accounts
 
-Specifies the list of `ServiceAccount` and `PipelineTask` pairs. Specified 
-`PipelineTask` will be run with configured `ServiceAccount`, 
+Specifies the list of `ServiceAccount` and `PipelineTask` pairs. Specified
+`PipelineTask` will be run with configured `ServiceAccount`,
 overwriting [`serviceAccount`](#service-account) configuration, for example:
 
 ```yaml

@@ -144,6 +144,25 @@ creation of a persistent volume could be slower than uploading/downloading files
 to a bucket, or if the the cluster is running in multiple zones, the access to
 the persistent volume can fail.
 
+### Overriding  default ServiceAccount used for TaskRun and PipelineRun
+
+The ConfigMap `config-defaults` can be used to override default service account
+e.g. to override the default service account (`default`) to `tekton` apply the
+following
+
+```yaml
+
+### config-defaults.yaml
+apiVersion: v1
+kind: ConfigMap
+data:
+  default-service-account: "tekton"
+
+```
+
+*NOTE:* The `_example` key contains of the keys that can be overriden and their
+default values.
+
 ## Custom Releases
 
 The [release Task](./../tekton/README.md) can be used for creating a custom
