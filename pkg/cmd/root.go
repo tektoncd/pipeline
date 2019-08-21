@@ -64,10 +64,9 @@ func Root(p cli.Params) *cobra.Command {
 	pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
 
 	var cmd = &cobra.Command{
-		Use:                    "tkn",
-		Short:                  "CLI for tekton pipelines",
-		Long:                   ``,
-		BashCompletionFunction: completion.BashCompletionFunc,
+		Use:   "tkn",
+		Short: "CLI for tekton pipelines",
+		Long:  ``,
 	}
 	cmd.SetUsageTemplate(usageTemplate)
 

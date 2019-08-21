@@ -37,7 +37,7 @@ func AddTektonOptions(cmd *cobra.Command) {
 
 	// Add custom completion for that command as specified in
 	// bashCompletionFlags map
-	for name, completion := range completion.BashCompletionFlags {
+	for name, completion := range completion.ShellCompletionMap {
 		pflag := cmd.PersistentFlags().Lookup(name)
 		if pflag != nil {
 			if pflag.Annotations == nil {
