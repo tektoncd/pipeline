@@ -67,20 +67,20 @@ function __tkn_get_object() {
     fi
 }
 
-function __kubectl_get_namespace() { __tkn_get_object namespace kubectl}
-function __kubectl_get_serviceaccount() { __tkn_get_object serviceaccount kubectl}
-function __tkn_get_pipeline() { __tkn_get_object pipeline tkn }
-function __tkn_get_pipelinerun() { __tkn_get_object pipelinerun tkn }
-function __tkn_get_taskrun() { __tkn_get_object taskrun tkn}
-function __tkn_get_pipelineresource() { __tkn_get_object pipelineresource tkn}
+function __kubectl_get_namespace() { __tkn_get_object namespace kubectl ;}
+function __kubectl_get_serviceaccount() { __tkn_get_object serviceaccount kubectl ;}
+function __tkn_get_pipeline() { __tkn_get_object pipeline tkn ;}
+function __tkn_get_pipelinerun() { __tkn_get_object pipelinerun tkn ;}
+function __tkn_get_taskrun() { __tkn_get_object taskrun tkn ;}
+function __tkn_get_pipelineresource() { __tkn_get_object pipelineresource tkn ;}
 `
 	bashCompletion = `
 function __custom_func() {
 	case ${last_command} in
-		*_describe|*_logs)
+		*_start|*_describe|*_logs)
 			obj=${last_command/tkn_/};
-			obj=${obj/_describe/}; obj=${obj/_logs/};
-			__tkn_get_object ${obj}
+			obj=${obj/_describe/}; obj=${obj/_logs/};obj=${obj/_start/};
+			__tkn_get_object ${obj} tkn
 			return
 			;;
 		*)
@@ -104,7 +104,7 @@ func Command() *cobra.Command {
 			if len(args) == 1 {
 				switch args[0] {
 				case "bash":
-					return cmd.Root().GenBashCompletion(os.Stdout)
+					return runCompletionBash(os.Stdout, cmd.Parent())
 				case "zsh":
 					return runCompletionZsh(os.Stdout, cmd.Parent())
 				}
