@@ -125,7 +125,7 @@ func Test_BuildGCSGetReplacements(t *testing.T) {
 	}
 }
 
-func Test_BuildGCSGetDownloadSteps(t *testing.T) {
+func Test_BuildGCSGetInputSteps(t *testing.T) {
 	for _, at := range []v1alpha1.GCSArtifactType{
 		v1alpha1.GCSArchive,
 		v1alpha1.GCSZipArchive,
@@ -150,11 +150,13 @@ func Test_BuildGCSGetDownloadSteps(t *testing.T) {
 				Command: []string{"/ko-app/gcs-fetcher"},
 			}}}
 			names.TestingSeed()
-			got, err := resource.GetDownloadSteps("/workspace")
+
+			ts := v1alpha1.TaskSpec{}
+			got, err := resource.GetInputTaskModifier(&ts, "/workspace")
 			if err != nil {
 				t.Fatalf("GetDownloadSteps: %v", err)
 			}
-			if d := cmp.Diff(got, wantSteps); d != "" {
+			if d := cmp.Diff(got.GetStepsToPrepend(), wantSteps); d != "" {
 				t.Errorf("Error mismatch between download steps: %s", d)
 			}
 		})

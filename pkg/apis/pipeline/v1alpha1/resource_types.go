@@ -18,7 +18,7 @@ package v1alpha1
 
 import (
 	"golang.org/x/xerrors"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -56,10 +56,44 @@ type PipelineResourceInterface interface {
 	GetName() string
 	GetType() PipelineResourceType
 	Replacements() map[string]string
-	GetDownloadSteps(sourcePath string) ([]Step, error)
-	GetUploadSteps(sourcePath string) ([]Step, error)
-	GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
-	GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
+	GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
+	GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
+}
+
+// TaskModifier is an interface to be implemented by different PipelineResources
+type TaskModifier interface {
+	GetStepsToPrepend() []Step
+	GetStepsToAppend() []Step
+	GetVolumes() []v1.Volume
+}
+
+type InternalTaskModifier struct {
+	StepsToPrepend []Step
+	StepsToAppend  []Step
+	Volumes        []v1.Volume
+}
+
+func (tm *InternalTaskModifier) GetStepsToPrepend() []Step {
+	return tm.StepsToPrepend
+}
+
+func (tm *InternalTaskModifier) GetStepsToAppend() []Step {
+	return tm.StepsToAppend
+}
+
+func (tm *InternalTaskModifier) GetVolumes() []v1.Volume {
+	return tm.Volumes
+}
+
+func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) {
+	steps := tm.GetStepsToPrepend()
+	ts.Steps = append(steps, ts.Steps...)
+
+	steps = tm.GetStepsToAppend()
+	ts.Steps = append(ts.Steps, steps...)
+
+	volumes := tm.GetVolumes()
+	ts.Volumes = append(ts.Volumes, volumes...)
 }
 
 // SecretParam indicates which secret can be used to populate a field of the resource

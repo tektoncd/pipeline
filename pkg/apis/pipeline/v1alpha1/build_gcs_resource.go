@@ -117,14 +117,6 @@ func (s BuildGCSResource) GetType() PipelineResourceType { return PipelineResour
 // GetSecretParams returns nil because it takes no secret params.
 func (s *BuildGCSResource) GetSecretParams() []SecretParam { return nil }
 
-// GetUploadSteps returns nil because it does not support uploading as an
-// output resource.
-func (s *BuildGCSResource) GetUploadSteps(string) ([]Step, error) { return nil, nil }
-
-// GetUploadVolumeSpec returns nil because it does not support uploading as an
-// output resource.
-func (s *BuildGCSResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }
-
 // Replacements returns the set of available replacements for this resource.
 func (s *BuildGCSResource) Replacements() map[string]string {
 	return map[string]string{
@@ -134,23 +126,37 @@ func (s *BuildGCSResource) Replacements() map[string]string {
 	}
 }
 
-// GetDownloadSteps returns the Steps needed to populate the workspace with the
-// resource's data.
-func (s *BuildGCSResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
+// GetInputTaskModifier returns a TaskModifier that prepends a step to a Task to fetch the archive or manifest.
+func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
 	args := []string{"--type", string(s.ArtifactType), "--location", s.Location}
 	// dest_dir is the destination directory for GCS files to be copies"
 	if sourcePath != "" {
 		args = append(args, "--dest_dir", sourcePath)
 	}
 
-	return []Step{
+	steps := []Step{
 		CreateDirStep(s.Name, sourcePath),
 		{Container: corev1.Container{
 			Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Command: []string{"/ko-app/gcs-fetcher"},
 			Image:   *buildGCSFetcherImage,
 			Args:    args,
-		}}}, nil
+		}}}
+
+	volumes, err := getStorageVolumeSpec(s, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &InternalTaskModifier{
+		StepsToPrepend: steps,
+		Volumes:        volumes,
+	}, nil
+}
+
+// GetOutputTaskModifier returns a No-op TaskModifier.
+func (s *BuildGCSResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
+	return &InternalTaskModifier{}, nil
 }
 
 func getArtifactType(val string) (GCSArtifactType, error) {
@@ -161,9 +167,4 @@ func getArtifactType(val string) (GCSArtifactType, error) {
 		}
 	}
 	return "", xerrors.Errorf("Invalid ArtifactType %s. Should be one of %s", val, validArtifactTypes)
-}
-
-// GetDownloadVolumeSpec returns the volumes needed by this resource.
-func (s *BuildGCSResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return getStorageVolumeSpec(s, spec)
 }

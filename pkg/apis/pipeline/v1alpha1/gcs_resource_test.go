@@ -142,7 +142,7 @@ func Test_GetParams(t *testing.T) {
 	}
 }
 
-func Test_GetDownloadSteps(t *testing.T) {
+func Test_GetInputSteps(t *testing.T) {
 	names.TestingSeed()
 
 	for _, tc := range []struct {
@@ -217,18 +217,19 @@ func Test_GetDownloadSteps(t *testing.T) {
 		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.gcsResource.GetDownloadSteps("/workspace")
+			ts := v1alpha1.TaskSpec{}
+			gotSpec, err := tc.gcsResource.GetInputTaskModifier(&ts, "/workspace")
 			if tc.wantErr && err == nil {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
-			if d := cmp.Diff(gotContainers, tc.wantSteps); d != "" {
+			if d := cmp.Diff(gotSpec.GetStepsToPrepend(), tc.wantSteps); d != "" {
 				t.Errorf("Error mismatch between download containers spec: %s", d)
 			}
 		})
 	}
 }
 
-func Test_GetUploadSteps(t *testing.T) {
+func Test_GetOutputTaskModifier(t *testing.T) {
 	names.TestingSeed()
 
 	for _, tc := range []struct {
@@ -302,12 +303,13 @@ func Test_GetUploadSteps(t *testing.T) {
 		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			gotContainers, err := tc.gcsResource.GetUploadSteps("/workspace/")
-			if tc.wantErr && err == nil {
+			ts := v1alpha1.TaskSpec{}
+			got, err := tc.gcsResource.GetOutputTaskModifier(&ts, "/workspace/")
+			if (err != nil) != tc.wantErr {
 				t.Fatalf("Expected error to be %t but got %v:", tc.wantErr, err)
 			}
 
-			if d := cmp.Diff(gotContainers, tc.wantSteps); d != "" {
+			if d := cmp.Diff(got.GetStepsToAppend(), tc.wantSteps); d != "" {
 				t.Errorf("Error mismatch between upload containers spec: %s", d)
 			}
 		})

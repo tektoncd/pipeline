@@ -100,7 +100,7 @@ func Test_GitResource_Replacements(t *testing.T) {
 	}
 }
 
-func Test_GitResource_GetDownloadSteps(t *testing.T) {
+func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
 	names.TestingSeed()
 
 	r := &v1alpha1.GitResource{
@@ -108,6 +108,12 @@ func Test_GitResource_GetDownloadSteps(t *testing.T) {
 		Type:     v1alpha1.PipelineResourceTypeGit,
 		URL:      "git@github.com:test/test.git",
 		Revision: "master",
+	}
+
+	ts := v1alpha1.TaskSpec{}
+	modifier, err := r.GetInputTaskModifier(&ts, "/test/test")
+	if err != nil {
+		t.Fatalf("Unexpected error getting GetDownloadTaskModifier: %s", err)
 	}
 
 	want := []v1alpha1.Step{{Container: corev1.Container{
@@ -125,12 +131,7 @@ func Test_GitResource_GetDownloadSteps(t *testing.T) {
 		WorkingDir: "/workspace",
 	}}}
 
-	got, err := r.GetDownloadSteps("/test/test")
-	if err != nil {
-		t.Fatalf("Unexpected error getting DownloadContainerSpec: %s", err)
-	}
-
-	if diff := cmp.Diff(want, got); diff != "" {
+	if diff := cmp.Diff(want, modifier.GetStepsToPrepend()); diff != "" {
 		t.Errorf("Mismatch of GitResource DownloadContainerSpec: %s", diff)
 	}
 }

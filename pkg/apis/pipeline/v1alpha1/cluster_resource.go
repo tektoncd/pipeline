@@ -142,9 +142,11 @@ func (s ClusterResource) String() string {
 	return string(json)
 }
 
-func (s *ClusterResource) GetUploadSteps(string) ([]Step, error) { return nil, nil }
+func (s *ClusterResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
+	return &InternalTaskModifier{}, nil
+}
 
-func (s *ClusterResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
+func (s *ClusterResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	var envVars []corev1.EnvVar
 	for _, sec := range s.Secrets {
 		ev := corev1.EnvVar{
@@ -160,7 +162,7 @@ func (s *ClusterResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 		}
 		envVars = append(envVars, ev)
 	}
-	return []Step{{Container: corev1.Container{
+	step := Step{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("kubeconfig"),
 		Image:   *kubeconfigWriterImage,
 		Command: []string{"/ko-app/kubeconfigwriter"},
@@ -168,8 +170,8 @@ func (s *ClusterResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 			"-clusterConfig", s.String(),
 		},
 		Env: envVars,
-	}}}, nil
+	}}
+	return &InternalTaskModifier{
+		StepsToPrepend: []Step{step},
+	}, nil
 }
-
-func (s *ClusterResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error)   { return nil, nil }
-func (s *ClusterResource) GetDownloadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }

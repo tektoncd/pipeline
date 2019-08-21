@@ -161,12 +161,12 @@ func TestValidOutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:    "create-dir-source-workspace-mssqb",
+			Name:    "create-dir-source-workspace-9l9zj",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
-			Name:    "source-mkdir-source-git-9l9zj",
+			Name:    "source-mkdir-source-git-mz4c7",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p pipeline-task-name"},
@@ -175,7 +175,7 @@ func TestValidOutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}}, {Container: corev1.Container{
-			Name:    "source-copy-source-git-mz4c7",
+			Name:    "source-copy-source-git-mssqb",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-name"},
@@ -224,12 +224,12 @@ func TestValidOutputResources(t *testing.T) {
 			},
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:    "create-dir-source-workspace-mssqb",
+			Name:    "create-dir-source-workspace-9l9zj",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
-			Name:    "source-mkdir-source-git-9l9zj",
+			Name:    "source-mkdir-source-git-mz4c7",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p pipeline-task-name"},
@@ -238,7 +238,7 @@ func TestValidOutputResources(t *testing.T) {
 				MountPath: "/pvc",
 			}},
 		}}, {Container: corev1.Container{
-			Name:    "source-copy-source-git-mz4c7",
+			Name:    "source-copy-source-git-mssqb",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-name"},
@@ -388,36 +388,42 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:    "create-dir-source-workspace-78c5n",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
-		}}, {Container: corev1.Container{
-			Name:  "upload-source-gcs-9l9zj",
-			Image: "override-with-gsutil-image:latest",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "volume-source-gcs-sname",
-				MountPath: "/var/secret/sname",
+		wantSteps: []v1alpha1.Step{
+			{Container: corev1.Container{
+				Name:    "create-dir-source-workspace-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 			}},
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
-			Env: []corev1.EnvVar{{
-				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+			{Container: corev1.Container{
+				Name:         "source-mkdir-source-gcs-mz4c7",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "mkdir -p pipeline-task-path"},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 			}},
-		}}, {Container: corev1.Container{
-			Name:         "source-mkdir-source-gcs-mz4c7",
-			Image:        "override-with-bash-noop:latest",
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
-		}}, {Container: corev1.Container{
-			Name:         "source-copy-source-gcs-mssqb",
-			Image:        "override-with-bash-noop:latest",
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
-		}}},
+			{Container: corev1.Container{
+				Name:         "source-copy-source-gcs-mssqb",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
+			}},
+			{Container: corev1.Container{
+				Name:  "upload-source-gcs-78c5n",
+				Image: "override-with-gsutil-image:latest",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "volume-source-gcs-sname",
+					MountPath: "/var/secret/sname",
+				}},
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+				Env: []corev1.EnvVar{{
+					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+				}},
+			}},
+		},
+
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
@@ -463,35 +469,40 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:    "create-dir-source-workspace-78c5n",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
-		}}, {Container: corev1.Container{
-			Name:  "upload-source-gcs-9l9zj",
-			Image: "override-with-gsutil-image:latest",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
+		wantSteps: []v1alpha1.Step{
+			{Container: corev1.Container{
+				Name:    "create-dir-source-workspace-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 			}},
-			Env: []corev1.EnvVar{{
-				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+			{Container: corev1.Container{
+				Name:         "source-mkdir-source-gcs-mz4c7",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "mkdir -p pipeline-task-path"},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 			}},
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
-		}}, {Container: corev1.Container{
-			Name:         "source-mkdir-source-gcs-mz4c7",
-			Image:        "override-with-bash-noop:latest",
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", "mkdir -p pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
-		}}, {Container: corev1.Container{
-			Name:         "source-copy-source-gcs-mssqb",
-			Image:        "override-with-bash-noop:latest",
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
-			VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
-		}}},
+			{Container: corev1.Container{
+				Name:         "source-copy-source-gcs-mssqb",
+				Image:        "override-with-bash-noop:latest",
+				Command:      []string{"/ko-app/bash"},
+				Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
+				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
+			}},
+			{Container: corev1.Container{
+				Name:  "upload-source-gcs-78c5n",
+				Image: "override-with-gsutil-image:latest",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
+				}},
+				Env: []corev1.EnvVar{{
+					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+				}},
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+			}},
+		},
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
@@ -533,23 +544,26 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:    "create-dir-source-workspace-mz4c7",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
-		}}, {Container: corev1.Container{
-			Name:  "upload-source-gcs-9l9zj",
-			Image: "override-with-gsutil-image:latest",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
+		wantSteps: []v1alpha1.Step{
+			{Container: corev1.Container{
+				Name:    "create-dir-source-workspace-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 			}},
-			Env: []corev1.EnvVar{{
-				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+			{Container: corev1.Container{
+				Name:  "upload-source-gcs-mz4c7",
+				Image: "override-with-gsutil-image:latest",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
+				}},
+				Env: []corev1.EnvVar{{
+					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+				}},
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
 			}},
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
-		}}},
+		},
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
@@ -590,23 +604,26 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:    "create-dir-source-workspace-mz4c7",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
-		}}, {Container: corev1.Container{
-			Name:  "upload-source-gcs-9l9zj",
-			Image: "override-with-gsutil-image:latest",
-			VolumeMounts: []corev1.VolumeMount{{
-				Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
+		wantSteps: []v1alpha1.Step{
+			{Container: corev1.Container{
+				Name:    "create-dir-source-workspace-9l9zj",
+				Image:   "override-with-bash-noop:latest",
+				Command: []string{"/ko-app/bash"},
+				Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 			}},
-			Env: []corev1.EnvVar{{
-				Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+			{Container: corev1.Container{
+				Name:  "upload-source-gcs-mz4c7",
+				Image: "override-with-gsutil-image:latest",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
+				}},
+				Env: []corev1.EnvVar{{
+					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
+				}},
+				Command: []string{"/ko-app/gsutil"},
+				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
 			}},
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
-		}}},
+		},
 		wantVolumes: []corev1.Volume{{
 			Name: "volume-source-gcs-sname",
 			VolumeSource: corev1.VolumeSource{
@@ -839,12 +856,12 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			},
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:    "create-dir-source-workspace-mz4c7",
+			Name:    "create-dir-source-workspace-9l9zj",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
-			Name:    "artifact-copy-to-source-git-9l9zj",
+			Name:    "artifact-copy-to-source-git-mz4c7",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
 			Args:    []string{"-args", "cp -P -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},
@@ -889,12 +906,12 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			},
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
-			Name:    "create-dir-source-workspace-mz4c7",
+			Name:    "create-dir-source-workspace-9l9zj",
 			Image:   "override-with-bash-noop:latest",
 			Command: []string{"/ko-app/bash"},
 			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
-			Name:    "artifact-copy-to-source-git-9l9zj",
+			Name:    "artifact-copy-to-source-git-mz4c7",
 			Image:   "override-with-gsutil-image:latest",
 			Command: []string{"/ko-app/gsutil"},
 			Args:    []string{"-args", "cp -P -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},

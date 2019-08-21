@@ -114,27 +114,29 @@ func TestPullRequest_GetDownloadSteps(t *testing.T) {
 
 	for _, tc := range containerTestCases("download") {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
-			got, err := tc.in.GetDownloadSteps(workspace)
+			ts := v1alpha1.TaskSpec{}
+			got, err := tc.in.GetInputTaskModifier(&ts, workspace)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tc.out, got); diff != "" {
+			if diff := cmp.Diff(tc.out, got.GetStepsToPrepend()); diff != "" {
 				t.Error(diff)
 			}
 		})
 	}
 }
 
-func TestPullRequest_GetUploadSteps(t *testing.T) {
+func TestPullRequest_GetOutputSteps(t *testing.T) {
 	names.TestingSeed()
 
 	for _, tc := range containerTestCases("upload") {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
-			got, err := tc.in.GetUploadSteps(workspace)
+			ts := v1alpha1.TaskSpec{}
+			got, err := tc.in.GetOutputTaskModifier(&ts, workspace)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tc.out, got); diff != "" {
+			if diff := cmp.Diff(tc.out, got.GetStepsToAppend()); diff != "" {
 				t.Error(diff)
 			}
 		})

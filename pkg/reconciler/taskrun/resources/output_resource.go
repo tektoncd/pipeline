@@ -88,30 +88,25 @@ func AddOutputResources(
 			sourcePath = output.TargetPath
 		}
 
-		resourceSteps, err := resource.GetUploadSteps(sourcePath)
-		if err != nil {
-			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
-		}
-
-		resourceVolumes, err := resource.GetUploadVolumeSpec(taskSpec)
-		if err != nil {
-			return nil, xerrors.Errorf("task %q invalid upload spec: %q; error %w", taskName, boundResource.ResourceRef.Name, err)
-		}
+		// Add containers to mkdir each output directory. This should run before the build steps themselves.
+		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(boundResource.Name, sourcePath)}
+		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []v1alpha1.Step
 			for _, dPath := range boundResource.Paths {
 				newSteps = append(newSteps, as.GetCopyToStorageFromSteps(resource.GetName(), sourcePath, dPath)...)
 			}
-			resourceSteps = append(resourceSteps, newSteps...)
-			resourceVolumes = append(resourceVolumes, as.GetSecretsVolumes()...)
+			taskSpec.Steps = append(taskSpec.Steps, newSteps...)
+			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
 		}
 
-		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(boundResource.Name, sourcePath)}
-		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
-		taskSpec.Steps = append(taskSpec.Steps, resourceSteps...)
-		taskSpec.Volumes = append(taskSpec.Volumes, resourceVolumes...)
+		// Allow the resource to mutate the task.
+		modifier, err := resource.GetOutputTaskModifier(taskSpec, sourcePath)
+		if err != nil {
+			return nil, err
+		}
+		v1alpha1.ApplyTaskModifier(taskSpec, modifier)
 
 		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 			if pvcName == "" {
