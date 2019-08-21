@@ -184,7 +184,9 @@ func (s byStartTime) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s byStartTime) Less(i, j int) bool {
 	if s[j].Status.StartTime == nil {
 		return false
-	} else if s[i].Status.StartTime == nil {
+	}
+
+	if s[i].Status.StartTime == nil {
 		return true
 	}
 

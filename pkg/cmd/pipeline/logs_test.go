@@ -15,6 +15,7 @@
 package pipeline
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -106,6 +107,20 @@ func TestLogs_wrong_run(t *testing.T) {
 	test.AssertOutput(t, expected, err.Error())
 }
 
+func TestLogs_negative_limit(t *testing.T) {
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns),
+		}})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	c := Command(p)
+	_, err := test.ExecuteCommand(c, "logs", pipelineName, "-n", ns, "-L", fmt.Sprintf("%d", -1))
+
+	expected := "limit was -1 but must be a positive number"
+	test.AssertOutput(t, expected, err.Error())
+}
+
 func TestLogs_interactive_get_all_inputs(t *testing.T) {
 
 	clock := clockwork.NewFakeClock()
@@ -165,6 +180,7 @@ func TestLogs_interactive_get_all_inputs(t *testing.T) {
 				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
 					return err
 				}
+
 				if _, err := c.ExpectString("output-pipeline"); err != nil {
 					return err
 				}
@@ -181,7 +197,7 @@ func TestLogs_interactive_get_all_inputs(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString(prName + " started 5 minutes ago"); err != nil {
+				if _, err := c.ExpectString(prName2 + " started 3 minutes ago"); err != nil {
 					return err
 				}
 
@@ -189,7 +205,7 @@ func TestLogs_interactive_get_all_inputs(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString(prName2 + " started 3 minutes ago"); err != nil {
+				if _, err := c.ExpectString(prName + " started 2 minutes ago"); err != nil {
 					return err
 				}
 
@@ -197,7 +213,7 @@ func TestLogs_interactive_get_all_inputs(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString(prName + " started 5 minutes ago"); err != nil {
+				if _, err := c.ExpectString(prName2 + " started 3 minutes ago"); err != nil {
 					return err
 				}
 
@@ -209,7 +225,7 @@ func TestLogs_interactive_get_all_inputs(t *testing.T) {
 			},
 		},
 	}
-	opts := logOpts(prName, ns, cs)
+	opts := logOpts(prName, ns, 5, cs)
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -277,7 +293,7 @@ func TestLogs_interactive_ask_runs(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString(prName + " started 5 minutes ago"); err != nil {
+				if _, err := c.ExpectString(prName2 + " started 3 minutes ago"); err != nil {
 					return err
 				}
 
@@ -285,7 +301,7 @@ func TestLogs_interactive_ask_runs(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString(prName2 + "started 3 minutes ago"); err != nil {
+				if _, err := c.ExpectString(prName + "started 5 minutes ago"); err != nil {
 					return err
 				}
 
@@ -297,7 +313,7 @@ func TestLogs_interactive_ask_runs(t *testing.T) {
 			},
 		},
 	}
-	opts := logOpts(prName, ns, cs)
+	opts := logOpts(prName, ns, 5, cs)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			opts.RunPromptTest(t, test)
@@ -305,7 +321,189 @@ func TestLogs_interactive_ask_runs(t *testing.T) {
 	}
 }
 
-func logOpts(name string, ns string, cs pipelinetest.Clients) *logOptions {
+func TestLogs_interactive_limit_2(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns,
+				// created  15 minutes back
+				cb.PipelineCreationTimestamp(clock.Now().Add(-15*time.Minute)),
+			),
+		},
+		PipelineRuns: []*v1alpha1.PipelineRun{
+
+			tb.PipelineRun(prName, ns,
+				cb.PipelineRunCreationTimestamp(clock.Now().Add(-10*time.Minute)),
+				tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
+				tb.PipelineRunSpec(pipelineName),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					// pipeline run started 5 minutes ago
+					tb.PipelineRunStartTime(clock.Now().Add(-5*time.Minute)),
+					// takes 10 minutes to complete
+					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+				),
+			),
+			tb.PipelineRun(prName2, ns,
+				cb.PipelineRunCreationTimestamp(clock.Now().Add(-8*time.Minute)),
+				tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
+				tb.PipelineRunSpec(pipelineName),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					// pipeline run started 3 minutes ago
+					tb.PipelineRunStartTime(clock.Now().Add(-3*time.Minute)),
+					// takes 10 minutes to complete
+					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+				),
+			),
+		},
+	})
+
+	tests := []promptTest{
+		{
+			name:    "basic interaction",
+			cmdArgs: []string{pipelineName},
+
+			procedure: func(c *expect.Console) error {
+				if _, err := c.ExpectString("output-pipeline"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine(string(terminal.KeyEnter)); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Select pipelinerun :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString(prName2 + " started 3 minutes ago"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString(prName + " started 5 minutes ago"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine(string(terminal.KeyEnter)); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	}
+	opts := logOpts(prName, ns, 2, cs)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			opts.RunPromptTest(t, test)
+		})
+	}
+}
+
+func TestLogs_interactive_limit_1(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns,
+				// created  15 minutes back
+				cb.PipelineCreationTimestamp(clock.Now().Add(-15*time.Minute)),
+			),
+		},
+		PipelineRuns: []*v1alpha1.PipelineRun{
+
+			tb.PipelineRun(prName, ns,
+				cb.PipelineRunCreationTimestamp(clock.Now().Add(-10*time.Minute)),
+				tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
+				tb.PipelineRunSpec(pipelineName),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					// pipeline run started 5 minutes ago
+					tb.PipelineRunStartTime(clock.Now().Add(-5*time.Minute)),
+					// takes 10 minutes to complete
+					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+				),
+			),
+			tb.PipelineRun(prName2, ns,
+				cb.PipelineRunCreationTimestamp(clock.Now().Add(-8*time.Minute)),
+				tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
+				tb.PipelineRunSpec(pipelineName),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					// pipeline run started 3 minutes ago
+					tb.PipelineRunStartTime(clock.Now().Add(-3*time.Minute)),
+					// takes 10 minutes to complete
+					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+				),
+			),
+		},
+	})
+
+	tests := []promptTest{
+		{
+			name:    "basic interaction",
+			cmdArgs: []string{pipelineName},
+
+			procedure: func(c *expect.Console) error {
+				if _, err := c.ExpectString("output-pipeline"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine(string(terminal.KeyEnter)); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Select pipelinerun :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine(string(terminal.KeyArrowDown)); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString(prName2 + " started 3 minutes ago"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine(string(terminal.KeyEnter)); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	}
+	opts := logOpts(prName, ns, 1, cs)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			opts.RunPromptTest(t, test)
+		})
+	}
+}
+
+func logOpts(name string, ns string, prLimit int, cs pipelinetest.Clients) *logOptions {
 	p := test.Params{
 		Kube:   cs.Kube,
 		Tekton: cs.Pipeline,
@@ -313,6 +511,7 @@ func logOpts(name string, ns string, cs pipelinetest.Clients) *logOptions {
 	p.SetNamespace(ns)
 	logOp := logOptions{
 		runName: name,
+		limit:   prLimit,
 		params:  &p,
 	}
 

@@ -17,6 +17,7 @@ package pipeline
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -38,6 +39,7 @@ type logOptions struct {
 	follow       bool
 	pipelineName string
 	runName      string
+	limit        int
 }
 
 func nameArg(args []string, p cli.Params) error {
@@ -103,6 +105,7 @@ func logCommand(p cli.Params) *cobra.Command {
 	c.Flags().BoolVarP(&opts.last, "last", "l", false, "show logs for last run")
 	c.Flags().BoolVarP(&opts.allSteps, "all", "a", false, "show all logs including init steps injected by tekton")
 	c.Flags().BoolVarP(&opts.follow, "follow", "f", false, "stream live logs")
+	c.Flags().IntVarP(&opts.limit, "limit", "L", 5, "lists number of pipelineruns")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
 	return c
@@ -157,6 +160,12 @@ func (opts *logOptions) init(args []string) error {
 }
 
 func (opts *logOptions) getAllInputs() error {
+	err := validate(opts)
+
+	if err != nil {
+		return err
+	}
+
 	ps, err := allPipelines(opts)
 	if err != nil {
 		return err
@@ -185,9 +194,14 @@ func (opts *logOptions) getAllInputs() error {
 }
 
 func (opts *logOptions) askRunName() error {
+	err := validate(opts)
+	if err != nil {
+		return err
+	}
+
 	var ans string
 
-	prs, err := allRuns(opts.params, opts.pipelineName)
+	prs, err := allRuns(opts.params, opts.pipelineName, opts.limit)
 	if err != nil {
 		return err
 	}
@@ -246,7 +260,7 @@ func allPipelines(opts *logOptions) ([]string, error) {
 	return ret, nil
 }
 
-func allRuns(p cli.Params, pName string) ([]string, error) {
+func allRuns(p cli.Params, pName string, limit int) ([]string, error) {
 	cs, err := p.Clients()
 	if err != nil {
 		return nil, err
@@ -260,9 +274,19 @@ func allRuns(p cli.Params, pName string) ([]string, error) {
 		return nil, err
 	}
 
+	runslen := len(runs.Items)
+
+	if runslen > 1 {
+		sort.Sort(byStartTime(runs.Items))
+	}
+
+	if limit > runslen {
+		limit = runslen
+	}
+
 	ret := []string{}
 	for i, run := range runs.Items {
-		if i < 5 {
+		if i < limit {
 			ret = append(ret, run.ObjectMeta.Name+" started "+formatted.Age(run.Status.StartTime, p.Time()))
 		}
 	}
@@ -290,4 +314,29 @@ func lastRun(cs *cli.Clients, ns, pName string) (string, error) {
 		}
 	}
 	return latest.ObjectMeta.Name, nil
+}
+
+type byStartTime []v1alpha1.PipelineRun
+
+func (s byStartTime) Len() int      { return len(s) }
+func (s byStartTime) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s byStartTime) Less(i, j int) bool {
+	if s[j].Status.StartTime == nil {
+		return false
+	}
+
+	if s[i].Status.StartTime == nil {
+		return true
+	}
+
+	return s[j].Status.StartTime.Before(s[i].Status.StartTime)
+}
+
+func validate(opts *logOptions) error {
+
+	if opts.limit <= 0 {
+		return fmt.Errorf("limit was %d but must be a positive number", opts.limit)
+	}
+
+	return nil
 }
