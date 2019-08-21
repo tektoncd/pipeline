@@ -97,43 +97,50 @@ func (s *GCSResource) Replacements() map[string]string {
 	}
 }
 
-// GetUploadSteps gets container spec for gcs resource to be uploaded like
-// set environment variable from secret params and set volume mounts for those secrets
-func (s *GCSResource) GetUploadSteps(sourcePath string) ([]Step, error) {
+func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", sourcePath, s.Location)}
+		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", path, s.Location)}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(sourcePath, "*"), s.Location)}
+		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(path, "*"), s.Location)}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 
-	return []Step{{Container: corev1.Container{
+	step := Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        *gsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
-		Env:          envVars,
-	}}}, nil
+		Env:          envVars},
+	}
+
+	volumes, err := getStorageVolumeSpec(s, ts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &InternalTaskModifier{
+		StepsToAppend: []Step{step},
+		Volumes:       volumes,
+	}, nil
 }
 
-// GetDownloadSteps returns an array of container specs to download gcs storage object
-func (s *GCSResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
-	if sourcePath == "" {
+func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
+	if path == "" {
 		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
 	}
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.Location, sourcePath)}
+		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.Location, path)}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, sourcePath)}
+		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, path)}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
-	return []Step{
-		CreateDirStep(s.Name, sourcePath),
+	steps := []Step{
+		CreateDirStep(s.Name, path),
 		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        *gsutilImage,
@@ -141,13 +148,15 @@ func (s *GCSResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 			Args:         args,
 			Env:          envVars,
 			VolumeMounts: secretVolumeMount,
-		}}}, nil
-}
+		}}}
 
-func (s *GCSResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return getStorageVolumeSpec(s, spec)
-}
+	volumes, err := getStorageVolumeSpec(s, ts)
+	if err != nil {
+		return nil, err
+	}
 
-func (s *GCSResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return getStorageVolumeSpec(s, spec)
+	return &InternalTaskModifier{
+		StepsToPrepend: steps,
+		Volumes:        volumes,
+	}, nil
 }

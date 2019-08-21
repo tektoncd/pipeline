@@ -88,14 +88,14 @@ func Test_CloudEventGetReplacements(t *testing.T) {
 	}
 }
 
-func Test_CloudEventDownloadContainerSpec(t *testing.T) {
+func Test_CloudEventInputContainerSpec(t *testing.T) {
 	r := &v1alpha1.CloudEventResource{
 		Name:      "cloud-event-resource",
 		TargetURI: "http://fake-uri",
 		Type:      v1alpha1.PipelineResourceTypeCloudEvent,
 	}
-	d, e := r.GetDownloadSteps("")
-	if d != nil {
+	d, e := r.GetInputTaskModifier(&v1alpha1.TaskSpec{}, "")
+	if d.GetStepsToPrepend() != nil {
 		t.Errorf("Did not expect a download container for CloudEventResource")
 	}
 	if e != nil {
@@ -103,14 +103,14 @@ func Test_CloudEventDownloadContainerSpec(t *testing.T) {
 	}
 }
 
-func Test_CloudEventUploadContainerSpec(t *testing.T) {
+func Test_CloudEventOutputContainerSpec(t *testing.T) {
 	r := &v1alpha1.CloudEventResource{
 		Name:      "cloud-event-resource",
 		TargetURI: "http://fake-uri",
 		Type:      v1alpha1.PipelineResourceTypeCloudEvent,
 	}
-	d, e := r.GetUploadSteps("")
-	if d != nil {
+	d, e := r.GetOutputTaskModifier(&v1alpha1.TaskSpec{}, "")
+	if d.GetStepsToAppend() != nil {
 		t.Errorf("Did not expect an upload container for CloudEventResource")
 	}
 	if e != nil {

@@ -340,13 +340,13 @@ func TestAddResourceToTask(t *testing.T) {
 		want: &v1alpha1.TaskSpec{
 			Inputs: multipleGitInputs,
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:       "git-source-the-git-with-branch-9l9zj",
+				Name:       "git-source-the-git-with-branch-mz4c7",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
 				WorkingDir: "/workspace",
 			}}, {Container: corev1.Container{
-				Name:       "git-source-the-git-with-branch-mz4c7",
+				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
 				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/git-duplicate-space"},

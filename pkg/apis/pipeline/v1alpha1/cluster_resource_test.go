@@ -134,7 +134,7 @@ func TestNewClusterResource(t *testing.T) {
 	}
 }
 
-func Test_ClusterResource_GetDownloadSteps(t *testing.T) {
+func Test_ClusterResource_GetInputTaskModifier(t *testing.T) {
 	names.TestingSeed()
 	clusterResource := &v1alpha1.ClusterResource{
 		Name: "test-cluster-resource",
@@ -146,6 +146,8 @@ func Test_ClusterResource_GetDownloadSteps(t *testing.T) {
 			SecretName: "secret1",
 		}},
 	}
+
+	ts := v1alpha1.TaskSpec{}
 	wantSteps := []v1alpha1.Step{{Container: corev1.Container{
 		Name:    "kubeconfig-9l9zj",
 		Image:   "override-with-kubeconfig-writer:latest",
@@ -163,11 +165,12 @@ func Test_ClusterResource_GetDownloadSteps(t *testing.T) {
 			},
 		}},
 	}}}
-	got, err := clusterResource.GetDownloadSteps("")
+
+	got, err := clusterResource.GetInputTaskModifier(&ts, "")
 	if err != nil {
 		t.Fatalf("GetDownloadSteps: %v", err)
 	}
-	if d := cmp.Diff(got, wantSteps); d != "" {
+	if d := cmp.Diff(got.GetStepsToPrepend(), wantSteps); d != "" {
 		t.Errorf("Error mismatch between download steps: %s", d)
 	}
 }

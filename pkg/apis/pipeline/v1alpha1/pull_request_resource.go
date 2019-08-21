@@ -93,14 +93,19 @@ func (s *PullRequestResource) Replacements() map[string]string {
 	}
 }
 
-func (s *PullRequestResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
-	return s.getSteps("download", sourcePath)
-}
-func (s *PullRequestResource) GetUploadSteps(sourcePath string) ([]Step, error) {
-	return s.getSteps("upload", sourcePath)
+func (s *PullRequestResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
+	return &InternalTaskModifier{
+		StepsToPrepend: s.getSteps("download", sourcePath),
+	}, nil
 }
 
-func (s *PullRequestResource) getSteps(mode string, sourcePath string) ([]Step, error) {
+func (s *PullRequestResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
+	return &InternalTaskModifier{
+		StepsToAppend: s.getSteps("upload", sourcePath),
+	}, nil
+}
+
+func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
 
 	evs := []corev1.EnvVar{}
@@ -129,13 +134,5 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) ([]Step, 
 		Args:       args,
 		WorkingDir: WorkspaceDir,
 		Env:        evs,
-	}}}, nil
-}
-
-func (s *PullRequestResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
-}
-
-func (s *PullRequestResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return nil, nil
+	}}}
 }
