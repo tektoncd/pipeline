@@ -364,7 +364,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	// If the pipelinerun is cancelled, cancel tasks and update status
 	if pr.IsCancelled() {
-		return cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
+		before := pr.Status.GetCondition(apis.ConditionSucceeded)
+		err := cancelPipelineRun(pr, pipelineState, c.PipelineClientSet)
+		after := pr.Status.GetCondition(apis.ConditionSucceeded)
+		reconciler.EmitEvent(c.Recorder, before, after, pr)
+		return err
 	}
 
 	candidateTasks, err := dag.GetSchedulable(d, pipelineState.SuccessfulPipelineTaskNames()...)
