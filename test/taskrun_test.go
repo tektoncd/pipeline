@@ -19,6 +19,7 @@ limitations under the License.
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -152,11 +153,15 @@ func TestTaskRunStatus(t *testing.T) {
 		},
 		Name:          "hello",
 		ContainerName: "step-hello",
-		ImageID:       "docker-pullable://" + fqImageName,
 	}}
 
 	ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID")
-	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields); d != "" {
+	ignoreStepFields := cmpopts.IgnoreFields(v1alpha1.StepState{}, "ImageID")
+	if d := cmp.Diff(taskrun.Status.Steps, expectedStepState, ignoreTerminatedFields, ignoreStepFields); d != "" {
 		t.Fatalf("-got, +want: %v", d)
+	}
+	// Note(chmouel): Sometime we have docker-pullable:// or docker.io/library as prefix, so let only compare the suffix
+	if !strings.HasSuffix(taskrun.Status.Steps[0].ImageID, fqImageName) {
+		t.Fatalf("`ImageID: %s` does not end with `%s`", taskrun.Status.Steps[0].ImageID, fqImageName)
 	}
 }
