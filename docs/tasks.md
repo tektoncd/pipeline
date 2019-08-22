@@ -77,6 +77,8 @@ following fields:
     available to your `Task`'s steps.
   - [`stepTemplate`](#step-template) - Specifies a `Container` step
     definition to use as the basis for all steps within your `Task`.
+  - [`sidecars`](#sidecars) - Specifies sidecar containers to run alongside
+    steps.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -367,6 +369,57 @@ steps:
     env:
       - name: "FOO"
         value: "baz"
+```
+
+### Sidecars
+
+Specifies a list of
+[`Containers`](https://kubernetes.io/docs/concepts/containers/) to run
+alongside your Steps. These containers can provide auxiliary functions like
+[Docker in Docker](https://hub.docker.com/_/docker) or running a mock API
+server for your app to hit during tests.
+
+Sidecars are started before your Task's steps are executed and are torn
+down after all steps have completed. For further information about a sidecar's
+lifecycle see the [TaskRun doc](./taskruns.md#sidecars).
+
+In the example below, a Docker in Docker sidecar is run so that a step can
+use it to build a docker image:
+
+```yaml
+steps:
+  - image: docker
+    name: client
+    workingDir: /workspace
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cat > Dockerfile << EOF
+        FROM ubuntu
+        RUN apt-get update
+        ENTRYPOINT ["echo", "hello"]
+        EOF
+        docker build -t hello . && docker run hello
+        docker images
+    volumeMounts:
+      - mountPath: /var/run/
+        name: dind-socket
+sidecars:
+  - image: docker:18.05-dind
+    name: server
+    securityContext:
+      privileged: true
+    volumeMounts:
+      - mountPath: /var/lib/docker
+        name: dind-storage
+      - mountPath: /var/run/
+        name: dind-socket
+volumes:
+  - name: dind-storage
+    emptyDir: {}
+  - name: dind-socket
+    emptyDir: {}
 ```
 
 

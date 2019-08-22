@@ -327,6 +327,9 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 	for _, s := range mergedPodSteps {
 		mergedPodContainers = append(mergedPodContainers, s.Container)
 	}
+	if len(taskSpec.Sidecars) > 0 {
+		mergedPodContainers = append(mergedPodContainers, taskSpec.Sidecars...)
+	}
 
 	podTemplate := v1alpha1.CombinedPodTemplate(taskRun.Spec.PodTemplate, taskRun.Spec.NodeSelector, taskRun.Spec.Tolerations, taskRun.Spec.Affinity)
 

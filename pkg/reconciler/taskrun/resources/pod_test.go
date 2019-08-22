@@ -327,6 +327,54 @@ func TestMakePod(t *testing.T) {
 			}},
 			Volumes: implicitVolumes,
 		},
+	}, {
+
+		desc: "additional-sidecar-container",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:  "primary-name",
+				Image: "primary-image",
+			}}},
+			Sidecars: []corev1.Container{{
+				Name:  "sidecar-name",
+				Image: "sidecar-image",
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{{
+				Name:         containerPrefix + credsInit + "-9l9zj",
+				Image:        *credsImage,
+				Command:      []string{"/ko-app/creds-init"},
+				Args:         []string{},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+			}},
+			Containers: []corev1.Container{{
+				Name:         "step-primary-name",
+				Image:        "primary-image",
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			},
+				{
+					Name:  "sidecar-name",
+					Image: "sidecar-image",
+					Resources: corev1.ResourceRequirements{
+						Requests: nil,
+					},
+				},
+			},
+			Volumes: implicitVolumes,
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
@@ -385,6 +433,7 @@ func TestMakePod(t *testing.T) {
 			}
 		})
 	}
+
 }
 
 func TestAddReadyAnnotation(t *testing.T) {

@@ -154,6 +154,19 @@ func Step(name, image string, ops ...StepOp) TaskSpecOp {
 	}
 }
 
+func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		c := corev1.Container{
+			Name:  name,
+			Image: image,
+		}
+		for _, op := range ops {
+			op(&c)
+		}
+		spec.Sidecars = append(spec.Sidecars, c)
+	}
+}
+
 // TaskStepTemplate adds a base container for all steps in the task.
 func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {

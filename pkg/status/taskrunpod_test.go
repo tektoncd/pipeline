@@ -454,3 +454,84 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		})
 	}
 }
+
+func TestCountSidecars(t *testing.T) {
+	tests := []struct {
+		description               string
+		expectedCount             int
+		expectedReadyOrTerminated int
+		statuses                  []corev1.ContainerStatus
+	}{{
+		description:               "three steps and no sidecars",
+		expectedCount:             0,
+		expectedReadyOrTerminated: 0,
+		statuses: []corev1.ContainerStatus{
+			{Name: "step-foo"},
+			{Name: "step-bar"},
+			{Name: "step-baz"},
+		},
+	}, {
+		description:               "one step and two sidecars both terminated or ready",
+		expectedCount:             2,
+		expectedReadyOrTerminated: 2,
+		statuses: []corev1.ContainerStatus{
+			{Name: "step-foo"},
+			{
+				Name:  "sidecar-bar",
+				Ready: true,
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: metav1.NewTime(time.Now()),
+					},
+				},
+			}, {
+				Name: "stopped-sidecar-baz",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 99,
+					},
+				},
+			},
+		},
+	}, {
+		description:               "one step and two sidecars one ready and one not",
+		expectedCount:             2,
+		expectedReadyOrTerminated: 1,
+		statuses: []corev1.ContainerStatus{
+			{Name: "step-ignore-me"},
+			{
+				Name:  "ready-sidecar",
+				Ready: true,
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: metav1.NewTime(time.Now()),
+					},
+				},
+			},
+			{
+				Name: "unready-sidecar",
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: metav1.NewTime(time.Now()),
+					},
+				},
+			},
+		},
+	}}
+	for _, test := range tests {
+		t.Run(test.description, func(t *testing.T) {
+			p := &corev1.Pod{
+				Status: corev1.PodStatus{
+					ContainerStatuses: test.statuses,
+				},
+			}
+			count, readyOrTerminated := countSidecars(p)
+			if count != test.expectedCount {
+				t.Errorf("incorrect count of sidecars, expected %d got %d", test.expectedCount, count)
+			}
+			if readyOrTerminated != test.expectedReadyOrTerminated {
+				t.Errorf("incorrect count of ready or terminated sidecars, expected %d got %d", test.expectedReadyOrTerminated, readyOrTerminated)
+			}
+		})
+	}
+}
