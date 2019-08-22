@@ -67,8 +67,8 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 		updateIncompleteTaskRun(taskRun, pod)
 	}
 
-	sidecarsCount, readySidecarsCount := countSidecars(pod)
-	return pod.Status.Phase == corev1.PodRunning && readySidecarsCount == sidecarsCount
+	sidecarsCount, readyOrTerminatedSidecarsCount := countSidecars(pod)
+	return pod.Status.Phase == corev1.PodRunning && readyOrTerminatedSidecarsCount == sidecarsCount
 }
 
 func updateCompletedTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
@@ -143,16 +143,18 @@ func areStepsComplete(pod *corev1.Pod) bool {
 	return stepsComplete
 }
 
-func countSidecars(pod *corev1.Pod) (total int, ready int) {
+func countSidecars(pod *corev1.Pod) (total int, readyOrTerminated int) {
 	for _, s := range pod.Status.ContainerStatuses {
 		if !resources.IsContainerStep(s.Name) {
 			if s.State.Running != nil && s.Ready {
-				ready++
+				readyOrTerminated++
+			} else if s.State.Terminated != nil {
+				readyOrTerminated++
 			}
 			total++
 		}
 	}
-	return total, ready
+	return total, readyOrTerminated
 }
 
 func getFailureMessage(pod *corev1.Pod) string {

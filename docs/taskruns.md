@@ -646,14 +646,6 @@ container which runs alongside your workloads to provide ancillary support.
 Typical examples of the sidecar pattern are logging daemons, services to
 update files on a shared volume, and network proxies.
 
-Tekton doesn't provide a mechanism to specify sidecars for Task steps
-but it's still possible for sidecars to be added to your Pods:
-[Admission Controllers](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/)
-provide cluster admins a mechanism to inject sidecar containers as Pods launch.
-As a concrete example this is one possible method [used by Istio](https://istio.io/docs/setup/kubernetes/additional-setup/sidecar-injection/#automatic-sidecar-injection)
-to inject an envoy proxy in to pods so that they can be included as part of
-Istio's service mesh.
-
 Tekton will happily work with sidecars injected into a TaskRun's
 pods but the behaviour is a bit nuanced: When TaskRun's steps are complete
 any sidecar containers running inside the Pod will be terminated. In

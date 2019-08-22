@@ -89,8 +89,6 @@ func SendCloudEvents(tr *v1alpha1.TaskRun, ceclient CEClient, logger *zap.Sugare
 	}
 	if merr != nil && merr.Len() > 0 {
 		logger.Errorf("Failed to send %d cloud events for TaskRun %s", merr.Len(), tr.Name)
-		// Return all send error
-		return merr
 	}
-	return merr
+	return merr.ErrorOrNil()
 }

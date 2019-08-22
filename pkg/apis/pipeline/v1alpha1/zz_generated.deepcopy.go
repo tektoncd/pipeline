@@ -1818,6 +1818,13 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 		*out = new(v1.Container)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Sidecars != nil {
+		in, out := &in.Sidecars, &out.Sidecars
+		*out = make([]v1.Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

@@ -114,7 +114,7 @@ func TestSendCloudEvents(t *testing.T) {
 				SendSuccessfully: true,
 			}
 			err := SendCloudEvents(tc.taskRun, NewFakeClient(&successfulBehaviour), logger)
-			if err == nil {
+			if err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
 			opts := GetCloudEventDeliveryCompareOptions()
