@@ -110,8 +110,10 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			}
 
 			var wg sync.WaitGroup
+			var trName []string
 			t.Logf("Waiting for TaskRuns from PipelineRun %s in namespace %s to be running", "pear", namespace)
 			for _, taskrunItem := range taskrunList.Items {
+				trName = append(trName, taskrunItem.Name)
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
@@ -183,6 +185,17 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				}(taskrunItem.Name)
 			}
 			wg.Wait()
+
+			matchKinds := map[string][]string{"PipelineRun": {"pear"}, "TaskRun": trName}
+			expectedNumberOfEvents := 1 + len(trName)
+			t.Logf("Making sure %d events were created from pipelinerun with kinds %v", expectedNumberOfEvents, matchKinds)
+			events, err := collectMatchingEvents(c.KubeClient, namespace, matchKinds, "Failed")
+			if err != nil {
+				t.Fatalf("Failed to collect matching events: %q", err)
+			}
+			if len(events) != expectedNumberOfEvents {
+				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", expectedNumberOfEvents, len(events), events)
+			}
 		})
 	}
 }
