@@ -144,9 +144,6 @@ func (opts *logOptions) init(args []string) error {
 
 	case 1: // pipeline name provided
 		opts.pipelineName = args[0]
-		if opts.last {
-			return opts.initLastRunName()
-		}
 		return opts.askRunName()
 
 	case 2: // both pipeline and run provided
@@ -197,6 +194,10 @@ func (opts *logOptions) askRunName() error {
 	err := validate(opts)
 	if err != nil {
 		return err
+	}
+
+	if opts.last {
+		return opts.initLastRunName()
 	}
 
 	var ans string

@@ -26,7 +26,6 @@ import (
 type LogOptions struct {
 	AllSteps        bool
 	Follow          bool
-	Last            bool
 	Params          cli.Params
 	PipelineName    string
 	PipelineRunName string
