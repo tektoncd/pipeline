@@ -19,6 +19,7 @@ Manage taskruns
 ### SEE ALSO
 
 * [tkn](tkn.md)	 - CLI for tekton pipelines
+* [tkn taskrun delete](tkn_taskrun_delete.md)	 - Delete a taskrun in a namespace
 * [tkn taskrun list](tkn_taskrun_list.md)	 - Lists taskruns in a namespace
 * [tkn taskrun logs](tkn_taskrun_logs.md)	 - Show taskruns logs
 
