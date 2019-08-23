@@ -19,6 +19,7 @@ Manage pipelines
 ### SEE ALSO
 
 * [tkn](tkn.md)	 - CLI for tekton pipelines
+* [tkn pipeline delete](tkn_pipeline_delete.md)	 - Delete a pipeline in a namespace
 * [tkn pipeline describe](tkn_pipeline_describe.md)	 - Describes a pipeline in a namespace
 * [tkn pipeline list](tkn_pipeline_list.md)	 - Lists pipelines in a namespace
 * [tkn pipeline logs](tkn_pipeline_logs.md)	 - Show pipeline logs
