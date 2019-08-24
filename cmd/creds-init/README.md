@@ -46,7 +46,7 @@ The flag `-ssh-git=ssh-key=github.com` (with the environment variable
 	Port 22
 	```
 - `~/.ssh/id_rsa` with the content of `ssh-privatekey` decoded
-- `~/.ssh/known_hosts` with the content of `ssh-privatekey` decoded
+- `~/.ssh/known_hosts` with the content of `known_hosts` decoded
 
 
 ### `-basic-git`
