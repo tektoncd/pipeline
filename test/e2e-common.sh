@@ -119,6 +119,44 @@ function run_yaml_tests() {
 }
 
 function install_pipeline_crd() {
+  echo ">> install operator"
+  mypath=$(pwd)
+
+  echo ">> check current path: $mypath"
+
+  echo ">> check gopath $GOPATH"
+  echo $GOPATH
+
+  echo ">> check git version"
+  git version
+
+  cd $GOPATH
+  mkdir -p src/github.com/tektoncd
+  cd src/github.com/tektoncd
+  git clone https://github.com/tektoncd/operator.git
+  cd operator
+  git fetch origin pull/24/head:pr-24
+  git checkout pr-24
+  kubectl apply -f deploy/crds/*_crd.yaml
+  ko apply -f config/ || return 1
+  wait_until_pods_running default || return 1
+
+  local sdk_rel="v0.9.0"
+  curl -JL \
+    https://github.com/operator-framework/operator-sdk/releases/download/${sdk_rel}/operator-sdk-${sdk_rel}-x86_64-linux-gnu \
+    -o /usr/bin/operator-sdk
+  chmod +x /usr/bin/operator-sdk
+
+  export GO111MODULE=on
+  operator-sdk test local ./test/e2e  \
+  --up-local --namespace operators \
+  --debug  \
+  --verbose || fail_test
+
+  echo ">> remove operator"
+  ko delete -f config/
+  kubectl delete -f deploy/crds/*_crd.yaml
+  cd $mypath
   echo ">> Deploying Tekton Pipelines"
   ko apply -f config/ || fail_test "Build pipeline installation failed"
 
