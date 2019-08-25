@@ -119,6 +119,47 @@ function run_yaml_tests() {
 }
 
 function install_pipeline_crd() {
+  echo ">> install operator"
+  mypath=$(pwd)
+
+  echo ">> check current path: $mypath"
+
+  echo ">> check gopath $GOPATH"
+  echo $GOPATH
+
+  echo ">> check git version"
+  git version
+
+  cd $GOPATH
+  mkdir -p src/github.com/tektoncd
+  cd src/github.com/tektoncd
+  git clone https://github.com/tektoncd/operator.git
+  cd operator
+  git fetch origin pull/21/head:pr-21
+  git checkout pr-21
+  kubectl apply -f deploy/crds/*_crd.yaml
+  ko delete -f config/
+  ko apply -f config/ || return 1
+  wait_until_pods_running default || return 1
+
+  local sdk_rel="v0.9.0"
+  curl -JL \
+    https://github.com/operator-framework/operator-sdk/releases/download/${sdk_rel}/operator-sdk-${sdk_rel}-x86_64-linux-gnu \
+    -o /usr/bin/operator-sdk
+  chmod +x /usr/bin/operator-sdk
+
+  export GO111MODULE=on
+  operator-sdk test local ./test/e2e  \
+  --up-local --namespace operators \
+  --debug  \
+  --verbose || fail_test
+
+  echo ">> remove operator"
+  kubectl delete -f deploy/crds/*_crd.yaml
+  kubectl delete Config cluster
+  ko delete -f config/
+
+  cd $mypath
   echo ">> Deploying Tekton Pipelines"
   ko apply -f config/ || fail_test "Build pipeline installation failed"
 
@@ -126,6 +167,7 @@ function install_pipeline_crd() {
   for res in conditions pipelineresources tasks pipelines taskruns pipelineruns; do
     kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
   done
+
 
   # Wait for pods to be running in the namespaces we are deploying to
   wait_until_pods_running tekton-pipelines || fail_test "Tekton Pipeline did not come up"
