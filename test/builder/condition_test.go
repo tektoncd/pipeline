@@ -56,7 +56,7 @@ func TestCondition(t *testing.T) {
 					Type:      v1alpha1.ParamTypeString,
 					StringVal: "default",
 				}}},
-			Resources: []v1alpha1.ConditionResource{{
+			Resources: []v1alpha1.ResourceDeclaration{{
 				Name: "git-resource",
 				Type: "git",
 			}, {

@@ -134,6 +134,24 @@ type PipelineResourceList struct {
 	Items           []PipelineResource `json:"items"`
 }
 
+// ResourceDeclaration defines an input or output PipelineResource declared as a requirement
+// by another type such as a Task or Condition. The Name field will be used to refer to these
+// PipelineResources within the type's definition, and when provided as an Input, the Name will be the
+// path to the volume mounted containing this PipelineResource as an input (e.g.
+// an input Resource named `workspace` will be mounted at `/workspace`).
+type ResourceDeclaration struct {
+	// Name declares the name by which a resource is referenced in the
+	// definition. Resources may be referenced by name in the definition of a
+	// Task's steps.
+	Name string `json:"name"`
+	// Type is the type of this resource;
+	Type PipelineResourceType `json:"type"`
+	// TargetPath is the path in workspace directory where the resource
+	// will be copied.
+	// +optional
+	TargetPath string `json:"targetPath,omitempty"`
+}
+
 // ResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
 func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
 	switch r.Spec.Type {

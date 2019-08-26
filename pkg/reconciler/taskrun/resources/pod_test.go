@@ -521,7 +521,9 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 		}}},
 		Outputs: &v1alpha1.Outputs{
 			Resources: []v1alpha1.TaskResource{{
-				Name:           "outputimage",
+				ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name: "outputimage",
+				},
 				OutputImageDir: fmt.Sprintf("%s/outputimage", v1alpha1.TaskOutputImageDefaultDir),
 			}},
 		},

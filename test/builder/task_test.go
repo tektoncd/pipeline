@@ -69,10 +69,11 @@ func TestTask(t *testing.T) {
 			}}},
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
-					Name:       "workspace",
-					Type:       v1alpha1.PipelineResourceTypeGit,
-					TargetPath: "/foo/bar",
-				}},
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:       "workspace",
+						Type:       v1alpha1.PipelineResourceTypeGit,
+						TargetPath: "/foo/bar",
+					}}},
 				Params: []v1alpha1.ParamSpec{{
 					Name:        "param",
 					Type:        v1alpha1.ParamTypeString,
@@ -86,9 +87,10 @@ func TestTask(t *testing.T) {
 				}}},
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{{
-					Name: "myotherimage",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "myotherimage",
+						Type: v1alpha1.PipelineResourceTypeImage,
+					}}},
 			},
 			Volumes: []corev1.Volume{{
 				Name: "foo",

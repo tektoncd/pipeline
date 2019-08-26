@@ -29,13 +29,24 @@ import (
 )
 
 var validResource = v1alpha1.TaskResource{
-	Name: "source",
-	Type: "git",
+	ResourceDeclaration: v1alpha1.ResourceDeclaration{
+		Name: "source",
+		Type: "git",
+	},
 }
 
 var validImageResource = v1alpha1.TaskResource{
-	Name: "source",
-	Type: "image",
+	ResourceDeclaration: v1alpha1.ResourceDeclaration{
+		Name: "source",
+		Type: "image",
+	},
+}
+
+var invalidResource = v1alpha1.TaskResource{
+	ResourceDeclaration: v1alpha1.ResourceDeclaration{
+		Name: "source",
+		Type: "what",
+	},
 }
 
 var validSteps = []v1alpha1.Step{{Container: corev1.Container{
@@ -128,10 +139,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		name: "valid template variable",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 				}, {
@@ -143,7 +151,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			},
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
-				Image:      "$(inputs.resources.foo.url)",
+				Image:      "$(inputs.resources.source.url)",
 				Args:       []string{"--flag=$(inputs.params.baz) && $(input.params.foo-is-baz)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
 			}}},
@@ -152,10 +160,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		name: "valid array template variable",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Type: v1alpha1.ParamTypeArray,
@@ -169,7 +174,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			},
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
-				Image:      "$(inputs.resources.foo.url)",
+				Image:      "$(inputs.resources.source.url)",
 				Command:    []string{"$(inputs.param.foo-is-baz)"},
 				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.params.foo-is-baz)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
@@ -180,10 +185,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		name: "deprecated valid template variable",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 				}, {
@@ -195,7 +197,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			},
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
-				Image:      "${inputs.resources.foo.url}",
+				Image:      "${inputs.resources.source.url}",
 				Args:       []string{"--flag=${inputs.params.baz} && ${input.params.foo-is-baz}"},
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
 			}}},
@@ -205,10 +207,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		name: "deprecated valid array template variable",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Type: v1alpha1.ParamTypeArray,
@@ -222,7 +221,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			},
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "mystep",
-				Image:      "${inputs.resources.foo.url}",
+				Image:      "${inputs.resources.source.url}",
 				Command:    []string{"${inputs.param.foo-is-baz}"},
 				Args:       []string{"${inputs.params.baz}", "middle string", "${input.params.foo-is-baz}"},
 				WorkingDir: "/foo/bar/${outputs.resources.source}",
@@ -290,10 +289,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{
-					{
-						Name: "source",
-						Type: "what",
-					},
+					invalidResource,
 					validResource,
 				},
 			},
@@ -383,10 +379,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			},
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{
-					{
-						Name: "who",
-						Type: "what",
-					},
+					invalidResource,
 					validResource,
 				},
 			},
@@ -394,7 +387,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
-			Paths:   []string{"taskspec.Outputs.Resources.who.Type"},
+			Paths:   []string{"taskspec.Outputs.Resources.source.Type"},
 		},
 	}, {
 		name: "duplicated inputs",
@@ -492,10 +485,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "array used in unaccepted field",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Type: v1alpha1.ParamTypeArray,
@@ -523,10 +513,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "array not properly isolated",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Type: v1alpha1.ParamTypeArray,
@@ -554,10 +541,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "array not properly isolated",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Type: v1alpha1.ParamTypeArray,
@@ -597,10 +581,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "inferred array not properly isolated",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Default: &v1alpha1.ArrayOrString{
@@ -682,10 +663,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "deprected array used in unaccepted field",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Type: v1alpha1.ParamTypeArray,
@@ -714,10 +692,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "depreated array not properly isolated",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Type: v1alpha1.ParamTypeArray,
@@ -746,10 +721,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "deprecated array not properly isolated",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Type: v1alpha1.ParamTypeArray,
@@ -791,10 +763,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "deprecated inferred array not properly isolated",
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
-				Resources: []v1alpha1.TaskResource{{
-					Name: "foo",
-					Type: v1alpha1.PipelineResourceTypeImage,
-				}},
+				Resources: []v1alpha1.TaskResource{validImageResource},
 				Params: []v1alpha1.ParamSpec{{
 					Name: "baz",
 					Default: &v1alpha1.ArrayOrString{

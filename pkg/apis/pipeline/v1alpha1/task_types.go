@@ -117,17 +117,7 @@ type Inputs struct {
 // path to the volume mounted containing this Resource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
 type TaskResource struct {
-	// Name declares the name by which a resource is referenced in the Task's
-	// definition. Resources may be referenced by name in the definition of a
-	// Task's steps.
-	Name string `json:"name"`
-	// Type is the type of this resource;
-	Type PipelineResourceType `json:"type"`
-	// TargetPath is the path in workspace directory where the task resource
-	// will be copied.
-	// +optional
-	TargetPath string `json:"targetPath,omitempty"`
-	// Path to the index.json file for output container images.
+	ResourceDeclaration
 	// +optional
 	OutputImageDir string `json:"outputImageDir,omitempty"`
 }

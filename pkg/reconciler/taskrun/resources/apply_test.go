@@ -29,18 +29,18 @@ import (
 
 var simpleTaskSpec = &v1alpha1.TaskSpec{
 	Inputs: &v1alpha1.Inputs{
-		Resources: []v1alpha1.TaskResource{
-			{
+		Resources: []v1alpha1.TaskResource{{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: "workspace",
 			},
-		},
+		}},
 	},
 	Outputs: &v1alpha1.Outputs{
-		Resources: []v1alpha1.TaskResource{
-			{
+		Resources: []v1alpha1.TaskResource{{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: "imageToUse",
 			},
-		},
+		}},
 	},
 	Steps: []v1alpha1.Step{{Container: corev1.Container{
 		Name:  "foo",
@@ -147,7 +147,9 @@ var volumeMountTaskSpec = &v1alpha1.TaskSpec{
 var gcsTaskSpec = &v1alpha1.TaskSpec{
 	Outputs: &v1alpha1.Outputs{
 		Resources: []v1alpha1.TaskResource{{
-			Name: "bucket",
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: "bucket",
+			},
 		}},
 	},
 	Steps: []v1alpha1.Step{{Container: corev1.Container{

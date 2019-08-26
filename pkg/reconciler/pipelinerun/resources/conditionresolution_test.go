@@ -253,9 +253,10 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 		want: v1alpha1.TaskSpec{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{{
-					Name: "git-resource",
-					Type: "git",
-				}},
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "git-resource",
+						Type: "git",
+					}}},
 			},
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "name",

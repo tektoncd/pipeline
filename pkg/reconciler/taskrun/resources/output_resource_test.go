@@ -146,15 +146,17 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 			},
 		},
@@ -214,9 +216,10 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 			},
 		},
@@ -276,9 +279,10 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "image",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "image",
+						}}},
 				},
 			},
 		},
@@ -316,9 +320,10 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 			},
 		},
@@ -368,16 +373,18 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name:       "source-workspace",
-						Type:       "storage",
-						TargetPath: "faraway-disk",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:       "source-workspace",
+							Type:       "storage",
+							TargetPath: "faraway-disk",
+						}}},
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "storage",
+						}}},
 				},
 			},
 		},
@@ -449,9 +456,10 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "storage",
+						}}},
 				},
 			},
 		},
@@ -518,9 +526,10 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "storage",
+						}}},
 				},
 			},
 		},
@@ -574,9 +583,10 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "storage",
+						}}},
 				},
 			},
 		},
@@ -634,9 +644,10 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "image",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "image",
+						}}},
 				},
 			},
 		},
@@ -677,10 +688,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name:       "source-workspace",
-						Type:       "image",
-						TargetPath: "/workspace",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name:       "source-workspace",
+							Type:       "image",
+							TargetPath: "/workspace",
+						}}},
 				},
 			},
 		},
@@ -716,9 +728,10 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "image",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "image",
+						}}},
 				},
 			},
 		},
@@ -811,15 +824,17 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 			},
 		},
@@ -866,9 +881,10 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 			},
 		},
@@ -910,9 +926,10 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 			},
 		},
@@ -986,9 +1003,10 @@ func TestInvalidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "git",
+						}}},
 				},
 			},
 		},
@@ -1024,9 +1042,10 @@ func TestInvalidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "storage",
+						}}},
 				},
 			},
 		},
@@ -1067,9 +1086,10 @@ func TestInvalidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-workspace",
-						Type: "storage",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "storage",
+						}}},
 				},
 			},
 		},
