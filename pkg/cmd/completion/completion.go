@@ -77,9 +77,11 @@ function __tkn_get_pipelineresource() { __tkn_get_object pipelineresource tkn ;}
 	bashCompletion = `
 function __custom_func() {
 	case ${last_command} in
-		*_start|*_describe|*_logs)
+		*_delete|*_start|*_describe|*_logs)
 			obj=${last_command/tkn_/};
+			# really need to find something better for this
 			obj=${obj/_describe/}; obj=${obj/_logs/};obj=${obj/_start/};
+			obj=${obj/_delete/};
 			__tkn_get_object ${obj} tkn
 			return
 			;;
