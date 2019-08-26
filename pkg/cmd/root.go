@@ -38,13 +38,13 @@ Aliases:
   {{.NameAndAliases}}{{end}}{{if .HasExample}}
 
 Examples:
-  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if HasMainSubCommands .}}
 
 Available Commands:{{range .Commands}}{{if (eq .Annotations.commandType "main")}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if HasUtilitySubCommands .}}
 
 Other Commands:{{range .Commands}}{{if (eq .Annotations.commandType "utility")}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 Flags:
 {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
@@ -68,6 +68,8 @@ func Root(p cli.Params) *cobra.Command {
 		Short: "CLI for tekton pipelines",
 		Long:  ``,
 	}
+	cobra.AddTemplateFunc("HasMainSubCommands", hasMainSubCommands)
+	cobra.AddTemplateFunc("HasUtilitySubCommands", hasUtilitySubCommands)
 	cmd.SetUsageTemplate(usageTemplate)
 
 	cmd.AddCommand(
@@ -82,4 +84,21 @@ func Root(p cli.Params) *cobra.Command {
 	)
 
 	return cmd
+}
+
+func hasMainSubCommands(cmd *cobra.Command) bool {
+	return len(subCommands(cmd, "main")) > 0
+}
+func hasUtilitySubCommands(cmd *cobra.Command) bool {
+	return len(subCommands(cmd, "utility")) > 0
+}
+
+func subCommands(cmd *cobra.Command, annotation string) []*cobra.Command {
+	cmds := []*cobra.Command{}
+	for _, sub := range cmd.Commands() {
+		if sub.IsAvailableCommand() && sub.Annotations["commandType"] == annotation {
+			cmds = append(cmds, sub)
+		}
+	}
+	return cmds
 }
