@@ -46,14 +46,17 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-image",
-						Type: "image",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						}}},
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name:           "source-image",
-						Type:           "image",
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						},
 						OutputImageDir: currentDir,
 					}},
 				},
@@ -107,14 +110,17 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-image",
-						Type: "image",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						}}},
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name:           "source-image",
-						Type:           "image",
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						},
 						OutputImageDir: currentDir,
 					}},
 				},
@@ -331,15 +337,17 @@ func TestTaskRunHasOutputImageResource(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-image",
-						Type: "image",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						}}},
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source-image",
-						Type: "image",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-image",
+							Type: "image",
+						}}},
 				},
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Name: "step1",
@@ -381,15 +389,17 @@ func TestTaskRunHasOutputImageResource(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source",
+							Type: "git",
+						}}},
 				},
 				Outputs: &v1alpha1.Outputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "source",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source",
+							Type: "git",
+						}}},
 				},
 			},
 		},

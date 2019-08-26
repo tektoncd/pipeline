@@ -227,7 +227,11 @@ func TaskOutputs(ops ...OutputsOp) TaskSpecOp {
 // Any number of TaskResource modifier can be passed to transform it.
 func InputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) InputsOp {
 	return func(i *v1alpha1.Inputs) {
-		r := &v1alpha1.TaskResource{Name: name, Type: resourceType}
+		r := &v1alpha1.TaskResource{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: name,
+				Type: resourceType,
+			}}
 		for _, op := range ops {
 			op(r)
 		}
@@ -244,7 +248,11 @@ func ResourceTargetPath(path string) TaskResourceOp {
 // OutputsResource adds a resource, with specified name and type, to the Outputs.
 func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) OutputsOp {
 	return func(o *v1alpha1.Outputs) {
-		o.Resources = append(o.Resources, v1alpha1.TaskResource{Name: name, Type: resourceType})
+		o.Resources = append(o.Resources, v1alpha1.TaskResource{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: name,
+				Type: resourceType,
+			}})
 	}
 }
 

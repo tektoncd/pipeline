@@ -98,8 +98,13 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	}
 
 	t.Inputs = &v1alpha1.Inputs{
-		Params:    rcc.Condition.Spec.Params,
-		Resources: toTaskResouces(rcc.Condition.Spec.Resources),
+		Params: rcc.Condition.Spec.Params,
+	}
+
+	for _, r := range rcc.Condition.Spec.Resources {
+		t.Inputs.Resources = append(t.Inputs.Resources, v1alpha1.TaskResource{
+			ResourceDeclaration: r,
+		})
 	}
 
 	// convert param strings of type ${params.x} to ${inputs.params.x}
@@ -112,18 +117,6 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	}
 
 	return t, nil
-}
-
-func toTaskResouces(resources []v1alpha1.ConditionResource) []v1alpha1.TaskResource {
-	var tr []v1alpha1.TaskResource
-	for _, r := range resources {
-		tr = append(tr, v1alpha1.TaskResource{
-			Name:       r.Name,
-			Type:       r.Type,
-			TargetPath: r.TargetPath,
-		})
-	}
-	return tr
 }
 
 // Replaces all instances of ${params.x} in the container to ${inputs.params.x} for each param name
@@ -139,7 +132,7 @@ func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 
 // Prepends inputs. to all resource template strings so that they can be replaced by
 // taskrun variable substitution e.g. ${resources.name.key} to ${inputs.resources.name.key}
-func convertResourceTemplateStrings(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ConditionResource) error {
+func convertResourceTemplateStrings(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration) error {
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
 		if rSpec, ok := resolvedResources[cr.Name]; ok {

@@ -35,31 +35,36 @@ var (
 
 	gitInputs = &v1alpha1.Inputs{
 		Resources: []v1alpha1.TaskResource{{
-			Name: "gitspace",
-			Type: "git",
-		}},
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: "gitspace",
+				Type: "git",
+			}}},
 	}
 	multipleGitInputs = &v1alpha1.Inputs{
 		Resources: []v1alpha1.TaskResource{{
-			Name: "gitspace",
-			Type: "git",
-		}, {
-			Name: "git-duplicate-space",
-			Type: "git",
-		}},
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: "gitspace",
+				Type: "git",
+			}}, {
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: "git-duplicate-space",
+				Type: "git",
+			}}},
 	}
 	gcsInputs = &v1alpha1.Inputs{
 		Resources: []v1alpha1.TaskResource{{
-			Name:       "workspace",
-			Type:       "gcs",
-			TargetPath: "gcs-dir",
-		}},
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name:       "workspace",
+				Type:       "gcs",
+				TargetPath: "gcs-dir",
+			}}},
 	}
 	clusterInputs = &v1alpha1.Inputs{
 		Resources: []v1alpha1.TaskResource{{
-			Name: "target-cluster",
-			Type: "cluster",
-		}},
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: "target-cluster",
+				Type: "cluster",
+			}}},
 	}
 )
 
@@ -587,9 +592,10 @@ func TestAddResourceToTask(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "workspace-invalid",
-						Type: "git",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "workspace-invalid",
+							Type: "git",
+						}}},
 				},
 			},
 		},
@@ -711,9 +717,10 @@ func TestAddResourceToTask(t *testing.T) {
 func TestStorageInputResource(t *testing.T) {
 	gcsStorageInputs := &v1alpha1.Inputs{
 		Resources: []v1alpha1.TaskResource{{
-			Name: "gcs-input-resource",
-			Type: "storage",
-		}},
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: "gcs-input-resource",
+				Type: "storage",
+			}}},
 	}
 
 	for _, c := range []struct {
@@ -728,9 +735,10 @@ func TestStorageInputResource(t *testing.T) {
 			Spec: v1alpha1.TaskSpec{
 				Inputs: &v1alpha1.Inputs{
 					Resources: []v1alpha1.TaskResource{{
-						Name: "gcs-input-resource",
-						Type: "storage",
-					}},
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "gcs-input-resource",
+							Type: "storage",
+						}}},
 				},
 			},
 		},
