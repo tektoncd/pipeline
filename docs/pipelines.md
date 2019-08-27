@@ -9,7 +9,7 @@ This document defines `Pipelines` and their capabilities.
   - [Parameters](#parameters)
   - [Pipeline Tasks](#pipeline-tasks)
     - [From](#from)
-    - [RunAfter](#runafter)
+    - [RunAfter](#runAfter)
     - [Retries](#retries)
 - [Ordering](#ordering)
 - [Examples](#examples)
@@ -38,15 +38,15 @@ following fields:
     - `resources.inputs` / `resource.outputs`
       - [`from`](#from) - Used when the content of the
         [`PipelineResource`](resources.md) should come from the
-        [output](tasks.md#output) of a previous [Pipeline Task](#pipeline-tasks)
-      - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-task)
+        [output](tasks.md#outputs) of a previous [Pipeline Task](#pipeline-tasks)
+      - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-tasks)
         should be executed after another Pipeline Task, but there is no
         [output linking](#from) required
       - [`retries`](#retries) - Used when the task is wanted to be executed if
         it fails. Could a network error or a missing dependency. It does not
         apply to cancellations.
       - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
-        conditons are evaluated to be true.
+        conditions are evaluated to be true.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -54,7 +54,7 @@ following fields:
 ### Declared resources
 
 In order for a `Pipeline` to interact with the outside world, it will probably
-need [`PipelineResources`](#creating-pipelineresources) which will be given to
+need [`PipelineResources`](resources.md) which will be given to
 `Tasks` as inputs and outputs.
 
 Your `Pipeline` must declare the `PipelineResources` it needs in a `resources`
@@ -199,7 +199,7 @@ that your `Tasks` need.
   resource that is from the defined list of tasks is used
 - `from` can support fan in and fan out
 - The `from` clause [expresses ordering](#ordering), i.e. the
-  [Pipeline Task](#pipeline-task) which provides the `PipelineResource` must run
+  [Pipeline Task](#pipeline-tasks) which provides the `PipelineResource` must run
   _before_ the Pipeline Task which needs that `PipelineResource` as an input
   - The name of the `PipelineResource` must correspond to a `PipelineResource`
     from the `Task` that the referenced `PipelineTask` gives as an output
@@ -321,7 +321,7 @@ before another (i.e. _Directed_), and the execution will eventually complete
 
 This is done using:
 
-- [`from`](#from) clauses on the [`PipelineResources`](#resources) needed by a
+- [`from`](#from) clauses on the [`PipelineResources`](resources.md) needed by a
   `Task`
 - [`runAfter`](#runAfter) clauses on the [Pipeline Tasks](#pipeline-tasks)
 
