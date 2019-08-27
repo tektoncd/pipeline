@@ -53,7 +53,7 @@ func TestPipelineDelete_WithParams(t *testing.T) {
 
 	p := &test.Params{Tekton: cs.Pipeline}
 	pipeline := Command(p)
-	out, _ := test.ExecuteCommand(pipeline, "rm", "pipeline", "-n", "ns")
+	out, _ := test.ExecuteCommand(pipeline, "rm", "pipeline", "-n", "ns", "-f")
 	expected := "Pipeline deleted: pipeline\n"
 	test.AssertOutput(t, expected, out)
 }

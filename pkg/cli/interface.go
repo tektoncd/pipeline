@@ -23,6 +23,7 @@ import (
 )
 
 type Stream struct {
+	In  io.Reader
 	Out io.Writer
 	Err io.Writer
 }
