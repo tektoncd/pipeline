@@ -15,6 +15,8 @@
 package task
 
 import (
+	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,29 +28,89 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
-func TestTaskDelete_Empty(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
-
-	task := Command(p)
-	_, err := test.ExecuteCommand(task, "rm", "bar")
-	if err == nil {
-		t.Errorf("Error expected here")
-	}
-	expected := "Failed to delete task \"bar\": tasks.tekton.dev \"bar\" not found"
-	test.AssertOutput(t, expected, err.Error())
-}
-
-func TestTaskDelete_WithParams(t *testing.T) {
+func TestTaskDelete(t *testing.T) {
 	clock := clockwork.NewFakeClock()
-	tasks := []*v1alpha1.Task{
-		tb.Task("tomatoes", "ns", cb.TaskCreationTime(clock.Now().Add(-1*time.Minute))),
+
+	seeds := make([]pipelinetest.Clients, 0)
+	for i := 0; i < 3; i++ {
+		tasks := []*v1alpha1.Task{
+			tb.Task("tomatoes", "ns", cb.TaskCreationTime(clock.Now().Add(-1*time.Minute))),
+		}
+		cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+		seeds = append(seeds, cs)
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
-	task := Command(p)
-	out, _ := test.ExecuteCommand(task, "rm", "tomatoes", "-n", "ns")
-	expected := "Task deleted: tomatoes\n"
-	test.AssertOutput(t, expected, out)
+	testParams := []struct {
+		name        string
+		command     []string
+		input       pipelinetest.Clients
+		inputStream io.Reader
+		wantError   bool
+		want        string
+	}{
+		{
+			name:        "With force delete flag (shorthand)",
+			command:     []string{"rm", "tomatoes", "-n", "ns", "-f"},
+			input:       seeds[0],
+			inputStream: nil,
+			wantError:   false,
+			want:        "Task deleted: tomatoes\n",
+		},
+		{
+			name:        "With force delete flag",
+			command:     []string{"rm", "tomatoes", "-n", "ns", "--force"},
+			input:       seeds[1],
+			inputStream: nil,
+			wantError:   false,
+			want:        "Task deleted: tomatoes\n",
+		},
+		{
+			name:        "Without force delete flag, reply no",
+			command:     []string{"rm", "tomatoes", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("n"),
+			wantError:   true,
+			want:        "Canceled deleting task \"tomatoes\"",
+		},
+		{
+			name:        "Without force delete flag, reply yes",
+			command:     []string{"rm", "tomatoes", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("y"),
+			wantError:   false,
+			want:        "Make sure you really want to delete task \"tomatoes\" (y/n): Task deleted: tomatoes\n",
+		},
+		{
+			name:        "Remove non existent resource",
+			command:     []string{"rm", "nonexistent", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("y"),
+			wantError:   true,
+			want:        "Failed to delete task \"nonexistent\": tasks.tekton.dev \"nonexistent\" not found",
+		},
+	}
+
+	for _, tp := range testParams {
+		t.Run(tp.name, func(t *testing.T) {
+			p := &test.Params{Tekton: tp.input.Pipeline}
+			task := Command(p)
+
+			if tp.inputStream != nil {
+				task.SetIn(tp.inputStream)
+			}
+
+			out, err := test.ExecuteCommand(task, tp.command...)
+			if tp.wantError {
+				if err == nil {
+					t.Errorf("Error expected here")
+				}
+				test.AssertOutput(t, tp.want, err.Error())
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected Error")
+				}
+				test.AssertOutput(t, tp.want, out)
+			}
+		})
+	}
 }
