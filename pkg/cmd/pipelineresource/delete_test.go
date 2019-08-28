@@ -15,6 +15,8 @@
 package pipelineresource
 
 import (
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/tektoncd/cli/pkg/test"
@@ -23,32 +25,91 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 )
 
-func TestPipelineResourceDelete_Empty(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
-
-	res := Command(p)
-	_, err := test.ExecuteCommand(res, "rm", "bar")
-	if err == nil {
-		t.Errorf("Error expected here")
-	}
-	expected := "Failed to delete pipelineresource \"bar\": pipelineresources.tekton.dev \"bar\" not found"
-	test.AssertOutput(t, expected, err.Error())
-}
-
-func TestPipelineResourceDelete_WithParams(t *testing.T) {
-	pres := []*v1alpha1.PipelineResource{
-		tb.PipelineResource("test-1", "test-ns-1",
-			tb.PipelineResourceSpec("image",
-				tb.PipelineResourceSpecParam("URL", "quay.io/tekton/controller"),
+func TestPipelineResourceDelete(t *testing.T) {
+	seeds := make([]pipelinetest.Clients, 0)
+	for i := 0; i < 3; i++ {
+		pres := []*v1alpha1.PipelineResource{
+			tb.PipelineResource("pre-1", "ns",
+				tb.PipelineResourceSpec("image",
+					tb.PipelineResourceSpecParam("URL", "quay.io/tekton/controller"),
+				),
 			),
-		),
+		}
+		cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
+		seeds = append(seeds, cs)
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
-	p := &test.Params{Tekton: cs.Pipeline}
-	pipelineresource := Command(p)
-	out, _ := test.ExecuteCommand(pipelineresource, "rm", "test-1", "-n", "test-ns-1")
-	expected := "PipelineResource deleted: test-1\n"
-	test.AssertOutput(t, expected, out)
+	testParams := []struct {
+		name        string
+		command     []string
+		input       pipelinetest.Clients
+		inputStream io.Reader
+		wantError   bool
+		want        string
+	}{
+		{
+			name:        "With force delete flag (shorthand)",
+			command:     []string{"rm", "pre-1", "-n", "ns", "-f"},
+			input:       seeds[0],
+			inputStream: nil,
+			wantError:   false,
+			want:        "PipelineResource deleted: pre-1\n",
+		},
+		{
+			name:        "With force delete flag",
+			command:     []string{"rm", "pre-1", "-n", "ns", "--force"},
+			input:       seeds[1],
+			inputStream: nil,
+			wantError:   false,
+			want:        "PipelineResource deleted: pre-1\n",
+		},
+		{
+			name:        "Without force delete flag, reply no",
+			command:     []string{"rm", "pre-1", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("n"),
+			wantError:   true,
+			want:        "Canceled deleting pipelineresource \"pre-1\"",
+		},
+		{
+			name:        "Without force delete flag, reply yes",
+			command:     []string{"rm", "pre-1", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("y"),
+			wantError:   false,
+			want:        "Make sure you really want to delete pipelineresource \"pre-1\" (y/n): PipelineResource deleted: pre-1\n",
+		},
+		{
+			name:        "Remove non existent resource",
+			command:     []string{"rm", "nonexistent", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("y"),
+			wantError:   true,
+			want:        "Failed to delete pipelineresource \"nonexistent\": pipelineresources.tekton.dev \"nonexistent\" not found",
+		},
+	}
+
+	for _, tp := range testParams {
+		t.Run(tp.name, func(t *testing.T) {
+			p := &test.Params{Tekton: tp.input.Pipeline}
+			pipelineResource := Command(p)
+
+			if tp.inputStream != nil {
+				pipelineResource.SetIn(tp.inputStream)
+			}
+
+			out, err := test.ExecuteCommand(pipelineResource, tp.command...)
+			if tp.wantError {
+				if err == nil {
+					t.Errorf("Error expected here")
+				}
+				test.AssertOutput(t, tp.want, err.Error())
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected Error")
+				}
+				test.AssertOutput(t, tp.want, out)
+			}
+		})
+	}
 }
