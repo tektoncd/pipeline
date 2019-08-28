@@ -15,6 +15,8 @@
 package pipelinerun
 
 import (
+	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,51 +31,110 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestPipelineRunDelete_Empty(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
-
-	pr := Command(p)
-	_, err := test.ExecuteCommand(pr, "rm", "bar")
-	if err == nil {
-		t.Errorf("Error expected here")
-	}
-	expected := "Failed to delete pipelinerun \"bar\": pipelineruns.tekton.dev \"bar\" not found"
-	test.AssertOutput(t, expected, err.Error())
-}
-
-func TestPipelineRunDelete_WithParams(t *testing.T) {
+func TestPipelineRunDelete(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{
-		Pipelines: []*v1alpha1.Pipeline{
-			tb.Pipeline("pipeline", "ns",
-				// created  5 minutes back
-				cb.PipelineCreationTimestamp(clock.Now().Add(-5*time.Minute)),
-			),
-		},
-		PipelineRuns: []*v1alpha1.PipelineRun{
-			tb.PipelineRun("pipeline-run-1", "ns",
-				cb.PipelineRunCreationTimestamp(clock.Now()),
-				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
-				tb.PipelineRunSpec("pipeline"),
-				tb.PipelineRunStatus(
-					tb.PipelineRunStatusCondition(apis.Condition{
-						Status: corev1.ConditionTrue,
-						Reason: resources.ReasonSucceeded,
-					}),
-					// pipeline run starts now
-					tb.PipelineRunStartTime(clock.Now()),
-					// takes 10 minutes to complete
-					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+	seeds := make([]pipelinetest.Clients, 0)
+	for i := 0; i < 3; i++ {
+		cs, _ := test.SeedTestData(t, pipelinetest.Data{
+			Pipelines: []*v1alpha1.Pipeline{
+				tb.Pipeline("pipeline", "ns",
+					// created  5 minutes back
+					cb.PipelineCreationTimestamp(clock.Now().Add(-5*time.Minute)),
 				),
-			),
-		},
-	})
+			},
+			PipelineRuns: []*v1alpha1.PipelineRun{
+				tb.PipelineRun("pipeline-run-1", "ns",
+					cb.PipelineRunCreationTimestamp(clock.Now()),
+					tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+					tb.PipelineRunSpec("pipeline"),
+					tb.PipelineRunStatus(
+						tb.PipelineRunStatusCondition(apis.Condition{
+							Status: corev1.ConditionTrue,
+							Reason: resources.ReasonSucceeded,
+						}),
+						// pipeline run starts now
+						tb.PipelineRunStartTime(clock.Now()),
+						// takes 10 minutes to complete
+						cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+					),
+				),
+			},
+		})
+		seeds = append(seeds, cs)
+	}
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
-	pr := Command(p)
-	out, _ := test.ExecuteCommand(pr, "rm", "pipeline-run-1", "-n", "ns")
-	expected := "PipelineRun deleted: pipeline-run-1\n"
-	test.AssertOutput(t, expected, out)
+	testParams := []struct {
+		name        string
+		command     []string
+		input       pipelinetest.Clients
+		inputStream io.Reader
+		wantError   bool
+		want        string
+	}{
+		{
+			name:        "With force delete flag (shorthand)",
+			command:     []string{"rm", "pipeline-run-1", "-n", "ns", "-f"},
+			input:       seeds[0],
+			inputStream: nil,
+			wantError:   false,
+			want:        "PipelineRun deleted: pipeline-run-1\n",
+		},
+		{
+			name:        "With force delete flag",
+			command:     []string{"rm", "pipeline-run-1", "-n", "ns", "--force"},
+			input:       seeds[1],
+			inputStream: nil,
+			wantError:   false,
+			want:        "PipelineRun deleted: pipeline-run-1\n",
+		},
+		{
+			name:        "Without force delete flag, reply no",
+			command:     []string{"rm", "pipeline-run-1", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("n"),
+			wantError:   true,
+			want:        "Canceled deleting pipelinerun \"pipeline-run-1\"",
+		},
+		{
+			name:        "Without force delete flag, reply yes",
+			command:     []string{"rm", "pipeline-run-1", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("y"),
+			wantError:   false,
+			want:        "Make sure you really want to delete pipelinerun \"pipeline-run-1\" (y/n): PipelineRun deleted: pipeline-run-1\n",
+		},
+		{
+			name:        "Remove non existent resource",
+			command:     []string{"rm", "nonexistent", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("y"),
+			wantError:   true,
+			want:        "Failed to delete pipelinerun \"nonexistent\": pipelineruns.tekton.dev \"nonexistent\" not found",
+		},
+	}
+
+	for _, tp := range testParams {
+		t.Run(tp.name, func(t *testing.T) {
+			p := &test.Params{Tekton: tp.input.Pipeline}
+			pipelinerun := Command(p)
+
+			if tp.inputStream != nil {
+				pipelinerun.SetIn(tp.inputStream)
+			}
+
+			out, err := test.ExecuteCommand(pipelinerun, tp.command...)
+			if tp.wantError {
+				if err == nil {
+					t.Errorf("Error expected here")
+				}
+				test.AssertOutput(t, tp.want, err.Error())
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected Error")
+				}
+				test.AssertOutput(t, tp.want, out)
+			}
+		})
+	}
 }
