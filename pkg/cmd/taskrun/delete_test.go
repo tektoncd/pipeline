@@ -15,9 +15,10 @@
 package taskrun
 
 import (
+	"io"
+	"strings"
 	"testing"
 
-	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
@@ -27,38 +28,96 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestTaskRunDelete_Empty(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
-
-	tr := Command(p)
-	_, err := test.ExecuteCommand(tr, "rm", "bar")
-	if err == nil {
-		t.Errorf("Error expected here")
-	}
-	expected := "Failed to delete taskrun \"bar\": taskruns.tekton.dev \"bar\" not found"
-	test.AssertOutput(t, expected, err.Error())
-}
-
-func TestTaskRunDelete_WithParams(t *testing.T) {
-	clock := clockwork.NewFakeClock()
-	trs := []*v1alpha1.TaskRun{
-		tb.TaskRun("tr0-1", "ns",
-			tb.TaskRunLabel("tekton.dev/task", "random"),
-			tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
-			tb.TaskRunStatus(
-				tb.StatusCondition(apis.Condition{
-					Status: corev1.ConditionTrue,
-					Reason: resources.ReasonSucceeded,
-				}),
+func TestTaskRunDelete(t *testing.T) {
+	seeds := make([]pipelinetest.Clients, 0)
+	for i := 0; i < 3; i++ {
+		trs := []*v1alpha1.TaskRun{
+			tb.TaskRun("tr0-1", "ns",
+				tb.TaskRunLabel("tekton.dev/task", "random"),
+				tb.TaskRunSpec(tb.TaskRunTaskRef("random")),
+				tb.TaskRunStatus(
+					tb.StatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+				),
 			),
-		),
+		}
+		cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs})
+		seeds = append(seeds, cs)
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs})
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
-	tr := Command(p)
-	out, _ := test.ExecuteCommand(tr, "rm", "tr0-1", "-n", "ns")
-	expected := "TaskRun deleted: tr0-1\n"
-	test.AssertOutput(t, expected, out)
+	testParams := []struct {
+		name        string
+		command     []string
+		input       pipelinetest.Clients
+		inputStream io.Reader
+		wantError   bool
+		want        string
+	}{
+		{
+			name:        "With force delete flag (shorthand)",
+			command:     []string{"rm", "tr0-1", "-n", "ns", "-f"},
+			input:       seeds[0],
+			inputStream: nil,
+			wantError:   false,
+			want:        "TaskRun deleted: tr0-1\n",
+		},
+		{
+			name:        "With force delete flag",
+			command:     []string{"rm", "tr0-1", "-n", "ns", "--force"},
+			input:       seeds[1],
+			inputStream: nil,
+			wantError:   false,
+			want:        "TaskRun deleted: tr0-1\n",
+		},
+		{
+			name:        "Without force delete flag, reply no",
+			command:     []string{"rm", "tr0-1", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("n"),
+			wantError:   true,
+			want:        "Canceled deleting taskrun \"tr0-1\"",
+		},
+		{
+			name:        "Without force delete flag, reply yes",
+			command:     []string{"rm", "tr0-1", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("y"),
+			wantError:   false,
+			want:        "Make sure you really want to delete taskrun \"tr0-1\" (y/n): TaskRun deleted: tr0-1\n",
+		},
+		{
+			name:        "Remove non existent resource",
+			command:     []string{"rm", "nonexistent", "-n", "ns"},
+			input:       seeds[2],
+			inputStream: strings.NewReader("y"),
+			wantError:   true,
+			want:        "Failed to delete taskrun \"nonexistent\": taskruns.tekton.dev \"nonexistent\" not found",
+		},
+	}
+
+	for _, tp := range testParams {
+		t.Run(tp.name, func(t *testing.T) {
+			p := &test.Params{Tekton: tp.input.Pipeline}
+			taskrun := Command(p)
+
+			if tp.inputStream != nil {
+				taskrun.SetIn(tp.inputStream)
+			}
+
+			out, err := test.ExecuteCommand(taskrun, tp.command...)
+			if tp.wantError {
+				if err == nil {
+					t.Errorf("Error expected here")
+				}
+				test.AssertOutput(t, tp.want, err.Error())
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected Error")
+				}
+				test.AssertOutput(t, tp.want, out)
+			}
+		})
+	}
 }
