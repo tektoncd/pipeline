@@ -19,5 +19,6 @@ Manage clustertasks
 ### SEE ALSO
 
 * [tkn](tkn.md)	 - CLI for tekton pipelines
+* [tkn clustertask delete](tkn_clustertask_delete.md)	 - Delete a clustertask resource in a cluster
 * [tkn clustertask list](tkn_clustertask_list.md)	 - Lists clustertasks in a namespace
 
