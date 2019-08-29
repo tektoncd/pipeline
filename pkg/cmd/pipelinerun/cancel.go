@@ -42,18 +42,18 @@ func cancelCommand(p cli.Params) *cobra.Command {
 func cancelPipelineRun(p cli.Params, s *cli.Stream, prName string) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return fmt.Errorf("Failed to create tekton client")
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	pr, err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Get(prName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to find pipelinerun: %s", prName)
+		return fmt.Errorf("failed to find pipelinerun: %s", prName)
 	}
 
 	pr.Spec.Status = v1alpha1.PipelineRunSpecStatusCancelled
 	_, err = cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Update(pr)
 	if err != nil {
-		return fmt.Errorf("Failed to cancel pipelinerun: %s, err: %s", prName, err.Error())
+		return fmt.Errorf("failed to cancel pipelinerun: %s, err: %s", prName, err.Error())
 	}
 
 	fmt.Fprintf(s.Out, "Pipelinerun cancelled: %s\n", pr.Name)

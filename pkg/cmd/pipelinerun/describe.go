@@ -119,12 +119,12 @@ tkn pr desc foo -n bar",
 func printPipelineRunDescription(s *cli.Stream, prName string, p cli.Params) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return fmt.Errorf("Failed to create tekton client")
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	pr, err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Get(prName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to find pipelinerun %q", prName)
+		return fmt.Errorf("failed to find pipelinerun %q", prName)
 	}
 
 	var trl taskrunList

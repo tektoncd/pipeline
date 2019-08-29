@@ -572,7 +572,7 @@ func TestLogs_interactive_ask_all_last_run(t *testing.T) {
 				}
 
 				if _, err := c.ExpectString("Select pipelinerun :"); err == nil {
-					return errors.New("Unexpected error")
+					return errors.New("unexpected error")
 				}
 
 				if _, err := c.ExpectEOF(); err != nil {
@@ -644,7 +644,7 @@ func TestLogs_interactive_ask_run_last_run(t *testing.T) {
 
 			procedure: func(c *expect.Console) error {
 				if _, err := c.ExpectString("output-pipeline"); err == nil {
-					return errors.New("Unexpected error")
+					return errors.New("unexpected error")
 				}
 
 				if _, err := c.ExpectEOF(); err != nil {

@@ -38,7 +38,7 @@ func TestPipelineRunDescribe_not_found(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error, did not get any")
 	}
-	expected := "Failed to find pipelinerun \"bar\""
+	expected := "failed to find pipelinerun \"bar\""
 	test.AssertOutput(t, expected, err.Error())
 }
 

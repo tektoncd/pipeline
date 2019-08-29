@@ -72,7 +72,7 @@ tkn pre list -n foo",
 				}
 			}
 			if !valid {
-				return fmt.Errorf("Failed to list pipelineresources. Invalid resource type %s", opts.Type)
+				return fmt.Errorf("failed to list pipelineresources. Invalid resource type %s", opts.Type)
 			}
 
 			pres, err := list(cs.Tekton, p.Namespace(), opts.Type)

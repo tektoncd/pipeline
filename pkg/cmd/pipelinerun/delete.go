@@ -72,11 +72,11 @@ tkn pr rm foo -n bar",
 func deletePipelineRun(s *cli.Stream, p cli.Params, prName string) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return fmt.Errorf("Failed to create tekton client")
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	if err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Delete(prName, &metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("Failed to delete pipelinerun %q: %s", prName, err)
+		return fmt.Errorf("failed to delete pipelinerun %q: %s", prName, err)
 	}
 
 	fmt.Fprintf(s.Out, "PipelineRun deleted: %s\n", prName)
@@ -95,7 +95,7 @@ func checkOptions(opts *deleteOptions, s *cli.Stream, p cli.Params, prName strin
 		if t == "y" {
 			break
 		} else if t == "n" {
-			return fmt.Errorf("Canceled deleting pipelinerun %q", prName)
+			return fmt.Errorf("canceled deleting pipelinerun %q", prName)
 		}
 		fmt.Fprint(s.Out, "Please enter (y/n): ")
 	}

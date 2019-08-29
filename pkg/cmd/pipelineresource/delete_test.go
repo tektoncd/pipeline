@@ -85,7 +85,7 @@ func TestPipelineResourceDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("y"),
 			wantError:   true,
-			want:        "Failed to delete pipelineresource \"nonexistent\": pipelineresources.tekton.dev \"nonexistent\" not found",
+			want:        "failed to delete pipelineresource \"nonexistent\": pipelineresources.tekton.dev \"nonexistent\" not found",
 		},
 	}
 

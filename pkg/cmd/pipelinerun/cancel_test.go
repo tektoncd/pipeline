@@ -51,7 +51,7 @@ func Test_cancel_pipelinerun_not_found(t *testing.T) {
 	pRun := Command(p)
 	got, _ := tu.ExecuteCommand(pRun, "cancel", prName, "-n", "ns")
 
-	expected := "Error: Failed to find pipelinerun: " + prName + "\n"
+	expected := "Error: failed to find pipelinerun: " + prName + "\n"
 	tu.AssertOutput(t, expected, got)
 }
 
@@ -83,6 +83,6 @@ func Test_cancel_pipelinerun_client_err(t *testing.T) {
 	pRun := Command(p)
 	got, _ := tu.ExecuteCommand(pRun, "cancel", prName, "-n", "ns")
 
-	expected := "Error: Failed to cancel pipelinerun: " + prName + ", err: " + errStr + "\n"
+	expected := "Error: failed to cancel pipelinerun: " + prName + ", err: " + errStr + "\n"
 	tu.AssertOutput(t, expected, got)
 }

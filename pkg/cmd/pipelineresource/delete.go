@@ -73,11 +73,11 @@ tkn res rm foo -n bar",
 func deleteResource(s *cli.Stream, p cli.Params, preName string) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return fmt.Errorf("Failed to create tekton client")
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	if err := cs.Tekton.TektonV1alpha1().PipelineResources(p.Namespace()).Delete(preName, &metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("Failed to delete pipelineresource %q: %s", preName, err)
+		return fmt.Errorf("failed to delete pipelineresource %q: %s", preName, err)
 	}
 
 	fmt.Fprintf(s.Out, "PipelineResource deleted: %s\n", preName)

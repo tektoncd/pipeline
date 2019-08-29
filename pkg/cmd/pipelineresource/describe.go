@@ -87,12 +87,12 @@ tkn res desc foo -n bar",
 func printPipelineResourceDescription(s *cli.Stream, p cli.Params, preName string) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return fmt.Errorf("Failed to create tekton client")
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	pre, err := cs.Tekton.TektonV1alpha1().PipelineResources(p.Namespace()).Get(preName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to find pipelineresource %q", preName)
+		return fmt.Errorf("failed to find pipelineresource %q", preName)
 	}
 
 	var data = struct {

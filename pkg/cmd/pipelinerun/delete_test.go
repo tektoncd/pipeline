@@ -94,7 +94,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("n"),
 			wantError:   true,
-			want:        "Canceled deleting pipelinerun \"pipeline-run-1\"",
+			want:        "canceled deleting pipelinerun \"pipeline-run-1\"",
 		},
 		{
 			name:        "Without force delete flag, reply yes",
@@ -110,7 +110,7 @@ func TestPipelineRunDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("y"),
 			wantError:   true,
-			want:        "Failed to delete pipelinerun \"nonexistent\": pipelineruns.tekton.dev \"nonexistent\" not found",
+			want:        "failed to delete pipelinerun \"nonexistent\": pipelineruns.tekton.dev \"nonexistent\" not found",
 		},
 	}
 

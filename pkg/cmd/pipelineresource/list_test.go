@@ -151,7 +151,7 @@ func TestPipelineResourceList_invalidType(t *testing.T) {
 		t.Error("Expecting an error but it's empty")
 	}
 
-	test.AssertOutput(t, "Failed to list pipelineresources. Invalid resource type registry", err.Error())
+	test.AssertOutput(t, "failed to list pipelineresources. Invalid resource type registry", err.Error())
 }
 
 func command(t *testing.T, pres []*v1alpha1.PipelineResource) *cobra.Command {

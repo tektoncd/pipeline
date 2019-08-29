@@ -33,7 +33,7 @@ func TestPipelineResourceDescribe_Empty(t *testing.T) {
 	if err == nil {
 		t.Errorf("Error expected here")
 	}
-	expected := "Failed to find pipelineresource \"bar\""
+	expected := "failed to find pipelineresource \"bar\""
 	test.AssertOutput(t, expected, err.Error())
 }
 

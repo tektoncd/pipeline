@@ -48,7 +48,7 @@ func generateCliYaml(opts *options) error {
 		}
 		return GenManTree(tkn, header, opts.target)
 	default:
-		return fmt.Errorf("Invalid docs kind : %s", opts.kind)
+		return fmt.Errorf("invalid docs kind : %s", opts.kind)
 	}
 }
 

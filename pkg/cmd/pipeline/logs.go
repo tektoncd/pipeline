@@ -305,7 +305,7 @@ func lastRun(cs *cli.Clients, ns, pName string) (string, error) {
 	}
 
 	if len(runs.Items) == 0 {
-		return "", fmt.Errorf("No pipeline runs found for %s in namespace: %s", pName, ns)
+		return "", fmt.Errorf("no pipeline runs found for %s in namespace: %s", pName, ns)
 	}
 
 	var latest v1alpha1.PipelineRun

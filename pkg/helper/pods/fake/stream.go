@@ -46,7 +46,7 @@ func (ps *PodStream) Stream() (io.ReadCloser, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Failed to stream container logs")
+	return nil, fmt.Errorf("failed to stream container logs")
 }
 
 func Streamer(l []Log) stream.NewStreamerFunc {
