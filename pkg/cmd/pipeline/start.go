@@ -168,7 +168,10 @@ func startPipeline(out io.Writer, opt startOptions, p cli.Params, pName string) 
 		return err
 	}
 
-	fmt.Fprintf(out, "Pipelinerun started: %s\n", pr.Name)
+	fmt.Fprintf(out, `Pipelinerun started: %s
+
+In order to track the pipelinerun progress run:
+tkn pipelinerune logs %s -f\n`, pr.Name, pr.Name)
 	return nil
 }
 
