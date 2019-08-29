@@ -46,4 +46,4 @@ metadata:
   namespace: tektoncd
 spec:
   taskRef:
-    name:  task-volume
+    name: task-volume

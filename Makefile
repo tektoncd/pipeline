@@ -1,3 +1,5 @@
+YAML_FILES := $(shell find . -type f -regex ".*y[a]ml" -print)
+
 all: bin/tkn test
 
 FORCE:
@@ -23,7 +25,6 @@ amd64:
 .PHONY: arm
 arm:
 	GOOS=linux GOARCH=arm go build -o bin/tkn-linux-arm ./cmd/tkn
-	# GOOS=windows GOARCH=arm go build -o bin/tkn-windows-arm ./cmd/tkn # not support with go 1.11
 
 .PHONY: arm64
 arm64:
@@ -41,6 +42,10 @@ test: test-unit ## run all tests
 lint: ## run linter(s)
 	@echo "Linting..."
 	@golangci-lint run ./...
+
+.PHONY: lint-yaml
+lint-yaml: ${YAML_FILES} ## runs yamllint on all yaml files
+	@yamllint -c .yamllint $(YAML_FILES)
 
 .PHONY: test-unit
 test-unit: ./vendor ## run unit tests

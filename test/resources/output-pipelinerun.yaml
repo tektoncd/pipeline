@@ -45,7 +45,7 @@ spec:
   - name: read-docs-old
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'ls -la /workspace/damnworkspace/docs/README.md'] # tests that targetpath works
+    args: ['-c', 'ls -la /workspace/damnworkspace/docs/README.md']  # tests that targetpath works
   - name: write-new-stuff
     image: ubuntu
     command: ['bash']
@@ -67,9 +67,9 @@ spec:
   - name: read
     image: ubuntu
     command: ["/bin/bash"]
-    args: ['-c', 'cat /workspace/newworkspace/stuff'] # tests that new targetpath and previous task output is dumped
+    args: ['-c', 'cat /workspace/newworkspace/stuff']  # tests that new targetpath and previous task output is dumped
 ---
-#The Output of the first Task (git resource) create-file is given as an `Input`
+# The Output of the first Task (git resource) create-file is given as an `Input`
 # to the next `Task` check-stuff-file-exists using`from` clause.
 
 apiVersion: tekton.dev/v1alpha1
