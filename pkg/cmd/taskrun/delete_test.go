@@ -77,7 +77,7 @@ func TestTaskRunDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("n"),
 			wantError:   true,
-			want:        "Canceled deleting taskrun \"tr0-1\"",
+			want:        "canceled deleting taskrun \"tr0-1\"",
 		},
 		{
 			name:        "Without force delete flag, reply yes",
@@ -93,7 +93,7 @@ func TestTaskRunDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("y"),
 			wantError:   true,
-			want:        "Failed to delete taskrun \"nonexistent\": taskruns.tekton.dev \"nonexistent\" not found",
+			want:        "failed to delete taskrun \"nonexistent\": taskruns.tekton.dev \"nonexistent\" not found",
 		},
 	}
 
@@ -109,12 +109,12 @@ func TestTaskRunDelete(t *testing.T) {
 			out, err := test.ExecuteCommand(taskrun, tp.command...)
 			if tp.wantError {
 				if err == nil {
-					t.Errorf("Error expected here")
+					t.Errorf("error expected here")
 				}
 				test.AssertOutput(t, tp.want, err.Error())
 			} else {
 				if err != nil {
-					t.Errorf("Unexpected Error")
+					t.Errorf("unexpected Error")
 				}
 				test.AssertOutput(t, tp.want, out)
 			}

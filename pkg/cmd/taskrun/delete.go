@@ -71,11 +71,11 @@ tkn tr rm foo -n bar",
 func deleteTaskRun(s *cli.Stream, p cli.Params, trName string) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return fmt.Errorf("Failed to create tekton client")
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	if err := cs.Tekton.TektonV1alpha1().TaskRuns(p.Namespace()).Delete(trName, &metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("Failed to delete taskrun %q: %s", trName, err)
+		return fmt.Errorf("failed to delete taskrun %q: %s", trName, err)
 	}
 
 	fmt.Fprintf(s.Out, "TaskRun deleted: %s\n", trName)
@@ -94,7 +94,7 @@ func checkOptions(opts *deleteOptions, s *cli.Stream, p cli.Params, trName strin
 		if t == "y" {
 			break
 		} else if t == "n" {
-			return fmt.Errorf("Canceled deleting taskrun %q", trName)
+			return fmt.Errorf("canceled deleting taskrun %q", trName)
 		}
 		fmt.Fprint(s.Out, "Please enter (y/n): ")
 	}
