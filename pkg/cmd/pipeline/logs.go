@@ -17,7 +17,6 @@ package pipeline
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -26,6 +25,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/formatted"
+	prhsort "github.com/tektoncd/cli/pkg/helper/pipelinerun/sort"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -278,7 +278,7 @@ func allRuns(p cli.Params, pName string, limit int) ([]string, error) {
 	runslen := len(runs.Items)
 
 	if runslen > 1 {
-		sort.Sort(byStartTime(runs.Items))
+		runs.Items = prhsort.SortPipelineRunsByStartTime(runs.Items)
 	}
 
 	if limit > runslen {
@@ -315,22 +315,6 @@ func lastRun(cs *cli.Clients, ns, pName string) (string, error) {
 		}
 	}
 	return latest.ObjectMeta.Name, nil
-}
-
-type byStartTime []v1alpha1.PipelineRun
-
-func (s byStartTime) Len() int      { return len(s) }
-func (s byStartTime) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-func (s byStartTime) Less(i, j int) bool {
-	if s[j].Status.StartTime == nil {
-		return false
-	}
-
-	if s[i].Status.StartTime == nil {
-		return true
-	}
-
-	return s[j].Status.StartTime.Before(s[i].Status.StartTime)
 }
 
 func validate(opts *logOptions) error {

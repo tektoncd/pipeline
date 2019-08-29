@@ -17,13 +17,13 @@ package taskrun
 import (
 	"fmt"
 	"os"
-	"sort"
 	"text/tabwriter"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
+	trhsort "github.com/tektoncd/cli/pkg/helper/taskrun/sort"
 	"github.com/tektoncd/cli/pkg/printer"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -133,7 +133,7 @@ func list(p cli.Params, task string, limit int) (*v1alpha1.TaskRunList, error) {
 	trslen := len(trs.Items)
 
 	if trslen != 0 {
-		sort.Sort(byStartTime(trs.Items))
+		trs.Items = trhsort.SortTaskRunsByStartTime(trs.Items)
 	}
 
 	// If greater than maximum amount of taskruns, return all taskruns by setting limit to default
@@ -175,20 +175,4 @@ func printFormatted(s *cli.Stream, trs *v1alpha1.TaskRunList, c clockwork.Clock)
 		)
 	}
 	return w.Flush()
-}
-
-type byStartTime []v1alpha1.TaskRun
-
-func (s byStartTime) Len() int      { return len(s) }
-func (s byStartTime) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
-func (s byStartTime) Less(i, j int) bool {
-	if s[j].Status.StartTime == nil {
-		return false
-	}
-
-	if s[i].Status.StartTime == nil {
-		return true
-	}
-
-	return s[j].Status.StartTime.Before(s[i].Status.StartTime)
 }
