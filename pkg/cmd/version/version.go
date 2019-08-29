@@ -17,8 +17,8 @@ package version
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -51,7 +51,10 @@ func Command() *cobra.Command {
 				return nil
 			}
 
-			return checkRelease(cmd.OutOrStdout())
+			client := NewClient(time.Duration(3 * time.Second))
+			output, err := checkRelease(client)
+			fmt.Fprintf(cmd.OutOrStdout(), output)
+			return err
 		},
 	}
 
@@ -59,49 +62,91 @@ func Command() *cobra.Command {
 	return cmd
 }
 
-func checkRelease(outStream io.Writer) error {
-	client := http.Client{Timeout: time.Duration(3 * time.Second)}
+type GHVersion struct {
+	TagName string `json:"tag_name"`
+	HTMLURL string `json:"html_url"`
+}
 
-	res, err := client.Get(latestReleaseURL)
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch the latest version")
+type Option func(*Client)
+
+type Client struct {
+	httpClient *http.Client
+}
+
+func SetHTTPClient(httpClient *http.Client) Option {
+	return func(cli *Client) {
+		cli.httpClient = httpClient
 	}
-	defer res.Body.Close()
+}
+
+func NewClient(timeout time.Duration, options ...Option) *Client {
+	cli := Client{
+		httpClient: &http.Client{
+			Timeout: timeout,
+		},
+	}
+
+	for i := range options {
+		options[i](&cli)
+	}
+	return &cli
+}
+
+func (cli *Client) getRelease(url string) (ghversion GHVersion, err error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return ghversion, errors.Wrap(err, "failed to fetch the latest version")
+	}
+
+	res, err := cli.httpClient.Do(req)
+	defer func() {
+		err := res.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	if err != nil {
+		return ghversion, errors.Wrap(err, "request failed")
+	}
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("invalid http status %d, error: %s", res.StatusCode, res.Status)
+		return ghversion, fmt.Errorf("invalid http status %d, error: %s", res.StatusCode, res.Status)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return errors.Wrap(err, "failed to read the latest version response body")
+		return ghversion, errors.Wrap(err, "failed to read the latest version response body")
+	}
+	response := GHVersion{}
+
+	if err := json.Unmarshal(body, &response); err != nil {
+		return ghversion, errors.Wrap(err, "failed to unmarshal the latest version response body")
 	}
 
-	var response struct {
-		TagName string `json:"tag_name"`
-		HTMLURL string `json:"html_url"`
-	}
-	if err := json.Unmarshal(body, &response); err != nil {
-		return errors.Wrap(err, "failed to unmarshal the latest version response body")
+	return response, nil
+}
+
+func checkRelease(client *Client) (string, error) {
+	response, err := client.getRelease(latestReleaseURL)
+	if err != nil {
+		return "", err
 	}
 
 	latest, err := parseVersion(response.TagName)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	current, err := parseVersion(clientVersion)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if current.LT(*latest) {
-		fmt.Fprintf(outStream, "A newer version (v%s) of Tekton CLI is available, please check %s\n", latest, response.HTMLURL)
-	} else {
-		fmt.Fprintf(outStream, "You are running the latest version (v%s) of Tekton CLI\n", latest)
+		return fmt.Sprintf("A newer version (v%s) of Tekton CLI is available, please check %s\n", latest, response.HTMLURL), nil
 	}
 
-	return nil
+	return fmt.Sprintf("You are running the latest version (v%s) of Tekton CLI\n", latest), nil
 }
 
 func parseVersion(version string) (*semver.Version, error) {
