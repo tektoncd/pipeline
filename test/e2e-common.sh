@@ -135,7 +135,7 @@ function install_pipeline_crd() {
 # Install the Tekton pipeline crd based on the release number
 function install_pipeline_crd_version() {
   echo ">> Deploying Tekton Pipelines of Version $1"
-  kubectl apply -f "https://github.com/tektoncd/pipeline/releases/download/v$1/release.yaml" || fail_test "Build pipeline installation failed of Version $1"
+  kubectl apply -f "https://github.com/tektoncd/pipeline/releases/download/$1/release.yaml" || fail_test "Build pipeline installation failed of Version $1"
   verify_pipeline_installation
 }
 
@@ -161,7 +161,7 @@ function uninstall_pipeline_crd() {
 
 function uninstall_pipeline_crd_version() {
   echo ">> Uninstalling Tekton Pipelines of version $1"
-  kubectl delete --ignore-not-found=true -f "https://github.com/tektoncd/pipeline/releases/download/v$1/release.yaml"
+  kubectl delete --ignore-not-found=true -f "https://github.com/tektoncd/pipeline/releases/download/$1/release.yaml"
 
   # Make sure that everything is cleaned up in the current namespace.
   for res in conditions pipelineresources tasks pipelines taskruns pipelineruns; do
