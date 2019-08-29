@@ -110,7 +110,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	// convert param strings of type ${params.x} to ${inputs.params.x}
 	convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
 	// convert resource strings of type ${resources.name.key} to ${inputs.resources.name.key}
-	err := convertResourceTemplateStrings(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources)
+	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources)
 
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to replace resource template strings %w", err)
@@ -130,9 +130,9 @@ func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 	v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
 }
 
-// Prepends inputs. to all resource template strings so that they can be replaced by
-// taskrun variable substitution e.g. ${resources.name.key} to ${inputs.resources.name.key}
-func convertResourceTemplateStrings(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration) error {
+// ApplyResources applies the substitution from values in resources which are referenced
+// in spec as subitems of the replacementStr.
+func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration) error {
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
 		if rSpec, ok := resolvedResources[cr.Name]; ok {
@@ -140,9 +140,10 @@ func convertResourceTemplateStrings(step *v1alpha1.Step, resolvedResources map[s
 			if err != nil {
 				return xerrors.Errorf("Error trying to create resource: %w", err)
 			}
-			for replaceKeys := range r.Replacements() {
-				replacements[fmt.Sprintf("resources.%s.%s", cr.Name, replaceKeys)] = fmt.Sprintf("$(inputs.resources.%s.%s)", cr.Name, replaceKeys)
+			for k, v := range r.Replacements() {
+				replacements[fmt.Sprintf("resources.%s.%s", cr.Name, k)] = v
 			}
+			replacements[fmt.Sprintf("resources.%s.path", cr.Name)] = v1alpha1.InputResourcePath(cr)
 		}
 	}
 	v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})

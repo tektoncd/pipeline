@@ -216,8 +216,8 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 	}, {
 		name: "with-input-params",
 		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
-			tb.ConditionSpecCheck("${params.name}", "${params.img}",
-				tb.WorkingDir("${params.not.replaced}")),
+			tb.ConditionSpecCheck("$(params.name)", "$(params.img)",
+				tb.WorkingDir("$(params.not.replaced)")),
 			tb.ConditionParamSpec("name", v1alpha1.ParamTypeString),
 			tb.ConditionParamSpec("img", v1alpha1.ParamTypeString),
 		)),
@@ -232,16 +232,16 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 				}},
 			},
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:       "${inputs.params.name}",
-				Image:      "${inputs.params.img}",
-				WorkingDir: "${params.not.replaced}",
+				Name:       "$(inputs.params.name)",
+				Image:      "$(inputs.params.img)",
+				WorkingDir: "$(params.not.replaced)",
 			}}},
 		},
 	}, {
 		name: "with-resources",
 		cond: tb.Condition("bar", "foo", tb.ConditionSpec(
 			tb.ConditionSpecCheck("name", "ubuntu",
-				tb.Args("${resources.git-resource.revision}")),
+				tb.Args("$(resources.git-resource.revision)")),
 			tb.ConditionResource("git-resource", v1alpha1.PipelineResourceTypeGit),
 		)),
 		resolvedResources: map[string]*v1alpha1.PipelineResource{
@@ -261,7 +261,7 @@ func TestResolvedConditionCheck_ConditionToTaskSpec(t *testing.T) {
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:  "name",
 				Image: "ubuntu",
-				Args:  []string{"${inputs.resources.git-resource.revision}"},
+				Args:  []string{"master"},
 			}}},
 		},
 	}}
