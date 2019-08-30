@@ -105,34 +105,31 @@ func (s *S3Resource) GetType() PipelineResourceType {
 // GetSecretParams returns the resource secret params
 func (s *S3Resource) GetSecretParams() []SecretParam { return s.Secrets }
 
-// GetUploadSteps gets container spec for s3 resource to be uploaded
-func (s *S3Resource) GetDownloadSteps(sourcePath string) ([]Step, error) {
-	args := []string{"--put", "--destination", path.Join(sourcePath, s.Location), "--artifact", s.ObjectName, "--bucket", s.BucketName}
-
-	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, s3SecretVolumeMountPath, s.Secrets)
-
-	return []Step{{Container: corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
-		Image:        *s3utilImage,
-		Command:      []string{"/ko-app/s3store"},
-		Args:         args,
-		VolumeMounts: secretVolumeMount,
-		Env:          envVars,
-	}}}, nil
-}
-
 func (s *S3Resource) GetUploadSteps(sourcePath string) ([]Step, error) {
 	args := []string{"--put", "--source", path.Join(sourcePath, s.Location), "--artifact", s.ObjectName, "--bucket", s.BucketName}
 
-	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, s3SecretVolumeMountPath, s.Secrets)
+	envVars := getEnvVarsSecrets(s.Name, s.Secrets)
 
 	return []Step{{Container: corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
-		Image:        *s3utilImage,
-		Command:      []string{"/ko-app/s3store"},
-		Args:         args,
-		VolumeMounts: secretVolumeMount,
-		Env:          envVars,
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
+		Image:   *s3utilImage,
+		Command: []string{"/ko-app/s3store"},
+		Args:    args,
+		Env:     envVars,
+	}}}, nil
+}
+
+func (s *S3Resource) GetDownloadSteps(sourcePath string) ([]Step, error) {
+	args := []string{"--get", "--destination", path.Join(sourcePath, s.Location), "--artifact", s.ObjectName, "--bucket", s.BucketName}
+
+	envVars := getEnvVarsSecrets(s.Name, s.Secrets)
+
+	return []Step{{Container: corev1.Container{
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
+		Image:   *s3utilImage,
+		Command: []string{"/ko-app/s3store"},
+		Args:    args,
+		Env:     envVars,
 	}}}, nil
 
 }

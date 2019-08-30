@@ -3,11 +3,11 @@ package main
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -32,10 +32,6 @@ type AWSStore struct {
 	Timeout time.Duration `default:300`
 }
 
-func (s *AWSStore) BucketName() string {
-	return fmt.Sprintf("s3://%s", Bucket)
-}
-
 func init() {
 	flag.BoolVarP(&Get, "get", "g", false, "get object from bucket")
 	flag.BoolVarP(&Put, "put", "p", false, "put object into bucket")
@@ -48,7 +44,7 @@ func init() {
 
 func main() {
 	flag.Parse()
-	logger, _ := logging.NewLogger("", "3store")
+	logger, _ := logging.NewLogger("", "s3store")
 	defer logger.Sync()
 
 	var s AWSStore
@@ -63,6 +59,7 @@ func main() {
 		log.Fatal("--artifact name must be set")
 	}
 
+	log.Printf("app=s3store bucket=%s artifact=%s destination=%s", Bucket, Artifact, Destination)
 	switch {
 	case Put:
 		if Source == "" {
@@ -110,6 +107,8 @@ func (s *AWSStore) putArtifact() error {
 }
 
 func (s *AWSStore) getArtifact() error {
+	log.Println("getting artifact")
+
 	ctx := context.Background()
 
 	sess, err := session.NewSession(&aws.Config{
@@ -124,13 +123,15 @@ func (s *AWSStore) getArtifact() error {
 		log.Fatal(err)
 	}
 	defer bucket.Close()
-
-	dest, err := os.Create(Destination)
+	if err := os.MkdirAll(filepath.Dir(Destination), 0644); err != nil {
+		log.Fatal(err)
+	}
+	tmpfile, err := ioutil.TempFile(filepath.Dir(Destination), "Destination")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	w := bufio.NewWriter(dest)
+	w := bufio.NewWriter(tmpfile)
 
 	r, err := bucket.NewReader(ctx, Artifact, nil)
 	if err != nil {
@@ -140,5 +141,9 @@ func (s *AWSStore) getArtifact() error {
 		return err
 	}
 	w.Flush()
+	if err := os.Rename(tmpfile.Name(), Destination); err != nil {
+		return err
+	}
+
 	return nil
 }
