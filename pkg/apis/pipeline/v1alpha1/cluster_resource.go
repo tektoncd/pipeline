@@ -41,8 +41,9 @@ type ClusterResource struct {
 	URL      string `json:"url"`
 	Revision string `json:"revision"`
 	// Server requires Basic authentication
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	Namespace string `json:"namespace"`
 	// Server requires Bearer authentication. This client will not attempt to use
 	// refresh tokens for an OAuth2 flow.
 	// Token overrides userame and password
@@ -74,6 +75,8 @@ func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
 			clusterResource.Revision = param.Value
 		case strings.EqualFold(param.Name, "Username"):
 			clusterResource.Username = param.Value
+		case strings.EqualFold(param.Name, "Namespace"):
+			clusterResource.Namespace = param.Value
 		case strings.EqualFold(param.Name, "Password"):
 			clusterResource.Password = param.Value
 		case strings.EqualFold(param.Name, "Token"):
@@ -121,15 +124,16 @@ func (s *ClusterResource) GetURL() string {
 // Replacements is used for template replacement on a ClusterResource inside of a Taskrun.
 func (s *ClusterResource) Replacements() map[string]string {
 	return map[string]string{
-		"name":     s.Name,
-		"type":     string(s.Type),
-		"url":      s.URL,
-		"revision": s.Revision,
-		"username": s.Username,
-		"password": s.Password,
-		"token":    s.Token,
-		"insecure": strconv.FormatBool(s.Insecure),
-		"cadata":   string(s.CAData),
+		"name":      s.Name,
+		"type":      string(s.Type),
+		"url":       s.URL,
+		"revision":  s.Revision,
+		"username":  s.Username,
+		"password":  s.Password,
+		"namespace": s.Namespace,
+		"token":     s.Token,
+		"insecure":  strconv.FormatBool(s.Insecure),
+		"cadata":    string(s.CAData),
 	}
 }
 
