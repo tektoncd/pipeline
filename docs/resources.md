@@ -618,7 +618,7 @@ blob and allow the Task to perform the required actions on the contents of the
 blob.
 
 Blob storage types
-[Google Cloud Storage](https://cloud.google.com/storage/)(gcs) and AWS S3 are supported as
+[Google Cloud Storage](https://cloud.google.com/storage/)(gcs) and [AWS S3](https://aws.amazon.com/s3/) are supported as
 of now via the following resources
 - [GCS storage resource](#gcs-storage-resource)
 - [BuildGCS storage resource](#buildgcs-storage-resource)
