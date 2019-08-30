@@ -24,17 +24,39 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+var (
+	authVarNames = []string{
+		"GOOGLE_APPLICATION_CREDENTIALS",
+		"AWS_ACCESS_KEY_ID",
+		"AWS_SECRET_ACCESS_KEY",
+	}
+)
+
+func isAuthVar(name string) bool {
+	for _, a := range authVarNames {
+		if a == name {
+			return true
+		}
+	}
+	return false
+}
+
 func getSecretEnvVarsAndVolumeMounts(name, mountPath string, secrets []SecretParam) ([]corev1.EnvVar, []corev1.VolumeMount) {
 	mountPaths := make(map[string]struct{})
 	var (
 		envVars           []corev1.EnvVar
 		secretVolumeMount []corev1.VolumeMount
-		authVar           bool
 	)
-
+OUTER:
 	for _, secretParam := range secrets {
-		if secretParam.FieldName == "GOOGLE_APPLICATION_CREDENTIALS" && !authVar {
-			authVar = true
+		if isAuthVar(secretParam.FieldName) {
+			// We dont want dupe secrets specified / mounted
+			for _, e := range envVars {
+				if strings.ToUpper(secretParam.FieldName) == e.Name {
+					continue OUTER
+				}
+			}
+
 			mountPath := filepath.Join(mountPath, secretParam.SecretName)
 
 			envVars = append(envVars, corev1.EnvVar{

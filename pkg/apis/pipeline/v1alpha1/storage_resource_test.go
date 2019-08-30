@@ -59,11 +59,19 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 			),
 		),
 	}, {
-		name: "location param with empty value",
+		name: "gcs location param with empty value",
 		pipelineResource: tb.PipelineResource("gcs-resource", "default",
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeStorage,
 				tb.PipelineResourceSpecParam("Location", ""),
 				tb.PipelineResourceSpecParam("type", "gcs"),
+			),
+		),
+	}, {
+		name: "s3 location param with empty value",
+		pipelineResource: tb.PipelineResource("s3-resource", "default",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeStorage,
+				tb.PipelineResourceSpecParam("Location", ""),
+				tb.PipelineResourceSpecParam("type", "s3"),
 			),
 		),
 	}} {
@@ -102,6 +110,36 @@ func Test_Valid_NewGCSResource(t *testing.T) {
 	}
 	if d := cmp.Diff(expectedGCSResource, gcsRes); d != "" {
 		t.Errorf("Mismatch of GCS resource: %s", d)
+	}
+}
+
+func Test_Valid_NewS3Resource(t *testing.T) {
+	pr := tb.PipelineResource("s3-resource", "default", tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeStorage,
+		tb.PipelineResourceSpecParam("Location", "./source/my-bucket/something.gz"),
+		tb.PipelineResourceSpecParam("Bucket", "s3://somewhere"),
+		tb.PipelineResourceSpecParam("ObjectName", "artfact.gz"),
+		tb.PipelineResourceSpecSecretParam("AWS_SECRET_ACCESS_KEY", "secretName", "secretKey"),
+	))
+	expectedS3Resource := &v1alpha1.S3Resource{
+		Type:       v1alpha1.PipelineResourceTypeStorage,
+		Name:       "s3-resource",
+		Location:   "./source/my-bucket/something.gz",
+		BucketName: "s3://somewhere",
+		ObjectName: "artfact.gz",
+		Secrets: []v1alpha1.SecretParam{{
+			SecretName: "secretName",
+			SecretKey:  "secretKey",
+			FieldName:  "AWS_SECRET_ACCESS_KEY",
+		}},
+	}
+
+	s3Res, err := v1alpha1.NewS3Resource(pr)
+	if err != nil {
+		t.Fatalf("Unexpected error creating S3 resource: %s", err)
+	}
+	if d := cmp.Diff(expectedS3Resource, s3Res); d != "" {
+		t.Errorf("Mismatch of S3 resource: %s", d)
 	}
 }
 

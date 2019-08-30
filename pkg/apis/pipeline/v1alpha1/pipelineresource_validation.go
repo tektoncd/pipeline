@@ -110,6 +110,8 @@ func AllowedStorageType(gotType string) bool {
 		return true
 	case string(PipelineResourceTypeBuildGCS):
 		return true
+	case string(PipelineResourceTypeS3):
+		return true
 	}
 	return false
 }

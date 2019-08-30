@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: put-s3-tgz
+spec:
+  taskSpec:
+    outputs:
+      resources:
+      - name: releaseartifact
+        type: storage
+    steps:
+    - image: ubuntu
+      command: ['touch', 'empty.gz', '&&', 'ls', '-la']  # tests s3 resource
+  outputs:
+    resources:
+    - name: releaseartifact
+      resourceSpec:
+        type: storage
+        params:
+          - name: type
+            value: s3
+          - name: Bucket
+            value: pipelinebuilds
+          - name: ObjectName
+            value: release-artifact.tgz
+          - name: Location
+            value: "empty.gz"
+          - name: AWS_SECRET_ACCESS_KEY
+            value: ""
+          - name: AWS_ACCESS_KEY_ID
+            value: ""
+

@@ -30,6 +30,7 @@ const (
 	// PipelineResourceTypeGCS indicates that resource source is a GCS blob/directory.
 	PipelineResourceTypeGCS      PipelineResourceType = "gcs"
 	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
+	PipelineResourceTypeS3       PipelineResourceType = "s3"
 )
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
@@ -50,6 +51,8 @@ func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, 
 				return NewGCSResource(r)
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeBuildGCS)):
 				return NewBuildGCSResource(r)
+			case strings.EqualFold(param.Value, string(PipelineResourceTypeS3)):
+				return NewS3Resource(r)
 			default:
 				return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}

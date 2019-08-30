@@ -29,7 +29,7 @@ type CloudEventResource struct {
 	Name string `json:"name"`
 	// Type must be `PipelineResourceTypeCloudEvent`
 	Type PipelineResourceType `json:"type"`
-	// TargetURI is the URI of the sink which the cloud event is develired to
+	// TargetURI is the URI of the sink which the cloud event is delivered to
 	TargetURI string `json:"targetURI"`
 }
 

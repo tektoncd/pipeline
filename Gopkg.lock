@@ -79,7 +79,7 @@
   revision = "073e4daa3d0dcb50173fdac5581709a17b97e9ed"
 
 [[projects]]
-  digest = "1:0fb0fc01ca0fb8c5a486a8a1b9092fe546aac68dbfb77919d9a3501b932c5990"
+  digest = "1:2d2c66bafe2c06819c0f6abef9fc2cf35d2169a5363e4abb819a87784d24c467"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -101,18 +101,25 @@
     "aws/session",
     "aws/signer/v4",
     "internal/ini",
+    "internal/s3err",
     "internal/sdkio",
     "internal/sdkrand",
     "internal/sdkuri",
     "internal/shareddefaults",
     "private/protocol",
+    "private/protocol/eventstream",
+    "private/protocol/eventstream/eventstreamapi",
     "private/protocol/json/jsonutil",
     "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
+    "private/protocol/restxml",
     "private/protocol/xml/xmlutil",
     "service/ecr",
+    "service/s3",
+    "service/s3/s3iface",
+    "service/s3/s3manager",
     "service/sts",
   ]
   pruneopts = "NUT"
@@ -332,12 +339,23 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:fa300677001e58a995e10afe4e251d2a6e30d3815a234d553b5810db7795d5a2"
-  name = "github.com/googleapis/gax-go"
-  packages = ["v2"]
+  digest = "1:a008957d172951cd37a33fcc18de65b6153e0e465ae6409266f69ef1a152b51a"
+  name = "github.com/google/wire"
+  packages = ["."]
   pruneopts = "NUT"
-  revision = "beaecbbdd8af86aa3acf14180d53828ce69400b2"
-  version = "v2.0.4"
+  revision = "89cb901fdf9dfcf4292cbfe0c9ac90d98213be68"
+  version = "v0.3.0"
+
+[[projects]]
+  digest = "1:fd4d1f4c2d75aee3833ee7d8ef11fcf42ddec3c63d1819548288c3d868d6eb14"
+  name = "github.com/googleapis/gax-go"
+  packages = [
+    ".",
+    "v2",
+  ]
+  pruneopts = "NUT"
+  revision = "c8a15bac9b9fe955bd9f900272f9a306465d28cf"
+  version = "v2.0.3"
 
 [[projects]]
   digest = "1:27b4ab41ffdc76ad6db56db327a4db234a59588ef059fc3fd678ba0bc6b9094f"
@@ -426,11 +444,27 @@
   revision = "f2b4162afba35581b6d4a50d3b8f34e33c144682"
 
 [[projects]]
+  digest = "1:08c58ac78a8c1f61e9a96350066d30fe194b8779799bd932a79932a5166a173f"
+  name = "github.com/kelseyhightower/envconfig"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "0b417c4ec4a8a82eecc22a1459a504aa55163d61"
+  version = "v1.4.0"
+
+[[projects]]
   digest = "1:dabd27a263906435d198a5fa9237ff2b14383a1e29964b7006e6dc975134f5e6"
   name = "github.com/knative/test-infra"
   packages = ["tools/dep-collector"]
   pruneopts = "NUT"
   revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
+
+[[projects]]
+  digest = "1:cb01cc9f8291f5a5127dcf6bdf784011ae658dca5a81c2eba67d0ba68e18067c"
+  name = "github.com/kubernetes/apimachinery"
+  packages = ["pkg/runtime"]
+  pruneopts = "NUT"
+  revision = "01f179d85dbce0f2e0e4351a92394b38694b7cae"
+  version = "kubernetes-1.12.10"
 
 [[projects]]
   digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
@@ -571,12 +605,28 @@
   version = "v1.3.0"
 
 [[projects]]
+  digest = "1:6bc0652ea6e39e22ccd522458b8bdd8665bf23bdc5a20eec90056e4dc7e273ca"
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:d917313f309bda80d27274d53985bc65651f81a5b66b820749ac7f8ef061fd04"
   name = "github.com/sergi/go-diff"
   packages = ["diffmatchpatch"]
   pruneopts = "NUT"
   revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:ad67a2ea0559c5684dbc9e141a363b42b55cf38ea818000b9c4a043459ce0728"
+  name = "github.com/sosedoff/gitkit"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "e36e6a3d821f568deaa1df8852436cddbab5810a"
+  version = "v0.2.0"
 
 [[projects]]
   digest = "1:9d8420bbf131d1618bde6530af37c3799340d3762cc47210c1d9532a4c3a2779"
@@ -655,11 +705,34 @@
   revision = "67bc79d13d155c02fd008f721863ff8cc5f30659"
 
 [[projects]]
-  digest = "1:9c55ae5e8e4468c802a6bb582f91db6494fd084ff2dfa5559ff75e3b5edb2fa0"
+  digest = "1:ad7196924dcef34fa557f78c5d0d306164f243da0221de1931ea9413f106eb75"
+  name = "gocloud.dev"
+  packages = [
+    "aws",
+    "blob",
+    "blob/driver",
+    "blob/s3blob",
+    "gcerrors",
+    "internal/escape",
+    "internal/gcerr",
+    "internal/oc",
+    "internal/openurl",
+    "internal/retry",
+  ]
+  pruneopts = "NUT"
+  revision = "7e65c478158dacacc4b5e120231828bb78edb4eb"
+  version = "v0.16.0"
+
+[[projects]]
+  digest = "1:eea11d2a0ee419cf9e30756d3f266630bb5ddaca264aa557845b45254a04b7c6"
   name = "golang.org/x/crypto"
   packages = [
+    "curve25519",
+    "ed25519",
+    "ed25519/internal/edwards25519",
     "pkcs12",
     "pkcs12/internal/rc2",
+    "ssh",
     "ssh/terminal",
   ]
   pruneopts = "NUT"
@@ -1311,6 +1384,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+    "github.com/aws/aws-sdk-go/aws",
+    "github.com/aws/aws-sdk-go/aws/session",
     "github.com/cloudevents/sdk-go/pkg/cloudevents",
     "github.com/cloudevents/sdk-go/pkg/cloudevents/client",
     "github.com/cloudevents/sdk-go/pkg/cloudevents/context",
@@ -1332,14 +1407,19 @@
     "github.com/gorilla/mux",
     "github.com/hashicorp/go-multierror",
     "github.com/hashicorp/golang-lru",
+    "github.com/kelseyhightower/envconfig",
     "github.com/knative/test-infra/tools/dep-collector",
+    "github.com/kubernetes/apimachinery/pkg/runtime",
     "github.com/mitchellh/go-homedir",
     "github.com/mohae/deepcopy",
+    "github.com/sosedoff/gitkit",
+    "github.com/spf13/pflag",
     "github.com/tektoncd/plumbing/scripts",
     "go.opencensus.io/trace",
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest",
     "go.uber.org/zap/zaptest/observer",
+    "gocloud.dev/blob/s3blob",
     "golang.org/x/oauth2",
     "golang.org/x/xerrors",
     "k8s.io/api/core/v1",

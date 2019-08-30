@@ -42,6 +42,7 @@ spec:
           "-imagedigest-exporter-image", "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "github.com/tektoncd/pipeline/cmd/pullrequest-init",
           "-build-gcs-fetcher-image", "github.com/tektoncd/pipeline/vendor/github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
+          "-s3-image", "github.com/tektoncd/pipeline/cmd/s3store",
         ]
         volumeMounts:
         - name: config-logging
