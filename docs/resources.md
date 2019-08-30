@@ -208,6 +208,7 @@ The following `PipelineResources` are currently supported:
 -   [Storage Resource](#storage-resource)
     -   [GCS Storage Resource](#gcs-storage-resource)
     -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
+    -   [S3 Resource](#s3-storage-resource)
 -   [Cloud Event Resource](#cloud-event-resource)
 
 ### Git Resource
@@ -616,10 +617,12 @@ directory. Adding the storage resource as an input to a Task will download the
 blob and allow the Task to perform the required actions on the contents of the
 blob.
 
-Only blob storage type
-[Google Cloud Storage](https://cloud.google.com/storage/)(gcs) is supported as
-of now via [GCS storage resource](#gcs-storage-resource) and
-[BuildGCS storage resource](#buildgcs-storage-resource).
+Blob storage types
+[Google Cloud Storage](https://cloud.google.com/storage/)(gcs) and AWS S3 are supported as
+of now via the following resources
+- [GCS storage resource](#gcs-storage-resource)
+- [BuildGCS storage resource](#buildgcs-storage-resource)
+- [S3 storage resource](#s3-storage-resource)
 
 #### GCS Storage Resource
 
@@ -763,6 +766,46 @@ as storage resources for BuildGCS Storage Resource right now. This is because
 the container image
 [gcr.io/cloud-builders//gcs-fetcher](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher)
 does not support configuring secrets.
+
+#### S3 Storage Resource
+
+S3 Storage resource points to
+[AWS S3 storage](https://aws.amazon.com/s3/) service.
+
+To create S3 storage resources, you will need a `Secret` with data containing your IAM Key and Secret so the cluster can authenticate with AWS. The below example references a Secret named `my-aws-creds-secret` for this purpose.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: s3-artifact
+spec:
+  type: storage
+  params:
+    - name: type
+      value: s3
+    - name: Bucket
+      value: pipelinebuilds
+    - name: ObjectName
+      value: release-artifact.tgz
+    - name: Location
+      value: "empty.gz"
+  secrets:
+    - fieldName: AWS_SECRET_ACCESS_KEY
+      secretName: my-aws-creds-secret
+      secretKey: secret
+    - fieldName: AWS_ACCESS_KEY_ID
+      secretName: my-aws-creds-secret
+      secretKey: key
+```
+
+Params that can be added are the following:
+
+1. `Location`: represents the path on local storage to the artifact we want to either get to put..
+2. `type`: Should be `s3`.
+3. `Bucket`: The bucket name.
+4. `ObjectName`: The path of the blob to retrieve from the bucket.
+5. `Region`: AWS Region of the bucket - defaults to us-east-1.
 
 ### Cloud Event Resource
 
