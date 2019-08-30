@@ -17,6 +17,7 @@ For example:
 
 -   [Syntax](#syntax)
 -   [Resource types](#resource-types)
+-   [Using Resources](#using-resources)
 
 ## Syntax
 
@@ -40,6 +41,161 @@ following fields:
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
+
+## Using Resources
+
+Resources can be used in [Tasks](./tasks.md) and [Conditions](./conditions.md#resources).
+
+Input resources, like source code (git) or artifacts, are dumped at path
+`/workspace/task_resource_name` within a mounted
+[volume](https://kubernetes.io/docs/concepts/storage/volumes/) and is available
+to all [`steps`](#steps) of your `Task`. The path that the resources are mounted
+at can be [overridden with the `targetPath` field](./resources.md#controlling-where-resources-are-mounted). 
+Steps can use the `path`[variable substitution](#variable-substitution) key to refer to the local path to the mounted resource.
+
+### Variable substitution 
+
+`Task` and `Condition` specs can refer resource params as well as pre-defined variables such as 
+`path` using the variable substitution syntax below where `<name>` is the Resource Name and `<key>` 
+is a one of the resource's `params`:
+
+
+#### In Task Spec:
+For an input resource in a `Task` spec:
+```shell
+$(inputs.resources.<name>.<key>)
+```
+
+Or for an output resource:
+
+```shell
+$(outputs.resources.<name>.<key>)
+```
+
+#### In Condition Spec:
+Input resources can be accessed by:
+
+```shell
+$(resources.<name>.<key>)
+```
+
+#### Accessing local path to resource 
+
+The `path` key is pre-defined and refers to the local path to a resource on the mounted volume 
+```shell
+$(inputs.resouces.<name>.path)
+```
+
+_The deprecated syntax `${}`, e.g. `${inputs.params.<name>}` will be supported
+until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._
+
+### Controlling where resources are mounted
+
+The optional field `targetPath` can be used to initialize a resource in specific
+directory. If `targetPath` is set then resource will be initialized under
+`/workspace/targetPath`. If `targetPath` is not specified then resource will be
+initialized under `/workspace`. Following example demonstrates how git input
+repository could be initialized in `$GOPATH` to run tests:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: task-with-input
+  namespace: default
+spec:
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+        targetPath: go/src/github.com/tektoncd/pipeline
+  steps:
+    - name: unit-tests
+      image: golang
+      command: ["go"]
+      args:
+        - "test"
+        - "./..."
+      workingDir: "/workspace/go/src/github.com/tektoncd/pipeline"
+      env:
+        - name: GOPATH
+          value: /workspace/go
+```
+
+### Overriding where resources are copied from
+
+When specifying input and output `PipelineResources`, you can optionally specify
+`paths` for each resource. `paths` will be used by `TaskRun` as the resource's
+new source paths i.e., copy the resource from specified list of paths. `TaskRun`
+expects the folder and contents to be already present in specified paths.
+`paths` feature could be used to provide extra files or altered version of
+existing resource before execution of steps.
+
+Output resource includes name and reference to pipeline resource and optionally
+`paths`. `paths` will be used by `TaskRun` as the resource's new destination
+paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
+responsible for creating required directories and copying contents over. `paths`
+feature could be used to inspect the results of taskrun after execution of
+steps.
+
+`paths` feature for input and output resource is heavily used to pass same
+version of resources across tasks in context of pipelinerun.
+
+In the following example, task and taskrun are defined with input resource,
+output resource and step which builds war artifact. After execution of
+taskrun(`volume-taskrun`), `custom` volume will have entire resource
+`java-git-resource` (including the war artifact) copied to the destination path
+`/custom/workspace/`.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: volume-task
+  namespace: default
+spec:
+  inputs:
+    resources:
+      - name: workspace
+        type: git
+  outputs:
+    resources:
+      - name: workspace
+  steps:
+    - name: build-war
+      image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
+      command: jar
+      args: ["-cvf", "projectname.war", "*"]
+      volumeMounts:
+        - name: custom-volume
+          mountPath: /custom
+```
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: volume-taskrun
+  namespace: default
+spec:
+  taskRef:
+    name: volume-task
+  inputs:
+    resources:
+      - name: workspace
+        resourceRef:
+          name: java-git-resource
+  outputs:
+    resources:
+      - name: workspace
+        paths:
+          - /custom/workspace/
+        resourceRef:
+          name: java-git-resource
+  volumes:
+    - name: custom-volume
+      emptyDir: {}
+```
 
 ## Resource Types
 

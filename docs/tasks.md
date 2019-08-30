@@ -222,14 +222,8 @@ spec:
 #### Input resources
 
 Use input [`PipelineResources`](resources.md) field to provide your `Task` with
-data or context that is needed by your `Task`.
+data or context that is needed by your `Task`. See the [using resources docs](./resources.md#using-resources).
 
-Input resources, like source code (git) or artifacts, are dumped at path
-`/workspace/task_resource_name` within a mounted
-[volume](https://kubernetes.io/docs/concepts/storage/volumes/) and is available
-to all [`steps`](#steps) of your `Task`. The path that the resources are mounted
-at can be overridden with the `targetPath` value. Steps can use the `path`
-[variable substitution](#variable-substitution) key to refer to the local path to the mounted resource.
 
 ### Outputs
 
@@ -289,38 +283,6 @@ steps:
    args: ['-c', 'cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master']
 ```
 
-### Controlling where resources are mounted
-
-Tasks can opitionally provide `targetPath` to initialize resource in specific
-directory. If `targetPath` is set then resource will be initialized under
-`/workspace/targetPath`. If `targetPath` is not specified then resource will be
-initialized under `/workspace`. Following example demonstrates how git input
-repository could be initialized in `$GOPATH` to run tests:
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: Task
-metadata:
-  name: task-with-input
-  namespace: default
-spec:
-  inputs:
-    resources:
-      - name: workspace
-        type: git
-        targetPath: go/src/github.com/tektoncd/pipeline
-  steps:
-    - name: unit-tests
-      image: golang
-      command: ["go"]
-      args:
-        - "test"
-        - "./..."
-      workingDir: "/workspace/go/src/github.com/tektoncd/pipeline"
-      env:
-        - name: GOPATH
-          value: /workspace/go
-```
 
 ### Volumes
 
@@ -428,32 +390,15 @@ volumes:
 `Tasks` support string replacement using values from all [`inputs`](#inputs) and
 [`outputs`](#outputs).
 
-[`PipelineResources`](resources.md) can be referenced in a `Task` spec like
-this, where `<name>` is the Resource Name and `<key>` is a one of the resource's
-`params`:
 
-```shell
-$(inputs.resources.<name>.<key>)
-```
-
-Or for an output resource:
-
-```shell
-$(outputs.resources.<name>.<key>)
-```
-
-The local path to a resource on the mounted volume can be accessed using the
-`path` key:
-
-```shell
-$(inputs.resouces.<name>.path)
-```
-
-To access an input parameter, replace `resources` with `params`.
+Input parameters can be referenced in the `Task` spec using the variable substitution syntax below, 
+where `<name>` is the name of the parameter:
 
 ```shell
 $(inputs.params.<name>)
 ```
+
+Param values from resources can also be accessed using [variable substitution](./resources.md#variable-substitution)
 
 _The deprecated syntax `${}`, e.g. `${inputs.params.<name>}` will be supported
 until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._

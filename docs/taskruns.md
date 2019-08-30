@@ -143,6 +143,8 @@ spec:
               value: https://github.com/pivotal-nader-ziada/gohelloworld
 ```
 
+The `paths` field can be used to [override the paths to a resource](./resources.md#overriding-where-resources-are-copied-from)
+
 ### Configuring Default Timeout
 
 You can configure the default timeout by changing the value of `default-timeout-minutes`
@@ -221,77 +223,7 @@ spec:
         claimName: my-volume-claim
 ```
 
-### Overriding where resources are copied from
 
-When specifying input and output `PipelineResources`, you can optionally specify
-`paths` for each resource. `paths` will be used by `TaskRun` as the resource's
-new source paths i.e., copy the resource from specified list of paths. `TaskRun`
-expects the folder and contents to be already present in specified paths.
-`paths` feature could be used to provide extra files or altered version of
-existing resource before execution of steps.
-
-Output resource includes name and reference to pipeline resource and optionally
-`paths`. `paths` will be used by `TaskRun` as the resource's new destination
-paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
-responsible for creating required directories and copying contents over. `paths`
-feature could be used to inspect the results of taskrun after execution of
-steps.
-
-`paths` feature for input and output resource is heavily used to pass same
-version of resources across tasks in context of pipelinerun.
-
-In the following example, task and taskrun are defined with input resource,
-output resource and step which builds war artifact. After execution of
-taskrun(`volume-taskrun`), `custom` volume will have entire resource
-`java-git-resource` (including the war artifact) copied to the destination path
-`/custom/workspace/`.
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: Task
-metadata:
-  name: volume-task
-  namespace: default
-spec:
-  inputs:
-    resources:
-      - name: workspace
-        type: git
-  steps:
-    - name: build-war
-      image: objectuser/run-java-jar #https://hub.docker.com/r/objectuser/run-java-jar/
-      command: jar
-      args: ["-cvf", "projectname.war", "*"]
-      volumeMounts:
-        - name: custom-volume
-          mountPath: /custom
-```
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: TaskRun
-metadata:
-  name: volume-taskrun
-  namespace: default
-spec:
-  taskRef:
-    name: volume-task
-  inputs:
-    resources:
-      - name: workspace
-        resourceRef:
-          name: java-git-resource
-  outputs:
-    resources:
-      - name: workspace
-        paths:
-          - /custom/workspace/
-        resourceRef:
-          name: java-git-resource
-  volumes:
-    - name: custom-volume
-      emptyDir: {}
-```
 
 ## Status
 

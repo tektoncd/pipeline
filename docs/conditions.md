@@ -67,21 +67,9 @@ is validated against the type field.
 Conditions can declare input [`PipelineResources`](resources.md)  via the `resources` field to 
 provide the Condition container step with data or context that is needed to perform the check.
 
-Input resources, like source code (git), are dumped at path
-`/workspace/resource_name` within a mounted
-[volume](https://kubernetes.io/docs/concepts/storage/volumes/). The condition container can use the `path`
-[template](./tasks.md#Templating) key to refer to the local path to the mounted resource.
-
-```yaml
-spec:
-  resources:
-    - name: workspace
-      type: git
-  check:
-    image: alpine
-    command: ["/bin/sh"]
-    args: ['-c', 'test -f $(resources.workspace.path)/README.md']
-```
+Resources in Conditions work similar to the way they work in `Tasks` i.e. they can be accessed using
+[variable substitution](./resources.md#variable-substitution) and the `targetPath` field can be used
+to [control where the resource is mounted](./resources.md#controlling-where-resources-are-mounted)
 
 ## Examples
 
