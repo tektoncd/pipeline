@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	s3utilImage             = flag.String("s3-image", "override-with-s3-image:latest", "The container image containing aws-cli")
+	s3utilImage             = flag.String("s3-image", "override-with-s3-image:latest", "The container image containing go-cloud util")
 	s3SecretVolumeMountPath = "/var/secret"
 )
 
