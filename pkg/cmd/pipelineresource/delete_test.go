@@ -77,7 +77,7 @@ func TestPipelineResourceDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Make sure you really want to delete pipelineresource \"pre-1\" (y/n): PipelineResource deleted: pre-1\n",
+			want:        "Are you sure you want to delete pipelineresource \"pre-1\" (y/n): PipelineResource deleted: pre-1\n",
 		},
 		{
 			name:        "Remove non existent resource",

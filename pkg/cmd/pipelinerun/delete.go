@@ -87,7 +87,7 @@ func checkOptions(opts *deleteOptions, s *cli.Stream, p cli.Params, prName strin
 		return nil
 	}
 
-	fmt.Fprintf(s.Out, "Make sure you really want to delete pipelinerun %q (y/n): ", prName)
+	fmt.Fprintf(s.Out, "Are you sure you want to delete pipelinerun %q (y/n): ", prName)
 	scanner := bufio.NewScanner(s.In)
 	for scanner.Scan() {
 		t := strings.TrimSpace(scanner.Text())

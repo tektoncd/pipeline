@@ -87,7 +87,7 @@ func checkOptions(opts *deleteOptions, s *cli.Stream, p cli.Params, trName strin
 		return nil
 	}
 
-	fmt.Fprintf(s.Out, "Make sure you really want to delete taskrun %q (y/n): ", trName)
+	fmt.Fprintf(s.Out, "Are you sure you want to delete taskrun %q (y/n): ", trName)
 	scanner := bufio.NewScanner(s.In)
 	for scanner.Scan() {
 		t := strings.TrimSpace(scanner.Text())

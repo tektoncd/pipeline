@@ -85,7 +85,7 @@ func TestTaskRunDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Make sure you really want to delete taskrun \"tr0-1\" (y/n): TaskRun deleted: tr0-1\n",
+			want:        "Are you sure you want to delete taskrun \"tr0-1\" (y/n): TaskRun deleted: tr0-1\n",
 		},
 		{
 			name:        "Remove non existent resource",

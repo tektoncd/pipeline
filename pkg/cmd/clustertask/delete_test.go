@@ -78,7 +78,7 @@ func TestClusterTaskDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Make sure you really want to delete clustertask \"tomatoes\" (y/n): ClusterTask deleted: tomatoes\n",
+			want:        "Are you sure you want to delete clustertask \"tomatoes\" (y/n): ClusterTask deleted: tomatoes\n",
 		},
 		{
 			name:        "Remove non existent resource",
