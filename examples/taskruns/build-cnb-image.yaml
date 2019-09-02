@@ -1,0 +1,120 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: build-push-cnb
+spec:
+  inputs:
+    resources:
+    - name: app
+      type: git
+    params:
+    - name: builderImage
+      type: string
+      description: Builder Image Name
+    - name: cacheVolumeName
+      type: string
+      default: empty-dir
+      description: Cache Volume Name
+    - name: userID
+      type: string
+      default: "1000"
+      description: build user id
+    - name: groupID
+      type: string
+      default: "1000"
+      description: build group id
+  outputs:
+    resources:
+    - name: builtImage
+      type: image
+  volumes:
+    - name: empty-dir
+      emptyDir: {}
+    - name: layers-dir
+      emptyDir: {}
+  steps:
+  - name: prepare
+    image: alpine
+    command: ["/bin/sh"]
+    args:
+      - "-c"
+      - >
+        chown -R ${inputs.params.userID}:${inputs.params.groupID} "/builder/home" &&
+        chown -R ${inputs.params.userID}:${inputs.params.groupID} /layers &&
+        chown -R ${inputs.params.userID}:${inputs.params.groupID} /cache &&
+        chown -R ${inputs.params.userID}:${inputs.params.groupID} /workspace
+    volumeMounts:
+      - name: "layers-dir"
+        mountPath: /layers
+      - name: ${inputs.params.cacheVolumeName}
+        mountPath: /cache
+  - name: detect
+    image: ${inputs.params.builderImage}
+    command: ["/lifecycle/detector"]
+    args:
+      - "-app=/workspace/app"
+      - "-group=/layers/group.toml"
+      - "-plan=/layers/plan.toml"
+    volumeMounts:
+      - name: "layers-dir"
+        mountPath: /layers
+      - name: ${inputs.params.cacheVolumeName}
+        mountPath: /cache
+  - name: restore
+    image: ${inputs.params.builderImage}
+    command: ["/lifecycle/restorer"]
+    args:
+      - "-group=/layers/group.toml"
+      - "-layers=/layers"
+      - "-path=/cache"
+    volumeMounts:
+      - name: "layers-dir"
+        mountPath: /layers
+      - name: ${inputs.params.cacheVolumeName}
+        mountPath: /cache
+  - name: analyze
+    image: ${inputs.params.builderImage}
+    command: ["/lifecycle/analyzer"]
+    args:
+      - "-layers=/layers"
+      - "-group=/layers/group.toml"
+      - ${outputs.resources.builtImage.url}
+
+    volumeMounts:
+      - name: "layers-dir"
+        mountPath: /layers
+  - name: build
+    image: ${inputs.params.builderImage}
+    command: ["/lifecycle/builder"]
+    args:
+      - "-layers=/layers"
+      - "-app=/workspace/app"
+      - "-group=/layers/group.toml"
+      - "-plan=/layers/plan.toml"
+    volumeMounts:
+      - name: "layers-dir"
+        mountPath: /layers
+  - name: export
+    image: ${inputs.params.builderImage}
+    command: ["/lifecycle/exporter"]
+    args:
+      - "-layers=/layers"
+      - "-app=/workspace/app"
+      - "-group=/layers/group.toml"
+      - ${outputs.resources.builtImage.url}
+    volumeMounts:
+      - name: "layers-dir"
+        mountPath: /layers
+  - name: cache
+    image: ${inputs.params.builderImage}
+    command: ["/lifecycle/cacher"]
+    args:
+      - "-group=/layers/group.toml"
+      - "-layers=/layers"
+      - "-path=/cache"
+    volumeMounts:
+      - name: ${inputs.params.cacheVolumeName}
+        mountPath: /cache
+      - name: "layers-dir"
+        mountPath: /layers
