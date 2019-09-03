@@ -122,14 +122,14 @@ func TestSidecarTaskSupport(t *testing.T) {
 			for _, c := range pod.Status.ContainerStatuses {
 				if c.Name == fmt.Sprintf("step-%s", primaryContainerName) {
 					if c.State.Terminated == nil || c.State.Terminated.Reason != "Completed" {
-						t.Errorf("Primary container did not terminate as expected, Terminated state: %v", c.State.Terminated)
+						t.Errorf("Primary container has nil Terminated state or did not complete successfully. Actual Terminated state: %v", c.State.Terminated)
 					} else {
 						primaryTerminated = true
 					}
 				}
 				if c.Name == sidecarContainerName {
-					if c.State.Terminated == nil || (c.State.Terminated.Reason != "Completed" && c.State.Terminated.Reason != "ContainerCannotRun") {
-						t.Errorf("Sidecar container did not terminate as expected, Terminated state: %v", c.State.Terminated)
+					if c.State.Terminated == nil {
+						t.Errorf("Sidecar container has a nil Terminated status but non-nil is expected.")
 					} else {
 						sidecarTerminated = true
 					}
