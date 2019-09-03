@@ -23,5 +23,18 @@ spec:
     - /kaniko/executor
     args:
     - --dockerfile=/workspace/source/tekton/ko/Dockerfile
-    - --destination=$(inputs.params.imageRegistry)/$(outputs.resources.builtKoImage.url)
+    - --destination=${inputs.params.imageRegistry}/${outputs.resources.builtKoImage.url}
     - --context=/workspace/source
+
+    volumeMounts:
+      - name: gcp-secret
+        mountPath: /secret
+    env:
+      - name: GOOGLE_APPLICATION_CREDENTIALS
+        value: /secret/release.json
+
+  volumes:
+    - name: gcp-secret
+      secret:
+        secretName: release-secret
+
