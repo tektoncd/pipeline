@@ -65,6 +65,8 @@ tkn ct rm foo ",
 	}
 	f.AddFlags(c)
 	c.Flags().BoolVarP(&opts.forceDelete, "force", "f", false, "Whether to force deletion (default: false)")
+
+	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_clustertasks")
 	return c
 }
 

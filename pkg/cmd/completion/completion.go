@@ -72,7 +72,8 @@ function __kubectl_get_serviceaccount() { __tkn_get_object serviceaccount kubect
 function __tkn_get_pipeline() { __tkn_get_object pipeline tkn ;}
 function __tkn_get_pipelinerun() { __tkn_get_object pipelinerun tkn ;}
 function __tkn_get_taskrun() { __tkn_get_object taskrun tkn ;}
-function __tkn_get_pipelineresource() { __tkn_get_object pipelineresource tkn ;}
+function __tkn_get_pipelineresource() { __tkn_get_object resource tkn ;}
+function __tkn_get_clustertasks() { __tkn_get_object clustertasks tkn ;}
 `
 	bashCompletion = `
 function __custom_func() {

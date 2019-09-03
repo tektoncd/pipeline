@@ -70,6 +70,8 @@ tkn p rm foo -n bar
 	f.AddFlags(c)
 	c.Flags().BoolVarP(&opts.forceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 	c.Flags().BoolVarP(&opts.deleteAll, "all", "a", false, "Whether to delete related resources (pipelineruns) (default: false)")
+
+	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
 	return c
 }
 
