@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: publish-tekton-pipelines
+  name: publish-tekton-pipelines-nightly
 spec:
   inputs:
     resources:
@@ -11,8 +11,7 @@ spec:
     - name: bucket
       type: storage
     params:
-    - name: versionTag
-      description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
+    # TODO(triggers#87) This Task has no verisonTag parameter (like publish-tekton-pipelines) because Prow does not allow the value to be provided dynamically
     - name: imageRegistry
       description: TODO(#569) This is a hack to make it easy for folks to switch the registry being used by the many many image outputs
     - name: pathToProject
@@ -78,8 +77,10 @@ spec:
       cat <<EOF > /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
       # By default ko will build images on top of distroless
       baseImageOverrides:
+        # Use the images we just built as base images
         $(inputs.params.pathToProject)/$(outputs.resources.builtCredsInitImage.url): ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
         $(inputs.params.pathToProject)/$(outputs.resources.builtGitInitImage.url): ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
+
         $(inputs.params.pathToProject)/$(outputs.resources.builtBashImage.url): busybox # image should have shell in $PATH
         $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): busybox # image should have shell in $PATH
         $(inputs.params.pathToProject)/$(outputs.resources.builtGsutilImage.url): google/cloud-sdk:alpine # image should have gsutil in $PATH
@@ -97,7 +98,7 @@ spec:
 
   - name: run-ko
     # TODO(#639) we should be able to use the image built by an upstream Task here instead of hardcoding
-    image: gcr.io/tekton-releases/ko-ci
+    image: gcr.io/tekton-nightly/ko-ci
     env:
     - name: KO_DOCKER_REPO
       value: ${inputs.params.imageRegistry}
@@ -128,9 +129,28 @@ spec:
       - name: gcp-secret
         mountPath: /secret
 
+  - name: generate-release-version
+    image: alpine/git
+    command:
+    - /bin/sh
+    args:
+    - -ce
+    - |
+      set -e
+      set -x
+    
+      # Can't use workingDir due to #1267
+      cd /workspace/go/src/github.com/tektoncd/pipeline
+
+      # Nightly releases use vYYYYMMDD-commit
+      COMMIT=$(git rev-parse HEAD | cut -c 1-10)
+      DATE=$(date +"%Y%m%d")
+      VERSION_TAG="$DATE-$COMMIT"
+
+      echo $VERSION_TAG > "/builder/home/version"
+
   - name: copy-to-tagged-bucket
     image: busybox
-    workingDir: "/workspace/bucket"
     command:
     - /bin/sh
     args:
@@ -139,8 +159,14 @@ spec:
       set -e
       set -x
 
-      mkdir -p /workspace/bucket/previous/$(inputs.params.versionTag)/
-      cp /workspace/bucket/latest/release.yaml /workspace/bucket/previous/$(inputs.params.versionTag)/release.yaml
+      # Can't use workingDir due to #1267
+      cd /workspace/bucket
+
+      # TODO(https://github.com/tektoncd/triggers/issues/87) if the versionTag could be generated dynamically, we could use the same Task for nightly + official releases
+      export VERSION_TAG="$(cat /builder/home/version)"
+
+      mkdir -p /workspace/bucket/previous/$VERSION_TAG/
+      cp /workspace/bucket/latest/release.yaml /workspace/bucket/previous/$VERSION_TAG/release.yaml
 
   - name: tag-images
     image: google/cloud-sdk
@@ -151,6 +177,9 @@ spec:
     - |
       set -e
       set -x
+
+      # TODO(https://github.com/tektoncd/triggers/issues/87) if the versionTag could be generated dynamically, we could use the same Task for nightly + official releases
+      export VERSION_TAG="$(cat /builder/home/version)"
 
       REGIONS=(us eu asia)
       IMAGES=(
@@ -178,10 +207,10 @@ spec:
       do
         IMAGE_WITHOUT_SHA=${IMAGE%%@*}
         gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:latest
-        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:${inputs.params.versionTag}
+        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:$VERSION_TAG
         for REGION in "${REGIONS[@]}"
         do
-          for TAG in "latest" ${inputs.params.versionTag}
+          for TAG in "latest" $VERSION_TAG
           do
             gcloud -q container images add-tag ${IMAGE} ${REGION}.${IMAGE_WITHOUT_SHA}:$TAG
           done

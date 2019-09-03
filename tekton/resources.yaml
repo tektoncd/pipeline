@@ -6,9 +6,9 @@ spec:
   type: git
   params:
   - name: url
-    value: https://github.com/tektoncd/pipeline # REPLACE with your own fork
+    value: https://github.com/tektoncd/pipeline
   - name: revision
-    value:  vX.Y.Z-invalid-tags-boouuhhh # REPLACE with your own commit
+    value:  vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you want to release
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -20,9 +20,33 @@ spec:
    - name: type
      value: gcs
    - name: location
-     value: gs://tekton-releases # REPLACE with your own bucket
+     value: gs://tekton-releases
    - name: dir
      value: "y"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: tekton-bucket-nightly
+spec:
+  type: storage
+  params:
+   - name: type
+     value: gcs
+   - name: location
+     value: gs://tekton-releases-nightly
+   - name: dir
+     value: "y"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: ko-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: ko-ci # Registry is provided via parameter, this is a hack see #569
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -153,13 +177,3 @@ spec:
   params:
     - name: url
       value: vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: gcs-uploader-image
-spec:
-  type: image
-  params:
-    - name: url
-      value:  vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-uploader # Registry is provided via parameter, this is a hack see #569

@@ -2,21 +2,21 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: pipeline-release
+  name: pipeline-release-nightly
 spec:
   params:
   - name: package
     description: package to release
     default: github.com/tektoncd/pipeline
   - name: imageRegistry
-    default: gcr.io/tekton-releases
-  - name: versionTag
-    description: The X.Y.Z version that the artifacts should be tagged with
+    default: gcr.io/tekton-nightly
   resources:
   - name: source-repo
     type: git
   - name: bucket
     type: storage
+  - name: builtKoImage
+    type: image
   - name: builtBaseImage
     type: image
   - name: builtEntrypointImage
@@ -44,49 +44,26 @@ spec:
   - name: builtGcsFetcherImage
     type: image
   tasks:
-    - name: lint
+    - name: publish-ko-image
       taskRef:
-        name: golangci-lint
+        name: publish-ci-images
       params:
-        - name: package
-          value: ${params.package}
-        - name: flags
-          value: -v
+        - name: imageRegistry
+          value: ${params.imageRegistry}
       resources:
         inputs:
           - name: source
             resource: source-repo
-    - name: unit-tests
-      runAfter: [lint]
-      taskRef:
-        name: golang-test
-      params:
-        - name: package
-          value: ${params.package}
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
-    - name: build
-      runAfter: [lint]
-      taskRef:
-        name: golang-build
-      params:
-        - name: package
-          value: ${params.package}
-      resources:
-        inputs:
-          - name: source
-            resource: source-repo
+        outputs:
+          - name: builtKoImage
+            resource: builtKoImage
     - name: publish-images
-      runAfter: [build, unit-tests]
+      runAfter: [publish-ko-image]
       taskRef:
-        name: publish-tekton-pipelines
+        name: publish-tekton-pipelines-nightly
       params:
         - name: pathToProject
           value: ${params.package}
-        - name: versionTag
-          value: ${params.versionTag}
         - name: imageRegistry
           value: ${params.imageRegistry}
       resources:

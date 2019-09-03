@@ -2,6 +2,11 @@
 
 Use this page to add the component to an existing Kubernetes cluster.
 
+* [Pre-requisites](#pre-requisites)
+* [Versions](#versions)
+* [Installing Tekton Pipelines](#installing-tekton-pipelines)
+* [Installing Tekton PIpelines on OpenShift/MiniShift](#installing-tekton-pipelines-on-openshiftminishift)
+
 ## Pre-requisites
 
 1. A Kubernetes cluster version 1.11 or later (_if you don't have an existing
@@ -25,7 +30,18 @@ Use this page to add the component to an existing Kubernetes cluster.
    [Role-based access control](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control)
    for more information_.
 
-## Adding the Tekton Pipelines
+## Versions
+
+The versions of Tekton Pipelines available are:
+
+* [Officially released versions](https://github.com/tektoncd/pipeline/releases), e.g. `v0.6.0`
+* [Nightly releases](../tekton/README.md#nightly-releases) are
+  published every night to `gcr.io/tekton-nightly`
+* `HEAD` - To install the most recent, unreleased code in the repo see
+  [the development
+  guide](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md)
+
+## Installing Tekton Pipelines
 
 To add the Tekton Pipelines component to an existing cluster:
 
