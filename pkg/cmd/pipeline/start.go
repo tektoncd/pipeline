@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/flags"
+	"github.com/tektoncd/cli/pkg/helper/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -335,7 +336,7 @@ func (opt *startOptions) startPipeline(pName string) error {
 	}
 
 	if opt.Last {
-		prLast, err := lastPipelineRun(cs, pName, opt.cliparams.Namespace())
+		prLast, err := pipeline.LastRun(cs.Tekton, pName, opt.cliparams.Namespace())
 		if err != nil {
 			return err
 		}
@@ -439,33 +440,6 @@ func mergeSvc(pr *v1alpha1.PipelineRun, optSvc []string) error {
 	}
 
 	return nil
-}
-
-func lastPipelineRun(cs *cli.Clients, pipeline, ns string) (*v1alpha1.PipelineRun, error) {
-	options := metav1.ListOptions{}
-	if pipeline != "" {
-		options = metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pipeline),
-		}
-	}
-
-	runs, err := cs.Tekton.TektonV1alpha1().PipelineRuns(ns).List(options)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(runs.Items) == 0 {
-		return nil, fmt.Errorf("no pipelineruns found in namespace: %s", ns)
-	}
-
-	latest := runs.Items[0]
-	for _, run := range runs.Items {
-		if run.CreationTimestamp.Time.After(latest.CreationTimestamp.Time) {
-			latest = run
-		}
-	}
-
-	return &latest, nil
 }
 
 func parseRes(res []string) (map[string]v1alpha1.PipelineResourceBinding, error) {

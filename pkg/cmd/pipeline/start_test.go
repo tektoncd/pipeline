@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/cli/pkg/helper/pipeline"
+
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/Netflix/go-expect"
 	"github.com/jonboulle/clockwork"
@@ -1120,7 +1122,7 @@ func Test_lastPipelineRun(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cs, _ := tt.args.p.Clients()
-			got, err := lastPipelineRun(cs, tt.args.pipeline, tt.args.p.Namespace())
+			got, err := pipeline.LastRun(cs.Tekton, tt.args.pipeline, tt.args.p.Namespace())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("lastPipelineRun() error = %v, wantErr %v", err, tt.wantErr)
 				return

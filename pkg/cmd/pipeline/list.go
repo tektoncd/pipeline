@@ -21,6 +21,8 @@ import (
 	"text/tabwriter"
 	"text/template"
 
+	"github.com/tektoncd/cli/pkg/helper/pipeline"
+
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
@@ -87,7 +89,7 @@ func printPipelineDetails(s *cli.Stream, p cli.Params) error {
 		return err
 	}
 
-	ps, prs, err := listPipelineDetails(cs.Tekton, p.Namespace())
+	ps, prs, err := listPipelineDetails(cs, p.Namespace())
 
 	if err != nil {
 		fmt.Fprintf(s.Err, "Failed to list pipelines from %s namespace\n", p.Namespace())
@@ -161,9 +163,9 @@ func listAllPipelines(cs versioned.Interface, ns string) (*v1alpha1.PipelineList
 
 type pipelineruns map[string]v1alpha1.PipelineRun
 
-func listPipelineDetails(cs versioned.Interface, ns string) (*v1alpha1.PipelineList, pipelineruns, error) {
+func listPipelineDetails(cs *cli.Clients, ns string) (*v1alpha1.PipelineList, pipelineruns, error) {
 
-	ps, err := listAllPipelines(cs, ns)
+	ps, err := listAllPipelines(cs.Tekton, ns)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -171,26 +173,16 @@ func listPipelineDetails(cs versioned.Interface, ns string) (*v1alpha1.PipelineL
 	if len(ps.Items) == 0 {
 		return ps, pipelineruns{}, nil
 	}
+	lastRuns := pipelineruns{}
 
-	runs, err := cs.TektonV1alpha1().PipelineRuns(ns).List(metav1.ListOptions{})
-	if err != nil {
+	for _, p := range ps.Items {
 		// TODO: may be just the pipeline details can be print
-		return nil, nil, err
-	}
-
-	latestRuns := pipelineruns{}
-
-	for _, run := range runs.Items {
-		pipelineName := run.Spec.PipelineRef.Name
-		latest, ok := latestRuns[pipelineName]
-		if !ok {
-			latestRuns[pipelineName] = run
+		lastRun, err := pipeline.LastRun(cs.Tekton, p.Name, ns)
+		if err != nil {
 			continue
 		}
-		if run.CreationTimestamp.After(latest.CreationTimestamp.Time) {
-			latestRuns[pipelineName] = run
-		}
+		lastRuns[p.Name] = *lastRun
 	}
 
-	return ps, latestRuns, nil
+	return ps, lastRuns, nil
 }

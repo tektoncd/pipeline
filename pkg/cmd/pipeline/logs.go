@@ -19,6 +19,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/tektoncd/cli/pkg/helper/pipeline"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
@@ -27,7 +29,6 @@ import (
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/formatted"
 	prhsort "github.com/tektoncd/cli/pkg/helper/pipelinerun/sort"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -240,11 +241,11 @@ func (opts *logOptions) initLastRunName() error {
 	if err != nil {
 		return err
 	}
-	lastrun, err := lastRun(cs, opts.params.Namespace(), opts.pipelineName)
+	lastrun, err := pipeline.LastRun(cs.Tekton, opts.pipelineName, opts.params.Namespace())
 	if err != nil {
 		return err
 	}
-	opts.runName = lastrun
+	opts.runName = lastrun.Name
 	return nil
 }
 
@@ -298,29 +299,6 @@ func allRuns(p cli.Params, pName string, limit int) ([]string, error) {
 		}
 	}
 	return ret, nil
-}
-
-func lastRun(cs *cli.Clients, ns, pName string) (string, error) {
-	opts := metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pName),
-	}
-
-	runs, err := cs.Tekton.TektonV1alpha1().PipelineRuns(ns).List(opts)
-	if err != nil {
-		return "", err
-	}
-
-	if len(runs.Items) == 0 {
-		return "", fmt.Errorf("no pipeline runs found for %s in namespace: %s", pName, ns)
-	}
-
-	var latest v1alpha1.PipelineRun
-	for _, run := range runs.Items {
-		if run.CreationTimestamp.After(latest.CreationTimestamp.Time) {
-			latest = run
-		}
-	}
-	return latest.ObjectMeta.Name, nil
 }
 
 func validate(opts *logOptions) error {
