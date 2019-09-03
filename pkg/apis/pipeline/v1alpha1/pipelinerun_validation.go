@@ -55,13 +55,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	// check for results
-	if ps.Results != nil {
-		if err := ps.Results.Validate(ctx, "spec.results"); err != nil {
-			return err
-		}
-	}
-
 	if ps.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ps.Timeout.Duration < 0 {

@@ -36,11 +36,6 @@ type TaskRunSpec struct {
 	Inputs TaskRunInputs `json:"inputs,omitempty"`
 	// +optional
 	Outputs TaskRunOutputs `json:"outputs,omitempty"`
-	// Deprecation Notice: The field Results will be removed in v0.8.0
-	// and should not be used. Plan to have this field removed before upgradring
-	// to v0.8.0.
-	// +optional
-	Results *Results `json:"results,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// DeprecatedServiceAccount is a depreciated alias for ServiceAccountName.
@@ -104,12 +99,6 @@ var taskRunCondSet = apis.NewBatchConditionSet()
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
-
-	// Deprecation Notice: The field Results will be removed in v0.8.0
-	// and should not be used. Plan to have this field removed before upgradring
-	// to v0.8.0.
-	// +optional
-	Results *Results `json:"results,omitempty"`
 
 	// PodName is the name of the pod responsible for executing this task's steps.
 	PodName string `json:"podName"`

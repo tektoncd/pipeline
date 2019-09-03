@@ -64,11 +64,6 @@ type PipelineRunSpec struct {
 	DeprecatedServiceAccounts []DeprecatedPipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
 	// +optional
 	ServiceAccountNames []PipelineRunSpecServiceAccountName `json:"serviceAccountNames,omitempty"`
-	// Deprecation Notice: The field Results will be removed in v0.8.0
-	// and should not be used. Plan to have this field removed before upgradring
-	// to v0.8.0.
-	// +optional
-	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
@@ -112,12 +107,6 @@ type PipelineRef struct {
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
-
-	// Deprecation Notice: The field Results will be removed in v0.8.0
-	// and should not be used. Plan to have this field removed before upgradring
-	// to v0.8.0.
-	// +optional
-	Results *Results `json:"results,omitempty"`
 
 	// StartTime is the time the PipelineRun is actually started.
 	// +optional

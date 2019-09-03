@@ -543,7 +543,6 @@ func addRetryHistory(tr *v1alpha1.TaskRun) {
 func clearStatus(tr *v1alpha1.TaskRun) {
 	tr.Status.StartTime = nil
 	tr.Status.CompletionTime = nil
-	tr.Status.Results = nil
 	tr.Status.PodName = ""
 }
 
