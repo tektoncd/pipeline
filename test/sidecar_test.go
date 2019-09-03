@@ -64,12 +64,12 @@ func TestSidecarTaskSupport(t *testing.T) {
 				tb.TaskSpec(
 					tb.Step(
 						primaryContainerName,
-						"ubuntu",
+						"busybox:1.31.0-musl",
 						tb.StepCommand(test.stepCommand...),
 					),
 					tb.Sidecar(
 						sidecarContainerName,
-						"ubuntu",
+						"busybox:1.31.0-musl",
 						tb.Command(test.sidecarCommand...),
 					),
 				),
