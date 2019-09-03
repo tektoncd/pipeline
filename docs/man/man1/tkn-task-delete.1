@@ -20,6 +20,10 @@ Delete a task resource in a namespace
 
 .SH OPTIONS
 .PP
+\fB\-a\fP, \fB\-\-all\fP[=false]
+    Whether to delete related resources (taskruns) (default: false)
+
+.PP
 \fB\-\-allow\-missing\-template\-keys\fP[=true]
     If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.
 
@@ -58,7 +62,7 @@ Delete a task resource in a namespace
 tkn task delete foo \-n bar
 
 .PP
-tkn t rm foo \-n bar",
+tkn t rm foo \-n bar
 
 
 .SH SEE ALSO

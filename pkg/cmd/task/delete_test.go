@@ -24,19 +24,45 @@ import (
 	"github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/apis"
 )
 
 func TestTaskDelete(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
 	seeds := make([]pipelinetest.Clients, 0)
-	for i := 0; i < 3; i++ {
-		tasks := []*v1alpha1.Task{
-			tb.Task("tomatoes", "ns", cb.TaskCreationTime(clock.Now().Add(-1*time.Minute))),
-		}
-		cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	for i := 0; i < 5; i++ {
+		cs, _ := test.SeedTestData(t, pipelinetest.Data{
+			Tasks: []*v1alpha1.Task{
+				tb.Task("task", "ns", cb.TaskCreationTime(clock.Now().Add(-1*time.Minute))),
+			},
+			TaskRuns: []*v1alpha1.TaskRun{
+				tb.TaskRun("task-run-1", "ns",
+					tb.TaskRunLabel("tekton.dev/task", "task"),
+					tb.TaskRunSpec(tb.TaskRunTaskRef("task")),
+					tb.TaskRunStatus(
+						tb.StatusCondition(apis.Condition{
+							Status: corev1.ConditionTrue,
+							Reason: resources.ReasonSucceeded,
+						}),
+					),
+				),
+				tb.TaskRun("task-run-2", "ns",
+					tb.TaskRunLabel("tekton.dev/task", "task"),
+					tb.TaskRunSpec(tb.TaskRunTaskRef("task")),
+					tb.TaskRunStatus(
+						tb.StatusCondition(apis.Condition{
+							Status: corev1.ConditionTrue,
+							Reason: resources.ReasonSucceeded,
+						}),
+					),
+				),
+			},
+		})
 		seeds = append(seeds, cs)
 	}
 
@@ -50,35 +76,35 @@ func TestTaskDelete(t *testing.T) {
 	}{
 		{
 			name:        "With force delete flag (shorthand)",
-			command:     []string{"rm", "tomatoes", "-n", "ns", "-f"},
+			command:     []string{"rm", "task", "-n", "ns", "-f"},
 			input:       seeds[0],
 			inputStream: nil,
 			wantError:   false,
-			want:        "Task deleted: tomatoes\n",
+			want:        "Task deleted: task\n",
 		},
 		{
 			name:        "With force delete flag",
-			command:     []string{"rm", "tomatoes", "-n", "ns", "--force"},
+			command:     []string{"rm", "task", "-n", "ns", "--force"},
 			input:       seeds[1],
 			inputStream: nil,
 			wantError:   false,
-			want:        "Task deleted: tomatoes\n",
+			want:        "Task deleted: task\n",
 		},
 		{
 			name:        "Without force delete flag, reply no",
-			command:     []string{"rm", "tomatoes", "-n", "ns"},
+			command:     []string{"rm", "task", "-n", "ns"},
 			input:       seeds[2],
 			inputStream: strings.NewReader("n"),
 			wantError:   true,
-			want:        "Canceled deleting task \"tomatoes\"",
+			want:        "canceled deleting task \"task\"",
 		},
 		{
 			name:        "Without force delete flag, reply yes",
-			command:     []string{"rm", "tomatoes", "-n", "ns"},
+			command:     []string{"rm", "task", "-n", "ns"},
 			input:       seeds[2],
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Are you sure you want to delete task \"tomatoes\" (y/n): Task deleted: tomatoes\n",
+			want:        "Are you sure you want to delete task \"task\" (y/n): Task deleted: task\n",
 		},
 		{
 			name:        "Remove non existent resource",
@@ -86,7 +112,23 @@ func TestTaskDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("y"),
 			wantError:   true,
-			want:        "Failed to delete task \"nonexistent\": tasks.tekton.dev \"nonexistent\" not found",
+			want:        "failed to delete task \"nonexistent\": tasks.tekton.dev \"nonexistent\" not found",
+		},
+		{
+			name:        "With delete all flag, reply yes",
+			command:     []string{"rm", "task", "-n", "ns", "-a"},
+			input:       seeds[3],
+			inputStream: strings.NewReader("y"),
+			wantError:   false,
+			want:        "Are you sure you want to delete task and related resources (taskruns) \"task\" (y/n): Task deleted: task\nTaskRun deleted: task-run-1\nTaskRun deleted: task-run-2\n",
+		},
+		{
+			name:        "With delete all and force delete flag",
+			command:     []string{"rm", "task", "-n", "ns", "-f", "--all"},
+			input:       seeds[4],
+			inputStream: nil,
+			wantError:   false,
+			want:        "Task deleted: task\nTaskRun deleted: task-run-1\nTaskRun deleted: task-run-2\n",
 		},
 	}
 
@@ -102,12 +144,12 @@ func TestTaskDelete(t *testing.T) {
 			out, err := test.ExecuteCommand(task, tp.command...)
 			if tp.wantError {
 				if err == nil {
-					t.Errorf("Error expected here")
+					t.Errorf("error expected here")
 				}
 				test.AssertOutput(t, tp.want, err.Error())
 			} else {
 				if err != nil {
-					t.Errorf("Unexpected Error")
+					t.Errorf("unexpected Error")
 				}
 				test.AssertOutput(t, tp.want, out)
 			}
