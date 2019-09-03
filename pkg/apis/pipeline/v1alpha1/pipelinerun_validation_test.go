@@ -106,10 +106,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 					PipelineRef: v1alpha1.PipelineRef{
 						Name: "prname",
 					},
-					Results: &v1alpha1.Results{
-						URL:  "http://www.google.com",
-						Type: "gcs",
-					},
 				},
 			},
 		}, {

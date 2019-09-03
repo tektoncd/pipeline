@@ -53,8 +53,6 @@ type PipelineRunSpec struct {
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
 	ServiceAccounts []PipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
-	// +optional
-	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
@@ -111,10 +109,6 @@ type PipelineRef struct {
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
-
-	// In #107 should be updated to hold the location logs have been uploaded to
-	// +optional
-	Results *Results `json:"results,omitempty"`
 
 	// StartTime is the time the PipelineRun is actually started.
 	// +optional

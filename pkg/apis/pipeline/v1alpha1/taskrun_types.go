@@ -37,8 +37,6 @@ type TaskRunSpec struct {
 	// +optional
 	Outputs TaskRunOutputs `json:"outputs,omitempty"`
 	// +optional
-	Results *Results `json:"results,omitempty"`
-	// +optional
 	ServiceAccount string `json:"serviceAccount,omitempty"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
@@ -114,10 +112,6 @@ var taskRunCondSet = apis.NewBatchConditionSet()
 // TaskRunStatus defines the observed state of TaskRun
 type TaskRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
-
-	// In #107 should be updated to hold the location logs have been uploaded to
-	// +optional
-	Results *Results `json:"results,omitempty"`
 
 	// PodName is the name of the pod responsible for executing this task's steps.
 	PodName string `json:"podName"`
