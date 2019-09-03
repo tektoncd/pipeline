@@ -151,7 +151,7 @@ func Test_start_pipeline(t *testing.T) {
 		"-serviceaccounts=task1=svc1",
 		"-n", "ns")
 
-	expected := "Pipelinerun started: \n\nIn order to track the pipelinerun progress run:\ntkn pipelinerune logs  -f\n"
+	expected := "Pipelinerun started: \n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs  -f\n"
 	test.AssertOutput(t, expected, got)
 
 	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns("ns").List(v1.ListOptions{})
@@ -333,7 +333,7 @@ func Test_start_pipeline_last(t *testing.T) {
 		"--task-serviceaccount=task5=task3svc5",
 		"-nns")
 
-	expected := "Pipelinerun started: random\n\nIn order to track the pipelinerun progress run:\ntkn pipelinerune logs random -f\n"
+	expected := "Pipelinerun started: random\n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs random -f\n"
 	test.AssertOutput(t, expected, got)
 
 	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns(p.Namespace()).Get("random", v1.GetOptions{})
@@ -411,7 +411,7 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 		"--task-serviceaccount=task5=task3svc5",
 		"-n=ns")
 
-	expected := "Pipelinerun started: random\n\nIn order to track the pipelinerun progress run:\ntkn pipelinerune logs random -f\n"
+	expected := "Pipelinerun started: random\n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs random -f\n"
 	test.AssertOutput(t, expected, got)
 
 	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns(p.Namespace()).Get("random", v1.GetOptions{})

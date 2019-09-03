@@ -370,7 +370,7 @@ func (opt *startOptions) startPipeline(pName string) error {
 	}
 
 	fmt.Fprintf(opt.stream.Out, "Pipelinerun started: %s\n\n"+
-		"In order to track the pipelinerun progress run:\ntkn pipelinerune logs %s -f\n", prCreated.Name, prCreated.Name)
+		"In order to track the pipelinerun progress run:\ntkn pipelinerun logs %s -f\n", prCreated.Name, prCreated.Name)
 	return nil
 }
 
