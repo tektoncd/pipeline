@@ -1,5 +1,9 @@
 YAML_FILES := $(shell find . -type f -regex ".*y[a]ml" -print)
 
+ifneq (,$(wildcard ./VERSION))
+LDFLAGS := -ldflags "-X github.com/tektoncd/cli/pkg/cmd/version.clientVersion=`cat VERSION`"
+endif
+
 all: bin/tkn test
 
 FORCE:
@@ -12,26 +16,26 @@ cross: amd64 386 arm arm64 ## build cross platform binaries
 
 .PHONY: amd64
 amd64:
-	GOOS=linux GOARCH=amd64 go build -o bin/tkn-linux-amd64 ./cmd/tkn
-	GOOS=windows GOARCH=amd64 go build -o bin/tkn-windows-amd64 ./cmd/tkn
-	GOOS=darwin GOARCH=amd64 go build -o bin/tkn-darwin-amd64 ./cmd/tkn
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/tkn-linux-amd64 ./cmd/tkn
+	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o bin/tkn-windows-amd64 ./cmd/tkn
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o bin/tkn-darwin-amd64 ./cmd/tkn
 
 .PHONY: 386
 386:
-	GOOS=linux GOARCH=386 go build -o bin/tkn-linux-386 ./cmd/tkn
-	GOOS=windows GOARCH=386 go build -o bin/tkn-windows-386 ./cmd/tkn
-	GOOS=darwin GOARCH=386 go build -o bin/tkn-darwin-386 ./cmd/tkn
+	GOOS=linux GOARCH=386 go build $(LDFLAGS) -o bin/tkn-linux-386 ./cmd/tkn
+	GOOS=windows GOARCH=386 go build $(LDFLAGS) -o bin/tkn-windows-386 ./cmd/tkn
+	GOOS=darwin GOARCH=386 go build $(LDFLAGS) -o bin/tkn-darwin-386 ./cmd/tkn
 
 .PHONY: arm
 arm:
-	GOOS=linux GOARCH=arm go build -o bin/tkn-linux-arm ./cmd/tkn
+	GOOS=linux GOARCH=arm go build $(LDFLAGS) -o bin/tkn-linux-arm ./cmd/tkn
 
 .PHONY: arm64
 arm64:
-	GOOS=linux GOARCH=arm64 go build -o bin/tkn-linux-arm64 ./cmd/tkn
+	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o bin/tkn-linux-arm64 ./cmd/tkn
 
 bin/%: cmd/% ./vendor FORCE
-	@go build -v -o $@ ./$<
+	go build $(LDFLAGS) -v -o $@ ./$<
 
 check: lint test
 
@@ -69,7 +73,7 @@ man: bin/docs ## update manpages
 
 .PHONY: clean
 clean: ## clean build artifacts
-	rm -fR bin
+	rm -fR bin VERSION
 
 .PHONY: fmt ## formats teh god code(excludes vendors dir)
 fmt:

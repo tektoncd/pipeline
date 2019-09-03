@@ -42,3 +42,6 @@ tags
 
 #Mac
 .DS_Store
+
+# Generated from gorelease
+VERSION
