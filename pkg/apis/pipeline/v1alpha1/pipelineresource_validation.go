@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -116,4 +117,15 @@ func AllowedStorageType(gotType string) bool {
 		return true
 	}
 	return false
+}
+
+func validateURL(u, path string) *apis.FieldError {
+	if u == "" {
+		return nil
+	}
+	_, err := url.ParseRequestURI(u)
+	if err != nil {
+		return apis.ErrInvalidValue(u, path)
+	}
+	return nil
 }
