@@ -27,16 +27,20 @@ import (
 
 type deleteOptions struct {
 	forceDelete bool
+	deleteAll   bool
 }
 
 func deleteCommand(p cli.Params) *cobra.Command {
-	opts := &deleteOptions{forceDelete: false}
+	opts := &deleteOptions{
+		forceDelete: false,
+		deleteAll:   false,
+	}
 	f := cliopts.NewPrintFlags("delete")
 	eg := `
 # Delete a Pipeline of name 'foo' in namespace 'bar'
 tkn pipeline delete foo -n bar
 
-tkn p rm foo -n bar",
+tkn p rm foo -n bar
 `
 
 	c := &cobra.Command{
@@ -60,25 +64,47 @@ tkn p rm foo -n bar",
 				return err
 			}
 
-			return deletePipeline(s, p, args[0])
+			return deletePipeline(opts, s, p, args[0])
 		},
 	}
 	f.AddFlags(c)
 	c.Flags().BoolVarP(&opts.forceDelete, "force", "f", false, "Whether to force deletion (default: false)")
+	c.Flags().BoolVarP(&opts.deleteAll, "all", "a", false, "Whether to delete related resources (pipelineruns) (default: false)")
 	return c
 }
 
-func deletePipeline(s *cli.Stream, p cli.Params, pName string) error {
+func deletePipeline(opts *deleteOptions, s *cli.Stream, p cli.Params, pName string) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return fmt.Errorf("Failed to create tekton client")
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	if err := cs.Tekton.TektonV1alpha1().Pipelines(p.Namespace()).Delete(pName, &metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("Failed to delete pipeline %q: %s", pName, err)
+		return fmt.Errorf("failed to delete pipeline %q: %s", pName, err)
+	}
+	fmt.Fprintf(s.Out, "Pipeline deleted: %s\n", pName)
+
+	if !opts.deleteAll {
+		return nil
 	}
 
-	fmt.Fprintf(s.Out, "Pipeline deleted: %s\n", pName)
+	lOpts := metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pName),
+	}
+
+	pipelineRuns, err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).List(lOpts)
+	if err != nil {
+		return err
+	}
+
+	for _, pr := range pipelineRuns.Items {
+		if err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Delete(pr.Name, &metav1.DeleteOptions{}); err != nil {
+			return fmt.Errorf("failed to delete pipelinerun %q: %s", pr.Name, err)
+		}
+
+		fmt.Fprintf(s.Out, "PipelineRun deleted: %s\n", pr.Name)
+	}
+
 	return nil
 }
 
@@ -87,14 +113,19 @@ func checkOptions(opts *deleteOptions, s *cli.Stream, p cli.Params, pName string
 		return nil
 	}
 
-	fmt.Fprintf(s.Out, "Are you sure you want to delete pipeline %q (y/n): ", pName)
+	if opts.deleteAll {
+		fmt.Fprintf(s.Out, "Are you sure you want to delete pipeline and related resources (pipelineruns) %q (y/n): ", pName)
+	} else {
+		fmt.Fprintf(s.Out, "Are you sure you want to delete pipeline %q (y/n): ", pName)
+	}
+
 	scanner := bufio.NewScanner(s.In)
 	for scanner.Scan() {
 		t := strings.TrimSpace(scanner.Text())
 		if t == "y" {
 			break
 		} else if t == "n" {
-			return fmt.Errorf("Canceled deleting pipeline %q", pName)
+			return fmt.Errorf("canceled deleting pipeline %q", pName)
 		}
 		fmt.Fprint(s.Out, "Please enter (y/n): ")
 	}

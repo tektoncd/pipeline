@@ -20,12 +20,13 @@ Delete a pipeline in a namespace
 # Delete a Pipeline of name 'foo' in namespace 'bar'
 tkn pipeline delete foo -n bar
 
-tkn p rm foo -n bar",
+tkn p rm foo -n bar
 
 
 ### Options
 
 ```
+  -a, --all                           Whether to delete related resources (pipelineruns) (default: false)
       --allow-missing-template-keys   If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats. (default true)
   -f, --force                         Whether to force deletion (default: false)
   -h, --help                          help for delete
