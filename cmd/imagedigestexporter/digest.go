@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/google/go-containerregistry/pkg/v1"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 // GetDigest returns the digest of an OCI image index. If there is only one image in the index, the
