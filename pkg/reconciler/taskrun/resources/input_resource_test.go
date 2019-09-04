@@ -132,6 +132,9 @@ func setUp(t *testing.T) {
 				Name:  "Url",
 				Value: "http://10.10.10.10",
 			}, {
+				Name:  "Namespace",
+				Value: "namespace1",
+			}, {
 				Name: "CAdata",
 				// echo "my-ca-cert" | base64
 				Value: "bXktY2EtY2VydAo=",
@@ -639,7 +642,7 @@ func TestAddResourceToTask(t *testing.T) {
 				Image:   "override-with-kubeconfig-writer:latest",
 				Command: []string{"/ko-app/kubeconfigwriter"},
 				Args: []string{
-					"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
+					"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","secrets":null}`,
 				},
 			}}},
 		},
@@ -681,7 +684,7 @@ func TestAddResourceToTask(t *testing.T) {
 				Image:   "override-with-kubeconfig-writer:latest",
 				Command: []string{"/ko-app/kubeconfigwriter"},
 				Args: []string{
-					"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
+					"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
 				},
 				Env: []corev1.EnvVar{{
 					ValueFrom: &corev1.EnvVarSource{
