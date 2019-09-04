@@ -210,6 +210,12 @@ func (opts *logOptions) askRunName() error {
 		fmt.Fprintln(opts.stream.Err, "No pipelineruns found for pipeline:", opts.pipelineName)
 		return nil
 	}
+
+	if len(prs) == 1 {
+		opts.runName = strings.Fields(prs[0])[0]
+		return nil
+	}
+
 	var qs2 = []*survey.Question{
 		{
 			Name: "pipelinerun",

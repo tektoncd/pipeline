@@ -663,6 +663,62 @@ func TestLogs_interactive_ask_run_last_run(t *testing.T) {
 	}
 }
 
+func TestLogs_have_one_get_one(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns,
+				// created  15 minutes back
+				cb.PipelineCreationTimestamp(clock.Now().Add(-15*time.Minute)),
+			),
+		},
+		PipelineRuns: []*v1alpha1.PipelineRun{
+
+			tb.PipelineRun(prName, ns,
+				cb.PipelineRunCreationTimestamp(clock.Now().Add(-10*time.Minute)),
+				tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
+				tb.PipelineRunSpec(pipelineName),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					// pipeline run started 5 minutes ago
+					tb.PipelineRunStartTime(clock.Now().Add(-5*time.Minute)),
+					// takes 10 minutes to complete
+					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+				),
+			),
+		},
+	})
+
+	tests := []promptTest{
+		{
+			name:    "basic interaction",
+			cmdArgs: []string{pipelineName},
+
+			procedure: func(c *expect.Console) error {
+				if _, err := c.ExpectString("output-pipeline"); err == nil {
+					return errors.New("unexpected error")
+				}
+
+				if _, err := c.ExpectEOF(); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	}
+	opts := logOpts(prName, ns, 5, false, cs)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			opts.RunPromptTest(t, test)
+		})
+	}
+}
+
 func logOpts(name string, ns string, prLimit int, last bool, cs pipelinetest.Clients) *logOptions {
 	p := test.Params{
 		Kube:   cs.Kube,
