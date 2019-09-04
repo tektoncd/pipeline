@@ -68,7 +68,7 @@ $ ./kubectl plugin list
 The following commands help you understand and effectively use the Tekton CLI:
 
  * `tkn help:` Displays a list of the commands with helpful information.
- * [`tkn completion:`](docs/cmd/tkn_completion.md) Outputs a BASH completion script for `tkn` to allow command completion with Tab.
+ * [`tkn completion:`](docs/cmd/tkn_completion.md) Outputs a BASH or ZSH completion script for `tkn` to allow command completion with Tab.
  * [`tkn version:`](docs/cmd/tkn_version.md) Outputs the cli version.
  * [`tkn pipeline:`](docs/cmd/tkn_pipeline.md) Parent command of the Pipeline command group.
  * [`tkn pipelinerun:`](docs/cmd/tkn_pipelinerun.md) Parent command of the Pipelinerun command group.
