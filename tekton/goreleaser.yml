@@ -27,7 +27,6 @@ spec:
     args:
     - -c
     - "git status; git fetch -p --all"
-    - "git describe --tags > VERSION"
   - name: release
     image: goreleaser/goreleaser
     workingdir: /workspace/src/${inputs.params.package}
