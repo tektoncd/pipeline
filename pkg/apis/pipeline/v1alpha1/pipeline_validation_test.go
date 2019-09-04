@@ -110,9 +110,20 @@ func TestPipelineSpec_Validate(t *testing.T) {
 			tb.PipelineDeclaredResource("wonderful-resource", v1alpha1.PipelineResourceTypeImage),
 			tb.PipelineTask("bar", "bar-task",
 				tb.PipelineTaskInputResource("some-workspace", "great-resource"),
-				tb.PipelineTaskOutputResource("some-image", "wonderful-resource")),
+				tb.PipelineTaskOutputResource("some-image", "wonderful-resource"),
+				tb.PipelineTaskCondition("some-condition",
+					tb.PipelineTaskConditionResource("some-workspace", "great-resource"))),
 			tb.PipelineTask("foo", "foo-task",
 				tb.PipelineTaskInputResource("wow-image", "wonderful-resource", tb.From("bar"))),
+		)),
+		failureExpected: false,
+	}, {
+		name: "valid condition only resource",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineDeclaredResource("great-resource", v1alpha1.PipelineResourceTypeGit),
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskCondition("some-condition",
+					tb.PipelineTaskConditionResource("some-workspace", "great-resource"))),
 		)),
 		failureExpected: false,
 	}, {
@@ -219,6 +230,14 @@ func TestPipelineSpec_Validate(t *testing.T) {
 			tb.PipelineTask("foo", "foo-task",
 				tb.PipelineTaskInputResource("the-resource", "missing-resource"),
 				tb.PipelineTaskOutputResource("the-magic-resource", "great-resource")),
+		)),
+		failureExpected: true,
+	}, {
+		name: "invalid condition only resource",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("bar", "bar-task",
+				tb.PipelineTaskCondition("some-condition",
+					tb.PipelineTaskConditionResource("some-workspace", "missing-resource"))),
 		)),
 		failureExpected: true,
 	}, {
