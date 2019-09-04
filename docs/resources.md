@@ -512,7 +512,7 @@ The Cluster resource has the following parameters:
 -   `url` (required): Host url of the master node
 -   `username` (required): the user with access to the cluster
 -   `password`: to be used for clusters with basic auth
--   `namespace`: The namespace to be given to the target namespace
+-   `namespace`: The namespace to target in the cluster
 -   `token`: to be used for authentication, if present will be used ahead of the
     password
 -   `insecure`: to indicate server should be accessed without verifying the TLS
