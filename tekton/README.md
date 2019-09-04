@@ -15,53 +15,33 @@ them manually.
 
 ## Release Pipeline
 
-The release pipeline uses the
-[`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
-Tasks from the
-[`tektoncd/catalog`](https://github.com/tektoncd/catalog). To add them
-to your cluster:
+You can use the script [`./release.sh`](release.sh) that would do everything
+that needs to be done for the release.
 
-```
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/lint.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
-```
+The first argument if not provided is the release version you want to do, it
+need to respect a format like `v1.2.3` which is basically SEMVER.
 
-It also uses the [`goreleaser`](./goreleaser.yml) Task from this
-repository.
+If it detects that you are doing a minor release it would ask you for some
+commits to be cherry-picked in this release. Alternatively you can provide the
+commits separed by a space to the second argument of the script. You do need to
+make sure to provide them in order from the oldest to the newest (as listed).
 
-```
-kubectl apply -f ./goreleaser.yml
-```
+If you give the `*` argument for the commits to pick up it would apply all the new
+commits.
 
-Next is the actual release pipeline. It is defined in
-[`release-pipeline.yml`](./release-pipeline.yml).
+It will them use your TektonCD cluster and apply what needs to be done for
+running the release.
 
-```
-kubectl apply -f ./release-pipeline.yml
-```
+And finally it will launch the `tkn`  cli to show the logs.
 
-Note that the [`goreleaser.yml`](./goreleaser.yml) `Task` needs a
-secret for the GitHub token, named `bot-token-github`.
+Make sure we have a nice ChangeLog before doign the release, listing `features`
+and `bugs` and be thankful to the contributors by listing them.
 
-TODO(vdemeester): It is hardcoded for now as Tekton Pipeline doesn't
-support variable interpolation in the environment. This needs to be
-fixed upstream.
+## Debugging
 
-```
-kubectl create secret generic bot-token-github --from-literal=bot-token=${GITHUB_TOKEN}
-```
+You can define the env variable `PUSH_REMOTE` to push to your own remote (i.e:
+which pont to your username on github),
 
-
-### Running
-
-To run these `Pipelines` and `Tasks`, you must have Tekton Pipelines installed
-(in your own kubernetes cluster) either via
-[an official release](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
-or
-[from `HEAD`](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#install-pipeline).
-
-- [`release-pipeline-run.yml`](./release-pipeline-run.yml) — this
-  runs the `ci-release-pipeline` on `tektoncd/cli` master branch. The
-  way [`goreleaser`](https://goreleaser.com) works, it will build the
-  latest tag.
+You need to be **careful** if you have write access to the `homebrew` repository, it
+would do a release there. Until we can find a proper fix I would generate a
+commit which remove the brews data and cherry-pick it in the script.
