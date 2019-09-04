@@ -22,7 +22,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
@@ -56,17 +55,7 @@ func main() {
 			log.Printf("ImageResource %s doesn't have an index.json file: %s", imageResource.Name, err)
 			continue
 		}
-		// If there is only one image in the index, report the digest of the image; otherwise, report the digest of the whole index.
-		digest, err := func() (v1.Hash, error) {
-			im, err := ii.IndexManifest()
-			if err != nil {
-				return v1.Hash{}, err
-			}
-			if len(im.Manifests) == 1 {
-				return im.Manifests[0].Digest, nil
-			}
-			return ii.Digest()
-		}()
+		digest, err := GetDigest(ii)
 		if err != nil {
 			log.Fatalf("Unexpected error getting image digest for %s: %v", imageResource.Name, err)
 		}
