@@ -112,7 +112,7 @@ spec:
             {
               "mediaType": "application/vnd.oci.image.index.v1+json",
               "size": 314,
-              "digest": "sha256:NOTAREALDIGEST"
+              "digest": "sha256:deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
             }
           ]
         }
