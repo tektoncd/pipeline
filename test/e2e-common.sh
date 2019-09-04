@@ -199,7 +199,7 @@ run_test() {
   local desc="$1"; shift
 
   echo "Running $@"
-  $@ || fail_test "failed to $desc"
+  "$@" || fail_test "failed to $desc"
   echo
 }
 
