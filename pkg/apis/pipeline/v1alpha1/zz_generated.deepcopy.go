@@ -958,11 +958,6 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 		*out = make([]PipelineRunSpecServiceAccount, len(*in))
 		copy(*out, *in)
 	}
-	if in.Results != nil {
-		in, out := &in.Results, &out.Results
-		*out = new(Results)
-		**out = **in
-	}
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
 		*out = new(metav1.Duration)
@@ -1021,11 +1016,6 @@ func (in *PipelineRunSpecServiceAccount) DeepCopy() *PipelineRunSpecServiceAccou
 func (in *PipelineRunStatus) DeepCopyInto(out *PipelineRunStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
-	if in.Results != nil {
-		in, out := &in.Results, &out.Results
-		*out = new(Results)
-		**out = **in
-	}
 	if in.StartTime != nil {
 		in, out := &in.StartTime, &out.StartTime
 		*out = (*in).DeepCopy()
@@ -1720,11 +1710,6 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 	*out = *in
 	in.Inputs.DeepCopyInto(&out.Inputs)
 	in.Outputs.DeepCopyInto(&out.Outputs)
-	if in.Results != nil {
-		in, out := &in.Results, &out.Results
-		*out = new(Results)
-		**out = **in
-	}
 	if in.TaskRef != nil {
 		in, out := &in.TaskRef, &out.TaskRef
 		*out = new(TaskRef)
@@ -1777,11 +1762,6 @@ func (in *TaskRunSpec) DeepCopy() *TaskRunSpec {
 func (in *TaskRunStatus) DeepCopyInto(out *TaskRunStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
-	if in.Results != nil {
-		in, out := &in.Results, &out.Results
-		*out = new(Results)
-		**out = **in
-	}
 	if in.StartTime != nil {
 		in, out := &in.StartTime, &out.StartTime
 		*out = (*in).DeepCopy()
