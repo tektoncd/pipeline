@@ -46,6 +46,12 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 				required = append(required, output.Resource)
 			}
 		}
+
+		for _, condition := range t.Conditions {
+			for _, cr := range condition.Resources {
+				required = append(required, cr.Resource)
+			}
+		}
 	}
 
 	provided := make([]string, 0, len(ps.Resources))
