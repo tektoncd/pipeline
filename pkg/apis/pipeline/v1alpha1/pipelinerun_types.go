@@ -53,6 +53,9 @@ type PipelineRunSpec struct {
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
 	ServiceAccounts []PipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
+	// Deprecation Notice: The field Results will be removed in v0.8.0
+	// and should not be used. Plan to have this field removed before upgradring
+	// to v0.8.0.
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
@@ -112,7 +115,9 @@ type PipelineRef struct {
 type PipelineRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
-	// In #107 should be updated to hold the location logs have been uploaded to
+	// Deprecation Notice: The field Results will be removed in v0.8.0
+	// and should not be used. Plan to have this field removed before upgradring
+	// to v0.8.0.
 	// +optional
 	Results *Results `json:"results,omitempty"`
 
