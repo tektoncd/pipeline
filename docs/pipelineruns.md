@@ -33,7 +33,7 @@ following fields:
     `PipelineRun` resource object, for example a `name`.
   - [`spec`][kubernetes-overview] - Specifies the configuration information for
     your `PipelineRun` resource object.
-    - `pipelineRef` - Specifies the [`Pipeline`](pipelines.md) you want to run.
+    - [`pipelineRef` or `pipelineSpec`](#specifiying-a-pipeline) - Specifies the [`Pipeline`](pipelines.md) you want to run.
 - Optional:
 
   - [`resources`](#resources) - Specifies which
@@ -54,6 +54,48 @@ following fields:
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
+
+### Specifying a pipeline
+
+Since a `PipelineRun` is an invocation of a [`Pipeline`](pipelines.md), you must sepcify
+what `Pipeline` to invoke.
+
+You can do this by providing a reference to an existing `Pipeline`:
+
+```yaml
+spec:
+  pipelineRef:
+    name: myPipeline
+
+```
+
+Or you can embed the spec of the `Pipeline` directly in the `PipelineRun`:
+
+```yaml
+spec:
+  pipelineSpec:
+    tasks:
+    - name: task1
+      taskRef:
+        name: myTask
+```
+
+[Here](../examples/pipelineruns/pipelinerun-with-pipelinespec.yaml) is a sample `PipelineRun` to display different
+greetings while embedding the spec of the `Pipeline` directly in the `PipelineRun`.
+
+
+After creating such `PipelineRun`, logs from a pod displaying morning greetings:
+
+```bash
+kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-morning)
+Good Morning, Bob!
+```
+
+And logs from a pod displaying morning greetings:
+```bash
+kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-night)
+Good Night, Bob!
+```
 
 ### Resources
 

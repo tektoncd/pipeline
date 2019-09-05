@@ -169,7 +169,7 @@ func (state PipelineRunState) SuccessfulPipelineTaskNames() []string {
 // GetTaskRun is a function that will retrieve the TaskRun name.
 type GetTaskRun func(name string) (*v1alpha1.TaskRun, error)
 
-// GetResourcesFromBindings will retreive all Resources bound in PipelineRun pr and return a map
+// GetResourcesFromBindings will retrieve all Resources bound in PipelineRun pr and return a map
 // from the declared name of the PipelineResource (which is how the PipelineResource will
 // be referred to in the PipelineRun) to the PipelineResource, obtained via getResource.
 func GetResourcesFromBindings(pr *v1alpha1.PipelineRun, getResource resources.GetResource) (map[string]*v1alpha1.PipelineResource, error) {
@@ -185,9 +185,9 @@ func GetResourcesFromBindings(pr *v1alpha1.PipelineRun, getResource resources.Ge
 }
 
 // ValidateResourceBindings validate that the PipelineResources declared in Pipeline p are bound in PipelineRun.
-func ValidateResourceBindings(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) error {
-	required := make([]string, 0, len(p.Spec.Resources))
-	for _, resource := range p.Spec.Resources {
+func ValidateResourceBindings(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) error {
+	required := make([]string, 0, len(p.Resources))
+	for _, resource := range p.Resources {
 		required = append(required, resource.Name)
 	}
 	provided := make([]string, 0, len(pr.Spec.Resources))

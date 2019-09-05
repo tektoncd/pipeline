@@ -194,43 +194,54 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	return err
 }
 
+func (c *Reconciler) getPipelineFunc(tr *v1alpha1.PipelineRun) resources.GetPipeline {
+	var gtFunc resources.GetPipeline = func(name string) (v1alpha1.PipelineInterface, error) {
+		p, err := c.pipelineLister.Pipelines(tr.Namespace).Get(name)
+		if err != nil {
+			return nil, err
+		}
+		return p, nil
+	}
+	return gtFunc
+}
+
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
 	// We may be reading a version of the object that was stored at an older version
 	// and may not have had all of the assumed default specified.
 	pr.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
 
-	p, err := c.pipelineLister.Pipelines(pr.Namespace).Get(pr.Spec.PipelineRef.Name)
+	getPipelineFunc := c.getPipelineFunc(pr)
+	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(pr, getPipelineFunc)
 	if err != nil {
-		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		c.Logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.SetCondition(&apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 			Reason: ReasonCouldntGetPipeline,
-			Message: fmt.Sprintf("Pipeline %s can't be found:%s",
-				fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
+			Message: fmt.Sprintf("Error retrieving pipeline for pipelinerun %s: %s",
+				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), err),
 		})
 		return nil
 	}
-	p = p.DeepCopy()
 
 	// Propagate labels from Pipeline to PipelineRun.
 	if pr.ObjectMeta.Labels == nil {
-		pr.ObjectMeta.Labels = make(map[string]string, len(p.ObjectMeta.Labels)+1)
+		pr.ObjectMeta.Labels = make(map[string]string, len(pipelineMeta.Labels)+1)
 	}
-	for key, value := range p.ObjectMeta.Labels {
+	for key, value := range pipelineMeta.Labels {
 		pr.ObjectMeta.Labels[key] = value
 	}
-	pr.ObjectMeta.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = p.Name
+	pr.ObjectMeta.Labels[pipeline.GroupName+pipeline.PipelineLabelKey] = pipelineMeta.Name
 
 	// Propagate annotations from Pipeline to PipelineRun.
 	if pr.ObjectMeta.Annotations == nil {
-		pr.ObjectMeta.Annotations = make(map[string]string, len(p.ObjectMeta.Annotations))
+		pr.ObjectMeta.Annotations = make(map[string]string, len(pipelineMeta.Annotations))
 	}
-	for key, value := range p.ObjectMeta.Annotations {
+	for key, value := range pipelineMeta.Annotations {
 		pr.ObjectMeta.Annotations[key] = value
 	}
 
-	d, err := v1alpha1.BuildDAG(p.Spec.Tasks)
+	d, err := v1alpha1.BuildDAG(pipelineSpec.Tasks)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&apis.Condition{
@@ -242,7 +253,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		})
 		return nil
 	}
-	if err := resources.ValidateResourceBindings(p, pr); err != nil {
+	if err := resources.ValidateResourceBindings(pipelineSpec, pr); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -261,14 +272,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			Status: corev1.ConditionFalse,
 			Reason: ReasonCouldntGetResource,
 			Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
-				fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
+				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
 		})
 		return nil
 	}
 
 	// Ensure that the parameters from the PipelineRun are overriding Pipeline parameters with the same type.
 	// Weird substitution issues can occur if this is not validated (ApplyParameters() does not verify type).
-	err = resources.ValidateParamTypesMatching(p, pr)
+	err = resources.ValidateParamTypesMatching(pipelineSpec, pr)
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&apis.Condition{
@@ -282,7 +293,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 	}
 
 	// Apply parameter substitution from the PipelineRun
-	p = resources.ApplyParameters(p, pr)
+	pipelineSpec = resources.ApplyParameters(pipelineSpec, pr)
 
 	pipelineState, err := resources.ResolvePipelineRun(
 		*pr,
@@ -298,8 +309,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		func(name string) (*v1alpha1.Condition, error) {
 			return c.conditionLister.Conditions(pr.Namespace).Get(name)
 		},
-		p.Spec.Tasks, providedResources,
+		pipelineSpec.Tasks, providedResources,
 	)
+
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		switch err := err.(type) {
@@ -309,7 +321,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 				Status: corev1.ConditionFalse,
 				Reason: ReasonCouldntGetTask,
 				Message: fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
-					fmt.Sprintf("%s/%s", p.Namespace, p.Name), err),
+					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pipelineMeta.Name), err),
 			})
 		case *resources.ConditionNotFoundError:
 			pr.Status.SetCondition(&apis.Condition{
@@ -317,7 +329,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 				Status: corev1.ConditionFalse,
 				Reason: ReasonCouldntGetCondition,
 				Message: fmt.Sprintf("PipelineRun %s can't be Run; it contains Conditions that don't exist:  %s",
-					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
+					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
 			})
 		default:
 			pr.Status.SetCondition(&apis.Condition{
@@ -325,7 +337,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 				Status: corev1.ConditionFalse,
 				Reason: ReasonFailedValidation,
 				Message: fmt.Sprintf("PipelineRun %s can't be Run; couldn't resolve all references: %s",
-					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
+					fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
 			})
 		}
 		return nil
@@ -344,7 +356,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			Status: corev1.ConditionFalse,
 			Reason: ReasonFailedValidation,
 			Message: fmt.Sprintf("Pipeline %s can't be Run; it invalid input/output linkages: %s",
-				fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
+				fmt.Sprintf("%s/%s", pipelineMeta.Namespace, pr.Name), err),
 		})
 		return nil
 	}
