@@ -112,36 +112,11 @@ run_test  "list pipelineresources" tkn resource list
 run_test  "describe pipelineresource" tkn resource desc skaffold-git
 
 # delete pipeline, pipelinerun, task, taskrun, and pipelineresource
-run_test  "delete pipeline" expect -c "
-  spawn  tkn pipeline delete output-pipeline
-  expect \"Are you sure you want to delete pipeline "output-pipeline" (y/n): \"
-  send   \"y\n\"
-  expect \"Pipeline deleted: output-pipeline\"
-  "
-run_test  "delete pipelinerun" expect -c "
-  spawn  tkn pipelinerun delete output-pipeline-run
-  expect \"Are you sure you want to delete pipelinerun "output-pipeline-run" (y/n): \"
-  send   \"y\n\"
-  expect \"PipelineRun deleted: output-pipeline-run\"
-  "
-run_test  "delete resource" expect -c "
-  spawn  tkn resource delete skaffold-git
-  expect \"Are you sure you want to delete pipelineresource "skaffold-git" (y/n): \"
-  send   \"y\n\"
-  expect \"PipelineResource deleted: skaffold-git\"
-  "
-run_test  "delete task" expect -c "
-  spawn  tkn task delete create-file
-  expect \"Are you sure you want to delete task "create-file" (y/n): \"
-  send   \"y\n\"
-  expect \"Task deleted: create-file\"
-  "
-run_test  "delete taskrun" expect -c "
-  spawn  tkn taskrun delete test-template-volume
-  expect \"Are you sure you want to delete taskrun "test-template-volume" (y/n): \"
-  send   \"y\n\"
-  expect \"TaskRun deleted: test-template-volume\"
-  "
+run_test  "delete pipeline" tkn pipeline delete output-pipeline -f
+run_test  "delete pipelinerun" tkn pipelinerun delete output-pipeline-run -f
+run_test  "delete resource" tkn resource delete skaffold-git -f
+run_test  "delete task" tkn task delete create-file -f
+run_test  "delete taskrun" tkn taskrun delete test-template-volume -f
 
 # confirm deletion (TODO: Add task test when added desc or logs to task command)
 must_fail  "describe deleted pipeline" tkn pipeline describe output-pipeline
