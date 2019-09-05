@@ -85,6 +85,34 @@ spec:
         name: skaffold-image-leeroy-app
 ```
 
+Or you can embed the spec of the `Resource` directly in the `PipelineRun`:
+
+
+```yaml
+spec:
+  resources:
+    - name: source-repo
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: v0.32.0
+          - name: url
+            value: https://github.com/GoogleContainerTools/skaffold
+    - name: web-image
+      resourceSpec:
+        type: image
+        params:
+          - name: url
+            value: gcr.io/christiewilson-catfactory/leeroy-web
+    - name: app-image
+      resourceSpec:
+        type: image
+        params:
+          - name: url
+            value: gcr.io/christiewilson-catfactory/leeroy-app
+```
+
 ### Service Account
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
@@ -121,7 +149,6 @@ spec:
     - name: build-task
       taskRef:
         name: build-push
-  tasks:
     - name: test-task
       taskRef:
         name: test
@@ -174,7 +201,7 @@ spec:
   tasks:
     - name: task1
       taskRef:
-      name: myTask
+        name: myTask
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun

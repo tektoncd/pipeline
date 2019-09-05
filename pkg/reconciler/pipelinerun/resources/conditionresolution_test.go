@@ -290,9 +290,6 @@ func TestResolvedConditionCheck_ToTaskResourceBindings(t *testing.T) {
 
 	expected := []v1alpha1.TaskResourceBinding{{
 		Name: "git-resource",
-		ResourceRef: v1alpha1.PipelineResourceRef{
-			Name: "some-repo",
-		},
 	}}
 
 	if d := cmp.Diff(expected, rcc.ToTaskResourceBindings()); d != "" {

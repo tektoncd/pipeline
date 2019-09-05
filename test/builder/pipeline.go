@@ -319,9 +319,6 @@ func PipelineRunResourceBinding(name string, ops ...PipelineResourceBindingOp) P
 	return func(prs *v1alpha1.PipelineRunSpec) {
 		r := &v1alpha1.PipelineResourceBinding{
 			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: name,
-			},
 		}
 		for _, op := range ops {
 			op(r)
@@ -334,6 +331,13 @@ func PipelineRunResourceBinding(name string, ops ...PipelineResourceBindingOp) P
 func PipelineResourceBindingRef(name string) PipelineResourceBindingOp {
 	return func(b *v1alpha1.PipelineResourceBinding) {
 		b.ResourceRef.Name = name
+	}
+}
+
+// PipelineResourceBindingResourceSpec set the PipelineResourceResourceSpec to the PipelineResourceBinding.
+func PipelineResourceBindingResourceSpec(spec *v1alpha1.PipelineResourceSpec) PipelineResourceBindingOp {
+	return func(b *v1alpha1.PipelineResourceBinding) {
+		b.ResourceSpec = spec
 	}
 }
 

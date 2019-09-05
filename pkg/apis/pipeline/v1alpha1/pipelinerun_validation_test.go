@@ -81,11 +81,11 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 		},
 	}
 
-	for _, ts := range tests {
-		t.Run(ts.name, func(t *testing.T) {
-			err := ts.pr.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
-				t.Errorf("PipelineRun.Validate/%s (-want, +got) = %v", ts.name, d)
+	for _, ps := range tests {
+		t.Run(ps.name, func(t *testing.T) {
+			err := ps.pr.Validate(context.Background())
+			if d := cmp.Diff(err.Error(), ps.want.Error()); d != "" {
+				t.Errorf("PipelineRun.Validate/%s (-want, +got) = %v", ps.name, d)
 			}
 		})
 	}

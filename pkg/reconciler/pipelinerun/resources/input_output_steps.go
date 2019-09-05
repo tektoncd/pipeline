@@ -27,14 +27,23 @@ func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, sto
 	var taskOutputResources []v1alpha1.TaskResourceBinding
 
 	for name, outputResource := range outputs {
-		taskOutputResources = append(taskOutputResources, v1alpha1.TaskResourceBinding{
-			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
+		taskOutputResource := v1alpha1.TaskResourceBinding{
+			Name:  name,
+			Paths: []string{filepath.Join(storageBasePath, taskName, name)},
+		}
+		if outputResource.SelfLink != "" {
+			taskOutputResource.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       outputResource.Name,
 				APIVersion: outputResource.APIVersion,
-			},
-			Paths: []string{filepath.Join(storageBasePath, taskName, name)},
-		})
+			}
+		} else if outputResource.Spec.Type != "" {
+			taskOutputResource.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+				Type:         outputResource.Spec.Type,
+				Params:       outputResource.Spec.Params,
+				SecretParams: outputResource.Spec.SecretParams,
+			}
+		}
+		taskOutputResources = append(taskOutputResources, taskOutputResource)
 	}
 	return taskOutputResources
 }
@@ -47,10 +56,18 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 	for name, inputResource := range inputs {
 		taskInputResource := v1alpha1.TaskResourceBinding{
 			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
+		}
+		if inputResource.SelfLink != "" {
+			taskInputResource.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       inputResource.Name,
 				APIVersion: inputResource.APIVersion,
-			},
+			}
+		} else if inputResource.Spec.Type != "" {
+			taskInputResource.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+				Type:         inputResource.Spec.Type,
+				Params:       inputResource.Spec.Params,
+				SecretParams: inputResource.Spec.SecretParams,
+			}
 		}
 
 		var stepSourceNames []string

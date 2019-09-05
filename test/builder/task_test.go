@@ -161,6 +161,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			),
 			tb.TaskRunOutputs(
 				tb.TaskRunOutputsResource(gitResource.Name,
+					tb.TaskResourceBindingRef(gitResource.Name),
 					tb.TaskResourceBindingPaths("output-folder"),
 				),
 			),

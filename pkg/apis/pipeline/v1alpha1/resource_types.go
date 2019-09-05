@@ -116,6 +116,10 @@ type PipelineResourceBinding struct {
 	// ResourceRef is a reference to the instance of the actual PipelineResource
 	// that should be used
 	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
+	// +optional
+	// ResourceSpec is specification of a resource that should be created and
+	// consumed by the task
+	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
 }
 
 // PipelineResourceResult used to export the image name and digest as json

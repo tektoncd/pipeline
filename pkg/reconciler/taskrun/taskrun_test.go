@@ -308,6 +308,7 @@ func TestReconcile(t *testing.T) {
 			),
 			tb.TaskRunOutputs(
 				tb.TaskRunOutputsResource(gitResource.Name,
+					tb.TaskResourceBindingRef(gitResource.Name),
 					tb.TaskResourceBindingPaths("output-folder"),
 				),
 			),
@@ -1658,8 +1659,8 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 	)
@@ -1667,8 +1668,8 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 		tb.TaskRunStatus(
@@ -1681,8 +1682,8 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 		tb.TaskRunStatus(
@@ -1699,8 +1700,8 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 		tb.TaskRunStatus(
@@ -1717,8 +1718,8 @@ func TestReconcileCloudEvents(t *testing.T) {
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(twoOutputsTask.Name),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource(cloudEventResource.Name),
-				tb.TaskRunOutputsResource(anotherCloudEventResource.Name),
+				tb.TaskRunOutputsResource(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
+				tb.TaskRunOutputsResource(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
 			),
 		),
 		tb.TaskRunStatus(

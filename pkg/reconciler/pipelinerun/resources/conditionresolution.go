@@ -174,13 +174,22 @@ func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1alpha1.TaskResou
 	var trb []v1alpha1.TaskResourceBinding
 
 	for name, r := range rcc.ResolvedResources {
-		trb = append(trb, v1alpha1.TaskResourceBinding{
+		tr := v1alpha1.TaskResourceBinding{
 			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
+		}
+		if r.SelfLink != "" {
+			tr.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       r.Name,
 				APIVersion: r.APIVersion,
-			},
-		})
+			}
+		} else if r.Spec.Type != "" {
+			tr.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+				Type:         r.Spec.Type,
+				Params:       r.Spec.Params,
+				SecretParams: r.Spec.SecretParams,
+			}
+		}
+		trb = append(trb, tr)
 	}
 
 	return trb
