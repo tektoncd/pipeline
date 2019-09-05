@@ -79,7 +79,7 @@
   revision = "073e4daa3d0dcb50173fdac5581709a17b97e9ed"
 
 [[projects]]
-  digest = "1:2d2c66bafe2c06819c0f6abef9fc2cf35d2169a5363e4abb819a87784d24c467"
+  digest = "1:0fb0fc01ca0fb8c5a486a8a1b9092fe546aac68dbfb77919d9a3501b932c5990"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -101,25 +101,18 @@
     "aws/session",
     "aws/signer/v4",
     "internal/ini",
-    "internal/s3err",
     "internal/sdkio",
     "internal/sdkrand",
     "internal/sdkuri",
     "internal/shareddefaults",
     "private/protocol",
-    "private/protocol/eventstream",
-    "private/protocol/eventstream/eventstreamapi",
     "private/protocol/json/jsonutil",
     "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
-    "private/protocol/restxml",
     "private/protocol/xml/xmlutil",
     "service/ecr",
-    "service/s3",
-    "service/s3/s3iface",
-    "service/s3/s3manager",
     "service/sts",
   ]
   pruneopts = "NUT"
@@ -337,14 +330,6 @@
   pruneopts = "NUT"
   revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
   version = "v1.1.1"
-
-[[projects]]
-  digest = "1:a008957d172951cd37a33fcc18de65b6153e0e465ae6409266f69ef1a152b51a"
-  name = "github.com/google/wire"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "89cb901fdf9dfcf4292cbfe0c9ac90d98213be68"
-  version = "v0.3.0"
 
 [[projects]]
   digest = "1:fd4d1f4c2d75aee3833ee7d8ef11fcf42ddec3c63d1819548288c3d868d6eb14"
@@ -705,15 +690,12 @@
   revision = "67bc79d13d155c02fd008f721863ff8cc5f30659"
 
 [[projects]]
-  digest = "1:ad7196924dcef34fa557f78c5d0d306164f243da0221de1931ea9413f106eb75"
+  digest = "1:b4e47ef9870f9f332440c23dba0c450373d3e7213f412da600e0924886911b98"
   name = "gocloud.dev"
   packages = [
-    "aws",
     "blob",
     "blob/driver",
-    "blob/s3blob",
     "gcerrors",
-    "internal/escape",
     "internal/gcerr",
     "internal/oc",
     "internal/openurl",
@@ -1384,8 +1366,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/GoogleCloudPlatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher",
-    "github.com/aws/aws-sdk-go/aws",
-    "github.com/aws/aws-sdk-go/aws/session",
     "github.com/cloudevents/sdk-go/pkg/cloudevents",
     "github.com/cloudevents/sdk-go/pkg/cloudevents/client",
     "github.com/cloudevents/sdk-go/pkg/cloudevents/context",
@@ -1419,7 +1399,7 @@
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest",
     "go.uber.org/zap/zaptest/observer",
-    "gocloud.dev/blob/s3blob",
+    "gocloud.dev/blob",
     "golang.org/x/oauth2",
     "golang.org/x/xerrors",
     "k8s.io/api/core/v1",

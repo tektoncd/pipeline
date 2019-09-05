@@ -21,15 +21,15 @@ import "path/filepath"
 // InputResourcePath returns the path where the given input resource
 // will get mounted in a Pod
 func InputResourcePath(r ResourceDeclaration) string {
-	return path("/workspace", r)
+	return resourcePath("/workspace", r)
 }
 
 // OutputResourcePath returns the path to the output resouce in a Pod
 func OutputResourcePath(r ResourceDeclaration) string {
-	return path("/workspace/output", r)
+	return resourcePath("/workspace/output", r)
 }
 
-func path(root string, r ResourceDeclaration) string {
+func resourcePath(root string, r ResourceDeclaration) string {
 	if r.TargetPath != "" {
 		return filepath.Join("/workspace", r.TargetPath)
 	}
