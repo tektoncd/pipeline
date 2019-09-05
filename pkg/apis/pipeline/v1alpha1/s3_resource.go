@@ -28,15 +28,14 @@ import (
 )
 
 var (
-	s3utilImage             = flag.String("s3-image", "override-with-s3-image:latest", "The container image containing go-cloud util")
-	s3SecretVolumeMountPath = "/var/secret"
+	s3utilImage = flag.String("s3-image", "override-with-s3-image:latest", "The container image containing go-cloud util")
 )
 
 // S3Resource represents an object in an s3 bucket, which we can get(input) or put(output).
 type S3Resource struct {
 	Name       string               `json:"name"`
+	Artifact   string               `json:"artifact"`
 	BucketName string               `json:"bucketname"`
-	ObjectName string               `json:"objectname"`
 	Location   string               `json:"location"`
 	Type       PipelineResourceType `json:"type"`
 	Secrets    []SecretParam        `json:"secrets"`
@@ -47,10 +46,10 @@ func NewS3Resource(r *PipelineResource) (*S3Resource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("S3: Cannot create a S3 resource from a %s Pipeline Resource", r.Spec.Type)
 	}
+	var artifact string
+	var bucketname string
 	var location string
-	var bucket string
-	var object string
-	var locationSpecified, objectSpecified, bucketSpecified bool
+	var locationSpecified, artifactSpecified, bucketnameSpecified bool
 
 	for _, param := range r.Spec.Params {
 		switch {
@@ -59,33 +58,33 @@ func NewS3Resource(r *PipelineResource) (*S3Resource, error) {
 			if param.Value != "" {
 				locationSpecified = true
 			}
-		case strings.EqualFold(param.Name, "Bucket"):
-			bucket = param.Value
+		case strings.EqualFold(param.Name, "BucketName"):
+			bucketname = param.Value
 			if param.Value != "" {
-				bucketSpecified = true
+				bucketnameSpecified = true
 			}
-		case strings.EqualFold(param.Name, "ObjectName"):
-			object = param.Value
+		case strings.EqualFold(param.Name, "Artifact"):
+			artifact = param.Value
 			if param.Value != "" {
-				objectSpecified = true
+				artifactSpecified = true
 			}
 		}
 	}
 
 	if !locationSpecified {
-		return nil, xerrors.Errorf("S3Resource: Need Location to be specified in order to create S3 resource %s", r.Name)
+		return nil, xerrors.Errorf("S3Resource: Need location to be specified in order to create S3 resource %s", r.Name)
 	}
-	if !bucketSpecified {
-		return nil, xerrors.Errorf("S3Resource: Need Bucket to be specified in order to create S3 resource %s", r.Name)
+	if !bucketnameSpecified {
+		return nil, xerrors.Errorf("S3Resource: Need bucket to be specified in order to create S3 resource %s", r.Name)
 	}
-	if !objectSpecified {
-		return nil, xerrors.Errorf("S3Resource: Need Object to be specified in order to create S3 resource %s", r.Name)
+	if !artifactSpecified {
+		return nil, xerrors.Errorf("S3Resource: Need artifact to be specified in order to create S3 resource %s", r.Name)
 	}
 
 	return &S3Resource{
 		Name:       r.Name,
-		BucketName: bucket,
-		ObjectName: object,
+		BucketName: bucketname,
+		Artifact:   artifact,
 		Type:       r.Spec.Type,
 		Location:   location,
 		Secrets:    r.Spec.SecretParams,
@@ -106,7 +105,7 @@ func (s *S3Resource) GetType() PipelineResourceType {
 func (s *S3Resource) GetSecretParams() []SecretParam { return s.Secrets }
 
 func (s *S3Resource) GetUploadSteps(sourcePath string) ([]Step, error) {
-	args := []string{"--put", "--source", path.Join(sourcePath, s.Location), "--artifact", s.ObjectName, "--bucket", s.BucketName}
+	args := []string{"--put", "--location", path.Join(sourcePath, s.Location), "--artifact", s.Artifact, "--bucketurl", s.BucketName}
 
 	envVars := getEnvVarsSecrets(s.Name, s.Secrets)
 
@@ -120,7 +119,7 @@ func (s *S3Resource) GetUploadSteps(sourcePath string) ([]Step, error) {
 }
 
 func (s *S3Resource) GetDownloadSteps(sourcePath string) ([]Step, error) {
-	args := []string{"--get", "--destination", path.Join(sourcePath, s.Location), "--artifact", s.ObjectName, "--bucket", s.BucketName}
+	args := []string{"--get", "--location", path.Join(sourcePath, s.Location), "--artifact", s.Artifact, "--bucketurl", s.BucketName}
 
 	envVars := getEnvVarsSecrets(s.Name, s.Secrets)
 
@@ -147,6 +146,6 @@ func (s *S3Resource) Replacements() map[string]string {
 	return map[string]string{
 		"name":       s.Name,
 		"bucketname": s.BucketName,
-		"objectname": s.ObjectName,
+		"artifact":   s.Artifact,
 	}
 }

@@ -117,8 +117,8 @@ func Test_Valid_NewS3Resource(t *testing.T) {
 	pr := tb.PipelineResource("s3-resource", "default", tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeStorage,
 		tb.PipelineResourceSpecParam("Location", "./source/my-bucket/something.gz"),
-		tb.PipelineResourceSpecParam("Bucket", "s3://somewhere"),
-		tb.PipelineResourceSpecParam("ObjectName", "artfact.gz"),
+		tb.PipelineResourceSpecParam("BucketName", "s3://somewhere"),
+		tb.PipelineResourceSpecParam("Artifact", "artfact.gz"),
 		tb.PipelineResourceSpecSecretParam("AWS_SECRET_ACCESS_KEY", "secretName", "secretKey"),
 	))
 	expectedS3Resource := &v1alpha1.S3Resource{
@@ -126,7 +126,7 @@ func Test_Valid_NewS3Resource(t *testing.T) {
 		Name:       "s3-resource",
 		Location:   "./source/my-bucket/something.gz",
 		BucketName: "s3://somewhere",
-		ObjectName: "artfact.gz",
+		Artifact:   "artfact.gz",
 		Secrets: []v1alpha1.SecretParam{{
 			SecretName: "secretName",
 			SecretKey:  "secretKey",

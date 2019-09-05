@@ -6,8 +6,8 @@ metadata:
   annotations:
 type: Opaque
 stringData:
-  key: "KEY"
-  secret: "SECRET"
+  key: "AWS"
+  secret: ""
 
 ---
 apiVersion: tekton.dev/v1alpha1
@@ -20,10 +20,10 @@ spec:
     - name: type
       value: s3
     - name: Bucket
-      value: pipelinebuilds
-    - name: ObjectName
+      value: s3://pipelinebuilds
+    - name: Artifact
       value: release-artifact.tgz
-    - name: Location
+    - name: LocalFile
       value: "remote-file-yay.gz"
   secrets:
     - fieldName: AWS_SECRET_ACCESS_KEY
