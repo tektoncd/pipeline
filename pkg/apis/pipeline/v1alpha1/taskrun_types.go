@@ -36,6 +36,9 @@ type TaskRunSpec struct {
 	Inputs TaskRunInputs `json:"inputs,omitempty"`
 	// +optional
 	Outputs TaskRunOutputs `json:"outputs,omitempty"`
+	// Deprecation Notice: The field Results will be removed in v0.8.0
+	// and should not be used. Plan to have this field removed before upgradring
+	// to v0.8.0.
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// +optional
@@ -115,7 +118,9 @@ var taskRunCondSet = apis.NewBatchConditionSet()
 type TaskRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
-	// In #107 should be updated to hold the location logs have been uploaded to
+	// Deprecation Notice: The field Results will be removed in v0.8.0
+	// and should not be used. Plan to have this field removed before upgradring
+	// to v0.8.0.
 	// +optional
 	Results *Results `json:"results,omitempty"`
 
