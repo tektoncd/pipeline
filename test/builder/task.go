@@ -597,9 +597,6 @@ func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOu
 	return func(i *v1alpha1.TaskRunOutputs) {
 		binding := &v1alpha1.TaskResourceBinding{
 			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: name,
-			},
 		}
 		for _, op := range ops {
 			op(binding)

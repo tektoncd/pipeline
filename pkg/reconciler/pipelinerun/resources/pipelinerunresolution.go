@@ -24,6 +24,7 @@ import (
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -172,8 +173,8 @@ type GetTaskRun func(name string) (*v1alpha1.TaskRun, error)
 // GetResourcesFromBindings will validate that all PipelineResources declared in Pipeline p are bound in PipelineRun pr
 // and if so, will return a map from the declared name of the PipelineResource (which is how the PipelineResource will
 // be referred to in the PipelineRun) to the ResourceRef.
-func GetResourcesFromBindings(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) (map[string]v1alpha1.PipelineResourceRef, error) {
-	resources := map[string]v1alpha1.PipelineResourceRef{}
+func GetResourcesFromBindings(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) (map[string]v1alpha1.PipelineResourceBinding, error) {
+	resources := map[string]v1alpha1.PipelineResourceBinding{}
 
 	required := make([]string, 0, len(p.Spec.Resources))
 	for _, resource := range p.Spec.Resources {
@@ -189,12 +190,12 @@ func GetResourcesFromBindings(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) (m
 	}
 
 	for _, resource := range pr.Spec.Resources {
-		resources[resource.Name] = resource.ResourceRef
+		resources[resource.Name] = resource
 	}
 	return resources, nil
 }
 
-func getPipelineRunTaskResources(pt v1alpha1.PipelineTask, providedResources map[string]v1alpha1.PipelineResourceRef) ([]v1alpha1.TaskResourceBinding, []v1alpha1.TaskResourceBinding, error) {
+func getPipelineRunTaskResources(pt v1alpha1.PipelineTask, providedResources map[string]v1alpha1.PipelineResourceBinding) ([]v1alpha1.TaskResourceBinding, []v1alpha1.TaskResourceBinding, error) {
 	inputs, outputs := []v1alpha1.TaskResourceBinding{}, []v1alpha1.TaskResourceBinding{}
 	if pt.Resources != nil {
 		for _, taskInput := range pt.Resources.Inputs {
@@ -203,8 +204,9 @@ func getPipelineRunTaskResources(pt v1alpha1.PipelineTask, providedResources map
 				return inputs, outputs, xerrors.Errorf("pipelineTask tried to use input resource %s not present in declared resources", taskInput.Resource)
 			}
 			inputs = append(inputs, v1alpha1.TaskResourceBinding{
-				Name:        taskInput.Name,
-				ResourceRef: resource,
+				Name:         taskInput.Name,
+				ResourceRef:  resource.ResourceRef,
+				ResourceSpec: resource.ResourceSpec,
 			})
 		}
 		for _, taskOutput := range pt.Resources.Outputs {
@@ -213,8 +215,9 @@ func getPipelineRunTaskResources(pt v1alpha1.PipelineTask, providedResources map
 				return outputs, outputs, xerrors.Errorf("pipelineTask tried to use output resource %s not present in declared resources", taskOutput.Resource)
 			}
 			outputs = append(outputs, v1alpha1.TaskResourceBinding{
-				Name:        taskOutput.Name,
-				ResourceRef: resource,
+				Name:         taskOutput.Name,
+				ResourceRef:  resource.ResourceRef,
+				ResourceSpec: resource.ResourceSpec,
 			})
 		}
 	}
@@ -262,7 +265,7 @@ func ResolvePipelineRun(
 	getResource resources.GetResource,
 	getCondition GetCondition,
 	tasks []v1alpha1.PipelineTask,
-	providedResources map[string]v1alpha1.PipelineResourceRef,
+	providedResources map[string]v1alpha1.PipelineResourceBinding,
 ) (PipelineRunState, error) {
 
 	state := []*ResolvedPipelineRunTask{}
@@ -297,9 +300,11 @@ func ResolvePipelineRun(
 
 		spec := t.TaskSpec()
 		rtr, err := resources.ResolveTaskResources(&spec, t.TaskMetadata().Name, pt.TaskRef.Kind, inputs, outputs, getResource)
+
 		if err != nil {
 			return nil, &ResourceNotFoundError{Msg: err.Error()}
 		}
+
 		rprt.ResolvedTaskResources = rtr
 
 		taskRun, err := getTaskRun(rprt.TaskRunName)
@@ -492,7 +497,7 @@ func ValidateFrom(state PipelineRunState) error {
 func resolveConditionChecks(pt *v1alpha1.PipelineTask,
 	taskRunStatus map[string]*v1alpha1.PipelineRunTaskRunStatus,
 	taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition,
-	getResource resources.GetResource, providedResources map[string]v1alpha1.PipelineResourceRef) ([]*ResolvedConditionCheck, error) {
+	getResource resources.GetResource, providedResources map[string]v1alpha1.PipelineResourceBinding) ([]*ResolvedConditionCheck, error) {
 	rccs := []*ResolvedConditionCheck{}
 	for _, ptc := range pt.Conditions {
 		cName := ptc.ConditionRef
@@ -533,24 +538,31 @@ func resolveConditionChecks(pt *v1alpha1.PipelineTask,
 
 func resolveConditionResources(prc []v1alpha1.PipelineConditionResource,
 	getResource resources.GetResource,
-	providedResources map[string]v1alpha1.PipelineResourceRef,
+	providedResources map[string]v1alpha1.PipelineResourceBinding,
 ) (map[string]*v1alpha1.PipelineResource, error) {
 	rr := make(map[string]*v1alpha1.PipelineResource)
 	for _, r := range prc {
 		// First get a ref to actual resource name from its bound name
-		resourceRef, ok := providedResources[r.Resource]
+		resourceBinding, ok := providedResources[r.Resource]
 		if !ok {
 			return nil, xerrors.Errorf("resource %s not present in declared resources", r.Resource)
 		}
-
 		// Next, fetch the actual resource definition
-		gotResource, err := getResource(resourceRef.Name)
-		if err != nil {
-			return nil, xerrors.Errorf("could not retrieve resource %s: %w", r.Name, err)
+		if resourceBinding.ResourceRef.Name != "" {
+			gotResource, err := getResource(resourceBinding.ResourceRef.Name)
+			if err != nil {
+				return nil, xerrors.Errorf("could not retrieve resource %s: %w", r.Name, err)
+			}
+			// Finally add it to the resolved resources map
+			rr[r.Name] = gotResource
+		} else if resourceBinding.ResourceSpec != nil && resourceBinding.ResourceSpec.Type != "" {
+			rr[r.Name] = &v1alpha1.PipelineResource{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: resourceBinding.Name,
+				},
+				Spec: *resourceBinding.ResourceSpec,
+			}
 		}
-
-		// Finally add it to the resolved resources map
-		rr[r.Name] = gotResource
 	}
 	return rr, nil
 }
