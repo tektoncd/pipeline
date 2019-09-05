@@ -37,9 +37,22 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(ps, &PipelineRunSpec{}) {
 		return apis.ErrMissingField("spec")
 	}
-	// pipeline reference should be present for pipelinerun
-	if ps.PipelineRef.Name == "" {
-		return apis.ErrMissingField("pipelinerun.spec.Pipelineref.Name")
+
+	// can't have both pipelinekRef and pipelineSpec at the same time
+	if ps.PipelineRef.Name != "" && ps.PipelineSpec != nil {
+		return apis.ErrDisallowedFields("spec.pipelineRef", "spec.pipelineSpec")
+	}
+
+	// Check that one of PipelineRef and PipelineSpec is present
+	if ps.PipelineRef.Name == "" && ps.PipelineSpec == nil {
+		return apis.ErrMissingField("spec.pipelineRef.name", "spec.pipelineSpec")
+	}
+
+	// Validate PipelineSpec if it's present
+	if ps.PipelineSpec != nil {
+		if err := ps.PipelineSpec.Validate(ctx); err != nil {
+			return err
+		}
 	}
 
 	// check for results

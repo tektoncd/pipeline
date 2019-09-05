@@ -983,6 +983,11 @@ func (in *PipelineRunList) DeepCopyObject() runtime.Object {
 func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 	*out = *in
 	out.PipelineRef = in.PipelineRef
+	if in.PipelineSpec != nil {
+		in, out := &in.PipelineSpec, &out.PipelineSpec
+		*out = new(PipelineSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Resources != nil {
 		in, out := &in.Resources, &out.Resources
 		*out = make([]PipelineResourceBinding, len(*in))

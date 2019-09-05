@@ -1074,6 +1074,23 @@ func TestGetResourcesFromBindings(t *testing.T) {
 	}
 }
 
+func TestGetResourcesFromBindings_Missing(t *testing.T) {
+	//p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	//	tb.PipelineDeclaredResource("git-resource", "git"),
+	//	tb.PipelineDeclaredResource("image-resource", "image"),
+	//))
+	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
+	))
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		return nil, fmt.Errorf("Request for unexpected resource %s", name)
+	}
+	_, err := GetResourcesFromBindings(pr, getResource)
+	if err == nil {
+		t.Fatalf("Expected error indicating `image-resource` was missing but got no error")
+	}
+}
+
 func TestGetResourcesFromBindings_ErrorGettingResource(t *testing.T) {
 	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
@@ -1820,7 +1837,7 @@ func TestValidateResourceBindings(t *testing.T) {
 	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
-	err := ValidateResourceBindings(p, pr)
+	err := ValidateResourceBindings(&p.Spec, pr)
 	if err != nil {
 		t.Fatalf("didn't expect error getting resources from bindings but got: %v", err)
 	}
@@ -1834,7 +1851,7 @@ func TestValidateResourceBindings_Missing(t *testing.T) {
 	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
-	err := ValidateResourceBindings(p, pr)
+	err := ValidateResourceBindings(&p.Spec, pr)
 	if err == nil {
 		t.Fatalf("Expected error indicating `image-resource` was missing but got no error")
 	}
@@ -1848,7 +1865,7 @@ func TestGetResourcesFromBindings_Extra(t *testing.T) {
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 		tb.PipelineRunResourceBinding("image-resource", tb.PipelineResourceBindingRef("sweet-resource2")),
 	))
-	err := ValidateResourceBindings(p, pr)
+	err := ValidateResourceBindings(&p.Spec, pr)
 	if err == nil {
 		t.Fatalf("Expected error indicating `image-resource` was extra but got no error")
 	}
