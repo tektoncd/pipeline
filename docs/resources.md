@@ -367,6 +367,15 @@ spec:
     - fieldName: githubToken
       secretName: github-secrets
       secretKey: token
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-secrets
+type: Opaque
+data:
+  token: github_personal_access_token_secret # in base64 encoded form
+
 ```
 
 Params that can be added are the following:
@@ -399,7 +408,7 @@ provider statuses, see
 #### GitHub
 
 The Pull Request resource will look for GitHub OAuth authentication tokens in
-spec secrets with a field name called `authToken`.
+spec secrets with a field name called `githubToken`.
 
 URLs should be of the form: https://github.com/tektoncd/pipelines/pulls/1
 
