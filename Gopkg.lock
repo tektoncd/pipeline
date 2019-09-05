@@ -753,14 +753,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e3ebabeeb2580fc1e003cda75abd6993a9f6b38219c9b8b84ec336b473aaa2cf"
+  digest = "1:da4baf48e12c5766130e8ec8ae5058cb3b5e8b533606c75340f7fb59604a4018"
   name = "golang.org/x/xerrors"
   packages = [
     ".",
     "internal",
   ]
   pruneopts = "NUT"
-  revision = "1f06c39b43733b74392b1972507822714ced3242"
+  revision = "a985d3407aa71f30cf86696ee0a2f409709f22e1"
 
 [[projects]]
   branch = "master"
