@@ -16,12 +16,69 @@ package formatted
 
 import (
 	"io"
+	"sync"
+	"sync/atomic"
 
 	"github.com/fatih/color"
 )
 
+var (
+	// Red is avoided as keeping it for errors
+	palette = []color.Attribute{
+		color.FgHiGreen,
+		color.FgHiYellow,
+		color.FgHiBlue,
+		color.FgHiMagenta,
+		color.FgHiCyan,
+	}
+)
+
+type atomicCounter struct {
+	value     uint32
+	threshold int
+}
+
+func (c *atomicCounter) next() int {
+	v := atomic.AddUint32(&c.value, 1)
+	next := int(v-1) % c.threshold
+	atomic.CompareAndSwapUint32(&c.value, uint32(c.threshold), 0)
+	return next
+
+}
+
+type rainbow struct {
+	cache   sync.Map
+	counter atomicCounter
+}
+
+func newRainbow() *rainbow {
+	return &rainbow{
+		counter: atomicCounter{threshold: len(palette)},
+	}
+}
+
+func (r *rainbow) get(x string) color.Attribute {
+	if value, ok := r.cache.Load(x); ok {
+		return value.(color.Attribute)
+	}
+
+	clr := palette[r.counter.next()]
+	r.cache.Store(x, clr)
+	return clr
+}
+
+// Fprintf formats according to a format specifier and writes to w.
+// the first argument is a label to keep the same colour on.
+func (r *rainbow) Fprintf(label string, w io.Writer, format string, args ...interface{}) {
+	attribute := r.get(label)
+	crainbow := color.Set(attribute).Add(color.Bold)
+	crainbow.Fprintf(w, format, args...)
+}
+
 //Color formatter to print the colored output on streams
 type Color struct {
+	Rainbow *rainbow
+
 	red  *color.Color
 	blue *color.Color
 }
@@ -29,6 +86,8 @@ type Color struct {
 //NewColor returns a new instance color formatter
 func NewColor() *Color {
 	return &Color{
+		Rainbow: newRainbow(),
+
 		red:  color.New(color.FgRed),
 		blue: color.New(color.FgBlue),
 	}
@@ -37,11 +96,6 @@ func NewColor() *Color {
 //PrintBlue prints the formatted content to given destination in blue color
 func (c *Color) PrintBlue(w io.Writer, format string, args ...interface{}) {
 	c.blue.Fprintf(w, format, args...)
-}
-
-//Header prints the formatted content to given destination in blue color
-func (c *Color) Header(w io.Writer, format string, args ...interface{}) {
-	c.PrintBlue(w, format, args...)
 }
 
 //PrintBlue prints the formatted content to given destination in red color

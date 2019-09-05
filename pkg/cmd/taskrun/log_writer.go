@@ -46,7 +46,7 @@ func (lw *LogWriter) Write(s *cli.Stream, logC <-chan Log, errC <-chan error) {
 				continue
 			}
 
-			lw.fmt.Header(s.Out, "[%s] ", l.Step)
+			lw.fmt.Rainbow.Fprintf(l.Step, s.Out, "[%s] ", l.Step)
 			fmt.Fprintf(s.Out, "%s\n", l.Log)
 		case e, ok := <-errC:
 			if !ok {
