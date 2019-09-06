@@ -64,9 +64,10 @@ func Root(p cli.Params) *cobra.Command {
 	pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
 
 	var cmd = &cobra.Command{
-		Use:   "tkn",
-		Short: "CLI for tekton pipelines",
-		Long:  ``,
+		Use:          "tkn",
+		Short:        "CLI for tekton pipelines",
+		Long:         ``,
+		SilenceUsage: true,
 	}
 	cobra.AddTemplateFunc("HasMainSubCommands", hasMainSubCommands)
 	cobra.AddTemplateFunc("HasUtilitySubCommands", hasUtilitySubCommands)
