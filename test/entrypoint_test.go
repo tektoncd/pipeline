@@ -50,7 +50,7 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 	taskRun := tb.TaskRun(epTaskRunName, namespace, tb.TaskRunSpec(
-		tb.TaskRunTaskRef(epTaskName), tb.TaskRunServiceAccount("default"),
+		tb.TaskRunTaskRef(epTaskName), tb.TaskRunServiceAccountName("default"),
 	))
 	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)

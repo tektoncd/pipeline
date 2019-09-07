@@ -42,7 +42,11 @@ type TaskRunSpec struct {
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// +optional
-	ServiceAccount string `json:"serviceAccount,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName"`
+	// DeprecatedServiceAccount is a depreciated alias for ServiceAccountName.
+	// Deprecated: Use serviceAccountName instead.
+	// +optional
+	DeprecatedServiceAccount string `json:"serviceAccount,omitempty"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
@@ -289,4 +293,12 @@ func (tr *TaskRun) IsCancelled() bool {
 func (tr *TaskRun) GetRunKey() string {
 	// The address of the pointer is a threadsafe unique identifier for the taskrun
 	return fmt.Sprintf("%s/%p", "TaskRun", tr)
+}
+
+func (tr *TaskRun) GetServiceAccountName() string {
+	name := tr.Spec.ServiceAccountName
+	if name == "" {
+		name = tr.Spec.DeprecatedServiceAccount
+	}
+	return name
 }

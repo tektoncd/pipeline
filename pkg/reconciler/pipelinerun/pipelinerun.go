@@ -524,9 +524,9 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: rprt.PipelineTask.Params,
 			},
-			ServiceAccount: getServiceAccount(pr, rprt.PipelineTask.Name),
-			Timeout:        getTaskRunTimeout(pr),
-			PodTemplate:    pr.Spec.PodTemplate,
+			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
+			Timeout:            getTaskRunTimeout(pr),
+			PodTemplate:        pr.Spec.PodTemplate,
 		}}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
@@ -596,17 +596,6 @@ func getTaskRunTimeout(pr *v1alpha1.PipelineRun) *metav1.Duration {
 	return taskRunTimeout
 }
 
-func getServiceAccount(pr *v1alpha1.PipelineRun, pipelineTaskName string) string {
-	// If service account is configured for a given PipelineTask, override PipelineRun's serviceAccount
-	serviceAccount := pr.Spec.ServiceAccount
-	for _, sa := range pr.Spec.ServiceAccounts {
-		if sa.TaskName == pipelineTaskName {
-			serviceAccount = sa.ServiceAccount
-		}
-	}
-	return serviceAccount
-}
-
 func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineRun, error) {
 	newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
 	if err != nil {
@@ -656,8 +645,8 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 			Annotations:     getTaskrunAnnotations(pr), // Propagate annotations from PipelineRun to TaskRun.
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskSpec:       taskSpec,
-			ServiceAccount: getServiceAccount(pr, rprt.PipelineTask.Name),
+			TaskSpec:           taskSpec,
+			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
 			Inputs: v1alpha1.TaskRunInputs{
 				Params:    rcc.PipelineTaskCondition.Params,
 				Resources: rcc.ToTaskResourceBindings(),

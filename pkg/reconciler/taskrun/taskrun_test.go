@@ -288,7 +288,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	))
 	taskRunWithSaSuccess := tb.TaskRun("test-taskrun-with-sa-run-success", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunServiceAccount("test-sa"),
+		tb.TaskRunServiceAccountName("test-sa"),
 	))
 	taskruns := []*v1alpha1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
 	d := test.Data{
@@ -381,7 +381,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
-			saName := tc.taskRun.Spec.ServiceAccount
+			saName := tc.taskRun.Spec.ServiceAccountName
 			if saName == "" {
 				saName = defaultSAName
 			}
@@ -447,7 +447,10 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
 	))
 	taskRunWithSaSuccess := tb.TaskRun("test-taskrun-with-sa-run-success", "foo", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")), tb.TaskRunServiceAccount("test-sa"),
+		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")), tb.TaskRunServiceAccountName("test-sa"),
+	))
+	taskRunWithDeprecatedSaSuccess := tb.TaskRun("test-taskrun-with-deprecated-sa-run-success", "foo", tb.TaskRunSpec(
+		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")), tb.TaskRunDeprecatedServiceAccount("", "test-deprecated-sa"),
 	))
 	taskRunTaskEnv := tb.TaskRun("test-taskrun-task-env", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(taskEnvTask.Name, tb.TaskRefAPIVersion("a1")),
@@ -579,7 +582,7 @@ func TestReconcile(t *testing.T) {
 	)
 
 	taskruns := []*v1alpha1.TaskRun{
-		taskRunSuccess, taskRunWithSaSuccess,
+		taskRunSuccess, taskRunWithSaSuccess, taskRunWithDeprecatedSaSuccess,
 		taskRunSubstitution, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
 		taskRunWithLabels, taskRunWithAnnotations, taskRunWithResourceRequests, taskRunTaskEnv, taskRunWithPod,
@@ -639,6 +642,39 @@ func TestReconcile(t *testing.T) {
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
 				tb.PodServiceAccountName("test-sa"),
+				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
+				tb.PodRestartPolicy(corev1.RestartPolicyNever),
+				getCredentialsInitContainer("9l9zj"),
+				getPlaceToolsInitContainer(),
+				tb.PodContainer("step-sa-step", "foo",
+					tb.Command(entrypointLocation),
+					tb.Args("-wait_file", "/builder/downward/ready", "-post_file", "/builder/tools/0", "-wait_file_content", "-entrypoint", "/mycmd", "--"),
+					tb.WorkingDir(workspaceDir),
+					tb.EnvVar("HOME", "/builder/home"),
+					tb.VolumeMount("tools", "/builder/tools"),
+					tb.VolumeMount("downward", "/builder/downward"),
+					tb.VolumeMount("workspace", workspaceDir),
+					tb.VolumeMount("home", "/builder/home"),
+					tb.Resources(tb.Requests(
+						tb.CPU("0"),
+						tb.Memory("0"),
+						tb.EphemeralStorage("0"),
+					)),
+				),
+			),
+		),
+	}, {
+		name:    "deprecated-serviceaccount",
+		taskRun: taskRunWithDeprecatedSaSuccess,
+		wantPod: tb.Pod("test-taskrun-with-deprecated-sa-run-success-pod-d406f0", "foo",
+			tb.PodAnnotation("tekton.dev/ready", ""),
+			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
+			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-deprecated-sa-run-success"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodOwnerReference("TaskRun", "test-taskrun-with-deprecated-sa-run-success",
+				tb.OwnerReferenceAPIVersion(currentApiVersion)),
+			tb.PodSpec(
+				tb.PodServiceAccountName("test-deprecated-sa"),
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getCredentialsInitContainer("9l9zj"),
@@ -1218,7 +1254,7 @@ func TestReconcile(t *testing.T) {
 			defer cancel()
 			c := testAssets.Controller
 			clients := testAssets.Clients
-			saName := tc.taskRun.Spec.ServiceAccount
+			saName := tc.taskRun.GetServiceAccountName()
 			if saName == "" {
 				saName = "default"
 			}
@@ -1578,7 +1614,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 
 func TestCreateRedirectedTaskSpec(t *testing.T) {
 	tr := tb.TaskRun("tr", "tr", tb.TaskRunSpec(
-		tb.TaskRunServiceAccount("sa"),
+		tb.TaskRunServiceAccountName("sa"),
 	))
 	task := tb.Task("tr-ts", "tr", tb.TaskSpec(
 		tb.Step("foo1", "bar1", tb.StepCommand("abcd"), tb.StepArgs("efgh")),
@@ -1964,7 +2000,7 @@ func TestReconcileCloudEvents(t *testing.T) {
 			c := testAssets.Controller
 			clients := testAssets.Clients
 
-			saName := tc.taskRun.Spec.ServiceAccount
+			saName := tc.taskRun.Spec.ServiceAccountName
 			if saName == "" {
 				saName = "default"
 			}

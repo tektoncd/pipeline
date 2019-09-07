@@ -44,7 +44,7 @@ following fields:
       the [`Task`](tasks.md) you want to run
 - Optional:
 
-  - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
+  - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
     specified in the configmap - config-defaults will be applied.
@@ -156,9 +156,9 @@ default, if `default-timeout-minutes` is set to 0.
 ### Service Account
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Task` with the privileges of the specified
-service account. If no `serviceAccount` field is specified, your `Task` runs
-using the  service account specified in the ConfigMap `configmap-defaults`
+`serviceAccountName` field to run your `Task` with the privileges of the specified
+service account. If no `serviceAccountName` field is specified, your `Task` runs
+using the service account specified in the ConfigMap `configmap-defaults`
 which if absent will default to
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
@@ -517,7 +517,7 @@ kind: TaskRun
 metadata:
   name: test-task-with-serviceaccount-git-ssh
 spec:
-  serviceAccount: test-task-robot-git-ssh
+  serviceAccountName: test-task-robot-git-ssh
   inputs:
     resources:
       - name: workspace
@@ -529,7 +529,7 @@ spec:
       args: ["-c", "cat README.md"]
 ```
 
-Where `serviceAccount: test-build-robot-git-ssh` references the following
+Where `serviceAccountName: test-build-robot-git-ssh` references the following
 `ServiceAccount`:
 
 ```yaml
@@ -561,8 +561,8 @@ data:
 ```
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Task` with the privileges of the specified
-service account. If no `serviceAccount` field is specified, your `Task` runs
+`serviceAccountName` field to run your `Task` with the privileges of the specified
+service account. If no `serviceAccountName` field is specified, your `Task` runs
 using the
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the

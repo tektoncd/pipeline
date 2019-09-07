@@ -73,7 +73,7 @@ kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  serviceAccount: build-bot
+  serviceAccountName: build-bot
   taskRef:
     name: build-push
 ```
@@ -87,7 +87,7 @@ spec:
      name: demo-pipeline
      namespace: default
    spec:
-     serviceAccount: build-bot
+     serviceAccountName: build-bot
      pipelineRef:
        name: demo-pipeline
    ```
@@ -145,7 +145,7 @@ to authenticate when retrieving any `PipelineResources`.
    metadata:
      name: build-push-task-run-2
    spec:
-     serviceAccount: build-bot
+     serviceAccountName: build-bot
      taskRef:
        name: build-push
    ```
@@ -159,7 +159,7 @@ to authenticate when retrieving any `PipelineResources`.
      name: demo-pipeline
      namespace: default
    spec:
-     serviceAccount: build-bot
+     serviceAccountName: build-bot
      pipelineRef:
        name: demo-pipeline
    ```
@@ -218,7 +218,7 @@ kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  serviceAccount: build-bot
+  serviceAccountName: build-bot
   taskRef:
     name: build-push
 ```
@@ -232,7 +232,7 @@ spec:
      name: demo-pipeline
      namespace: default
    spec:
-     serviceAccount: build-bot
+     serviceAccountName: build-bot
      pipelineRef:
        name: demo-pipeline
    ```
@@ -283,7 +283,7 @@ addition to the one described above.
    metadata:
      name: build-with-basic-auth
    spec:
-     serviceAccount: build-bot
+     serviceAccountName: build-bot
      steps:
      ...
    ```

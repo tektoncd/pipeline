@@ -44,7 +44,7 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	}
 
 	defaultSA := cfg.Defaults.DefaultServiceAccount
-	if prs.ServiceAccount == "" && defaultSA != "" {
-		prs.ServiceAccount = defaultSA
+	if prs.ServiceAccountName == "" && defaultSA != "" {
+		prs.ServiceAccountName = defaultSA
 	}
 }

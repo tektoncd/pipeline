@@ -60,7 +60,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					Name: "pipelinelineName",
 				},
 				Spec: v1alpha1.PipelineRunSpec{
-					ServiceAccount: "foo",
+					ServiceAccountName: "foo",
 				},
 			},
 			want: apis.ErrMissingField("spec.pipelineRef.name, spec.pipelineSpec"),

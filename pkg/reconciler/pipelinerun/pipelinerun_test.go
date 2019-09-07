@@ -87,7 +87,7 @@ func TestReconcile(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun("test-pipeline-run-success", "foo",
 			tb.PipelineRunSpec("test-pipeline",
-				tb.PipelineRunServiceAccount("test-sa"),
+				tb.PipelineRunServiceAccountName("test-sa"),
 				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
 				tb.PipelineRunResourceBinding("best-image", tb.PipelineResourceBindingResourceSpec(
 					&v1alpha1.PipelineResourceSpec{
@@ -225,7 +225,7 @@ func TestReconcile(t *testing.T) {
 		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-1"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("unit-test-task"),
-			tb.TaskRunServiceAccount("test-sa"),
+			tb.TaskRunServiceAccountName("test-sa"),
 			tb.TaskRunInputs(
 				tb.TaskRunInputsParam("foo", "somethingfun"),
 				tb.TaskRunInputsParam("bar", "somethingmorefun"),
@@ -452,7 +452,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	))
 	taskrun := tb.TaskRun("test-pipeline-run-success-unit-test-1", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef("unit-test-task"),
-		tb.TaskRunServiceAccount("test-sa"),
+		tb.TaskRunServiceAccountName("test-sa"),
 	), tb.TaskRunStatus(
 		tb.StatusCondition(apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.StepState(tb.StateTerminated(0)),
@@ -626,7 +626,7 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	taskRunName := "test-pipeline-run-completed-hello-world"
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
-		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa")),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa")),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionTrue,
@@ -717,7 +717,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 
 func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-cancelled", "foo",
-		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa"),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa"),
 			tb.PipelineRunCancelled,
 		),
 	)}
@@ -731,7 +731,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineLabelKey, "test-pipeline-run-cancelled"),
 			tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineRunLabelKey, "test-pipeline"),
 			tb.TaskRunSpec(tb.TaskRunTaskRef("hello-world"),
-				tb.TaskRunServiceAccount("test-sa"),
+				tb.TaskRunServiceAccountName("test-sa"),
 			),
 		),
 	}
@@ -775,7 +775,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 	))}
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-timeout", "foo",
 		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunServiceAccountName("test-sa"),
 			tb.PipelineRunTimeout(12*time.Hour),
 		),
 		tb.PipelineRunStatus(
@@ -896,7 +896,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 				tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
 				tb.TaskRunSpec(
 					tb.TaskRunTaskRef("hello-world"),
-					tb.TaskRunServiceAccount("test-sa"),
+					tb.TaskRunServiceAccountName("test-sa"),
 				),
 			),
 		}, {
@@ -911,7 +911,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 				tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
 				tb.TaskRunSpec(
 					tb.TaskRunTaskRef("hello-world"),
-					tb.TaskRunServiceAccount("test-sa"),
+					tb.TaskRunServiceAccountName("test-sa"),
 				),
 			),
 		},
@@ -926,7 +926,7 @@ func TestReconcilePropagateLabels(t *testing.T) {
 				tb.PipelineRunLabel("PipelineRunLabel", "PipelineRunValue"),
 				tb.PipelineRunLabel("tekton.dev/pipeline", "WillNotBeUsed"),
 				tb.PipelineRunSpec("test-pipeline",
-					tb.PipelineRunServiceAccount("test-sa"),
+					tb.PipelineRunServiceAccountName("test-sa"),
 				),
 			)}
 			ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
@@ -975,8 +975,8 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 	))}
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-different-service-accs", "foo",
 		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa-0"),
-			tb.PipelineRunServiceAccountTask("hello-world-1", "test-sa-1"),
+			tb.PipelineRunServiceAccountName("test-sa-0"),
+			tb.PipelineRunServiceAccountNameTask("hello-world-1", "test-sa-1"),
 		),
 	)}
 	ts := []*v1alpha1.Task{
@@ -1015,7 +1015,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 			),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("hello-world-task"),
-				tb.TaskRunServiceAccount("test-sa-0"),
+				tb.TaskRunServiceAccountName("test-sa-0"),
 			),
 			tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
@@ -1028,7 +1028,7 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 			),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("hello-world-task"),
-				tb.TaskRunServiceAccount("test-sa-1"),
+				tb.TaskRunServiceAccountName("test-sa-1"),
 			),
 			tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
 			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-different-service-accs"),
@@ -1043,6 +1043,138 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 		}
 		if d := cmp.Diff(actual, expectedTaskRuns[i]); d != "" {
 			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i], d)
+		}
+
+	}
+
+}
+
+func TestReconcileWithDeprecatedServiceAccounts(t *testing.T) {
+	names.TestingSeed()
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline("test-sa-0", "foo", tb.PipelineSpec(tb.PipelineTask("deprecated-sa-0", "hello-world-task"))),
+		tb.Pipeline("test-sa-1", "foo", tb.PipelineSpec(tb.PipelineTask("sa-1", "hello-world-task"))),
+		tb.Pipeline("test-sa-2", "foo", tb.PipelineSpec(tb.PipelineTask("task-deprecated-sa-2", "hello-world-task"))),
+		tb.Pipeline("test-sa-3", "foo", tb.PipelineSpec(tb.PipelineTask("task-sa-3", "hello-world-task"))),
+	}
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun("test-pipeline-run-deprecated-sa-0", "foo",
+			tb.PipelineRunSpec("test-sa-0",
+				tb.PipelineRunDeprecatedServiceAccountName("", "sa-0"),
+			),
+		),
+		tb.PipelineRun("test-pipeline-run-sa-1", "foo",
+			tb.PipelineRunSpec("test-sa-1",
+				tb.PipelineRunDeprecatedServiceAccountName("sa-1", "sa-0"),
+			),
+		),
+		tb.PipelineRun("test-pipeline-run-task-deprecated-sa-2", "foo",
+			tb.PipelineRunSpec("test-sa-2",
+				tb.PipelineRunServiceAccountName("wrong-sa"),
+				tb.PipelineRunDeprecatedServiceAccountTask("task-deprecated-sa-2", "sa-2"),
+			),
+		),
+		tb.PipelineRun("test-pipeline-run-task-sa-3", "foo",
+			tb.PipelineRunSpec("test-sa-3",
+				tb.PipelineRunServiceAccountName("wrong-sa"),
+				tb.PipelineRunServiceAccountNameTask("task-sa-3", "sa-3"),
+				tb.PipelineRunDeprecatedServiceAccountTask("task-sa-3", "wrong-deprecated-sa"),
+			),
+		),
+	}
+
+	ts := []*v1alpha1.Task{
+		tb.Task("hello-world-task", "foo"),
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	for _, pr := range prs {
+		err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", pr.GetNamespace(), pr.GetName()))
+		if err != nil {
+			t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+		}
+
+		// Check that the PipelineRun was reconciled correctly
+		_, err = clients.Pipeline.Tekton().PipelineRuns(pr.GetNamespace()).Get(pr.GetName(), metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+		}
+	}
+
+	expectedTaskRuns := []*v1alpha1.TaskRun{
+		tb.TaskRun("test-pipeline-run-deprecated-sa-0-deprecated-sa-0-9l9zj", "foo",
+			tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-deprecated-sa-0",
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+				tb.Controller, tb.BlockOwnerDeletion,
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("hello-world-task"),
+				tb.TaskRunServiceAccountName("sa-0"),
+			),
+			tb.TaskRunLabel("tekton.dev/pipeline", "test-sa-0"),
+			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-deprecated-sa-0"),
+			tb.TaskRunLabel("tekton.dev/pipelineTask", "deprecated-sa-0"),
+		),
+		tb.TaskRun("test-pipeline-run-sa-1-sa-1-mz4c7", "foo",
+			tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-sa-1",
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+				tb.Controller, tb.BlockOwnerDeletion,
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("hello-world-task"),
+				tb.TaskRunServiceAccountName("sa-1"),
+			),
+			tb.TaskRunLabel("tekton.dev/pipeline", "test-sa-1"),
+			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-sa-1"),
+			tb.TaskRunLabel("tekton.dev/pipelineTask", "sa-1"),
+		),
+		tb.TaskRun("test-pipeline-run-task-deprecated-sa-2-task-deprecated-sa-mssqb", "foo",
+			tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-task-deprecated-sa-2",
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+				tb.Controller, tb.BlockOwnerDeletion,
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("hello-world-task"),
+				tb.TaskRunServiceAccountName("sa-2"),
+			),
+			tb.TaskRunLabel("tekton.dev/pipeline", "test-sa-2"),
+			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-task-deprecated-sa-2"),
+			tb.TaskRunLabel("tekton.dev/pipelineTask", "task-deprecated-sa-2"),
+		),
+		tb.TaskRun("test-pipeline-run-task-sa-3-task-sa-3-78c5n", "foo",
+			tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-task-sa-3",
+				tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+				tb.Controller, tb.BlockOwnerDeletion,
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("hello-world-task"),
+				tb.TaskRunServiceAccountName("sa-3"),
+			),
+			tb.TaskRunLabel("tekton.dev/pipeline", "test-sa-3"),
+			tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-task-sa-3"),
+			tb.TaskRunLabel("tekton.dev/pipelineTask", "task-sa-3"),
+		),
+	}
+
+	for _, taskRun := range expectedTaskRuns {
+		// Check that the expected TaskRun was created
+		actual, err := clients.Pipeline.Tekton().TaskRuns(taskRun.GetNamespace()).Get(taskRun.GetName(), metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Expected a TaskRun to be created, but it wasn't: %s", err)
+		}
+		if d := cmp.Diff(actual, taskRun); d != "" {
+			t.Errorf("expected to see TaskRun %v created. Diff %s", taskRun, d)
 		}
 
 	}
@@ -1076,7 +1208,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 			))}
 			prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-retry-run-with-timeout", "foo",
 				tb.PipelineRunSpec("test-pipeline-retry",
-					tb.PipelineRunServiceAccount("test-sa"),
+					tb.PipelineRunServiceAccountName("test-sa"),
 					tb.PipelineRunTimeout(12*time.Hour),
 				),
 				tb.PipelineRunStatus(
@@ -1156,7 +1288,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-annotations", "foo",
 		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunServiceAccountName("test-sa"),
 		),
 	)}
 	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
@@ -1199,7 +1331,7 @@ func TestReconcilePropagateAnnotations(t *testing.T) {
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world"),
-			tb.TaskRunServiceAccount("test-sa"),
+			tb.TaskRunServiceAccountName("test-sa"),
 		),
 	)
 
@@ -1274,7 +1406,7 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun(prName, "foo",
 		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunServiceAccountName("test-sa"),
 		),
 	)}
 	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
@@ -1344,7 +1476,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-conditions", "foo",
 		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunServiceAccountName("test-sa"),
 		),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -1427,7 +1559,7 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 		tb.TaskRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef("hello-world"),
-			tb.TaskRunServiceAccount("test-sa"),
+			tb.TaskRunServiceAccountName("test-sa"),
 		),
 	)
 
@@ -1452,7 +1584,7 @@ func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
 				tb.Step("condition-check-"+condName, "foo", tb.StepArgs("bar")),
 				tb.TaskInputs(),
 			),
-			tb.TaskRunServiceAccount("test-sa"),
+			tb.TaskRunServiceAccountName("test-sa"),
 		),
 	)
 }

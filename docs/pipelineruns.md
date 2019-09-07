@@ -38,11 +38,11 @@ following fields:
 
   - [`resources`](#resources) - Specifies which
     [`PipelineResources`](resources.md) to use for this `PipelineRun`.
-  - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
+  - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
     specified in the configmap - config-defaults will be applied.
-  - [`serviceAccounts`](#service-accounts) - Specifies a list of `ServiceAccount`
+  - [`serviceAccountNames`](#service-accounts) - Specifies a list of `ServiceAccountName`
     and `PipelineTask` pairs that enable you to overwrite `ServiceAccount` for concrete `PipelineTask`.
   - [`timeout`] - Specifies timeout after which the `PipelineRun` will fail. If the value of
     `timeout` is empty, the default timeout will be applied. If the value is set to 0,
@@ -159,8 +159,8 @@ spec:
 ### Service Account
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Pipeline` with the privileges of the
-specified service account. If no `serviceAccount` field is specified, your
+`serviceAccountName` field to run your `Pipeline` with the privileges of the
+specified service account. If no `serviceAccountName` field is specified, your
 resulting `TaskRuns` run using the service account specified in the ConfigMap
 `configmap-defaults` which if absent will default to
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
@@ -172,16 +172,16 @@ For examples and more information about specifying service accounts, see the
 
 ### Service Accounts
 
-Specifies the list of `ServiceAccount` and `PipelineTask` pairs. Specified
+Specifies the list of `ServiceAccountName` and `PipelineTask` pairs. Specified
 `PipelineTask` will be run with configured `ServiceAccount`,
-overwriting [`serviceAccount`](#service-account) configuration, for example:
+overwriting [`serviceAccountName`](#service-account) configuration, for example:
 
 ```yaml
 spec:
-  serviceAccount: sa-1
-  serviceAccounts:
+  serviceAccountName: sa-1
+  serviceAccountNames:
     - taskName: build-task
-      serviceAccount: sa-for-build
+      serviceAccountName: sa-for-build
 ```
 If used with this `Pipeline`, `test-task` will use the `ServiceAccount` `sa-1`, while `build-task` will use `sa-for-build`.
 

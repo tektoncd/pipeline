@@ -132,9 +132,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		},
 		want: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef:    v1alpha1.PipelineRef{Name: "foo"},
-				Timeout:        &metav1.Duration{Duration: 5 * time.Minute},
-				ServiceAccount: "tekton",
+				PipelineRef:        v1alpha1.PipelineRef{Name: "foo"},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
 			},
 		},
 		wc: func(ctx context.Context) context.Context {

@@ -39,7 +39,7 @@ import (
 func TestRecorderOptions(t *testing.T) {
 
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
-		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa")),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa")),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionTrue,

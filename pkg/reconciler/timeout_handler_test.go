@@ -163,7 +163,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 	))
 	prTimeout := tb.PipelineRun("test-pipeline-run-with-timeout", testNs,
 		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunServiceAccountName("test-sa"),
 			tb.PipelineRunTimeout(1*time.Second),
 		),
 		tb.PipelineRunStatus(
@@ -201,7 +201,7 @@ func TestPipelinRunCheckTimeouts(t *testing.T) {
 		),
 	)
 	prCancelled := tb.PipelineRun("test-pipeline-cancel", testNs,
-		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa"),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa"),
 			tb.PipelineRunCancelled,
 			tb.PipelineRunTimeout(config.DefaultTimeoutMinutes*time.Minute),
 		),

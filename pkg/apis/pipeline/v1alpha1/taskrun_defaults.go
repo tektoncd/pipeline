@@ -48,7 +48,7 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 	}
 
 	defaultSA := cfg.Defaults.DefaultServiceAccount
-	if trs.ServiceAccount == "" && defaultSA != "" {
-		trs.ServiceAccount = defaultSA
+	if trs.ServiceAccountName == "" && defaultSA != "" {
+		trs.ServiceAccountName = defaultSA
 	}
 }
