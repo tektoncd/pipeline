@@ -244,7 +244,7 @@ func TryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp GetPod) (*corev1.Pod, er
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
 func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
-	cred, secrets, err := makeCredentialInitializer(images.CredsImage, taskRun.Spec.ServiceAccount, taskRun.Namespace, kubeclient)
+	cred, secrets, err := makeCredentialInitializer(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, kubeclient)
 	if err != nil {
 		return nil, err
 	}
@@ -349,7 +349,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers:     mergedInitContainers,
 			Containers:         mergedPodContainers,
-			ServiceAccountName: taskRun.Spec.ServiceAccount,
+			ServiceAccountName: taskRun.GetServiceAccountName(),
 			Volumes:            volumes,
 			NodeSelector:       taskRun.Spec.PodTemplate.NodeSelector,
 			Tolerations:        taskRun.Spec.PodTemplate.Tolerations,

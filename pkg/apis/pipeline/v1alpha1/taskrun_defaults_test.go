@@ -155,9 +155,9 @@ func TestTaskRunDefaulting(t *testing.T) {
 		},
 		want: &v1alpha1.TaskRun{
 			Spec: v1alpha1.TaskRunSpec{
-				TaskRef:        &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
-				Timeout:        &metav1.Duration{Duration: 5 * time.Minute},
-				ServiceAccount: "tekton",
+				TaskRef:            &v1alpha1.TaskRef{Name: "foo", Kind: v1alpha1.NamespacedTaskKind},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
 			},
 		},
 		wc: func(ctx context.Context) context.Context {

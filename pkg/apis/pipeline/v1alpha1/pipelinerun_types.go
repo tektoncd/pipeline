@@ -55,9 +55,15 @@ type PipelineRunSpec struct {
 	// Params is a list of parameter names and values.
 	Params []Param `json:"params,omitempty"`
 	// +optional
-	ServiceAccount string `json:"serviceAccount"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// DeprecatedServiceAccount is a depreciated alias for ServiceAccountName.
+	// Deprecated: Use serviceAccountName instead.
 	// +optional
-	ServiceAccounts []PipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
+	DeprecatedServiceAccount string `json:"serviceAccount,omitempty"`
+	// +optional
+	DeprecatedServiceAccounts []DeprecatedPipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
+	// +optional
+	ServiceAccountNames []PipelineRunSpecServiceAccountName `json:"serviceAccountNames,omitempty"`
 	// Deprecation Notice: The field Results will be removed in v0.8.0
 	// and should not be used. Plan to have this field removed before upgradring
 	// to v0.8.0.
@@ -165,10 +171,21 @@ func (pr *PipelineRunStatus) InitializeConditions() {
 	pipelineRunCondSet.Manage(pr).InitializeConditions()
 }
 
-// PipelineRunSpecServiceAccount can be used to configure specific ServiceAccount for a concrete Task
-type PipelineRunSpecServiceAccount struct {
-	TaskName       string `json:"taskName,omitempty"`
-	ServiceAccount string `json:"serviceAccount,omitempty"`
+// DeprecatedPipelineRunSpecServiceAccount can be used to configure specific
+// ServiceAccount for a concrete Task
+// Deprecated: Use pipelineRunSpecServiceAccountName instead.
+type DeprecatedPipelineRunSpecServiceAccount struct {
+	TaskName string `json:"taskName,omitempty"`
+	// DeprecatedServiceAccount is a depreciated alias for ServiceAccountName.
+	// Deprecated: Use serviceAccountName instead.
+	DeprecatedServiceAccount string `json:"serviceAccount,omitempty"`
+}
+
+// PipelineRunSpecServiceAccountName can be used to configure specific
+// ServiceAccountName for a concrete Task
+type PipelineRunSpecServiceAccountName struct {
+	TaskName           string `json:"taskName,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // SetCondition sets the condition, unsetting previous conditions with the same
@@ -271,4 +288,24 @@ func (pr *PipelineRun) IsTimedOut() bool {
 		}
 	}
 	return false
+}
+
+// GetServiceAccountName returns the service account name for a given
+// PipelineTask if configured, otherwise it returns the PipelineRun's serviceAccountName.
+func (pr *PipelineRun) GetServiceAccountName(pipelineTaskName string) string {
+	serviceAccountName := pr.Spec.ServiceAccountName
+	if serviceAccountName == "" {
+		serviceAccountName = pr.Spec.DeprecatedServiceAccount
+	}
+	for _, sa := range pr.Spec.DeprecatedServiceAccounts {
+		if sa.TaskName == pipelineTaskName {
+			serviceAccountName = sa.DeprecatedServiceAccount
+		}
+	}
+	for _, sa := range pr.Spec.ServiceAccountNames {
+		if sa.TaskName == pipelineTaskName {
+			serviceAccountName = sa.ServiceAccountName
+		}
+	}
+	return serviceAccountName
 }

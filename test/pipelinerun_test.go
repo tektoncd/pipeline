@@ -374,7 +374,7 @@ func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRu
 		tb.PipelineRunSpec(getName(pipelineName, suffix),
 			tb.PipelineRunParam("path", "docker://gcr.io/build-crd-testing/secret-sauce"),
 			tb.PipelineRunParam("dest", "dir:///tmp/"),
-			tb.PipelineRunServiceAccount(fmt.Sprintf("%s%d", saName, suffix)),
+			tb.PipelineRunServiceAccountName(fmt.Sprintf("%s%d", saName, suffix)),
 		),
 	)
 }

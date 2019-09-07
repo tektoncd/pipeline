@@ -249,7 +249,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		tb.TaskRunTaskSpec(
 			tb.Step("step", "image", tb.StepCommand("/mycmd")),
 		),
-		tb.TaskRunServiceAccount("sa"),
+		tb.TaskRunServiceAccountName("sa"),
 		tb.TaskRunTimeout(2*time.Minute),
 		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
 	))
@@ -266,9 +266,9 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 					Command: []string{"/mycmd"},
 				}}},
 			},
-			ServiceAccount: "sa",
-			Status:         v1alpha1.TaskRunSpecStatusCancelled,
-			Timeout:        &metav1.Duration{Duration: 2 * time.Minute},
+			ServiceAccountName: "sa",
+			Status:             v1alpha1.TaskRunSpecStatusCancelled,
+			Timeout:            &metav1.Duration{Duration: 2 * time.Minute},
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {

@@ -233,7 +233,7 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, taskRun *v1al
 
 	kc, err := k8schain.New(kubeclient, k8schain.Options{
 		Namespace:          taskRun.Namespace,
-		ServiceAccountName: taskRun.Spec.ServiceAccount,
+		ServiceAccountName: taskRun.GetServiceAccountName(),
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to create k8schain: %w", err)
