@@ -44,11 +44,11 @@ func listCommand(p cli.Params) *cobra.Command {
 	opts := &ListOptions{Limit: 0}
 	f := cliopts.NewPrintFlags("list")
 	eg := `
-# List all TaskRuns of Task name 'foo'
-tkn taskrun list foo -n bar
+# List all taskruns in namespace 'bar'
+tkn tr list -n bar
 
-# List all taskruns in a namespaces 'foo'
-tkn tr list -n foo
+# List all taskruns of task 'foo' in namespace 'bar'
+tkn taskrun list foo -n bar
 `
 
 	c := &cobra.Command{

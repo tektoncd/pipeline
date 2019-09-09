@@ -17,11 +17,11 @@ Lists taskruns in a namespace
 ### Examples
 
 
-# List all TaskRuns of Task name 'foo'
-tkn taskrun list foo -n bar
+# List all taskruns in namespace 'bar'
+tkn tr list -n bar
 
-# List all taskruns in a namespaces 'foo'
-tkn tr list -n foo
+# List all taskruns of task 'foo' in namespace 'bar'
+tkn taskrun list foo -n bar
 
 
 ### Options
