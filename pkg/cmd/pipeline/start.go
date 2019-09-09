@@ -158,7 +158,7 @@ func (opt *startOptions) getInput(pname string) error {
 		return err
 	}
 
-	if len(opt.Resources) == 0 {
+	if len(opt.Resources) == 0 && !opt.Last {
 		pres, err := getPipelineResources(cs.Tekton, opt.cliparams.Namespace())
 		if err != nil {
 			fmt.Fprintf(opt.stream.Err, "failed to list pipelineresources from %s namespace \n", opt.cliparams.Namespace())
@@ -173,7 +173,7 @@ func (opt *startOptions) getInput(pname string) error {
 		}
 	}
 
-	if len(opt.Params) == 0 {
+	if len(opt.Params) == 0 && !opt.Last {
 		err = opt.getInputParams(pipeline)
 		if err != nil {
 			return err
@@ -196,7 +196,7 @@ func (opt *startOptions) getInputResources(resources resourceOptionsFilter, pipe
 			{
 				Name: "pipelineresource",
 				Prompt: &survey.Select{
-					Message: fmt.Sprintf("Which %s resource to use for %s ?", res.Type, res.Name),
+					Message: fmt.Sprintf("Choose the %s resource to use for %s:", res.Type, res.Name),
 					Options: options,
 				},
 			},

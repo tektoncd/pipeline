@@ -148,7 +148,6 @@ func Test_start_pipeline(t *testing.T) {
 		"-r=source=scaffold-git",
 		"-p=key1=value1",
 		"-s=svc1",
-		"-serviceaccounts=task1=svc1",
 		"-n", "ns")
 
 	expected := "Pipelinerun started: \n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs  -f\n"
@@ -199,7 +198,7 @@ func Test_start_pipeline_interactive(t *testing.T) {
 			cmdArgs: []string{pipelineName},
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Which git resource to use for git-repo ?"); err != nil {
+				if _, err := c.ExpectString("Choose the git resource to use for git-repo:"); err != nil {
 					return err
 				}
 
@@ -331,7 +330,7 @@ func Test_start_pipeline_last(t *testing.T) {
 		"-s=svc1",
 		"--task-serviceaccount=task3=task3svc3",
 		"--task-serviceaccount=task5=task3svc5",
-		"-nns")
+		"-n", "ns")
 
 	expected := "Pipelinerun started: random\n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs random -f\n"
 	test.AssertOutput(t, expected, got)
@@ -354,6 +353,77 @@ func Test_start_pipeline_last(t *testing.T) {
 		}
 	}
 	test.AssertOutput(t, "svc1", pr.Spec.ServiceAccount)
+}
+
+func Test_start_pipeline_last_without_res_param(t *testing.T) {
+
+	pipelineName := "test-pipeline"
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, "ns",
+			tb.PipelineSpec(
+				tb.PipelineDeclaredResource("git-repo", "git"),
+				tb.PipelineDeclaredResource("build-image", "image"),
+				tb.PipelineParamSpec("pipeline-param-1", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent-1")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
+				tb.PipelineTask("unit-test-1", "unit-test-task",
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+				),
+			), // spec
+		), // pipeline
+	}
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun("test-pipeline-run-123", "ns",
+			tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
+			tb.PipelineRunSpec(pipelineName,
+				tb.PipelineRunServiceAccount("test-sa"),
+				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
+				tb.PipelineRunResourceBinding("build-image", tb.PipelineResourceBindingRef("some-image")),
+				tb.PipelineRunParam("pipeline-param-1", "somethingmorefun"),
+				tb.PipelineRunParam("rev-param", "revision1"),
+			),
+		),
+	}
+
+	objs := []runtime.Object{ps[0], prs[0]}
+	pClient := newPipelineClient(objs...)
+
+	cs := pipelinetest.Clients{
+		Pipeline: pClient,
+		Kube:     fakekubeclientset.NewSimpleClientset(),
+	}
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pipeline := Command(p)
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
+		"--last",
+		"-n", "ns")
+
+	expected := "Pipelinerun started: random\n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs random -f\n"
+	test.AssertOutput(t, expected, got)
+
+	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns(p.Namespace()).Get("random", v1.GetOptions{})
+
+	if err != nil {
+		t.Errorf("Error getting pipelineruns %s", err.Error())
+	}
+
+	for _, v := range pr.Spec.Resources {
+		if v.Name == "git-repo" {
+			test.AssertOutput(t, "some-repo", v.ResourceRef.Name)
+		}
+	}
+
+	for _, v := range pr.Spec.Params {
+		if v.Name == "rev-param" {
+			test.AssertOutput(t, v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeString, StringVal: "revision1"}, v.Value)
+		}
+	}
+	test.AssertOutput(t, "test-sa", pr.Spec.ServiceAccount)
 }
 
 func Test_start_pipeline_last_merge(t *testing.T) {
@@ -479,7 +549,7 @@ func Test_start_pipeline_last_no_pipelineruns(t *testing.T) {
 		"-p=rev-param=revision2",
 		"--task-serviceaccount=task3=task3svc3",
 		"--task-serviceaccount=task5=task3svc5",
-		"-nns")
+		"-n", "ns")
 
 	expected := "Error: no pipelineruns found in namespace: ns\n"
 	test.AssertOutput(t, expected, got)
@@ -520,7 +590,7 @@ func Test_start_pipeline_last_list_err(t *testing.T) {
 		"-p=rev-param=revision2",
 		"--task-serviceaccount=task3=task3svc3",
 		"--task-serviceaccount=task5=task3svc5",
-		"-nns")
+		"-n", "ns")
 
 	expected := "Error: test generated error\n"
 	test.AssertOutput(t, expected, got)
@@ -588,7 +658,7 @@ func Test_start_pipeline_res_err(t *testing.T) {
 		"-p=rev-param=revision2",
 		"--task-serviceaccount=task3=task3svc3",
 		"--task-serviceaccount=task5=task3svc5",
-		"-nns")
+		"-n", "ns")
 
 	expected := "Error: invalid input format for resource parameter : git-reposcaffold-git\n"
 	test.AssertOutput(t, expected, got)
@@ -624,7 +694,7 @@ func Test_start_pipeline_param_err(t *testing.T) {
 		"-p=rev-paramrevision2",
 		"--task-serviceaccount=task3=task3svc3",
 		"--task-serviceaccount=task5=task3svc5",
-		"-nns")
+		"-n", "ns")
 
 	expected := "Error: invalid input format for param parameter : rev-paramrevision2\n"
 	test.AssertOutput(t, expected, got)
