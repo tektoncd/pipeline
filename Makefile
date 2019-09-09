@@ -8,7 +8,7 @@ all: bin/tkn test
 
 FORCE:
 
-./vendor: go.mod go.sum
+vendor: 
 	@go mod vendor
 
 .PHONY: cross
@@ -34,7 +34,7 @@ arm:
 arm64:
 	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o bin/tkn-linux-arm64 ./cmd/tkn
 
-bin/%: cmd/% ./vendor FORCE
+bin/%: cmd/% FORCE
 	go build $(LDFLAGS) -v -o $@ ./$<
 
 check: lint test
