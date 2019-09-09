@@ -30,15 +30,18 @@ ci_run && {
 # Run the integration tests
 ci_run && {
   header "Running Go e2e tests"
-  local failed=0
+  failed=0
   go_test_e2e ./test || failed=1
   (( failed )) && fail_test
 }
 
-go build github.com/tektoncd/cli/cmd/tkn
-
 tkn() {
- ./tkn "$@"
+    if [[ -e ./bin/tkn ]];then
+        ./bin/tkn $@
+    else
+        go build github.com/tektoncd/cli/cmd/tkn
+        ./tkn "$@"
+    fi
 }
 
 kubectl get crds|grep tekton\\.dev && fail_test "TektonCD CRDS should not be installed, you should reset them before each runs"

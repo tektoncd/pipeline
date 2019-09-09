@@ -8,7 +8,7 @@ all: bin/tkn test
 
 FORCE:
 
-vendor: 
+vendor:
 	@go mod vendor
 
 .PHONY: cross
@@ -57,7 +57,7 @@ test-unit: ./vendor ## run unit tests
 	@go test -failfast -v -cover ./...
 
 .PHONY: test-e2e
-test-e2e: ./vendor ## run e2e tests
+test-e2e: bin/tkn ## run e2e tests
 	@echo "Running e2e tests..."
 	@LOCAL_CI_RUN=true bash ./test/e2e-tests.sh
 
