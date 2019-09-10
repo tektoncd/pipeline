@@ -154,8 +154,7 @@ func printPipelineRunDescription(s *cli.Stream, prName string, p cli.Params) err
 	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
 	t := template.Must(template.New("Describe Pipelinerun").Funcs(funcMap).Parse(templ))
 
-	err = t.Execute(w, data)
-	if err != nil {
+	if err = t.Execute(w, data); err != nil {
 		fmt.Fprintf(s.Err, "Failed to execute template")
 		return err
 	}
@@ -168,6 +167,15 @@ func hasFailed(pr *v1alpha1.PipelineRun) string {
 	}
 
 	if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+		for _, taskrunStatus := range pr.Status.TaskRuns {
+			if len(taskrunStatus.Status.Conditions) == 0 {
+				continue
+			}
+			if taskrunStatus.Status.Conditions[0].Status == corev1.ConditionFalse {
+				return fmt.Sprintf("%s (%s)", pr.Status.Conditions[0].Message,
+					taskrunStatus.Status.Conditions[0].Message)
+			}
+		}
 		return pr.Status.Conditions[0].Message
 	}
 	return ""

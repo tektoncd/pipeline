@@ -252,7 +252,7 @@ STARTED          DURATION    STATUS
 10 minutes ago   5 minutes   Failed(Resource not found)
 
 Message
-Resource test-resource not found in the pipelinerun
+Resource test-resource not found in the pipelinerun (Testing tr failed)
 
 Resources
 No resources
@@ -263,6 +263,140 @@ No params
 Taskruns
 NAME   TASK NAME   STARTED         DURATION    STATUS
 tr-1   t-1         8 minutes ago   3 minutes   Failed
+`
+
+	test.AssertOutput(t, expected, actual)
+}
+
+func TestPipelineRunDescribe_failed_withoutTRCondition(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
+				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("pipeline-run", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunSpec("pipeline",
+					tb.PipelineRunServiceAccount("test-sa"),
+				),
+				tb.PipelineRunStatus(
+					tb.PipelineRunTaskRunsStatus("tr-1", &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: "t-1",
+						Status:           &trs[0].Status,
+					}),
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status:  corev1.ConditionFalse,
+						Reason:  "Resource not found",
+						Message: "Resource test-resource not found in the pipelinerun",
+					}),
+					tb.PipelineRunStartTime(clock.Now()),
+					cb.PipelineRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				),
+			),
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+
+	pipelinerun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:              pipeline-run
+Namespace:         ns
+Pipeline Ref:      pipeline
+Service Account:   test-sa
+
+Status
+STARTED          DURATION    STATUS
+10 minutes ago   5 minutes   Failed(Resource not found)
+
+Message
+Resource test-resource not found in the pipelinerun
+
+Resources
+No resources
+
+Params
+No params
+
+Taskruns
+NAME   TASK NAME   STARTED         DURATION    STATUS
+tr-1   t-1         8 minutes ago   3 minutes   ---
+`
+
+	test.AssertOutput(t, expected, actual)
+}
+
+func TestPipelineRunDescribe_failed_withoutPRCondition(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
+				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("pipeline-run", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunSpec("pipeline",
+					tb.PipelineRunServiceAccount("test-sa"),
+				),
+				tb.PipelineRunStatus(
+					tb.PipelineRunTaskRunsStatus("tr-1", &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: "t-1",
+						Status:           &trs[0].Status,
+					}),
+					tb.PipelineRunStartTime(clock.Now()),
+					cb.PipelineRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				),
+			),
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+
+	pipelinerun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:              pipeline-run
+Namespace:         ns
+Pipeline Ref:      pipeline
+Service Account:   test-sa
+
+Status
+STARTED          DURATION    STATUS
+10 minutes ago   5 minutes   ---
+
+Resources
+No resources
+
+Params
+No params
+
+Taskruns
+NAME   TASK NAME   STARTED         DURATION    STATUS
+tr-1   t-1         8 minutes ago   3 minutes   ---
 `
 
 	test.AssertOutput(t, expected, actual)
