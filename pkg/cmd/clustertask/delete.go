@@ -36,7 +36,7 @@ func deleteCommand(p cli.Params) *cobra.Command {
 # Delete a ClusterTask of name 'foo'
 tkn clustertask delete foo
 
-tkn ct rm foo ",
+tkn ct rm foo
 `
 
 	c := &cobra.Command{

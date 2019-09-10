@@ -18,10 +18,10 @@ Lists taskruns in a namespace
 
 
 # List all TaskRuns of Task name 'foo'
-tkn taskrun list  foo -n bar
+tkn taskrun list foo -n bar
 
 # List all taskruns in a namespaces 'foo'
-tkn tr list -n foo \n",
+tkn tr list -n foo
 
 
 ### Options

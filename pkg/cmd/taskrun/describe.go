@@ -97,7 +97,7 @@ func describeCommand(p cli.Params) *cobra.Command {
 # Describe a TaskRun of name 'foo' in namespace 'bar'
 tkn taskrun describe foo -n bar
 
-tkn tr desc foo -n bar",
+tkn tr desc foo -n bar
 `
 
 	c := &cobra.Command{

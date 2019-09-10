@@ -20,7 +20,7 @@ Delete a taskrun in a namespace
 # Delete a TaskRun of name 'foo' in namespace 'bar'
 tkn taskrun delete foo -n bar
 
-tkn tr rm foo -n bar",
+tkn tr rm foo -n bar
 
 
 ### Options

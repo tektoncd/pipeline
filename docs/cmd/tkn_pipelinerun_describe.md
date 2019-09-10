@@ -20,7 +20,7 @@ Describe a pipelinerun in a namespace
 # Describe a PipelineRun of name 'foo' in namespace 'bar'
 tkn pipelinerun describe foo -n bar
 
-tkn pr desc foo -n bar",
+tkn pr desc foo -n bar
 
 
 ### Options

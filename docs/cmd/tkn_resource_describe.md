@@ -20,7 +20,7 @@ Describes a pipeline resource in a namespace
 # Describe a PipelineResource of name 'foo' in namespace 'bar'
 tkn resource describe foo -n bar
 
-tkn res desc foo -n bar",
+tkn res desc foo -n bar
 
 
 ### Options

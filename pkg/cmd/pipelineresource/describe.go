@@ -57,7 +57,7 @@ func describeCommand(p cli.Params) *cobra.Command {
 # Describe a PipelineResource of name 'foo' in namespace 'bar'
 tkn resource describe foo -n bar
 
-tkn res desc foo -n bar",
+tkn res desc foo -n bar
 `
 
 	c := &cobra.Command{

@@ -20,7 +20,7 @@ Delete a pipeline resource in a namespace
 # Delete a PipelineResource of name 'foo' in namespace 'bar'
 tkn resource delete foo -n bar
 
-tkn res rm foo -n bar",
+tkn res rm foo -n bar
 
 
 ### Options

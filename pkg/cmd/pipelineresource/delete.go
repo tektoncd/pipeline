@@ -36,7 +36,7 @@ func deleteCommand(p cli.Params) *cobra.Command {
 # Delete a PipelineResource of name 'foo' in namespace 'bar'
 tkn resource delete foo -n bar
 
-tkn res rm foo -n bar",
+tkn res rm foo -n bar
 `
 
 	c := &cobra.Command{

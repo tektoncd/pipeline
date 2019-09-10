@@ -21,7 +21,7 @@ Lists pipelineruns in a namespace
 tkn pipelinerun list foo -n bar
 
 # List all pipelineruns in a namespaces 'foo'
-tkn pr list -n foo",
+tkn pr list -n foo
 
 
 ### Options

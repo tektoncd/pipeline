@@ -20,7 +20,7 @@ Delete a clustertask resource in a cluster
 # Delete a ClusterTask of name 'foo'
 tkn clustertask delete foo
 
-tkn ct rm foo ",
+tkn ct rm foo
 
 
 ### Options

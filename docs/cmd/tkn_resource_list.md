@@ -18,7 +18,7 @@ Lists pipeline resources in a namespace
 
 
 # List all PipelineResources in a namespaces 'foo'
-tkn pre list -n foo",
+tkn pre list -n foo
 
 
 ### Options

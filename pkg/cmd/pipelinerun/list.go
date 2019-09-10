@@ -48,7 +48,7 @@ func listCommand(p cli.Params) *cobra.Command {
 tkn pipelinerun list foo -n bar
 
 # List all pipelineruns in a namespaces 'foo'
-tkn pr list -n foo",
+tkn pr list -n foo
 `
 
 	c := &cobra.Command{

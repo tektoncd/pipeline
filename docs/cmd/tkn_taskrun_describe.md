@@ -20,7 +20,7 @@ Describe a taskrun in a namespace
 # Describe a TaskRun of name 'foo' in namespace 'bar'
 tkn taskrun describe foo -n bar
 
-tkn tr desc foo -n bar",
+tkn tr desc foo -n bar
 
 
 ### Options

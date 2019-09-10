@@ -36,7 +36,7 @@ func deleteCommand(p cli.Params) *cobra.Command {
 # Delete a PipelineRun of name 'foo' in namespace 'bar'
 tkn pipelinerun delete foo -n bar
 
-tkn pr rm foo -n bar",
+tkn pr rm foo -n bar
 `
 
 	c := &cobra.Command{

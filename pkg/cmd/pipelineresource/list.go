@@ -45,7 +45,7 @@ func listCommand(p cli.Params) *cobra.Command {
 	f := cliopts.NewPrintFlags("list")
 	eg := `
 # List all PipelineResources in a namespaces 'foo'
-tkn pre list -n foo",
+tkn pre list -n foo
 `
 
 	cmd := &cobra.Command{

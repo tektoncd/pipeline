@@ -20,7 +20,7 @@ Delete a pipelinerun in a namespace
 # Delete a PipelineRun of name 'foo' in namespace 'bar'
 tkn pipelinerun delete foo -n bar
 
-tkn pr rm foo -n bar",
+tkn pr rm foo -n bar
 
 
 ### Options
