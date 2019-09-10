@@ -22,9 +22,9 @@ package licenseclassifier
 import "github.com/google/licenseclassifier/internal/sets"
 
 // Canonical names of the licenses.
+// The names come from the https://spdx.org/licenses website, and are
+// also the filenames of the licenses in licenseclassifier/licenses.
 const (
-	// The names come from the https://spdx.org/licenses website, and are
-	// also the filenames of the licenses in licenseclassifier/licenses.
 	AFL11                       = "AFL-1.1"
 	AFL12                       = "AFL-1.2"
 	AFL20                       = "AFL-2.0"
@@ -316,6 +316,7 @@ var (
 	// fall into this category.
 	byExceptionOnlyType = sets.NewStringSet(
 		Beerware,
+		OFL,
 	)
 
 	// forbidden - Licenses that are forbidden to be used.

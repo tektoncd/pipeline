@@ -75,31 +75,49 @@ type License struct {
 	// Threshold is the lowest confidence percentage acceptable for the
 	// classifier.
 	Threshold float64
+
+	// archive is the path to the license archive
+	archive string
+}
+
+// OptionFunc set options on a License struct.
+type OptionFunc func(l *License) error
+
+// Archive is an OptionFunc to specify the location of the license archive file.
+func Archive(f string) OptionFunc {
+	return func(l *License) error {
+		l.archive = f
+		return nil
+	}
 }
 
 // New creates a license classifier and pre-loads it with known open source licenses.
-func New(threshold float64) (*License, error) {
+func New(threshold float64, options ...OptionFunc) (*License, error) {
 	classifier := &License{
 		c:         stringclassifier.New(threshold, Normalizers...),
 		Threshold: threshold,
+		archive:   LicenseArchive,
 	}
-	if err := classifier.registerLicenses(LicenseArchive); err != nil {
-		return nil, fmt.Errorf("cannot register licenses: %v", err)
+
+	for _, o := range options {
+		err := o(classifier)
+		if err != nil {
+			return nil, fmt.Errorf("error setting option %v: %v", o, err)
+		}
+	}
+
+	if err := classifier.registerLicenses(); err != nil {
+		return nil, fmt.Errorf("cannot register licenses from %q: %v", classifier.archive, err)
 	}
 	return classifier, nil
 }
 
 // NewWithForbiddenLicenses creates a license classifier and pre-loads it with
 // known open source licenses which are forbidden.
-func NewWithForbiddenLicenses(threshold float64) (*License, error) {
-	classifier := &License{
-		c:         stringclassifier.New(threshold, Normalizers...),
-		Threshold: threshold,
-	}
-	if err := classifier.registerLicenses(ForbiddenLicenseArchive); err != nil {
-		return nil, fmt.Errorf("cannot register licenses: %v", err)
-	}
-	return classifier, nil
+func NewWithForbiddenLicenses(threshold float64, options ...OptionFunc) (*License, error) {
+	opts := []OptionFunc{Archive(ForbiddenLicenseArchive)}
+	opts = append(opts, options...)
+	return New(threshold, opts...)
 }
 
 // WithinConfidenceThreshold returns true if the confidence value is above or
@@ -178,8 +196,8 @@ type archivedValue struct {
 // registerLicenses loads all known licenses and adds them to c as known values
 // for comparison. The allocated space after ingesting the 'licenses.db'
 // archive is ~167M.
-func (c *License) registerLicenses(archive string) error {
-	contents, err := ReadLicenseFile(archive)
+func (c *License) registerLicenses() error {
+	contents, err := ReadLicenseFile(c.archive)
 	if err != nil {
 		return err
 	}

@@ -4,6 +4,7 @@
 // license that can be found in the LICENSE file.
 
 //go:generate go run gen-accessors.go
+//go:generate go run gen-stringify-test.go
 
 package github
 
@@ -137,6 +138,24 @@ const (
 
 	// https://developer.github.com/changes/2019-04-24-vulnerability-alerts/
 	mediaTypeRequiredVulnerabilityAlertsPreview = "application/vnd.github.dorian-preview+json"
+
+	// https://developer.github.com/changes/2019-06-04-automated-security-fixes/
+	mediaTypeRequiredAutomatedSecurityFixesPreview = "application/vnd.github.london-preview+json"
+
+	// https://developer.github.com/changes/2019-05-29-update-branch-api/
+	mediaTypeUpdatePullRequestBranchPreview = "application/vnd.github.lydian-preview+json"
+
+	// https://developer.github.com/changes/2019-04-11-pulls-branches-for-commit/
+	mediaTypeListPullsOrBranchesForCommitPreview = "application/vnd.github.groot-preview+json"
+
+	// https://developer.github.com/changes/2019-06-12-team-sync/
+	mediaTypeTeamSyncPreview = "application/vnd.github.team-sync-preview+json"
+
+	// https://developer.github.com/v3/previews/#repository-creation-permissions
+	mediaTypeMemberAllowedRepoCreationTypePreview = "application/vnd.github.surtur-preview+json"
+
+	// https://developer.github.com/v3/previews/#create-and-use-repository-templates
+	mediaTypeRepositoryTemplatePreview = "application/vnd.github.baptiste-preview+json"
 )
 
 // A Client manages communication with the GitHub API.
@@ -244,12 +263,12 @@ func addOptions(s string, opt interface{}) (string, error) {
 }
 
 // NewClient returns a new GitHub API client. If a nil httpClient is
-// provided, http.DefaultClient will be used. To use API methods which require
+// provided, a new http.Client will be used. To use API methods which require
 // authentication, provide an http.Client that will perform the authentication
 // for you (such as that provided by the golang.org/x/oauth2 library).
 func NewClient(httpClient *http.Client) *Client {
 	if httpClient == nil {
-		httpClient = http.DefaultClient
+		httpClient = &http.Client{}
 	}
 	baseURL, _ := url.Parse(defaultBaseURL)
 	uploadURL, _ := url.Parse(uploadBaseURL)
@@ -283,7 +302,7 @@ func NewClient(httpClient *http.Client) *Client {
 // NewEnterpriseClient returns a new GitHub API client with provided
 // base URL and upload URL (often the same URL).
 // If either URL does not have a trailing slash, one is added automatically.
-// If a nil httpClient is provided, http.DefaultClient will be used.
+// If a nil httpClient is provided, a new http.Client will be used.
 //
 // Note that NewEnterpriseClient is a convenience helper only;
 // its behavior is equivalent to using NewClient, followed by setting
@@ -630,7 +649,7 @@ type RateLimitError struct {
 func (r *RateLimitError) Error() string {
 	return fmt.Sprintf("%v %v: %d %v %v",
 		r.Response.Request.Method, sanitizeURL(r.Response.Request.URL),
-		r.Response.StatusCode, r.Message, formatRateReset(r.Rate.Reset.Time.Sub(time.Now())))
+		r.Response.StatusCode, r.Message, formatRateReset(time.Until(r.Rate.Reset.Time)))
 }
 
 // AcceptedError occurs when GitHub returns 202 Accepted response with an
