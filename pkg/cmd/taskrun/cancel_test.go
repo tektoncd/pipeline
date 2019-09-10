@@ -1,0 +1,105 @@
+package taskrun
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/tektoncd/cli/pkg/test"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	pipelinetest "github.com/tektoncd/pipeline/test"
+	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	k8stest "k8s.io/client-go/testing"
+	"knative.dev/pkg/apis"
+)
+
+func TestTaskRunCancel(t *testing.T) {
+	seeds := make([]pipelinetest.Clients, 0)
+	failures := make([]pipelinetest.Clients, 0)
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("taskrun-1", "ns",
+			tb.TaskRunLabel("tekton.dev/task", "task"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("task")),
+			tb.TaskRunStatus(
+				tb.StatusCondition(apis.Condition{
+					Status: corev1.ConditionTrue,
+					Reason: resources.ReasonSucceeded,
+				}),
+			),
+		),
+	}
+	trs2 := []*v1alpha1.TaskRun{
+		tb.TaskRun("failure-taskrun-1", "ns",
+			tb.TaskRunLabel("tekton.dev/task", "failure-task"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("failure-task")),
+			tb.TaskRunStatus(
+				tb.StatusCondition(apis.Condition{
+					Status: corev1.ConditionTrue,
+					Reason: resources.ReasonSucceeded,
+				}),
+			),
+		),
+	}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs})
+	cs2, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs2})
+
+	cs2.Pipeline.PrependReactor("update", "taskruns", func(action k8stest.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("test error")
+	})
+
+	seeds = append(seeds, cs)
+	failures = append(failures, cs2)
+
+	testParams := []struct {
+		name      string
+		command   []string
+		input     pipelinetest.Clients
+		wantError bool
+		want      string
+	}{
+		{
+			name:      "Canceling taskrun successfully",
+			command:   []string{"cancel", "taskrun-1", "-n", "ns"},
+			input:     seeds[0],
+			wantError: false,
+			want:      "TaskRun cancelled: taskrun-1\n",
+		},
+		{
+			name:      "Not found taskrun",
+			command:   []string{"cancel", "nonexistent", "-n", "ns"},
+			input:     seeds[0],
+			wantError: true,
+			want:      "failed to find taskrun: nonexistent",
+		},
+		{
+			name:      "Failed canceling taskrun",
+			command:   []string{"cancel", "failure-taskrun-1", "-n", "ns"},
+			input:     failures[0],
+			wantError: true,
+			want:      "failed to cancel taskrun \"failure-taskrun-1\": test error",
+		},
+	}
+
+	for _, tp := range testParams {
+		t.Run(tp.name, func(t *testing.T) {
+			p := &test.Params{Tekton: tp.input.Pipeline}
+			taskrun := Command(p)
+
+			out, err := test.ExecuteCommand(taskrun, tp.command...)
+			if tp.wantError {
+				if err == nil {
+					t.Errorf("error expected here")
+				}
+				test.AssertOutput(t, tp.want, err.Error())
+			} else {
+				if err != nil {
+					t.Errorf("unexpected Error")
+				}
+				test.AssertOutput(t, tp.want, out)
+			}
+		})
+	}
+}
