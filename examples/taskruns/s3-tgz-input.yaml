@@ -19,11 +19,11 @@ spec:
   params:
     - name: type
       value: s3
-    - name: Bucket
+    - name: bucketname
       value: s3://pipelinebuilds
-    - name: Artifact
+    - name: artifact
       value: release-artifact.tgz
-    - name: LocalFile
+    - name: location
       value: "remote-file-yay.gz"
   secrets:
     - fieldName: AWS_SECRET_ACCESS_KEY

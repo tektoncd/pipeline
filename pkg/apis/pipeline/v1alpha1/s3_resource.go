@@ -53,17 +53,17 @@ func NewS3Resource(r *PipelineResource) (*S3Resource, error) {
 
 	for _, param := range r.Spec.Params {
 		switch {
-		case strings.EqualFold(param.Name, "Location"):
+		case strings.EqualFold(param.Name, "location"):
 			location = param.Value
 			if param.Value != "" {
 				locationSpecified = true
 			}
-		case strings.EqualFold(param.Name, "BucketName"):
+		case strings.EqualFold(param.Name, "bucketname"):
 			bucketname = param.Value
 			if param.Value != "" {
 				bucketnameSpecified = true
 			}
-		case strings.EqualFold(param.Name, "Artifact"):
+		case strings.EqualFold(param.Name, "artifact"):
 			artifact = param.Value
 			if param.Value != "" {
 				artifactSpecified = true

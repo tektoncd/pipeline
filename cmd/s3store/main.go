@@ -14,6 +14,7 @@ import (
 	flag "github.com/spf13/pflag"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"gocloud.dev/blob"
+	_ "gocloud.dev/blob/s3blob"
 )
 
 var (
