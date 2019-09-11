@@ -79,7 +79,7 @@
   revision = "073e4daa3d0dcb50173fdac5581709a17b97e9ed"
 
 [[projects]]
-  digest = "1:0fb0fc01ca0fb8c5a486a8a1b9092fe546aac68dbfb77919d9a3501b932c5990"
+  digest = "1:2d2c66bafe2c06819c0f6abef9fc2cf35d2169a5363e4abb819a87784d24c467"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -101,18 +101,25 @@
     "aws/session",
     "aws/signer/v4",
     "internal/ini",
+    "internal/s3err",
     "internal/sdkio",
     "internal/sdkrand",
     "internal/sdkuri",
     "internal/shareddefaults",
     "private/protocol",
+    "private/protocol/eventstream",
+    "private/protocol/eventstream/eventstreamapi",
     "private/protocol/json/jsonutil",
     "private/protocol/jsonrpc",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
+    "private/protocol/restxml",
     "private/protocol/xml/xmlutil",
     "service/ecr",
+    "service/s3",
+    "service/s3/s3iface",
+    "service/s3/s3manager",
     "service/sts",
   ]
   pruneopts = "NUT"
@@ -224,11 +231,16 @@
   revision = "02826c3e79038b59d737d3b1c0a1d937f71a4433"
 
 [[projects]]
-  digest = "1:f5a98770ab68c1146ee5cc14ed24aafa2bb1a2b3c89cbeadc9eb913b1f9d930a"
+  digest = "1:cfdc68359fe51bce2896509a3367674d91eaf7baee5e69af3ae5731d3d6e0a23"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
+    "protoc-gen-go",
     "protoc-gen-go/descriptor",
+    "protoc-gen-go/generator",
+    "protoc-gen-go/generator/internal/remap",
+    "protoc-gen-go/grpc",
+    "protoc-gen-go/plugin",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
@@ -330,6 +342,14 @@
   pruneopts = "NUT"
   revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:a008957d172951cd37a33fcc18de65b6153e0e465ae6409266f69ef1a152b51a"
+  name = "github.com/google/wire"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "89cb901fdf9dfcf4292cbfe0c9ac90d98213be68"
+  version = "v0.3.0"
 
 [[projects]]
   digest = "1:fd4d1f4c2d75aee3833ee7d8ef11fcf42ddec3c63d1819548288c3d868d6eb14"
@@ -435,6 +455,17 @@
   pruneopts = "NUT"
   revision = "0b417c4ec4a8a82eecc22a1459a504aa55163d61"
   version = "v1.4.0"
+
+[[projects]]
+  digest = "1:04eb2b1e456031d95dbc76c9a42fa8a2da0d61ae5111d6aa277cbefba53c7e8f"
+  name = "github.com/kisielk/gotool"
+  packages = [
+    ".",
+    "internal/load",
+  ]
+  pruneopts = "NUT"
+  revision = "80517062f582ea3340cd4baf70e86d539ae7d84d"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:dabd27a263906435d198a5fa9237ff2b14383a1e29964b7006e6dc975134f5e6"
@@ -690,20 +721,23 @@
   revision = "67bc79d13d155c02fd008f721863ff8cc5f30659"
 
 [[projects]]
-  digest = "1:b4e47ef9870f9f332440c23dba0c450373d3e7213f412da600e0924886911b98"
+  digest = "1:ad7196924dcef34fa557f78c5d0d306164f243da0221de1931ea9413f106eb75"
   name = "gocloud.dev"
   packages = [
+    "aws",
     "blob",
     "blob/driver",
+    "blob/s3blob",
     "gcerrors",
+    "internal/escape",
     "internal/gcerr",
     "internal/oc",
     "internal/openurl",
     "internal/retry",
   ]
   pruneopts = "NUT"
-  revision = "7e65c478158dacacc4b5e120231828bb78edb4eb"
-  version = "v0.16.0"
+  revision = "af96398370764fb39520a1898af78dac88709029"
+  version = "v0.17.0"
 
 [[projects]]
   digest = "1:eea11d2a0ee419cf9e30756d3f266630bb5ddaca264aa557845b45254a04b7c6"
@@ -719,6 +753,17 @@
   ]
   pruneopts = "NUT"
   revision = "81e90905daefcd6fd217b62423c0908922eadb30"
+
+[[projects]]
+  branch = "master"
+  digest = "1:5b8b10c6c3a2c1b4131a1e05de506f8a544ff4ede7cd26cdfcdef4fc2a5b1510"
+  name = "golang.org/x/lint"
+  packages = [
+    ".",
+    "golint",
+  ]
+  pruneopts = "NUT"
+  revision = "414d861bb4acf565ff8cb05f9906a2283b7dc75a"
 
 [[projects]]
   branch = "master"
@@ -799,10 +844,16 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2c57a52b1792fad8b668be56c76a9a4959f7b665b8474cfa188c652ef1a2b82d"
+  digest = "1:3304194c7994f3c85c59d24e8c9a8ea220d8dcd4e714fc1e82cd1e49ab4894ef"
   name = "golang.org/x/tools"
   packages = [
+    "cmd/goimports",
     "go/ast/astutil",
+    "go/buildutil",
+    "go/gcexportdata",
+    "go/gcimporter15",
+    "go/loader",
+    "go/types/typeutil",
     "imports",
   ]
   pruneopts = "NUT"
@@ -939,6 +990,28 @@
   pruneopts = "NUT"
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
   version = "v2.2.1"
+
+[[projects]]
+  digest = "1:d3dc3235d7978c66729f2cf5e24694c6a9a8c1a591fc83d5a62c25b423e73d78"
+  name = "honnef.co/go/tools"
+  packages = [
+    "callgraph",
+    "callgraph/static",
+    "cmd/staticcheck",
+    "deprecated",
+    "functions",
+    "internal/sharedcheck",
+    "lint",
+    "lint/lintutil",
+    "ssa",
+    "ssa/ssautil",
+    "staticcheck",
+    "staticcheck/vrp",
+    "version",
+  ]
+  pruneopts = "NUT"
+  revision = "d73ab98e7c39fdcf9ba65062e43d34310f198353"
+  version = "2017.2.2"
 
 [[projects]]
   digest = "1:1d34342a53d8f8c625260d6c4c2e5c99442b1635bbf4208f426bd12aa210b870"
@@ -1400,6 +1473,7 @@
     "go.uber.org/zap/zaptest",
     "go.uber.org/zap/zaptest/observer",
     "gocloud.dev/blob",
+    "gocloud.dev/blob/s3blob",
     "golang.org/x/oauth2",
     "golang.org/x/xerrors",
     "k8s.io/api/core/v1",

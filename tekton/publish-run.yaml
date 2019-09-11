@@ -57,6 +57,16 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
+  name: s3resource-image
+spec:
+  type: image
+  params:
+   - name: url
+     value: cmd/s3resource
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
   name: creds-init-image
 spec:
   type: image
@@ -216,6 +226,9 @@ spec:
     - name: builtGsutilImage
       resourceRef:
         name: gsutil-image
+    - name: builtS3Image
+      resourceRef:
+        name: s3resource-image
     - name: builtControllerImage
       resourceRef:
         name: controller-image

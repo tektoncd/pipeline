@@ -25,6 +25,8 @@ spec:
       value: release-artifact.tgz
     - name: location
       value: "remote-file-yay.gz"
+    - name: region
+      value: us-east-1
   secrets:
     - fieldName: AWS_SECRET_ACCESS_KEY
       secretName: user-pass

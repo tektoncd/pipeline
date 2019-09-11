@@ -801,7 +801,7 @@ spec:
 
 Params that can be added are the following:
 
-1. `Location`: represents the path on local storage to the artifact we want to either get to put..
+1. `Location`: represents the path on local storage to the artifact we want to either get or put to our s3 bucket.
 2. `type`: Should be `s3`.
 3. `Bucket`: The bucket name.
 4. `ObjectName`: The path of the blob to retrieve from the bucket.

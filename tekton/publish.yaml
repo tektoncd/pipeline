@@ -37,6 +37,8 @@ spec:
       type: image
     - name: builtGsutilImage
       type: image
+    - name: builtS3Image
+      type: image
     - name: builtControllerImage
       type: image
     - name: builtWebhookImage

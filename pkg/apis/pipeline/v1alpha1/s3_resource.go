@@ -37,6 +37,7 @@ type S3Resource struct {
 	Artifact   string               `json:"artifact"`
 	BucketName string               `json:"bucketname"`
 	Location   string               `json:"location"`
+	Region     string               `json:"region"`
 	Type       PipelineResourceType `json:"type"`
 	Secrets    []SecretParam        `json:"secrets"`
 }
@@ -49,7 +50,8 @@ func NewS3Resource(r *PipelineResource) (*S3Resource, error) {
 	var artifact string
 	var bucketname string
 	var location string
-	var locationSpecified, artifactSpecified, bucketnameSpecified bool
+	var region string
+	var locationSpecified, artifactSpecified, bucketnameSpecified, regionSpecified bool
 
 	for _, param := range r.Spec.Params {
 		switch {
@@ -68,6 +70,12 @@ func NewS3Resource(r *PipelineResource) (*S3Resource, error) {
 			if param.Value != "" {
 				artifactSpecified = true
 			}
+		case strings.EqualFold(param.Name, "region"):
+			region = param.Value
+			if param.Value != "" {
+				regionSpecified = true
+			}
+
 		}
 	}
 
@@ -80,6 +88,9 @@ func NewS3Resource(r *PipelineResource) (*S3Resource, error) {
 	if !artifactSpecified {
 		return nil, xerrors.Errorf("S3Resource: Need artifact to be specified in order to create S3 resource %s", r.Name)
 	}
+	if !regionSpecified {
+		return nil, xerrors.Errorf("S3Resource: Need region to be specified in order to create S3 resource %s", r.Name)
+	}
 
 	return &S3Resource{
 		Name:       r.Name,
@@ -88,6 +99,7 @@ func NewS3Resource(r *PipelineResource) (*S3Resource, error) {
 		Type:       r.Spec.Type,
 		Location:   location,
 		Secrets:    r.Spec.SecretParams,
+		Region:     region,
 	}, nil
 }
 
@@ -106,9 +118,13 @@ func (s *S3Resource) GetSecretParams() []SecretParam { return s.Secrets }
 
 func (s *S3Resource) GetUploadSteps(sourcePath string) ([]Step, error) {
 	args := []string{"--put", "--location", path.Join(sourcePath, s.Location), "--artifact", s.Artifact, "--bucketurl", s.BucketName}
-
 	envVars := getEnvVarsSecrets(s.Name, s.Secrets)
 
+	regionEnvVar := corev1.EnvVar{
+		Name:  "AWS_DEFAULT_REGION",
+		Value: s.Region,
+	}
+	envVars = append(envVars, regionEnvVar)
 	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:   *s3utilImage,
@@ -123,6 +139,11 @@ func (s *S3Resource) GetDownloadSteps(sourcePath string) ([]Step, error) {
 
 	envVars := getEnvVarsSecrets(s.Name, s.Secrets)
 
+	regionEnvVar := corev1.EnvVar{
+		Name:  "AWS_DEFAULT_REGION",
+		Value: s.Region,
+	}
+	envVars = append(envVars, regionEnvVar)
 	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:   *s3utilImage,

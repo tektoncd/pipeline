@@ -45,6 +45,9 @@ spec:
   - name: builtGsutilImage
     resourceRef:
       name: gsutil-image
+  - name: builtS3Image
+    resourceRef:
+      name: s3Resource-image
   - name: builtControllerImage
     resourceRef:
       name: controller-image
