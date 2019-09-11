@@ -663,6 +663,61 @@ func TestLogs_interactive_ask_run_last_run(t *testing.T) {
 	}
 }
 
+func TestLogs_last_run_diff_namespace(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns,
+				// created  15 minutes back
+				cb.PipelineCreationTimestamp(clock.Now().Add(-15*time.Minute)),
+			),
+		},
+		PipelineRuns: []*v1alpha1.PipelineRun{
+
+			tb.PipelineRun(prName, ns,
+				cb.PipelineRunCreationTimestamp(clock.Now().Add(-10*time.Minute)),
+				tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
+				tb.PipelineRunSpec(pipelineName),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					// pipeline run started 5 minutes ago
+					tb.PipelineRunStartTime(clock.Now().Add(-5*time.Minute)),
+					// takes 10 minutes to complete
+					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+				),
+			),
+			tb.PipelineRun(prName2, ns,
+				cb.PipelineRunCreationTimestamp(clock.Now().Add(-8*time.Minute)),
+				tb.PipelineRunLabel("tekton.dev/pipeline", pipelineName),
+				tb.PipelineRunSpec(pipelineName),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					// pipeline run started 3 minutes ago
+					tb.PipelineRunStartTime(clock.Now().Add(-3*time.Minute)),
+					// takes 10 minutes to complete
+					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+				),
+			),
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p.SetNamespace("default")
+
+	c := Command(p)
+	_, err := test.ExecuteCommand(c, "logs", pipelineName, "-n", ns, "-l")
+	if err != nil {
+		t.Error("Expecting no error")
+	}
+}
+
 func TestLogs_have_one_get_one(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 

@@ -110,8 +110,7 @@ like cat,foo.bar
 `,
 		SilenceUsage: true,
 		Args: func(cmd *cobra.Command, args []string) error {
-			err := flags.InitParams(p, cmd)
-			if err != nil {
+			if err := flags.InitParams(p, cmd); err != nil {
 				return err
 			}
 			return NameArg(args, p)
@@ -167,15 +166,13 @@ func (opt *startOptions) getInput(pname string) error {
 
 		resources := getPipelineResourcesByFormat(pres.Items)
 
-		err = opt.getInputResources(resources, pipeline)
-		if err != nil {
+		if err = opt.getInputResources(resources, pipeline); err != nil {
 			return err
 		}
 	}
 
 	if len(opt.Params) == 0 && !opt.Last {
-		err = opt.getInputParams(pipeline)
-		if err != nil {
+		if err = opt.getInputParams(pipeline); err != nil {
 			return err
 		}
 	}

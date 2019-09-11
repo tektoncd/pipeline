@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
+	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/formatted"
 	prhsort "github.com/tektoncd/cli/pkg/helper/pipelinerun/sort"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -92,6 +93,9 @@ func logCommand(p cli.Params) *cobra.Command {
 			"commandType": "main",
 		},
 		Args: func(cmd *cobra.Command, args []string) error {
+			if err := flags.InitParams(p, cmd); err != nil {
+				return err
+			}
 			return nameArg(args, p)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -157,9 +161,7 @@ func (opts *logOptions) init(args []string) error {
 }
 
 func (opts *logOptions) getAllInputs() error {
-	err := validate(opts)
-
-	if err != nil {
+	if err := validate(opts); err != nil {
 		return err
 	}
 
@@ -181,8 +183,7 @@ func (opts *logOptions) getAllInputs() error {
 		},
 	}}
 
-	err = survey.Ask(qs1, &opts.pipelineName, opts.askOpts)
-	if err != nil {
+	if err = survey.Ask(qs1, &opts.pipelineName, opts.askOpts); err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
@@ -191,8 +192,7 @@ func (opts *logOptions) getAllInputs() error {
 }
 
 func (opts *logOptions) askRunName() error {
-	err := validate(opts)
-	if err != nil {
+	if err := validate(opts); err != nil {
 		return err
 	}
 
