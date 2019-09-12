@@ -78,7 +78,7 @@ func printTaskDetails(s *cli.Stream, p cli.Params) error {
 
 	tasks, err := listAllTasks(cs.Tekton, p.Namespace())
 	if err != nil {
-		fmt.Fprintln(s.Err, emptyMsg)
+		fmt.Fprintf(os.Stderr, "Failed to list tasks from %s namespace \n", p.Namespace())
 		return err
 	}
 
