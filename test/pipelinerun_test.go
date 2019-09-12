@@ -251,12 +251,12 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 			)),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("write-data-task-0-step-0", "ubuntu", tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "echo stuff > $(inputs.resources.workspace.path)/stuff"),
+				tb.StepArgs("-c", "echo stuff > $(outputs.resources.workspace.path)/stuff"),
 			),
 			tb.Step("write-data-task-0-step-1", "ubuntu", tb.StepCommand("/bin/bash"),
 				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
 				// In the next release we will remove support for $() entirely.
-				tb.StepArgs("-c", "echo other > ${inputs.resources.workspace.path}/other"),
+				tb.StepArgs("-c", "echo other > ${outputs.resources.workspace.path}/other"),
 			),
 		)),
 		tb.Task("check-create-files-exists", namespace, tb.TaskSpec(
@@ -268,7 +268,7 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.StepArgs("-c", "[[ stuff == $(cat ${inputs.resources.workspace.path}/stuff) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "echo something > $(inputs.resources.workspace.path)/something"),
+				tb.StepArgs("-c", "echo something > $(outputs.resources.workspace.path)/something"),
 			),
 		)),
 		tb.Task("check-create-files-exists-2", namespace, tb.TaskSpec(
@@ -278,7 +278,7 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.StepArgs("-c", "[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "echo else > $(inputs.resources.workspace.path)/else"),
+				tb.StepArgs("-c", "echo else > $(outputs.resources.workspace.path)/else"),
 			),
 		)),
 		tb.Task("read-files", namespace, tb.TaskSpec(
@@ -286,12 +286,9 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.ResourceTargetPath("readingspace"),
 			)),
 			tb.Step("read-from-task-0", "ubuntu", tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"),
-			),
-			tb.Step("read-from-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
 				tb.StepArgs("-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"),
 			),
-			tb.Step("read-from-task-2", "ubuntu", tb.StepCommand("/bin/bash"),
+			tb.Step("read-from-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
 				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
 				// In the next release we will remove support for $() entirely.
 				tb.StepArgs("-c", "[[ else == $(cat ${inputs.resources.workspace.path}/else) ]]"),
