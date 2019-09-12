@@ -98,6 +98,24 @@ developing and running Pipelines. The recommended configuration is:
 - Node autoscaling, up to 3 nodes
 - API scopes for cloud-platform
 
+To setup a cluster with Docker on Desktop:
+  
+To use minikube:
+  ```bash
+  minikube start
+  eval $(minikube docker-env)
+  ```
+
+To use the Kubernetes that comes with Docker for Desktop:
+1. First go into the Docker For Desktop preferences. Under the resource tabs ensure that you have at least 4 CPUs, 8.0 GiB Memory, and 1.0 GiB Swap.
+1. Under the Kubernetes tab, enable Kubernetes.
+1. Click the Apply and Restart button to save the preferences.
+1. Switch the proper `kubectl` config context:
+  ```bash
+  kubectl config get-contexts
+  # You should see docker-for-desktop in the previous command output
+  kubectl config use-context docker-for-desktop
+  ```
 To setup a cluster with GKE:
 
 1. [Install required tools and setup GCP project](https://github.com/knative/docs/blob/master/docs/install/Knative-with-GKE.md#before-you-begin)
