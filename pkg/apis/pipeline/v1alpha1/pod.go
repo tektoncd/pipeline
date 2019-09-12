@@ -46,17 +46,3 @@ type PodTemplate struct {
 	// +optional
 	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
 }
-
-// CombinePodTemplate takes a PodTemplate (either from TaskRun or PipelineRun) and merge it with deprecated field that were inlined.
-func CombinedPodTemplate(template PodTemplate, deprecatedNodeSelector map[string]string, deprecatedTolerations []corev1.Toleration, deprecatedAffinity *corev1.Affinity) PodTemplate {
-	if len(template.NodeSelector) == 0 && len(deprecatedNodeSelector) != 0 {
-		template.NodeSelector = deprecatedNodeSelector
-	}
-	if len(template.Tolerations) == 0 && len(deprecatedTolerations) != 0 {
-		template.Tolerations = deprecatedTolerations
-	}
-	if template.Affinity == nil && deprecatedAffinity != nil {
-		template.Affinity = deprecatedAffinity
-	}
-	return template
-}

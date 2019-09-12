@@ -380,21 +380,21 @@ func PipelineRunNilTimeout(prs *v1alpha1.PipelineRunSpec) {
 // PipelineRunNodeSelector sets the Node selector to the PipelineSpec.
 func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.NodeSelector = values
+		prs.PodTemplate.NodeSelector = values
 	}
 }
 
 // PipelineRunTolerations sets the Node selector to the PipelineSpec.
 func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Tolerations = values
+		prs.PodTemplate.Tolerations = values
 	}
 }
 
 // PipelineRunAffinity sets the affinity to the PipelineSpec.
 func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Affinity = affinity
+		prs.PodTemplate.Affinity = affinity
 	}
 }
 
