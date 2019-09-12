@@ -331,8 +331,6 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 		mergedPodContainers = append(mergedPodContainers, taskSpec.Sidecars...)
 	}
 
-	podTemplate := v1alpha1.CombinedPodTemplate(taskRun.Spec.PodTemplate, taskRun.Spec.NodeSelector, taskRun.Spec.Tolerations, taskRun.Spec.Affinity)
-
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			// We execute the build's pod in the same namespace as where the build was
@@ -356,10 +354,10 @@ func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient k
 			Containers:         mergedPodContainers,
 			ServiceAccountName: taskRun.Spec.ServiceAccount,
 			Volumes:            volumes,
-			NodeSelector:       podTemplate.NodeSelector,
-			Tolerations:        podTemplate.Tolerations,
-			Affinity:           podTemplate.Affinity,
-			SecurityContext:    podTemplate.SecurityContext,
+			NodeSelector:       taskRun.Spec.PodTemplate.NodeSelector,
+			Tolerations:        taskRun.Spec.PodTemplate.Tolerations,
+			Affinity:           taskRun.Spec.PodTemplate.Affinity,
+			SecurityContext:    taskRun.Spec.PodTemplate.SecurityContext,
 		},
 	}, nil
 }
