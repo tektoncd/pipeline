@@ -246,7 +246,8 @@ func (pr *PipelineRun) IsCancelled() bool {
 
 // GetRunKey return the pipelinerun key for timeout handler map
 func (pr *PipelineRun) GetRunKey() string {
-	return fmt.Sprintf("%s/%s/%s", pipelineRunControllerName, pr.Namespace, pr.Name)
+	// The address of the pointer is a threadsafe unique identifier for the pipelinerun
+	return fmt.Sprintf("%s/%p", pipelineRunControllerName, pr)
 }
 
 // IsTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout

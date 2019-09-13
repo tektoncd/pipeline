@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -130,13 +131,8 @@ func TestPipelineRunIsCancelled(t *testing.T) {
 }
 
 func TestPipelineRunKey(t *testing.T) {
-	pr := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "prunname",
-			Namespace: "testns",
-		},
-	}
-	expectedKey := "PipelineRun/testns/prunname"
+	pr := tb.PipelineRun("prunname", "testns")
+	expectedKey := fmt.Sprintf("PipelineRun/%p", pr)
 	if pr.GetRunKey() != expectedKey {
 		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, pr.GetRunKey())
 	}

@@ -291,5 +291,6 @@ func (tr *TaskRun) IsCancelled() bool {
 
 // GetRunKey return the taskrun key for timeout handler map
 func (tr *TaskRun) GetRunKey() string {
-	return fmt.Sprintf("%s/%s/%s", "TaskRun", tr.Namespace, tr.Name)
+	// The address of the pointer is a threadsafe unique identifier for the taskrun
+	return fmt.Sprintf("%s/%p", "TaskRun", tr)
 }
