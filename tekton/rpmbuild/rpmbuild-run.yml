@@ -1,0 +1,18 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: rpmbuild-pipeline-run
+spec:
+  taskRef:
+    name: rpmbuild
+  inputs:
+    resources:
+      - name: source
+        resourceRef:
+          name: tektoncd-cli-git
+    params:
+    - name: package
+      value: github.com/tektoncd/cli
+    - name: copr-cli-secret
+      value: copr-cli-config
