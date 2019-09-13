@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -112,8 +113,8 @@ func TestTaskRunIsCancelled(t *testing.T) {
 }
 
 func TestTaskRunKey(t *testing.T) {
-	tr := tb.TaskRun("taskrunname", "testns")
-	expectedKey := "TaskRun/testns/taskrunname"
+	tr := tb.TaskRun("taskrunname", "")
+	expectedKey := fmt.Sprintf("TaskRun/%p", tr)
 	if tr.GetRunKey() != expectedKey {
 		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, tr.GetRunKey())
 	}
