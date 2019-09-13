@@ -170,7 +170,6 @@ func backoffDuration(count uint, jf jitterFunc) time.Duration {
 func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string, pipelineclientset clientset.Interface) {
 	pipelineRuns, err := pipelineclientset.TektonV1alpha1().PipelineRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		t.logger.Errorf("Can't get pipelinerun list in namespace %s: %s", namespace, err)
 		return
 	}
 	for _, pipelineRun := range pipelineRuns.Items {
@@ -189,7 +188,6 @@ func (t *TimeoutSet) checkPipelineRunTimeouts(namespace string, pipelineclientse
 func (t *TimeoutSet) CheckTimeouts(kubeclientset kubernetes.Interface, pipelineclientset clientset.Interface) {
 	namespaces, err := kubeclientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
-		t.logger.Errorf("Can't get namespaces list: %s", err)
 		return
 	}
 	for _, namespace := range namespaces.Items {
@@ -203,7 +201,6 @@ func (t *TimeoutSet) CheckTimeouts(kubeclientset kubernetes.Interface, pipelinec
 func (t *TimeoutSet) checkTaskRunTimeouts(namespace string, pipelineclientset clientset.Interface) {
 	taskruns, err := pipelineclientset.TektonV1alpha1().TaskRuns(namespace).List(metav1.ListOptions{})
 	if err != nil {
-		t.logger.Errorf("Can't get taskrun list in namespace %s: %s", namespace, err)
 		return
 	}
 	for _, taskrun := range taskruns.Items {
@@ -245,14 +242,12 @@ func (t *TimeoutSet) WaitPipelineRun(pr *v1alpha1.PipelineRun, startTime *metav1
 
 func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime *metav1.Time, callback func(interface{})) {
 	if startTime == nil {
-		t.logger.Errorf("startTime must be specified in order for a timeout to be calculated accurately for %s", runObj.GetRunKey())
 		return
 	}
 	if callback == nil {
 		callback = defaultFunc
 	}
 	runtime := time.Since(startTime.Time)
-	t.logger.Infof("About to start timeout timer for %s. started at %s, timeout is %s, running for %s", runObj.GetRunKey(), startTime.Time, timeout, runtime)
 	defer t.Release(runObj)
 	t.setTimer(runObj, timeout-runtime, callback)
 }
@@ -267,7 +262,6 @@ func (t *TimeoutSet) waitRun(runObj StatusKey, timeout time.Duration, startTime 
 func (t *TimeoutSet) SetTaskRunTimer(tr *v1alpha1.TaskRun, d time.Duration) {
 	callback := t.taskRunCallbackFunc
 	if callback == nil {
-		t.logger.Errorf("attempted to set a timer for %q but no task run callback has been assigned", tr.Name)
 		return
 	}
 	t.setTimer(tr, d, callback)
@@ -275,16 +269,12 @@ func (t *TimeoutSet) SetTaskRunTimer(tr *v1alpha1.TaskRun, d time.Duration) {
 
 func (t *TimeoutSet) setTimer(runObj StatusKey, timeout time.Duration, callback func(interface{})) {
 	finished := t.getOrCreateFinishedChan(runObj)
-	started := time.Now()
 	select {
 	case <-t.stopCh:
-		t.logger.Infof("stopping timer for %q", runObj.GetRunKey())
 		return
 	case <-finished:
-		t.logger.Infof("%q finished, stopping timer", runObj.GetRunKey())
 		return
 	case <-time.After(timeout):
-		t.logger.Infof("timer for %q has activated after %s", runObj.GetRunKey(), time.Since(started).String())
 		callback(runObj)
 	}
 }
