@@ -46,6 +46,14 @@ Download the latest binary executable for your operating system:
   sudo tar xvzf tkn_0.3.1_Linux_arm64.tar.gz -C /usr/local/bin/ tkn
   ```
 
+  You can also use [@chmouel](https://github.com/chmouel)'s unofficial
+  copr package repository for the time being.
+
+  ```shell
+  dnf copr enable chmouel/tektoncd-cli
+  dnf install tektoncd-cli
+  ```
+
 If you have [go](https://golang.org/) installed, `GO111MODULE="on" go get github.com/tektoncd/cli@v0.3.1` is all you need!
 
 ### `tkn` as a `kubectl` plugin
