@@ -35,21 +35,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
-	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/controller"
 )
-
-// GetLogMessages returns a list of all string logs in logs.
-func GetLogMessages(logs *observer.ObservedLogs) []string {
-	messages := []string{}
-	for _, l := range logs.All() {
-		messages = append(messages, l.Message)
-	}
-	return messages
-}
 
 // Data represents the desired state of the system (i.e. existing resources) to seed controllers
 // with.
@@ -86,7 +76,6 @@ type Informers struct {
 // TestAssets holds references to the controller, logs, clients, and informers.
 type TestAssets struct {
 	Controller *controller.Impl
-	Logs       *observer.ObservedLogs
 	Clients    Clients
 }
 
