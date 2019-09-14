@@ -86,9 +86,6 @@ The `path` key is pre-defined and refers to the local path to a resource on the 
 $(inputs.resouces.<name>.path)
 ```
 
-_The deprecated syntax `${}`, e.g. `${inputs.params.<name>}` will be supported
-until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._
-
 ### Controlling where resources are mounted
 
 The optional field `targetPath` can be used to initialize a resource in specific

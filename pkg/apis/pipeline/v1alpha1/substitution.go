@@ -26,8 +26,7 @@ import (
 
 const parameterSubstitution = "[_a-zA-Z][_a-zA-Z0-9.-]*"
 
-//TODO(#1170): Regex matches both ${} and $(), we will need to remove ${} compatibility.
-const braceMatchingRegex = "(\\$({%s.(?P<deprecated>%s)}))|(\\$(\\(%s.(?P<var>%s)\\)))"
+const braceMatchingRegex = "(\\$(\\(%s.(?P<var>%s)\\)))"
 
 func ValidateVariable(name, value, prefix, contextPrefix, locationName, path string, vars map[string]struct{}) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, contextPrefix+prefix); present {
@@ -76,10 +75,10 @@ func ValidateVariableIsolated(name, value, prefix, contextPrefix, locationName, 
 	return nil
 }
 
-// Extract a the first full string expressions found (e.g "${input.params.foo}"). Return
+// Extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
 // "" and false if nothing is found.
 func extractExpressionFromString(s, prefix string) (string, bool) {
-	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, prefix, parameterSubstitution)
+	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution)
 	re := regexp.MustCompile(pattern)
 	match := re.FindStringSubmatch(s)
 	if match == nil {
@@ -89,7 +88,7 @@ func extractExpressionFromString(s, prefix string) (string, bool) {
 }
 
 func extractVariablesFromString(s, prefix string) ([]string, bool) {
-	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, prefix, parameterSubstitution)
+	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution)
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(s, -1)
 	if len(matches) == 0 {
@@ -101,14 +100,7 @@ func extractVariablesFromString(s, prefix string) ([]string, bool) {
 		// foo -> foo
 		// foo.bar -> foo
 		// foo.bar.baz -> foo
-		var v string
-		if groups["var"] != "" {
-			v = groups["var"]
-		} else {
-			//TODO(#1170): Regex matches both ${} and $(), we will need to remove ${} compatibility.
-			v = groups["deprecated"]
-		}
-		vars[i] = strings.SplitN(v, ".", 2)[0]
+		vars[i] = strings.SplitN(groups["var"], ".", 2)[0]
 	}
 	return vars, true
 }
@@ -124,9 +116,6 @@ func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
 func ApplyReplacements(in string, replacements map[string]string) string {
 	for k, v := range replacements {
 		in = strings.Replace(in, fmt.Sprintf("$(%s)", k), v, -1)
-
-		//TODO(#1170): Delete the line below when we want to remove support for ${} variable interpolation:
-		in = strings.Replace(in, fmt.Sprintf("${%s}", k), v, -1)
 	}
 	return in
 }
@@ -141,12 +130,6 @@ func ApplyArrayReplacements(in string, stringReplacements map[string]string, arr
 		// If the input string matches a replacement's key (without padding characters), return the corresponding array.
 		// Note that the webhook should prevent all instances where this could evaluate to false.
 		if (strings.Count(in, stringToReplace) == 1) && len(in) == len(stringToReplace) {
-			return v
-		}
-
-		//TODO(#1170): Delete the block below when we want to remove support for ${} variable interpolation:
-		deprecatedStringToReplace := fmt.Sprintf("${%s}", k)
-		if (strings.Count(in, deprecatedStringToReplace) == 1) && len(in) == len(deprecatedStringToReplace) {
 			return v
 		}
 	}

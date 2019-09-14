@@ -34,45 +34,45 @@ func TestApplyStepReplacements(t *testing.T) {
 	}
 
 	s := v1alpha1.Step{Container: corev1.Container{
-		Name:       "${replace.me}",
-		Image:      "${replace.me}",
-		Command:    []string{"${array.replace.me}"},
-		Args:       []string{"${array.replace.me}"},
-		WorkingDir: "${replace.me}",
+		Name:       "$(replace.me)",
+		Image:      "$(replace.me)",
+		Command:    []string{"$(array.replace.me)"},
+		Args:       []string{"$(array.replace.me)"},
+		WorkingDir: "$(replace.me)",
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "${replace.me}",
+					Name: "$(replace.me)",
 				},
 			},
 			SecretRef: &corev1.SecretEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "${replace.me}",
+					Name: "$(replace.me)",
 				},
 			},
 		}},
 		Env: []corev1.EnvVar{{
 			Name:  "not_me",
-			Value: "${replace.me}",
+			Value: "$(replace.me)",
 			ValueFrom: &corev1.EnvVarSource{
 				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "${replace.me}",
+						Name: "$(replace.me)",
 					},
-					Key: "${replace.me}",
+					Key: "$(replace.me)",
 				},
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "${replace.me}",
+						Name: "$(replace.me)",
 					},
-					Key: "${replace.me}",
+					Key: "$(replace.me)",
 				},
 			},
 		}},
 		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "${replace.me}",
-			MountPath: "${replace.me}",
-			SubPath:   "${replace.me}",
+			Name:      "$(replace.me)",
+			MountPath: "$(replace.me)",
+			SubPath:   "$(replace.me)",
 		}},
 	}}
 
@@ -126,7 +126,7 @@ func TestApplyStepReplacements(t *testing.T) {
 
 func TestApplyStepReplacements_NotDefined(t *testing.T) {
 	s := v1alpha1.Step{Container: corev1.Container{
-		Name: "${params.not.defined}",
+		Name: "$(params.not.defined)",
 	}}
 	replacements := map[string]string{
 		"replace.me": "replaced!",
@@ -137,7 +137,7 @@ func TestApplyStepReplacements_NotDefined(t *testing.T) {
 	}
 
 	expected := v1alpha1.Step{Container: corev1.Container{
-		Name: "${params.not.defined}",
+		Name: "$(params.not.defined)",
 	}}
 	v1alpha1.ApplyStepReplacements(&s, replacements, arrayReplacements)
 	if d := cmp.Diff(s, expected); d != "" {

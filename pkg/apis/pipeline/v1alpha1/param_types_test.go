@@ -128,42 +128,6 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 			arrayReplacements:  map[string][]string{"arraykey": {}},
 		},
 		expectedOutput: builder.ArrayOrString("firstvalue", "lastvalue"),
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated string replacements on string",
-		args: args{
-			input:              builder.ArrayOrString("astring${some} asdf ${anotherkey}"),
-			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
-			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
-		},
-		expectedOutput: builder.ArrayOrString("astringvalue asdf value"),
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated single array replacement",
-		args: args{
-			input:              builder.ArrayOrString("firstvalue", "${arraykey}", "lastvalue"),
-			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
-			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
-		},
-		expectedOutput: builder.ArrayOrString("firstvalue", "array", "value", "lastvalue"),
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated multiple array replacement",
-		args: args{
-			input:              builder.ArrayOrString("firstvalue", "${arraykey}", "lastvalue", "${sdfdf}"),
-			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
-			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
-		},
-		expectedOutput: builder.ArrayOrString("firstvalue", "array", "value", "lastvalue", "asdf", "sdfsd"),
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated empty array replacement",
-		args: args{
-			input:              builder.ArrayOrString("firstvalue", "${arraykey}", "lastvalue"),
-			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
-			arrayReplacements:  map[string][]string{"arraykey": {}},
-		},
-		expectedOutput: builder.ArrayOrString("firstvalue", "lastvalue"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

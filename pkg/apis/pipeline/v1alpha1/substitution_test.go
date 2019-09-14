@@ -109,82 +109,6 @@ func TestValidateVariables(t *testing.T) {
 			Message: `non-existent variable in "--flag=$(inputs.params.baz) $(input.params.foo)" for step somefield`,
 			Paths:   []string{"taskspec.steps.somefield"},
 		},
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated valid variable",
-		args: args{
-			input:         "--flag=${inputs.params.baz}",
-			prefix:        "params",
-			contextPrefix: "inputs.",
-			locationName:  "step",
-			path:          "taskspec.steps",
-			vars: map[string]struct{}{
-				"baz": {},
-			},
-		},
-		expectedError: nil,
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated multiple variables",
-		args: args{
-			input:         "--flag=${inputs.params.baz} ${input.params.foo}",
-			prefix:        "params",
-			contextPrefix: "inputs.",
-			locationName:  "step",
-			path:          "taskspec.steps",
-			vars: map[string]struct{}{
-				"baz": {},
-				"foo": {},
-			},
-		},
-		expectedError: nil,
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated different context and prefix",
-		args: args{
-			input:        "--flag=${something.baz}",
-			prefix:       "something",
-			locationName: "step",
-			path:         "taskspec.steps",
-			vars: map[string]struct{}{
-				"baz": {},
-			},
-		},
-		expectedError: nil,
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated undefined variable",
-		args: args{
-			input:         "--flag=${inputs.params.baz}",
-			prefix:        "params",
-			contextPrefix: "inputs.",
-			locationName:  "step",
-			path:          "taskspec.steps",
-			vars: map[string]struct{}{
-				"foo": {},
-			},
-		},
-		expectedError: &apis.FieldError{
-			Message: `non-existent variable in "--flag=${inputs.params.baz}" for step somefield`,
-			Paths:   []string{"taskspec.steps.somefield"},
-		},
-	}, {
-		// TODO(#1170): Remove support for ${} syntax
-		name: "deprecated undefined variable and defined variable",
-		args: args{
-			input:         "--flag=${inputs.params.baz} ${input.params.foo}",
-			prefix:        "params",
-			contextPrefix: "inputs.",
-			locationName:  "step",
-			path:          "taskspec.steps",
-			vars: map[string]struct{}{
-				"foo": {},
-			},
-		},
-		expectedError: &apis.FieldError{
-			Message: `non-existent variable in "--flag=${inputs.params.baz} ${input.params.foo}" for step somefield`,
-			Paths:   []string{"taskspec.steps.somefield"},
-		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := v1alpha1.ValidateVariable("somefield", tc.args.input, tc.args.prefix, tc.args.contextPrefix, tc.args.locationName, tc.args.path, tc.args.vars)
@@ -217,7 +141,7 @@ func TestApplyReplacements(t *testing.T) {
 		{
 			name: "single replacement requested",
 			args: args{
-				input:        "this is ${a} string",
+				input:        "this is $(a) string",
 				replacements: map[string]string{"a": "not a"},
 			},
 			expectedOutput: "this is not a string",
@@ -225,7 +149,7 @@ func TestApplyReplacements(t *testing.T) {
 		{
 			name: "single replacement requested multiple matches",
 			args: args{
-				input:        "this ${is} a string ${is} a string",
+				input:        "this $(is) a string $(is) a string",
 				replacements: map[string]string{"is": "a"},
 			},
 			expectedOutput: "this a a string a a string",
@@ -233,7 +157,7 @@ func TestApplyReplacements(t *testing.T) {
 		{
 			name: "multiple replacements requested",
 			args: args{
-				input:        "this ${is} a ${string} ${is} a ${string}",
+				input:        "this $(is) a $(string) $(is) a $(string)",
 				replacements: map[string]string{"is": "a", "string": "sstring"},
 			},
 			expectedOutput: "this a a sstring a a sstring",
@@ -286,7 +210,7 @@ func TestApplyArrayReplacements(t *testing.T) {
 	}, {
 		name: "multiple replacements only string replacement possible",
 		args: args{
-			input:              "${string}rep${lacement}${string}",
+			input:              "$(string)rep$(lacement)$(string)",
 			stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
 			arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "string": {"1", "2"}},
 		},
@@ -294,7 +218,7 @@ func TestApplyArrayReplacements(t *testing.T) {
 	}, {
 		name: "array replacement",
 		args: args{
-			input:              "${match}",
+			input:              "$(match)",
 			stringReplacements: map[string]string{"string": "word", "lacement": "lacements"},
 			arrayReplacements:  map[string][]string{"ace": {"replacement", "a"}, "match": {"1", "2"}},
 		},
