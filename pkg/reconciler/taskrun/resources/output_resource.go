@@ -81,6 +81,10 @@ func AddOutputResources(
 			return nil, xerrors.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)
 		}
 
+		if resource.GetType() == v1alpha1.PipelineResourceTypeGit {
+			logger.Warn("The Task %s uses a git output: in the next release, support for git outputs will be removed (See #1109)")
+		}
+
 		var sourcePath string
 		if output.TargetPath == "" {
 			sourcePath = filepath.Join(outputDir, boundResource.Name)

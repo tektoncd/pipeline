@@ -19,10 +19,13 @@ package resources
 import (
 	"testing"
 
+	"go.uber.org/zap"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/names"
+	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -774,6 +777,57 @@ func TestValidOutputResources(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestGitOutputWarns ensures we warn if git is used as an output.
+// In #1109 we will remove support for the git resource as an output, until we add
+// a different version via #1280 where a git output would create a new commit
+func TestGitOutputWarns(t *testing.T) {
+	tr := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "git-output-run",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			Outputs: v1alpha1.TaskRunOutputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					Name: "some-repo",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "source-git",
+					},
+				}},
+			},
+		},
+	}
+	task := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "task",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "some-repo",
+						Type: "git",
+					}}},
+			},
+		},
+	}
+	r := map[string]v1alpha1.PipelineResourceInterface{
+		"some-repo": &v1alpha1.GitResource{
+			Name: "source-git",
+		},
+	}
+
+	outputResourceSetup(t)
+	o, ol := observer.New(zap.WarnLevel)
+	z := zap.New(o).Sugar()
+	_, err := AddOutputResources(fakek8s.NewSimpleClientset(), task.Name, &task.Spec, tr, r, z)
+	if err != nil {
+		t.Fatalf("Did not expect error but got %v", err)
+	}
+	if len(ol.All()) != 1 {
+		t.Errorf("Expected to see a warning logged for a git output but saw none")
 	}
 }
 

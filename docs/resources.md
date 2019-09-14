@@ -217,6 +217,8 @@ the source code to be built by the pipeline. Adding the git resource as an input
 to a Task will clone this repository and allow the Task to perform the required
 actions on the contents of the repo.
 
+_Git resources as outputs will soon not be supported, see https://github.com/tektoncd/pipeline/pull/1109._
+
 To create a git resource using the `PipelineResource` CRD:
 
 ```yaml
