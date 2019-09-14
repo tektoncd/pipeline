@@ -122,8 +122,7 @@ var (
 			"--my-arg=$(inputs.params.myarg)",
 			"--my-arg-with-default=$(inputs.params.myarghasdefault)",
 			"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
-			// TODO(#1170): Remove support for ${} syntax
-			"--my-additional-arg=${outputs.resources.myimage.url}",
+			"--my-additional-arg=$(outputs.resources.myimage.url)",
 		)),
 		tb.Step("myothercontainer", "myotherimage", tb.StepCommand("/mycmd"), tb.StepArgs(
 			"--my-other-arg=$(inputs.resources.workspace.url)",

@@ -100,8 +100,7 @@ func TestPipelineRun(t *testing.T) {
 				// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
 				tb.Step("config-docker", "quay.io/rhpipeline/skopeo:alpine",
 					tb.StepCommand("skopeo"),
-					// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-					tb.StepArgs("copy", "${inputs.params.path}", "$(inputs.params.dest)"),
+					tb.StepArgs("copy", "$(inputs.params.path)", "$(inputs.params.dest)"),
 				),
 			))
 			if _, err := c.TaskClient.Create(task); err != nil {
@@ -234,9 +233,7 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1alph
 		tb.PipelineParamSpec("path", v1alpha1.ParamTypeString),
 		tb.PipelineParamSpec("dest", v1alpha1.ParamTypeString),
 		tb.PipelineTask(task1Name, getName(taskName, suffix),
-			tb.PipelineTaskParam("path", "${params.path}"),
-			// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-			// In the next release we will remove support for $() entirely.
+			tb.PipelineTaskParam("path", "$(params.path)"),
 			tb.PipelineTaskParam("dest", "$(params.dest)")),
 	))
 }
@@ -254,18 +251,14 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.StepArgs("-c", "echo stuff > $(outputs.resources.workspace.path)/stuff"),
 			),
 			tb.Step("write-data-task-0-step-1", "ubuntu", tb.StepCommand("/bin/bash"),
-				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-				// In the next release we will remove support for $() entirely.
-				tb.StepArgs("-c", "echo other > ${outputs.resources.workspace.path}/other"),
+				tb.StepArgs("-c", "echo other > $(outputs.resources.workspace.path)/other"),
 			),
 		)),
 		tb.Task("check-create-files-exists", namespace, tb.TaskSpec(
 			tb.TaskInputs(inWorkspaceResource),
 			tb.TaskOutputs(outWorkspaceResource),
 			tb.Step("read-from-task-0", "ubuntu", tb.StepCommand("/bin/bash"),
-				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-				// In the next release we will remove support for $() entirely.
-				tb.StepArgs("-c", "[[ stuff == $(cat ${inputs.resources.workspace.path}/stuff) ]]"),
+				tb.StepArgs("-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"),
 			),
 			tb.Step("write-data-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
 				tb.StepArgs("-c", "echo something > $(outputs.resources.workspace.path)/something"),
@@ -289,9 +282,7 @@ func getFanInFanOutTasks(namespace string) []*v1alpha1.Task {
 				tb.StepArgs("-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"),
 			),
 			tb.Step("read-from-task-1", "ubuntu", tb.StepCommand("/bin/bash"),
-				// TODO(#1170): This test is using a mix of ${} and $() syntax to make sure both work.
-				// In the next release we will remove support for $() entirely.
-				tb.StepArgs("-c", "[[ else == $(cat ${inputs.resources.workspace.path}/else) ]]"),
+				tb.StepArgs("-c", "[[ else == $(cat $(inputs.resources.workspace.path)/else) ]]"),
 			),
 		)),
 	}

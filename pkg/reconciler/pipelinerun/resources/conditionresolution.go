@@ -107,9 +107,9 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 		})
 	}
 
-	// convert param strings of type ${params.x} to ${inputs.params.x}
+	// convert param strings of type $(params.x) to $(inputs.params.x)
 	convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
-	// convert resource strings of type ${resources.name.key} to ${inputs.resources.name.key}
+	// convert resource strings of type $(resources.name.key) to $(inputs.resources.name.key)
 	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources)
 
 	if err != nil {
@@ -119,7 +119,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	return t, nil
 }
 
-// Replaces all instances of ${params.x} in the container to ${inputs.params.x} for each param name
+// Replaces all instances of $(params.x) in the container to $(inputs.params.x) for each param name
 func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 	replacements := make(map[string]string)
 	for _, p := range params {

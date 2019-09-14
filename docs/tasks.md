@@ -400,9 +400,6 @@ $(inputs.params.<name>)
 
 Param values from resources can also be accessed using [variable substitution](./resources.md#variable-substitution)
 
-_The deprecated syntax `${}`, e.g. `${inputs.params.<name>}` will be supported
-until [#1170](https://github.com/tektoncd/pipeline/issues/1170)._
-
 #### Variable Substitution with Parameters of Type `Array`
 
 Referenced parameters of type `array` will expand to insert the array elements in the reference string's spot.

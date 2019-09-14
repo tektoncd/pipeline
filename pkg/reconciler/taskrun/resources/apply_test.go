@@ -55,20 +55,17 @@ var simpleTaskSpec = &v1alpha1.TaskSpec{
 		Image: "quux",
 		Args:  []string{"$(outputs.resources.imageToUse.url)"},
 	}}, {Container: corev1.Container{
-		Name: "foo",
-		// TODO(#1170): Remove support for ${} syntax
-		Image: "${inputs.params.myimage}",
+		Name:  "foo",
+		Image: "$(inputs.params.myimage)",
 	}}, {Container: corev1.Container{
-		Name:  "baz",
-		Image: "bat",
-		// TODO(#1170): Remove support for ${} syntax
-		WorkingDir: "${inputs.resources.workspace.path}",
-		Args:       []string{"${inputs.resources.workspace.url}"},
+		Name:       "baz",
+		Image:      "bat",
+		WorkingDir: "$(inputs.resources.workspace.path)",
+		Args:       []string{"$(inputs.resources.workspace.url)"},
 	}}, {Container: corev1.Container{
 		Name:  "qux",
 		Image: "quux",
-		// TODO(#1170): Remove support for ${} syntax
-		Args: []string{"${outputs.resources.imageToUse.url}"},
+		Args:  []string{"$(outputs.resources.imageToUse.url)"},
 	}}},
 }
 
@@ -88,12 +85,11 @@ var envTaskSpec = &v1alpha1.TaskSpec{
 				},
 			},
 		}, {
-			// TODO(#1170): Remove support for ${} syntax
 			Name: "baz",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-${inputs.params.FOO}"},
-					Key:                  "secret-key-${inputs.params.FOO}",
+					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
+					Key:                  "secret-key-$(inputs.params.FOO)",
 				},
 			},
 		}},
@@ -103,10 +99,9 @@ var envTaskSpec = &v1alpha1.TaskSpec{
 				LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
 			},
 		}, {
-			// TODO(#1170): Remove support for ${} syntax
-			Prefix: "prefix-1-${inputs.params.FOO}",
+			Prefix: "prefix-1-$(inputs.params.FOO)",
 			SecretRef: &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "secret-${inputs.params.FOO}"},
+				LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
 			},
 		}},
 	}}},
@@ -737,11 +732,10 @@ func TestVolumeReplacement(t *testing.T) {
 			}},
 		},
 	}, {
-		// TODO(#1170): Remove support for ${} syntax
 		name: "deprecated volume replacement",
 		ts: &v1alpha1.TaskSpec{
 			Volumes: []corev1.Volume{{
-				Name: "${foo}",
+				Name: "$(foo)",
 			}},
 		},
 		repl: map[string]string{"foo": "bar"},
@@ -751,15 +745,14 @@ func TestVolumeReplacement(t *testing.T) {
 			}},
 		},
 	}, {
-		// TODO(#1170): Remove support for ${} syntax
 		name: "deprecated volume configmap",
 		ts: &v1alpha1.TaskSpec{
 			Volumes: []corev1.Volume{{
-				Name: "${name}",
+				Name: "$(name)",
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "${configmapname}",
+							Name: "$(configmapname)",
 						},
 					},
 				}},
@@ -782,14 +775,13 @@ func TestVolumeReplacement(t *testing.T) {
 			},
 		},
 	}, {
-		// TODO(#1170): Remove support for ${} syntax
 		name: "deprecated volume secretname",
 		ts: &v1alpha1.TaskSpec{
 			Volumes: []corev1.Volume{{
-				Name: "${name}",
+				Name: "$(name)",
 				VolumeSource: corev1.VolumeSource{
 					Secret: &corev1.SecretVolumeSource{
-						SecretName: "${secretname}",
+						SecretName: "$(secretname)",
 					},
 				}},
 			},
@@ -809,14 +801,13 @@ func TestVolumeReplacement(t *testing.T) {
 			},
 		},
 	}, {
-		// TODO(#1170): Remove support for ${} syntax
 		name: "deprecated volume PVC name",
 		ts: &v1alpha1.TaskSpec{
 			Volumes: []corev1.Volume{{
-				Name: "${name}",
+				Name: "$(name)",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "${FOO}",
+						ClaimName: "$(FOO)",
 					},
 				},
 			}},
