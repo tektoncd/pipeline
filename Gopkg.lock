@@ -334,12 +334,12 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:fa300677001e58a995e10afe4e251d2a6e30d3815a234d553b5810db7795d5a2"
+  digest = "1:4b76f3e067eed897a45242383a2aa4d0a2fdbf73a8d00c03167dba80c43630b1"
   name = "github.com/googleapis/gax-go"
   packages = ["v2"]
   pruneopts = "NUT"
-  revision = "beaecbbdd8af86aa3acf14180d53828ce69400b2"
-  version = "v2.0.4"
+  revision = "bd5b16380fd03dc758d11cef74ba2e3bc8b0e8c2"
+  version = "v2.0.5"
 
 [[projects]]
   digest = "1:27b4ab41ffdc76ad6db56db327a4db234a59588ef059fc3fd678ba0bc6b9094f"
