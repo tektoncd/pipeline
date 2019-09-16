@@ -12,7 +12,5 @@ spec:
         resourceRef:
           name: tektoncd-cli-git
     params:
-    - name: package
-      value: github.com/tektoncd/cli
     - name: copr-cli-secret
       value: copr-cli-config

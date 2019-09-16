@@ -3,11 +3,7 @@ Tekton CLI RPM Build
 
 This is a tekton task to run a rpm build on copr
 
-The spec file is not really well made at the moment, it doesn't do a source
-build but a binary build which is really that would raise a few eyebrows among the real packagers.
-We are hoping to improve that in the future.
-
-It only supports the latest release as releasd on github. It queries the github
+It only supports the latest release as released on github. It queries the github
 api to get the latest one.
 
 It uses the docker image from `quay.io/chmouel/rpmbuild`, the Dockerfile is in

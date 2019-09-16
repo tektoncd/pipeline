@@ -9,20 +9,17 @@ spec:
     - name: copr-cli-secret
       description: copr cli secret
       default: copr-cli-config
-    - name: package
-      description: base package to build in
-    # FIXME(chmouel): this is needed?
     - name: github-token-secret
       description: name of the secret holding the github-token
       default: github-token
     resources:
     - name: source
       type: git
-      targetPath: src/${inputs.params.package}
+      targetPath: src
   steps:
   - name: build-rpm
     image: quay.io/chmouel/rpmbuild
-    workingdir: /workspace/src/${inputs.params.package}
+    workingdir: /workspace/src
     command: ["tekton/rpmbuild/build.sh"]
     volumeMounts:
       - name: copr-cli-config
