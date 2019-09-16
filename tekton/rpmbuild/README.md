@@ -9,12 +9,22 @@ api to get the latest one.
 It uses the docker image from `quay.io/chmouel/rpmbuild`, the Dockerfile is in
 this directory.
 
-It uploads it to `https://copr.fedorainfracloud.org/coprs/chmouel/tektoncd-cli/`
-to actually use it on your Linux machine you simply have to do (on a recentish distro) :
+It uploads it to
+`https://copr.fedorainfracloud.org/coprs/chmouel/tektoncd-cli/`. The distros
+supported are :
+
+* Epel for CentOS 7
+* Fedora 30/31
+* RHEL8
+
+You simply have to run this to get it installed
 
 ```
 dnf copr enable chmouel/tektoncd-cli
+dnf install tektoncd-cli
 ```
+
+
 
 USAGE
 =====
