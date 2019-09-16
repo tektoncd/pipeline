@@ -410,7 +410,7 @@ provider statuses, see
 The Pull Request resource will look for GitHub OAuth authentication tokens in
 spec secrets with a field name called `githubToken`.
 
-URLs should be of the form: https://github.com/tektoncd/pipelines/pulls/1
+URLs should be of the form: https://github.com/tektoncd/pipeline/pull/1
 
 ### Image Resource
 
