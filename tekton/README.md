@@ -55,6 +55,15 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    kind: PipelineResource
    metadata:
      name: tekton-pipelines-vX-Y-
+   spec:
+     type: git
+     params:
+     - name: url
+       value: https://github.com/tektoncd/pipeline
+     - name: revision
+       value: vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you'd like to build from
+   ```
+ 
 3. To run against your own infrastructure (if you are running
    [in the production cluster](https://github.com/tektoncd/plumbing#prow) the default account should
    already have these creds, this is just a bonus - plus `release-right-meow` might already exist in the
@@ -67,14 +76,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    - For
      [your own GCP service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts)
      if running against your own infrastructureZ
-   spec:
-     type: git
-     params:
-     - name: url
-       value: https://github.com/tektoncd/pipeline
-     - name: revision
-       value: vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you'd like to build from
-   ```
+
 
 2. [Connect to the production cluster](https://github.com/tektoncd/plumbing#prow):
 
@@ -89,7 +91,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    # Create the resoruces - i.e. set the revision that you wan to build from
    kubectl apply -f tekton/resources.yaml
 
-   # Change thie environment variable to the verison you would like to use.
+   # Change the environment variable to the version you would like to use.
    # Be careful: due to #983 it is possible to overwrite previous releases.
    export VERSION_TAG=v0.X.Y
 
