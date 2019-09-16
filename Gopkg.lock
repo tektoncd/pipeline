@@ -194,12 +194,12 @@
   revision = "73d445a93680fa1a78ae23a5839bad48f32ba1ee"
 
 [[projects]]
-  digest = "1:9059915429f7f3a5f18cfa6b7cab9a28721d7ac6db4079a62044aa229eb7f2a8"
+  digest = "1:fcd8ddc48ce648d5fbb36029fe3dd98f29c03377eea5c4a3c436701b0e3f2774"
   name = "github.com/gobuffalo/envy"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "fa0dfdc10b5366ce365b7d9d1755a03e4e797bc5"
-  version = "v1.6.15"
+  revision = "909ea676d4c90832fefbf55a5a4fb04d8bef8931"
+  version = "v1.7.1"
 
 [[projects]]
   digest = "1:a6afc27b2a73a5506832f3c5a1c19a30772cb69e7bd1ced4639eb36a55db224f"
