@@ -34,7 +34,7 @@ import (
 
 var (
 	errNoPipeline      = errors.New("missing pipeline name")
-	errInvalidPipeline = "invalid pipeline name %s in namespace %s"
+	errInvalidPipeline = "pipeline name %s does not exist in namespace %s"
 )
 
 const (
@@ -368,7 +368,7 @@ func (opt *startOptions) startPipeline(pName string) error {
 	}
 
 	fmt.Fprintf(opt.stream.Out, "Pipelinerun started: %s\n\n"+
-		"In order to track the pipelinerun progress run:\ntkn pipelinerun logs -n %s %s -f\n", prCreated.Name, prCreated.Namespace, prCreated.Name)
+		"In order to track the pipelinerun progress run:\ntkn pipelinerun logs %s -f -n %s\n", prCreated.Name, prCreated.Name, prCreated.Namespace)
 	return nil
 }
 
