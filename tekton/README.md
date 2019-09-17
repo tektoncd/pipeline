@@ -117,7 +117,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--resource=builtWebhookImage=webhook-image \
 		--resource=builtDigestExporterImage=digest-exporter-image \
 		--resource=builtPullRequestInitImage=pull-request-init-image \
-    --resource=builtGcsFetcherImage=gcs-fetcher-image \
+                --resource=builtGcsFetcherImage=gcs-fetcher-image \
 		pipeline-release
    ```
 
