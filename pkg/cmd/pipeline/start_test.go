@@ -119,7 +119,7 @@ func Test_start_pipeline_not_found(t *testing.T) {
 
 	pipeline := Command(p)
 	got, _ := test.ExecuteCommand(pipeline, "start", "test-pipeline-2", "-n", "ns")
-	expected := "Error: " + errInvalidPipeline.Error() + "\n"
+	expected := "Error: " + fmt.Sprintf(errInvalidPipeline, "test-pipeline-2", "ns") + "\n"
 	test.AssertOutput(t, expected, got)
 }
 
