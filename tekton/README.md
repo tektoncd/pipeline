@@ -26,8 +26,7 @@ To start from scratch and use these Pipelines and Tasks:
 
 Official releases are performed from [the `prow` cluster](https://github.com/tektoncd/plumbing#prow)
 [in the `tekton-releases` GCP project](https://github.com/tektoncd/plumbing/blob/master/gcp.md).
-This cluster
-[already has the correct version of Tekton installed](#install-tekton).
+This cluster [already has the correct version of Tekton installed](#install-tekton).
 
 To make a new release:
 
@@ -37,8 +36,8 @@ To make a new release:
 1. Create the new tag and release in GitHub
    ([see one of way of doing that here](https://github.com/tektoncd/pipeline/issues/530#issuecomment-477409459)).
    _TODO(#530): Automate as much of this as possible with Tekton._
-1. Add an entry to [the README](../README.md) at `HEAD` for docs and examples for the new release
-   ([README.md#read-the-docs](README.md#read-the-docs)).
+1. Add an entry to [the README](../README.md) at `HEAD` for docs and examples for
+   the new release ([README.md#read-the-docs](../README.md#read-the-docs)).
 1. Update the new release in GitHub with the same links to the docs and examples, see
    [v0.1.0](https://github.com/tektoncd/pipeline/releases/tag/v0.1.0) for example.
 
@@ -54,20 +53,21 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    apiVersion: tekton.dev/v1alpha1
    kind: PipelineResource
    metadata:
-     name: tekton-pipelines-vX-Y-
+     name: tekton-pipelines-vX-Y-Z
    spec:
      type: git
      params:
      - name: url
        value: https://github.com/tektoncd/pipeline
      - name: revision
-       value: vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you'd like to build from
+       value: revision-for-vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you'd like to build from (not a tag, since that's not created yet)
    ```
- 
+
 1. To run against your own infrastructure (if you are running
-   [in the production cluster](https://github.com/tektoncd/plumbing#prow) the default account should
-   already have these creds, this is just a bonus - plus `release-right-meow` might already exist in the
-   cluster!), also setup the required credentials for the `release-right-meow` service account, either:
+   [in the production cluster](https://github.com/tektoncd/plumbing#prow) the
+   default account should already have these creds, this is just a bonus - plus
+   `release-right-meow` might already exist in the cluster!), also setup the
+   required credentials for the `release-right-meow` service account, either:
 
    - For
      [the GCP service account `release-right-meow@tekton-releases.iam.gserviceaccount.com`](#production-service-account)
@@ -75,7 +75,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
      [our `tekton-releases` GCP project](https://github.com/tektoncd/plumbing#prow)
    - For
      [your own GCP service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts)
-     if running against your own infrastructureZ
+     if running against your own infrastructure
 
 
 1. [Connect to the production cluster](https://github.com/tektoncd/plumbing#prow):
@@ -86,7 +86,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 
 1. Run the `release-pipeline` (assuming you are using the production cluster and
    [all the Tasks and Pipelines already exist](#setup)):
-	
+
    ```shell
    # Create the resoruces - i.e. set the revision that you wan to build from
    kubectl apply -f tekton/resources.yaml
@@ -94,9 +94,14 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
    # Change the environment variable to the version you would like to use.
    # Be careful: due to #983 it is possible to overwrite previous releases.
    export VERSION_TAG=v0.X.Y
+   export IMAGE_REGISTRY=gcr.io/tekton-releases
+
+   # Double-check the git revision that is going to be used for the release:
+   kubectl get pipelineresource/tekton-pipelines-git -o=jsonpath="{'Target Revision: '}{.spec.params[?(@.name == 'revision')].value}{'\n'}"
 
    tkn pipeline start \
 		--param=versionTag=${VERSION_TAG} \
+    --param=imageRegistry=${IMAGE_REGISTRY} \
 		--serviceaccount=release-right-meow \
 		--resource=source-repo=tekton-pipelines-git \
 		--resource=bucket=tekton-bucket \
@@ -112,6 +117,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--resource=builtWebhookImage=webhook-image \
 		--resource=builtDigestExporterImage=digest-exporter-image \
 		--resource=builtPullRequestInitImage=pull-request-init-image \
+    --resource=builtGcsFetcherImage=gcs-fetcher-image \
 		pipeline-release
    ```
 
@@ -219,7 +225,7 @@ ACCOUNT=release-right-meow
 GCP_ACCOUNT="$ACCOUNT@tekton-releases.iam.gserviceaccount.com"
 
 # 1. Create a private key for the service account
-gcloud iam service-accounts keys create --iam-account $GCP_ACCOUNT $KEY_FILE
+gcloud iam service-accounts keys create $KEY_FILE --iam-account $GCP_ACCOUNT
 
 # 2. Create kubernetes secret, which we will use via a service account and directly mounting
 kubectl create secret generic $GENERIC_SECRET --from-file=./$KEY_FILE
