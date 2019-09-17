@@ -14,7 +14,7 @@ that we use.
 The Pipelines and Tasks in this folder are used for:
 
 1. [Manually creating official releases from the official cluster](#create-an-official-release)
-2. [Automated nightly releases](#nightly-releases)
+1. [Automated nightly releases](#nightly-releases)
 
 To start from scratch and use these Pipelines and Tasks:
 
@@ -32,14 +32,14 @@ This cluster
 To make a new release:
 
 1. (Optionally) [Apply the latest versions of the Tasks + Pipelines](#setup)
-2. (If you haven't already) [Install `tkn`](https://github.com/tektoncd/cli#installing-tkn)
-2. [Run the Pipeline](#run-the-pipeline)
-3. Create the new tag and release in GitHub
+1. (If you haven't already) [Install `tkn`](https://github.com/tektoncd/cli#installing-tkn)
+1. [Run the Pipeline](#run-the-pipeline)
+1. Create the new tag and release in GitHub
    ([see one of way of doing that here](https://github.com/tektoncd/pipeline/issues/530#issuecomment-477409459)).
    _TODO(#530): Automate as much of this as possible with Tekton._
-4. Add an entry to [the README](../README.md) at `HEAD` for docs and examples for the new release
+1. Add an entry to [the README](../README.md) at `HEAD` for docs and examples for the new release
    ([README.md#read-the-docs](README.md#read-the-docs)).
-5. Update the new release in GitHub with the same links to the docs and examples, see
+1. Update the new release in GitHub with the same links to the docs and examples, see
    [v0.1.0](https://github.com/tektoncd/pipeline/releases/tag/v0.1.0) for example.
 
 ### Run the Pipeline
@@ -64,7 +64,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
        value: vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you'd like to build from
    ```
  
-3. To run against your own infrastructure (if you are running
+1. To run against your own infrastructure (if you are running
    [in the production cluster](https://github.com/tektoncd/plumbing#prow) the default account should
    already have these creds, this is just a bonus - plus `release-right-meow` might already exist in the
    cluster!), also setup the required credentials for the `release-right-meow` service account, either:
@@ -78,13 +78,13 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
      if running against your own infrastructureZ
 
 
-2. [Connect to the production cluster](https://github.com/tektoncd/plumbing#prow):
+1. [Connect to the production cluster](https://github.com/tektoncd/plumbing#prow):
 
-  ```bash
-  gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
-  ```
+    ```bash
+    gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
+    ```
 
-6. Run the `release-pipeline` (assuming you are using the production cluster and
+1. Run the `release-pipeline` (assuming you are using the production cluster and
    [all the Tasks and Pipelines already exist](#setup)):
 	
    ```shell
