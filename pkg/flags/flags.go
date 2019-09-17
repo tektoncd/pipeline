@@ -24,6 +24,7 @@ import (
 const (
 	kubeConfig = "kubeconfig"
 	namespace  = "namespace"
+	nocolour   = "nocolour"
 )
 
 // AddTektonOptions amends command to add flags required to initialise a cli.Param
@@ -35,6 +36,10 @@ func AddTektonOptions(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringP(
 		namespace, "n", "",
 		"namespace to use (default: from $KUBECONFIG)")
+
+	cmd.PersistentFlags().BoolP(
+		nocolour, "C", false,
+		"disable colouring (default: false)")
 
 	// Add custom completion for that command as specified in
 	// bashCompletionFlags map
@@ -68,6 +73,12 @@ func InitParams(p cli.Params, cmd *cobra.Command) error {
 	if ns != "" {
 		p.SetNamespace(ns)
 	}
+
+	nocolourFlag, err := cmd.Flags().GetBool(nocolour)
+	if err != nil {
+		return err
+	}
+	p.SetNoColour(nocolourFlag)
 
 	return nil
 }

@@ -17,6 +17,7 @@ package cli
 import (
 	"k8s.io/client-go/rest"
 
+	"github.com/fatih/color"
 	"github.com/jonboulle/clockwork"
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -102,6 +103,10 @@ func (p *TektonParams) config() (*rest.Config, error) {
 		return nil, errors.Wrap(err, "Parsing kubeconfig failed")
 	}
 	return config, nil
+}
+
+func (p *TektonParams) SetNoColour(b bool) {
+	color.NoColor = b
 }
 
 func (p *TektonParams) SetNamespace(ns string) {

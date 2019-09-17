@@ -93,12 +93,7 @@ func NewColor() *Color {
 	}
 }
 
-//PrintBlue prints the formatted content to given destination in blue color
-func (c *Color) PrintBlue(w io.Writer, format string, args ...interface{}) {
-	c.blue.Fprintf(w, format, args...)
-}
-
-//PrintBlue prints the formatted content to given destination in red color
+//PrintRed prints the formatted content to given destination in red color
 func (c *Color) PrintRed(w io.Writer, format string, args ...interface{}) {
 	c.red.Fprintf(w, format, args...)
 }

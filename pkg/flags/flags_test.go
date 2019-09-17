@@ -17,7 +17,10 @@ package flags
 import (
 	"testing"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
+	"github.com/tektoncd/cli/pkg/cli"
 )
 
 func TestFlags_add_shell_completion(t *testing.T) {
@@ -36,5 +39,15 @@ func TestFlags_add_shell_completion(t *testing.T) {
 	if pflag.Annotations[cobra.BashCompCustom][0] != shellfunc {
 		t.Errorf("annotation should have been added to the flag")
 	}
+}
+
+func TestFlags_colouring(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetArgs([]string{"--nocolour"})
+	_ = InitParams(&cli.TektonParams{}, cmd)
+	assert.False(t, color.NoColor)
+
+	_ = InitParams(&cli.TektonParams{}, &cobra.Command{})
+	assert.True(t, color.NoColor)
 
 }

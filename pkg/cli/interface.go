@@ -45,5 +45,8 @@ type Params interface {
 	SetNamespace(string)
 	Namespace() string
 
+	// SetNoColour set colouring or not
+	SetNoColour(bool)
+
 	Time() clockwork.Clock
 }
