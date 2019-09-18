@@ -37,17 +37,18 @@ data:
 
     # metrics.backend-destination field specifies the system metrics destination.
     # It supports either prometheus (the default) or stackdriver.
-    # Note: Using stackdriver will incur additional charges
+    # Note: Using Stackdriver will incur additional charges.
     metrics.backend-destination: prometheus
 
-    # metrics.stackdriver-project-id field specifies the stackdriver project ID. This
+    # metrics.stackdriver-project-id field specifies the Stackdriver project ID. This
     # field is optional. When running on GCE, application default credentials will be
-    # used if this field is not provided.
+    # used and metrics will be sent to the cluster's project if this field is
+    # not provided.
     metrics.stackdriver-project-id: "<your stackdriver project id>"
 
-    # metrics.allow-stackdriver-custom-metrics indicates whether it is allowed to send metrics to
-    # Stackdriver using "global" resource type and custom metric type if the
-    # metrics are not supported by "knative_revision" resource type. Setting this
-    # flag to "true" could cause extra Stackdriver charge.
-    # If metrics.backend-destination is not Stackdriver, this is ignored.
+    # metrics.allow-stackdriver-custom-metrics indicates whether it is allowed
+    # to send metrics to Stackdriver using "global" resource type and custom
+    # metric type. Setting this flag to "true" could cause extra Stackdriver
+    # charge.  If metrics.backend-destination is not Stackdriver, this is
+    # ignored.
     metrics.allow-stackdriver-custom-metrics: "false"

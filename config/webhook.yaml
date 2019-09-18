@@ -17,6 +17,9 @@ kind: Deployment
 metadata:
   name: tekton-pipelines-webhook
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-pipelines
+    app.kubernetes.io/component: webhook-controller
 spec:
   replicas: 1
   template:
@@ -25,6 +28,8 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
         app: tekton-pipelines-webhook
+        app.kubernetes.io/name: tekton-pipelines
+        app.kubernetes.io/component: webhook-controller
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:

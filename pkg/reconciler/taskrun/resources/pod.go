@@ -47,6 +47,10 @@ import (
 const (
 	workspaceDir = "/workspace"
 	homeDir      = "/builder/home"
+
+	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
+	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
+	ManagedByLabelValue = "tekton-pipelines"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -387,10 +391,18 @@ func IsContainerStep(name string) bool {
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
 func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	labels := make(map[string]string, len(s.ObjectMeta.Labels)+1)
+	// NB: Set this *before* passing through TaskRun labels. If the TaskRun
+	// has a managed-by label, it should override this default.
+
+	// Copy through the TaskRun's labels to the underlying Pod's.
+	labels[ManagedByLabelKey] = ManagedByLabelValue
 	for k, v := range s.ObjectMeta.Labels {
 		labels[k] = v
 	}
-	labels[pipeline.GroupName+pipeline.TaskRunLabelKey] = s.Name
+
+	// NB: Set this *after* passing through TaskRun Labels. If the TaskRun
+	// specifies this label, it should be overridden by this value.
+	labels[taskRunLabelKey] = s.Name
 	return labels
 }
 

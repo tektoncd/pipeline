@@ -431,6 +431,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -462,6 +463,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -494,6 +496,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskNameLabelKey, "test-task-with-substitution"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-substitution"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -584,6 +587,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskNameLabelKey, "test-output-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-input-output"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-input-output",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -716,6 +720,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-123456", "foo",
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -763,6 +768,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskNameLabelKey, "test-cluster-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -793,6 +799,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-123456", "foo",
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -841,6 +848,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodLabel("TaskRunLabel", "TaskRunValue"),
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-labels"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-labels",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -873,6 +881,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation("TaskRunAnnotation", "TaskRunValue"),
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-annotations"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-annotations",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -904,6 +913,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskNameLabelKey, "test-task-env"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-task-env"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-task-env",
 				tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1")),
 			tb.PodSpec(
@@ -936,6 +946,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-resource-requests-pod-123456", "foo",
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-resource-requests"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-requests",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -1004,6 +1015,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodAnnotation("tekton.dev/ready", ""),
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-pod"),
+			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(

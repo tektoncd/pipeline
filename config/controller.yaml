@@ -16,6 +16,9 @@ kind: Deployment
 metadata:
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-pipelines
+    app.kubernetes.io/component: controller
 spec:
   replicas: 1
   template:
@@ -24,6 +27,8 @@ spec:
         cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
       labels:
         app: tekton-pipelines-controller
+        app.kubernetes.io/name: tekton-pipelines
+        app.kubernetes.io/component: controller
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
