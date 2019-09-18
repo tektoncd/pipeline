@@ -119,12 +119,12 @@ func TestMakePod(t *testing.T) {
 	defer func() { randReader = rand.Reader }()
 
 	for _, c := range []struct {
-		desc         string
-		trs          v1alpha1.TaskRunSpec
-		ts           v1alpha1.TaskSpec
-		bAnnotations map[string]string
-		want         *corev1.PodSpec
-		wantErr      error
+		desc        string
+		trs         v1alpha1.TaskRunSpec
+		ts          v1alpha1.TaskSpec
+		annotations map[string]string
+		want        *corev1.PodSpec
+		wantErr     error
 	}{{
 		desc: "simple",
 		ts: v1alpha1.TaskSpec{
@@ -133,7 +133,7 @@ func TestMakePod(t *testing.T) {
 				Image: "image",
 			}}},
 		},
-		bAnnotations: map[string]string{
+		annotations: map[string]string{
 			"simple-annotation-key": "simple-annotation-val",
 		},
 		want: &corev1.PodSpec{
@@ -215,7 +215,7 @@ func TestMakePod(t *testing.T) {
 				Image: "image",
 			}}},
 		},
-		bAnnotations: map[string]string{
+		annotations: map[string]string{
 			"simple-annotation-key": "simple-annotation-val",
 		},
 		want: &corev1.PodSpec{
@@ -253,7 +253,7 @@ func TestMakePod(t *testing.T) {
 				Image: "image",
 			}}},
 		},
-		bAnnotations: map[string]string{
+		annotations: map[string]string{
 			"simple-annotation-key": "simple-annotation-val",
 		},
 		want: &corev1.PodSpec{
@@ -403,7 +403,7 @@ func TestMakePod(t *testing.T) {
 			tr := &v1alpha1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "taskrun-name",
-					Annotations: c.bAnnotations,
+					Annotations: c.annotations,
 				},
 				Spec: c.trs,
 			}
@@ -423,8 +423,8 @@ func TestMakePod(t *testing.T) {
 			}
 
 			wantAnnotations := map[string]string{ReadyAnnotation: ""}
-			if c.bAnnotations != nil {
-				for key, val := range c.bAnnotations {
+			if c.annotations != nil {
+				for key, val := range c.annotations {
 					wantAnnotations[key] = val
 				}
 			}
@@ -433,7 +433,51 @@ func TestMakePod(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestMakeLabels(t *testing.T) {
+	taskRunName := "task-run-name"
+	for _, c := range []struct {
+		desc     string
+		trLabels map[string]string
+		want     map[string]string
+	}{{
+		desc: "taskrun labels pass through",
+		trLabels: map[string]string{
+			"foo":   "bar",
+			"hello": "world",
+		},
+		want: map[string]string{
+			taskRunLabelKey:   taskRunName,
+			ManagedByLabelKey: ManagedByLabelValue,
+			"foo":             "bar",
+			"hello":           "world",
+		},
+	}, {
+		desc: "taskrun managed-by overrides; taskrun label key doesn't",
+		trLabels: map[string]string{
+			"foo":             "bar",
+			taskRunLabelKey:   "override-me",
+			ManagedByLabelKey: "managed-by-something-else",
+		},
+		want: map[string]string{
+			taskRunLabelKey:   taskRunName,
+			ManagedByLabelKey: "managed-by-something-else",
+			"foo":             "bar",
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			got := makeLabels(&v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   taskRunName,
+					Labels: c.trLabels,
+				},
+			})
+			if d := cmp.Diff(got, c.want); d != "" {
+				t.Errorf("Diff labels:\n%s", d)
+			}
+		})
+	}
 }
 
 func TestAddReadyAnnotation(t *testing.T) {
@@ -528,7 +572,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 			}},
 		},
 	}
-	bAnnotations := map[string]string{
+	annotations := map[string]string{
 		"simple-annotation-key": "simple-annotation-val",
 	}
 	want := &corev1.PodSpec{
@@ -590,7 +634,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "taskrun-name",
-			Annotations: bAnnotations,
+			Annotations: annotations,
 		},
 		Spec: trs,
 	}
@@ -610,7 +654,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 	}
 
 	wantAnnotations := map[string]string{"simple-annotation-key": "simple-annotation-val", ReadyAnnotation: ""}
-	for key, val := range bAnnotations {
+	for key, val := range annotations {
 		wantAnnotations[key] = val
 	}
 	if d := cmp.Diff(got.Annotations, wantAnnotations); d != "" {
