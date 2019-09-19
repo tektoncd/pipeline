@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tekton-pipelines-controller
@@ -21,6 +21,9 @@ metadata:
     app.kubernetes.io/component: controller
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-pipelines-controller
   template:
     metadata:
       annotations:
