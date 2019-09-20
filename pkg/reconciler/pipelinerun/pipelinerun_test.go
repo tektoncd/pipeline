@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	taskrunresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -39,7 +40,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/configmap"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var (
@@ -65,7 +65,7 @@ func getRunName(pr *v1alpha1.PipelineRun) string {
 // getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getPipelineRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	c, _ := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	ctx, cancel := context.WithCancel(ctx)
