@@ -73,7 +73,6 @@ func createCommand(p cli.Params) *cobra.Command {
 		},
 	}
 
-	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
 	return c
 }
 
@@ -91,29 +90,16 @@ func (res *resource) create() error {
 		return err
 	}
 
-	switch res.pipelineResource.Spec.Type {
-	case v1alpha1.PipelineResourceTypeGit:
-		if err := res.askGitParams(); err != nil {
-			return err
-		}
-	case v1alpha1.PipelineResourceTypeStorage:
-		if err := res.askStorageParams(); err != nil {
-			return err
-		}
-	case v1alpha1.PipelineResourceTypeImage:
-		if err := res.askImageParams(); err != nil {
-			return err
-		}
-	case v1alpha1.PipelineResourceTypeCluster:
-		if err := res.askClusterParams(); err != nil {
-			return err
-		}
-	case v1alpha1.PipelineResourceTypePullRequest:
-		if err := res.askPullRequestParams(); err != nil {
-			return err
-		}
-	case v1alpha1.PipelineResourceTypeCloudEvent:
-		if err := res.askCloudEventParams(); err != nil {
+	resourceTypeParams := map[v1alpha1.PipelineResourceType]func() error{
+		v1alpha1.PipelineResourceTypeGit:         res.askGitParams,
+		v1alpha1.PipelineResourceTypeStorage:     res.askStorageParams,
+		v1alpha1.PipelineResourceTypeImage:       res.askImageParams,
+		v1alpha1.PipelineResourceTypeCluster:     res.askClusterParams,
+		v1alpha1.PipelineResourceTypePullRequest: res.askPullRequestParams,
+		v1alpha1.PipelineResourceTypeCloudEvent:  res.askCloudEventParams,
+	}
+	if res.pipelineResource.Spec.Type != "" {
+		if err := resourceTypeParams[res.pipelineResource.Spec.Type](); err != nil {
 			return err
 		}
 	}
@@ -128,7 +114,7 @@ func (res *resource) create() error {
 		return err
 	}
 
-	fmt.Fprintf(res.stream.Out, "New %s resource \"%s\" created\n", newRes.Spec.Type, newRes.Name)
+	fmt.Fprintf(res.stream.Out, "New %s resource \"%s\" has been created\n", newRes.Spec.Type, newRes.Name)
 	return nil
 }
 
@@ -137,7 +123,7 @@ func (res *resource) askMeta() error {
 	var qs = []*survey.Question{{
 		Name: "resource name",
 		Prompt: &survey.Input{
-			Message: "Name of the pipeline resource :",
+			Message: "Enter a name for a pipeline resource :",
 		},
 		Validate: survey.Required,
 	}}
@@ -160,7 +146,7 @@ func (res *resource) askType() error {
 	var qs = []*survey.Question{{
 		Name: "pipelineResource",
 		Prompt: &survey.Select{
-			Message: "Select resource type to create :",
+			Message: "Select a resource type to create :",
 			Options: allResourceType(),
 		},
 	}}
@@ -198,7 +184,7 @@ func (res *resource) askGitParams() error {
 func (res *resource) askStorageParams() error {
 	options := []string{"gcs", "build-gcs"}
 
-	storageType, err := askToSelect("Select storage type", options, res.askOpts)
+	storageType, err := askToSelect("Select a storage type", options, res.askOpts)
 	if err != nil {
 		return err
 	}
@@ -207,7 +193,7 @@ func (res *resource) askStorageParams() error {
 	res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, param)
 
 	switch storageType {
-	case options[0]: // for storage type as gcs
+	case "gcs":
 		locationParam, err := askParam("location", res.askOpts)
 		if err != nil {
 			return err
@@ -224,7 +210,7 @@ func (res *resource) askStorageParams() error {
 			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, dirParam)
 		}
 
-	case options[1]: // for storage type as build-gcs
+	case "build-gcs":
 		locationParam, err := askParam("location", res.askOpts)
 		if err != nil {
 			return err
@@ -233,37 +219,14 @@ func (res *resource) askStorageParams() error {
 			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, locationParam)
 		}
 
-		artifactTypeParam, err := askParam("artifactType", res.askOpts)
+		artifactOpts := []string{"ZipArchive", "TarGzArchive", "Manifest"}
+		artifactType, err := askToSelect("Select an artifact type", artifactOpts, res.askOpts)
 		if err != nil {
 			return err
 		}
-		if artifactTypeParam.Name != "" {
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, artifactTypeParam)
-		}
-
-		zipArchiveParam, err := askParam("ZipArchive", res.askOpts)
-		if err != nil {
-			return err
-		}
-		if zipArchiveParam.Name != "" {
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, zipArchiveParam)
-		}
-
-		tarGzArchiveParam, err := askParam("TarGzArchive", res.askOpts)
-		if err != nil {
-			return err
-		}
-		if tarGzArchiveParam.Name != "" {
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, tarGzArchiveParam)
-		}
-
-		manifestParam, err := askParam("Manifest", res.askOpts)
-		if err != nil {
-			return err
-		}
-		if manifestParam.Name != "" {
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, manifestParam)
-		}
+		artifactParam := v1alpha1.ResourceParam{}
+		artifactParam.Name, artifactParam.Value = "artifactType", artifactType
+		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, artifactParam)
 	}
 
 	// ask secret
@@ -488,7 +451,7 @@ func askParam(paramName string, askOpts survey.AskOpt) (v1alpha1.ResourceParam, 
 	var qs = []*survey.Question{{
 		Name: "value",
 		Prompt: &survey.Input{
-			Message: fmt.Sprintf("Enter value for %s : ", paramName),
+			Message: fmt.Sprintf("Enter a value for %s : ", paramName),
 		},
 	}}
 

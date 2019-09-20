@@ -50,7 +50,7 @@ func TestPipelineResource_resource_noName(t *testing.T) {
 			name: "no input for name",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -62,7 +62,7 @@ func TestPipelineResource_resource_noName(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -111,7 +111,7 @@ func TestPipelineResource_resource_already_exist(t *testing.T) {
 			name: "pre-existing-resource",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -153,7 +153,7 @@ func TestPipelineResource_allResourceType(t *testing.T) {
 			name: "check all type of resource",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -161,7 +161,7 @@ func TestPipelineResource_allResourceType(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -217,7 +217,7 @@ func TestPipelineResource_allResourceType(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for targetURI :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for targetURI :"); err != nil {
 					return err
 				}
 
@@ -253,7 +253,7 @@ func TestPipelineResource_create_cloudEventResource(t *testing.T) {
 			name: "create-cloudEventResource",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -261,7 +261,7 @@ func TestPipelineResource_create_cloudEventResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -273,7 +273,7 @@ func TestPipelineResource_create_cloudEventResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for targetURI :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for targetURI :"); err != nil {
 					return err
 				}
 
@@ -315,7 +315,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 			name: "clusterResource-securePasswordText",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -323,7 +323,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -343,7 +343,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for name :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for name :"); err != nil {
 					return err
 				}
 
@@ -351,7 +351,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for url :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
 					return err
 				}
 
@@ -359,7 +359,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for username :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for username :"); err != nil {
 					return err
 				}
 
@@ -367,7 +367,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for insecure :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for insecure :"); err != nil {
 					return err
 				}
 
@@ -383,7 +383,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for password :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for password :"); err != nil {
 					return err
 				}
 
@@ -403,7 +403,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for cadata :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for cadata :"); err != nil {
 					return err
 				}
 
@@ -445,7 +445,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 			name: "clusterResource-secureTokenText",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -453,7 +453,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -473,7 +473,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for name :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for name :"); err != nil {
 					return err
 				}
 
@@ -481,7 +481,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for url :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
 					return err
 				}
 
@@ -489,7 +489,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for username :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for username :"); err != nil {
 					return err
 				}
 
@@ -497,7 +497,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for insecure :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for insecure :"); err != nil {
 					return err
 				}
 
@@ -533,7 +533,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for token :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for token :"); err != nil {
 					return err
 				}
 
@@ -541,7 +541,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for cadata :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for cadata :"); err != nil {
 					return err
 				}
 
@@ -583,7 +583,7 @@ func TestPipelineResource_create_gitResource(t *testing.T) {
 			name: "gitResource",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -591,7 +591,7 @@ func TestPipelineResource_create_gitResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -619,7 +619,7 @@ func TestPipelineResource_create_gitResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for url :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
 					return err
 				}
 
@@ -630,7 +630,7 @@ func TestPipelineResource_create_gitResource(t *testing.T) {
 				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
-				if _, err := c.ExpectString("Enter value for revision :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for revision :"); err != nil {
 					return err
 				}
 
@@ -672,7 +672,7 @@ func TestPipelineResource_create_imageResource(t *testing.T) {
 			name: "imageResource",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -680,7 +680,7 @@ func TestPipelineResource_create_imageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -716,7 +716,7 @@ func TestPipelineResource_create_imageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for url :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
 					return err
 				}
 
@@ -724,7 +724,7 @@ func TestPipelineResource_create_imageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for digest :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for digest :"); err != nil {
 					return err
 				}
 
@@ -766,7 +766,7 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 			name: "clusterResource-securePasswordSecrets",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -774,7 +774,7 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -794,7 +794,7 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for name :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for name :"); err != nil {
 					return err
 				}
 
@@ -802,7 +802,7 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for url :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
 					return err
 				}
 
@@ -810,7 +810,7 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for username :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for username :"); err != nil {
 					return err
 				}
 
@@ -818,7 +818,7 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for insecure :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for insecure :"); err != nil {
 					return err
 				}
 
@@ -834,7 +834,7 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for password :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for password :"); err != nil {
 					return err
 				}
 
@@ -912,7 +912,7 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 			name: "clusterResource-secureTokenSecrets",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -920,7 +920,7 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -940,7 +940,7 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for name :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for name :"); err != nil {
 					return err
 				}
 
@@ -948,7 +948,7 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for url :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
 					return err
 				}
 
@@ -956,7 +956,7 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for username :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for username :"); err != nil {
 					return err
 				}
 
@@ -964,7 +964,7 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for insecure :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for insecure :"); err != nil {
 					return err
 				}
 
@@ -1074,7 +1074,7 @@ func TestPipelineResource_create_pullRequestResource(t *testing.T) {
 			name: "pullRequestResource",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -1082,7 +1082,7 @@ func TestPipelineResource_create_pullRequestResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -1126,7 +1126,7 @@ func TestPipelineResource_create_pullRequestResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for url :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
 					return err
 				}
 
@@ -1195,7 +1195,7 @@ func TestPipelineResource_create_gcsStorageResource(t *testing.T) {
 			name: "gcsStorageResource",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -1203,7 +1203,7 @@ func TestPipelineResource_create_gcsStorageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -1263,7 +1263,7 @@ func TestPipelineResource_create_gcsStorageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for location :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for location :"); err != nil {
 					return err
 				}
 
@@ -1271,7 +1271,7 @@ func TestPipelineResource_create_gcsStorageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for dir :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for dir :"); err != nil {
 					return err
 				}
 
@@ -1329,7 +1329,7 @@ func TestPipelineResource_create_buildGCSstorageResource(t *testing.T) {
 			name: "buildGCSstorageResource",
 
 			procedure: func(c *expect.Console) error {
-				if _, err := c.ExpectString("Name of the pipeline resource :"); err != nil {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
 
@@ -1337,7 +1337,7 @@ func TestPipelineResource_create_buildGCSstorageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Select resource type to create :"); err != nil {
+				if _, err := c.ExpectString("Select a resource type to create :"); err != nil {
 					return err
 				}
 
@@ -1405,7 +1405,7 @@ func TestPipelineResource_create_buildGCSstorageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for location :"); err != nil {
+				if _, err := c.ExpectString("Enter a value for location :"); err != nil {
 					return err
 				}
 
@@ -1413,31 +1413,27 @@ func TestPipelineResource_create_buildGCSstorageResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for artifactType :"); err != nil {
+				if _, err := c.ExpectString("Select an artifact type"); err != nil {
 					return err
 				}
 
-				if _, err := c.SendLine("Archive"); err != nil {
+				if _, err := c.ExpectString("ZipArchive"); err != nil {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for ZipArchive :"); err != nil {
+				if _, err := c.Send(string(terminal.KeyArrowDown)); err != nil {
 					return err
 				}
 
-				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
+				if _, err := c.ExpectString("TarGzArchive"); err != nil {
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter value for TarGzArchive :"); err != nil {
+				if _, err := c.Send(string(terminal.KeyArrowDown)); err != nil {
 					return err
 				}
 
-				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
-					return err
-				}
-
-				if _, err := c.ExpectString("Enter value for Manifest :"); err != nil {
+				if _, err := c.ExpectString("Manifest"); err != nil {
 					return err
 				}
 
