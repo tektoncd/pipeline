@@ -1,3 +1,6 @@
+# MacOS file viewer garbage.
+.DS_Store
+
 # Compiled Object files
 *.slo
 *.lo
@@ -39,3 +42,7 @@
 
 # Python
 *.pyc
+
+# Release-generated source archives, just in case they get committed
+# accidentally.
+cmd/*/kodata/source.tar.gz
