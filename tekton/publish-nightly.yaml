@@ -123,6 +123,19 @@ spec:
       # Change to directory with our .ko.yaml
       cd /workspace/go/src/github.com/tektoncd/pipeline
 
+      # For each cmd/* directory, include a full gzipped tar of all source in
+      # vendor/. This is overkill. Some deps' licenses require the source to be
+      # included in the container image when they're used as a dependency.
+      # Rather than trying to determine which deps have this requirement (and
+      # probably get it wrong), we'll just targz up the whole vendor tree and
+      # include it. As of 9/20/2019, this amounts to about 11MB of additional
+      # data in each image.
+      TMPDIR=$(mktemp -d)
+      tar cvfz ${TMPDIR}/source.tar.gz vendor/
+      for d in cmd/*; do
+        ln -s ${TMPDIR}/source.tar.gz ${d}/kodata/
+      done
+
       # Publish images and create release.yaml
       ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/bucket/latest/release.yaml
     volumeMounts:
