@@ -12,6 +12,7 @@ This document defines `Pipelines` and their capabilities.
     - [RunAfter](#runAfter)
     - [Retries](#retries)
 - [Ordering](#ordering)
+- [Sharing resources](#sharing-resources)
 - [Examples](#examples)
 
 ## Syntax
@@ -407,6 +408,35 @@ build-app  build-frontend
    execute (it requires `PipelineResources` from both Pipeline Tasks).
 1. The entire `Pipeline` will be finished executing after `lint-repo` and
    `deploy-all` have completed.
+
+## Sharing resources
+
+Pipelines may need a way to share resources across tasks. The alternatives are a
+[Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+or a [GCS storage bucket](https://cloud.google.com/storage/)
+
+The PVC option can be configured using a ConfigMap with the name
+`config-artifact-pvc` and the following attributes:
+
+- size: the size of the volume (5Gi by default)
+- storageClassName: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
+
+The GCS storage bucket can be configured using a ConfigMap with the name
+`config-artifact-bucket` with the following attributes:
+
+- location: the address of the bucket (for example gs://mybucket)
+- bucket.service.account.secret.name: the name of the secret that will contain
+  the credentials for the service account with access to the bucket
+- bucket.service.account.secret.key: the key in the secret with the required
+  service account json.
+- The bucket is recommended to be configured with a retention policy after which
+  files will be deleted.
+
+Both options provide the same functionality to the pipeline. The choice is based
+on the infrastructure used, for example in some Kubernetes platforms, the
+creation of a persistent volume could be slower than uploading/downloading files
+to a bucket, or if the the cluster is running in multiple zones, the access to
+the persistent volume can fail.
 
 ## Examples
 
