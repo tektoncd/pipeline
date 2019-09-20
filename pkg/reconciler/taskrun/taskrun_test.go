@@ -32,6 +32,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/status"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test"
@@ -51,7 +52,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 const (
@@ -267,7 +267,7 @@ func getRunName(tr *v1alpha1.TaskRun) string {
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
 		SendSuccessfully: true,

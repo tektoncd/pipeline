@@ -23,13 +23,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
-	logtesting "knative.dev/pkg/logging/testing"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 )
 
 func TestStoreLoadWithContext(t *testing.T) {
-	store := NewStore(pipeline.Images{}, logtesting.TestLogger(t))
+	store := NewStore(pipeline.Images{}, ttesting.TestLogger(t))
 	bucketConfig := test.ConfigMapFromTestFile(t, "config-artifact-bucket")
 	store.OnConfigChanged(bucketConfig)
 
@@ -41,7 +41,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	}
 }
 func TestStoreImmutableConfig(t *testing.T) {
-	store := NewStore(pipeline.Images{}, logtesting.TestLogger(t))
+	store := NewStore(pipeline.Images{}, ttesting.TestLogger(t))
 	store.OnConfigChanged(test.ConfigMapFromTestFile(t, "config-artifact-bucket"))
 
 	config := store.Load()
