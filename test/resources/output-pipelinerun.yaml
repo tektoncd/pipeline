@@ -49,7 +49,7 @@ spec:
   - name: write-new-stuff
     image: ubuntu
     command: ['bash']
-    args: ['-c', 'echo some stuff > /workspace/damnworkspace/stuff']
+    args: ['-c', 'ln -s /workspace/damnworkspace /workspace/output/workspace && echo some stuff > /workspace/output/workspace/stuff']
 ---
 # Reads a file from a predefined path in the workspace git PipelineResource
 apiVersion: tekton.dev/v1alpha1
