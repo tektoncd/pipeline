@@ -46,7 +46,7 @@ Message
 {{ $msg }}
 {{- end }}
 
-Inputs
+Input Resources
 {{- $l := len .TaskRun.Spec.Inputs.Resources }}{{ if eq $l 0 }}
 No resources
 {{- else }}
@@ -56,7 +56,7 @@ NAME	RESOURCE REF
 {{- end }}
 {{- end }}
 
-Outputs
+Output Resources
 {{- $l := len .TaskRun.Spec.Outputs.Resources }}{{ if eq $l 0 }}
 No resources
 {{- else }}
@@ -84,7 +84,7 @@ Steps
 {{- $l := len .TaskRun.Status.Steps }}{{ if eq $l 0 }}
 No steps
 {{- else }}
-STEP NAME
+NAME
 {{- range $steps := .TaskRun.Status.Steps }}
 {{ $steps.Name }}
 {{- end }}

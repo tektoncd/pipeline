@@ -78,10 +78,10 @@ Status
 STARTED    DURATION    STATUS
 ---        ---         Succeeded
 
-Inputs
+Input Resources
 No resources
 
-Outputs
+Output Resources
 No resources
 
 Params
@@ -146,12 +146,12 @@ Status
 STARTED         DURATION    STATUS
 9 minutes ago   ---         Succeeded
 
-Inputs
+Input Resources
 NAME          RESOURCE REF
 git           git
 image-input   image
 
-Outputs
+Output Resources
 NAME            RESOURCE REF
 image-output    image
 image-output2   image
@@ -162,7 +162,7 @@ input    param
 input2   param2
 
 Steps
-STEP NAME
+NAME
 step1
 step2
 `
@@ -213,10 +213,10 @@ STARTED         DURATION    STATUS
 Message
 Testing tr failed
 
-Inputs
+Input Resources
 No resources
 
-Outputs
+Output Resources
 No resources
 
 Params
