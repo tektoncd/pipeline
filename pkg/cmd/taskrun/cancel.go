@@ -19,8 +19,15 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	succeeded     = "Succeeded"
+	failed        = "Failed"
+	taskCancelled = "Failed(TaskRunCancelled)"
 )
 
 func cancelCommand(p cli.Params) *cobra.Command {
@@ -61,6 +68,11 @@ func cancelTaskRun(p cli.Params, s *cli.Stream, trName string) error {
 	tr, err := cs.Tekton.TektonV1alpha1().TaskRuns(p.Namespace()).Get(trName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to find taskrun: %s", trName)
+	}
+
+	taskrunCond := formatted.Condition(tr.Status.Conditions)
+	if taskrunCond == succeeded || taskrunCond == failed || taskrunCond == taskCancelled {
+		return fmt.Errorf("failed to cancel taskrun %s: taskrun has already finished execution", trName)
 	}
 
 	tr.Spec.Status = v1alpha1.TaskRunSpecStatusCancelled
