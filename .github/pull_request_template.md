@@ -23,18 +23,7 @@ Double check this list of stuff that's easy to miss:
 
 ## Reviewer Notes
 
-If [API
-changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md)
-are included, [additive
-changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#additive-changes)
-must be approved by at least two
-[OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS) and [backwards
-incompatible
-changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#backwards-incompatible-changes)
-must be approved by [more than 50% of the
-OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS), and they must
-first be added [in a backwards compatible
-way](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#backwards-compatible-changes-first).
+If [API changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md) are included, [additive changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#additive-changes) must be approved by at least two [OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS) and [backwards incompatible changes](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#backwards-incompatible-changes) must be approved by [more than 50% of the OWNERS](https://github.com/tektoncd/pipeline/blob/master/OWNERS), and they must first be added [in a backwards compatible way](https://github.com/tektoncd/pipeline/blob/master/api_compatibility_policy.md#backwards-compatible-changes-first).
 
 # Release Notes
 
