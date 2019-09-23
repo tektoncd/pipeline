@@ -31,7 +31,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestPipelineDescribe_Empty(t *testing.T) {
+func TestPipelineDescribe_invalid_pipeline(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	p := &test.Params{Tekton: cs.Pipeline}
 
@@ -42,6 +42,43 @@ func TestPipelineDescribe_Empty(t *testing.T) {
 	}
 	expected := "pipelines.tekton.dev \"bar\" not found"
 	test.AssertOutput(t, expected, err.Error())
+}
+
+func TestPipelinesDescribe_empty(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline("pipeline", "ns",
+				// created  5 minutes back
+				cb.PipelineCreationTimestamp(clock.Now().Add(-5*time.Minute)),
+			),
+		},
+		PipelineRuns: []*v1alpha1.PipelineRun{},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline}
+	pipeline := Command(p)
+
+	got, err := test.ExecuteCommand(pipeline, "desc", "-n", "ns", "pipeline")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	expected := []string{
+		"Name:   pipeline",
+		"\nResources",
+		"No resources\n",
+		"Tasks",
+		"No tasks\n",
+		"Pipelineruns",
+		"No pipelineruns\n",
+	}
+
+	text := strings.Join(expected, "\n")
+	if d := cmp.Diff(text, got); d != "" {
+		t.Errorf("Unexpected output mismatch: \n%s\n", d)
+	}
 }
 
 func TestPipelinesDescribe_with_run(t *testing.T) {
@@ -94,7 +131,7 @@ func TestPipelinesDescribe_with_run(t *testing.T) {
 		"No resources\n",
 		"Tasks",
 		"No tasks\n",
-		"Runs",
+		"Pipelineruns",
 		"NAME             STARTED          DURATION     STATUS",
 		"pipeline-run-1   15 minutes ago   10 minutes   Succeeded\n",
 	}
@@ -160,7 +197,7 @@ func TestPipelinesDescribe_with_task_run(t *testing.T) {
 		"Tasks",
 		"NAME   TASKREF   RUNAFTER",
 		"task   taskref   [one two]\n",
-		"Runs",
+		"Pipelineruns",
 		"NAME             STARTED          DURATION     STATUS",
 		"pipeline-run-1   15 minutes ago   10 minutes   Succeeded\n",
 	}
@@ -229,7 +266,7 @@ func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 		"Tasks",
 		"NAME   TASKREF   RUNAFTER",
 		"task   taskref   [one two]\n",
-		"Runs",
+		"Pipelineruns",
 		"NAME             STARTED          DURATION     STATUS",
 		"pipeline-run-1   15 minutes ago   10 minutes   Succeeded\n",
 	}

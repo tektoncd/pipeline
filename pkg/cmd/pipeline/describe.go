@@ -50,9 +50,9 @@ NAME	TASKREF	RUNAFTER
 {{- end }}
 {{- end }}
 
-Runs
+Pipelineruns
 {{- $rl := len .PipelineRuns.Items }}{{ if eq $rl 0 }}
-No runs
+No pipelineruns
 {{- else }}
 NAME	STARTED	DURATION	STATUS
 {{- range $i, $pr := .PipelineRuns.Items }}
