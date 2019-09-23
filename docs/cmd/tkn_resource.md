@@ -14,6 +14,7 @@ Manage pipeline resources
   -h, --help                help for resource
   -k, --kubeconfig string   kubectl config file (default: $HOME/.kube/config)
   -n, --namespace string    namespace to use (default: from $KUBECONFIG)
+  -C, --nocolour            disable colouring (default: false)
 ```
 
 ### SEE ALSO
