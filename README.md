@@ -46,7 +46,7 @@ Download the latest binary executable for your operating system:
   sudo tar xvzf tkn_0.3.1_Linux_arm64.tar.gz -C /usr/local/bin/ tkn
   ```
 
-  If you are running on either of those rpm based distros  :
+  If you are running on any of the following rpm based distros:
 
   * Fedora30
   * Fedora31
@@ -55,7 +55,7 @@ Download the latest binary executable for your operating system:
   * RHEL8
 
   you would be able to use [@chmouel](https://github.com/chmouel)'s unofficial copr package
-  repository by simple do :
+  repository by running the following commands:
 
   ```shell
   dnf copr enable chmouel/tektoncd-cli
