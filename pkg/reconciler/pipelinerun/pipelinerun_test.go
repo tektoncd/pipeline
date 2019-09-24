@@ -44,6 +44,9 @@ import (
 
 var (
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
+	images                   = map[string]string{
+		"nopImage": "override-with-nop:latest",
+	}
 )
 
 func getRunName(pr *v1alpha1.PipelineRun) string {
@@ -58,11 +61,8 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.TestAssets, func(
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	ctx, cancel := context.WithCancel(ctx)
 	return test.TestAssets{
-		Controller: NewController(
-			ctx,
-			configMapWatcher,
-		),
-		Clients: c,
+		Controller: NewController(images)(ctx, configMapWatcher),
+		Clients:    c,
 	}, cancel
 }
 

@@ -42,62 +42,61 @@ const (
 	resyncPeriod = 10 * time.Hour
 )
 
-func NewController(
-	ctx context.Context,
-	cmw configmap.Watcher,
-) *controller.Impl {
-	logger := logging.FromContext(ctx)
-	kubeclientset := kubeclient.Get(ctx)
-	pipelineclientset := pipelineclient.Get(ctx)
-	taskRunInformer := taskruninformer.Get(ctx)
-	taskInformer := taskinformer.Get(ctx)
-	clusterTaskInformer := clustertaskinformer.Get(ctx)
-	podInformer := podinformer.Get(ctx)
-	resourceInformer := resourceinformer.Get(ctx)
-	timeoutHandler := reconciler.NewTimeoutHandler(ctx.Done(), logger)
+func NewController(images map[string]string) func(context.Context, configmap.Watcher) *controller.Impl {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		logger := logging.FromContext(ctx)
+		kubeclientset := kubeclient.Get(ctx)
+		pipelineclientset := pipelineclient.Get(ctx)
+		taskRunInformer := taskruninformer.Get(ctx)
+		taskInformer := taskinformer.Get(ctx)
+		clusterTaskInformer := clustertaskinformer.Get(ctx)
+		podInformer := podinformer.Get(ctx)
+		resourceInformer := resourceinformer.Get(ctx)
+		timeoutHandler := reconciler.NewTimeoutHandler(ctx.Done(), logger)
 
-	opt := reconciler.Options{
-		KubeClientSet:     kubeclientset,
-		PipelineClientSet: pipelineclientset,
-		ConfigMapWatcher:  cmw,
-		ResyncPeriod:      resyncPeriod,
-		Logger:            logger,
+		opt := reconciler.Options{
+			KubeClientSet:     kubeclientset,
+			PipelineClientSet: pipelineclientset,
+			ConfigMapWatcher:  cmw,
+			ResyncPeriod:      resyncPeriod,
+			Logger:            logger,
+		}
+
+		c := &Reconciler{
+			Base:              reconciler.NewBase(opt, taskRunAgentName, images),
+			taskRunLister:     taskRunInformer.Lister(),
+			taskLister:        taskInformer.Lister(),
+			clusterTaskLister: clusterTaskInformer.Lister(),
+			resourceLister:    resourceInformer.Lister(),
+			timeoutHandler:    timeoutHandler,
+			cloudEventClient:  cloudeventclient.Get(ctx),
+		}
+		impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
+
+		timeoutHandler.SetTaskRunCallbackFunc(impl.Enqueue)
+		timeoutHandler.CheckTimeouts(kubeclientset, pipelineclientset)
+
+		c.Logger.Info("Setting up event handlers")
+		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    impl.Enqueue,
+			UpdateFunc: controller.PassNew(impl.Enqueue),
+		})
+
+		c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
+
+		podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.Filter(v1alpha1.SchemeGroupVersion.WithKind("TaskRun")),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
+
+		// FIXME(vdemeester) it was never set
+		//entrypoint cache will be initialized by controller if not provided
+		c.Logger.Info("Setting up Entrypoint cache")
+		c.cache = nil
+		if c.cache == nil {
+			c.cache, _ = entrypoint.NewCache()
+		}
+
+		return impl
 	}
-
-	c := &Reconciler{
-		Base:              reconciler.NewBase(opt, taskRunAgentName),
-		taskRunLister:     taskRunInformer.Lister(),
-		taskLister:        taskInformer.Lister(),
-		clusterTaskLister: clusterTaskInformer.Lister(),
-		resourceLister:    resourceInformer.Lister(),
-		timeoutHandler:    timeoutHandler,
-		cloudEventClient:  cloudeventclient.Get(ctx),
-	}
-	impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
-
-	timeoutHandler.SetTaskRunCallbackFunc(impl.Enqueue)
-	timeoutHandler.CheckTimeouts(kubeclientset, pipelineclientset)
-
-	c.Logger.Info("Setting up event handlers")
-	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    impl.Enqueue,
-		UpdateFunc: controller.PassNew(impl.Enqueue),
-	})
-
-	c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
-
-	podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: controller.Filter(v1alpha1.SchemeGroupVersion.WithKind("TaskRun")),
-		Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-	})
-
-	// FIXME(vdemeester) it was never set
-	//entrypoint cache will be initialized by controller if not provided
-	c.Logger.Info("Setting up Entrypoint cache")
-	c.cache = nil
-	if c.cache == nil {
-		c.cache, _ = entrypoint.NewCache()
-	}
-
-	return impl
 }
