@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: test-unnamed-steps
+  generateName: unnamed-steps-
 spec:
   taskSpec:
     steps:

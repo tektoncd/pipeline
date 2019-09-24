@@ -74,7 +74,7 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: build-push-run
+  name: build-push-kaniko
 spec:
   taskRef:
     name: build-push-kaniko

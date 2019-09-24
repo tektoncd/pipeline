@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: test-git-volume
+  generateName: git-volume-
 spec:
   taskSpec:
     steps:
@@ -15,6 +15,7 @@ spec:
 
     volumes:
     - name: source
-      gitRepo:
+      gitRepo: # https://kubernetes.io/docs/concepts/storage/volumes/#gitrepo
+        # gitRepo is deprecated.
         repository: "https://github.com/bazelbuild/rules_docker.git"
         revision: "3caddbe7f75fde6afb2e2c63654b5bbeeeedf2ac"

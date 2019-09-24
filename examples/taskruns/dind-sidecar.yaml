@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: dind-sidecar-taskrun-1
+  generateName: dind-sidecar-
 spec:
   taskSpec:
     steps:

@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: test-home-is-set
+  generateName: home-is-set-
 spec:
   taskSpec:
     steps:

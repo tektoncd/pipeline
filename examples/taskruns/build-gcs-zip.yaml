@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: build-gcs-zip
+  generateName: build-gcs-zip-
 spec:
   taskSpec:
     inputs:
