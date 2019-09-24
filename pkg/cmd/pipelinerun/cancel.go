@@ -19,8 +19,15 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	succeeded   = "Succeeded"
+	failed      = "Failed"
+	prCancelled = "Failed(PipelineRunCancelled)"
 )
 
 func cancelCommand(p cli.Params) *cobra.Command {
@@ -62,6 +69,11 @@ func cancelPipelineRun(p cli.Params, s *cli.Stream, prName string) error {
 	pr, err := cs.Tekton.TektonV1alpha1().PipelineRuns(p.Namespace()).Get(prName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to find pipelinerun: %s", prName)
+	}
+
+	prCond := formatted.Condition(pr.Status.Conditions)
+	if prCond == succeeded || prCond == failed || prCond == prCancelled {
+		return fmt.Errorf("failed to cancel pipelinerun %s: pipelinerun has already finished execution", prName)
 	}
 
 	pr.Spec.Status = v1alpha1.PipelineRunSpecStatusCancelled

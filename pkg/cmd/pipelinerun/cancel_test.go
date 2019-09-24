@@ -22,10 +22,17 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stest "k8s.io/client-go/testing"
+	"knative.dev/pkg/apis"
 
 	tu "github.com/tektoncd/cli/pkg/test"
+)
+
+var (
+	success = apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}
+	failure = apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}
 )
 
 func Test_cancel_pipelinerun(t *testing.T) {
@@ -98,5 +105,65 @@ func Test_cancel_pipelinerun_client_err(t *testing.T) {
 	got, _ := tu.ExecuteCommand(pRun, "cancel", prName, "-n", "ns")
 
 	expected := "Error: failed to cancel pipelinerun: " + prName + ", err: " + errStr + "\n"
+	tu.AssertOutput(t, expected, got)
+}
+
+func Test_finished_pipelinerun_success(t *testing.T) {
+
+	prName := "test-pipeline-run-123"
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, "ns",
+			tb.PipelineRunLabel("tekton.dev/pipeline", "pipelineName"),
+			tb.PipelineRunSpec("pipelineName",
+				tb.PipelineRunServiceAccount("test-sa"),
+				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
+				tb.PipelineRunResourceBinding("build-image", tb.PipelineResourceBindingRef("some-image")),
+				tb.PipelineRunParam("pipeline-param-1", "somethingmorefun"),
+				tb.PipelineRunParam("rev-param", "revision1"),
+			),
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(success),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pRun := Command(p)
+	got, _ := tu.ExecuteCommand(pRun, "cancel", prName, "-n", "ns")
+
+	expected := "Error: failed to cancel pipelinerun " + prName + ": pipelinerun has already finished execution\n"
+	tu.AssertOutput(t, expected, got)
+}
+
+func Test_finished_pipelinerun_failure(t *testing.T) {
+
+	prName := "test-pipeline-run-123"
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun(prName, "ns",
+			tb.PipelineRunLabel("tekton.dev/pipeline", "pipelineName"),
+			tb.PipelineRunSpec("pipelineName",
+				tb.PipelineRunServiceAccount("test-sa"),
+				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
+				tb.PipelineRunResourceBinding("build-image", tb.PipelineResourceBindingRef("some-image")),
+				tb.PipelineRunParam("pipeline-param-1", "somethingmorefun"),
+				tb.PipelineRunParam("rev-param", "revision1"),
+			),
+			tb.PipelineRunStatus(
+				tb.PipelineRunStatusCondition(failure),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pRun := Command(p)
+	got, _ := tu.ExecuteCommand(pRun, "cancel", prName, "-n", "ns")
+
+	expected := "Error: failed to cancel pipelinerun " + prName + ": pipelinerun has already finished execution\n"
 	tu.AssertOutput(t, expected, got)
 }
