@@ -242,8 +242,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		})
 		return nil
 	}
-	providedResources, err := resources.GetResourcesFromBindings(p, pr)
-	if err != nil {
+	if err := resources.ValidateResourceBindings(p, pr); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -251,6 +250,18 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 			Reason: ReasonInvalidBindings,
 			Message: fmt.Sprintf("PipelineRun %s doesn't bind Pipeline %s's PipelineResources correctly: %s",
 				fmt.Sprintf("%s/%s", pr.Namespace, pr.Name), fmt.Sprintf("%s/%s", pr.Namespace, pr.Spec.PipelineRef.Name), err),
+		})
+		return nil
+	}
+	providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
+	if err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.SetCondition(&apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: ReasonCouldntGetResource,
+			Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
+				fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
 		})
 		return nil
 	}
@@ -284,7 +295,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		func(name string) (v1alpha1.TaskInterface, error) {
 			return c.clusterTaskLister.Get(name)
 		},
-		c.resourceLister.PipelineResources(pr.Namespace).Get,
 		func(name string) (*v1alpha1.Condition, error) {
 			return c.conditionLister.Conditions(pr.Namespace).Get(name)
 		},
@@ -300,14 +310,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 				Reason: ReasonCouldntGetTask,
 				Message: fmt.Sprintf("Pipeline %s can't be Run; it contains Tasks that don't exist: %s",
 					fmt.Sprintf("%s/%s", p.Namespace, p.Name), err),
-			})
-		case *resources.ResourceNotFoundError:
-			pr.Status.SetCondition(&apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-				Reason: ReasonCouldntGetResource,
-				Message: fmt.Sprintf("PipelineRun %s can't be Run; it tries to bind Resources that don't exist: %s",
-					fmt.Sprintf("%s/%s", p.Namespace, pr.Name), err),
 			})
 		case *resources.ConditionNotFoundError:
 			pr.Status.SetCondition(&apis.Condition{

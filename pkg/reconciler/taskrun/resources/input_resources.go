@@ -25,7 +25,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -120,26 +119,6 @@ func AddInputResource(
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 	}
 	return taskSpec, nil
-}
-
-func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {
-	// Check both resource ref or resource Spec are not present. Taskrun webhook should catch this in validation error.
-	if r.ResourceRef.Name != "" && r.ResourceSpec != nil {
-		return nil, xerrors.New("Both ResourseRef and ResourceSpec are defined. Expected only one")
-	}
-
-	if r.ResourceRef.Name != "" {
-		return getter(r.ResourceRef.Name)
-	}
-	if r.ResourceSpec != nil {
-		return &v1alpha1.PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: r.Name,
-			},
-			Spec: *r.ResourceSpec,
-		}, nil
-	}
-	return nil, xerrors.New("Neither ResourseRef not ResourceSpec is defined")
 }
 
 func destinationPath(name, path string) string {
