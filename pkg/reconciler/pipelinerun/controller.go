@@ -42,61 +42,60 @@ const (
 	resyncPeriod = 10 * time.Hour
 )
 
-func NewController(
-	ctx context.Context,
-	cmw configmap.Watcher,
-) *controller.Impl {
-	logger := logging.FromContext(ctx)
-	kubeclientset := kubeclient.Get(ctx)
-	pipelineclientset := pipelineclient.Get(ctx)
-	taskRunInformer := taskruninformer.Get(ctx)
-	taskInformer := taskinformer.Get(ctx)
-	clusterTaskInformer := clustertaskinformer.Get(ctx)
-	pipelineRunInformer := pipelineruninformer.Get(ctx)
-	pipelineInformer := pipelineinformer.Get(ctx)
-	resourceInformer := resourceinformer.Get(ctx)
-	conditionInformer := conditioninformer.Get(ctx)
-	timeoutHandler := reconciler.NewTimeoutHandler(ctx.Done(), logger)
+func NewController(images map[string]string) func(context.Context, configmap.Watcher) *controller.Impl {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		logger := logging.FromContext(ctx)
+		kubeclientset := kubeclient.Get(ctx)
+		pipelineclientset := pipelineclient.Get(ctx)
+		taskRunInformer := taskruninformer.Get(ctx)
+		taskInformer := taskinformer.Get(ctx)
+		clusterTaskInformer := clustertaskinformer.Get(ctx)
+		pipelineRunInformer := pipelineruninformer.Get(ctx)
+		pipelineInformer := pipelineinformer.Get(ctx)
+		resourceInformer := resourceinformer.Get(ctx)
+		conditionInformer := conditioninformer.Get(ctx)
+		timeoutHandler := reconciler.NewTimeoutHandler(ctx.Done(), logger)
 
-	opt := reconciler.Options{
-		KubeClientSet:     kubeclientset,
-		PipelineClientSet: pipelineclientset,
-		ConfigMapWatcher:  cmw,
-		ResyncPeriod:      resyncPeriod,
-		Logger:            logger,
+		opt := reconciler.Options{
+			KubeClientSet:     kubeclientset,
+			PipelineClientSet: pipelineclientset,
+			ConfigMapWatcher:  cmw,
+			ResyncPeriod:      resyncPeriod,
+			Logger:            logger,
+		}
+
+		c := &Reconciler{
+			Base:              reconciler.NewBase(opt, pipelineRunAgentName, images),
+			pipelineRunLister: pipelineRunInformer.Lister(),
+			pipelineLister:    pipelineInformer.Lister(),
+			taskLister:        taskInformer.Lister(),
+			clusterTaskLister: clusterTaskInformer.Lister(),
+			taskRunLister:     taskRunInformer.Lister(),
+			resourceLister:    resourceInformer.Lister(),
+			conditionLister:   conditionInformer.Lister(),
+			timeoutHandler:    timeoutHandler,
+		}
+		impl := controller.NewImpl(c, c.Logger, pipelineRunControllerName)
+
+		timeoutHandler.SetPipelineRunCallbackFunc(impl.Enqueue)
+		timeoutHandler.CheckTimeouts(kubeclientset, pipelineclientset)
+
+		c.Logger.Info("Setting up event handlers")
+		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    impl.Enqueue,
+			UpdateFunc: controller.PassNew(impl.Enqueue),
+			DeleteFunc: impl.Enqueue,
+		})
+
+		c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
+		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
+		})
+
+		c.Logger.Info("Setting up ConfigMap receivers")
+		c.configStore = config.NewStore(c.Logger.Named("config-store"))
+		c.configStore.WatchConfigs(opt.ConfigMapWatcher)
+
+		return impl
 	}
-
-	c := &Reconciler{
-		Base:              reconciler.NewBase(opt, pipelineRunAgentName),
-		pipelineRunLister: pipelineRunInformer.Lister(),
-		pipelineLister:    pipelineInformer.Lister(),
-		taskLister:        taskInformer.Lister(),
-		clusterTaskLister: clusterTaskInformer.Lister(),
-		taskRunLister:     taskRunInformer.Lister(),
-		resourceLister:    resourceInformer.Lister(),
-		conditionLister:   conditionInformer.Lister(),
-		timeoutHandler:    timeoutHandler,
-	}
-	impl := controller.NewImpl(c, c.Logger, pipelineRunControllerName)
-
-	timeoutHandler.SetPipelineRunCallbackFunc(impl.Enqueue)
-	timeoutHandler.CheckTimeouts(kubeclientset, pipelineclientset)
-
-	c.Logger.Info("Setting up event handlers")
-	pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    impl.Enqueue,
-		UpdateFunc: controller.PassNew(impl.Enqueue),
-		DeleteFunc: impl.Enqueue,
-	})
-
-	c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
-	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
-	})
-
-	c.Logger.Info("Setting up ConfigMap receivers")
-	c.configStore = config.NewStore(c.Logger.Named("config-store"))
-	c.configStore.WatchConfigs(opt.ConfigMapWatcher)
-
-	return impl
 }

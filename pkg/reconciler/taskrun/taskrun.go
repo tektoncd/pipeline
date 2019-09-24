@@ -126,7 +126,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.timeoutHandler.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
-			err = sidecars.Stop(pod, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Update)
+			err = sidecars.Stop(pod, c.Images["nopImage"], c.KubeClientSet.CoreV1().Pods(tr.Namespace).Update)
 		} else if errors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}

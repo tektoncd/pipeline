@@ -62,6 +62,9 @@ const (
 )
 
 var (
+	images = map[string]string{
+		"nopImage": "override-with-nop:latest",
+	}
 	entrypointCache          *entrypoint.Cache
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
 	// Pods are created with a random 3-byte (6 hex character) suffix that we want to ignore in our diffs.
@@ -264,11 +267,8 @@ func getTaskRunController(t *testing.T, d test.Data) (test.TestAssets, func()) {
 	c, _ := test.SeedTestData(t, ctx, d)
 	configMapWatcher := configmap.NewInformedWatcher(c.Kube, system.GetNamespace())
 	return test.TestAssets{
-		Controller: NewController(
-			ctx,
-			configMapWatcher,
-		),
-		Clients: c,
+		Controller: NewController(images)(ctx, configMapWatcher),
+		Clients:    c,
 	}, cancel
 }
 

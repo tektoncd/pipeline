@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"flag"
+
 	"knative.dev/pkg/injection/sharedmain"
 
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
@@ -28,9 +30,16 @@ const (
 	ControllerLogKey = "controller"
 )
 
+var (
+	nopImage = flag.String("nop-image", "override-with-nop:latest", "The container image used to kill sidecars")
+)
+
 func main() {
+	images := map[string]string{
+		"nopImage": *nopImage,
+	}
 	sharedmain.Main(ControllerLogKey,
-		taskrun.NewController,
-		pipelinerun.NewController,
+		taskrun.NewController(images),
+		pipelinerun.NewController(images),
 	)
 }
