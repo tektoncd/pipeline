@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: build-gcs-targz
+  generateName: build-gcs-targz-
 spec:
   taskSpec:
     inputs:

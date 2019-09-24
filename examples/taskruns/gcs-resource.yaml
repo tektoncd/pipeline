@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: gcs-resource
+  generateName: gcs-resource-
 spec:
   taskSpec:
     inputs:

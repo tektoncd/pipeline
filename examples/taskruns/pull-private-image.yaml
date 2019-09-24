@@ -39,7 +39,7 @@ imagePullSecrets:
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: pull-private-image-run
+  generateName: pull-private-image-
 spec:
   serviceAccount: test-build-robot
   taskSpec:

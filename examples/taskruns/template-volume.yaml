@@ -1,8 +1,7 @@
----
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: test-custom-volume
+  generateName: template-volume-
 spec:
   taskSpec:
     steps:
@@ -20,6 +19,7 @@ spec:
       volumeMounts:
       - name: custom
         mountPath: /short/and/stout
+  podTemplate:
     volumes:
     - name: custom
       emptyDir: {}

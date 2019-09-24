@@ -89,9 +89,9 @@ function check_results() {
   return ${failed}
 }
 
-function apply_resources() {
+function create_resources() {
   local resource=$1
-  echo ">> Applying the resource ${resource}"
+  echo ">> Creating resources ${resource}"
 
   # Applying the resources, either *taskruns or * *pipelineruns
   for file in $(find ${REPO_ROOT_DIR}/examples/${resource}s/ -name *.yaml | sort); do
@@ -119,7 +119,7 @@ function run_tests() {
 
 function run_yaml_tests() {
   echo ">> Starting tests for the resource ${1}"
-  apply_resources $1
+  create_resources ${1}
   if ! run_tests ${1}; then
     return 1
   fi

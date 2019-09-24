@@ -1,8 +1,7 @@
----
 apiVersion: v1
 kind: Secret
 metadata:
-  name: test-docker-basic
+  name: docker-basic
   annotations:
     tekton.dev/docker-0: https://us.gcr.io
     tekton.dev/docker-1: https://eu.gcr.io
@@ -23,18 +22,18 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: test-robot-docker-basic
+  name: robot-docker-basic
 secrets:
-- name: test-docker-basic
+- name: docker-basic
 imagePullSecrets:
-- name: test-docker-basic
+- name: docker-basic
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: test-taskrun-with-serviceaccount-docker-basic
+  name: docker-creds
 spec:
-  serviceAccount: test-robot-docker-basic
+  serviceAccount: robot-docker-basic
   taskSpec:
     steps:
     - name: test

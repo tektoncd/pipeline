@@ -1,8 +1,7 @@
----
 apiVersion: v1
 kind: Secret
 metadata:
-  name: test-git-ssh
+  name: git-ssh
   annotations:
     tekton.dev/git-0: github.com
 type: kubernetes.io/ssh-auth
@@ -18,16 +17,16 @@ data:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: test-robot-git-ssh
+  name: robot-git-ssh
 secrets:
-- name: test-git-ssh
+- name: git-ssh
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: test-taskrun-with-serviceaccount-git-ssh
+  name: git-ssh-creds
 spec:
-  serviceAccount: test-robot-git-ssh
+  serviceAccount: robot-git-ssh
   inputs:
     resources:
     - name: gitssh
