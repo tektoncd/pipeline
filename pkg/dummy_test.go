@@ -21,5 +21,5 @@ import (
 )
 
 func TestDummy(t *testing.T) {
-	t.Log("This is required to make sure we get tektoncd/plumbing in the repostiory, folder vendor")
+	t.Log("This is required to make sure we get tektoncd/plumbing in the repository, folder vendor")
 }
