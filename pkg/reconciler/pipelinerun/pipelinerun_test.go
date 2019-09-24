@@ -225,8 +225,8 @@ func TestReconcile(t *testing.T) {
 	)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(actual, expectedTaskRun, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, d)
+	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1alpha1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff (-want, +got): %s", expectedTaskRun, d)
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
 	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {

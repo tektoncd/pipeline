@@ -220,3 +220,34 @@ func TestResolveTaskRun_noResources(t *testing.T) {
 		t.Errorf("Did not expect any outputs to be resolved when none specified but had %v", rtr.Outputs)
 	}
 }
+
+func TestResolveTaskRun_InvalidBothSpecified(t *testing.T) {
+	inputs := []v1alpha1.TaskResourceBinding{{
+		Name: "repoToBuildFrom",
+		// Can't specify both ResourceRef and ResourceSpec
+		ResourceRef: v1alpha1.PipelineResourceRef{
+			Name: "git-repo",
+		},
+		ResourceSpec: &v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+		},
+	}}
+	gr := func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
+
+	_, err := ResolveTaskResources(&v1alpha1.TaskSpec{}, "orchestrate", v1alpha1.NamespacedTaskKind, inputs, []v1alpha1.TaskResourceBinding{}, gr)
+	if err == nil {
+		t.Fatalf("Expected to get error because both ref and spec were used")
+	}
+}
+
+func TestResolveTaskRun_InvalidNeitherSpecified(t *testing.T) {
+	inputs := []v1alpha1.TaskResourceBinding{{
+		Name: "repoToBuildFrom",
+	}}
+	gr := func(n string) (*v1alpha1.PipelineResource, error) { return &v1alpha1.PipelineResource{}, nil }
+
+	_, err := ResolveTaskResources(&v1alpha1.TaskSpec{}, "orchestrate", v1alpha1.NamespacedTaskKind, inputs, []v1alpha1.TaskResourceBinding{}, gr)
+	if err == nil {
+		t.Fatalf("Expected to get error because neither spec or ref were used")
+	}
+}
