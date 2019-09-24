@@ -19,8 +19,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tektoncd/cli/pkg/helper/pipeline"
-
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
@@ -28,6 +26,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/formatted"
+	"github.com/tektoncd/cli/pkg/helper/pipeline"
 	prhsort "github.com/tektoncd/cli/pkg/helper/pipelinerun/sort"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

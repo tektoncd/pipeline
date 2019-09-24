@@ -21,11 +21,10 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/tektoncd/cli/pkg/helper/pipeline"
-
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
+	"github.com/tektoncd/cli/pkg/helper/pipeline"
 	"github.com/tektoncd/cli/pkg/printer"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
