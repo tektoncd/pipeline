@@ -21,7 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -154,6 +154,19 @@ func Step(name, image string, ops ...StepOp) TaskSpecOp {
 	}
 }
 
+func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		c := corev1.Container{
+			Name:  name,
+			Image: image,
+		}
+		for _, op := range ops {
+			op(&c)
+		}
+		spec.Sidecars = append(spec.Sidecars, c)
+	}
+}
+
 // TaskStepTemplate adds a base container for all steps in the task.
 func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
@@ -214,7 +227,11 @@ func TaskOutputs(ops ...OutputsOp) TaskSpecOp {
 // Any number of TaskResource modifier can be passed to transform it.
 func InputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) InputsOp {
 	return func(i *v1alpha1.Inputs) {
-		r := &v1alpha1.TaskResource{Name: name, Type: resourceType}
+		r := &v1alpha1.TaskResource{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: name,
+				Type: resourceType,
+			}}
 		for _, op := range ops {
 			op(r)
 		}
@@ -231,7 +248,11 @@ func ResourceTargetPath(path string) TaskResourceOp {
 // OutputsResource adds a resource, with specified name and type, to the Outputs.
 func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) OutputsOp {
 	return func(o *v1alpha1.Outputs) {
-		o.Resources = append(o.Resources, v1alpha1.TaskResource{Name: name, Type: resourceType})
+		o.Resources = append(o.Resources, v1alpha1.TaskResource{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name: name,
+				Type: resourceType,
+			}})
 	}
 }
 
@@ -314,6 +335,24 @@ func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 	}
 }
 
+// TaskRunCloudEvent adds an event to the TaskRunStatus.
+func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		if len(s.CloudEvents) == 0 {
+			s.CloudEvents = make([]v1alpha1.CloudEventDelivery, 0)
+		}
+		cloudEvent := v1alpha1.CloudEventDelivery{
+			Target: target,
+			Status: v1alpha1.CloudEventDeliveryState{
+				Condition:  condition,
+				RetryCount: retryCount,
+				Error:      error,
+			},
+		}
+		s.CloudEvents = append(s.CloudEvents, cloudEvent)
+	}
+}
+
 // TaskRunTimeout sets the timeout duration to the TaskRunSpec.
 func TaskRunTimeout(d time.Duration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
@@ -329,21 +368,21 @@ func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
 // TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.NodeSelector = values
+		spec.PodTemplate.NodeSelector = values
 	}
 }
 
 // TaskRunTolerations sets the Tolerations to the PipelineSpec.
 func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.Tolerations = values
+		spec.PodTemplate.Tolerations = values
 	}
 }
 
 // TaskRunAffinity sets the Affinity to the PipelineSpec.
 func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
-		spec.Affinity = affinity
+		spec.PodTemplate.Affinity = affinity
 	}
 }
 
@@ -393,6 +432,13 @@ func TaskRunAnnotation(key, value string) TaskRunOp {
 			tr.ObjectMeta.Annotations = map[string]string{}
 		}
 		tr.ObjectMeta.Annotations[key] = value
+	}
+}
+
+// TaskRunSelfLink adds a SelfLink
+func TaskRunSelfLink(selflink string) TaskRunOp {
+	return func(tr *v1alpha1.TaskRun) {
+		tr.ObjectMeta.SelfLink = selflink
 	}
 }
 

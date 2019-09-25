@@ -232,7 +232,7 @@ func PipelineTaskCondition(conditionRef string, ops ...PipelineTaskConditionOp) 
 	}
 }
 
-// PipelineTaskCondition adds a parameter to a PipelineTaskCondition
+// PipelineTaskConditionParam adds a parameter to a PipelineTaskCondition
 func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 	return func(condition *v1alpha1.PipelineTaskCondition) {
 		if condition.Params == nil {
@@ -241,6 +241,19 @@ func PipelineTaskConditionParam(name, val string) PipelineTaskConditionOp {
 		condition.Params = append(condition.Params, v1alpha1.Param{
 			Name:  name,
 			Value: *ArrayOrString(val),
+		})
+	}
+}
+
+// PipelineTaskConditionResource adds a resource to a PipelineTaskCondition
+func PipelineTaskConditionResource(name, resource string) PipelineTaskConditionOp {
+	return func(condition *v1alpha1.PipelineTaskCondition) {
+		if condition.Resources == nil {
+			condition.Resources = []v1alpha1.PipelineConditionResource{}
+		}
+		condition.Resources = append(condition.Resources, v1alpha1.PipelineConditionResource{
+			Name:     name,
+			Resource: resource,
 		})
 	}
 }
@@ -367,21 +380,21 @@ func PipelineRunNilTimeout(prs *v1alpha1.PipelineRunSpec) {
 // PipelineRunNodeSelector sets the Node selector to the PipelineSpec.
 func PipelineRunNodeSelector(values map[string]string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.NodeSelector = values
+		prs.PodTemplate.NodeSelector = values
 	}
 }
 
 // PipelineRunTolerations sets the Node selector to the PipelineSpec.
 func PipelineRunTolerations(values []corev1.Toleration) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Tolerations = values
+		prs.PodTemplate.Tolerations = values
 	}
 }
 
 // PipelineRunAffinity sets the affinity to the PipelineSpec.
 func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.Affinity = affinity
+		prs.PodTemplate.Affinity = affinity
 	}
 }
 

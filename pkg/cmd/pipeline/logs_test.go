@@ -30,7 +30,7 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"

@@ -56,6 +56,10 @@ type TaskSpec struct {
 	// StepTemplate can be used as the basis for all step containers within the
 	// Task, so that the steps inherit settings on the base container.
 	StepTemplate *corev1.Container `json:"stepTemplate,omitempty"`
+
+	// Sidecars are run alongside the Task's step containers. They begin before
+	// the steps start and end after the steps complete.
+	Sidecars []corev1.Container `json:"sidecars,omitempty"`
 }
 
 // Step embeds the Container type, which allows it to include fields not
@@ -113,19 +117,9 @@ type Inputs struct {
 // path to the volume mounted containing this Resource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
 type TaskResource struct {
-	// Name declares the name by which a resource is referenced in the Task's
-	// definition. Resources may be referenced by name in the definition of a
-	// Task's steps.
-	Name string `json:"name"`
-	// Type is the type of this resource;
-	Type PipelineResourceType `json:"type"`
-	// TargetPath is the path in workspace directory where the task resource
-	// will be copied.
+	ResourceDeclaration
 	// +optional
-	TargetPath string `json:"targetPath"`
-	// Path to the index.json file for output container images.
-	// +optional
-	OutputImageDir string `json:"outputImageDir"`
+	OutputImageDir string `json:"outputImageDir,omitempty"`
 }
 
 // Outputs allow a task to declare what data the Build/Task will be producing,

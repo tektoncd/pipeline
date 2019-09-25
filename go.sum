@@ -10,8 +10,6 @@ contrib.go.opencensus.io/exporter/prometheus v0.1.0 h1:SByaIoWwNgMdPSgl5sMqM2KDE
 contrib.go.opencensus.io/exporter/prometheus v0.1.0/go.mod h1:cGFniUXGZlKRjzOyuZJ6mgB+PgBcCIa79kEKR8YCW+A=
 contrib.go.opencensus.io/exporter/stackdriver v0.9.1 h1:W6APgQ9we4BH8U8bnq/FvwLKo2WSMHuiMkkS/Slkg30=
 contrib.go.opencensus.io/exporter/stackdriver v0.9.1/go.mod h1:hNe5qQofPbg6bLQY5wHCvQ7o+2E5P8PkegEuQ+MyRw0=
-git.apache.org/thrift.git v0.0.0-20180902110319-2566ecd5d999/go.mod h1:fPE2ZNJGynbRyZ4dJvy6G277gSllfV2HJqblrnkyeyg=
-git.apache.org/thrift.git v0.12.0/go.mod h1:fPE2ZNJGynbRyZ4dJvy6G277gSllfV2HJqblrnkyeyg=
 github.com/AlecAivazis/survey/v2 v2.0.1 h1:fQuEpIq5H/rJMaGqiOtPBgnRZP1oexFYRi6bonYTi0w=
 github.com/AlecAivazis/survey/v2 v2.0.1/go.mod h1:WYBhg6f0y/fNYUuesWQc0PKbJcEliGcYHB9sNT3Bg74=
 github.com/Azure/azure-sdk-for-go v26.1.0+incompatible h1:uCdb+BMC9UuASbdJ+ObaRAglOYBs9OVb8BifoB+8ur4=
@@ -175,8 +173,12 @@ github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRW
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0 h1:WSHQ+IS43OoUrWtD1/bbclrwK8TTH5hzp+umCiuxHgs=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
+github.com/onsi/ginkgo v1.10.1 h1:q/mM8GF/n0shIN8SaAZ0V+jnLPzen6WIVZdiwrRlMlo=
+github.com/onsi/ginkgo v1.10.1/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.3 h1:RE1xgDvH7imwFD45h+u2SgIfERHlS2yNG4DObb5BSKU=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
+github.com/onsi/gomega v1.7.0 h1:XPnZz8VVBHjVsy1vzJmRwIcSwiUO+JFfrv/xGiigmME=
+github.com/onsi/gomega v1.7.0/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openzipkin/zipkin-go v0.1.3/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openzipkin/zipkin-go v0.1.6/go.mod h1:QgAqvLzwWbR/WpD4A3cGpPtJrZXNIiJc5AZX7/PBEpw=
@@ -223,8 +225,8 @@ github.com/stretchr/testify v1.2.1/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/stretchr/testify v1.2.2 h1:bSDNvY7ZPG5RlJ8otE/7V6gMiyenm9RtJ7IUVIAoJ1w=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07/go.mod h1:kDXzergiv9cbyO7IOYJZWg1U88JhDg3PB6klq9Hg2pA=
-github.com/tektoncd/pipeline v0.6.0 h1:kYN3Ejm2T9GuXcIdAZc76aIUZqUqPTcfEx/7e7DgQlI=
-github.com/tektoncd/pipeline v0.6.0/go.mod h1:IZzJdiX9EqEMuUcgdnElozdYYRh0/ZRC+NKMLj1K3Yw=
+github.com/tektoncd/pipeline v0.7.0 h1:L5yuqrj+3yjk6c0/V0jRGPpp6gvFC2zY3xN15mN76SM=
+github.com/tektoncd/pipeline v0.7.0/go.mod h1:IZzJdiX9EqEMuUcgdnElozdYYRh0/ZRC+NKMLj1K3Yw=
 github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a h1:4HMTW2uHdQIm8XabCE6P4z/ikCx9eqK8Tvo3noR5RV4=
 github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a/go.mod h1:dvZoTaPGpr3ZDqOUR1sc8VOhh/7OzYncVnbQETJTqvQ=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=

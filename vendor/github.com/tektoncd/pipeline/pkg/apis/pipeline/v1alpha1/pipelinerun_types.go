@@ -53,6 +53,9 @@ type PipelineRunSpec struct {
 	ServiceAccount string `json:"serviceAccount"`
 	// +optional
 	ServiceAccounts []PipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
+	// Deprecation Notice: The field Results will be removed in v0.8.0
+	// and should not be used. Plan to have this field removed before upgradring
+	// to v0.8.0.
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
@@ -65,19 +68,6 @@ type PipelineRunSpec struct {
 
 	// PodTemplate holds pod specific configuration
 	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
-
-	// FIXME(vdemeester) Deprecated
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// If specified, the pod's tolerations.
-	// +optional
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// If specified, the pod's scheduling constraints
-	// +optional
-	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
@@ -112,7 +102,9 @@ type PipelineRef struct {
 type PipelineRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
-	// In #107 should be updated to hold the location logs have been uploaded to
+	// Deprecation Notice: The field Results will be removed in v0.8.0
+	// and should not be used. Plan to have this field removed before upgradring
+	// to v0.8.0.
 	// +optional
 	Results *Results `json:"results,omitempty"`
 
@@ -254,7 +246,8 @@ func (pr *PipelineRun) IsCancelled() bool {
 
 // GetRunKey return the pipelinerun key for timeout handler map
 func (pr *PipelineRun) GetRunKey() string {
-	return fmt.Sprintf("%s/%s/%s", pipelineRunControllerName, pr.Namespace, pr.Name)
+	// The address of the pointer is a threadsafe unique identifier for the pipelinerun
+	return fmt.Sprintf("%s/%p", pipelineRunControllerName, pr)
 }
 
 // IsTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout

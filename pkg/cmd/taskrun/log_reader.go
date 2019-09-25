@@ -22,7 +22,7 @@ import (
 	"github.com/tektoncd/cli/pkg/helper/pods"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

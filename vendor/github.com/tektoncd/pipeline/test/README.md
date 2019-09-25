@@ -203,6 +203,18 @@ To run the YAML e2e tests, run the following command:
 ./test/e2e-tests-yaml.sh
 ```
 
+### Running upgrade tests
+
+There are two scenarios in upgrade tests. One is to install the previous release, upgrade to the current release, and
+validate whether the Tekton pipeline works. The other is to install the previous release, create the pipelines and tasks,
+upgrade to the current release, and validate whether the Tekton pipeline works.
+
+To run the upgrade tests, run the following command:
+
+```bash
+./test/e2e-tests-upgrade.sh
+```
+
 ### Adding integration tests
 
 In the [`test`](/test/) dir you will find several libraries in the `test`

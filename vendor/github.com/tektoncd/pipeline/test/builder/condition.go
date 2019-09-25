@@ -82,3 +82,14 @@ func ConditionParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) 
 		ps.Params = append(ps.Params, *pp)
 	}
 }
+
+// ConditionResource adds a resource with specified name, and type to the ConditionSpec.
+func ConditionResource(name string, resourceType v1alpha1.PipelineResourceType) ConditionSpecOp {
+	return func(spec *v1alpha1.ConditionSpec) {
+		r := v1alpha1.ResourceDeclaration{
+			Name: name,
+			Type: resourceType,
+		}
+		spec.Resources = append(spec.Resources, r)
+	}
+}

@@ -73,6 +73,10 @@ type ConditionSpec struct {
 	// is evaluated
 	// +optional
 	Params []ParamSpec `json:"params,omitempty"`
+
+	// Resources is a list of the ConditionResources required to run the condition.
+	// +optional
+	Resources []ResourceDeclaration `json:"resources,omitempty"`
 }
 
 // ConditionCheck represents a single evaluation of a Condition step.

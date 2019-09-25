@@ -29,7 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
 const (
@@ -314,7 +314,7 @@ func ResolvePipelineRun(
 
 		// Get all conditions that this pipelineTask will be using, if any
 		if len(pt.Conditions) > 0 {
-			rcc, err := resolveConditionChecks(&pt, pipelineRun.Status.TaskRuns, rprt.TaskRunName, getTaskRun, getCondition)
+			rcc, err := resolveConditionChecks(&pt, pipelineRun.Status.TaskRuns, rprt.TaskRunName, getTaskRun, getCondition, getResource, providedResources)
 			if err != nil {
 				return nil, err
 			}
@@ -491,8 +491,9 @@ func ValidateFrom(state PipelineRunState) error {
 
 func resolveConditionChecks(pt *v1alpha1.PipelineTask,
 	taskRunStatus map[string]*v1alpha1.PipelineRunTaskRunStatus,
-	taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition) ([]*ResolvedConditionCheck, error) {
-	rcc := []*ResolvedConditionCheck{}
+	taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition,
+	getResource resources.GetResource, providedResources map[string]v1alpha1.PipelineResourceRef) ([]*ResolvedConditionCheck, error) {
+	rccs := []*ResolvedConditionCheck{}
 	for _, ptc := range pt.Conditions {
 		cName := ptc.ConditionRef
 		c, err := getCondition(cName)
@@ -510,12 +511,46 @@ func resolveConditionChecks(pt *v1alpha1.PipelineTask,
 			}
 		}
 
-		rcc = append(rcc, &ResolvedConditionCheck{
+		rcc := ResolvedConditionCheck{
 			Condition:             c,
 			ConditionCheckName:    conditionCheckName,
 			ConditionCheck:        v1alpha1.NewConditionCheck(cctr),
 			PipelineTaskCondition: &ptc,
-		})
+		}
+
+		if len(ptc.Resources) > 0 {
+			r, err := resolveConditionResources(ptc.Resources, getResource, providedResources)
+			if err != nil {
+				return nil, xerrors.Errorf("cloud not resolve resources for condition %s in pipeline task %s: %w", cName, pt.Name, err)
+			}
+			rcc.ResolvedResources = r
+		}
+
+		rccs = append(rccs, &rcc)
 	}
-	return rcc, nil
+	return rccs, nil
+}
+
+func resolveConditionResources(prc []v1alpha1.PipelineConditionResource,
+	getResource resources.GetResource,
+	providedResources map[string]v1alpha1.PipelineResourceRef,
+) (map[string]*v1alpha1.PipelineResource, error) {
+	rr := make(map[string]*v1alpha1.PipelineResource)
+	for _, r := range prc {
+		// First get a ref to actual resource name from its bound name
+		resourceRef, ok := providedResources[r.Resource]
+		if !ok {
+			return nil, xerrors.Errorf("resource %s not present in declared resources", r.Resource)
+		}
+
+		// Next, fetch the actual resource definition
+		gotResource, err := getResource(resourceRef.Name)
+		if err != nil {
+			return nil, xerrors.Errorf("could not retrieve resource %s: %w", r.Name, err)
+		}
+
+		// Finally add it to the resolved resources map
+		rr[r.Name] = gotResource
+	}
+	return rr, nil
 }

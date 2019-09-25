@@ -18,7 +18,6 @@ package resources
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
@@ -67,23 +66,16 @@ func ApplyResources(spec *v1alpha1.TaskSpec, resolvedResources map[string]v1alph
 	// We always add replacements for 'path'
 	if spec.Inputs != nil {
 		for _, r := range spec.Inputs.Resources {
-			replacements[fmt.Sprintf("inputs.resources.%s.path", r.Name)] = path("/workspace", r)
+			replacements[fmt.Sprintf("inputs.resources.%s.path", r.Name)] = v1alpha1.InputResourcePath(r.ResourceDeclaration)
 		}
 	}
 	if spec.Outputs != nil {
 		for _, r := range spec.Outputs.Resources {
-			replacements[fmt.Sprintf("outputs.resources.%s.path", r.Name)] = path("/workspace/output", r)
+			replacements[fmt.Sprintf("outputs.resources.%s.path", r.Name)] = v1alpha1.OutputResourcePath(r.ResourceDeclaration)
 		}
 	}
 
 	return ApplyReplacements(spec, replacements, map[string][]string{})
-}
-
-func path(root string, r v1alpha1.TaskResource) string {
-	if r.TargetPath != "" {
-		return filepath.Join("/workspace", r.TargetPath)
-	}
-	return filepath.Join(root, r.Name)
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.

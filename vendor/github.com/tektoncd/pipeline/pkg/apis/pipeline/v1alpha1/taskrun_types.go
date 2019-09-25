@@ -36,6 +36,9 @@ type TaskRunSpec struct {
 	Inputs TaskRunInputs `json:"inputs,omitempty"`
 	// +optional
 	Outputs TaskRunOutputs `json:"outputs,omitempty"`
+	// Deprecation Notice: The field Results will be removed in v0.8.0
+	// and should not be used. Plan to have this field removed before upgradring
+	// to v0.8.0.
 	// +optional
 	Results *Results `json:"results,omitempty"`
 	// +optional
@@ -56,19 +59,6 @@ type TaskRunSpec struct {
 
 	// PodTemplate holds pod specific configuration
 	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
-
-	// FIXME(vdemeester) Deprecated
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// If specified, the pod's tolerations.
-	// +optional
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// If specified, the pod's scheduling constraints
-	// +optional
-	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
@@ -115,7 +105,9 @@ var taskRunCondSet = apis.NewBatchConditionSet()
 type TaskRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
-	// In #107 should be updated to hold the location logs have been uploaded to
+	// Deprecation Notice: The field Results will be removed in v0.8.0
+	// and should not be used. Plan to have this field removed before upgradring
+	// to v0.8.0.
 	// +optional
 	Results *Results `json:"results,omitempty"`
 
@@ -168,26 +160,6 @@ func (tr *TaskRunStatus) InitializeConditions() {
 func (tr *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
 		taskRunCondSet.Manage(tr).SetCondition(*newCond)
-	}
-}
-
-// InitializeCloudEvents initializes the CloudEvents part of the TaskRunStatus
-// from a list of event targets
-func (tr *TaskRunStatus) InitializeCloudEvents(targets []string) {
-	// len(nil slice) is 0
-	if len(targets) > 0 {
-		initialState := CloudEventDeliveryState{
-			Condition:  CloudEventConditionUnknown,
-			RetryCount: 0,
-		}
-		events := make([]CloudEventDelivery, len(targets))
-		for idx, target := range targets {
-			events[idx] = CloudEventDelivery{
-				Target: target,
-				Status: initialState,
-			}
-		}
-		tr.CloudEvents = events
 	}
 }
 
@@ -319,5 +291,6 @@ func (tr *TaskRun) IsCancelled() bool {
 
 // GetRunKey return the taskrun key for timeout handler map
 func (tr *TaskRun) GetRunKey() string {
-	return fmt.Sprintf("%s/%s/%s", "TaskRun", tr.Namespace, tr.Name)
+	// The address of the pointer is a threadsafe unique identifier for the taskrun
+	return fmt.Sprintf("%s/%p", "TaskRun", tr)
 }

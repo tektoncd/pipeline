@@ -31,7 +31,7 @@ import (
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
-	"github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"

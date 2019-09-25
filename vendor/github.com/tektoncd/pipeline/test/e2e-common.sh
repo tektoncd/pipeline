@@ -89,44 +89,82 @@ function check_results() {
   return ${failed}
 }
 
-function run_yaml_tests() {
-  echo ">> Starting tests"
+function apply_resources() {
+  local resource=$1
+  echo ">> Applying the resource ${resource}"
 
-  # Applying *taskruns
-  for file in $(find ${REPO_ROOT_DIR}/examples/taskruns/ -name *.yaml | sort); do
+  # Applying the resources, either *taskruns or * *pipelineruns
+  for file in $(find ${REPO_ROOT_DIR}/examples/${resource}s/ -name *.yaml | sort); do
     perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
   done
+}
 
-  # Applying *pipelineruns
-  for file in $(find ${REPO_ROOT_DIR}/examples/pipelineruns/ -name *.yaml | sort); do
-    perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
-  done
+function run_tests() {
+  local resource=$1
 
   # Wait for tests to finish.
-  echo ">> Waiting for tests to finish for ${test}"
-  if validate_run $1; then
+  echo ">> Waiting for tests to finish for ${resource}"
+  if validate_run $resource; then
     echo "ERROR: tests timed out"
   fi
 
   # Check that tests passed.
-  echo ">> Checking test results for ${test}"
-  if check_results $1; then
+  echo ">> Checking test results for ${resource}"
+  if check_results $resource; then
     echo ">> All YAML tests passed"
     return 0
   fi
-
   return 1
+}
+
+function run_yaml_tests() {
+  echo ">> Starting tests for the resource ${1}"
+  apply_resources $1
+  if ! run_tests ${1}; then
+    return 1
+  fi
+  return 0
 }
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
   ko apply -f config/ || fail_test "Build pipeline installation failed"
+  verify_pipeline_installation
+}
 
-  # Make sure thateveything is cleaned up in the current namespace.
+# Install the Tekton pipeline crd based on the release number
+function install_pipeline_crd_version() {
+  echo ">> Deploying Tekton Pipelines of Version $1"
+  kubectl apply -f "https://github.com/tektoncd/pipeline/releases/download/$1/release.yaml" || fail_test "Build pipeline installation failed of Version $1"
+  verify_pipeline_installation
+}
+
+function verify_pipeline_installation() {
+  # Make sure that everything is cleaned up in the current namespace.
   for res in conditions pipelineresources tasks pipelines taskruns pipelineruns; do
     kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
   done
 
   # Wait for pods to be running in the namespaces we are deploying to
   wait_until_pods_running tekton-pipelines || fail_test "Tekton Pipeline did not come up"
+}
+
+function uninstall_pipeline_crd() {
+  echo ">> Uninstalling Tekton Pipelines"
+  ko delete --ignore-not-found=true -f config/
+
+  # Make sure that everything is cleaned up in the current namespace.
+  for res in conditions pipelineresources tasks pipelines taskruns pipelineruns; do
+    kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
+  done
+}
+
+function uninstall_pipeline_crd_version() {
+  echo ">> Uninstalling Tekton Pipelines of version $1"
+  kubectl delete --ignore-not-found=true -f "https://github.com/tektoncd/pipeline/releases/download/$1/release.yaml"
+
+  # Make sure that everything is cleaned up in the current namespace.
+  for res in conditions pipelineresources tasks pipelines taskruns pipelineruns; do
+    kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
+  done
 }

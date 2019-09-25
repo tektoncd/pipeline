@@ -198,10 +198,10 @@ github.com/spf13/pflag
 # github.com/stretchr/testify v1.2.2
 github.com/stretchr/testify/require
 github.com/stretchr/testify/assert
-# github.com/tektoncd/pipeline v0.6.0
+# github.com/tektoncd/pipeline v0.7.0
 github.com/tektoncd/pipeline/pkg/client/clientset/versioned
 github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1
-github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/resources
+github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions
 github.com/tektoncd/pipeline/test
 github.com/tektoncd/pipeline/test/builder
@@ -211,12 +211,12 @@ github.com/tektoncd/pipeline/pkg/apis/pipeline
 github.com/tektoncd/pipeline/pkg/list
 github.com/tektoncd/pipeline/pkg/names
 github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake
-github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/pipelinerun/resources
+github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources
 github.com/tektoncd/pipeline/pkg/artifacts
 github.com/tektoncd/pipeline/pkg/credentials
 github.com/tektoncd/pipeline/pkg/credentials/dockercreds
 github.com/tektoncd/pipeline/pkg/credentials/gitcreds
-github.com/tektoncd/pipeline/pkg/reconciler/v1alpha1/taskrun/entrypoint
+github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions/internalinterfaces
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline
 github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1
@@ -270,7 +270,6 @@ go.uber.org/atomic
 go.uber.org/multierr
 # go.uber.org/zap v0.0.0-20180814183419-67bc79d13d15
 go.uber.org/zap
-go.uber.org/zap/zaptest/observer
 go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/zapcore
 go.uber.org/zap/zaptest

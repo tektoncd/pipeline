@@ -47,7 +47,7 @@ var (
 // upload steps (like upload to blob store )
 //
 // Resource source path determined
-// 1. If resource is declared in inputs then target path from input resource is used to identify source path
+// 1. If resource has a targetpath that is used. Otherwise:
 // 2. If resource is declared in outputs only then the default is /output/resource_name
 func AddOutputResources(
 	kubeclient kubernetes.Interface,
@@ -70,15 +70,6 @@ func AddOutputResources(
 		return nil, err
 	}
 
-	// track resources that are present in input of task cuz these resources will be copied onto PVC
-	inputResourceMap := map[string]string{}
-
-	if taskSpec.Inputs != nil {
-		for _, input := range taskSpec.Inputs.Resources {
-			inputResourceMap[input.Name] = destinationPath(input.Name, input.TargetPath)
-		}
-	}
-
 	for _, output := range taskSpec.Outputs.Resources {
 		boundResource, err := getBoundResource(output.Name, taskRun.Spec.Outputs.Resources)
 		if err != nil {
@@ -90,18 +81,11 @@ func AddOutputResources(
 			return nil, xerrors.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)
 		}
 
-		// if resource is declared in input then copy outputs to pvc
-		// To build copy step it needs source path(which is targetpath of input resourcemap) from task input source
-		sourcePath := inputResourceMap[boundResource.Name]
-		if sourcePath != "" {
-			logger.Warn(`This task uses the same resource as an input and output. The behavior of this will change in a future release.
-		See https://github.com/tektoncd/pipeline/issues/1118 for more information.`)
+		var sourcePath string
+		if output.TargetPath == "" {
+			sourcePath = filepath.Join(outputDir, boundResource.Name)
 		} else {
-			if output.TargetPath == "" {
-				sourcePath = filepath.Join(outputDir, boundResource.Name)
-			} else {
-				sourcePath = output.TargetPath
-			}
+			sourcePath = output.TargetPath
 		}
 
 		resourceSteps, err := resource.GetUploadSteps(sourcePath)
