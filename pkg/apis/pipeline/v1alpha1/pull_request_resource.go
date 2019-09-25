@@ -100,8 +100,10 @@ func (s *PullRequestResource) GetInputTaskModifier(ts *TaskSpec, sourcePath stri
 }
 
 func (s *PullRequestResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
+	// When used as an output, the PR resource should initially fill the output directory with the PR contents.
 	return &InternalTaskModifier{
-		StepsToAppend: s.getSteps("upload", sourcePath),
+		StepsToPrepend: s.getSteps("download", sourcePath),
+		StepsToAppend:  s.getSteps("upload", sourcePath),
 	}, nil
 }
 

@@ -57,62 +57,66 @@ func TestPullRequest_NewResource_error(t *testing.T) {
 	}
 }
 
-type testcase struct {
-	in  *v1alpha1.PullRequestResource
-	out []v1alpha1.Step
-}
-
 const workspace = "/workspace"
 
-func containerTestCases(mode string) []testcase {
-	return []testcase{{
-		in: &v1alpha1.PullRequestResource{
-			Name: "nocreds",
-			URL:  "https://example.com",
-		},
-		out: []v1alpha1.Step{{Container: corev1.Container{
-			Name:       "pr-source-nocreds-9l9zj",
-			Image:      "override-with-pr:latest",
-			WorkingDir: v1alpha1.WorkspaceDir,
-			Command:    []string{"/ko-app/pullrequest-init"},
-			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode},
-			Env:        []corev1.EnvVar{},
-		}}},
-	}, {
-		in: &v1alpha1.PullRequestResource{
-			Name: "creds",
-			URL:  "https://example.com",
-			Secrets: []v1alpha1.SecretParam{{
-				FieldName:  "githubToken",
-				SecretName: "github-creds",
-				SecretKey:  "token",
-			}},
-		},
-		out: []v1alpha1.Step{{Container: corev1.Container{
-			Name:       "pr-source-creds-mz4c7",
-			Image:      "override-with-pr:latest",
-			WorkingDir: v1alpha1.WorkspaceDir,
-			Command:    []string{"/ko-app/pullrequest-init"},
-			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
-			Env: []corev1.EnvVar{{
-				Name: "GITHUBTOKEN",
-				ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "github-creds",
-						},
-						Key: "token",
-					},
-				},
-			}},
-		}}},
-	}}
-}
-
-func TestPullRequest_GetDownloadSteps(t *testing.T) {
+func TestPullRequest_GetInputSteps(t *testing.T) {
 	names.TestingSeed()
 
-	for _, tc := range containerTestCases("download") {
+	for _, tc := range []struct {
+		in  *v1alpha1.PullRequestResource
+		out []v1alpha1.Step
+	}{
+		{
+			in: &v1alpha1.PullRequestResource{
+				Name: "nocreds",
+				URL:  "https://example.com",
+			},
+			out: []v1alpha1.Step{
+				{
+					Container: corev1.Container{
+						Name:       "pr-source-nocreds-9l9zj",
+						Image:      "override-with-pr:latest",
+						WorkingDir: v1alpha1.WorkspaceDir,
+						Command:    []string{"/ko-app/pullrequest-init"},
+						Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", "download"},
+						Env:        []corev1.EnvVar{},
+					}},
+			},
+		},
+		{
+			in: &v1alpha1.PullRequestResource{
+				Name: "creds",
+				URL:  "https://example.com",
+				Secrets: []v1alpha1.SecretParam{{
+					FieldName:  "githubToken",
+					SecretName: "github-creds",
+					SecretKey:  "token",
+				}},
+			},
+			out: []v1alpha1.Step{
+				{
+					Container: corev1.Container{
+						Name:       "pr-source-creds-mz4c7",
+						Image:      "override-with-pr:latest",
+						WorkingDir: v1alpha1.WorkspaceDir,
+						Command:    []string{"/ko-app/pullrequest-init"},
+						Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", "download"},
+						Env: []corev1.EnvVar{{
+							Name: "GITHUBTOKEN",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "github-creds",
+									},
+									Key: "token",
+								},
+							},
+						}},
+					},
+				},
+			},
+		},
+	} {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
 			ts := v1alpha1.TaskSpec{}
 			got, err := tc.in.GetInputTaskModifier(&ts, workspace)
@@ -129,14 +133,105 @@ func TestPullRequest_GetDownloadSteps(t *testing.T) {
 func TestPullRequest_GetOutputSteps(t *testing.T) {
 	names.TestingSeed()
 
-	for _, tc := range containerTestCases("upload") {
+	for _, tc := range []struct {
+		in      *v1alpha1.PullRequestResource
+		append  []v1alpha1.Step
+		prepend []v1alpha1.Step
+	}{
+		{
+			in: &v1alpha1.PullRequestResource{
+				Name: "nocreds",
+				URL:  "https://example.com",
+			},
+			prepend: []v1alpha1.Step{
+				{
+					Container: corev1.Container{
+						Name:       "pr-source-nocreds-9l9zj",
+						Image:      "override-with-pr:latest",
+						WorkingDir: v1alpha1.WorkspaceDir,
+						Command:    []string{"/ko-app/pullrequest-init"},
+						Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", "download"},
+						Env:        []corev1.EnvVar{},
+					}},
+			},
+			append: []v1alpha1.Step{
+				{
+					Container: corev1.Container{
+						Name:       "pr-source-nocreds-mz4c7",
+						Image:      "override-with-pr:latest",
+						WorkingDir: v1alpha1.WorkspaceDir,
+						Command:    []string{"/ko-app/pullrequest-init"},
+						Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", "upload"},
+						Env:        []corev1.EnvVar{},
+					}},
+			},
+		},
+		{
+			in: &v1alpha1.PullRequestResource{
+				Name: "creds",
+				URL:  "https://example.com",
+				Secrets: []v1alpha1.SecretParam{{
+					FieldName:  "githubToken",
+					SecretName: "github-creds",
+					SecretKey:  "token",
+				}},
+			},
+			prepend: []v1alpha1.Step{
+				{
+					Container: corev1.Container{
+						Name:       "pr-source-creds-mssqb",
+						Image:      "override-with-pr:latest",
+						WorkingDir: v1alpha1.WorkspaceDir,
+						Command:    []string{"/ko-app/pullrequest-init"},
+						Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", "download"},
+						Env: []corev1.EnvVar{{
+							Name: "GITHUBTOKEN",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "github-creds",
+									},
+									Key: "token",
+								},
+							},
+						}},
+					},
+				},
+			},
+			append: []v1alpha1.Step{
+				{
+					Container: corev1.Container{
+						Name:       "pr-source-creds-78c5n",
+						Image:      "override-with-pr:latest",
+						WorkingDir: v1alpha1.WorkspaceDir,
+						Command:    []string{"/ko-app/pullrequest-init"},
+						Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", "upload"},
+						Env: []corev1.EnvVar{{
+							Name: "GITHUBTOKEN",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "github-creds",
+									},
+									Key: "token",
+								},
+							},
+						}},
+					},
+				},
+			},
+		},
+	} {
 		t.Run(tc.in.GetName(), func(t *testing.T) {
 			ts := v1alpha1.TaskSpec{}
 			got, err := tc.in.GetOutputTaskModifier(&ts, workspace)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if diff := cmp.Diff(tc.out, got.GetStepsToAppend()); diff != "" {
+			if diff := cmp.Diff(tc.prepend, got.GetStepsToPrepend()); diff != "" {
+				t.Error(diff)
+			}
+			if diff := cmp.Diff(tc.append, got.GetStepsToAppend()); diff != "" {
 				t.Error(diff)
 			}
 		})
