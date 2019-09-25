@@ -78,10 +78,12 @@ func (s *CloudEventResource) Replacements() map[string]string {
 	}
 }
 
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *CloudEventResource) GetInputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
 	return &InternalTaskModifier{}, nil
 }
 
+// GetOutputTaskModifier returns a No-op TaskModifier.
 func (s *CloudEventResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
 	return &InternalTaskModifier{}, nil
 }

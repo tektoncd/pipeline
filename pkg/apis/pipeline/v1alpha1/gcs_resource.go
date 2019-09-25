@@ -97,6 +97,7 @@ func (s *GCSResource) Replacements() map[string]string {
 	}
 }
 
+// GetOutputTaskModifier returns the TaskModifier to be used when this resource is an output.
 func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	var args []string
 	if s.TypeDir {
@@ -116,7 +117,7 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 		Env:          envVars},
 	}
 
-	volumes, err := getStorageVolumeSpec(s, ts)
+	volumes, err := getStorageVolumeSpec(s, *ts)
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +128,7 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 	}, nil
 }
 
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	if path == "" {
 		return nil, xerrors.Errorf("GCSResource: Expect Destination Directory param to be set %s", s.Name)
@@ -150,7 +152,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 			VolumeMounts: secretVolumeMount,
 		}}}
 
-	volumes, err := getStorageVolumeSpec(s, ts)
+	volumes, err := getStorageVolumeSpec(s, *ts)
 	if err != nil {
 		return nil, err
 	}

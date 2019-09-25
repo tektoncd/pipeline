@@ -93,12 +93,14 @@ func (s *PullRequestResource) Replacements() map[string]string {
 	}
 }
 
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *PullRequestResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
 	return &InternalTaskModifier{
 		StepsToPrepend: s.getSteps("download", sourcePath),
 	}, nil
 }
 
+// GetOutputTaskModifier returns a No-op TaskModifier.
 func (s *PullRequestResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
 	return &InternalTaskModifier{
 		StepsToAppend: s.getSteps("upload", sourcePath),
