@@ -253,6 +253,9 @@ func Ask(qs []*Question, response interface{}, opts ...AskOpt) error {
 	// build up the configuration options
 	options := defaultAskOptions()
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
 		if err := opt(options); err != nil {
 			return err
 		}

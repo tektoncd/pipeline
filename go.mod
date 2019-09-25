@@ -7,10 +7,10 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.2.0 // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0 // indirect
 	contrib.go.opencensus.io/exporter/stackdriver v0.9.1 // indirect
-	github.com/AlecAivazis/survey/v2 v2.0.1
+	github.com/AlecAivazis/survey/v2 v2.0.4
 	github.com/Azure/azure-sdk-for-go v26.1.0+incompatible // indirect
 	github.com/Azure/go-autorest v11.6.0+incompatible // indirect
-	github.com/Netflix/go-expect v0.0.0-20180928190340-9d1f4485533b
+	github.com/Netflix/go-expect v0.0.0-20190729225929-0e00d9168667
 	github.com/aws/aws-sdk-go v1.19.11 // indirect
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/census-instrumentation/opencensus-proto v0.1.0 // indirect
@@ -35,6 +35,7 @@ require (
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/markbates/inflect v1.0.4 // indirect
 	github.com/mattbaird/jsonpatch v0.0.0-20171005235357-81af80346b1a // indirect
+	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742 // indirect
 	github.com/onsi/ginkgo v1.10.1 // indirect
@@ -46,16 +47,21 @@ require (
 	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
-	github.com/stretchr/testify v1.2.2
+	github.com/stretchr/testify v1.4.0
 	github.com/tektoncd/pipeline v0.7.0
 	github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v0.0.0-20180814183419-67bc79d13d15 // indirect
+	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 // indirect
+	golang.org/x/net v0.0.0-20190923162816-aa69164e4478 // indirect
+	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
+	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe // indirect
+	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7 // indirect
 	google.golang.org/appengine v1.5.0 // indirect
 	google.golang.org/grpc v1.19.1 // indirect
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	k8s.io/api v0.0.0-20190226173710-145d52631d00
 	k8s.io/apimachinery v0.0.0-20190221084156-01f179d85dbc
 	k8s.io/cli-runtime v0.0.0-20190325194458-f2b4781c3ae1

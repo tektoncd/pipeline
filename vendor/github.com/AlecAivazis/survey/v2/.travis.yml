@@ -1,7 +1,11 @@
 language: go
 
+go:
+  - 1.12
+
 os:
   - linux
+  - linux-ppc64le
   - osx
   - windows
 
@@ -10,8 +14,7 @@ go_import_path: github.com/AlecAivazis/survey/v2
 before_install:
   - go get github.com/alecaivazis/run
 
-install:
-  - run install-deps
+install: []
 
 script:
   - run tests

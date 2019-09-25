@@ -258,7 +258,7 @@ is active. This will filter out all options that don't contain the typed string 
 A custom filter function can also be provided to change this behavior:
 
 ```golang
-func myFilter(filterValue string, optValue string, optIndex int) include bool {
+func myFilter(filterValue string, optValue string, optIndex int) bool {
     // only include the option if it includes the filter and has length greater than 5
     return strings.Contains(optValue, filterValue) && len(optValue) >= 5
 }

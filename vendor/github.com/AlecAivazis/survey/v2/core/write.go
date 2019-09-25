@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // the tag used to denote the name of the question
@@ -187,7 +188,11 @@ func copy(t reflect.Value, v reflect.Value) (err error) {
 				castVal = int32(val64)
 			}
 		case reflect.Int64:
-			castVal, casterr = strconv.ParseInt(vString, 10, 64)
+			if t.Type() == reflect.TypeOf(time.Duration(0)) {
+				castVal, casterr = time.ParseDuration(vString)
+			} else {
+				castVal, casterr = strconv.ParseInt(vString, 10, 64)
+			}
 		case reflect.Uint:
 			var val64 uint64
 			val64, casterr = strconv.ParseUint(vString, 10, 8)
