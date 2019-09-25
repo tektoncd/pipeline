@@ -67,24 +67,29 @@ type TaskModifier interface {
 	GetVolumes() []v1.Volume
 }
 
+// InternalTaskModifier implements TaskModifier for resources that are built-in to Tekton Pipelines.
 type InternalTaskModifier struct {
 	StepsToPrepend []Step
 	StepsToAppend  []Step
 	Volumes        []v1.Volume
 }
 
+// GetStepsToPrepend returns a set of Steps to prepend to the Task.
 func (tm *InternalTaskModifier) GetStepsToPrepend() []Step {
 	return tm.StepsToPrepend
 }
 
+// GetStepsToPrepend returns a set of Steps to append to the Task.
 func (tm *InternalTaskModifier) GetStepsToAppend() []Step {
 	return tm.StepsToAppend
 }
 
+// GetVolumes returns a set of Volumes to prepend to the Task pod.
 func (tm *InternalTaskModifier) GetVolumes() []v1.Volume {
 	return tm.Volumes
 }
 
+// ApplyTaskModifier applies a modifier to the task by appending and prepending steps and volumes.
 func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) {
 	steps := tm.GetStepsToPrepend()
 	ts.Steps = append(steps, ts.Steps...)

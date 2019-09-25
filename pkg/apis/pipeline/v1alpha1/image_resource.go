@@ -74,10 +74,12 @@ func (s *ImageResource) Replacements() map[string]string {
 	}
 }
 
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *ImageResource) GetInputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
 	return &InternalTaskModifier{}, nil
 }
 
+// GetOutputTaskModifier returns a No-op TaskModifier.
 func (s *ImageResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
 	return &InternalTaskModifier{}, nil
 }

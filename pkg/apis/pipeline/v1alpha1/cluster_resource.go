@@ -142,10 +142,12 @@ func (s ClusterResource) String() string {
 	return string(json)
 }
 
+// GetOutputTaskModifier returns a No-op TaskModifier.
 func (s *ClusterResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
 	return &InternalTaskModifier{}, nil
 }
 
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *ClusterResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	var envVars []corev1.EnvVar
 	for _, sec := range s.Secrets {

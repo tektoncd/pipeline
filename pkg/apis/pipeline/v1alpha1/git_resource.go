@@ -95,6 +95,7 @@ func (s *GitResource) Replacements() map[string]string {
 	}
 }
 
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifier, error) {
 	args := []string{"-url", s.URL,
 		"-revision", s.Revision,
@@ -116,6 +117,7 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 	}, nil
 }
 
+// GetOutputTaskModifier returns a No-op TaskModifier.
 func (s *GitResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
 	return &InternalTaskModifier{}, nil
 }
