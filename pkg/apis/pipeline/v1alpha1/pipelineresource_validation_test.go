@@ -129,16 +129,39 @@ func TestResourceValidation_Invalid(t *testing.T) {
 }
 
 func TestClusterResourceValidation_Valid(t *testing.T) {
-	res := tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeCluster,
-		tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
-		tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
-		tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
-		tb.PipelineResourceSpecParam("username", "admin"),
-		tb.PipelineResourceSpecParam("token", "my-token"),
-	))
-	if err := res.Validate(context.Background()); err != nil {
-		t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
+	tests := []struct {
+		name string
+		res  *v1alpha1.PipelineResource
+	}{
+		{
+			name: "success validate",
+			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeCluster,
+				tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
+				tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
+				tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
+				tb.PipelineResourceSpecParam("username", "admin"),
+				tb.PipelineResourceSpecParam("token", "my-token"),
+			)),
+		},
+		{
+			name: "specify insecure without cadata",
+			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
+				v1alpha1.PipelineResourceTypeCluster,
+				tb.PipelineResourceSpecParam("name", "test_cluster_resource"),
+				tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
+				tb.PipelineResourceSpecParam("username", "admin"),
+				tb.PipelineResourceSpecParam("token", "my-token"),
+				tb.PipelineResourceSpecParam("insecure", "true"),
+			)),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.res.Validate(context.Background()); err != nil {
+				t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
+			}
+		})
 	}
 }
 
