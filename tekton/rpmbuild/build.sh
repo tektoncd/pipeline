@@ -15,7 +15,7 @@ version=${version/v}
 
 sed "s/_VERSION_/${version}/" ${repospecfile} > ${TMPD}/tekton.spec
 
-sed -i '/bundled(golang/d' tekton.spec
+sed -i '/bundled(golang/d' ${TMPD}/tekton.spec
 
 mapfile -t bundle < <(python -c "ver = None;
 def version(line): global ver; ver = line.split()[2]; return '';
@@ -24,7 +24,7 @@ print '\n'.join(filter(None,[line for line in ['Provides: bundled(golang({})) = 
 
 for i in "${bundle[@]}"
 do
-   sed -i "/vendored\slibraries/a $i" tekton.spec
+   sed -i "/vendored\slibraries/a $i" ${TMPD}/tekton.spec
 done
 
 cd ${TMPD}
