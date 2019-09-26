@@ -60,8 +60,7 @@ func NewPullRequestResource(r *PipelineResource) (*PullRequestResource, error) {
 		Secrets: r.Spec.SecretParams,
 	}
 	for _, param := range r.Spec.Params {
-		switch {
-		case strings.EqualFold(param.Name, "URL"):
+		if strings.EqualFold(param.Name, "URL") {
 			prResource.URL = param.Value
 		}
 	}
@@ -112,8 +111,7 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 
 	evs := []corev1.EnvVar{}
 	for _, sec := range s.Secrets {
-		switch {
-		case strings.EqualFold(sec.FieldName, githubTokenEnv):
+		if strings.EqualFold(sec.FieldName, githubTokenEnv) {
 			ev := corev1.EnvVar{
 				Name: strings.ToUpper(sec.FieldName),
 				ValueFrom: &corev1.EnvVarSource{

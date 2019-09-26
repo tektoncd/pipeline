@@ -108,28 +108,21 @@ func TestResolveTaskRun(t *testing.T) {
 		r, ok := rtr.Inputs["repoToBuildFrom"]
 		if !ok {
 			t.Errorf("Expected value present in map for `repoToBuildFrom' but it was missing")
-		} else {
-			if r.Name != "git-repo" {
-				t.Errorf("Expected to use resource `git-repo` for `repoToBuildFrom` but used %s", r.Name)
-			}
+		} else if r.Name != "git-repo" {
+			t.Errorf("Expected to use resource `git-repo` for `repoToBuildFrom` but used %s", r.Name)
 		}
 		r, ok = rtr.Inputs["clusterToUse"]
 		if !ok {
 			t.Errorf("Expected value present in map for `clusterToUse' but it was missing")
-		} else {
-			if r.Name != "k8s-cluster" {
-				t.Errorf("Expected to use resource `k8s-cluster` for `clusterToUse` but used %s", r.Name)
-			}
+		} else if r.Name != "k8s-cluster" {
+			t.Errorf("Expected to use resource `k8s-cluster` for `clusterToUse` but used %s", r.Name)
 		}
 		r, ok = rtr.Inputs["clusterspecToUse"]
 		if !ok {
 			t.Errorf("Expected value present in map for `clusterspecToUse' but it was missing")
-		} else {
-			if r.Spec.Type != v1alpha1.PipelineResourceTypeCluster {
-				t.Errorf("Expected to use resource to be of type `cluster` for `clusterspecToUse` but got %s", r.Spec.Type)
-			}
+		} else if r.Spec.Type != v1alpha1.PipelineResourceTypeCluster {
+			t.Errorf("Expected to use resource to be of type `cluster` for `clusterspecToUse` but got %s", r.Spec.Type)
 		}
-
 	} else {
 		t.Errorf("Expected 2 resolved inputs but instead had: %v", rtr.Inputs)
 	}
@@ -138,26 +131,20 @@ func TestResolveTaskRun(t *testing.T) {
 		r, ok := rtr.Outputs["imageToBuild"]
 		if !ok {
 			t.Errorf("Expected value present in map for `imageToBuild' but it was missing")
-		} else {
-			if r.Name != "image" {
-				t.Errorf("Expected to use resource `image` for `imageToBuild` but used %s", r.Name)
-			}
+		} else if r.Name != "image" {
+			t.Errorf("Expected to use resource `image` for `imageToBuild` but used %s", r.Name)
 		}
 		r, ok = rtr.Outputs["gitRepoToUpdate"]
 		if !ok {
 			t.Errorf("Expected value present in map for `gitRepoToUpdate' but it was missing")
-		} else {
-			if r.Name != "another-git-repo" {
-				t.Errorf("Expected to use resource `another-git-repo` for `gitRepoToUpdate` but used %s", r.Name)
-			}
+		} else if r.Name != "another-git-repo" {
+			t.Errorf("Expected to use resource `another-git-repo` for `gitRepoToUpdate` but used %s", r.Name)
 		}
 		r, ok = rtr.Outputs["gitspecToUse"]
 		if !ok {
 			t.Errorf("Expected value present in map for `gitspecToUse' but it was missing")
-		} else {
-			if r.Spec.Type != v1alpha1.PipelineResourceTypeGit {
-				t.Errorf("Expected to use resource type `git` for but got %s", r.Spec.Type)
-			}
+		} else if r.Spec.Type != v1alpha1.PipelineResourceTypeGit {
+			t.Errorf("Expected to use resource type `git` for but got %s", r.Spec.Type)
 		}
 	} else {
 		t.Errorf("Expected 2 resolved outputs but instead had: %v", rtr.Outputs)

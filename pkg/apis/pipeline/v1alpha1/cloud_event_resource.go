@@ -40,8 +40,7 @@ func NewCloudEventResource(r *PipelineResource) (*CloudEventResource, error) {
 	var targetURISpecified bool
 
 	for _, param := range r.Spec.Params {
-		switch {
-		case strings.EqualFold(param.Name, "TargetURI"):
+		if strings.EqualFold(param.Name, "TargetURI") {
 			targetURI = param.Value
 			if param.Value != "" {
 				targetURISpecified = true

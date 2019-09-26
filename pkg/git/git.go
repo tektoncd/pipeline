@@ -76,10 +76,8 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 		if err := os.Chdir(path); err != nil {
 			return xerrors.Errorf("Failed to change directory with path %s; err: %w", path, err)
 		}
-	} else {
-		if err := run(logger, "git", "init"); err != nil {
-			return err
-		}
+	} else if err := run(logger, "git", "init"); err != nil {
+		return err
 	}
 	trimmedURL := strings.TrimSpace(url)
 	if err := run(logger, "git", "remote", "add", "origin", trimmedURL); err != nil {
@@ -94,10 +92,8 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 		if err := run(logger, "git", "checkout", revision); err != nil {
 			return err
 		}
-	} else {
-		if err := run(logger, "git", "reset", "--hard", "FETCH_HEAD"); err != nil {
-			return err
-		}
+	} else if err := run(logger, "git", "reset", "--hard", "FETCH_HEAD"); err != nil {
+		return err
 	}
 	logger.Infof("Successfully cloned %s @ %s in path %s", trimmedURL, revision, path)
 	return nil
