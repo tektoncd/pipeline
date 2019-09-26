@@ -15,6 +15,18 @@ version=${version/v}
 
 sed "s/_VERSION_/${version}/" ${repospecfile} > ${TMPD}/tekton.spec
 
+sed -i '/bundled(golang/d' tekton.spec
+
+mapfile -t bundle < <(python -c "ver = None;
+def version(line): global ver; ver = line.split()[2]; return '';
+
+print '\n'.join(filter(None,[line for line in ['Provides: bundled(golang({})) = {}'.format(line.rstrip('\n'), ver) if line[0] != '#' else version(line.rstrip('\n').replace('+incompatible','')) for line in open('../../vendor/modules.txt')]][::-1]))")
+
+for i in "${bundle[@]}"
+do
+   sed -i "/vendored\slibraries/a $i" tekton.spec
+done
+
 cd ${TMPD}
 
 curl -O -L https://github.com/tektoncd/cli/archive/v${version}.tar.gz

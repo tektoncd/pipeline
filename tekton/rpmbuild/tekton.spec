@@ -28,10 +28,15 @@ Provides: bundled(golang(cloud.google.com/go/compute/metadata)) = v0.37.2
 Provides: bundled(golang(cloud.google.com/go/monitoring/apiv3)) = v0.37.2
 Provides: bundled(golang(cloud.google.com/go/trace/apiv2)) = v0.37.2
 Provides: bundled(golang(contrib.go.opencensus.io/exporter/ocagent)) = v0.2.0
+Provides: bundled(golang(contrib.go.opencensus.io/exporter/prometheus)) = v0.1.0
 Provides: bundled(golang(contrib.go.opencensus.io/exporter/stackdriver)) = v0.9.1
 Provides: bundled(golang(contrib.go.opencensus.io/exporter/stackdriver/monitoredresource)) = v0.9.1
+Provides: bundled(golang(github.com/AlecAivazis/survey/v2)) = v2.0.4
+Provides: bundled(golang(github.com/AlecAivazis/survey/v2/terminal)) = v2.0.4
+Provides: bundled(golang(github.com/AlecAivazis/survey/v2/core)) = v2.0.4
 Provides: bundled(golang(github.com/Azure/azure-sdk-for-go/services/containerregistry/mgmt/2017-10-01/containerregistry)) = v26.1.0
 Provides: bundled(golang(github.com/Azure/azure-sdk-for-go/version)) = v26.1.0
+Provides: bundled(golang(github.com/Azure/go-autorest/autorest)) = v11.6.0
 Provides: bundled(golang(github.com/Azure/go-autorest/autorest/adal)) = v11.6.0
 Provides: bundled(golang(github.com/Azure/go-autorest/autorest/azure)) = v11.6.0
 Provides: bundled(golang(github.com/Azure/go-autorest/autorest/date)) = v11.6.0
@@ -39,6 +44,7 @@ Provides: bundled(golang(github.com/Azure/go-autorest/autorest/to)) = v11.6.0
 Provides: bundled(golang(github.com/Azure/go-autorest/autorest/validation)) = v11.6.0
 Provides: bundled(golang(github.com/Azure/go-autorest/tracing)) = v11.6.0
 Provides: bundled(golang(github.com/Azure/go-autorest/logger)) = v11.6.0
+Provides: bundled(golang(github.com/Netflix/go-expect)) = v0.0.0-20190729225929-0e00d9168667
 Provides: bundled(golang(github.com/aws/aws-sdk-go/aws)) = v1.19.11
 Provides: bundled(golang(github.com/aws/aws-sdk-go/aws/request)) = v1.19.11
 Provides: bundled(golang(github.com/aws/aws-sdk-go/aws/session)) = v1.19.11
@@ -71,507 +77,557 @@ Provides: bundled(golang(github.com/aws/aws-sdk-go/private/protocol/json/jsonuti
 Provides: bundled(golang(github.com/aws/aws-sdk-go/private/protocol/query)) = v1.19.11
 Provides: bundled(golang(github.com/aws/aws-sdk-go/private/protocol/query/queryutil)) = v1.19.11
 Provides: bundled(golang(github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil)) = v1.19.11
-Provides: bundled(golang(github.com/beorn7/perks/quantile)) = 56c1def75689cceec1fa6f14c2eedb4b798827f9
+Provides: bundled(golang(github.com/beorn7/perks/quantile)) = v0.0.0-20180321164747-3a771d992973
+Provides: bundled(golang(github.com/blang/semver)) = v3.5.1
 Provides: bundled(golang(github.com/census-instrumentation/opencensus-proto/gen-go/agent/common/v1)) = v0.1.0
 Provides: bundled(golang(github.com/census-instrumentation/opencensus-proto/gen-go/metrics/v1)) = v0.1.0
 Provides: bundled(golang(github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1)) = v0.1.0
 Provides: bundled(golang(github.com/census-instrumentation/opencensus-proto/gen-go/agent/trace/v1)) = v0.1.0
 Provides: bundled(golang(github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1)) = v0.1.0
-Provides: bundled(golang(github.com/davecgh/go-spew)) = v1.1.1
+Provides: bundled(golang(github.com/cpuguy83/go-md2man/md2man)) = v1.0.10
+Provides: bundled(golang(github.com/davecgh/go-spew/spew)) = v1.1.1
 Provides: bundled(golang(github.com/dgrijalva/jwt-go)) = v3.2.0
 Provides: bundled(golang(github.com/evanphx/json-patch)) = v4.1.0
 Provides: bundled(golang(github.com/fatih/color)) = v1.7.0
 Provides: bundled(golang(github.com/ghodss/yaml)) = v1.0.0
 Provides: bundled(golang(github.com/gogo/protobuf/proto)) = v1.2.0
 Provides: bundled(golang(github.com/gogo/protobuf/sortkeys)) = v1.2.0
-Provides: bundled(golang(github.com/golang/glog)) = 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+Provides: bundled(golang(github.com/golang/glog)) = v0.0.0-20160126235308-23def4e6c14b
+Provides: bundled(golang(github.com/golang/groupcache/lru)) = v0.0.0-20190129154638-5b532d6fd5ef
 Provides: bundled(golang(github.com/golang/protobuf/proto)) = v1.2.0
 Provides: bundled(golang(github.com/golang/protobuf/ptypes/any)) = v1.2.0
-Provides: bundled(golang(github.com/golang/protobuf/ptypes)) = v1.2.0
 Provides: bundled(golang(github.com/golang/protobuf/ptypes/timestamp)) = v1.2.0
 Provides: bundled(golang(github.com/golang/protobuf/ptypes/wrappers)) = v1.2.0
+Provides: bundled(golang(github.com/golang/protobuf/ptypes)) = v1.2.0
 Provides: bundled(golang(github.com/golang/protobuf/ptypes/duration)) = v1.2.0
 Provides: bundled(golang(github.com/golang/protobuf/ptypes/struct)) = v1.2.0
 Provides: bundled(golang(github.com/golang/protobuf/ptypes/empty)) = v1.2.0
 Provides: bundled(golang(github.com/golang/protobuf/protoc-gen-go/descriptor)) = v1.2.0
-Provides: bundled(golang(github.com/google/btree)) = 4030bb1f1f0c35b30ca7009e9ebd06849dd45306
-Provides: bundled(golang(github.com/google/go-cmp/cmp)) = v0.2.0
-Provides: bundled(golang(github.com/google/go-cmp/cmp/internal/diff)) = v0.2.0
-Provides: bundled(golang(github.com/google/go-cmp/cmp/internal/function)) = v0.2.0
-Provides: bundled(golang(github.com/google/go-cmp/cmp/internal/value)) = v0.2.0
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/authn)) =
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/authn/k8schain))
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/name))
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1))
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/remote))
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/types))
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/partial))
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/remote/transport))
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/stream))
-Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/v1util))
-Provides: bundled(golang(github.com/google/gofuzz))
-Provides: bundled(golang(github.com/googleapis/gax-go/v2))
-Provides: bundled(golang(github.com/googleapis/gnostic/OpenAPIv2))
-Provides: bundled(golang(github.com/googleapis/gnostic/compiler))
-Provides: bundled(golang(github.com/googleapis/gnostic/extensions))
-Provides: bundled(golang(github.com/gregjones/httpcache))
-Provides: bundled(golang(github.com/gregjones/httpcache/diskcache))
-Provides: bundled(golang(github.com/hako/durafmt))
-Provides: bundled(golang(github.com/hashicorp/golang-lru))
-Provides: bundled(golang(github.com/hashicorp/golang-lru/simplelru))
-Provides: bundled(golang(github.com/imdario/mergo))
-Provides: bundled(golang(github.com/inconshreveable/mousetrap))
-Provides: bundled(golang(github.com/jmespath/go-jmespath))
-Provides: bundled(golang(github.com/jonboulle/clockwork))
-Provides: bundled(golang(github.com/json-iterator/go))
-Provides: bundled(golang(github.com/knative/pkg/apis))
-Provides: bundled(golang(github.com/knative/pkg/apis/duck/v1beta1))
-Provides: bundled(golang(github.com/knative/pkg/apis/duck))
-Provides: bundled(golang(github.com/knative/pkg/controller))
-Provides: bundled(golang(github.com/knative/pkg/test))
-Provides: bundled(golang(github.com/knative/pkg/test/logging))
-Provides: bundled(golang(github.com/knative/pkg/kmp))
-Provides: bundled(golang(github.com/knative/pkg/kmeta))
-Provides: bundled(golang(github.com/knative/pkg/logging))
-Provides: bundled(golang(github.com/knative/pkg/logging/logkey))
-Provides: bundled(golang(github.com/knative/pkg/metrics))
-Provides: bundled(golang(github.com/knative/pkg/test/spoof))
-Provides: bundled(golang(github.com/knative/pkg/changeset))
-Provides: bundled(golang(github.com/knative/pkg/metrics/metricskey))
-Provides: bundled(golang(github.com/knative/pkg/test/ingress))
-Provides: bundled(golang(github.com/knative/pkg/test/zipkin))
-Provides: bundled(golang(github.com/knative/pkg/test/monitoring))
-Provides: bundled(golang(github.com/mattbaird/jsonpatch))
-Provides: bundled(golang(github.com/mattn/go-colorable))
-Provides: bundled(golang(github.com/mattn/go-isatty))
-Provides: bundled(golang(github.com/matttproud/golang_protobuf_extensions/pbutil))
-Provides: bundled(golang(github.com/modern-go/concurrent))
-Provides: bundled(golang(github.com/modern-go/reflect2))
-Provides: bundled(golang(github.com/peterbourgon/diskv))
-Provides: bundled(golang(github.com/pkg/errors))
-Provides: bundled(golang(github.com/prometheus/client_golang/prometheus))
-Provides: bundled(golang(github.com/prometheus/client_golang/prometheus/promhttp))
-Provides: bundled(golang(github.com/prometheus/client_golang/prometheus/internal))
-Provides: bundled(golang(github.com/prometheus/client_model/go))
-Provides: bundled(golang(github.com/prometheus/common/expfmt))
-Provides: bundled(golang(github.com/prometheus/common/model))
-Provides: bundled(golang(github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg))
-Provides: bundled(golang(github.com/prometheus/procfs))
-Provides: bundled(golang(github.com/prometheus/procfs/iostats))
-Provides: bundled(golang(github.com/prometheus/procfs/nfs))
-Provides: bundled(golang(github.com/prometheus/procfs/xfs))
-Provides: bundled(golang(github.com/prometheus/procfs/internal/util))
-Provides: bundled(golang(github.com/spf13/cobra))
-Provides: bundled(golang(github.com/spf13/pflag))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/informers/externalversions))
-Provides: bundled(golang(github.com/tektoncd/pipeline/test/builder))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/apis/pipeline))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/list))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/names))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/templating))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources))
-Provides: bundled(golang(github.com/tektoncd/pipeline/test))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/artifacts))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/credentials))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/credentials/dockercreds))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/credentials/gitcreds))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/merge))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/informers/externalversions/internalinterfaces))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/system))
-Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1/fake))
-Provides: bundled(golang(github.com/tektoncd/plumbing/scripts))
-Provides: bundled(golang(go.opencensus.io/trace))
-Provides: bundled(golang(go.opencensus.io/stats))
-Provides: bundled(golang(go.opencensus.io/stats/view))
-Provides: bundled(golang(go.opencensus.io/tag))
-Provides: bundled(golang(go.opencensus.io/exemplar))
-Provides: bundled(golang(go.opencensus.io/internal))
-Provides: bundled(golang(go.opencensus.io/trace/internal))
-Provides: bundled(golang(go.opencensus.io/trace/tracestate))
-Provides: bundled(golang(go.opencensus.io/exporter/prometheus))
-Provides: bundled(golang(go.opencensus.io/stats/internal))
-Provides: bundled(golang(go.opencensus.io/internal/tagencoding))
-Provides: bundled(golang(go.opencensus.io/plugin/ochttp))
-Provides: bundled(golang(go.opencensus.io/plugin/ochttp/propagation/b3))
-Provides: bundled(golang(go.opencensus.io))
-Provides: bundled(golang(go.opencensus.io/trace/propagation))
-Provides: bundled(golang(go.opencensus.io/plugin/ochttp/propagation/tracecontext))
-Provides: bundled(golang(go.opencensus.io/plugin/ocgrpc))
-Provides: bundled(golang(go.uber.org/atomic))
-Provides: bundled(golang(go.uber.org/multierr))
-Provides: bundled(golang(go.uber.org/zap))
-Provides: bundled(golang(go.uber.org/zap/zaptest/observer))
-Provides: bundled(golang(go.uber.org/zap/internal/bufferpool))
-Provides: bundled(golang(go.uber.org/zap/zapcore))
-Provides: bundled(golang(go.uber.org/zap/buffer))
-Provides: bundled(golang(go.uber.org/zap/internal/color))
-Provides: bundled(golang(go.uber.org/zap/internal/exit))
-Provides: bundled(golang(golang.org/x/crypto/ssh/terminal))
-Provides: bundled(golang(golang.org/x/crypto/pkcs12))
-Provides: bundled(golang(golang.org/x/crypto/pkcs12/internal/rc2))
-Provides: bundled(golang(golang.org/x/net/http2))
-Provides: bundled(golang(golang.org/x/net/http/httpguts))
-Provides: bundled(golang(golang.org/x/net/http2/hpack))
-Provides: bundled(golang(golang.org/x/net/idna))
-Provides: bundled(golang(golang.org/x/net/context/ctxhttp))
-Provides: bundled(golang(golang.org/x/net/context))
-Provides: bundled(golang(golang.org/x/net/trace))
-Provides: bundled(golang(golang.org/x/net/internal/timeseries))
-Provides: bundled(golang(golang.org/x/oauth2))
-Provides: bundled(golang(golang.org/x/oauth2/google))
-Provides: bundled(golang(golang.org/x/oauth2/internal))
-Provides: bundled(golang(golang.org/x/oauth2/jws))
-Provides: bundled(golang(golang.org/x/oauth2/jwt))
-Provides: bundled(golang(golang.org/x/sync/errgroup))
-Provides: bundled(golang(golang.org/x/sync/semaphore))
-Provides: bundled(golang(golang.org/x/sys/unix))
-Provides: bundled(golang(golang.org/x/sys/windows))
-Provides: bundled(golang(golang.org/x/text/encoding/unicode))
-Provides: bundled(golang(golang.org/x/text/transform))
-Provides: bundled(golang(golang.org/x/text/secure/bidirule))
-Provides: bundled(golang(golang.org/x/text/unicode/bidi))
-Provides: bundled(golang(golang.org/x/text/unicode/norm))
-Provides: bundled(golang(golang.org/x/text/encoding))
-Provides: bundled(golang(golang.org/x/text/encoding/internal))
-Provides: bundled(golang(golang.org/x/text/encoding/internal/identifier))
-Provides: bundled(golang(golang.org/x/text/internal/utf8internal))
-Provides: bundled(golang(golang.org/x/text/runes))
-Provides: bundled(golang(golang.org/x/time/rate))
-Provides: bundled(golang(google.golang.org/api/option))
-Provides: bundled(golang(google.golang.org/api/support/bundler))
-Provides: bundled(golang(google.golang.org/api/iterator))
-Provides: bundled(golang(google.golang.org/api/transport))
-Provides: bundled(golang(google.golang.org/api/internal))
-Provides: bundled(golang(google.golang.org/api/transport/grpc))
-Provides: bundled(golang(google.golang.org/api/transport/http))
-Provides: bundled(golang(google.golang.org/api/googleapi/transport))
-Provides: bundled(golang(google.golang.org/api/transport/http/internal/propagation))
-Provides: bundled(golang(google.golang.org/appengine))
-Provides: bundled(golang(google.golang.org/appengine/urlfetch))
-Provides: bundled(golang(google.golang.org/appengine/internal))
-Provides: bundled(golang(google.golang.org/appengine/internal/app_identity))
-Provides: bundled(golang(google.golang.org/appengine/internal/modules))
-Provides: bundled(golang(google.golang.org/appengine/internal/urlfetch))
-Provides: bundled(golang(google.golang.org/appengine/internal/base))
-Provides: bundled(golang(google.golang.org/appengine/internal/datastore))
-Provides: bundled(golang(google.golang.org/appengine/internal/log))
-Provides: bundled(golang(google.golang.org/appengine/internal/remote_api))
-Provides: bundled(golang(google.golang.org/appengine/socket))
-Provides: bundled(golang(google.golang.org/appengine/internal/socket))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/api/distribution))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/api/label))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/api/metric))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/api/monitoredres))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/devtools/cloudtrace/v2))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/monitoring/v3))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/rpc/status))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/api))
-Provides: bundled(golang(google.golang.org/genproto/googleapis/api/annotations))
-Provides: bundled(golang(google.golang.org/genproto/protobuf/field_mask))
-Provides: bundled(golang(google.golang.org/grpc))
-Provides: bundled(golang(google.golang.org/grpc/codes))
-Provides: bundled(golang(google.golang.org/grpc/metadata))
-Provides: bundled(golang(google.golang.org/grpc/status))
-Provides: bundled(golang(google.golang.org/grpc/balancer))
-Provides: bundled(golang(google.golang.org/grpc/balancer/roundrobin))
-Provides: bundled(golang(google.golang.org/grpc/connectivity))
-Provides: bundled(golang(google.golang.org/grpc/credentials))
-Provides: bundled(golang(google.golang.org/grpc/encoding))
-Provides: bundled(golang(google.golang.org/grpc/encoding/proto))
-Provides: bundled(golang(google.golang.org/grpc/grpclog))
-Provides: bundled(golang(google.golang.org/grpc/internal))
-Provides: bundled(golang(google.golang.org/grpc/internal/backoff))
-Provides: bundled(golang(google.golang.org/grpc/internal/binarylog))
-Provides: bundled(golang(google.golang.org/grpc/internal/channelz))
-Provides: bundled(golang(google.golang.org/grpc/internal/envconfig))
-Provides: bundled(golang(google.golang.org/grpc/internal/grpcrand))
-Provides: bundled(golang(google.golang.org/grpc/internal/grpcsync))
-Provides: bundled(golang(google.golang.org/grpc/internal/transport))
-Provides: bundled(golang(google.golang.org/grpc/keepalive))
-Provides: bundled(golang(google.golang.org/grpc/naming))
-Provides: bundled(golang(google.golang.org/grpc/peer))
-Provides: bundled(golang(google.golang.org/grpc/resolver))
-Provides: bundled(golang(google.golang.org/grpc/resolver/dns))
-Provides: bundled(golang(google.golang.org/grpc/resolver/passthrough))
-Provides: bundled(golang(google.golang.org/grpc/stats))
-Provides: bundled(golang(google.golang.org/grpc/tap))
-Provides: bundled(golang(google.golang.org/grpc/credentials/oauth))
-Provides: bundled(golang(google.golang.org/grpc/balancer/base))
-Provides: bundled(golang(google.golang.org/grpc/credentials/internal))
-Provides: bundled(golang(google.golang.org/grpc/binarylog/grpc_binarylog_v1))
-Provides: bundled(golang(google.golang.org/grpc/internal/syscall))
-Provides: bundled(golang(gopkg.in/inf.v0))
-Provides: bundled(golang(gopkg.in/yaml.v2))
-Provides: bundled(golang(k8s.io/api/core/v1))
-Provides: bundled(golang(k8s.io/api/authentication/v1))
-Provides: bundled(golang(k8s.io/api/admissionregistration/v1alpha1))
-Provides: bundled(golang(k8s.io/api/admissionregistration/v1beta1))
-Provides: bundled(golang(k8s.io/api/apps/v1))
-Provides: bundled(golang(k8s.io/api/apps/v1beta1))
-Provides: bundled(golang(k8s.io/api/apps/v1beta2))
-Provides: bundled(golang(k8s.io/api/autoscaling/v1))
-Provides: bundled(golang(k8s.io/api/autoscaling/v2beta1))
-Provides: bundled(golang(k8s.io/api/autoscaling/v2beta2))
-Provides: bundled(golang(k8s.io/api/batch/v1))
-Provides: bundled(golang(k8s.io/api/batch/v1beta1))
-Provides: bundled(golang(k8s.io/api/batch/v2alpha1))
-Provides: bundled(golang(k8s.io/api/certificates/v1beta1))
-Provides: bundled(golang(k8s.io/api/coordination/v1beta1))
-Provides: bundled(golang(k8s.io/api/events/v1beta1))
-Provides: bundled(golang(k8s.io/api/extensions/v1beta1))
-Provides: bundled(golang(k8s.io/api/networking/v1))
-Provides: bundled(golang(k8s.io/api/policy/v1beta1))
-Provides: bundled(golang(k8s.io/api/rbac/v1))
-Provides: bundled(golang(k8s.io/api/rbac/v1alpha1))
-Provides: bundled(golang(k8s.io/api/rbac/v1beta1))
-Provides: bundled(golang(k8s.io/api/scheduling/v1alpha1))
-Provides: bundled(golang(k8s.io/api/scheduling/v1beta1))
-Provides: bundled(golang(k8s.io/api/settings/v1alpha1))
-Provides: bundled(golang(k8s.io/api/storage/v1))
-Provides: bundled(golang(k8s.io/api/storage/v1alpha1))
-Provides: bundled(golang(k8s.io/api/storage/v1beta1))
-Provides: bundled(golang(k8s.io/api/authentication/v1beta1))
-Provides: bundled(golang(k8s.io/api/authorization/v1))
-Provides: bundled(golang(k8s.io/api/authorization/v1beta1))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/schema))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/fields))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/net))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/yaml))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/api/errors))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/streaming))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/types))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/sets))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/watch))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/errors))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/validation))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/api/equality))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/api/resource))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/conversion))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/labels))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/selection))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/intstr))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/runtime))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/api/meta))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/json))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/api/validation))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/cache))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/clock))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/diff))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/naming))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/wait))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/conversion/queryparams))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/version))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/validation/field))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/json))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/versioning))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/rand))
-Provides: bundled(golang(k8s.io/apimachinery/third_party/forked/golang/reflect))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1beta1))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1/unstructured))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1/unstructured/unstructuredscheme))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/strategicpatch))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1/validation))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/internalversion))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/protobuf))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/recognizer))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/framer))
-Provides: bundled(golang(k8s.io/apimachinery/pkg/util/mergepatch))
-Provides: bundled(golang(k8s.io/apimachinery/third_party/forked/golang/json))
-Provides: bundled(golang(k8s.io/cli-runtime/pkg/genericclioptions))
-Provides: bundled(golang(k8s.io/cli-runtime/pkg/genericclioptions/printers))
-Provides: bundled(golang(k8s.io/cli-runtime/pkg/genericclioptions/resource))
-Provides: bundled(golang(k8s.io/client-go/plugin/pkg/client/auth/gcp))
-Provides: bundled(golang(k8s.io/client-go/plugin/pkg/client/auth/oidc))
-Provides: bundled(golang(k8s.io/client-go/kubernetes))
-Provides: bundled(golang(k8s.io/client-go/rest))
-Provides: bundled(golang(k8s.io/client-go/tools/clientcmd))
-Provides: bundled(golang(k8s.io/client-go/tools/cache))
-Provides: bundled(golang(k8s.io/client-go/informers))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/core/v1))
-Provides: bundled(golang(k8s.io/client-go/util/jsonpath))
-Provides: bundled(golang(k8s.io/client-go/discovery))
-Provides: bundled(golang(k8s.io/client-go/util/flowcontrol))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1beta2))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authentication/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authentication/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authorization/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authorization/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v2alpha1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/certificates/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/coordination/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/events/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/extensions/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/networking/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/policy/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/scheduling/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/settings/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/pkg/version))
-Provides: bundled(golang(k8s.io/client-go/plugin/pkg/client/auth/exec))
-Provides: bundled(golang(k8s.io/client-go/rest/watch))
-Provides: bundled(golang(k8s.io/client-go/tools/clientcmd/api))
-Provides: bundled(golang(k8s.io/client-go/tools/metrics))
-Provides: bundled(golang(k8s.io/client-go/transport))
-Provides: bundled(golang(k8s.io/client-go/util/cert))
-Provides: bundled(golang(k8s.io/client-go/tools/auth))
-Provides: bundled(golang(k8s.io/client-go/tools/clientcmd/api/latest))
-Provides: bundled(golang(k8s.io/client-go/util/homedir))
-Provides: bundled(golang(k8s.io/client-go/restmapper))
-Provides: bundled(golang(k8s.io/client-go/testing))
-Provides: bundled(golang(k8s.io/client-go/tools/pager))
-Provides: bundled(golang(k8s.io/client-go/util/buffer))
-Provides: bundled(golang(k8s.io/client-go/util/retry))
-Provides: bundled(golang(k8s.io/client-go/informers/admissionregistration))
-Provides: bundled(golang(k8s.io/client-go/informers/apps))
-Provides: bundled(golang(k8s.io/client-go/informers/autoscaling))
-Provides: bundled(golang(k8s.io/client-go/informers/batch))
-Provides: bundled(golang(k8s.io/client-go/informers/certificates))
-Provides: bundled(golang(k8s.io/client-go/informers/coordination))
-Provides: bundled(golang(k8s.io/client-go/informers/core))
-Provides: bundled(golang(k8s.io/client-go/informers/events))
-Provides: bundled(golang(k8s.io/client-go/informers/extensions))
-Provides: bundled(golang(k8s.io/client-go/informers/internalinterfaces))
-Provides: bundled(golang(k8s.io/client-go/informers/networking))
-Provides: bundled(golang(k8s.io/client-go/informers/policy))
-Provides: bundled(golang(k8s.io/client-go/informers/rbac))
-Provides: bundled(golang(k8s.io/client-go/informers/scheduling))
-Provides: bundled(golang(k8s.io/client-go/informers/settings))
-Provides: bundled(golang(k8s.io/client-go/informers/storage))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/scheme))
-Provides: bundled(golang(k8s.io/client-go/tools/reference))
-Provides: bundled(golang(k8s.io/client-go/third_party/forked/golang/template))
-Provides: bundled(golang(k8s.io/client-go/util/integer))
-Provides: bundled(golang(k8s.io/client-go/pkg/apis/clientauthentication))
-Provides: bundled(golang(k8s.io/client-go/pkg/apis/clientauthentication/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/pkg/apis/clientauthentication/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/util/connrotation))
-Provides: bundled(golang(k8s.io/client-go/tools/clientcmd/api/v1))
-Provides: bundled(golang(k8s.io/client-go/informers/core/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/fake))
-Provides: bundled(golang(k8s.io/client-go/informers/admissionregistration/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/informers/admissionregistration/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/apps/v1))
-Provides: bundled(golang(k8s.io/client-go/informers/apps/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/apps/v1beta2))
-Provides: bundled(golang(k8s.io/client-go/informers/autoscaling/v1))
-Provides: bundled(golang(k8s.io/client-go/informers/autoscaling/v2beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/autoscaling/v2beta2))
-Provides: bundled(golang(k8s.io/client-go/informers/batch/v1))
-Provides: bundled(golang(k8s.io/client-go/informers/batch/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/batch/v2alpha1))
-Provides: bundled(golang(k8s.io/client-go/informers/certificates/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/coordination/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/events/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/extensions/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/networking/v1))
-Provides: bundled(golang(k8s.io/client-go/informers/policy/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/rbac/v1))
-Provides: bundled(golang(k8s.io/client-go/informers/rbac/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/informers/rbac/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/scheduling/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/informers/scheduling/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/informers/settings/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/informers/storage/v1))
-Provides: bundled(golang(k8s.io/client-go/informers/storage/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/informers/storage/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/dynamic))
-Provides: bundled(golang(k8s.io/client-go/util/workqueue))
-Provides: bundled(golang(k8s.io/client-go/discovery/fake))
-Provides: bundled(golang(k8s.io/client-go/listers/core/v1))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1beta2/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authentication/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authentication/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authorization/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authorization/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v2alpha1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/certificates/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/coordination/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/core/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/events/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/extensions/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/networking/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/policy/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1alpha1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/scheduling/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/settings/v1alpha1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1alpha1/fake))
-Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1beta1/fake))
-Provides: bundled(golang(k8s.io/client-go/listers/admissionregistration/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/listers/admissionregistration/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/apps/v1))
-Provides: bundled(golang(k8s.io/client-go/listers/apps/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/apps/v1beta2))
-Provides: bundled(golang(k8s.io/client-go/listers/autoscaling/v1))
-Provides: bundled(golang(k8s.io/client-go/listers/autoscaling/v2beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/autoscaling/v2beta2))
-Provides: bundled(golang(k8s.io/client-go/listers/batch/v1))
-Provides: bundled(golang(k8s.io/client-go/listers/batch/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/batch/v2alpha1))
-Provides: bundled(golang(k8s.io/client-go/listers/certificates/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/coordination/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/events/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/extensions/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/networking/v1))
-Provides: bundled(golang(k8s.io/client-go/listers/policy/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/rbac/v1))
-Provides: bundled(golang(k8s.io/client-go/listers/rbac/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/listers/rbac/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/scheduling/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/listers/scheduling/v1beta1))
-Provides: bundled(golang(k8s.io/client-go/listers/settings/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/listers/storage/v1))
-Provides: bundled(golang(k8s.io/client-go/listers/storage/v1alpha1))
-Provides: bundled(golang(k8s.io/client-go/listers/storage/v1beta1))
-Provides: bundled(golang(k8s.io/klog))
-Provides: bundled(golang(k8s.io/kube-openapi/pkg/util/proto))
-Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider))
-Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider/aws))
-Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider/azure))
-Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider/gcp))
-Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider/secrets))
-Provides: bundled(golang(k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth))
-Provides: bundled(golang(sigs.k8s.io/yaml))
+Provides: bundled(golang(github.com/google/btree)) = v0.0.0-20180813153112-4030bb1f1f0c
+Provides: bundled(golang(github.com/google/go-cmp/cmp)) = v0.3.1
+Provides: bundled(golang(github.com/google/go-cmp/cmp/internal/diff)) = v0.3.1
+Provides: bundled(golang(github.com/google/go-cmp/cmp/internal/flags)) = v0.3.1
+Provides: bundled(golang(github.com/google/go-cmp/cmp/internal/function)) = v0.3.1
+Provides: bundled(golang(github.com/google/go-cmp/cmp/internal/value)) = v0.3.1
+Provides: bundled(golang(github.com/google/go-cmp/cmp/cmpopts)) = v0.3.1
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/authn)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/authn/k8schain)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/name)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/remote)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/types)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/partial)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/remote/transport)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/stream)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/go-containerregistry/pkg/v1/v1util)) = v0.0.0-20190320210540-8d4083db9aa0
+Provides: bundled(golang(github.com/google/gofuzz)) = v0.0.0-20161122191042-44d81051d367
+Provides: bundled(golang(github.com/google/uuid)) = v1.1.1
+Provides: bundled(golang(github.com/googleapis/gax-go/v2)) = v2.0.4
+Provides: bundled(golang(github.com/googleapis/gnostic/OpenAPIv2)) = v0.0.0-20170729233727-0c5108395e2d
+Provides: bundled(golang(github.com/googleapis/gnostic/compiler)) = v0.0.0-20170729233727-0c5108395e2d
+Provides: bundled(golang(github.com/googleapis/gnostic/extensions)) = v0.0.0-20170729233727-0c5108395e2d
+Provides: bundled(golang(github.com/gregjones/httpcache)) = v0.0.0-20180305231024-9cad4c3443a7
+Provides: bundled(golang(github.com/gregjones/httpcache/diskcache)) = v0.0.0-20180305231024-9cad4c3443a7
+Provides: bundled(golang(github.com/hako/durafmt)) = v0.0.0-20180520121703-7b7ae1e72ead
+Provides: bundled(golang(github.com/hashicorp/golang-lru)) = v0.5.0
+Provides: bundled(golang(github.com/hashicorp/golang-lru/simplelru)) = v0.5.0
+Provides: bundled(golang(github.com/hinshun/vt10x)) = v0.0.0-20180809195222-d55458df857c
+Provides: bundled(golang(github.com/imdario/mergo)) = v0.3.7
+Provides: bundled(golang(github.com/inconshreveable/mousetrap)) = v1.0.0
+Provides: bundled(golang(github.com/jmespath/go-jmespath)) = v0.0.0-20180206201540-c2b33e8439af
+Provides: bundled(golang(github.com/jonboulle/clockwork)) = v0.1.1-0.20190114141812-62fb9bc030d1
+Provides: bundled(golang(github.com/json-iterator/go)) = v0.0.0-20180612202835-f2b4162afba3
+Provides: bundled(golang(github.com/kballard/go-shellquote)) = v0.0.0-20180428030007-95032a82bc51
+Provides: bundled(golang(github.com/kr/pty)) = v1.1.8
+Provides: bundled(golang(github.com/mattbaird/jsonpatch)) = v0.0.0-20171005235357-81af80346b1a
+Provides: bundled(golang(github.com/mattn/go-colorable)) = v0.1.2
+Provides: bundled(golang(github.com/mattn/go-isatty)) = v0.0.9
+Provides: bundled(golang(github.com/matttproud/golang_protobuf_extensions/pbutil)) = v1.0.1
+Provides: bundled(golang(github.com/mgutz/ansi)) = v0.0.0-20170206155736-9520e82c474b
+Provides: bundled(golang(github.com/modern-go/concurrent)) = v0.0.0-20180306012644-bacd9c7ef1dd
+Provides: bundled(golang(github.com/modern-go/reflect2)) = v0.0.0-20180701023420-4b7aa43c6742
+Provides: bundled(golang(github.com/peterbourgon/diskv)) = v2.0.1
+Provides: bundled(golang(github.com/pkg/errors)) = v0.8.1
+Provides: bundled(golang(github.com/pmezard/go-difflib/difflib)) = v1.0.0
+Provides: bundled(golang(github.com/prometheus/client_golang/prometheus)) = v0.9.3-0.20190127221311-3c4408c8b829
+Provides: bundled(golang(github.com/prometheus/client_golang/prometheus/promhttp)) = v0.9.3-0.20190127221311-3c4408c8b829
+Provides: bundled(golang(github.com/prometheus/client_golang/prometheus/internal)) = v0.9.3-0.20190127221311-3c4408c8b829
+Provides: bundled(golang(github.com/prometheus/client_model/go)) = v0.0.0-20190129233127-fd36f4220a90
+Provides: bundled(golang(github.com/prometheus/common/expfmt)) = v0.2.0
+Provides: bundled(golang(github.com/prometheus/common/model)) = v0.2.0
+Provides: bundled(golang(github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg)) = v0.2.0
+Provides: bundled(golang(github.com/prometheus/procfs)) = v0.0.0-20190322151404-55ae3d9d5573
+Provides: bundled(golang(github.com/prometheus/procfs/iostats)) = v0.0.0-20190322151404-55ae3d9d5573
+Provides: bundled(golang(github.com/prometheus/procfs/nfs)) = v0.0.0-20190322151404-55ae3d9d5573
+Provides: bundled(golang(github.com/prometheus/procfs/xfs)) = v0.0.0-20190322151404-55ae3d9d5573
+Provides: bundled(golang(github.com/prometheus/procfs/internal/util)) = v0.0.0-20190322151404-55ae3d9d5573
+Provides: bundled(golang(github.com/russross/blackfriday)) = v1.5.2
+Provides: bundled(golang(github.com/spf13/cobra)) = v0.0.5
+Provides: bundled(golang(github.com/spf13/pflag)) = v1.0.3
+Provides: bundled(golang(github.com/stretchr/testify/require)) = v1.4.0
+Provides: bundled(golang(github.com/stretchr/testify/assert)) = v1.4.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/informers/externalversions)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/test)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/test/builder)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/apis/config)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/apis/pipeline)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/list)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/names)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/artifacts)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/credentials)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/credentials/dockercreds)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/credentials/gitcreds)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/informers/externalversions/internalinterfaces)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/client/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipeline/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelineresource/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/system)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/client)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/factory/fake)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipeline)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelineresource)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/factory)) = v0.7.0
+Provides: bundled(golang(github.com/tektoncd/plumbing/scripts)) = v0.0.0-20190604151109-373083123d6a
+Provides: bundled(golang(go.opencensus.io/trace)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/internal)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/trace/internal)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/trace/tracestate)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/stats)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/stats/view)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/tag)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/metric/metricdata)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/stats/internal)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/internal/tagencoding)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/metric/metricproducer)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/plugin/ochttp)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/plugin/ochttp/propagation/b3)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/resource)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/metric/metricexport)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/trace/propagation)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/plugin/ochttp/propagation/tracecontext)) = v0.21.0
+Provides: bundled(golang(go.opencensus.io/plugin/ocgrpc)) = v0.21.0
+Provides: bundled(golang(go.uber.org/atomic)) = v1.3.2
+Provides: bundled(golang(go.uber.org/multierr)) = v1.1.0
+Provides: bundled(golang(go.uber.org/zap)) = v0.0.0-20180814183419-67bc79d13d15
+Provides: bundled(golang(go.uber.org/zap/internal/bufferpool)) = v0.0.0-20180814183419-67bc79d13d15
+Provides: bundled(golang(go.uber.org/zap/zapcore)) = v0.0.0-20180814183419-67bc79d13d15
+Provides: bundled(golang(go.uber.org/zap/zaptest)) = v0.0.0-20180814183419-67bc79d13d15
+Provides: bundled(golang(go.uber.org/zap/buffer)) = v0.0.0-20180814183419-67bc79d13d15
+Provides: bundled(golang(go.uber.org/zap/internal/color)) = v0.0.0-20180814183419-67bc79d13d15
+Provides: bundled(golang(go.uber.org/zap/internal/exit)) = v0.0.0-20180814183419-67bc79d13d15
+Provides: bundled(golang(go.uber.org/zap/internal/ztest)) = v0.0.0-20180814183419-67bc79d13d15
+Provides: bundled(golang(golang.org/x/crypto/ssh/terminal)) = v0.0.0-20190923035154-9ee001bba392
+Provides: bundled(golang(golang.org/x/crypto/pkcs12)) = v0.0.0-20190923035154-9ee001bba392
+Provides: bundled(golang(golang.org/x/crypto/pkcs12/internal/rc2)) = v0.0.0-20190923035154-9ee001bba392
+Provides: bundled(golang(golang.org/x/net/http2)) = v0.0.0-20190923162816-aa69164e4478
+Provides: bundled(golang(golang.org/x/net/http/httpguts)) = v0.0.0-20190923162816-aa69164e4478
+Provides: bundled(golang(golang.org/x/net/http2/hpack)) = v0.0.0-20190923162816-aa69164e4478
+Provides: bundled(golang(golang.org/x/net/idna)) = v0.0.0-20190923162816-aa69164e4478
+Provides: bundled(golang(golang.org/x/net/context/ctxhttp)) = v0.0.0-20190923162816-aa69164e4478
+Provides: bundled(golang(golang.org/x/net/context)) = v0.0.0-20190923162816-aa69164e4478
+Provides: bundled(golang(golang.org/x/net/trace)) = v0.0.0-20190923162816-aa69164e4478
+Provides: bundled(golang(golang.org/x/net/internal/timeseries)) = v0.0.0-20190923162816-aa69164e4478
+Provides: bundled(golang(golang.org/x/oauth2)) = v0.0.0-20190226205417-e64efc72b421
+Provides: bundled(golang(golang.org/x/oauth2/google)) = v0.0.0-20190226205417-e64efc72b421
+Provides: bundled(golang(golang.org/x/oauth2/internal)) = v0.0.0-20190226205417-e64efc72b421
+Provides: bundled(golang(golang.org/x/oauth2/jws)) = v0.0.0-20190226205417-e64efc72b421
+Provides: bundled(golang(golang.org/x/oauth2/jwt)) = v0.0.0-20190226205417-e64efc72b421
+Provides: bundled(golang(golang.org/x/sync/errgroup)) = v0.0.0-20190911185100-cd5d95a43a6e
+Provides: bundled(golang(golang.org/x/sync/semaphore)) = v0.0.0-20190911185100-cd5d95a43a6e
+Provides: bundled(golang(golang.org/x/sys/unix)) = v0.0.0-20190924154521-2837fb4f24fe
+Provides: bundled(golang(golang.org/x/sys/windows)) = v0.0.0-20190924154521-2837fb4f24fe
+Provides: bundled(golang(golang.org/x/text/encoding/unicode)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/transform)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/secure/bidirule)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/unicode/bidi)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/unicode/norm)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/encoding)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/encoding/internal)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/encoding/internal/identifier)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/internal/utf8internal)) = v0.3.2
+Provides: bundled(golang(golang.org/x/text/runes)) = v0.3.2
+Provides: bundled(golang(golang.org/x/time/rate)) = v0.0.0-20181108054448-85acf8d2951c
+Provides: bundled(golang(golang.org/x/xerrors)) = v0.0.0-20190717185122-a985d3407aa7
+Provides: bundled(golang(golang.org/x/xerrors/internal)) = v0.0.0-20190717185122-a985d3407aa7
+Provides: bundled(golang(google.golang.org/api/option)) = v0.3.0
+Provides: bundled(golang(google.golang.org/api/support/bundler)) = v0.3.0
+Provides: bundled(golang(google.golang.org/api/iterator)) = v0.3.0
+Provides: bundled(golang(google.golang.org/api/transport)) = v0.3.0
+Provides: bundled(golang(google.golang.org/api/internal)) = v0.3.0
+Provides: bundled(golang(google.golang.org/api/transport/grpc)) = v0.3.0
+Provides: bundled(golang(google.golang.org/api/transport/http)) = v0.3.0
+Provides: bundled(golang(google.golang.org/api/googleapi/transport)) = v0.3.0
+Provides: bundled(golang(google.golang.org/api/transport/http/internal/propagation)) = v0.3.0
+Provides: bundled(golang(google.golang.org/appengine)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/urlfetch)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal/app_identity)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal/modules)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal/urlfetch)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal/base)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal/datastore)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal/log)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal/remote_api)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/socket)) = v1.5.0
+Provides: bundled(golang(google.golang.org/appengine/internal/socket)) = v1.5.0
+Provides: bundled(golang(google.golang.org/genproto/googleapis/api/distribution)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/googleapis/api/label)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/googleapis/api/metric)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/googleapis/api/monitoredres)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/googleapis/devtools/cloudtrace/v2)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/googleapis/monitoring/v3)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/googleapis/rpc/status)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/googleapis/api)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/googleapis/api/annotations)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/genproto/protobuf/field_mask)) = v0.0.0-20190307195333-5fe7a883aa19
+Provides: bundled(golang(google.golang.org/grpc)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/codes)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/metadata)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/status)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/balancer)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/balancer/roundrobin)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/connectivity)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/credentials)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/encoding)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/encoding/proto)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/grpclog)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal/backoff)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal/binarylog)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal/channelz)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal/envconfig)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal/grpcrand)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal/grpcsync)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal/transport)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/keepalive)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/naming)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/peer)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/resolver)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/resolver/dns)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/resolver/passthrough)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/stats)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/tap)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/credentials/oauth)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/balancer/base)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/credentials/internal)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/binarylog/grpc_binarylog_v1)) = v1.19.1
+Provides: bundled(golang(google.golang.org/grpc/internal/syscall)) = v1.19.1
+Provides: bundled(golang(gopkg.in/inf.v0)) = v0.9.1
+Provides: bundled(golang(gopkg.in/yaml.v2)) = v2.2.2
+Provides: bundled(golang(k8s.io/api/core/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/admissionregistration/v1alpha1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/admissionregistration/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/apps/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/apps/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/apps/v1beta2)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/autoscaling/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/autoscaling/v2beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/autoscaling/v2beta2)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/batch/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/batch/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/batch/v2alpha1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/certificates/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/coordination/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/events/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/extensions/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/networking/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/policy/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/rbac/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/rbac/v1alpha1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/rbac/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/scheduling/v1alpha1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/scheduling/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/settings/v1alpha1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/storage/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/storage/v1alpha1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/storage/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/authentication/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/authentication/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/authorization/v1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/api/authorization/v1beta1)) = v0.0.0-20190226173710-145d52631d00
+Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/schema)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/fields)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/net)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/yaml)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/api/errors)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/streaming)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/types)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/sets)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/watch)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/errors)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/validation)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/api/equality)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/strategicpatch)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/api/resource)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/conversion)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/labels)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/selection)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/intstr)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/runtime)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/api/meta)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/json)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/cache)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/clock)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/diff)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/naming)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/wait)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/conversion/queryparams)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/version)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/validation/field)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/json)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/versioning)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/rand)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1/unstructured)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/mergepatch)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/third_party/forked/golang/json)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/api/validation)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/third_party/forked/golang/reflect)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1beta1)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1/unstructured/unstructuredscheme)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/protobuf)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/runtime/serializer/recognizer)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/internalversion)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/util/framer)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/apimachinery/pkg/apis/meta/v1/validation)) = v0.0.0-20190221084156-01f179d85dbc
+Provides: bundled(golang(k8s.io/cli-runtime/pkg/genericclioptions)) = v0.0.0-20190325194458-f2b4781c3ae1
+Provides: bundled(golang(k8s.io/cli-runtime/pkg/genericclioptions/printers)) = v0.0.0-20190325194458-f2b4781c3ae1
+Provides: bundled(golang(k8s.io/cli-runtime/pkg/genericclioptions/resource)) = v0.0.0-20190325194458-f2b4781c3ae1
+Provides: bundled(golang(k8s.io/client-go/plugin/pkg/client/auth/gcp)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/plugin/pkg/client/auth/oidc)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/rest)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/clientcmd)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/cache)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/core/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/jsonpath)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/discovery)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/flowcontrol)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1beta2)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authentication/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authentication/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authorization/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authorization/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v2alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/certificates/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/coordination/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/events/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/extensions/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/networking/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/policy/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/scheduling/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/settings/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/pkg/version)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/plugin/pkg/client/auth/exec)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/rest/watch)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/clientcmd/api)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/metrics)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/transport)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/cert)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/auth)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/clientcmd/api/latest)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/homedir)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/restmapper)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/testing)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/pager)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/buffer)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/retry)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/admissionregistration)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/apps)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/autoscaling)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/batch)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/certificates)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/coordination)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/core)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/events)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/extensions)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/internalinterfaces)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/networking)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/policy)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/rbac)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/scheduling)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/settings)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/storage)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/scheme)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/reference)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/core/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/record)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/third_party/forked/golang/template)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/integer)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/pkg/apis/clientauthentication)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/pkg/apis/clientauthentication/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/pkg/apis/clientauthentication/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/connrotation)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/tools/clientcmd/api/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/discovery/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/admissionregistration/v1alpha1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/admissionregistration/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/apps/v1beta2/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authentication/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authentication/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authorization/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/authorization/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/batch/v2alpha1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/certificates/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/coordination/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/core/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/events/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/extensions/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/networking/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/policy/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1alpha1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/rbac/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/scheduling/v1alpha1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/scheduling/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/settings/v1alpha1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1alpha1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/kubernetes/typed/storage/v1beta1/fake)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/dynamic)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/admissionregistration/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/admissionregistration/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/apps/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/apps/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/apps/v1beta2)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/autoscaling/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/autoscaling/v2beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/autoscaling/v2beta2)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/batch/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/batch/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/batch/v2alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/certificates/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/coordination/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/events/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/extensions/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/networking/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/policy/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/rbac/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/rbac/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/rbac/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/scheduling/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/scheduling/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/settings/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/storage/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/storage/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/informers/storage/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/core/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/util/workqueue)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/admissionregistration/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/admissionregistration/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/apps/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/apps/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/apps/v1beta2)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/autoscaling/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/autoscaling/v2beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/autoscaling/v2beta2)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/batch/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/batch/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/batch/v2alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/certificates/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/coordination/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/events/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/extensions/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/networking/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/policy/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/rbac/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/rbac/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/rbac/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/scheduling/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/scheduling/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/settings/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/storage/v1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/storage/v1alpha1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/client-go/listers/storage/v1beta1)) = v0.0.0-20190226174127-78295b709ec6
+Provides: bundled(golang(k8s.io/klog)) = v0.2.0
+Provides: bundled(golang(k8s.io/kube-openapi/pkg/util/proto)) = v0.0.0-20171101183504-39a7bf85c140
+Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider)) = v1.13.3
+Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider/aws)) = v1.13.3
+Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider/azure)) = v1.13.3
+Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider/gcp)) = v1.13.3
+Provides: bundled(golang(k8s.io/kubernetes/pkg/credentialprovider/secrets)) = v1.13.3
+Provides: bundled(golang(k8s.io/kubernetes/pkg/cloudprovider/providers/azure/auth)) = v1.13.3
+Provides: bundled(golang(knative.dev/pkg/apis/duck/v1beta1)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/reconciler/testing)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/apis)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/apis/duck)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/controller)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/injection/clients/kubeclient/fake)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/injection/informers/kubeinformers/corev1/pod/fake)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/test)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/test/logging)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/injection)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/kmeta)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/logging/testing)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/system/testing)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/tracker)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/configmap)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/kmp)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/logging)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/logging/logkey)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/metrics)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/injection/clients/kubeclient)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/injection/informers/kubeinformers/corev1/pod)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/injection/informers/kubeinformers/factory/fake)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/test/spoof)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/system)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/changeset)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/metrics/metricskey)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/injection/informers/kubeinformers/factory)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/test/ingress)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/test/zipkin)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(knative.dev/pkg/test/monitoring)) = v0.0.0-20190719141030-e4bc08cc8ded
+Provides: bundled(golang(sigs.k8s.io/yaml)) = v1.1.0
 
 %prep
 %setup -q -c
@@ -606,6 +662,9 @@ cp -a cli-%{version}/docs/man/man1/* %{buildroot}%{_mandir}/man1
 %{_mandir}/*
 
 %changelog
+* Thu Sep 26 2019 Khurram Baig <kbaig@redhat.com> 0.4.0
+- Updated Vendored Libraries
+
 * Mon Sep 16 2019 Chmouel Boudjnah <chmouel@redhat.com> 0.3.1
 - Install manpages
 - Install shell completions
