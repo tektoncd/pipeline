@@ -51,6 +51,7 @@ Download the latest binary executable for your operating system:
   * Fedora30
   * Fedora31
   * Centos7
+  * Centos8
   * EPEL
   * RHEL8
 
