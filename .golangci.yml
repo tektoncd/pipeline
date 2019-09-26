@@ -12,3 +12,4 @@ linters:
   - errcheck
   - gofmt
   - goimports
+  - gosec

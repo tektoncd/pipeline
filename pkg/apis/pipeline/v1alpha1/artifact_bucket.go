@@ -53,6 +53,9 @@ const (
 	ArtifactStoragePVCType = "pvc"
 )
 
+// For some reason gosec thinks this string has enough entropy to be a potential secret.
+// The nosec comment disables it for this line.
+/* #nosec */
 var secretVolumeMountPath = "/var/bucketsecret"
 
 // ArtifactBucket contains the Storage bucket configuration defined in the
