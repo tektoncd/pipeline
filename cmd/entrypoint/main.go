@@ -50,7 +50,7 @@ func main() {
 		PostWriter:      &RealPostWriter{},
 	}
 	if err := e.Go(); err != nil {
-		switch err.(type) {
+		switch t := err.(type) {
 		case skipError:
 			os.Exit(0)
 		case *exec.ExitError:
@@ -60,7 +60,7 @@ func main() {
 			// WaitStatus is defined for both Unix and Windows and
 			// in both cases has an ExitStatus() method with the
 			// same signature.
-			if status, ok := err.(*exec.ExitError).Sys().(syscall.WaitStatus); ok {
+			if status, ok := t.Sys().(syscall.WaitStatus); ok {
 				os.Exit(status.ExitStatus())
 			}
 			log.Fatalf("Error executing command (ExitError): %v", err)

@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: gitlab-pr
+  namespace: default
+spec:
+  inputs:
+    resources:
+    - name: pr
+      resourceSpec:
+        params:
+        - name: url
+          value: https://gitlab.com/dlorenc1/testtekton/merge_requests/1
+        secrets:
+        - fieldName: authToken
+          secretKey: gitlab-token
+          secretName: gitlabtoken
+        type: pullRequest
+  outputs:
+    resources:
+    - name: pr
+      resourceSpec:
+        params:
+        - name: url
+          value: https://gitlab.com/dlorenc1/testtekton/merge_requests/1
+        secrets:
+        - fieldName: authToken
+          secretKey: gitlab-token
+          secretName: gitlabtoken
+        type: pullRequest
+  taskSpec:
+    inputs:
+      resources:
+      - name: pr
+        outputImageDir: ""
+        targetPath: ""
+        type: pullRequest
+    outputs:
+      resources:
+      - name: pr
+        type: pullRequest
+    steps:
+    - name: find
+      image: python
+      command:
+      - sh
+      args:
+      - -c
+      - |
+        find /workspace -type f | xargs cat
+    - name: comment
+      image: python
+      command:
+      - sh
+      args:
+      - -c
+      - |
+        echo "looks great to me" > /workspace/pr/comments/new && touch /workspace/pr/labels/lgtm

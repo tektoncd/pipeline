@@ -1021,10 +1021,11 @@ func mockResolveTaskResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pip
 	resolved := make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range taskRun.Spec.Inputs.Resources {
 		var i v1alpha1.PipelineResourceInterface
-		if name := r.ResourceRef.Name; name != "" {
-			i = inputResourceInterfaces[name]
+		switch {
+		case r.ResourceRef.Name != "":
+			i = inputResourceInterfaces[r.ResourceRef.Name]
 			resolved[r.Name] = i
-		} else if r.ResourceSpec != nil {
+		case r.ResourceSpec != nil:
 			i, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: r.Name,
@@ -1032,7 +1033,7 @@ func mockResolveTaskResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pip
 				Spec: *r.ResourceSpec,
 			})
 			resolved[r.Name] = i
-		} else {
+		default:
 			resolved[r.Name] = nil
 		}
 	}
