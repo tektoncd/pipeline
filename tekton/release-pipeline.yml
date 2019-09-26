@@ -21,7 +21,7 @@ spec:
         name: golangci-lint
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
         - name: flags
           value: -v
       resources:
@@ -34,7 +34,7 @@ spec:
         name: golang-test
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
       resources:
         inputs:
           - name: source
@@ -45,7 +45,7 @@ spec:
         name: golang-build
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
       resources:
         inputs:
           - name: source
@@ -56,9 +56,9 @@ spec:
         name: goreleaser
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
         - name: github-token-secret
-          value: ${params.github-token-secret}
+          value: $(params.github-token-secret)
       resources:
         inputs:
           - name: source

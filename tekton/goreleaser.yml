@@ -17,11 +17,11 @@ spec:
     resources:
     - name: source
       type: git
-      targetPath: src/${inputs.params.package}
+      targetPath: src/$(inputs.params.package)
   steps:
   - name: pull
     image: goreleaser/goreleaser
-    workingdir: /workspace/src/${inputs.params.package}
+    workingdir: /workspace/src/$(inputs.params.package)
     command:
     - /bin/bash
     args:
@@ -29,12 +29,12 @@ spec:
     - "git status; git fetch -p --all"
   - name: release
     image: goreleaser/goreleaser
-    workingdir: /workspace/src/${inputs.params.package}
+    workingdir: /workspace/src/$(inputs.params.package)
     command:
     - /bin/bash
     args:
     - -c
-    - "goreleaser release ${inputs.params.flags}"
+    - "goreleaser release $(inputs.params.flags)"
     env:
     - name: GOPATH
       value: /workspace
@@ -42,6 +42,6 @@ spec:
       valueFrom:
         secretKeyRef:
           # FIXME(vdemeester): this need to be fixed upstream, template should work there
-          #name: ${inputs.params.github-token-secret}
+          #name: $(inputs.params.github-token-secret)
           name: bot-token-github
           key: bot-token
