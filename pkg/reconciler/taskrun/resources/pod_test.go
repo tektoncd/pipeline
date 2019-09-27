@@ -551,9 +551,11 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 	trs := v1alpha1.TaskRunSpec{
 		Outputs: v1alpha1.TaskRunOutputs{
 			Resources: []v1alpha1.TaskResourceBinding{{
-				Name: "outputimage",
-				ResourceRef: v1alpha1.PipelineResourceRef{
+				PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 					Name: "outputimage",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "outputimage",
+					},
 				},
 			}},
 		},

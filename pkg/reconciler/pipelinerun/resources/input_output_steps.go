@@ -28,9 +28,13 @@ func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, sto
 
 	for name, outputResource := range outputs {
 		taskOutputResource := v1alpha1.TaskResourceBinding{
-			Name:  name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 			Paths: []string{filepath.Join(storageBasePath, taskName, name)},
 		}
+		// SelfLink is being checked there to determine if this PipelineResource is an instance that
+		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
 		if outputResource.SelfLink != "" {
 			taskOutputResource.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       outputResource.Name,
@@ -55,8 +59,12 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 
 	for name, inputResource := range inputs {
 		taskInputResource := v1alpha1.TaskResourceBinding{
-			Name: name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 		}
+		// SelfLink is being checked there to determine if this PipelineResource is an instance that
+		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
 		if inputResource.SelfLink != "" {
 			taskInputResource.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       inputResource.Name,

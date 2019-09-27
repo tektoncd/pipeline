@@ -1034,6 +1034,15 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 func TestGetResourcesFromBindings(t *testing.T) {
 	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
+		tb.PipelineRunResourceBinding("image-resource", tb.PipelineResourceBindingResourceSpec(
+			&v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeImage,
+				Params: []v1alpha1.ResourceParam{{
+					Name:  "url",
+					Value: "gcr.io/sven",
+				}},
+			}),
+		),
 	))
 	r := tb.PipelineResource("sweet-resource", "namespace")
 	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
@@ -1046,9 +1055,22 @@ func TestGetResourcesFromBindings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("didn't expect error getting resources from bindings but got: %v", err)
 	}
-	expectedResources := map[string]*v1alpha1.PipelineResource{"git-resource": r}
-	if d := cmp.Diff(expectedResources, m); d != "" {
-		t.Fatalf("Expected resources didn't match actual -want, +got: %v", d)
+
+	r1, ok := m["git-resource"]
+	if !ok {
+		t.Errorf("Missing expected resource git-resource: %v", m)
+	} else if d := cmp.Diff(r, r1); d != "" {
+		t.Errorf("Expected resources didn't match actual -want, +got: %v", d)
+	}
+
+	r2, ok := m["image-resource"]
+	if !ok {
+		t.Errorf("Missing expected resource image-resource: %v", m)
+	} else if r2.Spec.Type != v1alpha1.PipelineResourceTypeImage ||
+		len(r2.Spec.Params) != 1 ||
+		r2.Spec.Params[0].Name != "url" ||
+		r2.Spec.Params[0].Value != "gcr.io/sven" {
+		t.Errorf("Did not get expected image resource, got %v", r2.Spec)
 	}
 }
 

@@ -175,7 +175,9 @@ func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1alpha1.TaskResou
 
 	for name, r := range rcc.ResolvedResources {
 		tr := v1alpha1.TaskResourceBinding{
-			Name: name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 		}
 		if r.SelfLink != "" {
 			tr.ResourceRef = v1alpha1.PipelineResourceRef{

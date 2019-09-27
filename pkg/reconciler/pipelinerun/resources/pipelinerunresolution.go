@@ -173,16 +173,15 @@ type GetTaskRun func(name string) (*v1alpha1.TaskRun, error)
 // from the declared name of the PipelineResource (which is how the PipelineResource will
 // be referred to in the PipelineRun) to the PipelineResource, obtained via getResource.
 func GetResourcesFromBindings(pr *v1alpha1.PipelineRun, getResource resources.GetResource) (map[string]*v1alpha1.PipelineResource, error) {
-	resources := map[string]*v1alpha1.PipelineResource{}
-
+	rs := map[string]*v1alpha1.PipelineResource{}
 	for _, resource := range pr.Spec.Resources {
-		r, err := getResource(resource.ResourceRef.Name)
+		r, err := resources.GetResourceFromBinding(&resource, getResource)
 		if err != nil {
-			return resources, xerrors.Errorf("Error following resource reference for %s: %w", resource.Name, err)
+			return rs, xerrors.Errorf("Error following resource reference for %s: %w", resource.Name, err)
 		}
-		resources[resource.Name] = r
+		rs[resource.Name] = r
 	}
-	return resources, nil
+	return rs, nil
 }
 
 // ValidateResourceBindings validate that the PipelineResources declared in Pipeline p are bound in PipelineRun.

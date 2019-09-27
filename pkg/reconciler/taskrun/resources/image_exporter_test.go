@@ -73,17 +73,21 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
@@ -139,17 +143,21 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
@@ -221,17 +229,21 @@ func TestUpdateTaskRunStatus_withValidJson(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
@@ -276,17 +288,21 @@ func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
@@ -362,17 +378,21 @@ func TestTaskRunHasOutputImageResource(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-image",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
 						},
 					}},
 				},
@@ -411,17 +431,21 @@ func TestTaskRunHasOutputImageResource(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git-1",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git-1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git-1",
+							},
 						},
 					}},
 				},

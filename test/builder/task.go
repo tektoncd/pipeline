@@ -542,7 +542,9 @@ func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunI
 func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInputsOp {
 	return func(i *v1alpha1.TaskRunInputs) {
 		binding := &v1alpha1.TaskResourceBinding{
-			Name: name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 		}
 		for _, op := range ops {
 			op(binding)
@@ -596,7 +598,9 @@ func TaskRunOutputs(ops ...TaskRunOutputsOp) TaskRunSpecOp {
 func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOutputsOp {
 	return func(i *v1alpha1.TaskRunOutputs) {
 		binding := &v1alpha1.TaskResourceBinding{
-			Name: name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 		}
 		for _, op := range ops {
 			op(binding)
