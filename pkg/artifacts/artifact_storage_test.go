@@ -295,6 +295,30 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 			GsutilImage:   "override-with-gsutil-image:latest",
 		},
 		storagetype: "bucket",
+	}, {
+		desc: "valid bucket with boto config",
+		configMap: &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: system.GetNamespace(),
+				Name:      v1alpha1.BucketConfigName,
+			},
+			Data: map[string]string{
+				v1alpha1.BucketLocationKey:              "s3://fake-bucket",
+				v1alpha1.BucketServiceAccountSecretName: "secret1",
+				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				v1alpha1.BucketServiceAccountFieldName:  "BOTO_CONFIG",
+			},
+		},
+		pipelinerun: pipelinerun,
+		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
+			Location: "s3://fake-bucket",
+			Secrets: []v1alpha1.SecretParam{{
+				FieldName:  "BOTO_CONFIG",
+				SecretKey:  "sakey",
+				SecretName: "secret1",
+			}},
+		},
+		storagetype: "bucket",
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)

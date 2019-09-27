@@ -43,6 +43,11 @@ const (
 	// the secret key that will have a value with the service account json with access
 	// to the bucket
 	BucketServiceAccountSecretKey = "bucket.service.account.secret.key"
+
+	// BucketServiceAccountFieldName is the name of the configmap entry that specifies
+	// the field name that should be used for the service account.
+	// Valid values: GOOGLE_APPLICATION_CREDENTIALS, BOTO_CONFIG. Defaults to GOOGLE_APPLICATION_CREDENTIALS.
+	BucketServiceAccountFieldName = "bucket.service.account.field.name"
 )
 
 const (

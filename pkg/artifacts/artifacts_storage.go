@@ -154,6 +154,9 @@ func NewArtifactBucketConfigFromConfigMap(images pipeline.Images) func(configMap
 		if secretName, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretName]; ok {
 			if secretKey, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretKey]; ok {
 				sp.FieldName = "GOOGLE_APPLICATION_CREDENTIALS"
+				if fieldName, ok := configMap.Data[v1alpha1.BucketServiceAccountFieldName]; ok {
+					sp.FieldName = fieldName
+				}
 				sp.SecretName = secretName
 				sp.SecretKey = secretKey
 				c.Secrets = append(c.Secrets, sp)
