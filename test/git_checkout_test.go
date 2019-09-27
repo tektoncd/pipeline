@@ -126,8 +126,8 @@ func TestGitPipelineRunFail(t *testing.T) {
 								t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
 							}
 							// Check for failure messages from fetch and pull in the log file
-							if strings.Contains(string(logContent), "couldn't find remote ref Idontexistrabbitmonkeydonkey") &&
-								strings.Contains(string(logContent), "pathspec 'Idontexistrabbitmonkeydonkey' did not match any file(s) known to git") {
+							if strings.Contains(strings.ToLower(string(logContent)), "couldn't find remote ref idontexistrabbitmonkeydonkey") &&
+								strings.Contains(strings.ToLower(string(logContent)), "pathspec 'idontexistrabbitmonkeydonkey' did not match any file(s) known to git") {
 								t.Logf("Found exepected errors when retrieving non-existent git revision")
 							} else {
 								t.Logf("Container `%s` log File: %s", stat.Name, logContent)
