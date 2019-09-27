@@ -121,25 +121,10 @@ func getClusterResourceTask(namespace, name, resName, configName string) *v1alph
 }
 
 func getClusterResourceTaskRun(namespace, name, taskName, resName string) *v1alpha1.TaskRun {
-	return &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: taskName,
-			},
-			Inputs: v1alpha1.TaskRunInputs{
-				Resources: []v1alpha1.TaskResourceBinding{{
-					Name: "target-cluster",
-					ResourceRef: v1alpha1.PipelineResourceRef{
-						Name: resName,
-					},
-				}},
-			},
-		},
-	}
+	return tb.TaskRun(name, namespace, tb.TaskRunSpec(
+		tb.TaskRunTaskRef(taskName),
+		tb.TaskRunInputs(tb.TaskRunInputsResource("target-cluster", tb.TaskResourceBindingRef(resName))),
+	))
 }
 
 func getClusterConfigMap(namespace, name string) *corev1.ConfigMap {

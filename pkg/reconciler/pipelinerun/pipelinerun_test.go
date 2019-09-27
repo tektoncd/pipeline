@@ -80,7 +80,15 @@ func TestReconcile(t *testing.T) {
 			tb.PipelineRunSpec("test-pipeline",
 				tb.PipelineRunServiceAccount("test-sa"),
 				tb.PipelineRunResourceBinding("git-repo", tb.PipelineResourceBindingRef("some-repo")),
-				tb.PipelineRunResourceBinding("best-image", tb.PipelineResourceBindingRef("some-image")),
+				tb.PipelineRunResourceBinding("best-image", tb.PipelineResourceBindingResourceSpec(
+					&v1alpha1.PipelineResourceSpec{
+						Type: v1alpha1.PipelineResourceTypeImage,
+						Params: []v1alpha1.ResourceParam{{
+							Name:  "url",
+							Value: "gcr.io/sven",
+						}},
+					},
+				)),
 				tb.PipelineRunParam("bar", "somethingmorefun"),
 			),
 		),
@@ -160,11 +168,13 @@ func TestReconcile(t *testing.T) {
 			v1alpha1.PipelineResourceTypeGit,
 			tb.PipelineResourceSpecParam("url", "https://github.com/kristoff/reindeer"),
 		)),
-		tb.PipelineResource("some-image", "foo", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeImage,
-			tb.PipelineResourceSpecParam("url", "gcr.io/sven"),
-		)),
 	}
+
+	// When PipelineResources are created in the cluster, Kubernetes will add a SelfLink. We
+	// are using this to differentiate between Resources that we are referencing by Spec or by Ref
+	// after we have resolved them.
+	rs[0].SelfLink = "some/link"
+
 	d := test.Data{
 		PipelineRuns:      prs,
 		Pipelines:         ps,
@@ -211,13 +221,21 @@ func TestReconcile(t *testing.T) {
 				tb.TaskRunInputsParam("foo", "somethingfun"),
 				tb.TaskRunInputsParam("bar", "somethingmorefun"),
 				tb.TaskRunInputsParam("templatedparam", "$(inputs.workspace.revision)"),
-				tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingResourceSpec(&rs[0].Spec)),
+				tb.TaskRunInputsResource("workspace", tb.TaskResourceBindingRef("some-repo")),
 			),
 			tb.TaskRunOutputs(
-				tb.TaskRunOutputsResource("image-to-use", tb.TaskResourceBindingResourceSpec(&rs[1].Spec),
+				tb.TaskRunOutputsResource("image-to-use", tb.TaskResourceBindingResourceSpec(
+					&v1alpha1.PipelineResourceSpec{
+						Type: v1alpha1.PipelineResourceTypeImage,
+						Params: []v1alpha1.ResourceParam{{
+							Name:  "url",
+							Value: "gcr.io/sven",
+						}},
+					},
+				),
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/image-to-use"),
 				),
-				tb.TaskRunOutputsResource("workspace", tb.TaskResourceBindingResourceSpec(&rs[0].Spec),
+				tb.TaskRunOutputsResource("workspace", tb.TaskResourceBindingRef("some-repo"),
 					tb.TaskResourceBindingPaths("/pvc/unit-test-1/workspace"),
 				),
 			),
