@@ -137,6 +137,8 @@ The GCS storage bucket can be configured using a ConfigMap with the name
   service account json.
 - The bucket is recommended to be configured with a retention policy after which
   files will be deleted.
+- bucket.service.account.field.name: the name of the environment variable to use when specifying the
+  secret path. Defaults to `GOOGLE_APPLICATION_CREDENTIALS`. Set to `BOTO_CONFIG` if using S3 instead of GCS.
 
 Both options provide the same functionality to the pipeline. The choice is based
 on the infrastructure used, for example in some Kubernetes platforms, the
