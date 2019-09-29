@@ -1379,6 +1379,11 @@ func (in *PodTemplate) DeepCopyInto(out *PodTemplate) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.RuntimeClassName != nil {
+		in, out := &in.RuntimeClassName, &out.RuntimeClassName
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

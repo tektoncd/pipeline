@@ -355,6 +355,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			Tolerations:        taskRun.Spec.PodTemplate.Tolerations,
 			Affinity:           taskRun.Spec.PodTemplate.Affinity,
 			SecurityContext:    taskRun.Spec.PodTemplate.SecurityContext,
+			RuntimeClassName:   taskRun.Spec.PodTemplate.RuntimeClassName,
 		},
 	}, nil
 }
