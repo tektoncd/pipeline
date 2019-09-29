@@ -117,6 +117,8 @@ func TestMakePod(t *testing.T) {
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
 	})
 
+	runtimeClassName := "gvisor"
+
 	randReader = strings.NewReader(strings.Repeat("a", 10000))
 	defer func() { randReader = rand.Reader }()
 
@@ -208,6 +210,57 @@ func TestMakePod(t *testing.T) {
 				},
 			}},
 			Volumes: implicitVolumesWithSecrets,
+		},
+	}, {
+		desc: "with-pod-template",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:  "name",
+				Image: "image",
+			}}},
+		},
+		trs: v1alpha1.TaskRunSpec{
+			PodTemplate: v1alpha1.PodTemplate{
+				SecurityContext: &corev1.PodSecurityContext{
+					Sysctls: []corev1.Sysctl{
+						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+					},
+				},
+				RuntimeClassName: &runtimeClassName,
+			},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{{
+				Name:         containerPrefix + credsInit + "-9l9zj",
+				Image:        credsImage,
+				Command:      []string{"/ko-app/creds-init"},
+				Args:         []string{},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+			}},
+			Containers: []corev1.Container{{
+				Name:         "step-name",
+				Image:        "image",
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}},
+			Volumes: implicitVolumes,
+			SecurityContext: &corev1.PodSecurityContext{
+				Sysctls: []corev1.Sysctl{
+					{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+				},
+			},
+			RuntimeClassName: &runtimeClassName,
 		},
 	}, {
 		desc: "very-long-step-name",

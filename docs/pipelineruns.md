@@ -216,6 +216,9 @@ allows to customize some Pod specific field per `Task` execution, aka
 - `volumes`: list of volumes that can be mounted by containers
   belonging to the pod. This lets the user of a Task define which type
   of volume to use for a Task `volumeMount`
+- `runtimeClassName`: the name of a
+  [runtime class](https://kubernetes.io/docs/concepts/containers/runtime-class/)
+  to use to run the pod.
 
 In the following example, the Task is defined with a `volumeMount`
 (`my-cache`), that is provided by the PipelineRun, using a
