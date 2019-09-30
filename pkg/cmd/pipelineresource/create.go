@@ -529,12 +529,10 @@ func cast(answer string) v1alpha1.PipelineResourceType {
 func Error(err error) error {
 	switch err.Error() {
 	case "interrupt":
-		fmt.Println("interrupt")
-		os.Exit(1)
+		return errors.New("interrupt")
 	default:
 		return err
 	}
-	return err
 }
 
 func validate(name string, p cli.Params) error {

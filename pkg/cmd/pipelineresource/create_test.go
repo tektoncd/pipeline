@@ -1483,6 +1483,47 @@ func TestPipelineResource_create_buildGCSstorageResource(t *testing.T) {
 	}
 }
 
+func TestPipelineResource_interrupt(t *testing.T) {
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		PipelineResources: []*v1alpha1.PipelineResource{
+			tb.PipelineResource("res", "namespace",
+				tb.PipelineResourceSpec("git",
+					tb.PipelineResourceSpecParam("url", "git@github.com:tektoncd/cli.git"),
+				)),
+		},
+	})
+
+	tests := []promptTest{
+		{
+			name: "no input for name",
+
+			procedure: func(c *expect.Console) error {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
+					return err
+				}
+
+				if _, err := c.Send(string(terminal.KeyInterrupt)); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectEOF(); err != nil {
+					return err
+				}
+
+				return nil
+			},
+		},
+	}
+
+	res := resOpts("namespace", cs)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			res.RunPromptTest(t, test)
+
+		})
+	}
+}
+
 func resOpts(ns string, cs pipelinetest.Clients) *resource {
 	p := test.Params{
 		Kube:   cs.Kube,

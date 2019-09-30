@@ -37,7 +37,7 @@ func (res *resource) RunPromptTest(t *testing.T, test promptTest) {
 		res.askOpts = WithStdio(stdio)
 		err = res.create()
 		if err != nil {
-			if err.Error() == "resource already exist" {
+			if err.Error() == "resource already exist" || err.Error() == "interrupt" {
 				return nil
 			}
 			return err
