@@ -72,6 +72,24 @@ var (
 				TargetPath: "gcs-dir",
 			}}},
 	}
+	multipleGcsInputs = &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{
+			{
+				ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name:       "workspace",
+					Type:       "gcs",
+					TargetPath: "gcs-dir",
+				},
+			},
+			{
+				ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name:       "workspace2",
+					Type:       "gcs",
+					TargetPath: "gcs-dir",
+				},
+			},
+		},
+	}
 	clusterInputs = &v1alpha1.Inputs{
 		Resources: []v1alpha1.TaskResource{{
 			ResourceDeclaration: v1alpha1.ResourceDeclaration{
@@ -163,6 +181,21 @@ func setUp() {
 			Params: []v1alpha1.ResourceParam{{
 				Name:  "Location",
 				Value: "gs://fake-bucket/rules.zip",
+			}, {
+				Name:  "Type",
+				Value: "gcs",
+			}},
+		},
+	}, {
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "storage2",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: "storage",
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "Location",
+				Value: "gs://fake-bucket/other.zip",
 			}, {
 				Name:  "Type",
 				Value: "gcs",
@@ -955,6 +988,33 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 			Inputs: gcsInputs,
 		},
 	}
+	taskWithMultipleGcsInputs := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "task-with-multiple-gcs-inputs",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: multipleGcsInputs,
+		},
+	}
+
+	gcsVolumes := []corev1.Volume{
+		{
+			Name: "volume-bucket-gcs-config",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "gcs-config",
+				},
+			},
+		},
+	}
+	gcsVolumeMounts := []corev1.VolumeMount{{Name: "volume-bucket-gcs-config", MountPath: "/var/bucketsecret/gcs-config"}}
+	gcsEnv := []corev1.EnvVar{
+		{
+			Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+			Value: "/var/bucketsecret/gcs-config/my-key",
+		},
+	}
 
 	for _, c := range []struct {
 		desc    string
@@ -995,11 +1055,14 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"/ko-app/bash"},
 				Args:    []string{"-args", "mkdir -p /workspace/gitspace"},
 			}}, {Container: corev1.Container{
-				Name:    "artifact-copy-from-gitspace-78c5n",
-				Image:   "override-with-gsutil-image:latest",
-				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gitspace"},
+				Name:         "artifact-copy-from-gitspace-78c5n",
+				Image:        "override-with-gsutil-image:latest",
+				Command:      []string{"/ko-app/gsutil"},
+				Args:         []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gitspace"},
+				Env:          gcsEnv,
+				VolumeMounts: gcsVolumeMounts,
 			}}},
+			Volumes: gcsVolumes,
 		},
 	}, {
 		desc: "storage resource as input from previous task - copy from bucket",
@@ -1035,11 +1098,86 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				Command: []string{"/ko-app/bash"},
 				Args:    []string{"-args", "mkdir -p /workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
-				Name:    "artifact-copy-from-workspace-j2tds",
-				Image:   "override-with-gsutil-image:latest",
-				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
+				Name:         "artifact-copy-from-workspace-j2tds",
+				Image:        "override-with-gsutil-image:latest",
+				Command:      []string{"/ko-app/gsutil"},
+				Args:         []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
+				Env:          gcsEnv,
+				VolumeMounts: gcsVolumeMounts,
 			}}},
+			Volumes: gcsVolumes,
+		},
+	}, {
+		desc: "storage resource with multiple inputs from previous task - copy from bucket",
+		task: taskWithMultipleGcsInputs,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-from-gcs",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "storage1",
+						},
+						Name:  "workspace",
+						Paths: []string{"prev-task-path"},
+					}, {
+						ResourceRef: v1alpha1.PipelineResourceRef{
+							Name: "storage2",
+						},
+						Name:  "workspace2",
+						Paths: []string{"prev-task-path2"},
+					}},
+				},
+			},
+		},
+		want: &v1alpha1.TaskSpec{
+			Inputs: multipleGcsInputs,
+			Steps: []v1alpha1.Step{
+				{
+					Container: corev1.Container{
+						Name:    "artifact-dest-mkdir-workspace-twkr2",
+						Image:   "override-with-bash-noop:latest",
+						Command: []string{"/ko-app/bash"},
+						Args:    []string{"-args", "mkdir -p /workspace/gcs-dir"},
+					},
+				},
+				{
+					Container: corev1.Container{
+						Name:         "artifact-copy-from-workspace-mnq6l",
+						Image:        "override-with-gsutil-image:latest",
+						Command:      []string{"/ko-app/gsutil"},
+						Args:         []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path/* /workspace/gcs-dir"},
+						Env:          gcsEnv,
+						VolumeMounts: gcsVolumeMounts,
+					},
+				},
+				{
+					Container: corev1.Container{
+						Name:    "artifact-dest-mkdir-workspace2-vr6ds",
+						Image:   "override-with-bash-noop:latest",
+						Command: []string{"/ko-app/bash"},
+						Args:    []string{"-args", "mkdir -p /workspace/gcs-dir"},
+					},
+				},
+				{
+					Container: corev1.Container{
+						Name:         "artifact-copy-from-workspace2-l22wn",
+						Image:        "override-with-gsutil-image:latest",
+						Command:      []string{"/ko-app/gsutil"},
+						Args:         []string{"-args", "cp -P -r gs://fake-bucket/prev-task-path2/* /workspace/gcs-dir"},
+						Env:          gcsEnv,
+						VolumeMounts: gcsVolumeMounts,
+					},
+				},
+			},
+			Volumes: gcsVolumes,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -1051,7 +1189,9 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 						Name:      v1alpha1.BucketConfigName,
 					},
 					Data: map[string]string{
-						v1alpha1.BucketLocationKey: "gs://fake-bucket",
+						v1alpha1.BucketLocationKey:              "gs://fake-bucket",
+						v1alpha1.BucketServiceAccountSecretName: "gcs-config",
+						v1alpha1.BucketServiceAccountSecretKey:  "my-key",
 					},
 				},
 			)
