@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -257,6 +259,9 @@ func (pr *PipelineRun) IsTimedOut() bool {
 
 	if !startTime.IsZero() && pipelineTimeout != nil {
 		timeout := pipelineTimeout.Duration
+		if timeout == config.NoTimeoutDuration {
+			return false
+		}
 		runtime := time.Since(startTime.Time)
 		if runtime > timeout {
 			return true
