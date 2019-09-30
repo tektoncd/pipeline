@@ -60,6 +60,7 @@ func AddInputResource(
 
 	pvcName := taskRun.GetPipelineRunPVCName()
 	mountPVC := false
+	mountSecrets := false
 
 	prNameFromLabel := taskRun.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey]
 	if prNameFromLabel == "" {
@@ -105,7 +106,7 @@ func AddInputResource(
 		// source is copied from previous task so skip fetching download container definition
 		if len(copyStepsFromPrevTasks) > 0 {
 			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
-			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
+			mountSecrets = true
 		} else {
 			// Allow the resource to mutate the task.
 			modifier, err := resource.GetInputTaskModifier(taskSpec, dPath)
@@ -118,6 +119,9 @@ func AddInputResource(
 
 	if mountPVC {
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
+	}
+	if mountSecrets {
+		taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
 	}
 	return taskSpec, nil
 }
