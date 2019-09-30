@@ -84,6 +84,15 @@ func NewController(
 		UpdateFunc: controller.PassNew(impl.Enqueue),
 	})
 
+	taskRunInfo := v1alpha1.NewExpirationController(opt, v1alpha1.ExpirationTTL)
+
+	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: taskRunInfo.AddTaskRun,
+		UpdateFunc: taskRunInfo.UpdateTaskRun,
+	})
+
+	taskRunInfo.ListerSynced = taskRunInformer.Informer().HasSynced
+
 	c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
 
 	podInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{

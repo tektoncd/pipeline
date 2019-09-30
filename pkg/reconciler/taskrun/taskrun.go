@@ -76,6 +76,7 @@ type Reconciler struct {
 // Check that our Reconciler implements controller.Reconciler
 var _ controller.Reconciler = (*Reconciler)(nil)
 
+
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
@@ -541,6 +542,11 @@ func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun, dp Dele
 	})
 	// update tr completed time
 	tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+	// update tr expiration time
+	if tr.Spec.ExpirationSecondsTTL != nil {
+		tr.Status.ExpirationTime.Time = tr.Status.CompletionTime.Add(tr.Spec.ExpirationSecondsTTL.Duration * time.Second)
+	}
 	return nil
 }
 

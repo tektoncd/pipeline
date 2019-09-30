@@ -529,6 +529,7 @@ func addRetryHistory(tr *v1alpha1.TaskRun) {
 func clearStatus(tr *v1alpha1.TaskRun) {
 	tr.Status.StartTime = nil
 	tr.Status.CompletionTime = nil
+	tr.Status.ExpirationTime = nil
 	tr.Status.Results = nil
 	tr.Status.PodName = ""
 }
@@ -603,6 +604,10 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		// update pr completed time
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 
+		// update pr expiration time
+		if  pr.Spec.ExpirationSecondsTTL != nil {
+			pr.Status.ExpirationTime.Time = pr.Status.CompletionTime.Add(pr.Spec.ExpirationSecondsTTL.Duration * time.Second)
+		}
 	}
 	if !reflect.DeepEqual(pr.Status, newPr.Status) {
 		newPr.Status = pr.Status

@@ -59,6 +59,19 @@ type TaskRunSpec struct {
 
 	// PodTemplate holds pod specific configuration
 	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
+
+	// ExpirationSecondsTTL limits the lifetime of a TaskRun that has finished
+	// execution (either Succeeded or Failed). If this field is set,
+	// ExpirationSecondsTTL after the TaskRun finishes, it is eligible to be
+	// automatically deleted. When the TaskRun is being deleted, its lifecycle
+	// guarantees (e.g. finalizers) will be honored. If this field is unset,
+	// the TaskRun won't be automatically deleted. If this field is set to zero,
+	// the TaskRun becomes eligible to be deleted immediately after it finishes.
+	// And if taskRun is produced by PipelineRun(checked via ownerReference), this ExpirationSecondsTTL will be ignored,
+	// then tekton will check PipelineRun's ExpirationSecondsTTL to determine if PipelineRun should be deleted.
+	// This field is alpha-level.
+	// +optional
+	ExpirationSecondsTTL *metav1.Duration `json:"expirationSecondsTTL,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
@@ -121,6 +134,11 @@ type TaskRunStatus struct {
 	// CompletionTime is the time the build completed.
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
+	// ExpirationTime is the time the build expired.
+	// If TaskRun is built from PipelineRun, the time is the PipelineRun's ExpirationTime.
+	// If TaskRun doesn't have PipelineRun OwnerReference, then the time is TaskRun's ExpirationTime
+	ExpirationTime *metav1.Time `json:"expirationTime, omitempty"`
 
 	// Steps describes the state of each build step container.
 	// +optional

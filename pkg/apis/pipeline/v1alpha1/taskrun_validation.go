@@ -80,6 +80,13 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
+	if ts.ExpirationSecondsTTL != nil {
+		// DelayDeleteTTL should be a valid duration of at least 0.
+		if ts.ExpirationSecondsTTL.Duration < 0 {
+			return apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ts.ExpirationSecondsTTL.Duration.String()), "spec.expirationSecondsTTL")
+		}
+	}
+
 	return nil
 }
 

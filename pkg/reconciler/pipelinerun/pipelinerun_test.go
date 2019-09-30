@@ -782,6 +782,10 @@ func TestReconcileWithTimeout(t *testing.T) {
 		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
 	}
 
+	if reconciledRun.Status.ExpirationTime == nil {
+		t.Errorf("Expected a ExpirationTime on invalid PipelineRun but was nil")
+	}
+
 	// The PipelineRun should be timed out.
 	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != resources.ReasonTimedOut {
 		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))

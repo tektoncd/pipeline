@@ -59,6 +59,9 @@ type ConditionCheckStatus struct {
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
+	// ExpirationTime is the time the PipelineRun expired.
+	ExpirationTime *metav1.Time `json:"expirationTime, omitempty"`
+
 	// Check describes the state of the check container.
 	// +optional
 	Check corev1.ContainerState `json:"check,omitempty"`

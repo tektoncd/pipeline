@@ -376,6 +376,12 @@ func PipelineRunTimeout(duration time.Duration) PipelineRunSpecOp {
 	}
 }
 
+func PipelineRunExpirationSecondsTTL(duration time.Duration) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.ExpirationSecondsTTL = &metav1.Duration{Duration:duration}
+	}
+}
+
 // PipelineRunNilTimeout sets the timeout to nil on the PipelineRunSpec
 func PipelineRunNilTimeout(prs *v1alpha1.PipelineRunSpec) {
 	prs.Timeout = nil
@@ -432,6 +438,16 @@ func PipelineRunStartTime(startTime time.Time) PipelineRunStatusOp {
 func PipelineRunCompletionTime(t time.Time) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
 		s.CompletionTime = &metav1.Time{Time: t}
+	}
+}
+
+// PipelineRunExpirationTime sets the expiration time to the PipelineRunStatus.
+func PipelineRunExpirationTime() PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		var spec v1alpha1.PipelineRunSpec
+		if  spec.ExpirationSecondsTTL != nil{
+			s.ExpirationTime.Time = s.CompletionTime.Add(spec.ExpirationSecondsTTL.Duration * time.Second)
+		}
 	}
 }
 
