@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"io/ioutil"
 	"net/url"
@@ -25,6 +26,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -113,25 +115,38 @@ func TestToDisk(t *testing.T) {
 			t.Errorf("Get Status: -want +got: %s", diff)
 		}
 	}
-
 	// Check the labels
 	fis, err = ioutil.ReadDir(filepath.Join(d, "labels"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	labels := map[string]struct{}{}
+	labelManifest := Manifest{}
 	for _, fi := range fis {
+		if fi.Name() == manifestPath {
+			continue
+		}
 		text, err := url.QueryUnescape(fi.Name())
 		if err != nil {
 			t.Errorf("Error decoding label text: %s", fi.Name())
 		}
 		labels[text] = struct{}{}
+		labelManifest[text] = true
 	}
 
 	for _, l := range tektonPr.Labels {
 		if _, ok := labels[l.Text]; !ok {
 			t.Errorf("Expected label with text: %s, not found: %v", l.Text, labels)
 		}
+	}
+	gotManifest := readManifest(t, filepath.Join(d, "labels", manifestPath))
+	for _, m := range gotManifest {
+		if _, ok := labelManifest[m]; !ok {
+			t.Errorf("Label %s not found in manifest", m)
+		}
+	}
+	if len(labelManifest) != len(gotManifest) {
+		t.Errorf("Label manifest does not match expected length. expected %d, got %d: %+v", len(labelManifest), len(gotManifest), gotManifest)
 	}
 
 	// Check the comments
@@ -141,10 +156,16 @@ func TestToDisk(t *testing.T) {
 	}
 
 	comments := map[int64]Comment{}
+	commentManifest := Manifest{}
 	for _, fi := range fis {
+		if fi.Name() == manifestPath {
+			continue
+		}
 		comment := Comment{}
-		readAndUnmarshal(t, filepath.Join(d, "comments", fi.Name()), &comment)
+		path := filepath.Join(d, "comments", fi.Name())
+		readAndUnmarshal(t, path, &comment)
 		comments[comment.ID] = comment
+		commentManifest[strconv.FormatInt(comment.ID, 10)] = true
 	}
 	for _, c := range tektonPr.Comments {
 		actualComment, ok := comments[c.ID]
@@ -155,6 +176,33 @@ func TestToDisk(t *testing.T) {
 			t.Errorf("Get Comment: -want +got: %s", diff)
 		}
 	}
+	gotManifest = readManifest(t, filepath.Join(d, "comments", manifestPath))
+	for _, m := range gotManifest {
+		if _, ok := commentManifest[m]; !ok {
+			t.Errorf("Comment %s not found in manifest", m)
+		}
+	}
+	if len(commentManifest) != len(gotManifest) {
+		t.Errorf("Comment manifest does not match expected length. Got %+v", gotManifest)
+	}
+}
+
+func readManifest(t *testing.T, path string) []string {
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	var out []string
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		out = append(out, s.Text())
+	}
+	if s.Err() != nil {
+		t.Fatal(err)
+	}
+	return out
 }
 
 func TestFromDisk(t *testing.T) {
@@ -218,6 +266,9 @@ func TestFromDisk(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := ioutil.WriteFile(filepath.Join(d, "labels", manifestPath), []byte(strings.Join(labels, "\n")), 0600); err != nil {
+		t.Errorf("Error creating label manifest: %s", err)
+	}
 
 	// Write some comments
 	comments := []Comment{
@@ -236,8 +287,14 @@ func TestFromDisk(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(d, "comments"), 0750); err != nil {
 		t.Fatal(err)
 	}
+	manifest := make([]string, 0, len(comments))
 	for _, c := range comments {
-		writeFile(filepath.Join(d, "comments", strconv.FormatInt(c.ID, 10)+".json"), &c)
+		id := strconv.FormatInt(c.ID, 10)
+		writeFile(filepath.Join(d, "comments", id+".json"), &c)
+		manifest = append(manifest, id)
+	}
+	if err := ioutil.WriteFile(filepath.Join(d, "comments", manifestPath), []byte(strings.Join(manifest, "\n")), 0700); err != nil {
+		t.Errorf("Error creating comment manifest: %s", err)
 	}
 
 	// Comments can also be plain text.
@@ -245,7 +302,7 @@ func TestFromDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pr, err := FromDisk(d)
+	pr, gotManifest, err := FromDisk(d)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,6 +328,13 @@ func TestFromDisk(t *testing.T) {
 			t.Errorf("Get comments: -want +got: %s", diff)
 		}
 	}
+	commentManifest := Manifest{}
+	for _, c := range comments {
+		commentManifest[strconv.FormatInt(c.ID, 10)] = true
+	}
+	if diff := cmp.Diff(commentManifest, gotManifest["comments"]); diff != "" {
+		t.Errorf("Comment manifest: -want + got: %s", diff)
+	}
 
 	// Check the labels
 	labelsMap := map[string]struct{}{}
@@ -282,6 +346,13 @@ func TestFromDisk(t *testing.T) {
 		if diff := cmp.Diff(labelsMap[key], &l); diff != "" {
 			t.Errorf("Get labels: -want +got: %s", diff)
 		}
+	}
+	labelManifest := Manifest{}
+	for _, l := range labels {
+		labelManifest[l] = true
+	}
+	if diff := cmp.Diff(labelManifest, gotManifest["labels"]); diff != "" {
+		t.Errorf("Label manifest: -want + got: %s", diff)
 	}
 
 	// Check the statuses
@@ -495,7 +566,10 @@ func Test_labelsFromDisk(t *testing.T) {
 					t.Errorf("Error creating label: %s", err)
 				}
 			}
-			got, err := labelsFromDisk(d)
+			if err := ioutil.WriteFile(filepath.Join(d, manifestPath), []byte(strings.Join(tt.args.fileNames, "\n")), 0700); err != nil {
+				t.Errorf("Error creating label manifest: %s", err)
+			}
+			got, _, err := labelsFromDisk(d)
 			if err != nil {
 				t.Errorf("labelsFromDisk() error = %v", err)
 			}

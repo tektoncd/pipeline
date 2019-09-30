@@ -52,11 +52,11 @@ func main() {
 
 	case "upload":
 		logger.Info("RUNNING UPLOAD!")
-		pr, err := FromDisk(*path)
+		pr, manifests, err := FromDisk(*path)
 		if err != nil {
 			logger.Fatal(err)
 		}
-		if err := client.Upload(ctx, pr); err != nil {
+		if err := client.Upload(ctx, pr, manifests); err != nil {
 			logger.Fatal(err)
 		}
 	}
