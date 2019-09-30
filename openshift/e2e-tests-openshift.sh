@@ -36,12 +36,6 @@ function install_tekton_pipeline() {
 function create_pipeline() {
   resolve_resources config/ tekton-pipeline-resolved.yaml "nothing" $OPENSHIFT_REGISTRY/$OPENSHIFT_BUILD_NAMESPACE/stable
 
-  # NOTE(chmou): This is a very cheeky hack, sidecar is currently broken with
-  # our nop image so we just use nightly `nop` from upstream CI. `nop` should
-  # not change or do anything differently with a different base so we should be
-  # safe until https://github.com/tektoncd/pipeline/issues/1347 gets fixed
-  sed -i 's%"-nop-image.*%"-nop-image", "gcr.io/tekton-nightly/github.com/tektoncd/pipeline/cmd/nop:latest",%' tekton-pipeline-resolved.yaml
-
   oc apply -f tekton-pipeline-resolved.yaml
 }
 

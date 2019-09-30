@@ -2,8 +2,10 @@
 
 CGO_ENABLED=0
 GOOS=linux
-CORE_IMAGES=./cmd/bash ./cmd/controller ./cmd/entrypoint ./cmd/gsutil ./cmd/kubeconfigwriter ./cmd/nop ./cmd/webhook ./cmd/imagedigestexporter ./cmd/pullrequest-init
+CORE_IMAGES=./cmd/bash ./cmd/controller ./cmd/entrypoint ./cmd/gsutil ./cmd/kubeconfigwriter /cmd/webhook ./cmd/imagedigestexporter ./cmd/pullrequest-init
 CORE_IMAGES_WITH_GIT=./cmd/creds-init ./cmd/git-init
+# For the custom ones that are not auto generated
+CORE_IMAGES_CUSTOMED=./cmd/nop
 
 ##
 # You need to provide a RELEASE_VERSION when using targets like `push-image`, you can do it directly
@@ -27,7 +29,7 @@ test-e2e: check-images
 check-images:
 	@notfound="" ;\
 	for cmd in ./cmd/*;do \
-		[[ ! "$(CORE_IMAGES) $(CORE_IMAGES_WITH_GIT)" == *$$cmd* ]] && { \
+		[[ ! "$(CORE_IMAGES) $(CORE_IMAGES_CUSTOMED) $(CORE_IMAGES_WITH_GIT)" == *$$cmd* ]] && { \
 			notfound="$$notfound $$cmd " ;\
 		} \
 	done ;\
