@@ -239,8 +239,8 @@ func readJSON(path string, i interface{}) error {
 
 // Upload takes files stored on the filesystem and uploads new changes to
 // GitHub.
-func (h *GitHubHandler) Upload(ctx context.Context, pr *PullRequest) error {
-	h.Logger.Infof("Syncing path: %s to pr %d", pr, h.prNum)
+func (h *GitHubHandler) Upload(ctx context.Context, pr *PullRequest, manifests map[string]Manifest) error {
+	h.Logger.Infof("Syncing path: %+v to pr %d", pr, h.prNum)
 
 	// TODO: Allow syncing from GitHub specific sources.
 	var merr error
@@ -249,28 +249,66 @@ func (h *GitHubHandler) Upload(ctx context.Context, pr *PullRequest) error {
 		merr = multierror.Append(merr, err)
 	}
 
-	if err := h.uploadLabels(ctx, pr.Labels); err != nil {
+	if err := h.uploadLabels(ctx, manifests["labels"], pr.Labels); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
-	if err := h.uploadComments(ctx, pr.Comments); err != nil {
+	if err := h.uploadComments(ctx, manifests["comments"], pr.Comments); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
 	return merr
 }
 
-func (h *GitHubHandler) uploadLabels(ctx context.Context, labels []*Label) error {
-	labelNames := make([]string, 0, len(labels))
-	for _, l := range labels {
-		labelNames = append(labelNames, l.Text)
+func (h *GitHubHandler) uploadLabels(ctx context.Context, manifest Manifest, raw []*Label) error {
+	// Convert requested labels to a map. This ensures that there are no
+	// duplicates and makes it easier to query which labels are being requested.
+	labels := make(map[string]bool)
+	for _, l := range raw {
+		labels[l.Text] = true
 	}
-	h.Logger.Infof("Setting labels for PR %d to %v", h.prNum, labelNames)
-	_, _, err := h.Issues.ReplaceLabelsForIssue(ctx, h.owner, h.repo, h.prNum, labelNames)
+
+	// Fetch current labels associated to the PR. We'll need to keep track of
+	// which labels are new and should not be modified.
+	currentLabels, _, err := h.Client.Issues.ListLabelsByIssue(ctx, h.owner, h.repo, h.prNum, nil)
+	if err != nil {
+		return err
+	}
+	current := make(map[string]bool)
+	for _, l := range currentLabels {
+		current[l.GetName()] = true
+	}
+	h.Logger.Infof("Current labels: %v", current)
+
+	var merr error
+
+	// Create new labels that are missing from the PR.
+	create := []string{}
+	for l := range labels {
+		if !current[l] {
+			create = append(create, l)
+		}
+	}
+	h.Logger.Infof("Creating labels %v for PR %d", create, h.prNum)
+	if _, _, err := h.Client.Issues.AddLabelsToIssue(ctx, h.owner, h.repo, h.prNum, create); err != nil {
+		merr = multierror.Append(merr, err)
+	}
+
+	// Remove labels that no longer exist in the workspace and were present in
+	// the manifest.
+	for l := range current {
+		if !labels[l] && manifest[l] {
+			h.Logger.Infof("Removing label %s for PR %d", l, h.prNum)
+			if _, err := h.Client.Issues.RemoveLabelForIssue(ctx, h.owner, h.repo, h.prNum, l); err != nil {
+				merr = multierror.Append(merr, err)
+			}
+		}
+	}
+
 	return err
 }
 
-func (h *GitHubHandler) uploadComments(ctx context.Context, comments []*Comment) error {
+func (h *GitHubHandler) uploadComments(ctx context.Context, manifest Manifest, comments []*Comment) error {
 	h.Logger.Infof("Setting comments for PR %d to: %v", h.prNum, comments)
 
 	// Sort comments into whether they are new or existing comments (based on
@@ -286,7 +324,7 @@ func (h *GitHubHandler) uploadComments(ctx context.Context, comments []*Comment)
 	}
 
 	var merr error
-	if err := h.updateExistingComments(ctx, existingComments); err != nil {
+	if err := h.updateExistingComments(ctx, manifest, existingComments); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
@@ -297,20 +335,29 @@ func (h *GitHubHandler) uploadComments(ctx context.Context, comments []*Comment)
 	return merr
 }
 
-func (h *GitHubHandler) updateExistingComments(ctx context.Context, comments map[int64]*Comment) error {
-	existingComments, _, err := h.Issues.ListComments(ctx, h.owner, h.repo, h.prNum, nil)
+func (h *GitHubHandler) updateExistingComments(ctx context.Context, manifest Manifest, comments map[int64]*Comment) error {
+	currentComments, _, err := h.Issues.ListComments(ctx, h.owner, h.repo, h.prNum, nil)
 	if err != nil {
 		return err
 	}
 
-	h.Logger.Info(existingComments)
-	h.Logger.Info(comments)
-
 	var merr error
-	for _, ec := range existingComments {
+	for _, ec := range currentComments {
 		dc, ok := comments[ec.GetID()]
 		if !ok {
-			// Delete
+			// Current comment does not exist in the current resource.
+
+			// Check if we were aware of the comment when the resource was
+			// initialized.
+			if _, ok := manifest[strconv.FormatInt(ec.GetID(), 10)]; !ok {
+				// Comment did not exist when resource created, so this was created
+				// recently. To not modify this comment.
+				h.Logger.Infof("Not tracking comment %d. Skipping.", ec.GetID())
+				continue
+			}
+
+			// Comment existed beforehand, user intentionally deleted. Remove from
+			// upstream source.
 			h.Logger.Infof("Deleting comment %d for PR %d", ec.GetID(), h.prNum)
 			if _, err := h.Issues.DeleteComment(ctx, h.owner, h.repo, ec.GetID()); err != nil {
 				h.Logger.Warnf("Error deleting comment: %v", err)

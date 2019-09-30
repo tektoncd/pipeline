@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -264,7 +265,7 @@ func TestUpload(t *testing.T) {
 		}},
 	}
 
-	if err := h.Upload(ctx, tektonPR); err != nil {
+	if err := h.Upload(ctx, tektonPR, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -467,7 +468,13 @@ func TestUpdateExistingComments(t *testing.T) {
 		},
 		// Comment 1 should be deleted.
 	}
-	if err := h.updateExistingComments(ctx, comments); err == nil {
+	manifest := Manifest{
+		strconv.FormatInt(comment.GetID(), 10):  true,
+		strconv.FormatInt(comment2.GetID(), 10): true,
+		strconv.FormatInt(comment3.GetID(), 10): true,
+	}
+	t.Log(manifest)
+	if err := h.updateExistingComments(ctx, manifest, comments); err == nil {
 		t.Error("expected error, got nil")
 	}
 
@@ -518,7 +525,12 @@ func TestUploadComments(t *testing.T) {
 		},
 		// Comment 1 should be deleted.
 	}
-	if err := h.uploadComments(ctx, comments); err == nil {
+	manifest := Manifest{
+		strconv.FormatInt(comment.GetID(), 10):  true,
+		strconv.FormatInt(comment2.GetID(), 10): true,
+		strconv.FormatInt(comment3.GetID(), 10): true,
+	}
+	if err := h.uploadComments(ctx, manifest, comments); err == nil {
 		t.Error("expected error, got nil")
 	}
 
@@ -648,5 +660,91 @@ func TestUploadStatuses(t *testing.T) {
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("GetCombinedStatus: -want +got: %s", diff)
+	}
+}
+
+func TestUpload_newCommentAndLabel(t *testing.T) {
+	ctx := context.Background()
+	h, close := newHandler(ctx, t)
+	defer close()
+
+	// Generate a new GitHub label and comment out of band of the PR resource.
+	label := "my-label"
+	if _, _, err := h.Client.Issues.ReplaceLabelsForIssue(ctx, owner, repo, prNum, []string{label}); err != nil {
+		t.Fatal(err)
+	}
+
+	c, _, err := h.Client.Issues.CreateComment(ctx, owner, repo, prNum, &github.IssueComment{
+		Body: github.String("my-comment"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Upload Tekton PR resource.
+	tektonPR := &PullRequest{
+		Type: "github",
+		ID:   int64(prNum),
+		Head: &GitReference{
+			Repo:   pr.GetHead().GetRepo().GetCloneURL(),
+			Branch: pr.GetHead().GetRef(),
+			SHA:    pr.GetHead().GetSHA(),
+		},
+		Base: &GitReference{
+			Repo:   pr.GetBase().GetRepo().GetCloneURL(),
+			Branch: pr.GetBase().GetRef(),
+			SHA:    pr.GetBase().GetSHA(),
+		},
+		Comments: []*Comment{{
+			ID:     comment.GetID(),
+			Author: comment.GetUser().GetLogin(),
+			Text:   comment.GetBody(),
+		}, {
+			Text: "abc123",
+		}},
+		Labels: []*Label{{
+			Text: "tacocat",
+		}},
+		Statuses: []*Status{{
+			ID:          "Tekton",
+			Code:        Success,
+			Description: "Test all the things!",
+			URL:         "https://tekton.dev",
+		}},
+	}
+	if err := h.Upload(ctx, tektonPR, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify label still exists.
+	pr, _, err := h.Client.PullRequests.Get(ctx, owner, repo, prNum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, l := range pr.Labels {
+		if l.GetName() == label {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("unable to find label '%s' in PR: %v", label, pr.Labels)
+	}
+
+	// Verify comment still exists.
+	resp, _, err := h.Client.Issues.ListComments(ctx, owner, repo, prNum, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found = false
+	for _, got := range resp {
+		if diff := cmp.Diff(c, got); diff == "" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("unable to find comment %d in Issue: %v", c.GetID(), pr.Comments)
 	}
 }
