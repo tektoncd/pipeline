@@ -192,7 +192,13 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 		timeout:   25 * time.Hour,
 		starttime: time.Now().AddDate(0, 0, -1),
 		expected:  false,
-	}}
+	}, {
+		name:      "notimeoutspecified",
+		timeout:   0 * time.Second,
+		starttime: time.Now().AddDate(0, 0, -1),
+		expected:  false,
+	},
+	}
 
 	for _, tc := range tcs {
 		t.Run(t.Name(), func(t *testing.T) {
