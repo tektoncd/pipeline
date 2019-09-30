@@ -33,7 +33,7 @@ func getSecretEnvVarsAndVolumeMounts(name, mountPath string, secrets []SecretPar
 
 	allowedFields := map[string]bool{
 		"GOOGLE_APPLICATION_CREDENTIALS": false,
-		"BOTO_CONFIG": false,
+		"BOTO_CONFIG":                    false,
 	}
 
 	for _, secretParam := range secrets {
