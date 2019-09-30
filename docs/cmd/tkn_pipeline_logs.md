@@ -35,8 +35,8 @@ Show pipeline logs
   -a, --all         show all logs including init steps injected by tekton
   -f, --follow      stream live logs
   -h, --help        help for logs
-  -l, --last        show logs for last run
-  -L, --limit int   lists number of pipelineruns (default 5)
+  -L, --last        show logs for last run
+      --limit int   lists number of pipelineruns (default 5)
 ```
 
 ### Options inherited from parent commands

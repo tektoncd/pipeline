@@ -106,10 +106,10 @@ func logCommand(p cli.Params) *cobra.Command {
 			return opts.run(args)
 		},
 	}
-	c.Flags().BoolVarP(&opts.last, "last", "l", false, "show logs for last run")
+	c.Flags().BoolVarP(&opts.last, "last", "L", false, "show logs for last run")
 	c.Flags().BoolVarP(&opts.allSteps, "all", "a", false, "show all logs including init steps injected by tekton")
 	c.Flags().BoolVarP(&opts.follow, "follow", "f", false, "stream live logs")
-	c.Flags().IntVarP(&opts.limit, "limit", "L", 5, "lists number of pipelineruns")
+	c.Flags().IntVarP(&opts.limit, "limit", "", 5, "lists number of pipelineruns")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
 	return c

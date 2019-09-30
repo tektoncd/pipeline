@@ -18,8 +18,6 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/evanphx/json-patch v4.1.0+incompatible // indirect
 	github.com/fatih/color v1.7.0
-	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
 	github.com/google/go-cmp v0.3.1
 	github.com/google/go-containerregistry v0.0.0-20190320210540-8d4083db9aa0 // indirect
@@ -42,7 +40,6 @@ require (
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.8.1
-	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829 // indirect
 	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
 	github.com/prometheus/procfs v0.0.0-20190322151404-55ae3d9d5573 // indirect
 	github.com/spf13/cobra v0.0.5

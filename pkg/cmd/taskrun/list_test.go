@@ -147,7 +147,7 @@ func TestListTaskRuns(t *testing.T) {
 		{
 			name:    "limit taskruns returned to 1",
 			command: command(t, trs, now),
-			args:    []string{"list", "-n", "foo", "-l", fmt.Sprintf("%d", 1)},
+			args:    []string{"list", "-n", "foo", "--limit", fmt.Sprintf("%d", 1)},
 			expected: []string{
 				"NAME    STARTED   DURATION   STATUS      ",
 				"tr0-1   ---       ---        Succeeded   ",
@@ -157,7 +157,7 @@ func TestListTaskRuns(t *testing.T) {
 		{
 			name:    "limit taskruns negative case",
 			command: command(t, trs, now),
-			args:    []string{"list", "-n", "foo", "-l", fmt.Sprintf("%d", -1)},
+			args:    []string{"list", "-n", "foo", "--limit", fmt.Sprintf("%d", -1)},
 			expected: []string{
 				"",
 			},
@@ -165,7 +165,7 @@ func TestListTaskRuns(t *testing.T) {
 		{
 			name:    "limit taskruns greater than maximum case",
 			command: command(t, trs, now),
-			args:    []string{"list", "-n", "foo", "-l", fmt.Sprintf("%d", 7)},
+			args:    []string{"list", "-n", "foo", "--limit", fmt.Sprintf("%d", 7)},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS      ",
 				"tr0-1   ---              ---        Succeeded   ",
@@ -179,7 +179,7 @@ func TestListTaskRuns(t *testing.T) {
 		{
 			name:    "limit taskruns with output flag set",
 			command: command(t, trs, now),
-			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "-l", fmt.Sprintf("%d", 2)},
+			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "--limit", fmt.Sprintf("%d", 2)},
 			expected: []string{
 				"tr0-1",
 				"tr3-1",

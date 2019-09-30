@@ -116,7 +116,7 @@ func TestLogs_negative_limit(t *testing.T) {
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
-	_, err := test.ExecuteCommand(c, "logs", pipelineName, "-n", ns, "-L", fmt.Sprintf("%d", -1))
+	_, err := test.ExecuteCommand(c, "logs", pipelineName, "-n", ns, "--limit", fmt.Sprintf("%d", -1))
 
 	expected := "limit was -1 but must be a positive number"
 	test.AssertOutput(t, expected, err.Error())
@@ -712,7 +712,7 @@ func TestLogs_last_run_diff_namespace(t *testing.T) {
 	p.SetNamespace("default")
 
 	c := Command(p)
-	_, err := test.ExecuteCommand(c, "logs", pipelineName, "-n", ns, "-l")
+	_, err := test.ExecuteCommand(c, "logs", pipelineName, "-n", ns, "-L")
 	if err != nil {
 		t.Error("Expecting no error")
 	}

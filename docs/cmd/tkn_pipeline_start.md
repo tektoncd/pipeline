@@ -37,7 +37,7 @@ two parameters (foo and bar)
 
 ```
   -h, --help                          help for start
-  -l, --last                          re-run the pipeline using last pipelinerun values
+  -L, --last                          re-run the pipeline using last pipelinerun values
   -p, --param strings                 pass the param as key=value
   -r, --resource strings              pass the resource name and ref as name=ref
   -s, --serviceaccount string         pass the serviceaccount name

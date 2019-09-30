@@ -104,7 +104,7 @@ tkn pr list -n foo
 	}
 
 	f.AddFlags(c)
-	c.Flags().IntVarP(&opts.Limit, "limit", "l", 0, "limit pipelineruns listed (default: return all pipelineruns)")
+	c.Flags().IntVarP(&opts.Limit, "limit", "", 0, "limit pipelineruns listed (default: return all pipelineruns)")
 
 	return c
 }

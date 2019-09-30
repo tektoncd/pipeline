@@ -106,7 +106,7 @@ tkn taskrun list foo -n bar
 	}
 
 	f.AddFlags(c)
-	c.Flags().IntVarP(&opts.Limit, "limit", "l", 0, "limit taskruns listed (default: return all taskruns)")
+	c.Flags().IntVarP(&opts.Limit, "limit", "", 0, "limit taskruns listed (default: return all taskruns)")
 
 	return c
 }

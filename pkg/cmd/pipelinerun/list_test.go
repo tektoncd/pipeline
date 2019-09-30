@@ -129,7 +129,7 @@ func TestListPipelineRuns(t *testing.T) {
 		{
 			name:    "limit pipelineruns returned to 1",
 			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", 1)},
+			args:    []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", 1)},
 			expected: []string{
 				"NAME    STARTED   DURATION   STATUS   ",
 				"pr0-1   ---       ---        ---      ",
@@ -139,7 +139,7 @@ func TestListPipelineRuns(t *testing.T) {
 		{
 			name:    "limit pipelineruns negative case",
 			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", -1)},
+			args:    []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", -1)},
 			expected: []string{
 				"",
 			},
@@ -147,7 +147,7 @@ func TestListPipelineRuns(t *testing.T) {
 		{
 			name:    "limit pipelineruns greater than maximum case",
 			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "-l", fmt.Sprintf("%d", 7)},
+			args:    []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", 7)},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS               ",
 				"pr0-1   ---              ---        ---                  ",
@@ -161,7 +161,7 @@ func TestListPipelineRuns(t *testing.T) {
 		{
 			name:    "limit pipelineruns with output flag set",
 			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "-l", fmt.Sprintf("%d", 2)},
+			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "--limit", fmt.Sprintf("%d", 2)},
 			expected: []string{
 				"pr0-1",
 				"pr3-1",

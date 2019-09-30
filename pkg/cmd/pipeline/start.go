@@ -131,7 +131,7 @@ like cat,foo.bar
 	flags.AddShellCompletion(c.Flags().Lookup("serviceaccount"), "__kubectl_get_serviceaccount")
 	c.Flags().StringSliceVar(&opt.ServiceAccounts, "task-serviceaccount", []string{}, "pass the service account corresponding to the task")
 	flags.AddShellCompletion(c.Flags().Lookup("task-serviceaccount"), "__kubectl_get_serviceaccount")
-	c.Flags().BoolVarP(&opt.Last, "last", "l", false, "re-run the pipeline using last pipelinerun values")
+	c.Flags().BoolVarP(&opt.Last, "last", "L", false, "re-run the pipeline using last pipelinerun values")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_pipeline")
 
