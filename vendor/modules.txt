@@ -526,8 +526,8 @@ k8s.io/client-go/tools/auth
 k8s.io/client-go/tools/clientcmd/api/latest
 k8s.io/client-go/util/homedir
 k8s.io/client-go/restmapper
-k8s.io/client-go/kubernetes/fake
 k8s.io/client-go/testing
+k8s.io/client-go/kubernetes/fake
 k8s.io/client-go/tools/pager
 k8s.io/client-go/util/buffer
 k8s.io/client-go/util/retry

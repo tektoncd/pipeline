@@ -22,6 +22,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/clustertask"
 	"github.com/tektoncd/cli/pkg/cmd/completion"
+	"github.com/tektoncd/cli/pkg/cmd/condition"
 	"github.com/tektoncd/cli/pkg/cmd/pipeline"
 	"github.com/tektoncd/cli/pkg/cmd/pipelineresource"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
@@ -81,6 +82,7 @@ func Root(p cli.Params) *cobra.Command {
 		taskrun.Command(p),
 		pipelineresource.Command(p),
 		clustertask.Command(p),
+		condition.Command(p),
 		version.Command(),
 	)
 
