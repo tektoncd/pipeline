@@ -67,7 +67,7 @@ func TestRecorderOptions(t *testing.T) {
 		Logger:            zap.New(observer).Sugar(),
 		KubeClientSet:     c.Kube,
 		PipelineClientSet: c.Pipeline,
-	}, "test", map[string]string{})
+	}, "test", Images{})
 
 	if strings.Compare(reflect.TypeOf(b.Recorder).String(), "*record.recorderImpl") != 0 {
 		t.Errorf("Expected recorder type '*record.recorderImpl' but actual type is: %s", reflect.TypeOf(b.Recorder).String())
@@ -81,7 +81,7 @@ func TestRecorderOptions(t *testing.T) {
 		KubeClientSet:     c.Kube,
 		PipelineClientSet: c.Pipeline,
 		Recorder:          fr,
-	}, "test", map[string]string{})
+	}, "test", Images{})
 
 	if strings.Compare(reflect.TypeOf(b.Recorder).String(), "*record.FakeRecorder") != 0 {
 		t.Errorf("Expected recorder type '*record.FakeRecorder' but actual type is: %s", reflect.TypeOf(b.Recorder).String())

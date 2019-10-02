@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
@@ -62,8 +63,9 @@ const (
 )
 
 var (
-	images = map[string]string{
-		"nopImage": "override-with-nop:latest",
+	images = reconciler.Images{
+		EntryPointImage: "override-with-entrypoint:latest",
+		NopImage:        "override-with-nop:latest",
 	}
 	entrypointCache          *entrypoint.Cache
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
@@ -1422,7 +1424,7 @@ func TestCreateRedirectedTaskSpec(t *testing.T) {
 	observer, _ := observer.New(zap.InfoLevel)
 	entrypointCache, _ := entrypoint.NewCache()
 	c := fakekubeclientset.NewSimpleClientset()
-	ts, err := createRedirectedTaskSpec(c, &task.Spec, tr, entrypointCache, zap.New(observer).Sugar())
+	ts, err := createRedirectedTaskSpec(c, "override-with-entrypoint:latest", &task.Spec, tr, entrypointCache, zap.New(observer).Sugar())
 	if err != nil {
 		t.Errorf("expected createRedirectedTaskSpec to pass: %v", err)
 	}

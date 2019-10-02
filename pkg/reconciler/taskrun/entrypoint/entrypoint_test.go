@@ -461,7 +461,7 @@ func TestAddCopyStep(t *testing.T) {
 	}
 
 	expectedSteps := len(ts.Steps) + 1
-	AddCopyStep(ts)
+	AddCopyStep("override-with-entrypoint:latest", ts)
 	if len(ts.Steps) != 3 {
 		t.Errorf("BuildSpec has the wrong step count: %d should be %d", len(ts.Steps), expectedSteps)
 	}

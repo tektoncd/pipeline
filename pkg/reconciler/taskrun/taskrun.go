@@ -126,7 +126,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.timeoutHandler.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
-			err = sidecars.Stop(pod, c.Images["nopImage"], c.KubeClientSet.CoreV1().Pods(tr.Namespace).Update)
+			err = sidecars.Stop(pod, c.Images.NopImage, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Update)
 		} else if errors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}
@@ -448,7 +448,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, err
 	}
 
-	ts, err = createRedirectedTaskSpec(c.KubeClientSet, ts, tr, c.cache, c.Logger)
+	ts, err = createRedirectedTaskSpec(c.KubeClientSet, c.Images.EntryPointImage, ts, tr, c.cache, c.Logger)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't create redirected TaskSpec: %w", err)
 	}
@@ -476,7 +476,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the TaskSpec and modifies it freely
-func createRedirectedTaskSpec(kubeclient kubernetes.Interface, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*v1alpha1.TaskSpec, error) {
+func createRedirectedTaskSpec(kubeclient kubernetes.Interface, entrypointImage string, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*v1alpha1.TaskSpec, error) {
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
 	err := entrypoint.RedirectSteps(cache, ts.Steps, kubeclient, tr, logger)
@@ -486,7 +486,7 @@ func createRedirectedTaskSpec(kubeclient kubernetes.Interface, ts *v1alpha1.Task
 	// Add the step which will copy the entrypoint into the volume
 	// we are going to be using, so that all of the steps will have
 	// access to it.
-	entrypoint.AddCopyStep(ts)
+	entrypoint.AddCopyStep(entrypointImage, ts)
 
 	// Add the volume used for storing the binary and logs
 	ts.Volumes = append(ts.Volumes, corev1.Volume{

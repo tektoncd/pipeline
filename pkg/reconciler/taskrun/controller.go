@@ -42,7 +42,7 @@ const (
 	resyncPeriod = 10 * time.Hour
 )
 
-func NewController(images map[string]string) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(images reconciler.Images) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		kubeclientset := kubeclient.Get(ctx)
