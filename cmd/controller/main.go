@@ -21,6 +21,7 @@ import (
 
 	"knative.dev/pkg/injection/sharedmain"
 
+	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 )
@@ -31,12 +32,17 @@ const (
 )
 
 var (
-	nopImage = flag.String("nop-image", "override-with-nop:latest", "The container image used to kill sidecars")
+	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
+		"The container image containing our entrypoint binary.")
+	nopImage = flag.String("nop-image", "override-with-nop:latest",
+		"The container image used to kill sidecars")
 )
 
 func main() {
-	images := map[string]string{
-		"nopImage": *nopImage,
+	flag.Parse()
+	images := reconciler.Images{
+		EntryPointImage: *entrypointImage,
+		NopImage:        *nopImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),

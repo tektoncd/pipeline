@@ -81,12 +81,12 @@ type Base struct {
 	Logger *zap.SugaredLogger
 
 	// Images contains images to use for certain internal container
-	Images map[string]string
+	Images Images
 }
 
 // NewBase instantiates a new instance of Base implementing
 // the common & boilerplate code between our reconcilers.
-func NewBase(opt Options, controllerAgentName string, images map[string]string) *Base {
+func NewBase(opt Options, controllerAgentName string, images Images) *Base {
 	// Enrich the logs with controller name
 	logger := opt.Logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
 
