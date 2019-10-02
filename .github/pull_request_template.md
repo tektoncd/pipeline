@@ -12,6 +12,8 @@ review them:
 
 - [ ] Includes [tests](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if functionality changed/added)
 - [ ] Includes [docs](https://github.com/tektoncd/community/blob/master/standards.md#principles) (if user facing)
+- [ ] Regenerate the manpages and docs with `make docs` and `make man` if needed.
+- [ ] Run the code checkers with `make check`
 - [ ] Commit messages follow [commit message best practices](https://github.com/tektoncd/community/blob/master/standards.md#commit-messages)
 
 _See [the contribution guide](https://github.com/tektoncd/cli/blob/master/CONTRIBUTING.md)
