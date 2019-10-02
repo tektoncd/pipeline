@@ -29,7 +29,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
@@ -64,7 +63,7 @@ const (
 )
 
 var (
-	images = reconciler.Images{
+	images = pipeline.Images{
 		EntryPointImage: "override-with-entrypoint:latest",
 		NopImage:        "override-with-nop:latest",
 	}

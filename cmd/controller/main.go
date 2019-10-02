@@ -21,7 +21,7 @@ import (
 
 	"knative.dev/pkg/injection/sharedmain"
 
-	"github.com/tektoncd/pipeline/pkg/reconciler"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 )
@@ -40,7 +40,7 @@ var (
 
 func main() {
 	flag.Parse()
-	images := reconciler.Images{
+	images := pipeline.Images{
 		EntryPointImage: *entrypointImage,
 		NopImage:        *nopImage,
 	}

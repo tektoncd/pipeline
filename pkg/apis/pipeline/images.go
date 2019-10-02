@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package reconciler
+package pipeline
 
 // Images holds the images reference for a number of container images used accross tektoncd pipelines
 type Images struct {
@@ -22,4 +22,6 @@ type Images struct {
 	EntryPointImage string
 	// NopImage is the container image used to kill sidecars
 	NopImage string
+	// GitImage container with Git that we use to implement the Git source step.
+	GitImage string
 }
