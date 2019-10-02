@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/cli/pkg/helper/pipeline"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -149,6 +150,7 @@ func Test_start_pipeline(t *testing.T) {
 	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"-r=source=scaffold-git",
 		"-p=key1=value1",
+		"-l=jemange=desfrites",
 		"-s=svc1",
 		"-n", "ns")
 
@@ -163,6 +165,11 @@ func Test_start_pipeline(t *testing.T) {
 	if pr.Items[0].ObjectMeta.GenerateName != (pipelineName + "-run-") {
 		t.Errorf("Error pipelinerun generated is different %+v", pr)
 	}
+
+	if d := cmp.Equal(pr.Items[0].ObjectMeta.Labels, map[string]string{"jemange": "desfrites"}); !d {
+		t.Errorf("Error labels generated is different Labels Got: %+v", pr.Items[0].ObjectMeta.Labels)
+	}
+
 }
 
 func Test_start_pipeline_interactive(t *testing.T) {
@@ -814,6 +821,48 @@ func Test_mergeParam(t *testing.T) {
 		t.Errorf("Did not expect error")
 	}
 	test.AssertOutput(t, 4, len(pr.Spec.Params))
+}
+
+func Test_mergeLabels(t *testing.T) {
+	pr := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:    "ns",
+			GenerateName: "test-run",
+			Labels:       map[string]string{"alatouki": "lamaracarena"},
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: v1alpha1.PipelineRef{Name: "test"},
+		},
+	}
+
+	// invalid
+	err := mergeLabels(pr, []string{"test"})
+	if err == nil {
+		t.Errorf("Expected error")
+	}
+	test.AssertOutput(t, 1, len(pr.ObjectMeta.Labels))
+
+	// add
+	err = mergeLabels(pr, []string{"label1=test"})
+	if err != nil {
+		t.Errorf("Did not expect error")
+	}
+	test.AssertOutput(t, 2, len(pr.ObjectMeta.Labels))
+
+	// update
+	err = mergeLabels(pr, []string{"alatouki=paslamacarena"})
+	if err != nil {
+		t.Errorf("Did not expect error")
+	}
+	test.AssertOutput(t, 2, len(pr.ObjectMeta.Labels))
+	test.AssertOutput(t, "paslamacarena", pr.ObjectMeta.Labels["alatouki"])
+
+	// multiples
+	err = mergeLabels(pr, []string{"label2=test2", "label3=label3"})
+	if err != nil {
+		t.Errorf("Did not expect error")
+	}
+	test.AssertOutput(t, 4, len(pr.ObjectMeta.Labels))
 }
 
 func Test_getPipelineResourceByFormat(t *testing.T) {
