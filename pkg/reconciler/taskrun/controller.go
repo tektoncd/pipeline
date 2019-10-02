@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask"
@@ -42,7 +43,7 @@ const (
 	resyncPeriod = 10 * time.Hour
 )
 
-func NewController(images reconciler.Images) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(images pipeline.Images) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		kubeclientset := kubeclient.Get(ctx)
