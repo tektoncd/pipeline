@@ -24,6 +24,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/helper/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -54,6 +55,7 @@ type startOptions struct {
 	ServiceAccounts    []string
 	Last               bool
 	Labels             []string
+	ShowLog            bool
 }
 
 type resourceOptionsFilter struct {
@@ -127,6 +129,7 @@ like cat,foo.bar
 		},
 	}
 
+	c.Flags().BoolVarP(&opt.ShowLog, "showlog", "", true, "show logs right after starting the pipeline")
 	c.Flags().StringSliceVarP(&opt.Resources, "resource", "r", []string{}, "pass the resource name and ref as name=ref")
 	c.Flags().StringSliceVarP(&opt.Params, "param", "p", []string{}, "pass the param as key=value")
 	c.Flags().StringVarP(&opt.ServiceAccountName, "serviceaccount", "s", "", "pass the serviceaccount name")
@@ -374,9 +377,21 @@ func (opt *startOptions) startPipeline(pName string) error {
 		return err
 	}
 
-	fmt.Fprintf(opt.stream.Out, "Pipelinerun started: %s\n\n"+
-		"In order to track the pipelinerun progress run:\ntkn pipelinerun logs %s -f -n %s\n", prCreated.Name, prCreated.Name, prCreated.Namespace)
-	return nil
+	fmt.Fprintf(opt.stream.Out, "Pipelinerun started: %s\n", prCreated.Name)
+	if !opt.ShowLog {
+		fmt.Fprintf(opt.stream.Out, "\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs %s -f -n %s\n", prCreated.Name, prCreated.Namespace)
+		return nil
+	}
+
+	fmt.Fprintf(opt.stream.Out, "Showing logs...\n")
+	runLogOpts := &pipelinerun.LogOptions{
+		PipelineName:    pName,
+		PipelineRunName: prCreated.Name,
+		Stream:          opt.stream,
+		Follow:          true,
+		Params:          opt.cliparams,
+	}
+	return runLogOpts.Run()
 }
 
 func mergeRes(pr *v1alpha1.PipelineRun, optRes []string) error {

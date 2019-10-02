@@ -125,7 +125,54 @@ func Test_start_pipeline_not_found(t *testing.T) {
 }
 
 func Test_start_pipeline(t *testing.T) {
+	pipelineName := "test-pipeline"
 
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, "ns",
+			tb.PipelineSpec(
+				tb.PipelineDeclaredResource("git-repo", "git"),
+				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
+				tb.PipelineTask("unit-test-1", "unit-test-task",
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+				),
+			), // spec
+		), // pipeline
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	pipeline := Command(p)
+
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
+		"-r=source=scaffold-git",
+		"--showlog=false",
+		"-p=key1=value1",
+		"-l=jemange=desfrites",
+		"-s=svc1",
+		"-n", "ns")
+
+	expected := "Pipelinerun started: \n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs  -f -n ns\n"
+	test.AssertOutput(t, expected, got)
+
+	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns("ns").List(v1.ListOptions{})
+	if err != nil {
+		t.Errorf("Error listing pipelineruns %s", err.Error())
+	}
+
+	if pr.Items[0].ObjectMeta.GenerateName != (pipelineName + "-run-") {
+		t.Errorf("Error pipelinerun generated is different %+v", pr)
+	}
+
+	if d := cmp.Equal(pr.Items[0].ObjectMeta.Labels, map[string]string{"jemange": "desfrites"}); !d {
+		t.Errorf("Error labels generated is different Labels Got: %+v", pr.Items[0].ObjectMeta.Labels)
+	}
+
+}
+
+func Test_start_pipeline_showlogs_false(t *testing.T) {
 	pipelineName := "test-pipeline"
 
 	ps := []*v1alpha1.Pipeline{
@@ -151,25 +198,12 @@ func Test_start_pipeline(t *testing.T) {
 		"-r=source=scaffold-git",
 		"-p=key1=value1",
 		"-l=jemange=desfrites",
+		"--showlog=false",
 		"-s=svc1",
 		"-n", "ns")
 
 	expected := "Pipelinerun started: \n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs  -f -n ns\n"
 	test.AssertOutput(t, expected, got)
-
-	pr, err := cs.Pipeline.TektonV1alpha1().PipelineRuns("ns").List(v1.ListOptions{})
-	if err != nil {
-		t.Errorf("Error listing pipelineruns %s", err.Error())
-	}
-
-	if pr.Items[0].ObjectMeta.GenerateName != (pipelineName + "-run-") {
-		t.Errorf("Error pipelinerun generated is different %+v", pr)
-	}
-
-	if d := cmp.Equal(pr.Items[0].ObjectMeta.Labels, map[string]string{"jemange": "desfrites"}); !d {
-		t.Errorf("Error labels generated is different Labels Got: %+v", pr.Items[0].ObjectMeta.Labels)
-	}
-
 }
 
 func Test_start_pipeline_interactive(t *testing.T) {
@@ -337,6 +371,7 @@ func Test_start_pipeline_last(t *testing.T) {
 		"-r=git-repo=scaffold-git",
 		"-p=rev-param=revision2",
 		"-s=svc1",
+		"--showlog=false",
 		"--task-serviceaccount=task3=task3svc3",
 		"--task-serviceaccount=task5=task3svc5",
 		"-n", "ns")
@@ -410,6 +445,7 @@ func Test_start_pipeline_last_without_res_param(t *testing.T) {
 	pipeline := Command(p)
 	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--last",
+		"--showlog=false",
 		"-n", "ns")
 
 	expected := "Pipelinerun started: random\n\nIn order to track the pipelinerun progress run:\ntkn pipelinerun logs random -f -n ns\n"
@@ -483,6 +519,7 @@ func Test_start_pipeline_last_merge(t *testing.T) {
 	pipeline := Command(p)
 	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--last",
+		"--showlog=false",
 		"-s=svc1",
 		"-r=git-repo=scaffold-git",
 		"-p=rev-param=revision2",
@@ -554,6 +591,7 @@ func Test_start_pipeline_last_no_pipelineruns(t *testing.T) {
 	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--last",
 		"-s=svc1",
+		"--showlog=false",
 		"-r=git-repo=scaffold-git",
 		"-p=rev-param=revision2",
 		"--task-serviceaccount=task3=task3svc3",
@@ -595,6 +633,7 @@ func Test_start_pipeline_last_list_err(t *testing.T) {
 	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"--last",
 		"-s=svc1",
+		"--showlog=false",
 		"-r=git-repo=scaffold-git",
 		"-p=rev-param=revision2",
 		"--task-serviceaccount=task3=task3svc3",
@@ -630,6 +669,7 @@ func Test_start_pipeline_client_error(t *testing.T) {
 
 	pipeline := Command(p)
 	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
+		"--showlog=false",
 		"-s=svc1",
 		"-n=namespace")
 
@@ -663,6 +703,7 @@ func Test_start_pipeline_res_err(t *testing.T) {
 	pipeline := Command(p)
 	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"-s=svc1",
+		"--showlog=false",
 		"-r=git-reposcaffold-git",
 		"-p=rev-param=revision2",
 		"--task-serviceaccount=task3=task3svc3",
@@ -699,6 +740,7 @@ func Test_start_pipeline_param_err(t *testing.T) {
 	pipeline := Command(p)
 	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
 		"-s=svc1",
+		"--showlog=false",
 		"-r=git-repo=scaffold-git",
 		"-p=rev-paramrevision2",
 		"--task-serviceaccount=task3=task3svc3",
