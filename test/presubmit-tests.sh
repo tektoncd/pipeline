@@ -27,11 +27,25 @@ export DISABLE_MD_LINTING=1
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
+function test_documentation_has_been_generated() {
+    make docs
+    make man
+
+    if [[ -n $(git status --porcelain docs/) ]];then
+        echo "-- FATAL: The documentation or manpages didn't seem to be generated :"
+        git status docs
+        git diff docs
+        exit 1
+    fi
+}
+
 function pre_build_tests() {
     go get -u github.com/knative/test-infra/tools/dep-collector
 }
 
 function post_build_tests() {
+    test_documentation_has_been_generated
+
     golangci-lint run
 }
 
