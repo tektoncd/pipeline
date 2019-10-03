@@ -39,6 +39,7 @@ var (
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
+	credsImage = "override-with-creds:latest"
 )
 
 func TestTryGetPod(t *testing.T) {
@@ -140,7 +141,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -179,7 +180,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:    containerPrefix + credsInit + "-mz4c7",
-				Image:   *credsImage,
+				Image:   credsImage,
 				Command: []string{"/ko-app/creds-init"},
 				Args: []string{
 					"-basic-docker=multi-creds=https://docker.io",
@@ -222,7 +223,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -260,7 +261,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -296,7 +297,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -344,7 +345,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -407,7 +408,7 @@ func TestMakePod(t *testing.T) {
 				},
 				Spec: c.trs,
 			}
-			got, err := MakePod(tr, c.ts, cs)
+			got, err := MakePod(credsImage, tr, c.ts, cs)
 			if err != c.wantErr {
 				t.Fatalf("MakePod: %v", err)
 			}
@@ -581,7 +582,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 		RestartPolicy: corev1.RestartPolicyNever,
 		InitContainers: []corev1.Container{{
 			Name:         containerPrefix + credsInit + "-9l9zj",
-			Image:        *credsImage,
+			Image:        credsImage,
 			Command:      []string{"/ko-app/creds-init"},
 			Args:         []string{},
 			Env:          implicitEnvVars,
@@ -640,7 +641,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 		},
 		Spec: trs,
 	}
-	got, err := MakePod(tr, ts, cs)
+	got, err := MakePod(credsImage, tr, ts, cs)
 	if err != nil {
 		t.Fatalf("MakePod: %v", err)
 	}
