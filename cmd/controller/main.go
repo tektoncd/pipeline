@@ -44,6 +44,8 @@ var (
 		"The container image containing our kubeconfig writer binary.")
 	bashNoopImage = flag.String("bash-noop-image", "override-with-bash-noop:latest",
 		"The container image containing bash shell")
+	gsutilImage = flag.String("gsutil-image", "override-with-gsutil-image:latest",
+		"The container image containing gsutil")
 )
 
 func main() {
@@ -55,6 +57,7 @@ func main() {
 		CredsImage:            *credsImage,
 		KubeconfigWriterImage: *kubeconfigWriterImage,
 		BashNoopImage:         *bashNoopImage,
+		GsutilImage:           *gsutilImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),

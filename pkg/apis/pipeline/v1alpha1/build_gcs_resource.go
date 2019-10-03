@@ -75,7 +75,7 @@ type BuildGCSResource struct {
 	BashNoopImage string `json:"-"`
 }
 
-// NewBuildGCSResource creates a new BuildGCS resource to pass to a Task
+//  creates a new BuildGCS resource to pass to a Task
 func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)

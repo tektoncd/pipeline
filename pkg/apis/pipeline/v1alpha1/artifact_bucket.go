@@ -66,6 +66,7 @@ type ArtifactBucket struct {
 	Secrets  []SecretParam
 
 	BashNoopImage string
+	GsutilImage   string
 }
 
 // GetType returns the type of the artifact storage
@@ -93,7 +94,7 @@ func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destination
 		},
 	}}, {Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-from-%s", name)),
-		Image:        *gsutilImage,
+		Image:        b.GsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		Env:          envVars,
@@ -109,7 +110,7 @@ func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destination
 
 	return []Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-to-%s", name)),
-		Image:        *gsutilImage,
+		Image:        b.GsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		Env:          envVars,

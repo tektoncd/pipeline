@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -29,7 +28,6 @@ import (
 )
 
 var (
-	gsutilImage              = flag.String("gsutil-image", "override-with-gsutil-image:latest", "The container image containing gsutil")
 	gcsSecretVolumeMountPath = "/var/secret"
 )
 
@@ -44,6 +42,7 @@ type GCSResource struct {
 	Secrets []SecretParam `json:"secrets"`
 
 	BashNoopImage string `json:"-"`
+	GsutilImage   string `json:"-"`
 }
 
 // NewGCSResource creates a new GCS resource to pass to a Task
@@ -76,6 +75,7 @@ func NewGCSResource(images pipeline.Images, r *PipelineResource) (*GCSResource, 
 		TypeDir:       dir,
 		Secrets:       r.Spec.SecretParams,
 		BashNoopImage: images.BashNoopImage,
+		GsutilImage:   images.GsutilImage,
 	}, nil
 }
 
@@ -114,7 +114,7 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 
 	step := Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
-		Image:        *gsutilImage,
+		Image:        s.GsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
@@ -149,7 +149,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 		CreateDirStep(s.BashNoopImage, s.Name, path),
 		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
-			Image:        *gsutilImage,
+			Image:        s.GsutilImage,
 			Command:      []string{"/ko-app/gsutil"},
 			Args:         args,
 			Env:          envVars,

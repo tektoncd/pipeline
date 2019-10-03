@@ -71,6 +71,7 @@ func (s *Store) Load() *Config {
 			ArtifactBucket: &v1alpha1.ArtifactBucket{
 				Location:      "",
 				BashNoopImage: s.images.BashNoopImage,
+				GsutilImage:   s.images.GsutilImage,
 			},
 		}
 	}

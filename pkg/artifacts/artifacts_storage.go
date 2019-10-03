@@ -139,6 +139,7 @@ func NewArtifactBucketConfigFromConfigMap(images pipeline.Images) func(configMap
 	return func(configMap *corev1.ConfigMap) (*v1alpha1.ArtifactBucket, error) {
 		c := &v1alpha1.ArtifactBucket{
 			BashNoopImage: images.BashNoopImage,
+			GsutilImage:   images.GsutilImage,
 		}
 
 		if configMap.Data == nil {
