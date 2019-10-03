@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -41,10 +42,12 @@ type GCSResource struct {
 	TypeDir  bool                 `json:"typeDir"`
 	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
+
+	BashNoopImage string `json:"-"`
 }
 
 // NewGCSResource creates a new GCS resource to pass to a Task
-func NewGCSResource(r *PipelineResource) (*GCSResource, error) {
+func NewGCSResource(images pipeline.Images, r *PipelineResource) (*GCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("GCSResource: Cannot create a GCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -67,11 +70,12 @@ func NewGCSResource(r *PipelineResource) (*GCSResource, error) {
 		return nil, xerrors.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
 	}
 	return &GCSResource{
-		Name:     r.Name,
-		Type:     r.Spec.Type,
-		Location: location,
-		TypeDir:  dir,
-		Secrets:  r.Spec.SecretParams,
+		Name:          r.Name,
+		Type:          r.Spec.Type,
+		Location:      location,
+		TypeDir:       dir,
+		Secrets:       r.Spec.SecretParams,
+		BashNoopImage: images.BashNoopImage,
 	}, nil
 }
 
@@ -142,7 +146,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 	steps := []Step{
-		CreateDirStep(s.Name, path),
+		CreateDirStep(s.BashNoopImage, s.Name, path),
 		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        *gsutilImage,

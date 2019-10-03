@@ -40,6 +40,7 @@ var (
 			SecretName: secretName,
 			SecretKey:  "serviceaccount",
 		}},
+		BashNoopImage: "override-with-bash-noop:latest",
 	}
 )
 

@@ -94,7 +94,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 		})
 
 		c.Logger.Info("Setting up ConfigMap receivers")
-		c.configStore = config.NewStore(c.Logger.Named("config-store"))
+		c.configStore = config.NewStore(images, c.Logger.Named("config-store"))
 		c.configStore.WatchConfigs(opt.ConfigMapWatcher)
 
 		return impl

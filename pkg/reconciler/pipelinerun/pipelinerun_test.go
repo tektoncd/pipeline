@@ -50,6 +50,7 @@ var (
 		GitImage:              "override-with-git:latest",
 		CredsImage:            "override-with-creds:latest",
 		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
+		BashNoopImage:         "override-with-bash-noop:latest",
 	}
 )
 

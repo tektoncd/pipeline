@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -70,10 +71,12 @@ type BuildGCSResource struct {
 	Type         PipelineResourceType
 	Location     string
 	ArtifactType GCSArtifactType
+
+	BashNoopImage string `json:"-"`
 }
 
 // NewBuildGCSResource creates a new BuildGCS resource to pass to a Task
-func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
+func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -101,10 +104,11 @@ func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 		return nil, xerrors.Errorf("BuildGCSResource: Need ArtifactType to be specified to create BuildGCS resource %s", r.Name)
 	}
 	return &BuildGCSResource{
-		Name:         r.Name,
-		Type:         r.Spec.Type,
-		Location:     location,
-		ArtifactType: aType,
+		Name:          r.Name,
+		Type:          r.Spec.Type,
+		Location:      location,
+		ArtifactType:  aType,
+		BashNoopImage: images.BashNoopImage,
 	}, nil
 }
 
@@ -135,7 +139,7 @@ func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string)
 	}
 
 	steps := []Step{
-		CreateDirStep(s.Name, sourcePath),
+		CreateDirStep(s.BashNoopImage, s.Name, sourcePath),
 		{Container: corev1.Container{
 			Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Command: []string{"/ko-app/gcs-fetcher"},

@@ -39,7 +39,8 @@ var (
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
-	credsImage = "override-with-creds:latest"
+	credsImage    = "override-with-creds:latest"
+	bashNoopImage = "override-with-bash-noop:latest"
 )
 
 func TestTryGetPod(t *testing.T) {
@@ -305,7 +306,7 @@ func TestMakePod(t *testing.T) {
 				WorkingDir:   workspaceDir,
 			}, {
 				Name:         containerPrefix + workingDirInit + "-mz4c7",
-				Image:        *v1alpha1.BashNoopImage,
+				Image:        bashNoopImage,
 				Command:      []string{"/ko-app/bash"},
 				Args:         []string{"-args", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
 				Env:          implicitEnvVars,
@@ -408,7 +409,7 @@ func TestMakePod(t *testing.T) {
 				},
 				Spec: c.trs,
 			}
-			got, err := MakePod(credsImage, tr, c.ts, cs)
+			got, err := MakePod(images, tr, c.ts, cs)
 			if err != c.wantErr {
 				t.Fatalf("MakePod: %v", err)
 			}
@@ -641,7 +642,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 		},
 		Spec: trs,
 	}
-	got, err := MakePod(credsImage, tr, ts, cs)
+	got, err := MakePod(images, tr, ts, cs)
 	if err != nil {
 		t.Fatalf("MakePod: %v", err)
 	}

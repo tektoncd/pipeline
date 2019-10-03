@@ -436,13 +436,13 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, err
 	}
 
-	ts, err = resources.AddInputResource(c.KubeClientSet, rtr.TaskName, ts, tr, inputResources, c.Logger)
+	ts, err = resources.AddInputResource(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	ts, err = resources.AddOutputResources(c.KubeClientSet, rtr.TaskName, ts, tr, outputResources, c.Logger)
+	ts, err = resources.AddOutputResources(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
@@ -464,7 +464,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
-	pod, err := resources.MakePod(c.Images.CredsImage, tr, *ts, c.KubeClientSet)
+	pod, err := resources.MakePod(c.Images, tr, *ts, c.KubeClientSet)
 	if err != nil {
 		return nil, xerrors.Errorf("translating Build to Pod: %w", err)
 	}

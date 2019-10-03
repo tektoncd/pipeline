@@ -42,6 +42,8 @@ var (
 		"The container image for preparing our Build's credentials.")
 	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest",
 		"The container image containing our kubeconfig writer binary.")
+	bashNoopImage = flag.String("bash-noop-image", "override-with-bash-noop:latest",
+		"The container image containing bash shell")
 )
 
 func main() {
@@ -52,6 +54,7 @@ func main() {
 		GitImage:              *gitImage,
 		CredsImage:            *credsImage,
 		KubeconfigWriterImage: *kubeconfigWriterImage,
+		BashNoopImage:         *bashNoopImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),
