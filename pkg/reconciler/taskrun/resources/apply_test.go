@@ -37,6 +37,7 @@ var images = pipeline.Images{
 	BashNoopImage:         "override-with-bash-noop:latest",
 	GsutilImage:           "override-with-gsutil-image:latest",
 	BuildGCSFetcherImage:  "gcr.io/cloud-builders/gcs-fetcher:latest",
+	PRImage:               "override-with-pr:latest",
 }
 
 var simpleTaskSpec = &v1alpha1.TaskSpec{

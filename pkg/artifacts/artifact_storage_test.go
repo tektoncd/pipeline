@@ -43,6 +43,7 @@ var (
 		BashNoopImage:         "override-with-bash-noop:latest",
 		GsutilImage:           "override-with-gsutil-image:latest",
 		BuildGCSFetcherImage:  "gcr.io/cloud-builders/gcs-fetcher:latest",
+		PRImage:               "override-with-pr:latest",
 	}
 	pipelinerun = &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
