@@ -19,17 +19,12 @@ package v1alpha1
 import (
 	b64 "encoding/base64"
 	"encoding/json"
-	"flag"
 	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
-)
-
-var (
-	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest", "The container image containing our kubeconfig writer binary.")
 )
 
 // ClusterResource represents a cluster configuration (kubeconfig)
@@ -55,15 +50,18 @@ type ClusterResource struct {
 	CAData []byte `json:"cadata"`
 	//Secrets holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
+
+	KubeconfigWriterImage string `json:"-"`
 }
 
 // NewClusterResource create a new k8s cluster resource to pass to a pipeline task
-func NewClusterResource(r *PipelineResource) (*ClusterResource, error) {
+func NewClusterResource(kubeconfigWriterImage string, r *PipelineResource) (*ClusterResource, error) {
 	if r.Spec.Type != PipelineResourceTypeCluster {
 		return nil, xerrors.Errorf("ClusterResource: Cannot create a Cluster resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	clusterResource := ClusterResource{
-		Type: r.Spec.Type,
+		Type:                  r.Spec.Type,
+		KubeconfigWriterImage: kubeconfigWriterImage,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -166,7 +164,7 @@ func (s *ClusterResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskM
 	}
 	step := Step{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("kubeconfig"),
-		Image:   *kubeconfigWriterImage,
+		Image:   s.KubeconfigWriterImage,
 		Command: []string{"/ko-app/kubeconfigwriter"},
 		Args: []string{
 			"-clusterConfig", s.String(),

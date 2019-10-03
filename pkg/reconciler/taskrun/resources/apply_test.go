@@ -29,10 +29,11 @@ import (
 )
 
 var images = pipeline.Images{
-	EntryPointImage: "override-with-entrypoint:latest",
-	NopImage:        "override-with-nop:latest",
-	GitImage:        "override-with-git:latest",
-	CredsImage:      "override-with-creds:latest",
+	EntryPointImage:       "override-with-entrypoint:latest",
+	NopImage:              "override-with-nop:latest",
+	GitImage:              "override-with-git:latest",
+	CredsImage:            "override-with-creds:latest",
+	KubeconfigWriterImage: "override-with-kubeconfig-writer-image:latest",
 }
 
 var simpleTaskSpec = &v1alpha1.TaskSpec{

@@ -204,7 +204,7 @@ func ResourceFromType(r *PipelineResource, images pipeline.Images) (PipelineReso
 	case PipelineResourceTypeImage:
 		return NewImageResource(r)
 	case PipelineResourceTypeCluster:
-		return NewClusterResource(r)
+		return NewClusterResource(images.KubeconfigWriterImage, r)
 	case PipelineResourceTypeStorage:
 		return NewStorageResource(r)
 	case PipelineResourceTypePullRequest:

@@ -26,4 +26,6 @@ type Images struct {
 	GitImage string
 	// CredsImage is the container image used to initialize credentials before the build runs.
 	CredsImage string
+	// KubeconfigWriterImage is the container image containing our kubeconfig writer binary.
+	KubeconfigWriterImage string
 }
