@@ -11,21 +11,21 @@ Tekton!
 
 Download the latest binary executable for your operating system:
 
-* [Mac OS X](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Darwin_x86_64.tar.gz)
+* Mac OS X
+  - `tektoncd-cli` can be installed as a [brew tap](https://brew.sh) :
+
+  ```shell
+  brew tap tektoncd/tools
+  brew install tektoncd-cli
+  ```
+
+  - Or by the [released tarball](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Darwin_x86_64.tar.gz) :
 
   ```shell
   # Get the tar.xz
   curl -LO https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Darwin_x86_64.tar.gz
   # Extract tkn to your PATH (e.g. /usr/local/bin)
   sudo tar xvzf tkn_0.4.0_Darwin_x86_64.tar.gz -C /usr/local/bin tkn
-  ```
-
-  You can also use [@chmouel](https://github.com/chmouel)'s unofficial
-  brew tap for the time being.
-
-  ```shell
-  brew tap chmouel/tektoncd-cli
-  brew install tektoncd-cli
   ```
 
 * [Linux AMD 64](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Linux_x86_64.tar.gz)
