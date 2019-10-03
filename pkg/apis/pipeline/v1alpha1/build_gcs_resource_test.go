@@ -35,6 +35,7 @@ var images = pipeline.Images{
 	KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 	BashNoopImage:         "override-with-bash-noop:latest",
 	GsutilImage:           "override-with-gsutil-image:latest",
+	BuildGCSFetcherImage:  "gcr.io/cloud-builders/gcs-fetcher:latest",
 }
 
 func Test_Invalid_BuildGCSResource(t *testing.T) {
@@ -105,11 +106,12 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 		tb.PipelineResourceSpecParam("ArtifactType", "Manifest"),
 	))
 	expectedGCSResource := &v1alpha1.BuildGCSResource{
-		Name:          "build-gcs-resource",
-		Location:      "gs://fake-bucket",
-		Type:          v1alpha1.PipelineResourceTypeStorage,
-		ArtifactType:  "Manifest",
-		BashNoopImage: "override-with-bash-noop:latest",
+		Name:                 "build-gcs-resource",
+		Location:             "gs://fake-bucket",
+		Type:                 v1alpha1.PipelineResourceTypeStorage,
+		ArtifactType:         "Manifest",
+		BashNoopImage:        "override-with-bash-noop:latest",
+		BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 	}
 
 	r, err := v1alpha1.NewBuildGCSResource(images, pr)
@@ -146,10 +148,11 @@ func Test_BuildGCSGetInputSteps(t *testing.T) {
 	} {
 		t.Run(string(at), func(t *testing.T) {
 			resource := &v1alpha1.BuildGCSResource{
-				Name:          "gcs-valid",
-				Location:      "gs://some-bucket",
-				ArtifactType:  at,
-				BashNoopImage: "override-with-bash-noop:latest",
+				Name:                 "gcs-valid",
+				Location:             "gs://some-bucket",
+				ArtifactType:         at,
+				BashNoopImage:        "override-with-bash-noop:latest",
+				BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 			}
 			wantSteps := []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "create-dir-gcs-valid-9l9zj",
