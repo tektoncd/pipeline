@@ -67,6 +67,7 @@ var (
 		EntryPointImage: "override-with-entrypoint:latest",
 		NopImage:        "override-with-nop:latest",
 		GitImage:        "override-with-git:latest",
+		CredsImage:      "override-with-creds:latest",
 	}
 	entrypointCache          *entrypoint.Cache
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
@@ -1499,7 +1500,7 @@ func makePod(taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) (*corev1.Pod, error
 	// specify the Pod we want to exist directly, and not call MakePod from
 	// the build. This will break the cycle and allow us to simply use
 	// clients normally.
-	return resources.MakePod(taskRun, task.Spec, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
+	return resources.MakePod("override-with-creds:latest", taskRun, task.Spec, fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "default",
 			Namespace: taskRun.Namespace,

@@ -38,6 +38,8 @@ var (
 		"The container image used to kill sidecars")
 	gitImage = flag.String("git-image", "override-with-git:latest",
 		"The container image containing our Git binary.")
+	credsImage = flag.String("creds-image", "override-with-creds:latest",
+		"The container image for preparing our Build's credentials.")
 )
 
 func main() {
@@ -46,6 +48,7 @@ func main() {
 		EntryPointImage: *entrypointImage,
 		NopImage:        *nopImage,
 		GitImage:        *gitImage,
+		CredsImage:      *credsImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),

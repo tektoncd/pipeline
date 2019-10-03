@@ -21,7 +21,6 @@ package resources
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -102,13 +101,7 @@ const (
 	readyAnnotationValue = "READY"
 )
 
-var (
-	// The container used to initialize credentials before the build runs.
-	credsImage = flag.String("creds-image", "override-with-creds:latest",
-		"The container image for preparing our Build's credentials.")
-)
-
-func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*v1alpha1.Step, []corev1.Volume, error) {
+func makeCredentialInitializer(credsImage, serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*v1alpha1.Step, []corev1.Volume, error) {
 	if serviceAccountName == "" {
 		serviceAccountName = "default"
 	}
@@ -157,7 +150,7 @@ func makeCredentialInitializer(serviceAccountName, namespace string, kubeclient 
 
 	return &v1alpha1.Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + credsInit),
-		Image:        *credsImage,
+		Image:        credsImage,
 		Command:      []string{"/ko-app/creds-init"},
 		Args:         args,
 		VolumeMounts: volumeMounts,
@@ -250,8 +243,8 @@ func TryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp GetPod) (*corev1.Pod, er
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
-func MakePod(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
-	cred, secrets, err := makeCredentialInitializer(taskRun.Spec.ServiceAccount, taskRun.Namespace, kubeclient)
+func MakePod(credsImage string, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
+	cred, secrets, err := makeCredentialInitializer(credsImage, taskRun.Spec.ServiceAccount, taskRun.Namespace, kubeclient)
 	if err != nil {
 		return nil, err
 	}
