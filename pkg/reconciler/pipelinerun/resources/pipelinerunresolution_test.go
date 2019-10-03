@@ -1628,7 +1628,7 @@ func TestResolveConditionChecks(t *testing.T) {
 				t.Fatalf("Did not expect error when resolving PipelineRun without Conditions: %v", err)
 			}
 
-			if d := cmp.Diff(tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
+			if d := cmp.Diff(tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
 				t.Fatalf("ConditionChecks did not resolve as expected for case %s (-want, +got) : %s", tc.name, d)
 			}
 		})
@@ -1747,7 +1747,7 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		ResolvedResources:     providedResources,
 	}}
 
-	if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
+	if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
 		t.Fatalf("ConditionChecks did not resolve as expected (-want, +got): %s", d)
 	}
 }
@@ -1822,7 +1822,7 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 					PipelineTaskCondition: &ptc,
 					ResolvedResources:     tc.expected,
 				}}
-				if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
+				if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
 					t.Fatalf("ConditionChecks did not resolve as expected (-want, +got): %s", d)
 				}
 			}

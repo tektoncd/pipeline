@@ -93,7 +93,7 @@ func outputResourceSetup(t *testing.T) {
 
 	outputResources = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
-		ri, _ := v1alpha1.ResourceFromType(r)
+		ri, _ := v1alpha1.ResourceFromType(r, images)
 		outputResources[r.Name] = ri
 	}
 }
@@ -1174,7 +1174,7 @@ func resolveOutputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pipel
 					Name: r.Name,
 				},
 				Spec: *r.ResourceSpec,
-			})
+			}, images)
 			resolved[r.Name] = i
 		}
 	}

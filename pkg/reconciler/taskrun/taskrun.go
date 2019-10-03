@@ -417,12 +417,12 @@ func (c *Reconciler) updateReady(pod *corev1.Pod) error {
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
 	ts := rtr.TaskSpec.DeepCopy()
-	inputResources, err := resourceImplBinding(rtr.Inputs)
+	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)
 	if err != nil {
 		c.Logger.Errorf("Failed to initialize input resources: %v", err)
 		return nil, err
 	}
-	outputResources, err := resourceImplBinding(rtr.Outputs)
+	outputResources, err := resourceImplBinding(rtr.Outputs, c.Images)
 	if err != nil {
 		c.Logger.Errorf("Failed to initialize output resources: %v", err)
 		return nil, err
@@ -549,10 +549,10 @@ func isExceededResourceQuotaError(err error) bool {
 }
 
 // resourceImplBinding maps pipeline resource names to the actual resource type implementations
-func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource) (map[string]v1alpha1.PipelineResourceInterface, error) {
+func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images pipeline.Images) (map[string]v1alpha1.PipelineResourceInterface, error) {
 	p := make(map[string]v1alpha1.PipelineResourceInterface)
 	for rName, r := range resources {
-		i, err := v1alpha1.ResourceFromType(r)
+		i, err := v1alpha1.ResourceFromType(r, images)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
 		}

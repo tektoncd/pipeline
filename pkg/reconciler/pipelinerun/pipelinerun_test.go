@@ -47,6 +47,7 @@ var (
 	images                   = pipeline.Images{
 		EntryPointImage: "override-with-entrypoint:latest",
 		NopImage:        "override-with-nop:latest",
+		GitImage:        "override-with-git:latest",
 	}
 )
 

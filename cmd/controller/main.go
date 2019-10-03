@@ -36,6 +36,8 @@ var (
 		"The container image containing our entrypoint binary.")
 	nopImage = flag.String("nop-image", "override-with-nop:latest",
 		"The container image used to kill sidecars")
+	gitImage = flag.String("git-image", "override-with-git:latest",
+		"The container image containing our Git binary.")
 )
 
 func main() {
@@ -43,6 +45,7 @@ func main() {
 	images := pipeline.Images{
 		EntryPointImage: *entrypointImage,
 		NopImage:        *nopImage,
+		GitImage:        *gitImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),

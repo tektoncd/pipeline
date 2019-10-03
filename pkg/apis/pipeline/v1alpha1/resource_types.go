@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"golang.org/x/xerrors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -196,10 +197,10 @@ type ResourceDeclaration struct {
 }
 
 // ResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
-func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
+func ResourceFromType(r *PipelineResource, images pipeline.Images) (PipelineResourceInterface, error) {
 	switch r.Spec.Type {
 	case PipelineResourceTypeGit:
-		return NewGitResource(r)
+		return NewGitResource(images.GitImage, r)
 	case PipelineResourceTypeImage:
 		return NewImageResource(r)
 	case PipelineResourceTypeCluster:
