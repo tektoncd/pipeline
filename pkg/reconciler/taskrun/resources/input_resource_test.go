@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/names"
@@ -30,6 +31,11 @@ import (
 )
 
 var (
+	images = pipeline.Images{
+		EntryPointImage: "override-with-entrypoint:latest",
+		NopImage:        "override-with-nop:latest",
+		GitImage:        "override-with-git:latest",
+	}
 	inputResourceInterfaces map[string]v1alpha1.PipelineResourceInterface
 	logger                  *zap.SugaredLogger
 
@@ -200,7 +206,7 @@ func setUp(t *testing.T) {
 	}}
 	inputResourceInterfaces = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
-		ri, _ := v1alpha1.ResourceFromType(r)
+		ri, _ := v1alpha1.ResourceFromType(r, images)
 		inputResourceInterfaces[r.Name] = ri
 	}
 }
@@ -1067,7 +1073,7 @@ func mockResolveTaskResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pip
 					Name: r.Name,
 				},
 				Spec: *r.ResourceSpec,
-			})
+			}, images)
 			resolved[r.Name] = i
 		default:
 			resolved[r.Name] = nil

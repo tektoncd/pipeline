@@ -22,6 +22,6 @@ type Images struct {
 	EntryPointImage string
 	// NopImage is the container image used to kill sidecars
 	NopImage string
-	// GitImage container with Git that we use to implement the Git source step.
+	// GitImage is the container image with Git that we use to implement the Git source step.
 	GitImage string
 }

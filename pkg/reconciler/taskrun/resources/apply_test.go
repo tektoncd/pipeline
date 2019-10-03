@@ -20,12 +20,19 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var images = pipeline.Images{
+	EntryPointImage: "override-with-entrypoint:latest",
+	NopImage:        "override-with-nop:latest",
+	GitImage:        "override-with-git:latest",
+}
 
 var simpleTaskSpec = &v1alpha1.TaskSpec{
 	Inputs: &v1alpha1.Inputs{
@@ -317,7 +324,7 @@ var gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 			Value: "https://git-repo",
 		}},
 	},
-})
+}, images)
 
 var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
@@ -330,7 +337,7 @@ var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 			Value: "gcr.io/hans/sandwiches",
 		}},
 	},
-})
+}, images)
 
 var gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 	ObjectMeta: metav1.ObjectMeta{
@@ -346,7 +353,7 @@ var gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
 			Value: "theCloud?",
 		}},
 	},
-})
+}, images)
 
 func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.TaskSpec {
 	ts = ts.DeepCopy()
