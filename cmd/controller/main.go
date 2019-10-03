@@ -48,6 +48,8 @@ var (
 		"The container image containing gsutil")
 	buildGCSFetcherImage = flag.String("build-gcs-fetcher-image", "gcr.io/cloud-builders/gcs-fetcher:latest",
 		"The container image containing our GCS fetcher binary.")
+	prImage = flag.String("pr-image", "override-with-pr:latest",
+		"The container image containing our PR binary.")
 )
 
 func main() {
@@ -61,6 +63,7 @@ func main() {
 		BashNoopImage:         *bashNoopImage,
 		GsutilImage:           *gsutilImage,
 		BuildGCSFetcherImage:  *buildGCSFetcherImage,
+		PRImage:               *prImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),

@@ -72,6 +72,7 @@ var (
 		BashNoopImage:         "override-with-bash-noop:latest",
 		GsutilImage:           "override-with-gsutil-image:latest",
 		BuildGCSFetcherImage:  "gcr.io/cloud-builders/gcs-fetcher:latest",
+		PRImage:               "override-with-pr:latest",
 	}
 	entrypointCache          *entrypoint.Cache
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)

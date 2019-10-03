@@ -34,4 +34,6 @@ type Images struct {
 	GsutilImage string
 	// BuildGCSFetcherImage is the container image containing our GCS fetcher binary.
 	BuildGCSFetcherImage string
+	// PRImage is the container image that we use to implement the PR source step.
+	PRImage string
 }

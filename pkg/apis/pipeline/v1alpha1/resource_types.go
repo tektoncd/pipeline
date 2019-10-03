@@ -208,7 +208,7 @@ func ResourceFromType(r *PipelineResource, images pipeline.Images) (PipelineReso
 	case PipelineResourceTypeStorage:
 		return NewStorageResource(images, r)
 	case PipelineResourceTypePullRequest:
-		return NewPullRequestResource(r)
+		return NewPullRequestResource(images.PRImage, r)
 	case PipelineResourceTypeCloudEvent:
 		return NewCloudEventResource(r)
 	}
