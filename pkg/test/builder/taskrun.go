@@ -29,6 +29,13 @@ func TaskRunCompletionTime(ct time.Time) tb.TaskRunStatusOp {
 	}
 }
 
+// TaskRunCreationTime sets the creation time of the taskrun
+func TaskRunCreationTime(ct time.Time) tb.TaskRunOp {
+	return func(t *v1alpha1.TaskRun) {
+		t.CreationTimestamp = metav1.Time{Time: ct}
+	}
+}
+
 // StepName adds a state to stepstate of TaskRunStatus.
 func StepName(name string) tb.StepStateOp {
 	return func(s *v1alpha1.StepState) {

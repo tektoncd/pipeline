@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pipeline
+package task
 
 import (
 	"fmt"
@@ -22,22 +22,22 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-//LastRun returns the last run for a given pipeline
-func LastRun(tekton versioned.Interface, pipeline string, ns string) (*v1alpha1.PipelineRun, error) {
+//LastRun returns the last run for a given task
+func LastRun(tekton versioned.Interface, task string, ns string) (*v1alpha1.TaskRun, error) {
 	options := metav1.ListOptions{}
-	if pipeline != "" {
+	if task != "" {
 		options = metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pipeline),
+			LabelSelector: fmt.Sprintf("tekton.dev/task=%s", task),
 		}
 	}
 
-	runs, err := tekton.TektonV1alpha1().PipelineRuns(ns).List(options)
+	runs, err := tekton.TektonV1alpha1().TaskRuns(ns).List(options)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(runs.Items) == 0 {
-		return nil, fmt.Errorf("no pipelineruns related to pipeline %s found in namespace %s", pipeline, ns)
+		return nil, fmt.Errorf("no taskruns related to task %s found in namespace %s", task, ns)
 	}
 
 	latest := runs.Items[0]

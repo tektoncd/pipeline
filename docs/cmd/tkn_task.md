@@ -23,4 +23,5 @@ Manage tasks
 * [tkn task delete](tkn_task_delete.md)	 - Delete a task resource in a namespace
 * [tkn task describe](tkn_task_describe.md)	 - Describes a task in a namespace
 * [tkn task list](tkn_task_list.md)	 - Lists tasks in a namespace
+* [tkn task start](tkn_task_start.md)	 - Start tasks
 

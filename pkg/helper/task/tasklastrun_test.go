@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pipeline
+package task
 
 import (
 	"testing"
@@ -29,63 +29,52 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func TestPipelineRunLast_two_run(t *testing.T) {
+func TestTaskrunLatest_two_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
-	//  Time --->
-	//  |---5m ---|------------ ││--││------------- ---│--│
-	//	now      pipeline       ││  │`secondRun stated │  `*first*RunCompleted
-	//                          ││  `secondRun         `*second*RunCompleted
-	//	                        │`firstRun started
-	//	                        `firstRun
-	// NOTE: firstRun completed **after** second but latest should still be
-	// second run based on creationTimestamp
 
 	var (
-		pipelineCreated = clock.Now().Add(-5 * time.Minute)
-		runDuration     = 5 * time.Minute
+		taskCreated = clock.Now().Add(5 * time.Minute)
 
 		firstRunCreated   = clock.Now().Add(10 * time.Minute)
 		firstRunStarted   = firstRunCreated.Add(2 * time.Second)
-		firstRunCompleted = firstRunStarted.Add(2 * runDuration) // take twice as long
+		firstRunCompleted = firstRunStarted.Add(10 * time.Minute)
 
 		secondRunCreated   = firstRunCreated.Add(1 * time.Minute)
 		secondRunStarted   = secondRunCreated.Add(2 * time.Second)
-		secondRunCompleted = secondRunStarted.Add(runDuration) // takes less thus completes
+		secondRunCompleted = secondRunStarted.Add(5 * time.Minute)
 	)
 
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
-		Pipelines: []*v1alpha1.Pipeline{
-			tb.Pipeline("pipeline", "ns",
-				// created  5 minutes back
-				cb.PipelineCreationTimestamp(pipelineCreated),
+		Tasks: []*v1alpha1.Task{
+			tb.Task("task", "ns",
+				cb.TaskCreationTime(taskCreated),
 			),
 		},
-		PipelineRuns: []*v1alpha1.PipelineRun{
-
-			tb.PipelineRun("pipeline-run-1", "ns",
-				cb.PipelineRunCreationTimestamp(firstRunCreated),
-				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
-				tb.PipelineRunSpec("pipeline"),
-				tb.PipelineRunStatus(
-					tb.PipelineRunStatusCondition(apis.Condition{
+		TaskRuns: []*v1alpha1.TaskRun{
+			tb.TaskRun("tr-1", "ns",
+				cb.TaskRunCreationTime(firstRunCreated),
+				tb.TaskRunLabel("tekton.dev/task", "task"),
+				tb.TaskRunSpec(tb.TaskRunTaskRef("task")),
+				tb.TaskRunStatus(
+					tb.StatusCondition(apis.Condition{
 						Status: corev1.ConditionTrue,
 						Reason: resources.ReasonSucceeded,
 					}),
-					tb.PipelineRunStartTime(firstRunStarted),
-					cb.PipelineRunCompletionTime(firstRunCompleted),
+					tb.TaskRunStartTime(firstRunStarted),
+					cb.TaskRunCompletionTime(firstRunCompleted),
 				),
 			),
-			tb.PipelineRun("pipeline-run-2", "ns",
-				cb.PipelineRunCreationTimestamp(secondRunCreated),
-				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
-				tb.PipelineRunSpec("pipeline"),
-				tb.PipelineRunStatus(
-					tb.PipelineRunStatusCondition(apis.Condition{
+			tb.TaskRun("tr-2", "ns",
+				cb.TaskRunCreationTime(secondRunCompleted),
+				tb.TaskRunLabel("tekton.dev/task", "task"),
+				tb.TaskRunSpec(tb.TaskRunTaskRef("task")),
+				tb.TaskRunStatus(
+					tb.StatusCondition(apis.Condition{
 						Status: corev1.ConditionTrue,
 						Reason: resources.ReasonSucceeded,
 					}),
-					tb.PipelineRunStartTime(secondRunStarted),
-					cb.PipelineRunCompletionTime(secondRunCompleted),
+					tb.TaskRunStartTime(secondRunStarted),
+					cb.TaskRunCompletionTime(secondRunCompleted),
 				),
 			),
 		},
@@ -97,21 +86,21 @@ func TestPipelineRunLast_two_run(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	lastRun, err := LastRun(client.Tekton, "pipeline", "ns")
+	lastRun, err := LastRun(client.Tekton, "task", "ns")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	test.AssertOutput(t, "pipeline-run-2", lastRun.Name)
+	test.AssertOutput(t, "tr-2", lastRun.Name)
 }
 
-func TestPipelinerunLatest_no_run(t *testing.T) {
+func TestTaskrunLatest_no_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
-		Pipelines: []*v1alpha1.Pipeline{
-			tb.Pipeline("pipeline", "ns",
-				cb.PipelineCreationTimestamp(clock.Now().Add(5*time.Minute)),
+		Tasks: []*v1alpha1.Task{
+			tb.Task("task", "ns",
+				cb.TaskCreationTime(clock.Now().Add(5*time.Minute)),
 			),
 		},
 	})
@@ -122,11 +111,11 @@ func TestPipelinerunLatest_no_run(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
-	_, err = LastRun(client.Tekton, "pipeline", "ns")
+	_, err = LastRun(client.Tekton, "task", "ns")
 	if err == nil {
 		t.Errorf("Expected error, got nil")
 	}
 
-	expected := "no pipelineruns related to pipeline pipeline found in namespace ns"
+	expected := "no taskruns related to task task found in namespace ns"
 	test.AssertOutput(t, expected, err.Error())
 }

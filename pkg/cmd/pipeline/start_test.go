@@ -21,13 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/cli/pkg/helper/pipeline"
-
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/Netflix/go-expect"
+	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/helper/pipeline"
 	"github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -132,7 +131,7 @@ func Test_start_pipeline(t *testing.T) {
 			tb.PipelineSpec(
 				tb.PipelineDeclaredResource("git-repo", "git"),
 				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
-				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("booms", "booms", "booms")),
 				tb.PipelineTask("unit-test-1", "unit-test-task",
 					tb.PipelineTaskInputResource("workspace", "git-repo"),
 					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -150,6 +149,7 @@ func Test_start_pipeline(t *testing.T) {
 		"-r=source=scaffold-git",
 		"--showlog=false",
 		"-p=key1=value1",
+		"-p=rev-param=cat,foo,bar",
 		"-l=jemange=desfrites",
 		"-s=svc1",
 		"-n", "ns")
@@ -164,6 +164,12 @@ func Test_start_pipeline(t *testing.T) {
 
 	if pr.Items[0].ObjectMeta.GenerateName != (pipelineName + "-run-") {
 		t.Errorf("Error pipelinerun generated is different %+v", pr)
+	}
+
+	for _, v := range pr.Items[0].Spec.Params {
+		if v.Name == "rev-param" {
+			test.AssertOutput(t, v1alpha1.ArrayOrString{Type: v1alpha1.ParamTypeArray, ArrayVal: []string{"cat", "foo", "bar"}}, v.Value)
+		}
 	}
 
 	if d := cmp.Equal(pr.Items[0].ObjectMeta.Labels, map[string]string{"jemange": "desfrites"}); !d {
@@ -598,7 +604,7 @@ func Test_start_pipeline_last_no_pipelineruns(t *testing.T) {
 		"--task-serviceaccount=task5=task3svc5",
 		"-n", "ns")
 
-	expected := "Error: no pipelineruns found in namespace: ns\n"
+	expected := "Error: no pipelineruns related to pipeline test-pipeline found in namespace ns\n"
 	test.AssertOutput(t, expected, got)
 }
 
@@ -751,6 +757,43 @@ func Test_start_pipeline_param_err(t *testing.T) {
 	test.AssertOutput(t, expected, got)
 }
 
+func Test_start_pipeline_label_err(t *testing.T) {
+
+	pipelineName := "test-pipeline"
+
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline(pipelineName, "ns",
+			tb.PipelineSpec(
+				tb.PipelineDeclaredResource("git-repo", "git"),
+				tb.PipelineDeclaredResource("build-image", "image"),
+				tb.PipelineParamSpec("pipeline-param-1", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent-1")),
+				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
+				tb.PipelineTask("unit-test-1", "unit-test-task",
+					tb.PipelineTaskInputResource("workspace", "git-repo"),
+					tb.PipelineTaskOutputResource("image-to-use", "best-image"),
+					tb.PipelineTaskOutputResource("workspace", "git-repo"),
+				),
+			), // spec
+		), // pipeline
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Pipelines: ps})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pipeline := Command(p)
+	got, _ := test.ExecuteCommand(pipeline, "start", pipelineName,
+		"-s=svc1",
+		"-r=git-repo=scaffold-git",
+		"-p=rev-param=revision2",
+		"-l=keyvalue",
+		"--task-serviceaccount=task3=task3svc3",
+		"--task-serviceaccount=task5=task3svc5",
+		"-n", "ns")
+
+	expected := "Error: invalid input format for label parameter : keyvalue\n"
+	test.AssertOutput(t, expected, got)
+}
+
 func Test_start_pipeline_task_svc_error(t *testing.T) {
 
 	pipelineName := "test-pipeline"
@@ -807,6 +850,12 @@ func Test_mergeResource(t *testing.T) {
 		t.Errorf("Expected error")
 	}
 
+	err = mergeRes(pr, []string{})
+	if err != nil {
+		t.Errorf("Did not expect error")
+	}
+	test.AssertOutput(t, 1, len(pr.Spec.Resources))
+
 	err = mergeRes(pr, []string{"image=test-1"})
 	if err != nil {
 		t.Errorf("Did not expect error")
@@ -818,93 +867,6 @@ func Test_mergeResource(t *testing.T) {
 		t.Errorf("Did not expect error")
 	}
 	test.AssertOutput(t, 3, len(pr.Spec.Resources))
-}
-
-func Test_mergeParam(t *testing.T) {
-	pr := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    "ns",
-			GenerateName: "test-run",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{Name: "test"},
-			Params: []v1alpha1.Param{
-				{
-					Name: "key1",
-					Value: v1alpha1.ArrayOrString{
-						Type:      v1alpha1.ParamTypeString,
-						StringVal: "value1",
-					},
-				},
-				{
-					Name: "key2",
-					Value: v1alpha1.ArrayOrString{
-						Type:      v1alpha1.ParamTypeString,
-						StringVal: "value2",
-					},
-				},
-			},
-		},
-	}
-
-	err := mergeParam(pr, []string{"test"})
-	if err == nil {
-		t.Errorf("Expected error")
-	}
-
-	err = mergeParam(pr, []string{"key3=test"})
-	if err != nil {
-		t.Errorf("Did not expect error")
-	}
-	test.AssertOutput(t, 3, len(pr.Spec.Params))
-
-	err = mergeParam(pr, []string{"key3=test-new", "key4=test-2"})
-	if err != nil {
-		t.Errorf("Did not expect error")
-	}
-	test.AssertOutput(t, 4, len(pr.Spec.Params))
-}
-
-func Test_mergeLabels(t *testing.T) {
-	pr := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    "ns",
-			GenerateName: "test-run",
-			Labels:       map[string]string{"alatouki": "lamaracarena"},
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{Name: "test"},
-		},
-	}
-
-	// invalid
-	err := mergeLabels(pr, []string{"test"})
-	if err == nil {
-		t.Errorf("Expected error")
-	}
-	test.AssertOutput(t, 1, len(pr.ObjectMeta.Labels))
-
-	// add
-	err = mergeLabels(pr, []string{"label1=test"})
-	if err != nil {
-		t.Errorf("Did not expect error")
-	}
-	test.AssertOutput(t, 2, len(pr.ObjectMeta.Labels))
-
-	// update
-	err = mergeLabels(pr, []string{"alatouki=paslamacarena"})
-	if err != nil {
-		t.Errorf("Did not expect error")
-	}
-	test.AssertOutput(t, 2, len(pr.ObjectMeta.Labels))
-	test.AssertOutput(t, "paslamacarena", pr.ObjectMeta.Labels["alatouki"])
-
-	// multiples
-	err = mergeLabels(pr, []string{"label2=test2", "label3=label3"})
-	if err != nil {
-		t.Errorf("Did not expect error")
-	}
-	test.AssertOutput(t, 4, len(pr.ObjectMeta.Labels))
 }
 
 func Test_getPipelineResourceByFormat(t *testing.T) {
@@ -1027,60 +989,6 @@ func Test_parseRes(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseRes() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_parseParam(t *testing.T) {
-	type args struct {
-		p []string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    map[string]v1alpha1.Param
-		wantErr bool
-	}{{
-		name: "Test_parseParam No Err",
-		args: args{
-			p: []string{"key1=value1", "key2=value2", "key3=value3,value4,value5"},
-		},
-		want: map[string]v1alpha1.Param{
-			"key1": {Name: "key1", Value: v1alpha1.ArrayOrString{
-				Type:      v1alpha1.ParamTypeString,
-				StringVal: "value1",
-			},
-			},
-			"key2": {Name: "key2", Value: v1alpha1.ArrayOrString{
-				Type:      v1alpha1.ParamTypeString,
-				StringVal: "value2",
-			},
-			},
-			"key3": {Name: "key3", Value: v1alpha1.ArrayOrString{
-				Type:     v1alpha1.ParamTypeArray,
-				ArrayVal: []string{"value3", "value4", "value5"},
-			},
-			},
-		},
-		wantErr: false,
-	}, {
-		name: "Test_parseParam Err",
-		args: args{
-			p: []string{"value1", "value2"},
-		},
-		wantErr: true,
-	}}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseParam(tt.args.p)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseParam() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("parseParam() = %v, want %v", got, tt.want)
 			}
 		})
 	}

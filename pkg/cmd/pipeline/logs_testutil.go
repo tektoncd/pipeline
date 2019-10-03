@@ -18,11 +18,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/hinshun/vt10x"
-
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/Netflix/go-expect"
+	"github.com/hinshun/vt10x"
 	"github.com/stretchr/testify/require"
 	"github.com/tektoncd/cli/pkg/cli"
 )

@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// PipelineRunCreationTimestamp sets the creation time of the pipeline
+// PipelineRunCreationTimestamp sets the creation time of the pipelinerun
 func PipelineRunCreationTimestamp(t time.Time) tb.PipelineRunOp {
 	return func(p *v1alpha1.PipelineRun) {
 		p.CreationTimestamp = metav1.Time{Time: t}

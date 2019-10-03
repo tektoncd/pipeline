@@ -26,6 +26,8 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/flags"
+	"github.com/tektoncd/cli/pkg/helper/labels"
+	"github.com/tektoncd/cli/pkg/helper/params"
 	"github.com/tektoncd/cli/pkg/helper/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -40,8 +42,6 @@ var (
 
 const (
 	invalidResource = "invalid input format for resource parameter : "
-	invalidParam    = "invalid input format for param parameter : "
-	invalidLabel    = "invalid input format for label parameter : "
 	invalidSvc      = "invalid service account parameter: "
 )
 
@@ -111,7 +111,7 @@ func startCommand(p cli.Params) *cobra.Command {
 tkn pipeline start foo -s ServiceAccountName -n bar
 
 For params value, if you want to provide multiple values, provide them comma separated
-like cat,foo.bar
+like cat,foo,bar
 `,
 		SilenceUsage: true,
 		Args: func(cmd *cobra.Command, args []string) error {
@@ -131,7 +131,7 @@ like cat,foo.bar
 
 	c.Flags().BoolVarP(&opt.ShowLog, "showlog", "", true, "show logs right after starting the pipeline")
 	c.Flags().StringSliceVarP(&opt.Resources, "resource", "r", []string{}, "pass the resource name and ref as name=ref")
-	c.Flags().StringSliceVarP(&opt.Params, "param", "p", []string{}, "pass the param as key=value")
+	c.Flags().StringArrayVarP(&opt.Params, "param", "p", []string{}, "pass the param as key=value or key=value1,value2")
 	c.Flags().StringVarP(&opt.ServiceAccountName, "serviceaccount", "s", "", "pass the serviceaccount name")
 	flags.AddShellCompletion(c.Flags().Lookup("serviceaccount"), "__kubectl_get_serviceaccount")
 	c.Flags().StringSliceVar(&opt.ServiceAccounts, "task-serviceaccount", []string{}, "pass the service account corresponding to the task")
@@ -356,13 +356,17 @@ func (opt *startOptions) startPipeline(pName string) error {
 		return err
 	}
 
-	if err := mergeLabels(pr, opt.Labels); err != nil {
+	labels, err := labels.MergeLabels(pr.ObjectMeta.Labels, opt.Labels)
+	if err != nil {
 		return err
 	}
+	pr.ObjectMeta.Labels = labels
 
-	if err := mergeParam(pr, opt.Params); err != nil {
+	param, err := params.MergeParam(pr.Spec.Params, opt.Params)
+	if err != nil {
 		return err
 	}
+	pr.Spec.Params = param
 
 	if err := mergeSvc(pr, opt.ServiceAccounts); err != nil {
 		return err
@@ -416,50 +420,6 @@ func mergeRes(pr *v1alpha1.PipelineRun, optRes []string) error {
 	return nil
 }
 
-func mergeLabels(pr *v1alpha1.PipelineRun, labelPar []string) error {
-	labels, err := parseLabels(labelPar)
-	if err != nil {
-		return err
-	}
-	if len(labels) == 0 {
-		return nil
-	}
-
-	if pr.ObjectMeta.Labels == nil {
-		pr.ObjectMeta.Labels = labels
-	} else {
-		// This will update the updated value and add the new ones passed
-		for k, v := range labels {
-			pr.ObjectMeta.Labels[k] = v
-		}
-	}
-	return nil
-}
-
-func mergeParam(pr *v1alpha1.PipelineRun, optPar []string) error {
-	params, err := parseParam(optPar)
-	if err != nil {
-		return err
-	}
-
-	if len(params) == 0 {
-		return nil
-	}
-
-	for i := range pr.Spec.Params {
-		if v, ok := params[pr.Spec.Params[i].Name]; ok {
-			pr.Spec.Params[i] = v
-			delete(params, v.Name)
-		}
-	}
-
-	for _, v := range params {
-		pr.Spec.Params = append(pr.Spec.Params, v)
-	}
-
-	return nil
-}
-
 func mergeSvc(pr *v1alpha1.PipelineRun, optSvc []string) error {
 	svcs, err := parseTaskSvc(optSvc)
 	if err != nil {
@@ -499,48 +459,6 @@ func parseRes(res []string) (map[string]v1alpha1.PipelineResourceBinding, error)
 		}
 	}
 	return resources, nil
-}
-
-func parseLabels(p []string) (map[string]string, error) {
-	labels := map[string]string{}
-	for _, v := range p {
-		r := strings.SplitN(v, "=", 2)
-		if len(r) != 2 {
-			return nil, errors.New(invalidLabel + v)
-		}
-		labels[r[0]] = r[1]
-	}
-	return labels, nil
-}
-
-func parseParam(p []string) (map[string]v1alpha1.Param, error) {
-	params := map[string]v1alpha1.Param{}
-	for _, v := range p {
-		r := strings.SplitN(v, "=", 2)
-		if len(r) != 2 {
-			return nil, errors.New(invalidParam + v)
-		}
-		values := strings.Split(r[1], ",")
-		if len(values) == 1 {
-			params[r[0]] = v1alpha1.Param{
-				Name: r[0],
-				Value: v1alpha1.ArrayOrString{
-					Type:      v1alpha1.ParamTypeString,
-					StringVal: r[1],
-				},
-			}
-		}
-		if len(values) > 1 {
-			params[r[0]] = v1alpha1.Param{
-				Name: r[0],
-				Value: v1alpha1.ArrayOrString{
-					Type:     v1alpha1.ParamTypeArray,
-					ArrayVal: values,
-				},
-			}
-		}
-	}
-	return params, nil
 }
 
 func parseTaskSvc(s []string) (map[string]v1alpha1.PipelineRunSpecServiceAccount, error) {
