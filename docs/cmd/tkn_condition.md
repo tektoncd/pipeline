@@ -20,5 +20,6 @@ Manage conditions
 ### SEE ALSO
 
 * [tkn](tkn.md)	 - CLI for tekton pipelines
+* [tkn condition delete](tkn_condition_delete.md)	 - Delete a condition in a namespace
 * [tkn condition list](tkn_condition_list.md)	 - Lists conditions in a namespace
 
