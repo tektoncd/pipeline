@@ -40,15 +40,18 @@ var (
 		"The container image containing our Git binary.")
 	credsImage = flag.String("creds-image", "override-with-creds:latest",
 		"The container image for preparing our Build's credentials.")
+	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest",
+		"The container image containing our kubeconfig writer binary.")
 )
 
 func main() {
 	flag.Parse()
 	images := pipeline.Images{
-		EntryPointImage: *entrypointImage,
-		NopImage:        *nopImage,
-		GitImage:        *gitImage,
-		CredsImage:      *credsImage,
+		EntryPointImage:       *entrypointImage,
+		NopImage:              *nopImage,
+		GitImage:              *gitImage,
+		CredsImage:            *credsImage,
+		KubeconfigWriterImage: *kubeconfigWriterImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),
