@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"flag"
 	"fmt"
 	"strings"
 
@@ -25,11 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/names"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
-)
-
-var (
-	buildGCSFetcherImage = flag.String("build-gcs-fetcher-image", "gcr.io/cloud-builders/gcs-fetcher:latest",
-		"The container image containing our GCS fetcher binary.")
 )
 
 // GCSArtifactType defines a type of GCS resource.
@@ -72,7 +66,8 @@ type BuildGCSResource struct {
 	Location     string
 	ArtifactType GCSArtifactType
 
-	BashNoopImage string `json:"-"`
+	BashNoopImage        string `json:"-"`
+	BuildGCSFetcherImage string `json:"-"`
 }
 
 //  creates a new BuildGCS resource to pass to a Task
@@ -104,11 +99,12 @@ func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCS
 		return nil, xerrors.Errorf("BuildGCSResource: Need ArtifactType to be specified to create BuildGCS resource %s", r.Name)
 	}
 	return &BuildGCSResource{
-		Name:          r.Name,
-		Type:          r.Spec.Type,
-		Location:      location,
-		ArtifactType:  aType,
-		BashNoopImage: images.BashNoopImage,
+		Name:                 r.Name,
+		Type:                 r.Spec.Type,
+		Location:             location,
+		ArtifactType:         aType,
+		BashNoopImage:        images.BashNoopImage,
+		BuildGCSFetcherImage: images.BuildGCSFetcherImage,
 	}, nil
 }
 
@@ -143,7 +139,7 @@ func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string)
 		{Container: corev1.Container{
 			Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Command: []string{"/ko-app/gcs-fetcher"},
-			Image:   *buildGCSFetcherImage,
+			Image:   s.BuildGCSFetcherImage,
 			Args:    args,
 		}}}
 

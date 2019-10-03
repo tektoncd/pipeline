@@ -32,4 +32,6 @@ type Images struct {
 	BashNoopImage string
 	// GsutilImage is the container miage containing gsutil.
 	GsutilImage string
+	// BuildGCSFetcherImage is the container image containing our GCS fetcher binary.
+	BuildGCSFetcherImage string
 }

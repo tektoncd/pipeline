@@ -46,6 +46,8 @@ var (
 		"The container image containing bash shell")
 	gsutilImage = flag.String("gsutil-image", "override-with-gsutil-image:latest",
 		"The container image containing gsutil")
+	buildGCSFetcherImage = flag.String("build-gcs-fetcher-image", "gcr.io/cloud-builders/gcs-fetcher:latest",
+		"The container image containing our GCS fetcher binary.")
 )
 
 func main() {
@@ -58,6 +60,7 @@ func main() {
 		KubeconfigWriterImage: *kubeconfigWriterImage,
 		BashNoopImage:         *bashNoopImage,
 		GsutilImage:           *gsutilImage,
+		BuildGCSFetcherImage:  *buildGCSFetcherImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),

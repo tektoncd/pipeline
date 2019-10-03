@@ -71,6 +71,7 @@ var (
 		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		BashNoopImage:         "override-with-bash-noop:latest",
 		GsutilImage:           "override-with-gsutil-image:latest",
+		BuildGCSFetcherImage:  "gcr.io/cloud-builders/gcs-fetcher:latest",
 	}
 	entrypointCache          *entrypoint.Cache
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
