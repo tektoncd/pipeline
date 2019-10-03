@@ -64,6 +64,8 @@ type ArtifactBucket struct {
 	Name     string
 	Location string
 	Secrets  []SecretParam
+
+	BashNoopImage string
 }
 
 // GetType returns the type of the artifact storage
@@ -84,7 +86,7 @@ func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destination
 
 	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
-		Image:   *BashNoopImage,
+		Image:   b.BashNoopImage,
 		Command: []string{"/ko-app/bash"},
 		Args: []string{
 			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),

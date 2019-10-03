@@ -789,7 +789,7 @@ func TestValidOutputResources(t *testing.T) {
 			names.TestingSeed()
 			outputResourceSetup(t)
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
+			got, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
@@ -1005,7 +1005,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 					},
 				},
 			)
-			got, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
+			got, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
@@ -1153,7 +1153,7 @@ func TestInvalidOutputResources(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			outputResourceSetup(t)
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			_, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
+			_, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if (err != nil) != c.wantErr {
 				t.Fatalf("Test AddOutputResourceSteps %v : error%v", c.desc, err)
 			}

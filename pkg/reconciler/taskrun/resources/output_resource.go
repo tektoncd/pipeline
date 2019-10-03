@@ -19,6 +19,7 @@ package resources
 import (
 	"path/filepath"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
@@ -51,6 +52,7 @@ var (
 // 2. If resource is declared in outputs only then the default is /output/resource_name
 func AddOutputResources(
 	kubeclient kubernetes.Interface,
+	images pipeline.Images,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
@@ -65,7 +67,7 @@ func AddOutputResources(
 	taskSpec = taskSpec.DeepCopy()
 
 	pvcName := taskRun.GetPipelineRunPVCName()
-	as, err := artifacts.GetArtifactStorage(pvcName, kubeclient, logger)
+	as, err := artifacts.GetArtifactStorage(images, pvcName, kubeclient, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +91,7 @@ func AddOutputResources(
 		}
 
 		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(boundResource.Name, sourcePath)}
+		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, sourcePath)}
 		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {

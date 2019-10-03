@@ -37,6 +37,7 @@ var (
 		GitImage:              "override-with-git:latest",
 		CredsImage:            "override-with-creds:latest",
 		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
+		BashNoopImage:         "override-with-bash-noop:latest",
 	}
 	inputResourceInterfaces map[string]v1alpha1.PipelineResourceInterface
 	logger                  *zap.SugaredLogger
@@ -738,7 +739,7 @@ func TestAddResourceToTask(t *testing.T) {
 			setUp(t)
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddInputResource(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
+			got, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
@@ -920,7 +921,7 @@ func TestStorageInputResource(t *testing.T) {
 			names.TestingSeed()
 			setUp(t)
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddInputResource(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
+			got, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
@@ -1050,7 +1051,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 					},
 				},
 			)
-			got, err := AddInputResource(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
+			got, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
 			if err != nil {
 				t.Errorf("Test: %q; AddInputResource() error = %v", c.desc, err)
 			}

@@ -45,6 +45,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 // 3. If resource has paths declared then fresh copy of resource is not fetched
 func AddInputResource(
 	kubeclient kubernetes.Interface,
+	images pipeline.Images,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
@@ -64,7 +65,7 @@ func AddInputResource(
 	if prNameFromLabel == "" {
 		prNameFromLabel = pvcName
 	}
-	as, err := artifacts.GetArtifactStorage(prNameFromLabel, kubeclient, logger)
+	as, err := artifacts.GetArtifactStorage(images, prNameFromLabel, kubeclient, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func AddInputResource(
 					for _, s := range cpSteps {
 						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
-							v1alpha1.CreateDirStep(boundResource.Name, dPath),
+							v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, dPath),
 							s)
 					}
 				} else {

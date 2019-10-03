@@ -184,7 +184,7 @@ func makeWorkingDirScript(workingDirs map[string]bool) string {
 	return script
 }
 
-func makeWorkingDirInitializer(steps []v1alpha1.Step) *v1alpha1.Step {
+func makeWorkingDirInitializer(bashNoopImage string, steps []v1alpha1.Step) *v1alpha1.Step {
 	workingDirs := make(map[string]bool)
 	for _, step := range steps {
 		workingDirs[step.WorkingDir] = true
@@ -193,7 +193,7 @@ func makeWorkingDirInitializer(steps []v1alpha1.Step) *v1alpha1.Step {
 	if script := makeWorkingDirScript(workingDirs); script != "" {
 		return &v1alpha1.Step{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + workingDirInit),
-			Image:        *v1alpha1.BashNoopImage,
+			Image:        bashNoopImage,
 			Command:      []string{"/ko-app/bash"},
 			Args:         []string{"-args", script},
 			VolumeMounts: implicitVolumeMounts,
@@ -206,14 +206,14 @@ func makeWorkingDirInitializer(steps []v1alpha1.Step) *v1alpha1.Step {
 
 // initOutputResourcesDefaultDir checks if there are any output image resources expecting a default path
 // and creates an init container to create that folder
-func initOutputResourcesDefaultDir(taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec) []v1alpha1.Step {
+func initOutputResourcesDefaultDir(bashNoopImage string, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec) []v1alpha1.Step {
 	var makeDirSteps []v1alpha1.Step
 	if len(taskRun.Spec.Outputs.Resources) > 0 {
 		for _, r := range taskRun.Spec.Outputs.Resources {
 			for _, o := range taskSpec.Outputs.Resources {
 				if o.Name == r.Name {
 					if strings.HasPrefix(o.OutputImageDir, v1alpha1.TaskOutputImageDefaultDir) {
-						s := v1alpha1.CreateDirStep("default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name))
+						s := v1alpha1.CreateDirStep(bashNoopImage, "default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name))
 						s.VolumeMounts = append(s.VolumeMounts, implicitVolumeMounts...)
 						makeDirSteps = append(makeDirSteps, s)
 					}
@@ -243,19 +243,19 @@ func TryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp GetPod) (*corev1.Pod, er
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
-func MakePod(credsImage string, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
-	cred, secrets, err := makeCredentialInitializer(credsImage, taskRun.Spec.ServiceAccount, taskRun.Namespace, kubeclient)
+func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
+	cred, secrets, err := makeCredentialInitializer(images.CredsImage, taskRun.Spec.ServiceAccount, taskRun.Namespace, kubeclient)
 	if err != nil {
 		return nil, err
 	}
 	initSteps := []v1alpha1.Step{*cred}
 	var podSteps []v1alpha1.Step
 
-	if workingDir := makeWorkingDirInitializer(taskSpec.Steps); workingDir != nil {
+	if workingDir := makeWorkingDirInitializer(images.BashNoopImage, taskSpec.Steps); workingDir != nil {
 		initSteps = append(initSteps, *workingDir)
 	}
 
-	initSteps = append(initSteps, initOutputResourcesDefaultDir(taskRun, taskSpec)...)
+	initSteps = append(initSteps, initOutputResourcesDefaultDir(images.BashNoopImage, taskRun, taskSpec)...)
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 

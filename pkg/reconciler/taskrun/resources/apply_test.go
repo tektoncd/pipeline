@@ -34,6 +34,7 @@ var images = pipeline.Images{
 	GitImage:              "override-with-git:latest",
 	CredsImage:            "override-with-creds:latest",
 	KubeconfigWriterImage: "override-with-kubeconfig-writer-image:latest",
+	BashNoopImage:         "override-with-bash-noop:latest",
 }
 
 var simpleTaskSpec = &v1alpha1.TaskSpec{

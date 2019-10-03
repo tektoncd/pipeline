@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +34,14 @@ import (
 )
 
 var (
+	images = pipeline.Images{
+		EntryPointImage:       "override-with-entrypoint:latest",
+		NopImage:              "override-with-nop:latest",
+		GitImage:              "override-with-git:latest",
+		CredsImage:            "override-with-creds:latest",
+		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
+		BashNoopImage:         "override-with-bash-noop:latest",
+	}
 	pipelinerun = &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
@@ -164,6 +173,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: GetPersistentVolumeClaim("10Gi", defaultStorageClass),
+			BashNoopImage:         "override-with-bash-noop:latest",
 		},
 		storagetype: "pvc",
 	}, {
@@ -181,6 +191,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: GetPersistentVolumeClaim("5Gi", &customStorageClass),
+			BashNoopImage:         "override-with-bash-noop:latest",
 		},
 		storagetype: "pvc",
 	}, {
@@ -204,6 +215,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				SecretKey:  "sakey",
 				SecretName: "secret1",
 			}},
+			BashNoopImage: "override-with-bash-noop:latest",
 		},
 		storagetype: "bucket",
 	}, {
@@ -223,6 +235,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: persistentVolumeClaim,
+			BashNoopImage:         "override-with-bash-noop:latest",
 		},
 		storagetype: "pvc",
 	}, {
@@ -241,6 +254,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: persistentVolumeClaim,
+			BashNoopImage:         "override-with-bash-noop:latest",
 		},
 		storagetype: "pvc",
 	}, {
@@ -255,6 +269,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
 			Name:                  "pipelineruntest",
 			PersistentVolumeClaim: persistentVolumeClaim,
+			BashNoopImage:         "override-with-bash-noop:latest",
 		},
 		storagetype: "pvc",
 	}, {
@@ -270,13 +285,14 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		},
 		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
-			Location: "gs://fake-bucket",
+			Location:      "gs://fake-bucket",
+			BashNoopImage: "override-with-bash-noop:latest",
 		},
 		storagetype: "bucket",
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
-			artifactStorage, err := InitializeArtifactStorage(c.pipelinerun, fakekubeclient, logger)
+			artifactStorage, err := InitializeArtifactStorage(images, c.pipelinerun, fakekubeclient, logger)
 			if err != nil {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
@@ -293,10 +309,10 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				t.Fatalf("Error cleaning up artifact storage: %s", err)
 			}
 			if diff := cmp.Diff(artifactStorage.GetType(), c.storagetype); diff != "" {
-				t.Fatalf("want %v, but got %v", c.storagetype, artifactStorage.GetType())
+				t.Fatalf("-want +got: %s", diff)
 			}
 			if diff := cmp.Diff(artifactStorage, c.expectedArtifactStorage, quantityComparer); diff != "" {
-				t.Fatalf("want %v, but got %v", c.expectedArtifactStorage, artifactStorage)
+				t.Fatalf("-want +got: %s", diff)
 			}
 		})
 	}
@@ -383,7 +399,7 @@ func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
 	logger := logtesting.TestLogger(t)
 	fakekubeclient := fakek8s.NewSimpleClientset()
 
-	pvc, err := InitializeArtifactStorage(pipelinerun, fakekubeclient, logger)
+	pvc, err := InitializeArtifactStorage(images, pipelinerun, fakekubeclient, logger)
 	if err != nil {
 		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 	}
@@ -391,6 +407,7 @@ func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
 	expectedArtifactPVC := &v1alpha1.ArtifactPVC{
 		Name:                  "pipelineruntest",
 		PersistentVolumeClaim: persistentVolumeClaim,
+		BashNoopImage:         "override-with-bash-noop:latest",
 	}
 
 	if diff := cmp.Diff(pvc, expectedArtifactPVC, cmpopts.IgnoreUnexported(resource.Quantity{})); diff != "" {
@@ -424,6 +441,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				SecretKey:  "sakey",
 				SecretName: "secret1",
 			}},
+			BashNoopImage: "override-with-bash-noop:latest",
 		},
 	}, {
 		desc: "location empty",
@@ -438,7 +456,10 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{Name: pipelinerun.Name},
+		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+			Name:          pipelinerun.Name,
+			BashNoopImage: "override-with-bash-noop:latest",
+		},
 	}, {
 		desc: "missing location",
 		configMap: &corev1.ConfigMap{
@@ -452,7 +473,8 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
-			Name: pipelinerun.Name,
+			Name:          pipelinerun.Name,
+			BashNoopImage: "override-with-bash-noop:latest",
 		},
 	}, {
 		desc: "no config map data",
@@ -462,12 +484,15 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				Name:      v1alpha1.BucketConfigName,
 			},
 		},
-		expectedArtifactStorage: &v1alpha1.ArtifactPVC{Name: pipelinerun.Name},
+		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
+			Name:          pipelinerun.Name,
+			BashNoopImage: "override-with-bash-noop:latest",
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
 
-			artifactStorage, err := GetArtifactStorage(pipelinerun.Name, fakekubeclient, logger)
+			artifactStorage, err := GetArtifactStorage(images, pipelinerun.Name, fakekubeclient, logger)
 			if err != nil {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
@@ -482,13 +507,14 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 func TestGetArtifactStorageWithoutConfigMap(t *testing.T) {
 	logger := logtesting.TestLogger(t)
 	fakekubeclient := fakek8s.NewSimpleClientset()
-	pvc, err := GetArtifactStorage("pipelineruntest", fakekubeclient, logger)
+	pvc, err := GetArtifactStorage(images, "pipelineruntest", fakekubeclient, logger)
 	if err != nil {
 		t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 	}
 
 	expectedArtifactPVC := &v1alpha1.ArtifactPVC{
-		Name: "pipelineruntest",
+		Name:          "pipelineruntest",
+		BashNoopImage: "override-with-bash-noop:latest",
 	}
 
 	if diff := cmp.Diff(pvc, expectedArtifactPVC); diff != "" {
@@ -515,13 +541,14 @@ func TestGetArtifactStorageWithPvcConfigMap(t *testing.T) {
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
-			Name: "pipelineruntest",
+			Name:          "pipelineruntest",
+			BashNoopImage: "override-with-bash-noop:latest",
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fakekubeclient := fakek8s.NewSimpleClientset(c.configMap)
 
-			artifactStorage, err := GetArtifactStorage(prName, fakekubeclient, logger)
+			artifactStorage, err := GetArtifactStorage(images, prName, fakekubeclient, logger)
 			if err != nil {
 				t.Fatalf("Somehow had error initializing artifact storage run out of fake client: %s", err)
 			}
