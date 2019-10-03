@@ -34,6 +34,7 @@ var images = pipeline.Images{
 	CredsImage:            "override-with-creds:latest",
 	KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 	BashNoopImage:         "override-with-bash-noop:latest",
+	GsutilImage:           "override-with-gsutil-image:latest",
 }
 
 func Test_Invalid_BuildGCSResource(t *testing.T) {

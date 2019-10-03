@@ -95,6 +95,7 @@ func Test_Valid_NewGCSResource(t *testing.T) {
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 		}},
 		BashNoopImage: "override-with-bash-noop:latest",
+		GsutilImage:   "override-with-gsutil-image:latest",
 	}
 
 	gcsRes, err := v1alpha1.NewGCSResource(images, pr)
@@ -163,6 +164,7 @@ func Test_GetInputSteps(t *testing.T) {
 				SecretKey:  "key.json",
 			}},
 			BashNoopImage: "override-with-bash-noop:latest",
+			GsutilImage:   "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-9l9zj",
@@ -198,6 +200,7 @@ func Test_GetInputSteps(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 			BashNoopImage: "override-with-bash-noop:latest",
+			GsutilImage:   "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-mssqb",
@@ -251,6 +254,7 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
 			}},
+			GsutilImage: "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-9l9zj",
@@ -277,6 +281,7 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
+			GsutilImage: "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mz4c7",
@@ -294,9 +299,10 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 	}, {
 		name: "valid upload to protected buckets with single file",
 		gcsResource: &v1alpha1.GCSResource{
-			Name:     "gcs-valid",
-			Location: "gs://some-bucket",
-			TypeDir:  false,
+			Name:        "gcs-valid",
+			Location:    "gs://some-bucket",
+			TypeDir:     false,
+			GsutilImage: "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mssqb",

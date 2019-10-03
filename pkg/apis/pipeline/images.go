@@ -20,7 +20,7 @@ package pipeline
 type Images struct {
 	// EntryPointImage is container image containing our entrypoint binary.
 	EntryPointImage string
-	// NopImage is the container image used to kill sidecars
+	// NopImage is the container image used to kill sidecars.
 	NopImage string
 	// GitImage is the container image with Git that we use to implement the Git source step.
 	GitImage string
@@ -28,6 +28,8 @@ type Images struct {
 	CredsImage string
 	// KubeconfigWriterImage is the container image containing our kubeconfig writer binary.
 	KubeconfigWriterImage string
-	// BashNoopImage is the container image containing bash shell
+	// BashNoopImage is the container image containing bash shell.
 	BashNoopImage string
+	// GsutilImage is the container miage containing gsutil.
+	GsutilImage string
 }

@@ -41,6 +41,7 @@ var (
 			SecretKey:  "serviceaccount",
 		}},
 		BashNoopImage: "override-with-bash-noop:latest",
+		GsutilImage:   "override-with-gsutil-image:latest",
 	}
 )
 

@@ -41,6 +41,7 @@ var (
 		CredsImage:            "override-with-creds:latest",
 		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		BashNoopImage:         "override-with-bash-noop:latest",
+		GsutilImage:           "override-with-gsutil-image:latest",
 	}
 	pipelinerun = &v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -216,6 +217,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				SecretName: "secret1",
 			}},
 			BashNoopImage: "override-with-bash-noop:latest",
+			GsutilImage:   "override-with-gsutil-image:latest",
 		},
 		storagetype: "bucket",
 	}, {
@@ -287,6 +289,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
 			Location:      "gs://fake-bucket",
 			BashNoopImage: "override-with-bash-noop:latest",
+			GsutilImage:   "override-with-gsutil-image:latest",
 		},
 		storagetype: "bucket",
 	}} {
@@ -411,7 +414,7 @@ func TestInitializeArtifactStorageWithoutConfigMap(t *testing.T) {
 	}
 
 	if diff := cmp.Diff(pvc, expectedArtifactPVC, cmpopts.IgnoreUnexported(resource.Quantity{})); diff != "" {
-		t.Fatalf("want %v, but got %v", expectedArtifactPVC, pvc)
+		t.Fatalf("-want +got: %s", diff)
 	}
 }
 
@@ -442,6 +445,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				SecretName: "secret1",
 			}},
 			BashNoopImage: "override-with-bash-noop:latest",
+			GsutilImage:   "override-with-gsutil-image:latest",
 		},
 	}, {
 		desc: "location empty",
@@ -498,7 +502,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(artifactStorage, c.expectedArtifactStorage); diff != "" {
-				t.Fatalf("want %v, but got %v", c.expectedArtifactStorage, artifactStorage)
+				t.Fatalf("-want +got: %s", diff)
 			}
 		})
 	}
@@ -518,7 +522,7 @@ func TestGetArtifactStorageWithoutConfigMap(t *testing.T) {
 	}
 
 	if diff := cmp.Diff(pvc, expectedArtifactPVC); diff != "" {
-		t.Fatalf("want %v, but got %v", expectedArtifactPVC, pvc)
+		t.Fatalf("-want +got: %s", diff)
 	}
 }
 
@@ -554,7 +558,7 @@ func TestGetArtifactStorageWithPvcConfigMap(t *testing.T) {
 			}
 
 			if diff := cmp.Diff(artifactStorage, c.expectedArtifactStorage); diff != "" {
-				t.Fatalf("want %v, but got %v", c.expectedArtifactStorage, artifactStorage)
+				t.Fatalf("-want +got: %s", diff)
 			}
 		})
 	}

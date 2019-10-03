@@ -38,6 +38,7 @@ var (
 		CredsImage:            "override-with-creds:latest",
 		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		BashNoopImage:         "override-with-bash-noop:latest",
+		GsutilImage:           "override-with-gsutil-image:latest",
 	}
 	inputResourceInterfaces map[string]v1alpha1.PipelineResourceInterface
 	logger                  *zap.SugaredLogger

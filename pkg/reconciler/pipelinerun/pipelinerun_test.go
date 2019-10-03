@@ -51,6 +51,7 @@ var (
 		CredsImage:            "override-with-creds:latest",
 		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		BashNoopImage:         "override-with-bash-noop:latest",
+		GsutilImage:           "override-with-gsutil-image:latest",
 	}
 )
 
