@@ -18,7 +18,6 @@ package resources
 
 import (
 	"encoding/json"
-	"flag"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -28,12 +27,9 @@ import (
 
 const TerminationMessagePath = "/builder/home/image-outputs/termination-log"
 
-var (
-	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "override-with-imagedigest-exporter-image:latest", "The container image containing our image digest exporter binary.")
-)
-
 // AddOutputImageDigestExporter add a step to check the index.json for all output images
 func AddOutputImageDigestExporter(
+	imageDigestExporterImage string,
 	tr *v1alpha1.TaskRun,
 	taskSpec *v1alpha1.TaskSpec,
 	gr GetResource,
@@ -76,7 +72,7 @@ func AddOutputImageDigestExporter(
 			}
 
 			augmentedSteps = append(augmentedSteps, taskSpec.Steps...)
-			augmentedSteps = append(augmentedSteps, imageDigestExporterStep(imagesJSON))
+			augmentedSteps = append(augmentedSteps, imageDigestExporterStep(imageDigestExporterImage, imagesJSON))
 
 			taskSpec.Steps = augmentedSteps
 		}
@@ -95,10 +91,10 @@ func UpdateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent
 	return nil
 }
 
-func imageDigestExporterStep(imagesJSON []byte) v1alpha1.Step {
+func imageDigestExporterStep(imageDigestExporterImage string, imagesJSON []byte) v1alpha1.Step {
 	return v1alpha1.Step{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("image-digest-exporter"),
-		Image:   *imageDigestExporterImage,
+		Image:   imageDigestExporterImage,
 		Command: []string{"/ko-app/imagedigestexporter"},
 		Args: []string{
 			"-images", string(imagesJSON),

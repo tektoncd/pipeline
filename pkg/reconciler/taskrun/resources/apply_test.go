@@ -29,15 +29,16 @@ import (
 )
 
 var images = pipeline.Images{
-	EntryPointImage:       "override-with-entrypoint:latest",
-	NopImage:              "override-with-nop:latest",
-	GitImage:              "override-with-git:latest",
-	CredsImage:            "override-with-creds:latest",
-	KubeconfigWriterImage: "override-with-kubeconfig-writer-image:latest",
-	BashNoopImage:         "override-with-bash-noop:latest",
-	GsutilImage:           "override-with-gsutil-image:latest",
-	BuildGCSFetcherImage:  "gcr.io/cloud-builders/gcs-fetcher:latest",
-	PRImage:               "override-with-pr:latest",
+	EntryPointImage:          "override-with-entrypoint:latest",
+	NopImage:                 "override-with-nop:latest",
+	GitImage:                 "override-with-git:latest",
+	CredsImage:               "override-with-creds:latest",
+	KubeconfigWriterImage:    "override-with-kubeconfig-writer-image:latest",
+	BashNoopImage:            "override-with-bash-noop:latest",
+	GsutilImage:              "override-with-gsutil-image:latest",
+	BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
+	PRImage:                  "override-with-pr:latest",
+	ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 }
 
 var simpleTaskSpec = &v1alpha1.TaskSpec{
