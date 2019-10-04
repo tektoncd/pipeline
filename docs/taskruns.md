@@ -195,7 +195,7 @@ PersistenceVolumeClaim. The Pod will also run as a non-root user.
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: myTask
+  name: mytask
   namespace: default
 spec:
   steps:
@@ -210,11 +210,11 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: myTaskRun
+  name: mytaskRun
   namespace: default
 spec:
   taskRef:
-    name: myTask
+    name: mytask
   podTemplate:
     securityContext:
       runAsNonRoot: true
