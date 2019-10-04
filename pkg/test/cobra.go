@@ -33,6 +33,7 @@ func ExecuteCommandC(c *cobra.Command, args ...string) (*cobra.Command, string, 
 	buf := new(bytes.Buffer)
 	c.SetOutput(buf)
 	c.SetArgs(args)
+	c.SilenceUsage = true
 
 	root, err := c.ExecuteC()
 

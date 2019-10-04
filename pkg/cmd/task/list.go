@@ -76,6 +76,12 @@ func printTaskDetails(s *cli.Stream, p cli.Params) error {
 		return err
 	}
 
+	// Check if namespace exists. Return error if namespace specified with -n doesn't exist or if user doesn't have permissions to view.
+	_, err = cs.Kube.CoreV1().Namespaces().Get(p.Namespace(), metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
 	tasks, err := listAllTasks(cs.Tekton, p.Namespace())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to list tasks from %s namespace \n", p.Namespace())
