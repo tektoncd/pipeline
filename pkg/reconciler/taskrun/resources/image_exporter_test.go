@@ -200,7 +200,7 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 					},
 				}, nil
 			}
-			err := AddOutputImageDigestExporter(c.taskRun, &c.task.Spec, gr)
+			err := AddOutputImageDigestExporter("override-with-imagedigest-exporter-image:latest", c.taskRun, &c.task.Spec, gr)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test %q: error %v", c.desc, err)
 			}

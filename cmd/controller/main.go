@@ -50,20 +50,23 @@ var (
 		"The container image containing our GCS fetcher binary.")
 	prImage = flag.String("pr-image", "override-with-pr:latest",
 		"The container image containing our PR binary.")
+	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "override-with-imagedigest-exporter-image:latest",
+		"The container image containing our image digest exporter binary.")
 )
 
 func main() {
 	flag.Parse()
 	images := pipeline.Images{
-		EntryPointImage:       *entrypointImage,
-		NopImage:              *nopImage,
-		GitImage:              *gitImage,
-		CredsImage:            *credsImage,
-		KubeconfigWriterImage: *kubeconfigWriterImage,
-		BashNoopImage:         *bashNoopImage,
-		GsutilImage:           *gsutilImage,
-		BuildGCSFetcherImage:  *buildGCSFetcherImage,
-		PRImage:               *prImage,
+		EntryPointImage:          *entrypointImage,
+		NopImage:                 *nopImage,
+		GitImage:                 *gitImage,
+		CredsImage:               *credsImage,
+		KubeconfigWriterImage:    *kubeconfigWriterImage,
+		BashNoopImage:            *bashNoopImage,
+		GsutilImage:              *gsutilImage,
+		BuildGCSFetcherImage:     *buildGCSFetcherImage,
+		PRImage:                  *prImage,
+		ImageDigestExporterImage: *imageDigestExporterImage,
 	}
 	sharedmain.Main(ControllerLogKey,
 		taskrun.NewController(images),

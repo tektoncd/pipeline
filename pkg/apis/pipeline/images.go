@@ -36,4 +36,6 @@ type Images struct {
 	BuildGCSFetcherImage string
 	// PRImage is the container image that we use to implement the PR source step.
 	PRImage string
+	// ImageDigestExporterImage is the container image containing our image digest exporter binary.
+	ImageDigestExporterImage string
 }
