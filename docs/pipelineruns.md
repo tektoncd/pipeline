@@ -66,7 +66,7 @@ You can do this by providing a reference to an existing `Pipeline`:
 ```yaml
 spec:
   pipelineRef:
-    name: myPipeline
+    name: mypipeline
 
 ```
 
@@ -78,7 +78,7 @@ spec:
     tasks:
     - name: task1
       taskRef:
-        name: myTask
+        name: mytask
 ```
 
 [Here](../examples/pipelineruns/pipelinerun-with-pipelinespec.yaml) is a sample `PipelineRun` to display different
@@ -225,10 +225,10 @@ PersistenceVolumeClaim. The Pod will also run as a non-root user.
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: myTask
+  name: mytask
 spec:
   steps:
-    - name: write something
+    - name: writesomething
       image: ubuntu
       command: ["bash", "-c"]
       args: ["echo 'foo' > /my-cache/bar"]
@@ -239,20 +239,20 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: myPipeline
+  name: mypipeline
 spec:
   tasks:
     - name: task1
       taskRef:
-        name: myTask
+        name: mytask
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineRun
 metadata:
-  name: myPipelineRun
+  name: mypipelineRun
 spec:
   pipelineRef:
-    name: myPipeline
+    name: mypipeline
   podTemplate:
     securityContext:
       runAsNonRoot: true
