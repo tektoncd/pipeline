@@ -544,18 +544,15 @@ the status of individual Task runs are shown.
 
 Tekton Pipelines is known to work with:
 
-- [Docker for Desktop](https://www.docker.com/products/docker-desktop): a
-  version that uses Kubernetes 1.11 or higher. At the time of this document,
-  this requires the _edge_ version of Docker to be installed. A known good
-  configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space
-- The following
-  [prerequisites](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements)
+- [Docker for Desktop](https://www.docker.com/products/docker-desktop). A known good
+  configuration specifies six CPUs, 10 GB of memory and 2 GB of swap space. 
+- These [prerequisites](https://github.com/tektoncd/pipeline/blob/master/DEVELOPMENT.md#requirements).
 - Setting `host.docker.local:5000` as an insecure registry with Docker for
   Desktop (set via preferences or configuration, see the
-  [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/)
+  [Docker insecure registry documentation](https://docs.docker.com/registry/insecure/).
   for details)
 - Passing `--insecure` as an argument to Kaniko tasks lets us push to an
-  insecure registry
+  insecure registry.
 - Running a local (insecure) Docker registry: this can be run with
 
 `docker run -d -p 5000:5000 --name registry-srv -e REGISTRY_STORAGE_DELETE_ENABLED=true registry:2`
