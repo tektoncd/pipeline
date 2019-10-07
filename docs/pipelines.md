@@ -139,8 +139,11 @@ spec:
 ### Pipeline Tasks
 
 A `Pipeline` will execute a graph of [`Tasks`](tasks.md) (see
-[ordering](#ordering) for how to express this graph). At a minimum, this
-declaration must include a reference to the [`Task`](tasks.md):
+[ordering](#ordering) for how to express this graph). A valid `Pipeline` 
+declaration must include a reference to at least one [`Task`](tasks.md). Each
+`Task` within a `Pipeline` must have a
+[valid](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)
+name and task reference, for example:
 
 ```yaml
 tasks:

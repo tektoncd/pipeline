@@ -19,10 +19,12 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/list"
 	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
 
@@ -123,9 +125,18 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 
 	// Names cannot be duplicated
 	taskNames := map[string]struct{}{}
-	for _, t := range ps.Tasks {
+	for i, t := range ps.Tasks {
+		// Task names are appended to the container name, which must exist and
+		// must be a valid k8s name
+		if errSlice := validation.IsQualifiedName(t.Name); len(errSlice) != 0 {
+			return apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("spec.tasks[%d].name", i))
+		}
+		// TaskRef name must be a valid k8s name
+		if errSlice := validation.IsQualifiedName(t.TaskRef.Name); len(errSlice) != 0 {
+			return apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("spec.tasks[%d].taskRef.name", i))
+		}
 		if _, ok := taskNames[t.Name]; ok {
-			return apis.ErrMultipleOneOf("spec.tasks.name")
+			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.tasks[%d].name", i))
 		}
 		taskNames[t.Name] = struct{}{}
 	}
