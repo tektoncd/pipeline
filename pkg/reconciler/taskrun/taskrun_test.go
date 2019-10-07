@@ -1359,10 +1359,10 @@ func TestReconcile_SortTaskRunStatusSteps(t *testing.T) {
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
-	verify_TaskRunStatusStep(t, taskRun, taskMultipleSteps)
+	verify_TaskRunStatusStep(t, taskRun)
 }
 
-func verify_TaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) {
+func verify_TaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun) {
 	actualStepOrder := []string{}
 	for _, state := range taskRun.Status.Steps {
 		actualStepOrder = append(actualStepOrder, state.Name)

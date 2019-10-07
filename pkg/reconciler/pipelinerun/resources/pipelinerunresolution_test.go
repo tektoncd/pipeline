@@ -1779,7 +1779,11 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
-	getCondition := func(name string) (*v1alpha1.Condition, error) {
+
+	// This err result is required to satisfy the type alias on this function, but it triggers
+	// a false positive in the linter: https://github.com/mvdan/unparam/issues/40
+	// nolint: unparam
+	getCondition := func(_ string) (*v1alpha1.Condition, error) {
 		return condition, nil
 	}
 

@@ -121,10 +121,7 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 		Env:          envVars},
 	}
 
-	volumes, err := getStorageVolumeSpec(s, *ts)
-	if err != nil {
-		return nil, err
-	}
+	volumes := getStorageVolumeSpec(s, *ts)
 
 	return &InternalTaskModifier{
 		StepsToAppend: []Step{step},
@@ -156,10 +153,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 			VolumeMounts: secretVolumeMount,
 		}}}
 
-	volumes, err := getStorageVolumeSpec(s, *ts)
-	if err != nil {
-		return nil, err
-	}
+	volumes := getStorageVolumeSpec(s, *ts)
 
 	return &InternalTaskModifier{
 		StepsToPrepend: steps,

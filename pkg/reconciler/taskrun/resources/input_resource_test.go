@@ -81,7 +81,7 @@ var (
 	}
 )
 
-func setUp(t *testing.T) {
+func setUp() {
 	logger, _ = logging.NewLogger("", "")
 
 	rs := []*v1alpha1.PipelineResource{{
@@ -740,7 +740,7 @@ func TestAddResourceToTask(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			setUp(t)
+			setUp()
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			got, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
@@ -923,7 +923,7 @@ func TestStorageInputResource(t *testing.T) {
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			setUp(t)
+			setUp()
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			got, err := AddInputResource(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun), logger)
 			if (err != nil) != c.wantErr {
@@ -1043,7 +1043,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			setUp(t)
+			setUp()
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
