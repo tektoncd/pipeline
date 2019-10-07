@@ -59,7 +59,7 @@ func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineSt
 	return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
 }
 
-func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec TaskSpec) ([]corev1.Volume, error) {
+func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec TaskSpec) []corev1.Volume {
 	var storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 
@@ -85,5 +85,5 @@ func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec TaskSpec) ([]
 			mountedSecrets[volName] = ""
 		}
 	}
-	return storageVol, nil
+	return storageVol
 }

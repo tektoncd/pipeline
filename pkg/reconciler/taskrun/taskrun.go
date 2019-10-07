@@ -312,7 +312,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	status.SortTaskRunStepOrder(tr.Status.Steps, taskSpec.Steps)
 
-	updateTaskRunResourceResult(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
+	updateTaskRunResourceResult(tr, pod, c.resourceLister, c.Logger)
 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -358,7 +358,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 	c.Logger.Errorf("Failed to create build pod for task %q: %v", tr.Name, err)
 }
 
-func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) {
+func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, logger *zap.SugaredLogger) {
 	if resources.TaskRunHasOutputImageResource(resourceLister.PipelineResources(taskRun.Namespace).Get, taskRun) && taskRun.IsSuccessful() {
 		for _, cs := range pod.Status.ContainerStatuses {
 			if strings.HasPrefix(cs.Name, imageDigestExporterContainerName) {

@@ -143,10 +143,7 @@ func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string)
 			Args:    args,
 		}}}
 
-	volumes, err := getStorageVolumeSpec(s, *ts)
-	if err != nil {
-		return nil, err
-	}
+	volumes := getStorageVolumeSpec(s, *ts)
 
 	return &InternalTaskModifier{
 		StepsToPrepend: steps,

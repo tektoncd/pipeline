@@ -32,7 +32,7 @@ var (
 	outputResources map[string]v1alpha1.PipelineResourceInterface
 )
 
-func outputResourceSetup(t *testing.T) {
+func outputResourceSetup() {
 	logger, _ = logging.NewLogger("", "")
 
 	rs := []*v1alpha1.PipelineResource{{
@@ -787,7 +787,7 @@ func TestValidOutputResources(t *testing.T) {
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()
-			outputResourceSetup(t)
+			outputResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			got, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if err != nil {
@@ -992,7 +992,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 		}}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
-			outputResourceSetup(t)
+			outputResourceSetup()
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
@@ -1151,7 +1151,7 @@ func TestInvalidOutputResources(t *testing.T) {
 		wantErr: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			outputResourceSetup(t)
+			outputResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
 			_, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if (err != nil) != c.wantErr {

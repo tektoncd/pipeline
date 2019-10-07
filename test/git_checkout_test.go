@@ -55,7 +55,7 @@ func TestGitPipelineRun(t *testing.T) {
 		}
 
 		t.Logf("Creating Task %s", gitTestTaskName)
-		if _, err := c.TaskClient.Create(getGitCheckTask(namespace, t)); err != nil {
+		if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
 			t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
 		}
 
@@ -91,7 +91,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 	}
 
 	t.Logf("Creating Task %s", gitTestTaskName)
-	if _, err := c.TaskClient.Create(getGitCheckTask(namespace, t)); err != nil {
+	if _, err := c.TaskClient.Create(getGitCheckTask(namespace)); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", gitTestTaskName, err)
 	}
 
@@ -152,7 +152,7 @@ func getGitPipelineResource(namespace, revision string) *v1alpha1.PipelineResour
 	))
 }
 
-func getGitCheckTask(namespace string, t *testing.T) *v1alpha1.Task {
+func getGitCheckTask(namespace string) *v1alpha1.Task {
 	return tb.Task(gitTestTaskName, namespace, tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.Step("git", "alpine/git", tb.StepArgs("--git-dir=/workspace/gitsource/.git", "show")),

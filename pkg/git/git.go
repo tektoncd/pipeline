@@ -26,13 +26,13 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func run(logger *zap.SugaredLogger, cmd string, args ...string) error {
-	c := exec.Command(cmd, args...)
+func run(logger *zap.SugaredLogger, args ...string) error {
+	c := exec.Command("git", args...)
 	var output bytes.Buffer
 	c.Stderr = &output
 	c.Stdout = &output
 	if err := c.Run(); err != nil {
-		logger.Errorf("Error running %v %v: %v\n%v", cmd, args, err, output.String())
+		logger.Errorf("Error running git %v: %v\n%v", args, err, output.String())
 		return err
 	}
 	return nil
@@ -70,29 +70,29 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 		revision = "master"
 	}
 	if path != "" {
-		if err := run(logger, "git", "init", path); err != nil {
+		if err := run(logger, "init", path); err != nil {
 			return err
 		}
 		if err := os.Chdir(path); err != nil {
 			return xerrors.Errorf("Failed to change directory with path %s; err: %w", path, err)
 		}
-	} else if err := run(logger, "git", "init"); err != nil {
+	} else if err := run(logger, "init"); err != nil {
 		return err
 	}
 	trimmedURL := strings.TrimSpace(url)
-	if err := run(logger, "git", "remote", "add", "origin", trimmedURL); err != nil {
+	if err := run(logger, "remote", "add", "origin", trimmedURL); err != nil {
 		return err
 	}
-	if err := run(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", revision); err != nil {
+	if err := run(logger, "fetch", "--depth=1", "--recurse-submodules=yes", "origin", revision); err != nil {
 		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
 		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
-		if err := run(logger, "git", "pull", "--recurse-submodules=yes", "origin"); err != nil {
+		if err := run(logger, "pull", "--recurse-submodules=yes", "origin"); err != nil {
 			logger.Warnf("Failed to pull origin : %s", err)
 		}
-		if err := run(logger, "git", "checkout", revision); err != nil {
+		if err := run(logger, "checkout", revision); err != nil {
 			return err
 		}
-	} else if err := run(logger, "git", "reset", "--hard", "FETCH_HEAD"); err != nil {
+	} else if err := run(logger, "reset", "--hard", "FETCH_HEAD"); err != nil {
 		return err
 	}
 	logger.Infof("Successfully cloned %s @ %s in path %s", trimmedURL, revision, path)
