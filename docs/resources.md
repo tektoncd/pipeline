@@ -83,7 +83,7 @@ $(resources.<name>.<key>)
 
 The `path` key is pre-defined and refers to the local path to a resource on the mounted volume 
 ```shell
-$(inputs.resouces.<name>.path)
+$(inputs.resources.<name>.path)
 ```
 
 ### Controlling where resources are mounted
