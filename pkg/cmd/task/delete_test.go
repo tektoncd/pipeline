@@ -28,6 +28,7 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -61,6 +62,13 @@ func TestTaskDelete(t *testing.T) {
 						}),
 					),
 				),
+			},
+			Namespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "ns",
+					},
+				},
 			},
 		})
 		seeds = append(seeds, cs)
@@ -130,11 +138,19 @@ func TestTaskDelete(t *testing.T) {
 			wantError:   false,
 			want:        "Task deleted: task\nTaskRun deleted: task-run-1\nTaskRun deleted: task-run-2\n",
 		},
+		{
+			name:        "Try to delete task from invalid namespace",
+			command:     []string{"rm", "task", "-n", "invalid", "-f"},
+			input:       seeds[4],
+			inputStream: nil,
+			wantError:   true,
+			want:        "namespaces \"invalid\" not found",
+		},
 	}
 
 	for _, tp := range testParams {
 		t.Run(tp.name, func(t *testing.T) {
-			p := &test.Params{Tekton: tp.input.Pipeline}
+			p := &test.Params{Tekton: tp.input.Pipeline, Kube: tp.input.Kube}
 			task := Command(p)
 
 			if tp.inputStream != nil {

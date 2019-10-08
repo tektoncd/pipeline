@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	"github.com/tektoncd/cli/pkg/printer"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -48,6 +49,15 @@ func listCommand(p cli.Params) *cobra.Command {
 			"commandType": "main",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cs, err := p.Clients()
+			if err != nil {
+				return fmt.Errorf("failed to create tekton client")
+			}
+
+			if err := validate.NamespaceExists(cs.Kube, p.Namespace()); err != nil {
+				return err
+			}
+
 			output, err := cmd.LocalFlags().GetString("output")
 			if err != nil {
 				fmt.Fprint(os.Stderr, "Error: output option not set properly \n")
@@ -70,16 +80,9 @@ func listCommand(p cli.Params) *cobra.Command {
 }
 
 func printTaskDetails(s *cli.Stream, p cli.Params) error {
-
 	cs, err := p.Clients()
 	if err != nil {
-		return err
-	}
-
-	// Check if namespace exists. Return error if namespace specified with -n doesn't exist or if user doesn't have permissions to view.
-	_, err = cs.Kube.CoreV1().Namespaces().Get(p.Namespace(), metav1.GetOptions{})
-	if err != nil {
-		return err
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	tasks, err := listAllTasks(cs.Tekton, p.Namespace())
