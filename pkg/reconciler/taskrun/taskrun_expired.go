@@ -1,21 +1,21 @@
-package v1alpha1
+package taskrun
 
 import (
 	"fmt"
 	"time"
 
+	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
 	"knative.dev/pkg/apis"
 )
 
-func (tc *ExpirationController) AddTaskRun(obj interface{}) {
-	tr := obj.(*TaskRun)
+func (tc *Reconciler) AddTaskRun(obj interface{}) {
+	tr := obj.(*apispipeline.TaskRun)
 	klog.V(4).Infof("Adding TaskRun %s/%s", tr.Namespace, tr.Name)
 
 	if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
@@ -23,8 +23,8 @@ func (tc *ExpirationController) AddTaskRun(obj interface{}) {
 	}
 }
 
-func (tc *ExpirationController) UpdateTaskRun(old, cur interface{}) {
-	tr := cur.(*TaskRun)
+func (tc *Reconciler) UpdateTaskRun(old, cur interface{}) {
+	tr := cur.(*apispipeline.TaskRun)
 	klog.V(4).Infof("Updating TaskRun %s/%s", tr.Namespace, tr.Name)
 
 	if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
@@ -32,7 +32,7 @@ func (tc *ExpirationController) UpdateTaskRun(old, cur interface{}) {
 	}
 }
 
-func (tc *ExpirationController) TrEnqueue(tr *TaskRun) {
+func (tc *Reconciler) TrEnqueue(tr *apispipeline.TaskRun) {
 	klog.V(4).Infof("Add TaskRun %s/%s to cleanup", tr.Namespace, tr.Name)
 	key, err := controller.KeyFunc(tr)
 	if err != nil {
@@ -43,7 +43,7 @@ func (tc *ExpirationController) TrEnqueue(tr *TaskRun) {
 	tc.queue.Add(key)
 }
 
-func (tc *ExpirationController) TrEnqueueAfter(tr *TaskRun, after time.Duration) {
+func (tc *Reconciler) TrEnqueueAfter(tr *apispipeline.TaskRun, after time.Duration) {
 	key, err := controller.KeyFunc(tr)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", tr, err))
@@ -58,22 +58,8 @@ func (tc *ExpirationController) TrEnqueueAfter(tr *TaskRun, after time.Duration)
 // its TTL hasn't expired, it will be added to the queue after the TTL is expected
 // to expire.
 // This function is not meant to be invoked concurrently with the same key.
-func (tc *ExpirationController) processTaskRun(key string) error {
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return err
-	}
-
+func (tc *Reconciler) processTaskRunExpired(namespace, name string, tr *apispipeline.TaskRun) error {
 	klog.V(4).Infof("Checking if TaskRun %s/%s is ready for cleanup", namespace, name)
-	// Ignore the TaskRuns that are already deleted or being deleted, or the ones that don't need clean up.
-	tr, err := tc.trLister.TaskRuns(namespace).Get(name)
-	if errors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
 	if tr.HasPipelineRunOwnerReference() {
 		return nil
 	}
@@ -88,7 +74,7 @@ func (tc *ExpirationController) processTaskRun(key string) error {
 	// Before deleting the TaskRun, do a final sanity check.
 	// If TTL is modified before we do this check, we cannot be sure if the TTL truly expires.
 	// The latest TaskRun may have a different UID, but it's fine because the checks will be run again.
-	fresh, err := tc.client.TektonV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
+	fresh, err := tc.PipelineClientSet.TektonV1alpha1().TaskRuns(namespace).Get(name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil
 	}
@@ -112,12 +98,12 @@ func (tc *ExpirationController) processTaskRun(key string) error {
 		Preconditions:     &metav1.Preconditions{UID: &fresh.UID},
 	}
 	klog.V(4).Infof("Cleaning up TaskRun %s/%s", namespace, name)
-	return tc.client.TektonV1alpha1().TaskRuns(fresh.Namespace).Delete(fresh.Name, options)
+	return tc.PipelineClientSet.TektonV1alpha1().TaskRuns(fresh.Namespace).Delete(fresh.Name, options)
 }
 
 // processTTL checks whether a given TaskRun's TTL has expired, and add it to the queue after the TTL is expected to expire
 // if the TTL will expire later.
-func (tc *ExpirationController) processTrTTL(tr *TaskRun) (expired bool, err error) {
+func (tc *Reconciler) processTrTTL(tr *apispipeline.TaskRun) (expired bool, err error) {
 	// We don't care about the TaskRuns that are going to be deleted, or the ones that don't need clean up.
 	if tr.DeletionTimestamp != nil || !taskRunCleanup(tr) {
 		return false, nil
@@ -139,14 +125,14 @@ func (tc *ExpirationController) processTrTTL(tr *TaskRun) (expired bool, err err
 }
 
 // Judge item is expired.
-//func IsExpired(tr *TaskRun) bool {
+//func IsExpired(tr *apispipeline.TaskRun) bool {
 //	if tr.Spec.ExpirationSecondsTTL == nil {
 //		return false
 //	}
 //	return time.Now().Unix() >= tr.Status.CompletionTime.Add(tr.Spec.ExpirationSecondsTTL.Duration*time.Second).Unix() //如果当前时间超则过期
 //}
 
-func IsTaskRunSucceeded(tr *TaskRun) bool {
+func IsTaskRunSucceeded(tr *apispipeline.TaskRun) bool {
 	for _, con := range tr.Status.Conditions {
 		if con.Type == apis.ConditionSucceeded && con.Status == v1.ConditionTrue {
 			return true
@@ -157,14 +143,14 @@ func IsTaskRunSucceeded(tr *TaskRun) bool {
 
 // if TaskRun is built from PipelineRun, then don't delete TaskRun, but delete PipelineRun.
 // if TaskRun is not built from PipelineRun, then delete TaskRun automatically.
-//func IsFromPipelineRun(tr *TaskRun) bool {
+//func IsFromPipelineRun(tr *apispipeline.TaskRun) bool {
 //	if tr.OwnerReferences == nil {
 //		return false
 //	}
 //	return true
 //}
 
-func getFinishAndExpireTime(tr *TaskRun) (*time.Time, *time.Time, error) {
+func getFinishAndExpireTime(tr *apispipeline.TaskRun) (*time.Time, *time.Time, error) {
 	if !taskRunCleanup(tr) {
 		return nil, nil, fmt.Errorf("taskRun %s/%s should not be cleaned up", tr.Namespace, tr.Name)
 	}
@@ -177,7 +163,7 @@ func getFinishAndExpireTime(tr *TaskRun) (*time.Time, *time.Time, error) {
 	return &finishAtUTC, &expireAtUTC, nil
 }
 
-func trTimeLeft(tr *TaskRun, since *time.Time) (*time.Duration, error) {
+func trTimeLeft(tr *apispipeline.TaskRun, since *time.Time) (*time.Duration, error) {
 	finishAt, expireAt, err := getFinishAndExpireTime(tr)
 	if err != nil {
 		return nil, err
@@ -191,7 +177,7 @@ func trTimeLeft(tr *TaskRun, since *time.Time) (*time.Duration, error) {
 }
 
 // taskRunFinishTime takes an already succeeded taskRun and returns the time it finishes.
-func taskRunFinishTime(tr *TaskRun) (metav1.Time, error) {
+func taskRunFinishTime(tr *apispipeline.TaskRun) (metav1.Time, error) {
 	for _, con := range tr.Status.Conditions {
 		if con.Type == apis.ConditionSucceeded && con.Status == v1.ConditionTrue {
 			finishAt := con.LastTransitionTime
@@ -207,6 +193,6 @@ func taskRunFinishTime(tr *TaskRun) (metav1.Time, error) {
 }
 
 // taskRunCleanup checks whether a TaskRun or PipelineRun has succeeded and has a TTL set.
-func taskRunCleanup(tr *TaskRun) bool {
+func taskRunCleanup(tr *apispipeline.TaskRun) bool {
 	return tr.Spec.ExpirationSecondsTTL != nil && IsTaskRunSucceeded(tr) && !tr.HasPipelineRunOwnerReference()
 }

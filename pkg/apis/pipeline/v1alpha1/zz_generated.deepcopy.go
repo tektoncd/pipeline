@@ -303,7 +303,7 @@ func (in *ConditionCheckStatus) DeepCopyInto(out *ConditionCheckStatus) {
 		in, out := &in.CompletionTime, &out.CompletionTime
 		*out = (*in).DeepCopy()
 	}
-	if in.ExpirationTime !=nil {
+	if in.ExpirationTime != nil {
 		in, out := &in.ExpirationTime, &out.ExpirationTime
 		*out = (*in).DeepCopy()
 	}
@@ -1804,7 +1804,7 @@ func (in *TaskRunStatus) DeepCopyInto(out *TaskRunStatus) {
 		in, out := &in.CompletionTime, &out.CompletionTime
 		*out = (*in).DeepCopy()
 	}
-	if in.ExpirationTime != nil{
+	if in.ExpirationTime != nil {
 		in, out := &in.ExpirationTime, &out.ExpirationTime
 		*out = (*in).DeepCopy()
 	}

@@ -692,8 +692,8 @@ k8s.io/kubernetes/pkg/apis/scheduling
 # k8s.io/utils v0.0.0-20190923111123-69764acb6e8e
 k8s.io/utils/buffer
 k8s.io/utils/trace
-k8s.io/utils/integer
 k8s.io/utils/pointer
+k8s.io/utils/integer
 # knative.dev/caching v0.0.0-20190719140829-2032732871ff
 knative.dev/caching/pkg/client/clientset/versioned
 knative.dev/caching/pkg/client/clientset/versioned/typed/caching/v1alpha1

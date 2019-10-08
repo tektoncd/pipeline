@@ -19,6 +19,9 @@ package pipelinerun
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog"
 	"reflect"
 	"time"
 
@@ -100,6 +103,16 @@ type Reconciler struct {
 	tracker           tracker.Interface
 	configStore       configStore
 	timeoutHandler    *reconciler.TimeoutSet
+
+	// The clock for tracking time
+	clock clock.Clock
+
+	// TaskRuns that the controller will check its TTL and attempt to delete when the TTL expires.
+	queue workqueue.RateLimitingInterface
+
+	// ListerSynced returns true if the TaskRun store has been synced at least once.
+	// Added as a member to the struct to allow injection for testing.
+	ListerSynced cache.InformerSynced
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -121,6 +134,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	ctx = c.configStore.ToContext(ctx)
 
+	klog.V(4).Infof("Checking if PipelineRun %s/%s is ready for cleanup", namespace, name)
 	// Get the Pipeline Run resource with this namespace/name
 	original, err := c.pipelineRunLister.PipelineRuns(namespace).Get(name)
 	if errors.IsNotFound(err) {
@@ -190,8 +204,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			return err
 		}
 	}
-
-	return err
+	return c.processPipelineRunExpired(namespace, name, pr)
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) error {
@@ -605,7 +618,7 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 
 		// update pr expiration time
-		if  pr.Spec.ExpirationSecondsTTL != nil {
+		if pr.Spec.ExpirationSecondsTTL != nil {
 			pr.Status.ExpirationTime.Time = pr.Status.CompletionTime.Add(pr.Spec.ExpirationSecondsTTL.Duration * time.Second)
 		}
 	}

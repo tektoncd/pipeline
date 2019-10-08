@@ -18,9 +18,9 @@ package pipelinerun
 
 import (
 	"context"
+	"k8s.io/client-go/util/workqueue"
 	"time"
 
-	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask"
 	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
@@ -77,6 +77,7 @@ func NewController(
 		resourceLister:    resourceInformer.Lister(),
 		conditionLister:   conditionInformer.Lister(),
 		timeoutHandler:    timeoutHandler,
+		queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ttl_pipelineruns_to_delete"),
 	}
 	impl := controller.NewImpl(c, c.Logger, pipelineRunControllerName)
 
@@ -90,14 +91,12 @@ func NewController(
 		DeleteFunc: impl.Enqueue,
 	})
 
-	pipelineRunInfo := apispipeline.NewExpirationController(opt, apispipeline.ExpirationTTL)
-
 	pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: pipelineRunInfo.AddPipelineRun,
-		UpdateFunc: pipelineRunInfo.UpdatePipelineRun,
+		AddFunc:    c.AddPipelineRun,
+		UpdateFunc: c.UpdatePipelineRun,
 	})
 
-	pipelineRunInfo.ListerSynced = pipelineRunInformer.Informer().HasSynced
+	c.ListerSynced = pipelineRunInformer.Informer().HasSynced
 
 	c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
 	taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

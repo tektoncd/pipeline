@@ -19,6 +19,8 @@ package taskrun
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/client-go/util/workqueue"
 	"reflect"
 	"strings"
 	"time"
@@ -71,11 +73,20 @@ type Reconciler struct {
 	tracker           tracker.Interface
 	cache             *entrypoint.Cache
 	timeoutHandler    *reconciler.TimeoutSet
+
+	// The clock for tracking time
+	clock clock.Clock
+
+	// TaskRuns that the controller will check its TTL and attempt to delete when the TTL expires.
+	queue workqueue.RateLimitingInterface
+
+	// ListerSynced returns true if the TaskRun store has been synced at least once.
+	// Added as a member to the struct to allow injection for testing.
+	ListerSynced cache.InformerSynced
 }
 
 // Check that our Reconciler implements controller.Reconciler
 var _ controller.Reconciler = (*Reconciler)(nil)
-
 
 // Reconcile compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the Task Run
@@ -143,7 +154,8 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Errorf("Reconcile error: %v", err.Error())
 		return err
 	}
-	return c.updateStatusLabelsAndAnnotations(tr, original)
+
+	return c.processTaskRunExpired(namespace, name, tr)
 }
 
 func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.TaskRun) error {

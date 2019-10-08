@@ -164,7 +164,7 @@ func TestPipelineRun(t *testing.T) {
 				Name:  "second-param-array",
 				Value: *tb.ArrayOrString("some", "array"),
 			}},
-			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Timeout:              &metav1.Duration{Duration: 1 * time.Hour},
 			ExpirationSecondsTTL: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1alpha1.PipelineResourceBinding{{
 				Name: "some-resource",
@@ -179,7 +179,7 @@ func TestPipelineRun(t *testing.T) {
 			},
 			StartTime:      &metav1.Time{Time: startTime},
 			CompletionTime: &metav1.Time{Time: completedTime},
-			ExpirationTime: &metav1.Time{Time: completedTime.Add(1*time.Hour)},
+			ExpirationTime: &metav1.Time{Time: completedTime.Add(1 * time.Hour)},
 			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
 				"trname": {PipelineTaskName: "task-1"},
 			},
@@ -235,7 +235,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 				Name:  "second-param-array",
 				Value: *tb.ArrayOrString("some", "array"),
 			}},
-			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Timeout:              &metav1.Duration{Duration: 1 * time.Hour},
 			ExpirationSecondsTTL: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1alpha1.PipelineResourceBinding{{
 				Name: "some-resource",
@@ -255,7 +255,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			},
 			StartTime:      &metav1.Time{Time: startTime},
 			CompletionTime: &metav1.Time{Time: completedTime},
-			ExpirationTime: &metav1.Time{Time: completedTime.Add(1*time.Hour)},
+			ExpirationTime: &metav1.Time{Time: completedTime.Add(1 * time.Hour)},
 			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
 				"trname": {PipelineTaskName: "task-1"},
 			},
