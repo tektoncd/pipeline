@@ -107,7 +107,7 @@ type Reconciler struct {
 	// The clock for tracking time
 	clock clock.Clock
 
-	// TaskRuns that the controller will check its TTL and attempt to delete when the TTL expires.
+	// PipelineRuns that the controller will check its TTL and attempt to delete when the TTL expires.
 	queue workqueue.RateLimitingInterface
 
 	// ListerSynced returns true if the TaskRun store has been synced at least once.

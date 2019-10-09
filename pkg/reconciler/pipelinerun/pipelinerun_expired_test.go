@@ -121,17 +121,17 @@ func TestTimeLeft(t *testing.T) {
 		},
 	}
 	for _, tc := range PrTestCases {
-		tr := newPipelineRun(tc.completionTime, tc.ttl)
-		gotPrTimeLeft, gotTrErr := prTimeLeft(tr, tc.since)
+		pr := newPipelineRun(tc.completionTime, tc.ttl)
+		gotPrTimeLeft, gotPrErr := prTimeLeft(pr, tc.since)
 
-		if tc.expectErr != (gotTrErr != nil) {
-			t.Errorf("%s: expected error is %t, got %t, error: %v", tc.name, tc.expectErr, gotTrErr != nil, gotTrErr)
+		if tc.expectErr != (gotPrErr != nil) {
+			t.Errorf("%s: expected error is %t, got %t, error: %v", tc.name, tc.expectErr, gotPrErr != nil, gotPrErr)
 		}
 		if tc.expectErr && len(tc.expectErrStr) == 0 {
 			t.Errorf("%s: invalid test setup; error message must not be empty for error cases", tc.name)
 		}
-		if tc.expectErr && !strings.Contains(gotTrErr.Error(), tc.expectErrStr) {
-			t.Errorf("%s: expected error message contains %q, got %v", tc.name, tc.expectErrStr, gotTrErr)
+		if tc.expectErr && !strings.Contains(gotPrErr.Error(), tc.expectErrStr) {
+			t.Errorf("%s: expected error message contains %q, got %v", tc.name, tc.expectErrStr, gotPrErr)
 		}
 		if !tc.expectErr {
 			if *gotPrTimeLeft != *tc.expectedTimeLeft {
