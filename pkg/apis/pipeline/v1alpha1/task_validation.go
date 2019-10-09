@@ -109,7 +109,10 @@ func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	vols := map[string]struct{}{}
 	for _, v := range volumes {
 		if _, ok := vols[v.Name]; ok {
-			return apis.ErrMultipleOneOf("name")
+			return &apis.FieldError{
+				Message: fmt.Sprintf("multiple volumes with same name %q", v.Name),
+				Paths:   []string{"name"},
+			}
 		}
 		vols[v.Name] = struct{}{}
 	}
