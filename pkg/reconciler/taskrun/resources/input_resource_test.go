@@ -1122,16 +1122,20 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "storage1",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "storage1",
+							},
+							Name:  "workspace",
 						},
-						Name:  "workspace",
 						Paths: []string{"prev-task-path"},
 					}, {
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "storage2",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "storage2",
+							},
+							Name:  "workspace2",
 						},
-						Name:  "workspace2",
 						Paths: []string{"prev-task-path2"},
 					}},
 				},
