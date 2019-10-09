@@ -119,7 +119,7 @@ function run_tests() {
 
 function run_yaml_tests() {
   echo ">> Starting tests for the resource ${1}"
-  create_resources ${1}
+  create_resources ${1} || fail_test "Could not create ${1} from the examples"
   if ! run_tests ${1}; then
     return 1
   fi
