@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-output-pipelinerun
 spec:
   type: git
   params:
@@ -102,4 +102,4 @@ spec:
   resources:
   - name: source-repo
     resourceRef:
-      name: skaffold-git
+      name: skaffold-git-output-pipelinerun

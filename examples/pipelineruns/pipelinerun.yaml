@@ -16,7 +16,7 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: default-cluster-admin
+  generateName: default-cluster-admin-
 subjects:
   - kind: ServiceAccount
     name: default
@@ -29,7 +29,7 @@ roleRef:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-image-leeroy-web
+  name: skaffold-image-leeroy-web-pipelinerun
 spec:
   type: image
   params:
@@ -39,7 +39,7 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-pipelinerun
 spec:
   type: git
   params:
@@ -250,10 +250,10 @@ spec:
   resources:
   - name: source-repo
     resourceRef:
-      name: skaffold-git
+      name: skaffold-git-pipelinerun
   - name: web-image
     resourceRef:
-      name: skaffold-image-leeroy-web
+      name: skaffold-image-leeroy-web-pipelinerun
   - name: app-image
     resourceRef:
       name: skaffold-image-leeroy-app
