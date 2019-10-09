@@ -69,20 +69,6 @@ var (
 		Name:  "HOME",
 		Value: homeDir,
 	}}
-	implicitVolumeMounts = []corev1.VolumeMount{{
-		Name:      "workspace",
-		MountPath: workspaceDir,
-	}, {
-		Name:      "home",
-		MountPath: homeDir,
-	}}
-	implicitVolumes = []corev1.Volume{{
-		Name:         "workspace",
-		VolumeSource: emptyVolumeSource,
-	}, {
-		Name:         "home",
-		VolumeSource: emptyVolumeSource,
-	}}
 
 	zeroQty = resource.MustParse("0")
 
@@ -115,7 +101,28 @@ const (
 	sidecarPrefix        = "sidecar-"
 )
 
-func makeCredentialInitializer(credsImage, serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*v1alpha1.Step, []corev1.Volume, error) {
+// implicitVolumesAndVolumeMounts returns implicit Volumes and VolumeMounts for
+// workspace and home volumes, with a generated name.
+func implicitVolumesAndVolumeMounts() ([]corev1.Volume, []corev1.VolumeMount) {
+	workspaceVolumeName := names.SimpleNameGenerator.RestrictLength("workspace-")
+	homeVolumeName := names.SimpleNameGenerator.RestrictLength("home-")
+	return []corev1.Volume{{
+			Name:         workspaceVolumeName,
+			VolumeSource: emptyVolumeSource,
+		}, {
+			Name:         homeVolumeName,
+			VolumeSource: emptyVolumeSource,
+		}},
+		[]corev1.VolumeMount{{
+			Name:      workspaceVolumeName,
+			MountPath: workspaceDir,
+		}, {
+			Name:      homeVolumeName,
+			MountPath: homeDir,
+		}}
+}
+
+func makeCredentialInitializer(credsImage, serviceAccountName, namespace string, implicitVolumeMounts []corev1.VolumeMount, kubeclient kubernetes.Interface) (*v1alpha1.Step, []corev1.Volume, error) {
 	if serviceAccountName == "" {
 		serviceAccountName = "default"
 	}
@@ -198,7 +205,7 @@ func makeWorkingDirScript(workingDirs map[string]bool) string {
 	return script
 }
 
-func makeWorkingDirInitializer(shellImage string, steps []v1alpha1.Step) *v1alpha1.Step {
+func makeWorkingDirInitializer(shellImage string, steps []v1alpha1.Step, implicitVolumeMounts []corev1.VolumeMount) *v1alpha1.Step {
 	workingDirs := make(map[string]bool)
 	for _, step := range steps {
 		workingDirs[step.WorkingDir] = true
@@ -238,14 +245,16 @@ func TryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp GetPod) (*corev1.Pod, er
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
 func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
-	cred, secrets, err := makeCredentialInitializer(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, kubeclient)
+	implicitVolumes, implicitVolumeMounts := implicitVolumesAndVolumeMounts()
+
+	cred, secrets, err := makeCredentialInitializer(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, implicitVolumeMounts, kubeclient)
 	if err != nil {
 		return nil, err
 	}
 	initSteps := []v1alpha1.Step{*cred}
 	var podSteps []v1alpha1.Step
 
-	if workingDir := makeWorkingDirInitializer(images.ShellImage, taskSpec.Steps); workingDir != nil {
+	if workingDir := makeWorkingDirInitializer(images.ShellImage, taskSpec.Steps, implicitVolumeMounts); workingDir != nil {
 		initSteps = append(initSteps, *workingDir)
 	}
 

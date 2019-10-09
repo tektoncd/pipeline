@@ -41,6 +41,8 @@ var (
 	})
 	credsImage = "override-with-creds:latest"
 	shellImage = "busybox"
+
+	implicitVolumes, implicitVolumeMounts = implicitVolumesAndVolumeMounts()
 )
 
 func TestTryGetPod(t *testing.T) {
