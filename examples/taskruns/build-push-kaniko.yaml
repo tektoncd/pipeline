@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-image-leeroy-web
+  name: skaffold-image-leeroy-web-build-push-kaniko
 spec:
   type: image
   params:
@@ -11,7 +11,7 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-build-push-kaniko
 spec:
   type: git
   params:
@@ -54,7 +54,7 @@ spec:
     - --dockerfile=$(inputs.params.pathToDockerFile)
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
-    - --oci-layout-path=/builder/home/image-outputs/builtImage    
+    - --oci-layout-path=/builder/home/image-outputs/builtImage
   sidecars:
     - image: registry
       name: registry
@@ -70,7 +70,7 @@ spec:
     resources:
     - name: workspace
       resourceRef:
-        name: skaffold-git
+        name: skaffold-git-build-push-kaniko
     params:
     - name: pathToDockerFile
       value: Dockerfile
@@ -80,4 +80,4 @@ spec:
     resources:
     - name: builtImage
       resourceRef:
-        name: skaffold-image-leeroy-web
+        name: skaffold-image-leeroy-web-build-push-kaniko

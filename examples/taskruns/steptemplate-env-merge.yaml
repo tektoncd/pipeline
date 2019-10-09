@@ -19,11 +19,14 @@ spec:
       params:
       - name: FOO
         description: FOO variable
+        type: string
       - name: BAR
         description: BAR variable
+        type: string
       - name: FOOBAR
         description: FOOBAR variable
         default: foobar
+        type: string
     steps:
       # Test the environment variables are set in the task
       - name: foo
