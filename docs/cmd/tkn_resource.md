@@ -20,6 +20,7 @@ Manage pipeline resources
 ### SEE ALSO
 
 * [tkn](tkn.md)	 - CLI for tekton pipelines
+* [tkn resource create](tkn_resource_create.md)	 - Creates pipeline resource
 * [tkn resource delete](tkn_resource_delete.md)	 - Delete a pipeline resource in a namespace
 * [tkn resource describe](tkn_resource_describe.md)	 - Describes a pipeline resource in a namespace
 * [tkn resource list](tkn_resource_list.md)	 - Lists pipeline resources in a namespace

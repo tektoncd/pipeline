@@ -1,6 +1,6 @@
 ## tkn resource create
 
-Create a pipeline resource in a namespace
+Creates pipeline resource
 
 ### Usage
 
@@ -10,20 +10,20 @@ tkn resource create
 
 ### Synopsis
 
-Create a pipeline resource in a namespace
+Creates pipeline resource
 
 ### Examples
 
 
-# Create a PipelineResource in namespace 'bar'
-tkn resource create -n bar
+  # creates new resource as per the given input
+    tkn resource create -n namespace
 
+   
 
 ### Options
 
 ```
-  -h, --help                          help for create
- 
+  -h, --help   help for create
 ```
 
 ### Options inherited from parent commands
@@ -31,6 +31,7 @@ tkn resource create -n bar
 ```
   -k, --kubeconfig string   kubectl config file (default: $HOME/.kube/config)
   -n, --namespace string    namespace to use (default: from $KUBECONFIG)
+  -C, --nocolour            disable colouring (default: false)
 ```
 
 ### SEE ALSO
