@@ -28,6 +28,11 @@ import (
 func TestPipelineResourceList(t *testing.T) {
 
 	pres := []*v1alpha1.PipelineResource{
+		tb.PipelineResource("test", "test-ns-1",
+			tb.PipelineResourceSpec("git",
+				tb.PipelineResourceSpecParam("url", "git@github.com:tektoncd/cli-new.git"),
+			),
+		),
 		tb.PipelineResource("test-1", "test-ns-1",
 			tb.PipelineResourceSpec("image",
 				tb.PipelineResourceSpecParam("URL", "quey.io/tekton/controller"),
@@ -60,8 +65,9 @@ func TestPipelineResourceList(t *testing.T) {
 			args:    []string{"list", "-n", "test-ns-1"},
 			expected: []string{
 				"NAME     TYPE    DETAILS",
-				"test-1   image   URL: quey.io/tekton/controller",
+				"test     git     url: git@github.com:tektoncd/cli-new.git",
 				"test-2   git     url: git@github.com:tektoncd/cli.git",
+				"test-1   image   URL: quey.io/tekton/controller",
 				"test-3   image   ---",
 				"",
 			},
@@ -79,10 +85,10 @@ func TestPipelineResourceList(t *testing.T) {
 		{
 			name:    "Single Pipeline Resource by type",
 			command: command(t, pres),
-			args:    []string{"list", "-n", "test-ns-1", "-t", "git"},
+			args:    []string{"list", "-n", "test-ns-2", "-t", "image"},
 			expected: []string{
-				"NAME     TYPE   DETAILS",
-				"test-2   git    url: git@github.com:tektoncd/cli.git",
+				"NAME     TYPE    DETAILS",
+				"test-4   image   URL: quey.io/tekton/webhook",
 				"",
 			},
 		},
@@ -111,8 +117,9 @@ func TestPipelineResourceList(t *testing.T) {
 			command: command(t, pres),
 			args:    []string{"list", "-n", "test-ns-1", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
-				"test-1",
+				"test",
 				"test-2",
+				"test-1",
 				"test-3",
 				"",
 			},

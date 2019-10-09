@@ -16,6 +16,7 @@ package task
 
 import (
 	"fmt"
+	"sort"
 	"text/tabwriter"
 	"text/template"
 
@@ -138,6 +139,15 @@ func printTaskDescription(s *cli.Stream, p cli.Params, tname string) error {
 		fmt.Fprintf(s.Err, "failed to get task %s\n", tname)
 		return err
 	}
+
+	if task.Spec.Inputs != nil {
+		task.Spec.Inputs.Resources = sortResourcesByTypeAndName(task.Spec.Inputs.Resources)
+	}
+
+	if task.Spec.Outputs != nil {
+		task.Spec.Outputs.Resources = sortResourcesByTypeAndName(task.Spec.Outputs.Resources)
+	}
+
 	opts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tekton.dev/task=%s", tname),
 	}
@@ -171,4 +181,21 @@ func printTaskDescription(s *cli.Stream, p cli.Params, tname string) error {
 		return err
 	}
 	return nil
+}
+
+// this will sort the Task Resource by Type and then by Name
+func sortResourcesByTypeAndName(tres []v1alpha1.TaskResource) []v1alpha1.TaskResource {
+	sort.Slice(tres, func(i, j int) bool {
+		if tres[j].Type < tres[i].Type {
+			return false
+		}
+
+		if tres[j].Type > tres[i].Type {
+			return true
+		}
+
+		return tres[j].Name > tres[i].Name
+	})
+
+	return tres
 }

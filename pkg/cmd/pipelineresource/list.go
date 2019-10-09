@@ -17,6 +17,7 @@ package pipelineresource
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -25,9 +26,8 @@ import (
 	"github.com/tektoncd/cli/pkg/printer"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -122,6 +122,10 @@ func list(client versioned.Interface, namespace string, resourceType string) (*v
 		pres.Items = filterByType(pres.Items, resourceType)
 	}
 
+	if len(pres.Items) > 0 {
+		pres.Items = sortResourcesByTypeAndName(pres.Items)
+	}
+
 	// NOTE: this is required for -o json|yaml to work properly since
 	// tektoncd go client fails to set these; probably a bug
 	pres.GetObjectKind().SetGroupVersionKind(
@@ -174,4 +178,21 @@ func filterByType(resources []v1alpha1.PipelineResource, resourceType string) (r
 		}
 	}
 	return
+}
+
+// this will sort the Pipeline Resource by Type and then by Name
+func sortResourcesByTypeAndName(pres []v1alpha1.PipelineResource) []v1alpha1.PipelineResource {
+	sort.Slice(pres, func(i, j int) bool {
+		if pres[j].Spec.Type < pres[i].Spec.Type {
+			return false
+		}
+
+		if pres[j].Spec.Type > pres[i].Spec.Type {
+			return true
+		}
+
+		return pres[j].Name > pres[i].Name
+	})
+
+	return pres
 }

@@ -17,6 +17,7 @@ package pipeline
 import (
 	"fmt"
 	"io"
+	"sort"
 	"text/tabwriter"
 	"text/template"
 
@@ -94,6 +95,10 @@ func printPipelineDescription(out io.Writer, p cli.Params, pname string) error {
 		return err
 	}
 
+	if len(pipeline.Spec.Resources) > 0 {
+		pipeline.Spec.Resources = sortResourcesByTypeAndName(pipeline.Spec.Resources)
+	}
+
 	opts := metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("tekton.dev/pipeline=%s", pname),
 	}
@@ -128,4 +133,21 @@ func printPipelineDescription(out io.Writer, p cli.Params, pname string) error {
 	}
 
 	return w.Flush()
+}
+
+// this will sort the Resource by Type and then by Name
+func sortResourcesByTypeAndName(pres []v1alpha1.PipelineDeclaredResource) []v1alpha1.PipelineDeclaredResource {
+	sort.Slice(pres, func(i, j int) bool {
+		if pres[j].Type < pres[i].Type {
+			return false
+		}
+
+		if pres[j].Type > pres[i].Type {
+			return true
+		}
+
+		return pres[j].Name > pres[i].Name
+	})
+
+	return pres
 }

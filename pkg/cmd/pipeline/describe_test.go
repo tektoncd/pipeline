@@ -276,3 +276,80 @@ func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 		t.Errorf("Unexpected output mismatch: \n%s\n", d)
 	}
 }
+
+func TestPipelinesDescribe_with_multiple_resource_task_run(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline("pipeline", "ns",
+				// created  5 minutes back
+				cb.PipelineCreationTimestamp(clock.Now().Add(-5*time.Minute)),
+				tb.PipelineSpec(
+					tb.PipelineTask("task", "taskref",
+						tb.RunAfter("one", "two"),
+					),
+					tb.PipelineDeclaredResource("name", v1alpha1.PipelineResourceTypeGit),
+					tb.PipelineDeclaredResource("code", v1alpha1.PipelineResourceTypeGit),
+					tb.PipelineDeclaredResource("code-image", v1alpha1.PipelineResourceTypeImage),
+					tb.PipelineDeclaredResource("artifact-image", v1alpha1.PipelineResourceTypeImage),
+					tb.PipelineDeclaredResource("repo", v1alpha1.PipelineResourceTypeGit),
+				),
+			),
+		},
+		PipelineRuns: []*v1alpha1.PipelineRun{
+
+			tb.PipelineRun("pipeline-run-1", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunSpec("pipeline"),
+				tb.PipelineRunStatus(
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					// pipeline run starts now
+					tb.PipelineRunStartTime(clock.Now()),
+					// takes 10 minutes to complete
+					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
+				),
+			),
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	pipeline := Command(p)
+
+	// -5 : pipeline created
+	//  0 : pipeline run - 1 started
+	// 10 : pipeline run - 1 finished
+	// 15 : <<< now run pipeline ls << - advance clock to this point
+
+	clock.Advance(15 * time.Minute)
+	got, err := test.ExecuteCommand(pipeline, "desc", "-n", "ns", "pipeline")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	expected := []string{
+		"Name:   pipeline",
+		"\nResources",
+		"NAME             TYPE",
+		"code             git",
+		"name             git",
+		"repo             git",
+		"artifact-image   image",
+		"code-image       image\n",
+		"Tasks",
+		"NAME   TASKREF   RUNAFTER",
+		"task   taskref   [one two]\n",
+		"Pipelineruns",
+		"NAME             STARTED          DURATION     STATUS",
+		"pipeline-run-1   15 minutes ago   10 minutes   Succeeded\n",
+	}
+
+	text := strings.Join(expected, "\n")
+	if d := cmp.Diff(text, got); d != "" {
+		t.Errorf("Unexpected output mismatch: \n%s\n", d)
+	}
+}

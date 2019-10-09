@@ -170,11 +170,13 @@ func TestTaskDescribe_Full(t *testing.T) {
 					tb.TaskInputs(
 						tb.InputsResource("my-repo", v1alpha1.PipelineResourceTypeGit),
 						tb.InputsResource("my-image", v1alpha1.PipelineResourceTypeImage),
+						tb.InputsResource("source-repo", v1alpha1.PipelineResourceTypeGit),
 						tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString),
 						tb.InputsParamSpec("print", v1alpha1.ParamTypeString),
 					),
 					tb.TaskOutputs(
 						tb.OutputsResource("code-image", v1alpha1.PipelineResourceTypeImage),
+						tb.OutputsResource("artifact-image", v1alpha1.PipelineResourceTypeImage),
 					),
 					tb.Step("hello", "busybox"),
 					tb.Step("exit", "busybox"),
@@ -220,13 +222,15 @@ func TestTaskDescribe_Full(t *testing.T) {
 Namespace:   ns
 
 Input Resources
-NAME       TYPE
-my-repo    git
-my-image   image
+NAME          TYPE
+my-repo       git
+source-repo   git
+my-image      image
 
 Output Resources
-NAME         TYPE
-code-image   image
+NAME             TYPE
+artifact-image   image
+code-image       image
 
 Params
 NAME    TYPE
