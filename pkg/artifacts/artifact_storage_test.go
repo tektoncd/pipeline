@@ -311,7 +311,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		},
 		pipelinerun: pipelinerun,
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
-			Location: "s3://fake-bucket",
+			Location:      "s3://fake-bucket",
 			BashNoopImage: "override-with-bash-noop:latest",
 			GsutilImage:   "override-with-gsutil-image:latest",
 			Secrets: []v1alpha1.SecretParam{{
