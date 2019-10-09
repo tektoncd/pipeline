@@ -164,8 +164,13 @@ type PipelineResourceBinding struct {
 
 // PipelineResourceResult used to export the image name and digest as json
 type PipelineResourceResult struct {
+	// Name and Digest are deprecated.
 	Name   string `json:"name"`
 	Digest string `json:"digest"`
+	// These will replace Name and Digest (https://github.com/tektoncd/pipeline/issues/1392)
+	Key         string              `json:"key"`
+	Value       string              `json:"value"`
+	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

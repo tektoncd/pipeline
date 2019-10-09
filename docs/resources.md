@@ -194,6 +194,23 @@ spec:
       emptyDir: {}
 ```
 
+### Resource Status
+
+When resources are bound inside a TaskRun, they can include extra information in the TaskRun Status.ResourcesResult field.
+This information can be useful for auditing the exact resources used by a TaskRun later.
+Currently the only resource that uses this mechanism is the Image resource, which includes the exact digest
+of an image built by a TaskRun and declared as an output.
+
+For an example of what this output looks like:
+
+```yaml
+resourcesResult:
+- key: digest
+  value: sha256:a08412a4164b85ae521b0c00cf328e3aab30ba94a526821367534b81e51cb1cb
+  resourceRef:
+    name: skaffold-image-leeroy-web
+```
+
 ## Resource Types
 
 The following `PipelineResources` are currently supported:

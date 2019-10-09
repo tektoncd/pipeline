@@ -43,13 +43,18 @@ spec:
       type: image
   steps:
   - name: build-and-push
-    image: gcr.io/kaniko-project/executor:v0.9.0
+    image: gcr.io/kaniko-project/executor:v0.13.0
+    # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
+    env:
+    - name: "DOCKER_CONFIG"
+      value: "/builder/home/.docker/"
     command:
     - /kaniko/executor
     args:
     - --dockerfile=$(inputs.params.pathToDockerFile)
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
+    - --oci-layout-path=/builder/home/image-outputs/builtImage    
   sidecars:
     - image: registry
       name: registry
