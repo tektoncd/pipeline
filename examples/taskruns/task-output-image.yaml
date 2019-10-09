@@ -52,7 +52,7 @@ spec:
     resources:
     - name: builtImage
       type: image
-      outputImageDir: /workspace/sourcerepo
+      targetPath: /workspace/sourcerepo
   steps:
   - name: build-and-push
     image: busybox

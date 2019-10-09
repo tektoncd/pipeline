@@ -217,26 +217,6 @@ func makeWorkingDirInitializer(bashNoopImage string, steps []v1alpha1.Step) *v1a
 	return nil
 }
 
-// initOutputResourcesDefaultDir checks if there are any output image resources expecting a default path
-// and creates an init container to create that folder
-func initOutputResourcesDefaultDir(bashNoopImage string, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec) []v1alpha1.Step {
-	var makeDirSteps []v1alpha1.Step
-	if len(taskRun.Spec.Outputs.Resources) > 0 {
-		for _, r := range taskRun.Spec.Outputs.Resources {
-			for _, o := range taskSpec.Outputs.Resources {
-				if o.Name == r.Name {
-					if strings.HasPrefix(o.OutputImageDir, v1alpha1.TaskOutputImageDefaultDir) {
-						s := v1alpha1.CreateDirStep(bashNoopImage, "default-image-output", fmt.Sprintf("%s/%s", v1alpha1.TaskOutputImageDefaultDir, r.Name))
-						s.VolumeMounts = append(s.VolumeMounts, implicitVolumeMounts...)
-						makeDirSteps = append(makeDirSteps, s)
-					}
-				}
-			}
-		}
-	}
-	return makeDirSteps
-}
-
 // GetPod returns the Pod for the given pod name
 type GetPod func(string, metav1.GetOptions) (*corev1.Pod, error)
 
@@ -267,8 +247,6 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	if workingDir := makeWorkingDirInitializer(images.BashNoopImage, taskSpec.Steps); workingDir != nil {
 		initSteps = append(initSteps, *workingDir)
 	}
-
-	initSteps = append(initSteps, initOutputResourcesDefaultDir(images.BashNoopImage, taskRun, taskSpec)...)
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 

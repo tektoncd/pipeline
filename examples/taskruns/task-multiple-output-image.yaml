@@ -6,7 +6,7 @@ spec:
   type: image
   params:
   - name: url
-    value: gcr.io/christiewilson-catfactory/leeroy-web # Replace this URL with $KO_DOCKER_REPO
+    value: gcr.io/dlorenc-vmtest2/leeroy-web # Replace this URL with $KO_DOCKER_REPO
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
@@ -73,6 +73,7 @@ spec:
     - -ce
     - |
       set -ex
+      mkdir -p /builder/home/image-outputs/builtImage1
       cat <<EOF > /builder/home/image-outputs/builtImage1/index.json
       {
         "schemaVersion": 2,
@@ -93,6 +94,7 @@ spec:
     - -ce
     - |
       set -e
+      mkdir -p /builder/home/image-outputs/builtImage2
       cat <<EOF > /builder/home/image-outputs/builtImage2/index.json
       {
         "schemaVersion": 2,
