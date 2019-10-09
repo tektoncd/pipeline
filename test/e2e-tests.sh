@@ -65,7 +65,8 @@ must_fail  "logs of taskrun before installing crd" tkn taskrun logs foo
 install_pipeline_crd
 
 # listing objects after CRD is created should not fail
-run_test  "list pipeelinerun for pipeline foo" tkn taskrun list foo
+kubectl config set-context $(kubectl config current-context) --namespace=default
+run_test  "list pipelinerun for pipeline foo" tkn pipelinerun list foo
 run_test  "list pipelinerun"  tkn pipelinerun list
 run_test  "list pipelines" tkn pipeline list
 run_test  "list task" tkn task list
