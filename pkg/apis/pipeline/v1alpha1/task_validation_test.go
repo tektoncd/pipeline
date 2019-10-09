@@ -215,6 +215,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		Inputs  *v1alpha1.Inputs
 		Outputs *v1alpha1.Outputs
 		Steps   []v1alpha1.Step
+		Volumes []corev1.Volume
 	}
 	tests := []struct {
 		name          string
@@ -597,13 +598,29 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: `non-existent variable in "$(inputs.params.foo) && $(inputs.params.inexistent)" for step arg[0]`,
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
-	}}
+	},
+		{
+			name: "Multiple volumes with same name",
+			fields: fields{
+				Steps: validSteps,
+				Volumes: []corev1.Volume{{
+					Name: "workspace",
+				}, {
+					Name: "workspace",
+				}},
+			},
+			expectedError: apis.FieldError{
+				Message: `multiple volumes with same name "workspace"`,
+				Paths:   []string{"volumes.name"},
+			},
+		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1alpha1.TaskSpec{
 				Inputs:  tt.fields.Inputs,
 				Outputs: tt.fields.Outputs,
 				Steps:   tt.fields.Steps,
+				Volumes: tt.fields.Volumes,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
