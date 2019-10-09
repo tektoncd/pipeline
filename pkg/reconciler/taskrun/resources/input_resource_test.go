@@ -1126,7 +1126,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 							ResourceRef: v1alpha1.PipelineResourceRef{
 								Name: "storage1",
 							},
-							Name:  "workspace",
+							Name: "workspace",
 						},
 						Paths: []string{"prev-task-path"},
 					}, {
@@ -1134,7 +1134,7 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 							ResourceRef: v1alpha1.PipelineResourceRef{
 								Name: "storage2",
 							},
-							Name:  "workspace2",
+							Name: "workspace2",
 						},
 						Paths: []string{"prev-task-path2"},
 					}},
