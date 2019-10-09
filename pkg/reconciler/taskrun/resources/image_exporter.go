@@ -18,6 +18,7 @@ package resources
 
 import (
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -54,10 +55,12 @@ func AddOutputImageDigestExporter(
 				}
 				for _, o := range taskSpec.Outputs.Resources {
 					if o.Name == boundResource.Name {
-						if o.OutputImageDir != "" {
-							imageResource.OutputImageDir = o.OutputImageDir
-							break
+						if o.TargetPath == "" {
+							imageResource.OutputImageDir = filepath.Join(outputDir, boundResource.Name)
+						} else {
+							imageResource.OutputImageDir = o.TargetPath
 						}
+						break
 					}
 				}
 				output = append(output, imageResource)

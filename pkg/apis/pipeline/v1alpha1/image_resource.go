@@ -84,11 +84,6 @@ func (s *ImageResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifi
 	return &InternalTaskModifier{}, nil
 }
 
-// GetOutputImageDir return the path to get the index.json file
-func (s *ImageResource) GetOutputImageDir() string {
-	return s.OutputImageDir
-}
-
 func (s ImageResource) String() string {
 	// the String() func implements the Stringer interface, and therefore
 	// cannot return an error

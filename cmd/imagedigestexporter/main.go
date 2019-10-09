@@ -19,6 +19,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"path/filepath"
 
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"knative.dev/pkg/logging"
@@ -32,11 +33,15 @@ var (
 	terminationMessagePath = flag.String("terminationMessagePath", "/dev/termination-log", "Location of file containing termination message")
 )
 
+var (
+	legacyOutputPath = "/builder/home/image-outputs"
+)
+
 /* The input of this go program will be a JSON string with all the output PipelineResources of type
 Image, which will include the path to where the index.json file will be located. The program will
 read the related index.json file(s) and log another JSON string including the name of the image resource
 and the digests.
-The input is an array of ImageResource, ex: [{"name":"srcimg1","type":"image","url":"gcr.io/some-image-1","digest":"","OutputImageDir":"/path/image"}]
+The input is an array of ImageResource, ex: [{"name":"srcimg1","type":"image","url":"gcr.io/some-image-1","digest":""}]
 The output is an array of PipelineResourceResult, ex: [{"name":"image","digest":"sha256:eed29..660"}]
 */
 func main() {
@@ -55,8 +60,15 @@ func main() {
 		if err != nil {
 			// if this image doesn't have a builder that supports index.json file,
 			// then it will be skipped
+			legacyPath := filepath.Join(legacyOutputPath, imageResource.Name)
 			logger.Infof("ImageResource %s doesn't have an index.json file: %s", imageResource.Name, err)
-			continue
+			logger.Infof("Checking legacy image output path: %s", legacyPath)
+			ii, err = layout.ImageIndexFromPath(legacyPath)
+			if err != nil {
+				logger.Infof("No index.json found for: %s", imageResource.Name)
+				continue
+			}
+			logger.Warnf("index.json found at legacy path: %s. Support for this location will be removed in a future release.", legacyPath)
 		}
 		digest, err := GetDigest(ii)
 		if err != nil {

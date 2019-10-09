@@ -769,7 +769,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("step-image-digest-exporter-9l9zj", "override-with-imagedigest-exporter-image:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/builder/tools/3", "-post_file", "/builder/tools/4", "-entrypoint", "/ko-app/imagedigestexporter", "--",
-						"-images", "[{\"name\":\"image-resource\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"\"}]"),
+						"-images", "[{\"name\":\"image-resource\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/myimage\"}]"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
 					tb.VolumeMount("tools", "/builder/tools"),

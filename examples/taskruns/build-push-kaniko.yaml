@@ -54,7 +54,7 @@ spec:
     - --dockerfile=$(inputs.params.pathToDockerFile)
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
-    - --oci-layout-path=/builder/home/image-outputs/builtImage
+    - --oci-layout-path=$(inputs.resources.builtImage.path)
   sidecars:
     - image: registry
       name: registry

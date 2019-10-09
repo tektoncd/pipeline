@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"fmt"
 )
 
 func (t *Task) SetDefaults(ctx context.Context) {
@@ -27,15 +26,6 @@ func (t *Task) SetDefaults(ctx context.Context) {
 
 // SetDefaults set any defaults for the task spec
 func (ts *TaskSpec) SetDefaults(ctx context.Context) {
-	if ts.Outputs != nil && len(ts.Outputs.Resources) > 0 {
-		for i, o := range ts.Outputs.Resources {
-			if o.Type == PipelineResourceTypeImage {
-				if o.OutputImageDir == "" {
-					ts.Outputs.Resources[i].OutputImageDir = fmt.Sprintf("%s/%s", TaskOutputImageDefaultDir, o.Name)
-				}
-			}
-		}
-	}
 	if ts.Inputs != nil {
 		ts.Inputs.SetDefaults(ctx)
 	}

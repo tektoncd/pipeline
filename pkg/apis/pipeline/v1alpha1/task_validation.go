@@ -210,11 +210,6 @@ func validateResourceVariables(steps []Step, inputs *Inputs, outputs *Outputs) *
 	if outputs != nil {
 		for _, r := range outputs.Resources {
 			resourceNames[r.Name] = struct{}{}
-			if r.Type == PipelineResourceTypeImage {
-				if r.OutputImageDir == "" {
-					return apis.ErrMissingField("OutputImageDir")
-				}
-			}
 		}
 	}
 	return validateVariables(steps, "resources", resourceNames)

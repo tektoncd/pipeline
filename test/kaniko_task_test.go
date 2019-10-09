@@ -68,7 +68,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 			"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 			fmt.Sprintf("--destination=%s", repo),
 			"--context=/workspace/gitsource",
-			"--oci-layout-path=/builder/home/image-outputs/builtImage",
+			"--oci-layout-path=/workspace/output/builtImage",
 		),
 	}
 	if withSecretConfig {
