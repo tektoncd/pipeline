@@ -130,12 +130,20 @@ function markdown_build_tests() {
 }
 
 # Default build test runner that:
+# * check go code style with gofmt
 # * check markdown files
 # * `go build` on the entire repo
 # * run `/hack/verify-codegen.sh` (if it exists)
 # * check licenses in all go packages
 function default_build_test_runner() {
   local failed=0
+  # Check go code style with gofmt; exclude vendor/ files
+  subheader "Checking go code style with gofmt"
+  gofmt_out=$(gofmt -d $(find * -name '*.go' ! -path 'vendor/*'))
+  if [[ -n "$gofmt_out" ]]; then
+    failed=1
+  fi
+  echo "$gofmt_out"
   # Perform markdown build checks first
   markdown_build_tests || failed=1
   # For documentation PRs, just check the md files

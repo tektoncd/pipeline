@@ -310,23 +310,6 @@ function report_go_test() {
   return ${failed}
 }
 
-# Install the latest stable Tekton/serving in the current cluster.
-function start_latest_tekton_serving() {
-  header "Starting Tekton Serving"
-  subheader "Installing Istio"
-  echo "Running Istio CRD from ${TEKTON_ISTIO_CRD_YAML}"
-  kubectl apply -f ${TEKTON_ISTIO_CRD_YAML} || return 1
-  wait_until_batch_job_complete istio-system || return 1
-  echo "Installing Istio from ${TEKTON_ISTIO_YAML}"
-  kubectl apply -f ${TEKTON_ISTIO_YAML} || return 1
-  wait_until_pods_running istio-system || return 1
-  kubectl label namespace default istio-injection=enabled || return 1
-  subheader "Installing Tekton Serving"
-  echo "Installing Serving from ${TEKTON_SERVING_RELEASE}"
-  kubectl apply -f ${TEKTON_SERVING_RELEASE} || return 1
-  wait_until_pods_running tekton-serving || return 1
-}
-
 # Run a go tool, installing it first if necessary.
 # Parameters: $1 - tool package/dir for go get/install.
 #             $2 - tool to run.

@@ -242,7 +242,7 @@ github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pi
 github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task
 github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun
 github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/factory
-# github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a
+# github.com/tektoncd/plumbing v0.0.0-20191008065817-933f0722e02c
 github.com/tektoncd/plumbing/scripts
 # go.opencensus.io v0.21.0
 go.opencensus.io/trace

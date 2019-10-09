@@ -49,7 +49,7 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/stretchr/testify v1.4.0
 	github.com/tektoncd/pipeline v0.7.0
-	github.com/tektoncd/plumbing v0.0.0-20190604151109-373083123d6a
+	github.com/tektoncd/plumbing v0.0.0-20191008065817-933f0722e02c
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v0.0.0-20180814183419-67bc79d13d15 // indirect
