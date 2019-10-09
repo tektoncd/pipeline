@@ -70,7 +70,7 @@ func TestPipelineRun(t *testing.T) {
 
 			for _, res := range getFanInFanOutGitResources(namespace) {
 				if _, err := c.PipelineResourceClient.Create(res); err != nil {
-					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
+					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 				}
 			}
 

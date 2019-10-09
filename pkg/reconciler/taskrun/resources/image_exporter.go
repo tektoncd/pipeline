@@ -84,8 +84,7 @@ func AddOutputImageDigestExporter(
 
 // UpdateTaskRunStatusWithResourceResult if there is an update to the outout image resource, add to taskrun status result
 func UpdateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
-	err := json.Unmarshal(logContent, &taskRun.Status.ResourcesResult)
-	if err != nil {
+	if err := json.Unmarshal(logContent, &taskRun.Status.ResourcesResult); err != nil {
 		return xerrors.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
 	}
 	return nil
