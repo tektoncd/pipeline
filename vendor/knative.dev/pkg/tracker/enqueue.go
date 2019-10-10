@@ -80,7 +80,7 @@ func (i *impl) Track(ref corev1.ObjectReference, obj interface{}) error {
 	}
 	if len(fieldErrors) > 0 {
 		sort.Strings(fieldErrors)
-		return fmt.Errorf("Invalid ObjectReference:\n%s", strings.Join(fieldErrors, "\n"))
+		return fmt.Errorf("invalid ObjectReference:\n%s", strings.Join(fieldErrors, "\n"))
 	}
 
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)

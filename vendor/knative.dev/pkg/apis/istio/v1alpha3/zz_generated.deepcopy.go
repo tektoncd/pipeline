@@ -200,6 +200,11 @@ func (in *DestinationRuleSpec) DeepCopyInto(out *DestinationRuleSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.ExportTo != nil {
+		in, out := &in.ExportTo, &out.ExportTo
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -1144,6 +1149,11 @@ func (in *VirtualServiceSpec) DeepCopyInto(out *VirtualServiceSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.ExportTo != nil {
+		in, out := &in.ExportTo, &out.ExportTo
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 	return
 }

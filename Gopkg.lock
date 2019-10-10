@@ -1265,25 +1265,27 @@
   revision = "5ce18048c08b19437ac72fbdfeb4bf4a8d17c862"
 
 [[projects]]
-  digest = "1:2f5f32fe8d98f7936a79e575fda9c055b97e52dd78ef2d0b98f4b688383a0831"
+  digest = "1:0dca180a6449f2cd457f8efea003336352c5a412212fce072cad9661d5a71b61"
   name = "knative.dev/pkg"
   packages = [
     "apis",
     "apis/duck",
+    "apis/duck/v1",
     "apis/duck/v1beta1",
+    "apis/v1alpha1",
     "changeset",
+    "client/injection/kube/client",
+    "client/injection/kube/client/fake",
+    "client/injection/kube/informers/core/v1/pod",
+    "client/injection/kube/informers/core/v1/pod/fake",
+    "client/injection/kube/informers/factory",
+    "client/injection/kube/informers/factory/fake",
     "codegen/cmd/injection-gen",
     "codegen/cmd/injection-gen/args",
     "codegen/cmd/injection-gen/generators",
     "configmap",
     "controller",
     "injection",
-    "injection/clients/kubeclient",
-    "injection/clients/kubeclient/fake",
-    "injection/informers/kubeinformers/corev1/pod",
-    "injection/informers/kubeinformers/corev1/pod/fake",
-    "injection/informers/kubeinformers/factory",
-    "injection/informers/kubeinformers/factory/fake",
     "injection/sharedmain",
     "kmeta",
     "kmp",
@@ -1292,6 +1294,7 @@
     "logging/testing",
     "metrics",
     "metrics/metricskey",
+    "profiling",
     "reconciler/testing",
     "signals",
     "system",
@@ -1306,7 +1309,7 @@
     "webhook",
   ]
   pruneopts = "T"
-  revision = "e4bc08cc8deda3eac40a8d53984d09c9d0e1ad48"
+  revision = "528ad1c1dd627059b95aef17ccf27f9ab0f46c10"
 
 [[projects]]
   digest = "1:8730e0150dfb2b7e173890c8b9868e7a273082ef8e39f4940e3506a481cf895c"
@@ -1399,14 +1402,14 @@
     "knative.dev/eventing-contrib/pkg/kncloudevents",
     "knative.dev/pkg/apis",
     "knative.dev/pkg/apis/duck/v1beta1",
+    "knative.dev/pkg/client/injection/kube/client",
+    "knative.dev/pkg/client/injection/kube/client/fake",
+    "knative.dev/pkg/client/injection/kube/informers/core/v1/pod",
+    "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/fake",
     "knative.dev/pkg/codegen/cmd/injection-gen",
     "knative.dev/pkg/configmap",
     "knative.dev/pkg/controller",
     "knative.dev/pkg/injection",
-    "knative.dev/pkg/injection/clients/kubeclient",
-    "knative.dev/pkg/injection/clients/kubeclient/fake",
-    "knative.dev/pkg/injection/informers/kubeinformers/corev1/pod",
-    "knative.dev/pkg/injection/informers/kubeinformers/corev1/pod/fake",
     "knative.dev/pkg/injection/sharedmain",
     "knative.dev/pkg/logging",
     "knative.dev/pkg/logging/logkey",

@@ -1,9 +1,12 @@
 /*
 Copyright 2019 The Knative Authors
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -55,6 +58,8 @@ func newOpencensusSDExporter(o stackdriver.Options) (view.Exporter, error) {
 	return stackdriver.NewExporter(o)
 }
 
+// TODO should be properly refactored to be able to inject the getMonitoredResourceFunc function.
+// 	See https://github.com/knative/pkg/issues/608
 func newStackdriverExporter(config *metricsConfig, logger *zap.SugaredLogger) (view.Exporter, error) {
 	gm := gcpMetadataFunc()
 	mtf := getMetricTypeFunc(config.stackdriverMetricTypePrefix, config.stackdriverCustomMetricTypePrefix)
@@ -77,52 +82,17 @@ func getMonitoredResourceFunc(metricTypePrefix string, gm *gcpMetadata) func(v *
 	return func(view *view.View, tags []tag.Tag) ([]tag.Tag, monitoredresource.Interface) {
 		metricType := path.Join(metricTypePrefix, view.Measure.Name())
 		if metricskey.KnativeRevisionMetrics.Has(metricType) {
-			return getKnativeRevisionMonitoredResource(view, tags, gm)
+			return GetKnativeRevisionMonitoredResource(view, tags, gm)
+		} else if metricskey.KnativeBrokerMetrics.Has(metricType) {
+			return GetKnativeBrokerMonitoredResource(view, tags, gm)
+		} else if metricskey.KnativeTriggerMetrics.Has(metricType) {
+			return GetKnativeTriggerMonitoredResource(view, tags, gm)
+		} else if metricskey.KnativeImporterMetrics.Has(metricType) {
+			return GetKnativeImporterMonitoredResource(view, tags, gm)
 		}
-		// Unsupported metric by knative_revision, use "global" resource type.
+		// Unsupported metric by knative_revision, knative_broker, knative_trigger, and knative_importer, use "global" resource type.
 		return getGlobalMonitoredResource(view, tags)
 	}
-}
-
-func getKnativeRevisionMonitoredResource(
-	v *view.View, tags []tag.Tag, gm *gcpMetadata) ([]tag.Tag, monitoredresource.Interface) {
-	tagsMap := getTagsMap(tags)
-	kr := &KnativeRevision{
-		// The first three resource labels are from metadata.
-		Project:     gm.project,
-		Location:    gm.location,
-		ClusterName: gm.cluster,
-		// The rest resource labels are from metrics labels.
-		NamespaceName:     valueOrUnknown(metricskey.LabelNamespaceName, tagsMap),
-		ServiceName:       valueOrUnknown(metricskey.LabelServiceName, tagsMap),
-		ConfigurationName: valueOrUnknown(metricskey.LabelConfigurationName, tagsMap),
-		RevisionName:      valueOrUnknown(metricskey.LabelRevisionName, tagsMap),
-	}
-
-	var newTags []tag.Tag
-	for _, t := range tags {
-		// Keep the metrics labels that are not resource labels
-		if !metricskey.KnativeRevisionLabels.Has(t.Key.Name()) {
-			newTags = append(newTags, t)
-		}
-	}
-
-	return newTags, kr
-}
-
-func getTagsMap(tags []tag.Tag) map[string]string {
-	tagsMap := map[string]string{}
-	for _, t := range tags {
-		tagsMap[t.Key.Name()] = t.Value
-	}
-	return tagsMap
-}
-
-func valueOrUnknown(key string, tagsMap map[string]string) string {
-	if value, ok := tagsMap[key]; ok {
-		return value
-	}
-	return metricskey.ValueUnknown
 }
 
 func getGlobalMonitoredResource(v *view.View, tags []tag.Tag) ([]tag.Tag, monitoredresource.Interface) {
@@ -132,7 +102,11 @@ func getGlobalMonitoredResource(v *view.View, tags []tag.Tag) ([]tag.Tag, monito
 func getMetricTypeFunc(metricTypePrefix, customMetricTypePrefix string) func(view *view.View) string {
 	return func(view *view.View) string {
 		metricType := path.Join(metricTypePrefix, view.Measure.Name())
-		if metricskey.KnativeRevisionMetrics.Has(metricType) {
+		inServing := metricskey.KnativeRevisionMetrics.Has(metricType)
+		inEventing := metricskey.KnativeBrokerMetrics.Has(metricType) ||
+			metricskey.KnativeTriggerMetrics.Has(metricType) ||
+			metricskey.KnativeImporterMetrics.Has(metricType)
+		if inServing || inEventing {
 			return metricType
 		}
 		// Unsupported metric by knative_revision, use custom domain.

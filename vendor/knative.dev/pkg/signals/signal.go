@@ -70,7 +70,7 @@ func (scc *signalContext) Err() error {
 	select {
 	case _, ok := <-scc.Done():
 		if !ok {
-			return errors.New("received a termination signal.")
+			return errors.New("received a termination signal")
 		}
 	default:
 	}

@@ -8,9 +8,10 @@ required = [
   "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
+  "google.golang.org/api/container/v1",
   "github.com/evanphx/json-patch",
-  "github.com/knative/test-infra/scripts",
-  "github.com/knative/test-infra/tools/dep-collector",
+  "knative.dev/test-infra/scripts",
+  "knative.dev/test-infra/tools/dep-collector",
   "github.com/pkg/errors",
 ]
 
@@ -58,7 +59,11 @@ required = [
   version = "v0.12.2"
 
 [[constraint]]
-  name = "github.com/knative/test-infra"
+  name = "github.com/google/mako"
+  version = "v0.1.0"
+
+[[constraint]]
+  name = "knative.dev/test-infra"
   branch = "master"
 
 [prune]
@@ -72,5 +77,5 @@ required = [
   non-go = false
 
 [[prune.project]]
-  name = "github.com/knative/test-infra"
+  name = "knative.dev/test-infra"
   non-go = false

@@ -115,8 +115,8 @@ func withInformer(ctx context.Context) (context.Context, {{.controllerInformer|r
 func Get(ctx context.Context) {{.informersTypedInformer|raw}} {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
-		{{.loggingFromContext|raw}}(ctx).Fatalf(
-			"Unable to fetch %T from context.", ({{.informersTypedInformer|raw}})(nil))
+		{{.loggingFromContext|raw}}(ctx).Panic(
+			"Unable to fetch {{.informersTypedInformer}} from context.")
 	}
 	return untyped.({{.informersTypedInformer|raw}})
 }

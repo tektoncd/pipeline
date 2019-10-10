@@ -21,8 +21,8 @@ package fake
 import (
 	"context"
 
-	fake "knative.dev/pkg/client/injection/informers/authentication/factory/fake"
 	policy "knative.dev/pkg/client/injection/informers/authentication/v1alpha1/policy"
+	fake "knative.dev/pkg/client/injection/informers/factory/fake"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 )

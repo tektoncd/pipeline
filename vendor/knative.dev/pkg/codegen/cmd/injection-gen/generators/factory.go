@@ -64,11 +64,15 @@ func (g *factoryGenerator) GenerateType(c *generator.Context, t *types.Type, w i
 	klog.V(5).Infof("processing type %v", t)
 
 	m := map[string]interface{}{
-		"cachingClientGet":                  c.Universe.Type(types.Name{Package: g.cachingClientSetPackage, Name: "Get"}),
-		"informersNewSharedInformerFactory": c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "NewSharedInformerFactory"}),
-		"informersSharedInformerFactory":    c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "SharedInformerFactory"}),
-		"injectionRegisterInformerFactory":  c.Universe.Type(types.Name{Package: "knative.dev/pkg/injection", Name: "Default.RegisterInformerFactory"}),
-		"controllerGetResyncPeriod":         c.Universe.Type(types.Name{Package: "knative.dev/pkg/controller", Name: "GetResyncPeriod"}),
+		"cachingClientGet": c.Universe.Type(types.Name{Package: g.cachingClientSetPackage, Name: "Get"}),
+		"informersNewSharedInformerFactoryWithOptions": c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "NewSharedInformerFactoryWithOptions"}),
+		"informersSharedInformerOption":                c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "SharedInformerOption"}),
+		"informersWithNamespace":                       c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "WithNamespace"}),
+		"informersSharedInformerFactory":               c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "SharedInformerFactory"}),
+		"injectionRegisterInformerFactory":             c.Universe.Type(types.Name{Package: "knative.dev/pkg/injection", Name: "Default.RegisterInformerFactory"}),
+		"injectionHasNamespace":                        c.Universe.Type(types.Name{Package: "knative.dev/pkg/injection", Name: "HasNamespaceScope"}),
+		"injectionGetNamespace":                        c.Universe.Type(types.Name{Package: "knative.dev/pkg/injection", Name: "GetNamespaceScope"}),
+		"controllerGetResyncPeriod":                    c.Universe.Type(types.Name{Package: "knative.dev/pkg/controller", Name: "GetResyncPeriod"}),
 		"loggingFromContext": c.Universe.Function(types.Name{
 			Package: "knative.dev/pkg/logging",
 			Name:    "FromContext",
@@ -90,16 +94,20 @@ type Key struct{}
 
 func withInformerFactory(ctx context.Context) context.Context {
 	c := {{.cachingClientGet|raw}}(ctx)
+	opts := make([]{{.informersSharedInformerOption|raw}}, 0, 1)
+	if {{.injectionHasNamespace|raw}}(ctx) {
+		opts = append(opts, {{.informersWithNamespace|raw}}({{.injectionGetNamespace|raw}}(ctx)))
+	}
 	return context.WithValue(ctx, Key{},
-		{{.informersNewSharedInformerFactory|raw}}(c, {{.controllerGetResyncPeriod|raw}}(ctx)))
+		{{.informersNewSharedInformerFactoryWithOptions|raw}}(c, {{.controllerGetResyncPeriod|raw}}(ctx), opts...))
 }
 
 // Get extracts the InformerFactory from the context.
 func Get(ctx context.Context) {{.informersSharedInformerFactory|raw}} {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
-		{{.loggingFromContext|raw}}(ctx).Fatalf(
-			"Unable to fetch %T from context.", ({{.informersSharedInformerFactory|raw}})(nil))
+		{{.loggingFromContext|raw}}(ctx).Panic(
+			"Unable to fetch {{.informersSharedInformerFactory}} from context.")
 	}
 	return untyped.({{.informersSharedInformerFactory|raw}})
 }

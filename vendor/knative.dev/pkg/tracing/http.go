@@ -20,9 +20,36 @@ import (
 	"net/http"
 
 	"go.opencensus.io/plugin/ochttp"
+	"go.opencensus.io/trace"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// HTTPSpanMiddleware is a http.Handler middleware to create spans for the HTTP endpoint
-func HTTPSpanMiddleware(next http.Handler) http.Handler {
-	return &ochttp.Handler{Handler: next}
+var (
+	// neverSample forcibly turns off sampling.
+	neverSample = trace.StartOptions{
+		Sampler: trace.NeverSample(),
+	}
+	// underlyingSampling uses the underlying sampling configuration (normally via the ConfigMap
+	// config-tracing).
+	underlyingSampling = trace.StartOptions{}
+
+	// HTTPSpanMiddleware is an http.Handler middleware to create spans for the HTTP endpoint.
+	HTTPSpanMiddleware = HTTPSpanIgnoringPaths()
+)
+
+// HTTPSpanIgnoringPaths is an http.Handler middleware to create spans for the HTTP
+// endpoint, not sampling any request whose path is in pathsToIgnore.
+func HTTPSpanIgnoringPaths(pathsToIgnore ...string) func(http.Handler) http.Handler {
+	pathsToIgnoreSet := sets.NewString(pathsToIgnore...)
+	return func(next http.Handler) http.Handler {
+		return &ochttp.Handler{
+			Handler: next,
+			GetStartOptions: func(r *http.Request) trace.StartOptions {
+				if pathsToIgnoreSet.Has(r.URL.Path) {
+					return neverSample
+				}
+				return underlyingSampling
+			},
+		}
+	}
 }

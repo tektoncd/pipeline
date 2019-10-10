@@ -24,16 +24,6 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-const (
-	// CreatorAnnotationSuffix is the suffix of the annotation key to describe
-	// the user that created the resource.
-	CreatorAnnotationSuffix = "/creator"
-
-	// UpdaterAnnotationSuffix is the suffix of the annotation key to describe
-	// the user who last modified the resource.
-	UpdaterAnnotationSuffix = "/lastModifier"
-)
-
 // SetUserInfoAnnotations sets creator and updater annotations on a resource.
 func SetUserInfoAnnotations(resource apis.HasSpec, ctx context.Context, groupName string) {
 	if ui := apis.GetUserInfo(ctx); ui != nil {
@@ -53,10 +43,10 @@ func SetUserInfoAnnotations(resource apis.HasSpec, ctx context.Context, groupNam
 			if equality.Semantic.DeepEqual(old.GetUntypedSpec(), resource.GetUntypedSpec()) {
 				return
 			}
-			annotations[groupName+UpdaterAnnotationSuffix] = ui.Username
+			annotations[groupName+apis.UpdaterAnnotationSuffix] = ui.Username
 		} else {
-			annotations[groupName+CreatorAnnotationSuffix] = ui.Username
-			annotations[groupName+UpdaterAnnotationSuffix] = ui.Username
+			annotations[groupName+apis.CreatorAnnotationSuffix] = ui.Username
+			annotations[groupName+apis.UpdaterAnnotationSuffix] = ui.Username
 		}
 	}
 }
