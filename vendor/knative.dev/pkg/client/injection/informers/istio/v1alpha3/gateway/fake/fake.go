@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	fake "knative.dev/pkg/client/injection/informers/istio/factory/fake"
+	fake "knative.dev/pkg/client/injection/informers/factory/fake"
 	gateway "knative.dev/pkg/client/injection/informers/istio/v1alpha3/gateway"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"

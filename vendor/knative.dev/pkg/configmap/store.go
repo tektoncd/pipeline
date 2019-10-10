@@ -166,7 +166,7 @@ func (s *UntypedStore) OnConfigChanged(c *corev1.ConfigMap) {
 		return
 	}
 
-	s.logger.Infof("%s config %q config was added or updated: %v", s.name, name, result)
+	s.logger.Infof("%s config %q config was added or updated: %#v", s.name, name, result)
 	storage.Store(result)
 
 	go func() {

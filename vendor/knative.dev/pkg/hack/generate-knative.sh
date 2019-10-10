@@ -23,10 +23,10 @@ set -o pipefail
 
 if [ "$#" -lt 4 ] || [ "${1}" == "--help" ]; then
   cat <<EOF
-Usage: $(basename $0) <generators> <output-package> <apis-package> <groups-versions> ...
+Usage: $(basename $0) <generators> <client-package> <apis-package> <groups-versions> ...
 
   <generators>        the generators comma separated to run (deepcopy,defaulter,client,lister,informer) or "all".
-  <output-package>    the output package name (e.g. github.com/example/project/pkg/generated).
+  <client-package>    the client package dir (e.g. github.com/example/project/pkg/clientset).
   <apis-package>      the external types dir (e.g. github.com/example/api or github.com/example/project/pkg/apis).
   <groups-versions>   the groups and their versions in the format "groupA:v1,v2 groupB:v1 groupC:v2", relative
                       to <api-package>.
@@ -41,7 +41,7 @@ EOF
 fi
 
 GENS="$1"
-OUTPUT_PKG="$2"
+CLIENT_PKG="$2"
 APIS_PKG="$3"
 GROUPS_WITH_VERSIONS="$4"
 shift 4
@@ -66,13 +66,30 @@ for GVs in ${GROUPS_WITH_VERSIONS}; do
   done
 done
 
+
 if grep -qw "injection" <<<"${GENS}"; then
-  echo "Generating injection for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}/injection"
+  if [[ -z "${OUTPUT_PKG:-}" ]]; then
+    OUTPUT_PKG="${CLIENT_PKG}/injection"
+  fi
+
+  if [[ -z "${VERSIONED_CLIENTSET_PKG:-}" ]]; then
+    VERSIONED_CLIENTSET_PKG="${CLIENT_PKG}/clientset/versioned"
+  fi
+
+  if [[ -z "${EXTERNAL_INFORMER_PKG:-}" ]]; then
+    EXTERNAL_INFORMER_PKG="${CLIENT_PKG}/informers/externalversions"
+  fi
+
+  echo "Generating injection for ${GROUPS_WITH_VERSIONS} at ${OUTPUT_PKG}"
+
+  # Clear old injection
+  rm -rf ${OUTPUT_PKG}
 
   ${GOPATH}/bin/injection-gen \
-           --input-dirs $(codegen::join , "${FQ_APIS[@]}") \
-           --versioned-clientset-package ${OUTPUT_PKG}/clientset/versioned \
-           --external-versions-informers-package ${OUTPUT_PKG}/informers/externalversions \
-           --output-package ${OUTPUT_PKG}/injection \
-           "$@"
+    --input-dirs $(codegen::join , "${FQ_APIS[@]}") \
+    --versioned-clientset-package ${VERSIONED_CLIENTSET_PKG} \
+    --external-versions-informers-package ${EXTERNAL_INFORMER_PKG} \
+    --output-package ${OUTPUT_PKG} \
+    "$@"
 fi
+

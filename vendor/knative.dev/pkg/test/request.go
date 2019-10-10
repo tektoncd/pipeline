@@ -74,7 +74,7 @@ func IsOneOfStatusCodes(codes ...int) spoof.ResponseChecker {
 			}
 		}
 
-		return true, fmt.Errorf("status = %d, want one of: %v", resp.StatusCode, codes)
+		return true, fmt.Errorf("status = %d %s, want one of: %v", resp.StatusCode, resp.Status, codes)
 	}
 }
 
@@ -134,7 +134,14 @@ func MatchesAllOf(checkers ...spoof.ResponseChecker) spoof.ResponseChecker {
 // the domain in the request headers, otherwise it will make the request directly to domain.
 // desc will be used to name the metric that is emitted to track how long it took for the
 // domain to get into the state checked by inState.  Commas in `desc` must be escaped.
-func WaitForEndpointState(kubeClient *KubeClient, logf logging.FormatLogger, theURL string, inState spoof.ResponseChecker, desc string, resolvable bool, opts ...RequestOption) (*spoof.Response, error) {
+func WaitForEndpointState(
+	kubeClient *KubeClient,
+	logf logging.FormatLogger,
+	theURL string,
+	inState spoof.ResponseChecker,
+	desc string,
+	resolvable bool,
+	opts ...interface{}) (*spoof.Response, error) {
 	return WaitForEndpointStateWithTimeout(kubeClient, logf, theURL, inState, desc, resolvable, spoof.RequestTimeout, opts...)
 }
 
@@ -145,17 +152,23 @@ func WaitForEndpointState(kubeClient *KubeClient, logf logging.FormatLogger, the
 // desc will be used to name the metric that is emitted to track how long it took for the
 // domain to get into the state checked by inState.  Commas in `desc` must be escaped.
 func WaitForEndpointStateWithTimeout(
-	kubeClient *KubeClient, logf logging.FormatLogger, theURL string, inState spoof.ResponseChecker,
-	desc string, resolvable bool, timeout time.Duration, opts ...RequestOption) (*spoof.Response, error) {
+	kubeClient *KubeClient,
+	logf logging.FormatLogger,
+	theURL string,
+	inState spoof.ResponseChecker,
+	desc string,
+	resolvable bool,
+	timeout time.Duration,
+	opts ...interface{}) (*spoof.Response, error) {
 	defer logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForEndpointState/%s", desc)).End()
 
 	// Try parsing the "theURL" with and without a scheme.
-	asURL, err := url.Parse(fmt.Sprintf("http://%s", theURL))
+	asURL, err := url.Parse(theURL)
 	if err != nil {
-		asURL, err = url.Parse(theURL)
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
+	}
+	if asURL.Scheme == "" {
+		asURL.Scheme = "http"
 	}
 
 	req, err := http.NewRequest(http.MethodGet, asURL.String(), nil)
@@ -163,11 +176,17 @@ func WaitForEndpointStateWithTimeout(
 		return nil, err
 	}
 
+	var tOpts []spoof.TransportOption
 	for _, opt := range opts {
-		opt(req)
+		rOpt, ok := opt.(RequestOption)
+		if ok {
+			rOpt(req)
+		} else if tOpt, ok := opt.(spoof.TransportOption); ok {
+			tOpts = append(tOpts, tOpt)
+		}
 	}
 
-	client, err := NewSpoofingClient(kubeClient, logf, asURL.Hostname(), resolvable)
+	client, err := NewSpoofingClient(kubeClient, logf, asURL.Hostname(), resolvable, tOpts...)
 	if err != nil {
 		return nil, err
 	}

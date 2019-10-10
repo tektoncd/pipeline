@@ -116,13 +116,6 @@ func anyError(errs ...error) error {
 	return nil
 }
 
-func require(name string, value string) error {
-	if len(value) == 0 {
-		return fmt.Errorf("missing required field %q", name)
-	}
-	return nil
-}
-
 // The Cloud-Events spec allows two forms of JSON encoding:
 // 1. The overall message (Structured JSON encoding)
 // 2. Just the event data, where the context will be in HTTP headers instead
@@ -160,7 +153,7 @@ func unmarshalEventData(encoding string, reader io.Reader, data interface{}) err
 		return xml.NewDecoder(reader).Decode(&data)
 	}
 
-	return fmt.Errorf("Cannot decode content type %q", encoding)
+	return fmt.Errorf("cannot decode content type %q", encoding)
 }
 
 func marshalEventData(encoding string, data interface{}) ([]byte, error) {
@@ -172,7 +165,7 @@ func marshalEventData(encoding string, data interface{}) ([]byte, error) {
 	} else if isXMLEncoding(encoding) {
 		b, err = xml.Marshal(data)
 	} else {
-		err = fmt.Errorf("Cannot encode content type %q", encoding)
+		err = fmt.Errorf("cannot encode content type %q", encoding)
 	}
 
 	if err != nil {
