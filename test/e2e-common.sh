@@ -42,10 +42,10 @@ function output_pods_logs() {
 	echo ">>>> $1 ${run}"
 	case "$1" in
 	    "taskrun")
-		go run ./test/logs/main.go -tr ${run}
+		tkn taskrun logs ${run}
 		;;
 	    "pipelinerun")
-		go run ./test/logs/main.go -pr ${run}
+		tkn pipelinerun logs ${run}
 		;;
 	esac
     done
