@@ -137,11 +137,17 @@ func (k *kubelogs) handleLine(l string) {
 			continue
 		}
 
+		// We also get logs not from controllers (activator, autoscaler).
+		// So replace controller string in them with their callsite.
+		site := line.Controller
+		if site == "" {
+			site = line.Caller
+		}
 		// E 15:04:05.000 [route-controller] [default/testroute-xyz] this is my message
 		msg := fmt.Sprintf("%s %s [%s] [%s] %s",
 			strings.ToUpper(string(line.Level[0])),
 			line.Timestamp.Format(timeFormat),
-			line.Controller,
+			site,
 			line.Key,
 			line.Message)
 

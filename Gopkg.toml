@@ -79,8 +79,8 @@ required = [
 
 [[override]]
   name = "knative.dev/pkg"
-  # HEAD as of 2019-07-23 💖
-  revision = "e4bc08cc8deda3eac40a8d53984d09c9d0e1ad48"
+  # HEAD as of 2019-09-09 💖
+  revision = "528ad1c1dd627059b95aef17ccf27f9ab0f46c10"
 
 [[override]]
   name = "knative.dev/eventing-contrib"

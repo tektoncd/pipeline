@@ -32,9 +32,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/config"
 	"k8s.io/client-go/tools/cache"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/injection/clients/kubeclient"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
 )

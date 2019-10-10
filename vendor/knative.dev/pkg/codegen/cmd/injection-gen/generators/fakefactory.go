@@ -66,14 +66,18 @@ func (g *fakeFactoryGenerator) GenerateType(c *generator.Context, t *types.Type,
 	klog.V(5).Infof("processing type %v", t)
 
 	m := map[string]interface{}{
-		"factoryKey":                        c.Universe.Type(types.Name{Package: g.factoryInjectionPkg, Name: "Key"}),
-		"factoryGet":                        c.Universe.Function(types.Name{Package: g.factoryInjectionPkg, Name: "Get"}),
-		"clientGet":                         c.Universe.Function(types.Name{Package: g.fakeClientInjectionPkg, Name: "Get"}),
-		"informersNewSharedInformerFactory": c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "NewSharedInformerFactory"}),
+		"factoryKey": c.Universe.Type(types.Name{Package: g.factoryInjectionPkg, Name: "Key"}),
+		"factoryGet": c.Universe.Function(types.Name{Package: g.factoryInjectionPkg, Name: "Get"}),
+		"clientGet":  c.Universe.Function(types.Name{Package: g.fakeClientInjectionPkg, Name: "Get"}),
+		"informersNewSharedInformerFactoryWithOptions": c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "NewSharedInformerFactoryWithOptions"}),
+		"informersSharedInformerOption":                c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "SharedInformerOption"}),
+		"informersWithNamespace":                       c.Universe.Function(types.Name{Package: g.sharedInformerFactoryPackage, Name: "WithNamespace"}),
 		"injectionRegisterInformerFactory": c.Universe.Function(types.Name{
 			Package: "knative.dev/pkg/injection",
 			Name:    "Fake.RegisterInformerFactory",
 		}),
+		"injectionHasNamespace":     c.Universe.Type(types.Name{Package: "knative.dev/pkg/injection", Name: "HasNamespaceScope"}),
+		"injectionGetNamespace":     c.Universe.Type(types.Name{Package: "knative.dev/pkg/injection", Name: "GetNamespaceScope"}),
 		"controllerGetResyncPeriod": c.Universe.Type(types.Name{Package: "knative.dev/pkg/controller", Name: "GetResyncPeriod"}),
 	}
 
@@ -91,7 +95,11 @@ func init() {
 
 func withInformerFactory(ctx context.Context) context.Context {
 	c := {{.clientGet|raw}}(ctx)
+	opts := make([]{{.informersSharedInformerOption|raw}}, 0, 1)
+	if {{.injectionHasNamespace|raw}}(ctx) {
+		opts = append(opts, {{.informersWithNamespace|raw}}({{.injectionGetNamespace|raw}}(ctx)))
+	}
 	return context.WithValue(ctx, {{.factoryKey|raw}}{},
-		{{.informersNewSharedInformerFactory|raw}}(c, {{.controllerGetResyncPeriod|raw}}(ctx)))
+		{{.informersNewSharedInformerFactoryWithOptions|raw}}(c, {{.controllerGetResyncPeriod|raw}}(ctx), opts...))
 }
 `

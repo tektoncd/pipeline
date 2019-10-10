@@ -31,10 +31,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	"k8s.io/client-go/tools/cache"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/injection/clients/kubeclient"
-	podinformer "knative.dev/pkg/injection/informers/kubeinformers/corev1/pod"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/tracker"
 )

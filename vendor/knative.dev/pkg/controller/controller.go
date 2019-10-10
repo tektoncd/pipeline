@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -255,12 +256,14 @@ func (c *Impl) EnqueueLabelOfClusterScopedResource(nameLabel string) func(obj in
 // EnqueueKey takes a namespace/name string and puts it onto the work queue.
 func (c *Impl) EnqueueKey(key string) {
 	c.WorkQueue.Add(key)
+	c.logger.Debugf("Adding to queue %s (depth: %d)", key, c.WorkQueue.Len())
 }
 
 // EnqueueKeyAfter takes a namespace/name string and schedules its execution in
 // the work queue after given delay.
 func (c *Impl) EnqueueKeyAfter(key string, delay time.Duration) {
 	c.WorkQueue.AddAfter(key, delay)
+	c.logger.Debugf("Adding to queue %s (delay: %v, depth: %d)", key, delay, c.WorkQueue.Len())
 }
 
 // Run starts the controller's worker threads, the number of which is threadiness.
@@ -299,6 +302,8 @@ func (c *Impl) processNextWorkItem() bool {
 		return false
 	}
 	key := obj.(string)
+
+	c.logger.Debugf("Processing from queue %s (depth: %d)", key, c.WorkQueue.Len())
 
 	startTime := time.Now()
 	// Send the metrics for the current queue depth
@@ -347,16 +352,28 @@ func (c *Impl) handleErr(err error, key string) {
 	// Re-queue the key if it's an transient error.
 	if !IsPermanentError(err) {
 		c.WorkQueue.AddRateLimited(key)
+		c.logger.Debugf("Requeuing key %s due to non-permanent error (depth: %d)", key, c.WorkQueue.Len())
 		return
 	}
 
 	c.WorkQueue.Forget(key)
 }
 
-// GlobalResync enqueues all objects from the passed SharedInformer
+// GlobalResync enqueues (with a delay) all objects from the passed SharedInformer
 func (c *Impl) GlobalResync(si cache.SharedInformer) {
-	for _, key := range si.GetStore().ListKeys() {
-		c.EnqueueKey(key)
+	alwaysTrue := func(interface{}) bool { return true }
+	c.FilteredGlobalResync(alwaysTrue, si)
+}
+
+// FilteredGlobalResync enqueues (with a delay) all objects from the
+// SharedInformer that pass the filter function
+func (c *Impl) FilteredGlobalResync(f func(interface{}) bool, si cache.SharedInformer) {
+	list := si.GetStore().List()
+	count := float64(len(list))
+	for _, obj := range list {
+		if f(obj) {
+			c.EnqueueAfter(obj, wait.Jitter(time.Second, count))
+		}
 	}
 }
 
@@ -409,7 +426,7 @@ func StartInformers(stopCh <-chan struct{}, informers ...Informer) error {
 
 	for i, informer := range informers {
 		if ok := cache.WaitForCacheSync(stopCh, informer.HasSynced); !ok {
-			return fmt.Errorf("Failed to wait for cache at index %d to sync", i)
+			return fmt.Errorf("failed to wait for cache at index %d to sync", i)
 		}
 	}
 	return nil

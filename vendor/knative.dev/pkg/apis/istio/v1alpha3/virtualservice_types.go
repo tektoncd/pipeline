@@ -141,6 +141,25 @@ type VirtualServiceSpec struct {
 	TCP []TCPRoute `json:"tcp,omitempty"`
 
 	TLS []TLSRoute `json:"tls,omitempty"`
+
+	// A list of namespaces to which this destination rule is exported.
+	// The resolution of a destination rule to apply to a service occurs in the
+	// context of a hierarchy of namespaces. Exporting a destination rule allows
+	// it to be included in the resolution hierarchy for services in
+	// other namespaces. This feature provides a mechanism for service owners
+	// and mesh administrators to control the visibility of destination rules
+	// across namespace boundaries.
+	//
+	// If no namespaces are specified then the destination rule is exported to all
+	// namespaces by default.
+	//
+	// The value "." is reserved and defines an export to the same namespace that
+	// the destination rule is declared in. Similarly, the value "*" is reserved and
+	// defines an export to all namespaces.
+	//
+	// NOTE: in the current release, the `exportTo` value is restricted to
+	// "." or "*" (i.e., the current namespace or all namespaces).
+	ExportTo []string `json:"exportTo,omitempty"`
 }
 
 // Describes match conditions and actions for routing HTTP/1.1, HTTP2, and

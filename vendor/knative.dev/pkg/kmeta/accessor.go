@@ -82,11 +82,11 @@ func DeletionHandlingAccessor(obj interface{}) (Accessor, error) {
 		// To handle obj deletion, try to fetch info from DeletedFinalStateUnknown.
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
-			return nil, fmt.Errorf("Couldn't get Accessor from tombstone %#v", obj)
+			return nil, fmt.Errorf("couldn't get Accessor from tombstone %#v", obj)
 		}
 		accessor, ok = tombstone.Obj.(Accessor)
 		if !ok {
-			return nil, fmt.Errorf("The object that Tombstone contained is not of kmeta.Accessor %#v", obj)
+			return nil, fmt.Errorf("the object that Tombstone contained is not of kmeta.Accessor %#v", obj)
 		}
 	}
 

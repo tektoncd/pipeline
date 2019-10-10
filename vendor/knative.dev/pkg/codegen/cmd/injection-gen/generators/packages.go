@@ -89,6 +89,12 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 			groupGoNames[groupPackageName] = namer.IC(override[0])
 		}
 
+		// Generate the client and fake.
+		packageList = append(packageList, versionClientsPackages(versionPackagePath, boilerplate, customArgs)...)
+
+		// Generate the informer factory and fake.
+		packageList = append(packageList, versionFactoryPackages(versionPackagePath, boilerplate, customArgs)...)
+
 		var typesToGenerate []*types.Type
 		for _, t := range p.Types {
 			tags := util.MustParseClientGenTags(append(t.SecondClosestCommentLines, t.CommentLines...))
@@ -119,12 +125,6 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 
 		orderer := namer.Orderer{Namer: namer.NewPrivateNamer(0)}
 		typesToGenerate = orderer.OrderTypes(typesToGenerate)
-
-		// Generate the client and fake.
-		packageList = append(packageList, versionClientsPackages(versionPackagePath, groupPackageName, gv, groupGoNames[groupPackageName], boilerplate, typesToGenerate, customArgs)...)
-
-		// Generate the informer factory and fake.
-		packageList = append(packageList, versionFactoryPackages(versionPackagePath, groupPackageName, gv, groupGoNames[groupPackageName], boilerplate, typesToGenerate, customArgs)...)
 
 		// Generate the informer and fake, for each type.
 		packageList = append(packageList, versionInformerPackages(versionPackagePath, groupPackageName, gv, groupGoNames[groupPackageName], boilerplate, typesToGenerate, customArgs)...)
@@ -169,7 +169,7 @@ func typedInformerPackage(groupPkgName string, gv clientgentypes.GroupVersion, e
 	return filepath.Join(externalVersionsInformersPackage, groupPkgName, gv.Version.String())
 }
 
-func versionClientsPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, customArgs *informergenargs.CustomArgs) []generator.Package {
+func versionClientsPackages(basePackage string, boilerplate []byte, customArgs *informergenargs.CustomArgs) []generator.Package {
 	packagePath := filepath.Join(basePackage, "client")
 
 	vers := make([]generator.Package, 0, 2)
@@ -227,21 +227,21 @@ func versionClientsPackages(basePackage string, groupPkgName string, gv clientge
 	return vers
 }
 
-func versionFactoryPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, customArgs *informergenargs.CustomArgs) []generator.Package {
-	packagePath := filepath.Join(basePackage, "informers", groupPkgName, "factory")
+func versionFactoryPackages(basePackage string, boilerplate []byte, customArgs *informergenargs.CustomArgs) []generator.Package {
+	packagePath := filepath.Join(basePackage, "informers", "factory")
 
 	vers := make([]generator.Package, 0, 2)
 
 	// Impl
 	vers = append(vers, &generator.DefaultPackage{
-		PackageName: strings.ToLower(groupPkgName + "factory"),
+		PackageName: "factory",
 		PackagePath: packagePath,
 		HeaderText:  boilerplate,
 		GeneratorFunc: func(c *generator.Context) (generators []generator.Generator) {
 			// Impl
 			generators = append(generators, &factoryGenerator{
 				DefaultGen: generator.DefaultGen{
-					OptionalName: groupPkgName + "factory",
+					OptionalName: "factory",
 				},
 				outputPackage:                packagePath,
 				cachingClientSetPackage:      fmt.Sprintf("%s/client", basePackage),
@@ -288,7 +288,7 @@ func versionFactoryPackages(basePackage string, groupPkgName string, gv clientge
 }
 
 func versionInformerPackages(basePackage string, groupPkgName string, gv clientgentypes.GroupVersion, groupGoName string, boilerplate []byte, typesToGenerate []*types.Type, customArgs *informergenargs.CustomArgs) []generator.Package {
-	factoryPackagePath := filepath.Join(basePackage, "informers", groupPkgName, "factory")
+	factoryPackagePath := filepath.Join(basePackage, "informers", "factory")
 	packagePath := filepath.Join(basePackage, "informers", groupPkgName, strings.ToLower(gv.Version.NonEmpty()))
 
 	vers := make([]generator.Package, 0, len(typesToGenerate))

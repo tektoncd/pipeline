@@ -25,6 +25,7 @@ import (
 )
 
 // CheckCondition checks if condition `c` on `cc` has value `cs`.
+// DEPRECATED: Use versioned test helper
 func CheckCondition(s *duckv1b1.Status, c apis.ConditionType, cs corev1.ConditionStatus) error {
 	cond := s.GetCondition(c)
 	if cond == nil {
@@ -37,6 +38,7 @@ func CheckCondition(s *duckv1b1.Status, c apis.ConditionType, cs corev1.Conditio
 }
 
 // CheckConditionOngoing checks if the condition is in state `Unknown`.
+// DEPRECATED: Use versioned test helper
 func CheckConditionOngoing(s *duckv1b1.Status, c apis.ConditionType, t *testing.T) {
 	t.Helper()
 	if err := CheckCondition(s, c, corev1.ConditionUnknown); err != nil {
@@ -45,6 +47,7 @@ func CheckConditionOngoing(s *duckv1b1.Status, c apis.ConditionType, t *testing.
 }
 
 // CheckConditionFailed checks if the condition is in state `False`.
+// DEPRECATED: Use versioned test helper
 func CheckConditionFailed(s *duckv1b1.Status, c apis.ConditionType, t *testing.T) {
 	t.Helper()
 	if err := CheckCondition(s, c, corev1.ConditionFalse); err != nil {
@@ -53,6 +56,7 @@ func CheckConditionFailed(s *duckv1b1.Status, c apis.ConditionType, t *testing.T
 }
 
 // CheckConditionSucceeded checks if the condition is in state `True`.
+// DEPRECATED: Use versioned test helper
 func CheckConditionSucceeded(s *duckv1b1.Status, c apis.ConditionType, t *testing.T) {
 	t.Helper()
 	if err := CheckCondition(s, c, corev1.ConditionTrue); err != nil {

@@ -15,7 +15,7 @@
 # limitations under the License.
 
 readonly ROOT_DIR=$(dirname $0)/..
-source ${ROOT_DIR}/vendor/github.com/knative/test-infra/scripts/library.sh
+source ${ROOT_DIR}/vendor/knative.dev/test-infra/scripts/library.sh
 
 set -o errexit
 set -o nounset

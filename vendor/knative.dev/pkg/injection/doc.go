@@ -65,4 +65,41 @@ limitations under the License.
 //         dave.NewController,
 //      )
 //   }
+//
+// If you want to adapt the above to run the controller within a single
+// namespace, you can instead do something like:
+//
+//   package main
+//
+//   import (
+//   	// The set of controllers this controller process runs.
+//      // Linking these will register their transitive dependencies, after
+//      // which the shared main can set up the rest.
+//   	"github.com/knative/foo/pkg/reconciler/matt"
+//   	"github.com/knative/foo/pkg/reconciler/scott"
+//   	"github.com/knative/foo/pkg/reconciler/ville"
+//   	"github.com/knative/foo/pkg/reconciler/dave"
+//
+//   	// This defines the shared main for injected controllers.
+//   	"knative.dev/pkg/injection/sharedmain"
+//
+//      // These are used to set up the context.
+//   	"knative.dev/pkg/injection"
+//   	"knative.dev/pkg/signals"
+//   )
+//
+//   func main() {
+//      // Scope the shared informer factories to the provided namespace.
+//      ctx := injection.WithNamespace(signals.NewContext(), "the-namespace")
+//
+//      // Use our initial context when setting up the controllers.
+//   	sharedmain.MainWithContext(ctx, "mycomponent",
+//         // We pass in the list of controllers to construct, and that's it!
+//         // If we forget to add this, go will complain about the unused import.
+//         matt.NewController,
+//         scott.NewController,
+//         ville.NewController,
+//         dave.NewController,
+//      )
+//   }
 package injection
