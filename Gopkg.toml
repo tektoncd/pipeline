@@ -29,23 +29,23 @@ required = [
 
 [[override]]
   name = "k8s.io/api"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.11"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.11"
 
 [[override]]
   name = "k8s.io/code-generator"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.11"
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.11"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.13.11"
 
 [[override]]
   name = "golang.org/x/sys"
@@ -53,7 +53,7 @@ required = [
 
 [[override]]
   name = "github.com/GoogleCloudPlatform/cloud-builders"
-  # HEAD as of 2019-08-12
+  # HEAD as of 2019-08-12 
   revision = "073e4daa3d0dcb50173fdac5581709a17b97e9ed"
 
 [[override]]

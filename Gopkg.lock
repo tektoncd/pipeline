@@ -896,7 +896,7 @@
   version = "v2.2.1"
 
 [[projects]]
-  digest = "1:1d34342a53d8f8c625260d6c4c2e5c99442b1635bbf4208f426bd12aa210b870"
+  digest = "1:6d952cf4dfcf198b44a2de6182e346c2032d5bb9ffcdcb5f794fdf6e4937776b"
   name = "k8s.io/api"
   packages = [
     "admission/v1beta1",
@@ -905,6 +905,7 @@
     "apps/v1",
     "apps/v1beta1",
     "apps/v1beta2",
+    "auditregistration/v1alpha1",
     "authentication/v1",
     "authentication/v1beta1",
     "authorization/v1",
@@ -933,11 +934,11 @@
     "storage/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "9ad12a4af32677db3ae70bef3371bf9b618eb3a0"
-  version = "kubernetes-1.12.9"
+  revision = "ebce17126a01f5fe02364d88c899816bcc2a8165"
+  version = "kubernetes-1.13.11"
 
 [[projects]]
-  digest = "1:9cffe4aa65e6b91018eccf8ab86dba8c6e50ec28627a10580049130df9163678"
+  digest = "1:0f20345bdc8a7002bc7b17507db02b9f2954e6ebae232fd197546ddb0d2a9066"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/equality",
@@ -989,11 +990,11 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "NUT"
-  revision = "01f179d85dbce0f2e0e4351a92394b38694b7cae"
-  version = "kubernetes-1.12.9"
+  revision = "bf4de9df677cd119930fa83483bad158956cdfcf"
+  version = "kubernetes-1.13.11"
 
 [[projects]]
-  digest = "1:195d76db56287b4b8de466f8e369f1ea19fcba12879ecf858c86079a7c1af656"
+  digest = "1:f0dfe2000e516eba8c5218d6f03d1f12b7583d0224b8b6a4fff5f2f443f4ce08"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1007,6 +1008,8 @@
     "informers/apps/v1",
     "informers/apps/v1beta1",
     "informers/apps/v1beta2",
+    "informers/auditregistration",
+    "informers/auditregistration/v1alpha1",
     "informers/autoscaling",
     "informers/autoscaling/v1",
     "informers/autoscaling/v2beta1",
@@ -1056,6 +1059,8 @@
     "kubernetes/typed/apps/v1beta1/fake",
     "kubernetes/typed/apps/v1beta2",
     "kubernetes/typed/apps/v1beta2/fake",
+    "kubernetes/typed/auditregistration/v1alpha1",
+    "kubernetes/typed/auditregistration/v1alpha1/fake",
     "kubernetes/typed/authentication/v1",
     "kubernetes/typed/authentication/v1/fake",
     "kubernetes/typed/authentication/v1beta1",
@@ -1113,6 +1118,7 @@
     "listers/apps/v1",
     "listers/apps/v1beta1",
     "listers/apps/v1beta2",
+    "listers/auditregistration/v1alpha1",
     "listers/autoscaling/v1",
     "listers/autoscaling/v2beta1",
     "listers/autoscaling/v2beta2",
@@ -1167,11 +1173,11 @@
     "util/workqueue",
   ]
   pruneopts = "NUT"
-  revision = "4f3abb12cae2d6817e1b6d72d9cbc3d3a6ddf965"
-  version = "kubernetes-1.12.9"
+  revision = "ee6c071a42cffd19361fc3f4ca995829328a0678"
+  version = "kubernetes-1.13.11"
 
 [[projects]]
-  digest = "1:26b81b5e76e3f84ea5140da4f74649576e470f79091d2ef8e0d1b5000bc636ca"
+  digest = "1:dc1ae99dcab96913d81ae970b1f7a7411a54199b14bfb17a7e86f9a56979c720"
   name = "k8s.io/code-generator"
   packages = [
     "cmd/client-gen",
@@ -1195,8 +1201,8 @@
     "pkg/util",
   ]
   pruneopts = "T"
-  revision = "b1289fc74931d4b6b04bd1a259acfc88a2cb0a66"
-  version = "kubernetes-1.12.9"
+  revision = "c2090bec4d9b1fb25de3812f868accc2bc9ecbae"
+  version = "kubernetes-1.13.11"
 
 [[projects]]
   digest = "1:39912eb5f8eaf46486faae0839586c27c93423e552f76875defa048f52c15c15"
