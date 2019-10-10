@@ -43,7 +43,7 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 		}
 	}
 
-	cs := &Clientset{}
+	cs := &Clientset{tracker: o}
 	cs.discovery = &fakediscovery.FakeDiscovery{Fake: &cs.Fake}
 	cs.AddReactor("*", "*", testing.ObjectReaction(o))
 	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
@@ -65,10 +65,15 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 type Clientset struct {
 	testing.Fake
 	discovery *fakediscovery.FakeDiscovery
+	tracker   testing.ObjectTracker
 }
 
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	return c.discovery
+}
+
+func (c *Clientset) Tracker() testing.ObjectTracker {
+	return c.tracker
 }
 
 var _ clientset.Interface = &Clientset{}
@@ -78,17 +83,7 @@ func (c *Clientset) AuthenticationV1alpha1() authenticationv1alpha1.Authenticati
 	return &fakeauthenticationv1alpha1.FakeAuthenticationV1alpha1{Fake: &c.Fake}
 }
 
-// Authentication retrieves the AuthenticationV1alpha1Client
-func (c *Clientset) Authentication() authenticationv1alpha1.AuthenticationV1alpha1Interface {
-	return &fakeauthenticationv1alpha1.FakeAuthenticationV1alpha1{Fake: &c.Fake}
-}
-
 // NetworkingV1alpha3 retrieves the NetworkingV1alpha3Client
 func (c *Clientset) NetworkingV1alpha3() networkingv1alpha3.NetworkingV1alpha3Interface {
-	return &fakenetworkingv1alpha3.FakeNetworkingV1alpha3{Fake: &c.Fake}
-}
-
-// Networking retrieves the NetworkingV1alpha3Client
-func (c *Clientset) Networking() networkingv1alpha3.NetworkingV1alpha3Interface {
 	return &fakenetworkingv1alpha3.FakeNetworkingV1alpha3{Fake: &c.Fake}
 }

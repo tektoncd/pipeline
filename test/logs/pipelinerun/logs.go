@@ -41,7 +41,7 @@ func TailLogs(ctx context.Context, cfg *rest.Config, out io.Writer, name, namesp
 		return err
 	}
 
-	pipelineRun, err := pclient.PipelineRuns(namespace).Get(name, metav1.GetOptions{IncludeUninitialized: true})
+	pipelineRun, err := pclient.PipelineRuns(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func TailLogs(ctx context.Context, cfg *rest.Config, out io.Writer, name, namesp
 		return xerrors.New("Expected pipeline ref to be set")
 	}
 
-	pp, err := pclient.Pipelines(namespace).Get(pipelineName, metav1.GetOptions{IncludeUninitialized: true})
+	pp, err := pclient.Pipelines(namespace).Get(pipelineName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

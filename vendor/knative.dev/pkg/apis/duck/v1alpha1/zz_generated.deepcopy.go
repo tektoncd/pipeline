@@ -93,7 +93,7 @@ func (in *AddressableType) DeepCopyObject() runtime.Object {
 func (in *AddressableTypeList) DeepCopyInto(out *AddressableTypeList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]AddressableType, len(*in))
@@ -192,7 +192,7 @@ func (in *KResource) DeepCopyObject() runtime.Object {
 func (in *KResourceList) DeepCopyInto(out *KResourceList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]KResource, len(*in))
@@ -275,7 +275,7 @@ func (in *LegacyTarget) DeepCopyObject() runtime.Object {
 func (in *LegacyTargetList) DeepCopyInto(out *LegacyTargetList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]LegacyTarget, len(*in))
@@ -374,7 +374,7 @@ func (in *Target) DeepCopyObject() runtime.Object {
 func (in *TargetList) DeepCopyInto(out *TargetList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
-	out.ListMeta = in.ListMeta
+	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
 		*out = make([]Target, len(*in))

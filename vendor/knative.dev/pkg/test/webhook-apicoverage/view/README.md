@@ -37,3 +37,9 @@ Covered Fields: <Number of fields covered>
 Ignored Fields: <Number of fields ignored>
 Coverage Percentage: <Percentage value of coverage>
 ```
+
+`GetCoveragePercentageXMLDisplay()` is a utility method that can be used by
+repos to produce coverage percentage for each resource in a Junit XML results
+file. The method takes
+[CoveragePercentages](../coveragecalculator/calculator.go) as input and produces
+a Junit result file format.

@@ -29,23 +29,23 @@ required = [
 
 [[override]]
   name = "k8s.io/api"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[override]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[override]]
   name = "k8s.io/code-generator"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[override]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[override]]
   name = "golang.org/x/sys"
@@ -79,8 +79,8 @@ required = [
 
 [[override]]
   name = "knative.dev/pkg"
-  # HEAD as of 2019-09-09 💖
-  revision = "528ad1c1dd627059b95aef17ccf27f9ab0f46c10"
+  # HEAD as of 2019-10-10 💖
+  revision = "9c320664c8c479daae224db1f8b5579235bbe567"
 
 [[override]]
   name = "knative.dev/eventing-contrib"

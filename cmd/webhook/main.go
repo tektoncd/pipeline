@@ -79,12 +79,13 @@ func main() {
 	}
 
 	options := webhook.ControllerOptions{
-		ServiceName:    "tekton-pipelines-webhook",
-		DeploymentName: "tekton-pipelines-webhook",
-		Namespace:      system.GetNamespace(),
-		Port:           8443,
-		SecretName:     "webhook-certs",
-		WebhookName:    "webhook.tekton.dev",
+		ServiceName:                     "tekton-pipelines-webhook",
+		DeploymentName:                  "tekton-pipelines-webhook",
+		Namespace:                       system.GetNamespace(),
+		Port:                            8443,
+		SecretName:                      "webhook-certs",
+		ResourceMutatingWebhookName:     "webhook.tekton.dev",
+		ResourceAdmissionControllerPath: "/",
 	}
 	resourceHandlers := map[schema.GroupVersionKind]webhook.GenericCRD{
 		v1alpha1.SchemeGroupVersion.WithKind("Pipeline"):         &v1alpha1.Pipeline{},

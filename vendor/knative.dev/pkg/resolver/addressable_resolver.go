@@ -24,6 +24,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/types"
 
 	"knative.dev/pkg/apis"
 	pkgapisduck "knative.dev/pkg/apis/duck"
@@ -43,7 +44,7 @@ type URIResolver struct {
 }
 
 // NewURIResolver constructs a new URIResolver with context and a callback passed to the URIResolver's tracker.
-func NewURIResolver(ctx context.Context, callback func(string)) *URIResolver {
+func NewURIResolver(ctx context.Context, callback func(types.NamespacedName)) *URIResolver {
 	ret := &URIResolver{}
 
 	ret.tracker = tracker.New(callback, controller.GetTrackerLease(ctx))

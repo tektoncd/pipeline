@@ -87,8 +87,7 @@ type SpoofingClient struct {
 	Client          *http.Client
 	RequestInterval time.Duration
 	RequestTimeout  time.Duration
-
-	logf logging.FormatLogger
+	Logf            logging.FormatLogger
 }
 
 // TransportOption allows callers to customize the http.Transport used by a SpoofingClient
@@ -108,10 +107,11 @@ func New(
 	opts ...TransportOption) (*SpoofingClient, error) {
 	endpoint, err := ResolveEndpoint(kubeClientset, domain, resolvable, endpointOverride)
 	if err != nil {
-		fmt.Errorf("failed get the cluster endpoint: %v", err)
+		return nil, fmt.Errorf("failed get the cluster endpoint: %v", err)
 	}
 
 	// Spoof the hostname at the resolver level
+	logf("Spoofing %s -> %s", domain, endpoint)
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (conn net.Conn, e error) {
 			spoofed := addr
@@ -119,7 +119,6 @@ func New(
 				// The original hostname:port is spoofed by replacing the hostname by the value
 				// returned by ResolveEndpoint.
 				spoofed = endpoint + ":" + addr[i+1:]
-				logf("Spoofing %s -> %s", addr, spoofed)
 			}
 			return dialContext(ctx, network, spoofed)
 		},
@@ -139,7 +138,7 @@ func New(
 		Client:          &http.Client{Transport: roundTripper},
 		RequestInterval: requestInterval,
 		RequestTimeout:  RequestTimeout,
-		logf:            logf,
+		Logf:            logf,
 	}
 	return &sc, nil
 }
@@ -215,18 +214,21 @@ func (sc *SpoofingClient) Poll(req *http.Request, inState ResponseChecker) (*Res
 		resp, err = sc.Do(req)
 		if err != nil {
 			if isTCPTimeout(err) {
-				sc.logf("Retrying %s for TCP timeout %v", req.URL.String(), err)
+				sc.Logf("Retrying %s for TCP timeout: %v", req.URL, err)
 				return false, nil
 			}
 			// Retrying on DNS error, since we may be using xip.io or nip.io in tests.
 			if isDNSError(err) {
-				sc.logf("Retrying %s for DNS error %v", req.URL.String(), err)
+				sc.Logf("Retrying %s for DNS error: %v", req.URL, err)
 				return false, nil
 			}
 			// Repeat the poll on `connection refused` errors, which are usually transient Istio errors.
-			if isTCPConnectRefuse(err) {
-				sc.logf("Retrying %s for connection refused %v", req.URL.String(), err)
+			if isConnectionRefused(err) {
+				sc.Logf("Retrying %s for connection refused: %v", req.URL, err)
 				return false, nil
+			}
+			if isConnectionReset(err) {
+				sc.Logf("Retrying %s for connection reset: %v", req.URL, err)
 			}
 			return true, err
 		}
@@ -252,15 +254,14 @@ func (sc *SpoofingClient) logZipkinTrace(spoofResp *Response) {
 	}
 
 	traceID := spoofResp.Header.Get(zipkin.ZipkinTraceIDHeader)
-	sc.logf("Logging Zipkin Trace for: %s", traceID)
+	sc.Logf("Logging Zipkin Trace for: %s", traceID)
 
-	// Sleep to ensure all traces are correctly pushed on the backend.
-	time.Sleep(5 * time.Second)
-
-	json, err := zipkin.JSONTrace(traceID)
+	json, err := zipkin.JSONTrace(traceID /* We don't know the expected number of spans */, -1, 5*time.Second)
 	if err != nil {
-		sc.logf("Error getting zipkin trace: %v", err)
+		if _, ok := err.(*zipkin.TimeoutError); !ok {
+			sc.Logf("Error getting zipkin trace: %v", err)
+		}
 	}
 
-	sc.logf("%s", json)
+	sc.Logf("%s", json)
 }

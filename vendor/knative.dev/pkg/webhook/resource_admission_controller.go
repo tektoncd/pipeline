@@ -30,9 +30,9 @@ import (
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	admissionregistrationv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 
@@ -141,10 +141,10 @@ func (ac *ResourceAdmissionController) Register(ctx context.Context, kubeClient 
 
 	webhook := &admissionregistrationv1beta1.MutatingWebhookConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: ac.options.WebhookName,
+			Name: ac.options.ResourceMutatingWebhookName,
 		},
-		Webhooks: []admissionregistrationv1beta1.Webhook{{
-			Name:  ac.options.WebhookName,
+		Webhooks: []admissionregistrationv1beta1.MutatingWebhook{{
+			Name:  ac.options.ResourceMutatingWebhookName,
 			Rules: rules,
 			ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{
 				Service: &admissionregistrationv1beta1.ServiceReference{
@@ -159,7 +159,7 @@ func (ac *ResourceAdmissionController) Register(ctx context.Context, kubeClient 
 	}
 
 	// Set the owner to our deployment.
-	deployment, err := kubeClient.Apps().Deployments(ac.options.Namespace).Get(ac.options.DeploymentName, metav1.GetOptions{})
+	deployment, err := kubeClient.AppsV1().Deployments(ac.options.Namespace).Get(ac.options.DeploymentName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to fetch our deployment: %v", err)
 	}
@@ -173,7 +173,7 @@ func (ac *ResourceAdmissionController) Register(ctx context.Context, kubeClient 
 			return fmt.Errorf("failed to create a webhook: %v", err)
 		}
 		logger.Info("Webhook already exists")
-		configuredWebhook, err := client.Get(ac.options.WebhookName, metav1.GetOptions{})
+		configuredWebhook, err := client.Get(ac.options.ResourceMutatingWebhookName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("error retrieving webhook: %v", err)
 		}

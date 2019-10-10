@@ -119,7 +119,7 @@ func (c *FakePolicies) DeleteCollection(options *v1.DeleteOptions, listOptions v
 // Patch applies the patch and returns the patched policy.
 func (c *FakePolicies) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Policy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(policiesResource, c.ns, name, data, subresources...), &v1alpha1.Policy{})
+		Invokes(testing.NewPatchSubresourceAction(policiesResource, c.ns, name, pt, data, subresources...), &v1alpha1.Policy{})
 
 	if obj == nil {
 		return nil, err

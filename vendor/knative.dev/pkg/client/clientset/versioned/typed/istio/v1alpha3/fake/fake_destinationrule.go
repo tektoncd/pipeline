@@ -119,7 +119,7 @@ func (c *FakeDestinationRules) DeleteCollection(options *v1.DeleteOptions, listO
 // Patch applies the patch and returns the patched destinationRule.
 func (c *FakeDestinationRules) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha3.DestinationRule, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(destinationrulesResource, c.ns, name, data, subresources...), &v1alpha3.DestinationRule{})
+		Invokes(testing.NewPatchSubresourceAction(destinationrulesResource, c.ns, name, pt, data, subresources...), &v1alpha3.DestinationRule{})
 
 	if obj == nil {
 		return nil, err

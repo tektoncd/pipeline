@@ -19,10 +19,10 @@ package kmeta
 import (
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -30,6 +30,8 @@ import (
 // runtime.Object and metav1.Object that Kubernetes API types
 // registered with runtime.Scheme must support.
 type Accessor interface {
+	metav1.Object
+
 	// Interfaces for metav1.TypeMeta
 	GroupVersionKind() schema.GroupVersionKind
 	SetGroupVersionKind(gvk schema.GroupVersionKind)
@@ -37,40 +39,6 @@ type Accessor interface {
 	// Interfaces for runtime.Object
 	GetObjectKind() schema.ObjectKind
 	DeepCopyObject() runtime.Object
-
-	// Interfaces for metav1.Object
-	GetNamespace() string
-	SetNamespace(namespace string)
-	GetName() string
-	SetName(name string)
-	GetGenerateName() string
-	SetGenerateName(name string)
-	GetUID() types.UID
-	SetUID(uid types.UID)
-	GetResourceVersion() string
-	SetResourceVersion(version string)
-	GetGeneration() int64
-	SetGeneration(generation int64)
-	GetSelfLink() string
-	SetSelfLink(selfLink string)
-	GetCreationTimestamp() metav1.Time
-	SetCreationTimestamp(timestamp metav1.Time)
-	GetDeletionTimestamp() *metav1.Time
-	SetDeletionTimestamp(timestamp *metav1.Time)
-	GetDeletionGracePeriodSeconds() *int64
-	SetDeletionGracePeriodSeconds(*int64)
-	GetLabels() map[string]string
-	SetLabels(labels map[string]string)
-	GetAnnotations() map[string]string
-	SetAnnotations(annotations map[string]string)
-	GetInitializers() *metav1.Initializers
-	SetInitializers(initializers *metav1.Initializers)
-	GetFinalizers() []string
-	SetFinalizers(finalizers []string)
-	GetOwnerReferences() []metav1.OwnerReference
-	SetOwnerReferences([]metav1.OwnerReference)
-	GetClusterName() string
-	SetClusterName(clusterName string)
 }
 
 // DeletionHandlingAccessor tries to convert given interface into Accessor first;
@@ -91,4 +59,17 @@ func DeletionHandlingAccessor(obj interface{}) (Accessor, error) {
 	}
 
 	return accessor, nil
+}
+
+// ObjectReference returns an core/v1.ObjectReference for the given object
+func ObjectReference(obj Accessor) corev1.ObjectReference {
+	gvk := obj.GroupVersionKind()
+	apiVersion, kind := gvk.ToAPIVersionAndKind()
+
+	return corev1.ObjectReference{
+		APIVersion: apiVersion,
+		Kind:       kind,
+		Namespace:  obj.GetNamespace(),
+		Name:       obj.GetName(),
+	}
 }

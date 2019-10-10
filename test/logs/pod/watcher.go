@@ -42,8 +42,7 @@ func (w *Watcher) Start(ctx context.Context) error {
 	w.versions = make(chan *v1.Pod, 100)
 
 	watcher, err := w.Pods.Watch(metav1.ListOptions{
-		IncludeUninitialized: true,
-		FieldSelector:        fields.OneTermEqualSelector("metadata.name", w.Name).String(),
+		FieldSelector: fields.OneTermEqualSelector("metadata.name", w.Name).String(),
 	})
 	if err != nil {
 		return xerrors.Errorf("watching pod: %w", err)

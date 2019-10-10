@@ -8,7 +8,7 @@ required = [
   "k8s.io/code-generator/cmd/client-gen",
   "k8s.io/code-generator/cmd/lister-gen",
   "k8s.io/code-generator/cmd/informer-gen",
-  "google.golang.org/api/container/v1",
+  "google.golang.org/api/container/v1beta1",
   "github.com/evanphx/json-patch",
   "knative.dev/test-infra/scripts",
   "knative.dev/test-infra/tools/dep-collector",
@@ -17,23 +17,23 @@ required = [
 
 [[constraint]]
   name = "k8s.io/api"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[override]]
   name = "k8s.io/apiextensions-apiserver"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[constraint]]
   name = "k8s.io/apimachinery"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[constraint]]
   name = "k8s.io/code-generator"
-  version = "kubernetes-1.12.9"
+  version = "kubernetes-1.15.3"
 
 [[override]]
   name = "github.com/json-iterator/go"
@@ -56,7 +56,9 @@ required = [
 
 [[constraint]]
   name = "contrib.go.opencensus.io/exporter/stackdriver"
-  version = "v0.12.2"
+  # The build fails against 0.12.6 and newer because
+  # stackdriver.Options.GetMonitoredResource was removed.
+  version = "<=v0.12.5"
 
 [[constraint]]
   name = "github.com/google/mako"

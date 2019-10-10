@@ -121,7 +121,7 @@ func (acw *APICoverageWebhook) registerWebhook(rules []admissionregistrationv1be
 			Name:      acw.WebhookName,
 			Namespace: namespace,
 		},
-		Webhooks: []admissionregistrationv1beta1.Webhook{{
+		Webhooks: []admissionregistrationv1beta1.ValidatingWebhook{{
 			Name:  acw.WebhookName,
 			Rules: rules,
 			ClientConfig: admissionregistrationv1beta1.WebhookClientConfig{

@@ -17,13 +17,14 @@ limitations under the License.
 package github
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/go-github/github"
 
 	"knative.dev/pkg/test/ghutil"
-	"knative.dev/pkg/test/mako/alerter"
+	"knative.dev/pkg/test/helpers"
 )
 
 const (
@@ -37,25 +38,26 @@ const (
 	// issueBodyTemplate is a template for issue body
 	issueBodyTemplate = `
 ### Auto-generated issue tracking performance regression
-* **Test name**: %s`
+* **Test name**: %s
+* **Repository name**: %s`
+
+	// issueSummaryCommentTemplate is a template for the summary of an issue
+	issueSummaryCommentTemplate = `
+A new regression for this test has been detected:
+%s`
 
 	// reopenIssueCommentTemplate is a template for the comment of an issue that is reopened
 	reopenIssueCommentTemplate = `
 New regression has been detected, reopening this issue:
 %s`
 
-	// newIssueCommentTemplate is a template for the comment of an issue that has been quiet for a long time
-	newIssueCommentTemplate = `
-A new regression for this test has been detected:
-%s`
-
-	// closeIssueComment is the comment of an issue when we close it
+	// closeIssueComment is the comment of an issue when it is closed
 	closeIssueComment = `
-The performance regression goes way for this test, closing this issue.`
+The performance regression goes away for this test, closing this issue.`
 )
 
-// issueHandler handles methods for github issues
-type issueHandler struct {
+// IssueHandler handles methods for github issues
+type IssueHandler struct {
 	client ghutil.GithubOperations
 	config config
 }
@@ -68,149 +70,208 @@ type config struct {
 }
 
 // Setup creates the necessary setup to make calls to work with github issues
-func Setup(githubToken string, config config) (*issueHandler, error) {
-	ghc, err := ghutil.NewGithubClient(githubToken)
+func Setup(org, repo, githubTokenPath string, dryrun bool) (*IssueHandler, error) {
+	if org == "" {
+		return nil, errors.New("org cannot be empty")
+	}
+	if repo == "" {
+		return nil, errors.New("repo cannot be empty")
+	}
+	ghc, err := ghutil.NewGithubClient(githubTokenPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot authenticate to github: %v", err)
 	}
-	return &issueHandler{client: ghc, config: config}, nil
+	conf := config{org: org, repo: repo, dryrun: dryrun}
+	return &IssueHandler{client: ghc, config: conf}, nil
 }
 
 // CreateIssueForTest will try to add an issue with the given testName and description.
 // If there is already an issue related to the test, it will try to update that issue.
-func (gih *issueHandler) CreateIssueForTest(testName, desc string) error {
-	org := gih.config.org
-	repo := gih.config.repo
-	dryrun := gih.config.dryrun
+func (gih *IssueHandler) CreateIssueForTest(testName, desc string) error {
 	title := fmt.Sprintf(issueTitleTemplate, testName)
-	issue := gih.findIssue(org, repo, title, dryrun)
+	issue, err := gih.findIssue(title)
+	if err != nil {
+		return fmt.Errorf("failed to find issues for test %q: %v, skipped creating new issue", testName, err)
+	}
 	// If the issue hasn't been created, create one
 	if issue == nil {
-		body := fmt.Sprintf(issueBodyTemplate, testName)
-		if err := gih.createNewIssue(org, repo, title, body, dryrun); err != nil {
-			return err
+		commentBody := fmt.Sprintf(issueBodyTemplate, testName, gih.config.repo)
+		issue, err := gih.createNewIssue(title, commentBody)
+		if err != nil {
+			return fmt.Errorf("failed to create a new issue for test %q: %v", testName, err)
 		}
-		comment := fmt.Sprintf(newIssueCommentTemplate, desc)
-		if err := gih.addComment(org, repo, *issue.Number, comment, dryrun); err != nil {
-			return err
+		commentBody = fmt.Sprintf(issueSummaryCommentTemplate, desc)
+		if err := gih.addComment(*issue.Number, commentBody); err != nil {
+			return fmt.Errorf("failed to add comment for new issue %d: %v", *issue.Number, err)
 		}
-		// If one issue with the same title has been closed, reopen it and add new comment
-	} else if *issue.State == string(ghutil.IssueCloseState) {
-		if err := gih.reopenIssue(org, repo, *issue.Number, dryrun); err != nil {
-			return err
+		return nil
+	}
+
+	// If the issue has been created, edit it
+	issueNumber := *issue.Number
+
+	// If the issue has been closed, reopen it
+	if *issue.State == string(ghutil.IssueCloseState) {
+		if err := gih.reopenIssue(issueNumber); err != nil {
+			return fmt.Errorf("failed to reopen issue %d: %v", issueNumber, err)
 		}
-		comment := fmt.Sprintf(reopenIssueCommentTemplate, desc)
-		if err := gih.addComment(org, repo, *issue.Number, comment, dryrun); err != nil {
-			return err
+		commentBody := fmt.Sprintf(reopenIssueCommentTemplate, desc)
+		if err := gih.addComment(issueNumber, commentBody); err != nil {
+			return fmt.Errorf("failed to add comment for reopened issue %d: %v", issueNumber, err)
 		}
-	} else {
-		// If the issue hasn't been updated for a long time, add a new comment
-		if time.Now().Sub(*issue.UpdatedAt) > daysConsideredOld*24*time.Hour {
-			comment := fmt.Sprintf(newIssueCommentTemplate, desc)
-			// TODO(Fredy-Z): edit the old comment instead of adding a new one, like flaky-test-reporter
-			if err := gih.addComment(org, repo, *issue.Number, comment, dryrun); err != nil {
-				return err
-			}
-		}
+	}
+
+	// Edit the old comment
+	comments, err := gih.getComments(issueNumber)
+	if err != nil {
+		return fmt.Errorf("failed to get comments from issue %d: %v", issueNumber, err)
+	}
+	if len(comments) < 2 {
+		return fmt.Errorf("existing issue %d is malformed, cannot update", issueNumber)
+	}
+	commentBody := fmt.Sprintf(issueSummaryCommentTemplate, desc)
+	if err := gih.editComment(issueNumber, *comments[1].ID, commentBody); err != nil {
+		return fmt.Errorf("failed to edit the comment for issue %d: %v", issueNumber, err)
 	}
 
 	return nil
 }
 
 // createNewIssue will create a new issue, and add perfLabel for it.
-func (gih *issueHandler) createNewIssue(org, repo, title, body string, dryrun bool) error {
+func (gih *IssueHandler) createNewIssue(title, body string) (*github.Issue, error) {
 	var newIssue *github.Issue
-	if err := alerter.Run(
-		"creating issue",
+	if err := helpers.Run(
+		fmt.Sprintf("creating issue %q in %q", title, gih.config.repo),
 		func() error {
 			var err error
-			newIssue, err = gih.client.CreateIssue(org, repo, title, body)
+			newIssue, err = gih.client.CreateIssue(gih.config.org, gih.config.repo, title, body)
 			return err
 		},
-		dryrun,
+		gih.config.dryrun,
 	); nil != err {
-		return err
+		return nil, err
 	}
-	return alerter.Run(
-		"adding perf label",
+	if err := helpers.Run(
+		fmt.Sprintf("adding perf label for issue %q in %q", title, gih.config.repo),
 		func() error {
-			return gih.client.AddLabelsToIssue(org, repo, *newIssue.Number, []string{perfLabel})
+			return gih.client.AddLabelsToIssue(gih.config.org, gih.config.repo, *newIssue.Number, []string{perfLabel})
 		},
-		dryrun,
-	)
+		gih.config.dryrun,
+	); nil != err {
+		return nil, err
+	}
+	return newIssue, nil
 }
 
 // CloseIssueForTest will try to close the issue for the given testName.
 // If there is no issue related to the test or the issue is already closed, the function will do nothing.
-func (gih *issueHandler) CloseIssueForTest(testName string) error {
-	org := gih.config.org
-	repo := gih.config.repo
-	dryrun := gih.config.dryrun
+func (gih *IssueHandler) CloseIssueForTest(testName string) error {
 	title := fmt.Sprintf(issueTitleTemplate, testName)
-	issue := gih.findIssue(org, repo, title, dryrun)
-	if issue == nil || *issue.State == string(ghutil.IssueCloseState) {
+	issue, err := gih.findIssue(title)
+	// If no issue has been found, or the issue has already been closed, do nothing.
+	if issue == nil || err != nil || *issue.State == string(ghutil.IssueCloseState) {
 		return nil
 	}
 
 	issueNumber := *issue.Number
-	if err := alerter.Run(
-		"add comment for the issue to close",
-		func() error {
-			_, cErr := gih.client.CreateComment(org, repo, issueNumber, closeIssueComment)
-			return cErr
-		},
-		dryrun,
-	); err != nil {
-		return err
+	if err := gih.addComment(issueNumber, closeIssueComment); err != nil {
+		return fmt.Errorf("failed to add comment for the issue %d to close: %v", issueNumber, err)
 	}
-	return alerter.Run(
-		"closing issue",
-		func() error {
-			return gih.client.CloseIssue(org, repo, issueNumber)
-		},
-		dryrun,
-	)
-}
-
-// reopenIssue will reopen the given issue.
-func (gih *issueHandler) reopenIssue(org, repo string, issueNumber int, dryrun bool) error {
-	return alerter.Run(
-		"reopen the issue",
-		func() error {
-			return gih.client.ReopenIssue(org, repo, issueNumber)
-		},
-		dryrun,
-	)
-}
-
-// findIssue will return the issue in the given repo if it exists.
-func (gih *issueHandler) findIssue(org, repo, title string, dryrun bool) *github.Issue {
-	var issues []*github.Issue
-	alerter.Run(
-		"list issues in the repo",
-		func() error {
-			var err error
-			issues, err = gih.client.ListIssuesByRepo(org, repo, []string{perfLabel})
-			return err
-		},
-		dryrun,
-	)
-	for _, issue := range issues {
-		if *issue.Title == title {
-			return issue
-		}
+	if err := gih.closeIssue(issueNumber); err != nil {
+		return fmt.Errorf("failed to close the issue %d: %v", issueNumber, err)
 	}
 	return nil
 }
 
-// addComment will add comment for the given issue.
-func (gih *issueHandler) addComment(org, repo string, issueNumber int, commentBody string, dryrun bool) error {
-	return alerter.Run(
-		"add comment for issue",
+// reopenIssue will reopen the given issue.
+func (gih *IssueHandler) reopenIssue(issueNumber int) error {
+	return helpers.Run(
+		fmt.Sprintf("reopening issue %d in %q", issueNumber, gih.config.repo),
 		func() error {
-			_, err := gih.client.CreateComment(org, repo, issueNumber, commentBody)
+			return gih.client.ReopenIssue(gih.config.org, gih.config.repo, issueNumber)
+		},
+		gih.config.dryrun,
+	)
+}
+
+// closeIssue will close the given issue.
+func (gih *IssueHandler) closeIssue(issueNumber int) error {
+	return helpers.Run(
+		fmt.Sprintf("closing issue %d in %q", issueNumber, gih.config.repo),
+		func() error {
+			return gih.client.CloseIssue(gih.config.org, gih.config.repo, issueNumber)
+		},
+		gih.config.dryrun,
+	)
+}
+
+// findIssue will return the issue in the given repo if it exists.
+func (gih *IssueHandler) findIssue(title string) (*github.Issue, error) {
+	var issues []*github.Issue
+	if err := helpers.Run(
+		fmt.Sprintf("listing issues in %q", gih.config.repo),
+		func() error {
+			var err error
+			issues, err = gih.client.ListIssuesByRepo(gih.config.org, gih.config.repo, []string{perfLabel})
 			return err
 		},
-		dryrun,
+		gih.config.dryrun,
+	); err != nil {
+		return nil, err
+	}
+	var existingIssue *github.Issue
+	for _, issue := range issues {
+		if *issue.Title == title {
+			// If the issue has been closed a long time ago, ignore this issue.
+			if issue.GetState() == string(ghutil.IssueCloseState) &&
+				time.Now().Sub(*issue.UpdatedAt) > daysConsideredOld*24*time.Hour {
+				continue
+			}
+
+			existingIssue = issue
+			break
+		}
+	}
+
+	return existingIssue, nil
+}
+
+// getComments will get comments for the given issue.
+func (gih *IssueHandler) getComments(issueNumber int) ([]*github.IssueComment, error) {
+	var comments []*github.IssueComment
+	if err := helpers.Run(
+		fmt.Sprintf("getting comments for issue %d in %q", issueNumber, gih.config.repo),
+		func() error {
+			var err error
+			comments, err = gih.client.ListComments(gih.config.org, gih.config.repo, issueNumber)
+			return err
+		},
+		gih.config.dryrun,
+	); err != nil {
+		return comments, err
+	}
+	return comments, nil
+}
+
+// addComment will add comment for the given issue.
+func (gih *IssueHandler) addComment(issueNumber int, commentBody string) error {
+	return helpers.Run(
+		fmt.Sprintf("adding comment %q for issue %d in %q", commentBody, issueNumber, gih.config.repo),
+		func() error {
+			_, err := gih.client.CreateComment(gih.config.org, gih.config.repo, issueNumber, commentBody)
+			return err
+		},
+		gih.config.dryrun,
+	)
+}
+
+// editComment will edit the comment to the new body.
+func (gih *IssueHandler) editComment(issueNumber int, commentID int64, commentBody string) error {
+	return helpers.Run(
+		fmt.Sprintf("editting comment to %q for issue %d in %q", commentBody, issueNumber, gih.config.repo),
+		func() error {
+			return gih.client.EditComment(gih.config.org, gih.config.repo, commentID, commentBody)
+		},
+		gih.config.dryrun,
 	)
 }

@@ -38,8 +38,6 @@ spec:
       - name: tekton-pipelines-controller
         image: github.com/tektoncd/pipeline/cmd/controller
         args: [
-          "-logtostderr",
-          "-stderrthreshold", "INFO",
           "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",

@@ -16,6 +16,10 @@ limitations under the License.
 
 package coveragecalculator
 
+import (
+	"math"
+)
+
 // CoverageValues encapsulates all the coverage related values.
 type CoverageValues struct {
 	TotalFields   int
@@ -25,10 +29,35 @@ type CoverageValues struct {
 	PercentCoverage float64
 }
 
+// CoveragePercentages encapsulate percentage coverage for resources.
+type CoveragePercentages struct {
+
+	// ResourceCoverages maps percentage coverage per resource.
+	ResourceCoverages map[string]float64
+}
+
+// CalculatePercentageValue calculates percentage value based on other fields.
 func (c *CoverageValues) CalculatePercentageValue() {
 	if c.TotalFields > 0 {
 		c.PercentCoverage = (float64(c.CoveredFields) / float64(c.TotalFields-c.IgnoredFields)) * 100
 	}
+}
+
+// GetAndRemoveResourceValue utility method to implement "get and delete"
+// semantics. This makes templating operations easy.
+func (c *CoveragePercentages) GetAndRemoveResourceValue(resource string) float64 {
+	if resourcePercentage, ok := c.ResourceCoverages[resource]; ok {
+		delete(c.ResourceCoverages, resource)
+		return resourcePercentage
+	}
+
+	return 0.0
+}
+
+// IsFailedBuild utility method to indicate if CoveragePercentages indicate
+// values of a failed build.
+func (c *CoveragePercentages) IsFailedBuild() bool {
+	return math.Abs(c.ResourceCoverages["Overall"]-0) == 0
 }
 
 // CalculateTypeCoverage calculates aggregate coverage values based on provided []TypeCoverage

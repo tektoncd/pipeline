@@ -58,7 +58,7 @@ func CheckCountData(t *testing.T, name string, wantTags map[string]string, wantV
 		checkRowTags(t, row, name, wantTags)
 
 		if s, ok := row.Data.(*view.CountData); !ok {
-			t.Errorf("For metric %s: Reporter expected a CountData type", name)
+			t.Errorf("%s: got %T, want CountData", name, row.Data)
 		} else if s.Value != wantValue {
 			t.Errorf("For metric %s: value = %v, want: %d", name, s.Value, wantValue)
 		}
@@ -74,7 +74,7 @@ func CheckDistributionData(t *testing.T, name string, wantTags map[string]string
 		checkRowTags(t, row, name, wantTags)
 
 		if s, ok := row.Data.(*view.DistributionData); !ok {
-			t.Errorf("For metric %s: Reporter expected a DistributionData type", name)
+			t.Errorf("%s: got %T, want DistributionData", name, row.Data)
 		} else {
 			if s.Count != expectedCount {
 				t.Errorf("For metric %s: reporter count = %d, want = %d", name, s.Count, expectedCount)
@@ -97,7 +97,7 @@ func CheckLastValueData(t *testing.T, name string, wantTags map[string]string, w
 		checkRowTags(t, row, name, wantTags)
 
 		if s, ok := row.Data.(*view.LastValueData); !ok {
-			t.Errorf("For metric %s: Reporter.Report() expected a LastValueData type", name)
+			t.Errorf("%s: got %T, want LastValueData", name, row.Data)
 		} else if s.Value != wantValue {
 			t.Errorf("For metric %s: Reporter.Report() expected %v got %v", name, s.Value, wantValue)
 		}
@@ -112,7 +112,7 @@ func CheckSumData(t *testing.T, name string, wantTags map[string]string, wantVal
 		checkRowTags(t, row, name, wantTags)
 
 		if s, ok := row.Data.(*view.SumData); !ok {
-			t.Errorf("For metric %s: Reporter expected a SumData type", name)
+			t.Errorf("%s: got %T, want SumData", name, row.Data)
 		} else if s.Value != wantValue {
 			t.Errorf("For metric %s: value = %v, want: %v", name, s.Value, wantValue)
 		}

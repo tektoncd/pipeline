@@ -119,7 +119,7 @@ func (c *FakeGateways) DeleteCollection(options *v1.DeleteOptions, listOptions v
 // Patch applies the patch and returns the patched gateway.
 func (c *FakeGateways) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha3.Gateway, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(gatewaysResource, c.ns, name, data, subresources...), &v1alpha3.Gateway{})
+		Invokes(testing.NewPatchSubresourceAction(gatewaysResource, c.ns, name, pt, data, subresources...), &v1alpha3.Gateway{})
 
 	if obj == nil {
 		return nil, err

@@ -50,6 +50,10 @@ const (
 	// TotalCoverageEndPoint is the endpoint for Total Coverage API
 	TotalCoverageEndPoint = "/totalcoverage"
 
+	// ResourcePercentageCoverageEndPoint is the end point for Resource Percentage
+	// coverages API
+	ResourcePercentageCoverageEndPoint = "/resourcepercentagecoverage"
+
 	// resourceChannelQueueSize size of the queue maintained for resource channel.
 	resourceChannelQueueSize = 10
 )
@@ -207,5 +211,53 @@ func (a *APICoverageRecorder) GetTotalCoverage(w http.ResponseWriter, r *http.Re
 
 	if _, err = w.Write(body); err != nil {
 		fmt.Fprintf(w, "error writing total coverage response: %v", err)
+	}
+}
+
+// GetResourceCoveragePercentags goes over all the resources setup for the
+// apicoverage tool and returns percentage coverage for each resource.
+func (a *APICoverageRecorder) GetResourceCoveragePercentages(
+	w http.ResponseWriter, r *http.Request) {
+	var (
+		ignoredFields coveragecalculator.IgnoredFields
+		err           error
+	)
+
+	ignoredFieldsFilePath :=
+		os.Getenv("KO_DATA_PATH") + "/ignoredfields.yaml"
+	if err = ignoredFields.ReadFromFile(ignoredFieldsFilePath); err != nil {
+		a.Logger.Errorf("Error reading file %s: %v",
+			ignoredFieldsFilePath, err)
+	}
+
+	totalCoverage := coveragecalculator.CoverageValues{}
+	percentCoverages := make(map[string]float64)
+	for resource := range a.ResourceMap {
+		tree := a.ResourceForest.TopLevelTrees[resource.Kind]
+		typeCoverage := tree.BuildCoverageData(a.NodeRules, a.FieldRules,
+			ignoredFields)
+		coverageValues := coveragecalculator.CalculateTypeCoverage(typeCoverage)
+		coverageValues.CalculatePercentageValue()
+		percentCoverages[resource.Kind] = coverageValues.PercentCoverage
+		totalCoverage.TotalFields += coverageValues.TotalFields
+		totalCoverage.CoveredFields += coverageValues.CoveredFields
+		totalCoverage.IgnoredFields += coverageValues.IgnoredFields
+	}
+	totalCoverage.CalculatePercentageValue()
+	percentCoverages["Overall"] = totalCoverage.PercentCoverage
+
+	var body []byte
+	if body, err = json.Marshal(
+		coveragecalculator.CoveragePercentages{
+			ResourceCoverages: percentCoverages,
+		}); err != nil {
+		fmt.Fprintf(w, "error marshalling percentage coverage response: %v",
+			err)
+		return
+	}
+
+	if _, err = w.Write(body); err != nil {
+		fmt.Fprintf(w, "error writing percentage coverage response: %v",
+			err)
 	}
 }

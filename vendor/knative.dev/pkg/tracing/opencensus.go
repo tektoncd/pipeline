@@ -2,7 +2,9 @@ package tracing
 
 import (
 	"errors"
+	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	"contrib.go.opencensus.io/exporter/stackdriver"
@@ -16,7 +18,7 @@ import (
 )
 
 // ConfigOption is the interface for adding additional exporters and configuring opencensus tracing.
-type ConfigOption func(*config.Config)
+type ConfigOption func(*config.Config) error
 
 // OpenCensusTracer is responsible for managing and updating configuration of OpenCensus tracing
 type OpenCensusTracer struct {
@@ -46,14 +48,16 @@ func (oct *OpenCensusTracer) ApplyConfig(cfg *config.Config) error {
 		return err
 	}
 
-	// Short circuit if our config hasnt changed
+	// Short circuit if our config hasn't changed.
 	if oct.curCfg != nil && oct.curCfg.Equals(cfg) {
 		return nil
 	}
 
 	// Apply config options
 	for _, configOpt := range oct.configOptions {
-		configOpt(cfg)
+		if err = configOpt(cfg); err != nil {
+			return err
+		}
 	}
 
 	// Set config
@@ -70,7 +74,9 @@ func (oct *OpenCensusTracer) Finish() error {
 	}
 
 	for _, configOpt := range oct.configOptions {
-		configOpt(nil)
+		if err = configOpt(nil); err != nil {
+			return err
+		}
 	}
 	globalOct = nil
 
@@ -108,7 +114,7 @@ func createOCTConfig(cfg *config.Config) *trace.Config {
 // WithExporter returns a ConfigOption for use with NewOpenCensusTracer that configures
 // it to export traces based on the configuration read from config-tracing.
 func WithExporter(name string, logger *zap.SugaredLogger) ConfigOption {
-	return func(cfg *config.Config) {
+	return func(cfg *config.Config) error {
 		var (
 			exporter trace.Exporter
 			closer   io.Closer
@@ -120,15 +126,25 @@ func WithExporter(name string, logger *zap.SugaredLogger) ConfigOption {
 			})
 			if err != nil {
 				logger.Errorw("error reading project-id from metadata", zap.Error(err))
-				return
+				return err
 			}
 			exporter = exp
 		case config.Zipkin:
+			// If name isn't specified, then zipkin.NewEndpoint will return an error saying that it
+			// can't find the host named ''. So, if not specified, default it to this machine's
+			// hostname.
+			if name == "" {
+				n, err := os.Hostname()
+				if err != nil {
+					return fmt.Errorf("unable to get hostname: %v", err)
+				}
+				name = n
+			}
 			hostPort := name + ":80"
 			zipEP, err := zipkin.NewEndpoint(name, hostPort)
 			if err != nil {
 				logger.Errorw("error building zipkin endpoint", zap.Error(err))
-				return
+				return err
 			}
 			reporter := httpreporter.NewReporter(cfg.ZipkinEndpoint)
 			exporter = oczipkin.NewExporter(reporter, zipEP)
@@ -149,5 +165,7 @@ func WithExporter(name string, logger *zap.SugaredLogger) ConfigOption {
 
 		globalOct.exporter = exporter
 		globalOct.closer = closer
+
+		return nil
 	}
 }

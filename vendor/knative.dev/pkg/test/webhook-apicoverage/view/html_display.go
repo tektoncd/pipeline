@@ -28,15 +28,16 @@ type HtmlDisplayData struct {
 	CoverageNumbers *coveragecalculator.CoverageValues
 }
 
-// GetHTMLDisplay is a helper method to display API Coverage details in json-like format inside a HTML page.
-func GetHTMLDisplay(coverageData []coveragecalculator.TypeCoverage, coverageValues *coveragecalculator.CoverageValues) (string, error) {
-
+// GetHTMLDisplay is a helper method to display API Coverage details in
+// json-like format inside a HTML page.
+func GetHTMLDisplay(coverageData []coveragecalculator.TypeCoverage,
+	coverageValues *coveragecalculator.CoverageValues) (string, error) {
 	htmlData := HtmlDisplayData{
 		TypeCoverages:   coverageData,
 		CoverageNumbers: coverageValues,
 	}
 
-	tmpl, err := template.ParseFiles("type_coverage.html")
+	tmpl, err := template.New("TypeCoverage").Parse(TypeCoverageTempl)
 	if err != nil {
 		return "", err
 	}
@@ -52,8 +53,7 @@ func GetHTMLDisplay(coverageData []coveragecalculator.TypeCoverage, coverageValu
 
 // GetHTMLCoverageValuesDisplay is a helper method to display coverage values inside a HTML table.
 func GetHTMLCoverageValuesDisplay(coverageValues *coveragecalculator.CoverageValues) (string, error) {
-
-	tmpl, err := template.ParseFiles("aggregate_coverage.html")
+	tmpl, err := template.New("AggregateCoverage").Parse(AggregateCoverageTmpl)
 	if err != nil {
 		return "", err
 	}

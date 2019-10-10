@@ -79,7 +79,7 @@ type TableRow struct {
 	// WantEvents holds the ordered list of events we expect during reconciliation.
 	WantEvents []string
 
-	// WantServiceReadyStats holds the ServiceReady stats we exepect during reconciliation.
+	// WantServiceReadyStats holds the ServiceReady stats we expect during reconciliation.
 	WantServiceReadyStats map[string]int
 
 	// WithReactors is a set of functions that are installed as Reactors for the execution
@@ -89,6 +89,9 @@ type TableRow struct {
 	// For cluster-scoped resources like ClusterIngress, it does not have to be
 	// in the same namespace with its child resources.
 	SkipNamespaceValidation bool
+
+	// PostConditions allows custom assertions to be made after reconciliation
+	PostConditions []func(*testing.T, *TableRow)
 }
 
 func objKey(o runtime.Object) string {
@@ -330,6 +333,10 @@ func (r *TableRow) Test(t *testing.T, factory Factory) {
 	gotStats := statsReporter.GetServiceReadyStats()
 	if diff := cmp.Diff(r.WantServiceReadyStats, gotStats); diff != "" {
 		t.Errorf("Unexpected service ready stats (-want, +got): %s", diff)
+	}
+
+	for _, verify := range r.PostConditions {
+		verify(t, r)
 	}
 }
 

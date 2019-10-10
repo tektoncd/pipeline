@@ -28,8 +28,6 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Tekton() tektonv1alpha1.TektonV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -41,12 +39,6 @@ type Clientset struct {
 
 // TektonV1alpha1 retrieves the TektonV1alpha1Client
 func (c *Clientset) TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface {
-	return c.tektonV1alpha1
-}
-
-// Deprecated: Tekton retrieves the default version of TektonClient.
-// Please explicitly pick a version.
-func (c *Clientset) Tekton() tektonv1alpha1.TektonV1alpha1Interface {
 	return c.tektonV1alpha1
 }
 

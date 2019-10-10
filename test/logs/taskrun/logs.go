@@ -45,7 +45,7 @@ func TailLogs(ctx context.Context, cfg *rest.Config, name, namespace string, out
 	if err != nil {
 		return err
 	}
-	tr, err := pclient.TaskRuns(namespace).Get(name, metav1.GetOptions{IncludeUninitialized: true})
+	tr, err := pclient.TaskRuns(namespace).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

@@ -35,13 +35,13 @@ type ResourceType string
 func getResourceName(rt ResourceType) (string, error) {
 	var resName string
 	repoName, err := common.GetRepoName()
-	if nil != err {
+	if err != nil {
 		return "", fmt.Errorf("failed getting reponame for forming resource name: '%v'", err)
 	}
 	resName = fmt.Sprintf("k%s-%s", repoName, string(rt))
 	if common.IsProw() {
 		buildNumStr := common.GetOSEnv("BUILD_NUMBER")
-		if "" == buildNumStr {
+		if buildNumStr == "" {
 			return "", fmt.Errorf("failed getting BUILD_NUMBER env var")
 		}
 		if len(buildNumStr) > 20 {
@@ -50,11 +50,4 @@ func getResourceName(rt ResourceType) (string, error) {
 		resName = fmt.Sprintf("%s-%s", resName, buildNumStr)
 	}
 	return resName, nil
-}
-
-func getClusterLocation(region, zone string) string {
-	if "" != zone {
-		region = fmt.Sprintf("%s-%s", region, zone)
-	}
-	return region
 }

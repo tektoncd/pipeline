@@ -27,10 +27,12 @@ import (
 	"knative.dev/pkg/metrics/metricskey"
 )
 
-// customMetricTypePrefix is the metric type prefix for unsupported metrics by
-// resource type knative_revision.
-// See: https://cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricDescriptor
-const customMetricTypePrefix = "custom.googleapis.com/knative.dev"
+const (
+	customMetricTypePrefix = "custom.googleapis.com"
+	// defaultCustomMetricSubDomain is the default subdomain to use for unsupported metrics by monitored resource types.
+	// See: https://cloud.google.com/monitoring/api/ref_v3/rest/v3/projects.metricDescriptors#MetricDescriptor
+	defaultCustomMetricSubDomain = "knative.dev"
+)
 
 var (
 	// gcpMetadataFunc is the function used to fetch GCP metadata.
@@ -87,10 +89,10 @@ func getMonitoredResourceFunc(metricTypePrefix string, gm *gcpMetadata) func(v *
 			return GetKnativeBrokerMonitoredResource(view, tags, gm)
 		} else if metricskey.KnativeTriggerMetrics.Has(metricType) {
 			return GetKnativeTriggerMonitoredResource(view, tags, gm)
-		} else if metricskey.KnativeImporterMetrics.Has(metricType) {
-			return GetKnativeImporterMonitoredResource(view, tags, gm)
+		} else if metricskey.KnativeSourceMetrics.Has(metricType) {
+			return GetKnativeSourceMonitoredResource(view, tags, gm)
 		}
-		// Unsupported metric by knative_revision, knative_broker, knative_trigger, and knative_importer, use "global" resource type.
+		// Unsupported metric by knative_revision, knative_broker, knative_trigger, and knative_source, use "global" resource type.
 		return getGlobalMonitoredResource(view, tags)
 	}
 }
@@ -105,7 +107,7 @@ func getMetricTypeFunc(metricTypePrefix, customMetricTypePrefix string) func(vie
 		inServing := metricskey.KnativeRevisionMetrics.Has(metricType)
 		inEventing := metricskey.KnativeBrokerMetrics.Has(metricType) ||
 			metricskey.KnativeTriggerMetrics.Has(metricType) ||
-			metricskey.KnativeImporterMetrics.Has(metricType)
+			metricskey.KnativeSourceMetrics.Has(metricType)
 		if inServing || inEventing {
 			return metricType
 		}

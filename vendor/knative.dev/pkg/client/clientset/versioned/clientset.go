@@ -29,11 +29,7 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	AuthenticationV1alpha1() authenticationv1alpha1.AuthenticationV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Authentication() authenticationv1alpha1.AuthenticationV1alpha1Interface
 	NetworkingV1alpha3() networkingv1alpha3.NetworkingV1alpha3Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Networking() networkingv1alpha3.NetworkingV1alpha3Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -49,20 +45,8 @@ func (c *Clientset) AuthenticationV1alpha1() authenticationv1alpha1.Authenticati
 	return c.authenticationV1alpha1
 }
 
-// Deprecated: Authentication retrieves the default version of AuthenticationClient.
-// Please explicitly pick a version.
-func (c *Clientset) Authentication() authenticationv1alpha1.AuthenticationV1alpha1Interface {
-	return c.authenticationV1alpha1
-}
-
 // NetworkingV1alpha3 retrieves the NetworkingV1alpha3Client
 func (c *Clientset) NetworkingV1alpha3() networkingv1alpha3.NetworkingV1alpha3Interface {
-	return c.networkingV1alpha3
-}
-
-// Deprecated: Networking retrieves the default version of NetworkingClient.
-// Please explicitly pick a version.
-func (c *Clientset) Networking() networkingv1alpha3.NetworkingV1alpha3Interface {
 	return c.networkingV1alpha3
 }
 

@@ -18,6 +18,7 @@ package version
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/rogpeppe/go-internal/semver"
 	"k8s.io/apimachinery/pkg/version"
@@ -31,7 +32,20 @@ type ServerVersioner interface {
 	ServerVersion() (*version.Info, error)
 }
 
-var minimumVersion = "v1.11.0"
+const (
+	// KubernetesMinVersionKey is the environment variable that can be used to override
+	// the Kubernetes minimum version required by Knative.
+	KubernetesMinVersionKey = "KUBERNETES_MIN_VERSION"
+
+	defaultMinimumVersion = "v1.14.0"
+)
+
+func getMinimumVersion() string {
+	if v := os.Getenv(KubernetesMinVersionKey); v != "" {
+		return v
+	}
+	return defaultMinimumVersion
+}
 
 // CheckMinimumVersion checks if the currently installed version of
 // Kubernetes is compatible with the minimum version required.
@@ -46,10 +60,13 @@ func CheckMinimumVersion(versioner ServerVersioner) error {
 	}
 	currentVersion := semver.Canonical(v.String())
 
+	minimumVersion := getMinimumVersion()
+
 	// Compare returns 1 if the first version is greater than the
 	// second version.
 	if semver.Compare(minimumVersion, currentVersion) == 1 {
-		return fmt.Errorf("kubernetes version %q is not compatible, need at least %q", currentVersion, minimumVersion)
+		return fmt.Errorf("kubernetes version %q is not compatible, need at least %q (this can be overridden with the env var %q)",
+			currentVersion, minimumVersion, KubernetesMinVersionKey)
 	}
 	return nil
 }

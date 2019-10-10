@@ -19,7 +19,6 @@ limitations under the License.
 package v1alpha3
 
 import (
-	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 	v1alpha3 "knative.dev/pkg/apis/istio/v1alpha3"
 	"knative.dev/pkg/client/clientset/versioned/scheme"
@@ -81,7 +80,7 @@ func setConfigDefaults(config *rest.Config) error {
 	gv := v1alpha3.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()

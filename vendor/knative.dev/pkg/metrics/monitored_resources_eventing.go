@@ -44,13 +44,13 @@ type KnativeBroker struct {
 	BrokerName    string
 }
 
-type KnativeImporter struct {
-	Project               string
-	Location              string
-	ClusterName           string
-	NamespaceName         string
-	ImporterName          string
-	ImporterResourceGroup string
+type KnativeSource struct {
+	Project             string
+	Location            string
+	ClusterName         string
+	NamespaceName       string
+	SourceName          string
+	SourceResourceGroup string
 }
 
 func (kt *KnativeTrigger) MonitoredResource() (resType string, labels map[string]string) {
@@ -59,7 +59,7 @@ func (kt *KnativeTrigger) MonitoredResource() (resType string, labels map[string
 		metricskey.LabelLocation:      kt.Location,
 		metricskey.LabelClusterName:   kt.ClusterName,
 		metricskey.LabelNamespaceName: kt.NamespaceName,
-		metricskey.LabelTriggerName:   kt.TriggerName,
+		metricskey.LabelName:          kt.TriggerName,
 		metricskey.LabelBrokerName:    kt.BrokerName,
 	}
 	return metricskey.ResourceTypeKnativeTrigger, labels
@@ -71,21 +71,21 @@ func (kb *KnativeBroker) MonitoredResource() (resType string, labels map[string]
 		metricskey.LabelLocation:      kb.Location,
 		metricskey.LabelClusterName:   kb.ClusterName,
 		metricskey.LabelNamespaceName: kb.NamespaceName,
-		metricskey.LabelBrokerName:    kb.BrokerName,
+		metricskey.LabelName:          kb.BrokerName,
 	}
 	return metricskey.ResourceTypeKnativeBroker, labels
 }
 
-func (ki *KnativeImporter) MonitoredResource() (resType string, labels map[string]string) {
+func (ki *KnativeSource) MonitoredResource() (resType string, labels map[string]string) {
 	labels = map[string]string{
-		metricskey.LabelProject:               ki.Project,
-		metricskey.LabelLocation:              ki.Location,
-		metricskey.LabelClusterName:           ki.ClusterName,
-		metricskey.LabelNamespaceName:         ki.NamespaceName,
-		metricskey.LabelImporterName:          ki.ImporterName,
-		metricskey.LabelImporterResourceGroup: ki.ImporterResourceGroup,
+		metricskey.LabelProject:       ki.Project,
+		metricskey.LabelLocation:      ki.Location,
+		metricskey.LabelClusterName:   ki.ClusterName,
+		metricskey.LabelNamespaceName: ki.NamespaceName,
+		metricskey.LabelName:          ki.SourceName,
+		metricskey.LabelResourceGroup: ki.SourceResourceGroup,
 	}
-	return metricskey.ResourceTypeKnativeImporter, labels
+	return metricskey.ResourceTypeKnativeSource, labels
 }
 
 func GetKnativeBrokerMonitoredResource(
@@ -98,7 +98,7 @@ func GetKnativeBrokerMonitoredResource(
 		ClusterName: gm.cluster,
 		// The rest resource labels are from metrics labels.
 		NamespaceName: valueOrUnknown(metricskey.LabelNamespaceName, tagsMap),
-		BrokerName:    valueOrUnknown(metricskey.LabelBrokerName, tagsMap),
+		BrokerName:    valueOrUnknown(metricskey.LabelName, tagsMap),
 	}
 
 	var newTags []tag.Tag
@@ -122,7 +122,7 @@ func GetKnativeTriggerMonitoredResource(
 		ClusterName: gm.cluster,
 		// The rest resource labels are from metrics labels.
 		NamespaceName: valueOrUnknown(metricskey.LabelNamespaceName, tagsMap),
-		TriggerName:   valueOrUnknown(metricskey.LabelTriggerName, tagsMap),
+		TriggerName:   valueOrUnknown(metricskey.LabelName, tagsMap),
 		BrokerName:    valueOrUnknown(metricskey.LabelBrokerName, tagsMap),
 	}
 
@@ -137,24 +137,24 @@ func GetKnativeTriggerMonitoredResource(
 	return newTags, kt
 }
 
-func GetKnativeImporterMonitoredResource(
+func GetKnativeSourceMonitoredResource(
 	v *view.View, tags []tag.Tag, gm *gcpMetadata) ([]tag.Tag, monitoredresource.Interface) {
 	tagsMap := getTagsMap(tags)
-	ki := &KnativeImporter{
+	ki := &KnativeSource{
 		// The first three resource labels are from metadata.
 		Project:     gm.project,
 		Location:    gm.location,
 		ClusterName: gm.cluster,
 		// The rest resource labels are from metrics labels.
-		NamespaceName:         valueOrUnknown(metricskey.LabelNamespaceName, tagsMap),
-		ImporterName:          valueOrUnknown(metricskey.LabelImporterName, tagsMap),
-		ImporterResourceGroup: valueOrUnknown(metricskey.LabelImporterResourceGroup, tagsMap),
+		NamespaceName:       valueOrUnknown(metricskey.LabelNamespaceName, tagsMap),
+		SourceName:          valueOrUnknown(metricskey.LabelName, tagsMap),
+		SourceResourceGroup: valueOrUnknown(metricskey.LabelResourceGroup, tagsMap),
 	}
 
 	var newTags []tag.Tag
 	for _, t := range tags {
 		// Keep the metrics labels that are not resource labels
-		if !metricskey.KnativeImporterLabels.Has(t.Key.Name()) {
+		if !metricskey.KnativeSourceLabels.Has(t.Key.Name()) {
 			newTags = append(newTags, t)
 		}
 	}

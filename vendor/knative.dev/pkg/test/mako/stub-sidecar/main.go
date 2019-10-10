@@ -24,6 +24,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/golang/protobuf/jsonpb"
 
@@ -33,10 +34,13 @@ import (
 
 const (
 	port = ":9813"
+	// A 10 minutes run at 1000 rps of eventing perf tests is usually ~= 70 MBi, so 100MBi is reasonable
+	defaultServerMaxReceiveMessageSize = 1024 * 1024 * 100
 )
 
 type server struct {
-	stopCh chan struct{}
+	stopOnce sync.Once
+	stopCh   chan struct{}
 }
 
 func (s *server) Store(ctx context.Context, in *qspb.StoreInput) (*qspb.StoreOutput, error) {
@@ -96,7 +100,7 @@ func makeRow(prototype []string, points map[string]string) []string {
 }
 
 func (s *server) ShutdownMicroservice(ctx context.Context, in *qspb.ShutdownInput) (*qspb.ShutdownOutput, error) {
-	close(s.stopCh)
+	s.stopOnce.Do(func() { close(s.stopCh) })
 	return &qspb.ShutdownOutput{}, nil
 }
 
@@ -105,7 +109,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(grpc.MaxRecvMsgSize(defaultServerMaxReceiveMessageSize))
 	stopCh := make(chan struct{})
 	go func() {
 		qspb.RegisterQuickstoreServer(s, &server{stopCh: stopCh})

@@ -17,18 +17,42 @@ limitations under the License.
 package testing
 
 import (
+	"sync"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"knative.dev/pkg/tracker"
 )
 
-// NullTracker implements Tracker.
-type NullTracker struct{}
+// NullTracker implements Tracker
+//
+// Alias is preserved for backwards compatibility
+type NullTracker = FakeTracker
 
-var _ tracker.Interface = (*NullTracker)(nil)
+// FakeTracker implements Tracker.
+type FakeTracker struct {
+	sync.Mutex
+	references []corev1.ObjectReference
+}
+
+var _ tracker.Interface = (*FakeTracker)(nil)
 
 // OnChanged implements OnChanged.
-func (*NullTracker) OnChanged(interface{}) {}
+func (*FakeTracker) OnChanged(interface{}) {}
 
 // Track implements Track.
-func (*NullTracker) Track(corev1.ObjectReference, interface{}) error { return nil }
+func (n *FakeTracker) Track(ref corev1.ObjectReference, obj interface{}) error {
+	n.Lock()
+	defer n.Unlock()
+
+	n.references = append(n.references, ref)
+	return nil
+}
+
+// References returns the list of objects being tracked
+func (n *FakeTracker) References() []corev1.ObjectReference {
+	n.Lock()
+	defer n.Unlock()
+
+	return append(n.references[:0:0], n.references...)
+}

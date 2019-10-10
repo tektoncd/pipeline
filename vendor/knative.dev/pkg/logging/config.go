@@ -33,6 +33,8 @@ import (
 
 const ConfigMapNameEnv = "CONFIG_LOGGING_NAME"
 
+var zapLoggerConfig = "zap-logger-config"
+
 // NewLogger creates a logger with the supplied configuration.
 // In addition to the logger, it returns AtomicLevel that can
 // be used to change the logging level at runtime.
@@ -195,4 +197,42 @@ func ConfigMapName() string {
 		return "config-logging"
 	}
 	return cm
+}
+
+// JsonToLoggingConfig converts a json string of a Config.
+// Returns a non-nil Config always.
+func JsonToLoggingConfig(jsonCfg string) (*Config, error) {
+	if jsonCfg == "" {
+		return nil, errors.New("json logging string is empty")
+	}
+
+	var configMap map[string]string
+	if err := json.Unmarshal([]byte(jsonCfg), &configMap); err != nil {
+		return nil, err
+	}
+
+	cfg, err := NewConfigFromMap(configMap)
+	if err != nil {
+		// Get the default config from logging package.
+		if cfg, err = NewConfigFromMap(nil); err != nil {
+			return nil, err
+		}
+	}
+	return cfg, nil
+}
+
+// LoggingConfigToJson converts a Config to a json string.
+func LoggingConfigToJson(cfg *Config) (string, error) {
+	if cfg == nil || cfg.LoggingConfig == "" {
+		return "", nil
+	}
+
+	jsonCfg, err := json.Marshal(map[string]string{
+		zapLoggerConfig: cfg.LoggingConfig,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonCfg), nil
 }
