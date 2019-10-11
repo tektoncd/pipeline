@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
@@ -119,6 +120,16 @@ tkn t desc foo -n bar
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
+
+			cs, err := p.Clients()
+			if err != nil {
+				return fmt.Errorf("failed to create tekton client")
+			}
+
+			if err := validate.NamespaceExists(cs.Kube, p.Namespace()); err != nil {
+				return err
+			}
+
 			return printTaskDescription(s, p, args[0])
 		},
 	}
@@ -131,7 +142,7 @@ tkn t desc foo -n bar
 func printTaskDescription(s *cli.Stream, p cli.Params, tname string) error {
 	cs, err := p.Clients()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create tekton client")
 	}
 
 	task, err := cs.Tekton.TektonV1alpha1().Tasks(p.Namespace()).Get(tname, metav1.GetOptions{})

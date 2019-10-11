@@ -29,16 +29,38 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 )
 
-func TestTaskDescribe_Empty(t *testing.T) {
+func TestTaskDescribe_Invalid_Namespace(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	task := Command(p)
-	_, err := test.ExecuteCommand(task, "desc", "bar")
+	_, err := test.ExecuteCommand(task, "desc", "bar", "-n", "invalid")
+	if err == nil {
+		t.Errorf("Error expected here")
+	}
+	expected := "namespaces \"invalid\" not found"
+	test.AssertOutput(t, expected, err.Error())
+}
+
+func TestTaskDescribe_Empty(t *testing.T) {
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	task := Command(p)
+	_, err := test.ExecuteCommand(task, "desc", "bar", "-n", "ns")
 	if err == nil {
 		t.Errorf("Error expected here")
 	}
@@ -52,9 +74,22 @@ func TestTaskDescribe_OnlyName(t *testing.T) {
 			tb.Task("task-1", "ns"),
 			tb.Task("task", "ns-2"),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns-2",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p.SetNamespace("ns")
 	task := Command(p)
 	out, err := test.ExecuteCommand(task, "desc", "task-1")
 	if err != nil {
@@ -87,9 +122,21 @@ func TestTaskDescribe_OnlyNameDiffNameSpace(t *testing.T) {
 			tb.Task("task-1", "ns"),
 			tb.Task("task", "ns-2"),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns-2",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 	p.SetNamespace("ns")
 	task := Command(p)
 	out, err := test.ExecuteCommand(task, "desc", "task", "-n", "ns-2")
@@ -130,9 +177,22 @@ func TestTaskDescribe_OnlyNameParams(t *testing.T) {
 			),
 			tb.Task("task", "ns-2"),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns-2",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p.SetNamespace("ns")
 	task := Command(p)
 	out, err := test.ExecuteCommand(task, "desc", "task-1")
 	if err != nil {
@@ -209,9 +269,16 @@ func TestTaskDescribe_Full(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 	task := Command(p)
 	clock.Advance(20 * time.Minute)
 	out, err := test.ExecuteCommand(task, "desc", "task-1")
@@ -257,9 +324,22 @@ func TestTaskDescribe_PipelineRunError(t *testing.T) {
 			tb.Task("task-1", "ns"),
 			tb.Task("task", "ns-2"),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns-2",
+				},
+			},
+		},
 	})
 
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	p.SetNamespace("ns")
 
 	cs.Pipeline.PrependReactor("list", "taskruns", func(action k8stest.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("fake list taskrun error")
