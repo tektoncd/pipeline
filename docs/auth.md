@@ -145,7 +145,7 @@ to authenticate when retrieving any `PipelineResources`.
    metadata:
      name: build-push-task-run-2
    spec:
-     serviceAccountName: build-bot
+     serviceAccount: build-bot
      taskRef:
        name: build-push
    ```
@@ -159,7 +159,7 @@ to authenticate when retrieving any `PipelineResources`.
      name: demo-pipeline
      namespace: default
    spec:
-     serviceAccountName: build-bot
+     serviceAccount: build-bot
      pipelineRef:
        name: demo-pipeline
    ```
