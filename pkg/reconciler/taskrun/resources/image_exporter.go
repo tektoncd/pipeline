@@ -25,7 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const TerminationMessagePath = "/builder/home/image-outputs/termination-log"
+const imageDigestExporterContainerName = "image-digest-exporter"
 
 // AddOutputImageDigestExporter add a step to check the index.json for all output images
 func AddOutputImageDigestExporter(
@@ -82,40 +82,14 @@ func AddOutputImageDigestExporter(
 	return nil
 }
 
-// UpdateTaskRunStatusWithResourceResult if there is an update to the outout image resource, add to taskrun status result
-func UpdateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
-	if err := json.Unmarshal(logContent, &taskRun.Status.ResourcesResult); err != nil {
-		return xerrors.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
-	}
-	return nil
-}
-
 func imageDigestExporterStep(imageDigestExporterImage string, imagesJSON []byte) v1alpha1.Step {
 	return v1alpha1.Step{Container: corev1.Container{
-		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("image-digest-exporter"),
+		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(imageDigestExporterContainerName),
 		Image:   imageDigestExporterImage,
 		Command: []string{"/ko-app/imagedigestexporter"},
 		Args: []string{
 			"-images", string(imagesJSON),
-			"-terminationMessagePath", TerminationMessagePath,
 		},
-		TerminationMessagePath:   TerminationMessagePath,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}}
-}
-
-// TaskRunHasOutputImageResource return true if the task has any output resources of type image
-func TaskRunHasOutputImageResource(gr GetResource, taskRun *v1alpha1.TaskRun) bool {
-	if len(taskRun.Spec.Outputs.Resources) > 0 {
-		for _, r := range taskRun.Spec.Outputs.Resources {
-			resource, err := gr(r.ResourceRef.Name)
-			if err != nil {
-				return false
-			}
-			if resource.Spec.Type == v1alpha1.PipelineResourceTypeImage {
-				return true
-			}
-		}
-	}
-	return false
 }

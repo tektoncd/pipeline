@@ -109,6 +109,11 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 			Command:    []string{"/ko-app/git-init"},
 			Args:       args,
 			WorkingDir: WorkspaceDir,
+			// This is used to populate the ResourceResult status.
+			Env: []corev1.EnvVar{{
+				Name:  "TEKTON_RESOURCE_NAME",
+				Value: s.Name,
+			}},
 		},
 	}
 	return &InternalTaskModifier{

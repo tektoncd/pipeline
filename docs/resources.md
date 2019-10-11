@@ -198,8 +198,7 @@ spec:
 
 When resources are bound inside a TaskRun, they can include extra information in the TaskRun Status.ResourcesResult field.
 This information can be useful for auditing the exact resources used by a TaskRun later.
-Currently the only resource that uses this mechanism is the Image resource, which includes the exact digest
-of an image built by a TaskRun and declared as an output.
+Currently the Image and Git resources use this mechanism.
 
 For an example of what this output looks like:
 
@@ -257,6 +256,17 @@ Params that can be added are the following:
     (branch, tag, commit SHA or ref) to clone. You can use this to control what
     commit [or branch](#using-a-branch) is used. _If no revision is specified,
     the resource will default to `latest` from `master`._
+
+When used as an input, the Git resource includes the exact commit fetched in the `resourceResults`
+section of the `taskRun`'s status object:
+
+```yaml
+resourceResults:
+- key: commit
+  value: 6ed7aad5e8a36052ee5f6079fc91368e362121f7
+  resourceRef:
+    name: skaffold-git
+```
 
 #### Using a fork
 

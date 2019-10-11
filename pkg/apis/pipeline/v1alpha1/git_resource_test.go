@@ -132,6 +132,7 @@ func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
 			"/test/test",
 		},
 		WorkingDir: "/workspace",
+		Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"}},
 	}}}
 
 	if diff := cmp.Diff(want, modifier.GetStepsToPrepend()); diff != "" {

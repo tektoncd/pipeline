@@ -39,12 +39,15 @@ const (
 	kanikoTaskRunName       = "kanikotask-run"
 	kanikoGitResourceName   = "go-example-git"
 	kanikoImageResourceName = "go-example-image"
+	// This is a random revision chosen on 10/11/2019
+	revision = "1c9d566ecd13535f93789595740f20932f655905"
 )
 
 func getGitResource(namespace string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(kanikoGitResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/GoogleContainerTools/kaniko"),
+		tb.PipelineResourceSpecParam("Revision", revision),
 	))
 }
 
@@ -141,13 +144,24 @@ func TestKanikoTaskRun(t *testing.T) {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
 	digest := ""
+	commit := ""
 	for _, rr := range tr.Status.ResourcesResult {
-		if rr.Key == "digest" {
+		switch rr.Key {
+		case "digest":
 			digest = rr.Value
+		case "commit":
+			commit = rr.Value
 		}
 	}
 	if digest == "" {
 		t.Errorf("Digest not found in TaskRun.Status: %v", tr.Status)
+	}
+	if commit == "" {
+		t.Errorf("Commit not found in TaskRun.Status: %v", tr.Status)
+	}
+
+	if revision != commit {
+		t.Fatalf("Expected remote commit to match local revision: %s, %s", commit, revision)
 	}
 
 	// match the local digest, which is first capture group against the remote image
