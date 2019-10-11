@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,7 +30,7 @@ import (
 
 var (
 	ep              = flag.String("entrypoint", "", "Original specified entrypoint to execute")
-	waitFile        = flag.String("wait_file", "", "If specified, file to wait for")
+	waitFiles       = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
 	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
 	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
 
@@ -41,7 +42,7 @@ func main() {
 
 	e := entrypoint.Entrypointer{
 		Entrypoint:      *ep,
-		WaitFile:        *waitFile,
+		WaitFiles:       strings.Split(*waitFiles, ","),
 		WaitFileContent: *waitFileContent,
 		PostFile:        *postFile,
 		Args:            flag.Args(),

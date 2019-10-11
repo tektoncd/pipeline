@@ -26,10 +26,11 @@ import (
 
 func TestEntrypointerFailures(t *testing.T) {
 	for _, c := range []struct {
-		desc, waitFile, postFile string
-		waiter                   Waiter
-		runner                   Runner
-		expectedError            string
+		desc, postFile string
+		waitFiles      []string
+		waiter         Waiter
+		runner         Runner
+		expectedError  string
 	}{{
 		desc:          "failing runner with no postFile",
 		runner:        &fakeErrorRunner{},
@@ -41,12 +42,12 @@ func TestEntrypointerFailures(t *testing.T) {
 		postFile:      "foo",
 	}, {
 		desc:          "failing waiter with no postFile",
-		waitFile:      "foo",
+		waitFiles:     []string{"foo"},
 		waiter:        &fakeErrorWaiter{},
 		expectedError: "waiter failed",
 	}, {
 		desc:          "failing waiter with postFile",
-		waitFile:      "foo",
+		waitFiles:     []string{"foo"},
 		waiter:        &fakeErrorWaiter{},
 		expectedError: "waiter failed",
 		postFile:      "bar",
@@ -63,7 +64,7 @@ func TestEntrypointerFailures(t *testing.T) {
 			fpw := &fakePostWriter{}
 			err := Entrypointer{
 				Entrypoint: "echo",
-				WaitFile:   c.waitFile,
+				WaitFiles:  c.waitFiles,
 				PostFile:   c.postFile,
 				Args:       []string{"some", "args"},
 				Waiter:     fw,
@@ -93,8 +94,8 @@ func TestEntrypointerFailures(t *testing.T) {
 
 func TestEntrypointer(t *testing.T) {
 	for _, c := range []struct {
-		desc, entrypoint, waitFile, postFile string
-		args                                 []string
+		desc, entrypoint, postFile string
+		waitFiles, args            []string
 	}{{
 		desc: "do nothing",
 	}, {
@@ -107,22 +108,25 @@ func TestEntrypointer(t *testing.T) {
 		desc: "just args",
 		args: []string{"just", "args"},
 	}, {
-		desc:     "wait file",
-		waitFile: "waitforme",
+		desc:      "wait file",
+		waitFiles: []string{"waitforme"},
 	}, {
 		desc:     "post file",
 		postFile: "writeme",
 	}, {
 		desc:       "all together now",
 		entrypoint: "echo", args: []string{"some", "args"},
-		waitFile: "waitforme",
-		postFile: "writeme",
+		waitFiles: []string{"waitforme"},
+		postFile:  "writeme",
+	}, {
+		desc:      "multiple wait files",
+		waitFiles: []string{"waitforme", "metoo", "methree"},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
 			err := Entrypointer{
 				Entrypoint: c.entrypoint,
-				WaitFile:   c.waitFile,
+				WaitFiles:  c.waitFiles,
 				PostFile:   c.postFile,
 				Args:       c.args,
 				Waiter:     fw,
@@ -133,14 +137,14 @@ func TestEntrypointer(t *testing.T) {
 				t.Fatalf("Entrypointer failed: %v", err)
 			}
 
-			if c.waitFile != "" {
+			if len(c.waitFiles) > 0 {
 				if fw.waited == nil {
 					t.Error("Wanted waited file, got nil")
-				} else if *fw.waited != c.waitFile {
-					t.Errorf("Waited for %q, want %q", *fw.waited, c.waitFile)
+				} else if !reflect.DeepEqual(fw.waited, c.waitFiles) {
+					t.Errorf("Waited for %v, want %v", fw.waited, c.waitFiles)
 				}
 			}
-			if c.waitFile == "" && fw.waited != nil {
+			if len(c.waitFiles) == 0 && fw.waited != nil {
 				t.Errorf("Waited for file when not required")
 			}
 
@@ -173,10 +177,10 @@ func TestEntrypointer(t *testing.T) {
 	}
 }
 
-type fakeWaiter struct{ waited *string }
+type fakeWaiter struct{ waited []string }
 
-func (f *fakeWaiter) Wait(file string, expectContent bool) error {
-	f.waited = &file
+func (f *fakeWaiter) Wait(file string, _ bool) error {
+	f.waited = append(f.waited, file)
 	return nil
 }
 
