@@ -19,8 +19,9 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"log"
-	"os"
+
+	"github.com/tektoncd/pipeline/pkg/termination"
+	"knative.dev/pkg/logging"
 
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -28,7 +29,7 @@ import (
 
 var (
 	images                 = flag.String("images", "", "List of images resources built by task in json format")
-	terminationMessagePath = flag.String("terminationMessagePath", "", "Location of file containing termination message")
+	terminationMessagePath = flag.String("terminationMessagePath", "/dev/termination-log", "Location of file containing termination message")
 )
 
 /* The input of this go program will be a JSON string with all the output PipelineResources of type
@@ -40,10 +41,12 @@ The output is an array of PipelineResourceResult, ex: [{"name":"image","digest":
 */
 func main() {
 	flag.Parse()
+	logger, _ := logging.NewLogger("", "image-digest-exporter")
+	defer logger.Sync()
 
 	imageResources := []*v1alpha1.ImageResource{}
 	if err := json.Unmarshal([]byte(*images), &imageResources); err != nil {
-		log.Fatalf("Error reading images array: %v", err)
+		logger.Fatalf("Error reading images array: %v", err)
 	}
 
 	output := []v1alpha1.PipelineResourceResult{}
@@ -52,12 +55,12 @@ func main() {
 		if err != nil {
 			// if this image doesn't have a builder that supports index.json file,
 			// then it will be skipped
-			log.Printf("ImageResource %s doesn't have an index.json file: %s", imageResource.Name, err)
+			logger.Infof("ImageResource %s doesn't have an index.json file: %s", imageResource.Name, err)
 			continue
 		}
 		digest, err := GetDigest(ii)
 		if err != nil {
-			log.Fatalf("Unexpected error getting image digest for %s: %v", imageResource.Name, err)
+			logger.Fatalf("Unexpected error getting image digest for %s: %v", imageResource.Name, err)
 		}
 		// We need to write both the old Name/Digest style and the new Key/Value styles.
 		output = append(output, v1alpha1.PipelineResourceResult{
@@ -75,22 +78,5 @@ func main() {
 
 	}
 
-	imagesJSON, err := json.Marshal(output)
-	if err != nil {
-		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
-	}
-	log.Printf("Image digest exporter output: %s ", string(imagesJSON))
-	f, err := os.OpenFile(*terminationMessagePath, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
-	}
-	defer f.Close()
-
-	_, err = f.Write(imagesJSON)
-	if err != nil {
-		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
-	}
-	if err := f.Sync(); err != nil {
-		log.Fatalf("Unexpected error converting images to json %v: %v", output, err)
-	}
+	termination.WriteMessage(logger, *terminationMessagePath, output)
 }

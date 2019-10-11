@@ -727,6 +727,7 @@ func TestReconcile(t *testing.T) {
 						"-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
+					tb.EnvVar("TEKTON_RESOURCE_NAME", "git-resource"),
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("workspace", workspaceDir),
 					tb.VolumeMount("home", "/builder/home"),
@@ -770,8 +771,7 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("step-image-digest-exporter-9l9zj", "override-with-imagedigest-exporter-image:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/builder/tools/3", "-post_file", "/builder/tools/4", "-entrypoint", "/ko-app/imagedigestexporter", "--",
-						"-images", "[{\"name\":\"image-resource\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"\"}]",
-						"-terminationMessagePath", "/builder/home/image-outputs/termination-log"),
+						"-images", "[{\"name\":\"image-resource\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"\"}]"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
 					tb.VolumeMount("tools", "/builder/tools"),
@@ -782,7 +782,6 @@ func TestReconcile(t *testing.T) {
 						tb.Memory("0"),
 						tb.EphemeralStorage("0"),
 					)),
-					tb.TerminationMessagePath("/builder/home/image-outputs/termination-log"),
 					tb.TerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError),
 				),
 			),
@@ -941,6 +940,7 @@ func TestReconcile(t *testing.T) {
 						"-url", "https://foo.git", "-revision", "master", "-path", "/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
+					tb.EnvVar("TEKTON_RESOURCE_NAME", "git-resource"),
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("downward", "/builder/downward"),
 					tb.VolumeMount("workspace", workspaceDir),
@@ -1021,6 +1021,7 @@ func TestReconcile(t *testing.T) {
 						"/workspace/workspace"),
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/builder/home"),
+					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
 					tb.VolumeMount("tools", "/builder/tools"),
 					tb.VolumeMount("downward", "/builder/downward"),
 					tb.VolumeMount("workspace", workspaceDir),
@@ -2029,6 +2030,129 @@ func TestReconcileCloudEvents(t *testing.T) {
 			t.Log(tr.Status.CloudEvents)
 			if diff := cmp.Diff(tc.wantCloudEvents, tr.Status.CloudEvents, opts...); diff != "" {
 				t.Errorf("Unexpected status of cloud events (-want +got) = %s", diff)
+			}
+		})
+	}
+}
+
+func TestUpdateTaskRunStatus_withValidJson(t *testing.T) {
+	for _, c := range []struct {
+		desc    string
+		podLog  []byte
+		taskRun *v1alpha1.TaskRun
+		want    []v1alpha1.PipelineResourceResult
+	}{{
+		desc:   "image resource updated",
+		podLog: []byte("[{\"name\":\"source-image\",\"digest\":\"sha256:1234\"}]"),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: []v1alpha1.PipelineResourceResult{{
+			Name:   "source-image",
+			Digest: "sha256:1234",
+		}},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			names.TestingSeed()
+			c.taskRun.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			})
+			if err := updateTaskRunStatusWithResourceResult(c.taskRun, c.podLog); err != nil {
+				t.Errorf("UpdateTaskRunStatusWithResourceResult failed with error: %s", err)
+			}
+			if d := cmp.Diff(c.taskRun.Status.ResourcesResult, c.want); d != "" {
+				t.Errorf("post build steps mismatch: %s", d)
+			}
+		})
+	}
+}
+
+func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
+	for _, c := range []struct {
+		desc    string
+		podLog  []byte
+		taskRun *v1alpha1.TaskRun
+		want    []v1alpha1.PipelineResourceResult
+	}{{
+		desc:   "image resource exporter with malformed json output",
+		podLog: []byte("extralogscamehere[{\"name\":\"source-image\",\"digest\":\"sha256:1234\"}]"),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
+						},
+					}},
+				},
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-image",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image-1",
+							},
+						},
+					}},
+				},
+			},
+		},
+		want: nil,
+	}, {
+		desc:   "task with no image resource ",
+		podLog: []byte(""),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+		},
+		want: nil,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			names.TestingSeed()
+			c.taskRun.Status.SetCondition(&apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionTrue,
+			})
+			if err := updateTaskRunStatusWithResourceResult(c.taskRun, c.podLog); err == nil {
+				t.Error("UpdateTaskRunStatusWithResourceResult expected to fail with error")
+			}
+			if d := cmp.Diff(c.taskRun.Status.ResourcesResult, c.want); d != "" {
+				t.Errorf("post build steps mismatch: %s", d)
 			}
 		})
 	}

@@ -18,6 +18,7 @@ package taskrun
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -55,7 +56,6 @@ const (
 
 	// imageDigestExporterContainerName defines the name of the container that will collect the
 	// built images digest
-	imageDigestExporterContainerName = "step-image-digest-exporter"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -341,7 +341,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	status.SortTaskRunStepOrder(tr.Status.Steps, taskSpec.Steps)
 
-	updateTaskRunResourceResult(tr, pod, c.resourceLister, c.Logger)
+	updateTaskRunResourceResult(tr, pod, c.Logger)
 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -387,17 +387,29 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 	c.Logger.Errorf("Failed to create build pod for task %q: %v", tr.Name, err)
 }
 
-func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, logger *zap.SugaredLogger) {
-	if resources.TaskRunHasOutputImageResource(resourceLister.PipelineResources(taskRun.Namespace).Get, taskRun) && taskRun.IsSuccessful() {
+func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, logger *zap.SugaredLogger) {
+	if taskRun.IsSuccessful() {
 		for _, cs := range pod.Status.ContainerStatuses {
-			if strings.HasPrefix(cs.Name, imageDigestExporterContainerName) {
-				err := resources.UpdateTaskRunStatusWithResourceResult(taskRun, []byte(cs.State.Terminated.Message))
-				if err != nil {
-					logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
+			if cs.State.Terminated != nil {
+				msg := cs.State.Terminated.Message
+				if msg != "" {
+					if err := updateTaskRunStatusWithResourceResult(taskRun, []byte(msg)); err != nil {
+						logger.Infof("No resource result from %s for %s/%s: %s", cs.Name, taskRun.Name, taskRun.Namespace, err)
+					}
 				}
 			}
 		}
 	}
+}
+
+// updateTaskRunStatusWithResourceResult if there is an update to the outout image resource, add to taskrun status result
+func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
+	results := []v1alpha1.PipelineResourceResult{}
+	if err := json.Unmarshal(logContent, &results); err != nil {
+		return xerrors.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
+	}
+	taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, results...)
+	return nil
 }
 
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
