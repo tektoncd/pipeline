@@ -1576,7 +1576,7 @@ func TestReconcileWithTask_InOtherNamespace(t *testing.T) {
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun(prName, "foo",
 		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
 		tb.PipelineRunSpec("test-pipeline",
-			tb.PipelineRunServiceAccount("test-sa"),
+			tb.PipelineRunServiceAccountName("test-sa"),
 		),
 	)}
 	ts := []*v1alpha1.Task{tb.Task("hello-world", "other")}
