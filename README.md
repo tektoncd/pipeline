@@ -93,6 +93,7 @@ The following commands help you understand and effectively use the Tekton CLI:
  * [`tkn taskrun:`](docs/cmd/tkn_taskrun.md) Parent command of the Taskrun command group.
  * [`tkn clustertask:`](docs/cmd/tkn_clustertask.md) Parent command of the ClusterTask command group.
  * [`tkn resource:`](docs/cmd/tkn_resource.md) Parent command of the Resource command group.
+ * [`tkn condition:`](docs/cmd/tkn_condition.md) Parent command of the Condition command group.
 
 For every `tkn` command, you can use `-h` or `--help` flags to display specific help for that command.
 
