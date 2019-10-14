@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
 	trhsort "github.com/tektoncd/cli/pkg/helper/taskrun/sort"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	"github.com/tektoncd/cli/pkg/printer"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,6 +65,15 @@ tkn taskrun list foo -n bar
 
 			if len(args) > 0 {
 				task = args[0]
+			}
+
+			cs, err := p.Clients()
+			if err != nil {
+				return fmt.Errorf("failed to create tekton client")
+			}
+
+			if err := validate.NamespaceExists(cs.Kube, p.Namespace()); err != nil {
+				return err
 			}
 
 			if opts.Limit < 0 {

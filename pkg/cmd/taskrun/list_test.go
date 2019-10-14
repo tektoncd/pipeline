@@ -95,25 +95,40 @@ func TestListTaskRuns(t *testing.T) {
 		),
 	}
 
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "random",
+			},
+		},
+	}
+
 	tests := []struct {
-		name     string
-		command  *cobra.Command
-		args     []string
-		expected []string
+		name      string
+		command   *cobra.Command
+		args      []string
+		expected  []string
+		wantError bool
 	}{
 		{
 			name:    "by Task name",
-			command: command(t, trs, now),
+			command: command(t, trs, now, ns),
 			args:    []string{"list", "bar", "-n", "foo"},
 			expected: []string{
 				"NAME    STARTED      DURATION   STATUS      ",
 				"tr1-1   1 hour ago   1 minute   Succeeded   ",
 				"",
 			},
+			wantError: false,
 		},
 		{
 			name:    "all in namespace",
-			command: command(t, trs, now),
+			command: command(t, trs, now, ns),
 			args:    []string{"list", "-n", "foo"},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS      ",
@@ -124,10 +139,11 @@ func TestListTaskRuns(t *testing.T) {
 				"tr2-1   1 hour ago       ---        Running     ",
 				"",
 			},
+			wantError: false,
 		},
 		{
 			name:    "print by template",
-			command: command(t, trs, now),
+			command: command(t, trs, now, ns),
 			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			expected: []string{
 				"tr0-1",
@@ -137,34 +153,37 @@ func TestListTaskRuns(t *testing.T) {
 				"tr2-1",
 				"",
 			},
+			wantError: false,
 		},
 		{
 			name:     "empty list",
-			command:  command(t, trs, now),
+			command:  command(t, trs, now, ns),
 			args:     []string{"list", "-n", "random"},
 			expected: []string{emptyMsg, ""},
 		},
 		{
 			name:    "limit taskruns returned to 1",
-			command: command(t, trs, now),
+			command: command(t, trs, now, ns),
 			args:    []string{"list", "-n", "foo", "--limit", fmt.Sprintf("%d", 1)},
 			expected: []string{
 				"NAME    STARTED   DURATION   STATUS      ",
 				"tr0-1   ---       ---        Succeeded   ",
 				"",
 			},
+			wantError: false,
 		},
 		{
 			name:    "limit taskruns negative case",
-			command: command(t, trs, now),
+			command: command(t, trs, now, ns),
 			args:    []string{"list", "-n", "foo", "--limit", fmt.Sprintf("%d", -1)},
 			expected: []string{
 				"",
 			},
+			wantError: false,
 		},
 		{
 			name:    "limit taskruns greater than maximum case",
-			command: command(t, trs, now),
+			command: command(t, trs, now, ns),
 			args:    []string{"list", "-n", "foo", "--limit", fmt.Sprintf("%d", 7)},
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS      ",
@@ -175,16 +194,27 @@ func TestListTaskRuns(t *testing.T) {
 				"tr2-1   1 hour ago       ---        Running     ",
 				"",
 			},
+			wantError: false,
 		},
 		{
 			name:    "limit taskruns with output flag set",
-			command: command(t, trs, now),
+			command: command(t, trs, now, ns),
 			args:    []string{"list", "-n", "foo", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "--limit", fmt.Sprintf("%d", 2)},
 			expected: []string{
 				"tr0-1",
 				"tr3-1",
 				"",
 			},
+			wantError: false,
+		},
+		{
+			name:    "error from invalid namespace",
+			command: command(t, trs, now, ns),
+			args:    []string{"list", "-n", "invalid"},
+			expected: []string{
+				"Error: namespaces \"invalid\" not found\n",
+			},
+			wantError: true,
 		},
 	}
 
@@ -192,7 +222,7 @@ func TestListTaskRuns(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			got, err := test.ExecuteCommand(td.command, td.args...)
 
-			if err != nil {
+			if err != nil && !td.wantError {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			test.AssertOutput(t, strings.Join(td.expected, "\n"), got)
@@ -215,7 +245,15 @@ func TestListTaskRuns_no_condition(t *testing.T) {
 		),
 	}
 
-	cmd := command(t, trs, now)
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+			},
+		},
+	}
+
+	cmd := command(t, trs, now, ns)
 	got, err := test.ExecuteCommand(cmd, "list", "bar", "-n", "foo")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -228,14 +266,14 @@ tr1-1   1 hour ago   1 minute   ---
 	test.AssertOutput(t, expected, got)
 }
 
-func command(t *testing.T, trs []*v1alpha1.TaskRun, now time.Time) *cobra.Command {
+func command(t *testing.T, trs []*v1alpha1.TaskRun, now time.Time, ns []*corev1.Namespace) *cobra.Command {
 	// fake clock advanced by 1 hour
 	clock := clockwork.NewFakeClockAt(now)
 	clock.Advance(time.Duration(60) * time.Minute)
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Namespaces: ns})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	return Command(p)
 }
