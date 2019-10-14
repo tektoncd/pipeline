@@ -508,7 +508,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).UpdateStatus(tr)
 	}
 
-	taskNS := pr.Namespace
+	taskNS := ""
 	if rprt.PipelineTask.TaskRef.Namespace != "" {
 		taskNS = rprt.PipelineTask.TaskRef.Namespace
 	}
