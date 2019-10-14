@@ -1610,15 +1610,16 @@ func TestPipelineResource_create_buildGCSstorageResource(t *testing.T) {
 	}
 }
 
-func resOpts(ns string, cs pipelinetest.Clients) *resource {
+func resOpts(ns string, cs pipelinetest.Clients) *Resource {
+
 	p := test.Params{
 		Kube:   cs.Kube,
 		Tekton: cs.Pipeline,
 	}
 	out := new(bytes.Buffer)
 	p.SetNamespace(ns)
-	resOp := resource{
-		params: &p,
+	resOp := Resource{
+		Params: &p,
 		stream: &cli.Stream{Out: out, Err: out},
 	}
 

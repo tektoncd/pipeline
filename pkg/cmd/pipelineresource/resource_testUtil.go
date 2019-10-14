@@ -30,10 +30,10 @@ type promptTest struct {
 	procedure func(*goexpect.Console) error
 }
 
-func (res *resource) RunPromptTest(t *testing.T, test promptTest) {
+func (res *Resource) RunPromptTest(t *testing.T, test promptTest) {
 	test.runTest(t, test.procedure, func(stdio terminal.Stdio) error {
 		var err error
-		res.askOpts = WithStdio(stdio)
+		res.AskOpts = WithStdio(stdio)
 		err = res.create()
 		if err != nil {
 			if err.Error() == "resource already exist" {

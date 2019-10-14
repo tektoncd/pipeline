@@ -24,6 +24,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/cmd/pipelineresource"
 	"github.com/tektoncd/cli/pkg/cmd/pipelinerun"
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/helper/labels"
@@ -195,14 +196,26 @@ func (opt *startOptions) getInput(pname string) error {
 }
 
 func (opt *startOptions) getInputResources(resources resourceOptionsFilter, pipeline *v1alpha1.Pipeline) error {
-	var ans string
 	for _, res := range pipeline.Spec.Resources {
 		options := getOptionsByType(resources, string(res.Type))
+		// directly create resource
 		if len(options) == 0 {
-			return fmt.Errorf("no pipeline resource of type %s found in namespace: %s",
-				string(res.Type), opt.cliparams.Namespace())
+			ns := opt.cliparams.Namespace()
+			fmt.Fprintf(opt.stream.Out, "no pipeline resource of type \"%s\" found in namespace: %s\n", string(res.Type), ns)
+			fmt.Fprintf(opt.stream.Out, "please create new \"%s\" resource\n", string(res.Type))
+			newres, err := opt.createPipelineResource(res.Name, res.Type)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("resource status %s\n\n", newres.Status)
+			opt.Resources = append(opt.Resources, res.Name+"="+newres.Name)
+			return nil
 		}
 
+		// shows create option in the resource list
+		resCreateOpt := fmt.Sprintf("create new \"%s\" resource", res.Type)
+		options = append(options, resCreateOpt)
+		var ans string
 		var qs = []*survey.Question{
 			{
 				Name: "pipelineresource",
@@ -218,8 +231,16 @@ func (opt *startOptions) getInputResources(resources resourceOptionsFilter, pipe
 			return err
 		}
 
-		name := strings.TrimSpace(strings.Split(ans, " ")[0])
-		opt.Resources = append(opt.Resources, res.Name+"="+name)
+		if ans == resCreateOpt {
+			newres, err := opt.createPipelineResource(res.Name, res.Type)
+			if err != nil {
+				return err
+			}
+			opt.Resources = append(opt.Resources, res.Name+"="+newres.Name)
+		} else {
+			name := strings.TrimSpace(strings.Split(ans, " ")[0])
+			opt.Resources = append(opt.Resources, res.Name+"="+name)
+		}
 	}
 	return nil
 }
@@ -524,4 +545,41 @@ func parseDeprecatedTaskSvc(s []string) (map[string]v1alpha1.DeprecatedPipelineR
 		}
 	}
 	return svcs, nil
+}
+
+func (opt *startOptions) createPipelineResource(resName string, resType v1alpha1.PipelineResourceType) (*v1alpha1.PipelineResource, error) {
+	res := pipelineresource.Resource{
+		AskOpts: opt.askOpts,
+		Params:  opt.cliparams,
+		PipelineResource: v1alpha1.PipelineResource{
+			ObjectMeta: v1.ObjectMeta{Namespace: opt.cliparams.Namespace()},
+			Spec:       v1alpha1.PipelineResourceSpec{Type: resType},
+		}}
+
+	if err := res.AskMeta(); err != nil {
+		return nil, err
+	}
+
+	resourceTypeParams := map[v1alpha1.PipelineResourceType]func() error{
+		v1alpha1.PipelineResourceTypeGit:         res.AskGitParams,
+		v1alpha1.PipelineResourceTypeStorage:     res.AskStorageParams,
+		v1alpha1.PipelineResourceTypeImage:       res.AskImageParams,
+		v1alpha1.PipelineResourceTypeCluster:     res.AskClusterParams,
+		v1alpha1.PipelineResourceTypePullRequest: res.AskPullRequestParams,
+	}
+	if res.PipelineResource.Spec.Type != "" {
+		if err := resourceTypeParams[res.PipelineResource.Spec.Type](); err != nil {
+			return nil, err
+		}
+	}
+	cs, err := opt.cliparams.Clients()
+	if err != nil {
+		return nil, err
+	}
+	newRes, err := cs.Tekton.TektonV1alpha1().PipelineResources(opt.cliparams.Namespace()).Create(&res.PipelineResource)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Fprintf(opt.stream.Out, "New %s resource \"%s\" has been created\n", newRes.Spec.Type, newRes.Name)
+	return newRes, nil
 }

@@ -29,16 +29,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type resource struct {
-	params           cli.Params
+type Resource struct {
+	Params           cli.Params
 	stream           *cli.Stream
-	askOpts          survey.AskOpt
-	pipelineResource v1alpha1.PipelineResource
+	AskOpts          survey.AskOpt
+	PipelineResource v1alpha1.PipelineResource
 }
 
 func createCommand(p cli.Params) *cobra.Command {
-	res := &resource{params: p,
-		askOpts: func(opt *survey.AskOptions) error {
+	res := &Resource{Params: p,
+		AskOpts: func(opt *survey.AskOptions) error {
 			opt.Stdio = terminal.Stdio{
 				In:  os.Stdin,
 				Out: os.Stdout,
@@ -81,11 +81,11 @@ func createCommand(p cli.Params) *cobra.Command {
 	return c
 }
 
-func (res *resource) create() error {
-	res.pipelineResource.Namespace = res.params.Namespace()
+func (res *Resource) create() error {
+	res.PipelineResource.Namespace = res.Params.Namespace()
 
 	// ask for the object meta data name, namespace
-	if err := res.askMeta(); err != nil {
+	if err := res.AskMeta(); err != nil {
 		return err
 	}
 
@@ -96,25 +96,25 @@ func (res *resource) create() error {
 	}
 
 	resourceTypeParams := map[v1alpha1.PipelineResourceType]func() error{
-		v1alpha1.PipelineResourceTypeGit:         res.askGitParams,
-		v1alpha1.PipelineResourceTypeStorage:     res.askStorageParams,
-		v1alpha1.PipelineResourceTypeImage:       res.askImageParams,
-		v1alpha1.PipelineResourceTypeCluster:     res.askClusterParams,
-		v1alpha1.PipelineResourceTypePullRequest: res.askPullRequestParams,
-		v1alpha1.PipelineResourceTypeCloudEvent:  res.askCloudEventParams,
+		v1alpha1.PipelineResourceTypeGit:         res.AskGitParams,
+		v1alpha1.PipelineResourceTypeStorage:     res.AskStorageParams,
+		v1alpha1.PipelineResourceTypeImage:       res.AskImageParams,
+		v1alpha1.PipelineResourceTypeCluster:     res.AskClusterParams,
+		v1alpha1.PipelineResourceTypePullRequest: res.AskPullRequestParams,
+		v1alpha1.PipelineResourceTypeCloudEvent:  res.AskCloudEventParams,
 	}
-	if res.pipelineResource.Spec.Type != "" {
-		if err := resourceTypeParams[res.pipelineResource.Spec.Type](); err != nil {
+	if res.PipelineResource.Spec.Type != "" {
+		if err := resourceTypeParams[res.PipelineResource.Spec.Type](); err != nil {
 			return err
 		}
 	}
 
-	cls, err := res.params.Clients()
+	cls, err := res.Params.Clients()
 	if err != nil {
 		return err
 	}
 
-	newRes, err := cls.Tekton.TektonV1alpha1().PipelineResources(res.params.Namespace()).Create(&res.pipelineResource)
+	newRes, err := cls.Tekton.TektonV1alpha1().PipelineResources(res.Params.Namespace()).Create(&res.PipelineResource)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (res *resource) create() error {
 	return nil
 }
 
-func (res *resource) askMeta() error {
+func (res *Resource) AskMeta() error {
 	var answer string
 	var qs = []*survey.Question{{
 		Name: "resource name",
@@ -133,20 +133,20 @@ func (res *resource) askMeta() error {
 		Validate: survey.Required,
 	}}
 
-	err := survey.Ask(qs, &answer, res.askOpts)
+	err := survey.Ask(qs, &answer, res.AskOpts)
 	if err != nil {
 		return Error(err)
 	}
-	if err := validate(answer, res.params); err != nil {
+	if err := validate(answer, res.Params); err != nil {
 		return err
 	}
 
-	res.pipelineResource.Name = answer
+	res.PipelineResource.Name = answer
 
 	return nil
 }
 
-func (res *resource) askType() error {
+func (res *Resource) askType() error {
 	var answer string
 	var qs = []*survey.Question{{
 		Name: "pipelineResource",
@@ -156,140 +156,140 @@ func (res *resource) askType() error {
 		},
 	}}
 
-	err := survey.Ask(qs, &answer, res.askOpts)
+	err := survey.Ask(qs, &answer, res.AskOpts)
 	if err != nil {
 		return Error(err)
 	}
 
-	res.pipelineResource.Spec.Type = cast(answer)
+	res.PipelineResource.Spec.Type = cast(answer)
 
 	return nil
 }
 
-func (res *resource) askGitParams() error {
-	urlParam, err := askParam("url", res.askOpts)
+func (res *Resource) AskGitParams() error {
+	urlParam, err := askParam("url", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if urlParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, urlParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, urlParam)
 	}
 
-	revisionParam, err := askParam("revision", res.askOpts)
+	revisionParam, err := askParam("revision", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if revisionParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, revisionParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, revisionParam)
 	}
 
 	return nil
 }
 
-func (res *resource) askStorageParams() error {
+func (res *Resource) AskStorageParams() error {
 	options := []string{"gcs", "build-gcs"}
 
-	storageType, err := askToSelect("Select a storage type", options, res.askOpts)
+	storageType, err := askToSelect("Select a storage type", options, res.AskOpts)
 	if err != nil {
 		return err
 	}
 	param := v1alpha1.ResourceParam{}
 	param.Name, param.Value = "type", storageType
-	res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, param)
+	res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, param)
 
 	switch storageType {
 	case "gcs":
-		locationParam, err := askParam("location", res.askOpts)
+		locationParam, err := askParam("location", res.AskOpts)
 		if err != nil {
 			return err
 		}
 		if locationParam.Name != "" {
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, locationParam)
+			res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, locationParam)
 		}
 
-		dirParam, err := askParam("dir", res.askOpts)
+		dirParam, err := askParam("dir", res.AskOpts)
 		if err != nil {
 			return err
 		}
 		if dirParam.Name != "" {
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, dirParam)
+			res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, dirParam)
 		}
 
 	case "build-gcs":
-		locationParam, err := askParam("location", res.askOpts)
+		locationParam, err := askParam("location", res.AskOpts)
 		if err != nil {
 			return err
 		}
 		if locationParam.Name != "" {
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, locationParam)
+			res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, locationParam)
 		}
 
 		artifactOpts := []string{"ZipArchive", "TarGzArchive", "Manifest"}
-		artifactType, err := askToSelect("Select an artifact type", artifactOpts, res.askOpts)
+		artifactType, err := askToSelect("Select an artifact type", artifactOpts, res.AskOpts)
 		if err != nil {
 			return err
 		}
 		artifactParam := v1alpha1.ResourceParam{}
 		artifactParam.Name, artifactParam.Value = "artifactType", artifactType
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, artifactParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, artifactParam)
 	}
 
 	// ask secret
-	secret, err := askSecret("GOOGLE_APPLICATION_CREDENTIALS", res.askOpts)
+	secret, err := askSecret("GOOGLE_APPLICATION_CREDENTIALS", res.AskOpts)
 	if err != nil {
 		return err
 	}
-	res.pipelineResource.Spec.SecretParams = append(res.pipelineResource.Spec.SecretParams, secret)
+	res.PipelineResource.Spec.SecretParams = append(res.PipelineResource.Spec.SecretParams, secret)
 
 	return nil
 }
 
-func (res *resource) askImageParams() error {
-	urlParam, err := askParam("url", res.askOpts)
+func (res *Resource) AskImageParams() error {
+	urlParam, err := askParam("url", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if urlParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, urlParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, urlParam)
 	}
 
-	digestParam, err := askParam("digest", res.askOpts)
+	digestParam, err := askParam("digest", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if digestParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, digestParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, digestParam)
 	}
 
 	return nil
 }
 
-func (res *resource) askClusterParams() error {
-	nameParam, err := askParam("name", res.askOpts)
+func (res *Resource) AskClusterParams() error {
+	nameParam, err := askParam("name", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if nameParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, nameParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, nameParam)
 	}
 
-	urlParam, err := askParam("url", res.askOpts)
+	urlParam, err := askParam("url", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if urlParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, urlParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, urlParam)
 	}
 
-	usernameParam, err := askParam("username", res.askOpts)
+	usernameParam, err := askParam("username", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if usernameParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, usernameParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, usernameParam)
 	}
 
-	secure, err := askToSelect("Is the cluster secure?", []string{"yes", "no"}, res.askOpts)
+	secure, err := askToSelect("Is the cluster secure?", []string{"yes", "no"}, res.AskOpts)
 	if err != nil {
 		return err
 	}
@@ -300,25 +300,27 @@ func (res *resource) askClusterParams() error {
 	} else {
 		insecureParam.Value = "true"
 	}
-	res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, insecureParam)
+	res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, insecureParam)
 
 	qs := "Which authentication technique you want to use?"
 	qsOpts := []string{
 		"password",
 		"token",
 	}
-	ans, err := askToSelect(qs, qsOpts, res.askOpts)
+	ans, err := askToSelect(qs, qsOpts, res.AskOpts)
 	if err != nil {
 		return err
 	}
 	switch ans {
 	case qsOpts[0]: // Using password authentication technique
-		passwordParam, err := askPassword(res.askOpts)
+
+		passwordParam, err := askPassword(res.AskOpts)
+
 		if err != nil {
 			return err
 		}
 		if passwordParam.Name != "" {
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, passwordParam)
+			res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, passwordParam)
 		}
 		if secure == "yes" {
 			qs := "How do you want to set cadata?"
@@ -326,32 +328,32 @@ func (res *resource) askClusterParams() error {
 				"Passing plain text as parameters",
 				"Using existing kubernetes secrets",
 			}
-			ans, err := askToSelect(qs, qsOpts, res.askOpts)
+			ans, err := askToSelect(qs, qsOpts, res.AskOpts)
 			if err != nil {
 				return err
 			}
 			switch ans {
 			case qsOpts[0]: // plain text
-				cadataParam, err := askParam("cadata", res.askOpts)
+				cadataParam, err := askParam("cadata", res.AskOpts)
 				if err != nil {
 					return err
 				}
 				if cadataParam.Name != "" {
-					res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, cadataParam)
+					res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, cadataParam)
 				}
 
 			case qsOpts[1]: // kubernetes secrets
-				secret, err := askSecret("cadata", res.askOpts)
+				secret, err := askSecret("cadata", res.AskOpts)
 				if err != nil {
 					return err
 				}
-				res.pipelineResource.Spec.SecretParams = append(res.pipelineResource.Spec.SecretParams, secret)
+				res.PipelineResource.Spec.SecretParams = append(res.PipelineResource.Spec.SecretParams, secret)
 
 			}
 		} else {
 			cadataParam := v1alpha1.ResourceParam{}
 			cadataParam.Name = "cadata"
-			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, cadataParam)
+			res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, cadataParam)
 		}
 
 	case qsOpts[1]: // Using token authentication technique
@@ -360,71 +362,72 @@ func (res *resource) askClusterParams() error {
 			"Passing plain text as parameters",
 			"Using existing kubernetes secrets",
 		}
-		ans, err := askToSelect(qs, qsOpts, res.askOpts)
+		ans, err := askToSelect(qs, qsOpts, res.AskOpts)
 		if err != nil {
 			return err
 		}
 		switch ans {
 		case qsOpts[0]: // plain text
-			tokenParam, err := askParam("token", res.askOpts)
+			tokenParam, err := askParam("token", res.AskOpts)
 			if err != nil {
 				return err
 			}
 			if tokenParam.Name != "" {
-				res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, tokenParam)
+				res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, tokenParam)
 			}
 			if secure == "yes" {
-				cadataParam, err := askParam("cadata", res.askOpts)
+				cadataParam, err := askParam("cadata", res.AskOpts)
+
 				if err != nil {
 					return err
 				}
 				if cadataParam.Name != "" {
-					res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, cadataParam)
+					res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, cadataParam)
 				}
 			} else {
 				// doing this as pipeline returns error if cadata is not present.
 				param := v1alpha1.ResourceParam{}
 				param.Name = "cadata"
-				res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, param)
+				res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, param)
 			}
 
 		case qsOpts[1]: // kubernetes secretes
-			secret, err := askSecret("token", res.askOpts)
+			secret, err := askSecret("token", res.AskOpts)
 			if err != nil {
 				return err
 			}
-			res.pipelineResource.Spec.SecretParams = append(res.pipelineResource.Spec.SecretParams, secret)
+			res.PipelineResource.Spec.SecretParams = append(res.PipelineResource.Spec.SecretParams, secret)
 
 			if secure == "yes" {
-				secret, err := askSecret("cadata", res.askOpts)
+				secret, err := askSecret("cadata", res.AskOpts)
 				if err != nil {
 					return err
 				}
-				res.pipelineResource.Spec.SecretParams = append(res.pipelineResource.Spec.SecretParams, secret)
+				res.PipelineResource.Spec.SecretParams = append(res.PipelineResource.Spec.SecretParams, secret)
 			} else {
 				caSecret := v1alpha1.SecretParam{}
 				caSecret.FieldName = "cadata"
-				res.pipelineResource.Spec.SecretParams = append(res.pipelineResource.Spec.SecretParams, caSecret)
+				res.PipelineResource.Spec.SecretParams = append(res.PipelineResource.Spec.SecretParams, caSecret)
 			}
 		}
 	}
 	return nil
 }
 
-func (res *resource) askPullRequestParams() error {
-	urlParam, err := askParam("url", res.askOpts)
+func (res *Resource) AskPullRequestParams() error {
+	urlParam, err := askParam("url", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if urlParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, urlParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, urlParam)
 	}
 
 	//ask for the secrets
 	qsOpts := []string{"Yes", "No"}
 	qs := "Do you want to set secrets ?"
 
-	ans, e := askToSelect(qs, qsOpts, res.askOpts)
+	ans, e := askToSelect(qs, qsOpts, res.AskOpts)
 	if e != nil {
 		return e
 	}
@@ -432,22 +435,22 @@ func (res *resource) askPullRequestParams() error {
 		return nil
 	}
 
-	secret, err := askSecret("githubToken", res.askOpts)
+	secret, err := askSecret("githubToken", res.AskOpts)
 	if err != nil {
 		return err
 	}
-	res.pipelineResource.Spec.SecretParams = append(res.pipelineResource.Spec.SecretParams, secret)
+	res.PipelineResource.Spec.SecretParams = append(res.PipelineResource.Spec.SecretParams, secret)
 
 	return nil
 }
 
-func (res *resource) askCloudEventParams() error {
-	targetURIParam, err := askParam("targetURI", res.askOpts)
+func (res *Resource) AskCloudEventParams() error {
+	targetURIParam, err := askParam("targetURI", res.AskOpts)
 	if err != nil {
 		return err
 	}
 	if targetURIParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, targetURIParam)
+		res.PipelineResource.Spec.Params = append(res.PipelineResource.Spec.Params, targetURIParam)
 	}
 	return nil
 }
