@@ -49,7 +49,7 @@ spec:
         name: golangci-lint
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
         - name: flags
           value: -v
       resources:
@@ -62,7 +62,7 @@ spec:
         name: golang-test
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
       resources:
         inputs:
           - name: source
@@ -73,7 +73,7 @@ spec:
         name: golang-build
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
       resources:
         inputs:
           - name: source
@@ -84,11 +84,11 @@ spec:
         name: publish-tekton-pipelines
       params:
         - name: pathToProject
-          value: ${params.package}
+          value: $(params.package)
         - name: versionTag
-          value: ${params.versionTag}
+          value: $(params.versionTag)
         - name: imageRegistry
-          value: ${params.imageRegistry}
+          value: $(params.imageRegistry)
       resources:
         inputs:
           - name: source
