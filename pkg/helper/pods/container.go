@@ -44,11 +44,11 @@ func (c *Container) Status() error {
 		if cs.State.Terminated != nil && cs.State.Terminated.ExitCode == 1 {
 			msg := ""
 
-			if cs.State.Terminated.Reason != "" {
+			if cs.State.Terminated.Reason != "" && cs.State.Terminated.Reason != "Error" {
 				msg = msg + " : " + cs.State.Terminated.Reason
 			}
 
-			if cs.State.Terminated.Message != "" {
+			if cs.State.Terminated.Message != "" && cs.State.Terminated.Message != "Error" {
 				msg = msg + " : " + cs.State.Terminated.Message
 			}
 
