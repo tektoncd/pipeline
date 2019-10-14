@@ -22,6 +22,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -46,7 +47,52 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1alpha1.TaskInterface, error) { return task, nil }
+	gt := func(ns, n string) (v1alpha1.TaskInterface, error) { return task, nil }
+	taskMeta, taskSpec, err := GetTaskData(tr, gt)
+
+	if err != nil {
+		t.Fatalf("Did not expect error getting task spec but got: %s", err)
+	}
+
+	if taskMeta.Name != "orchestrate" {
+		t.Errorf("Expected task name to be `orchestrate` but was %q", taskMeta.Name)
+	}
+
+	if len(taskSpec.Steps) != 1 || taskSpec.Steps[0].Name != "step1" {
+		t.Errorf("Task Spec not resolved as expected, expected referenced Task spec but got: %v", taskSpec)
+	}
+}
+
+func TestGetTaskSpec_Ref_With_Namespace(t *testing.T) {
+	task := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "orchestrate",
+			Namespace: "test",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name: "step1",
+			}}},
+		},
+	}
+	tr := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "mytaskrun",
+			Namespace: "other",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name:      "orchestrate",
+				Namespace: "test",
+			},
+		},
+	}
+	gt := func(ns, n string) (v1alpha1.TaskInterface, error) {
+		if ns == "test" {
+			return task, nil
+		}
+		return nil, errors.NewNotFound(v1alpha1.Resource("task"), n)
+	}
 	taskMeta, taskSpec, err := GetTaskData(tr, gt)
 
 	if err != nil {
@@ -75,7 +121,7 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("shouldn't be called") }
+	gt := func(ns, n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("shouldn't be called") }
 	taskMeta, taskSpec, err := GetTaskData(tr, gt)
 
 	if err != nil {
@@ -97,7 +143,7 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("shouldn't be called") }
+	gt := func(ns, n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("shouldn't be called") }
 	_, _, err := GetTaskData(tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error resolving spec with no embedded or referenced task spec but didn't get error")
@@ -115,7 +161,7 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("something went wrong") }
+	gt := func(ns, n string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("something went wrong") }
 	_, _, err := GetTaskData(tr, gt)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")

@@ -171,7 +171,7 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 	var gtFunc resources.GetTask
 	kind := v1alpha1.NamespacedTaskKind
 	if tr.Spec.TaskRef != nil && tr.Spec.TaskRef.Kind == v1alpha1.ClusterTaskKind {
-		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
+		gtFunc = func(namespace, name string) (v1alpha1.TaskInterface, error) {
 			t, err := c.clusterTaskLister.Get(name)
 			if err != nil {
 				return nil, err
@@ -180,8 +180,8 @@ func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alp
 		}
 		kind = v1alpha1.ClusterTaskKind
 	} else {
-		gtFunc = func(name string) (v1alpha1.TaskInterface, error) {
-			t, err := c.taskLister.Tasks(tr.Namespace).Get(name)
+		gtFunc = func(namesapce, name string) (v1alpha1.TaskInterface, error) {
+			t, err := c.taskLister.Tasks(namesapce).Get(name)
 			if err != nil {
 				return nil, err
 			}

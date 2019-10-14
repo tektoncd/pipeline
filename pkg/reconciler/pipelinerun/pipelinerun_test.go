@@ -1568,6 +1568,60 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	}
 }
 
+func TestReconcileWithTask_InOtherNamespace(t *testing.T) {
+	names.TestingSeed()
+	prName := "test-pipeline-run"
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTaskWithNamespace("hello-world-1", "hello-world", "other")))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun(prName, "foo",
+		tb.PipelineRunAnnotation("PipelineRunAnnotation", "PipelineRunValue"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccount("test-sa"),
+		),
+	)}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "other")}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	err := c.Reconciler.Reconcile(context.Background(), "foo/"+prName)
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
+
+	// Check that the PipelineRun was reconciled correctly
+	_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get(prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
+
+	trs, err := clients.Pipeline.TektonV1alpha1().TaskRuns("foo").List(metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("Somehow getting error while retriving TaskRuns with fake client: %s", err)
+	}
+
+	if len(trs.Items) == 0 {
+		t.Fatalf("Somehow not getting TaskRuns with fake client: %v", trs.Items)
+	}
+
+	expectedTaskRef := &v1alpha1.TaskRef{
+		Name:      "hello-world",
+		Namespace: "other",
+	}
+
+	if d := cmp.Diff(trs.Items[0].Spec.TaskRef, expectedTaskRef); d != "" {
+		t.Errorf("Expected TaskRef is different \n %s", d)
+	}
+}
+
 func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
 	return tb.TaskRun(ccName, "foo",
 		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run",

@@ -143,6 +143,24 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 	}
 }
 
+// PipelineTaskWithNamespace adds a PipelineTask, with specified name and task name with given namespace,  // to the PipelineSpec.
+// Any number of PipelineTask modifier can be passed to transform it.
+func PipelineTaskWithNamespace(name, taskName, namespace string, ops ...PipelineTaskOp) PipelineSpecOp {
+	return func(ps *v1alpha1.PipelineSpec) {
+		pTask := &v1alpha1.PipelineTask{
+			Name: name,
+			TaskRef: v1alpha1.TaskRef{
+				Name:      taskName,
+				Namespace: namespace,
+			},
+		}
+		for _, op := range ops {
+			op(pTask)
+		}
+		ps.Tasks = append(ps.Tasks, *pTask)
+	}
+}
+
 func Retries(retries int) PipelineTaskOp {
 	return func(pt *v1alpha1.PipelineTask) {
 		pt.Retries = retries

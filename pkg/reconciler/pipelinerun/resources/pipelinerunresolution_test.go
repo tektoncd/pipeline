@@ -1136,7 +1136,7 @@ func TestResolvePipelineRun(t *testing.T) {
 	}
 	// The Task "task" doesn't actually take any inputs or outputs, but validating
 	// that is not done as part of Run resolution
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, nil }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return nil, nil }
@@ -1201,7 +1201,7 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return nil, nil }
@@ -1239,7 +1239,7 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	// Return an error when the Task is retrieved, as if it didn't exist
-	getTask := func(name string) (v1alpha1.TaskInterface, error) {
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("task"), name)
 	}
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) {
@@ -1268,6 +1268,53 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	}
 }
 
+func TestResolvePipelineRun_TaskExist_InOtherNamespace(t *testing.T) {
+	otherTask := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "other-task",
+			Namespace: "other",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name: "step1",
+			}}},
+		},
+	}
+	pts := []v1alpha1.PipelineTask{{
+		Name:    "mytask1",
+		TaskRef: v1alpha1.TaskRef{Name: "task", Namespace: "other"},
+	}}
+	providedResources := map[string]*v1alpha1.PipelineResource{}
+
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) {
+		if namespace == "other" {
+			return otherTask, nil
+		}
+		return nil, errors.NewNotFound(v1alpha1.Resource("task"), name)
+	}
+	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
+	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
+	getCondition := func(name string) (*v1alpha1.Condition, error) { return nil, nil }
+	pr := v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipelinerun",
+			Namespace: "foo",
+		},
+	}
+
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, pts, providedResources)
+	if err != nil {
+		t.Fatalf("Did not expect error when resolving PipelineRun without Resources: %v", err)
+	}
+	if len(pipelineState) != 1 {
+		t.Fatalf("Expected only 1 resolved PipelineTasks but got %d", len(pipelineState))
+	}
+
+	if pipelineState[0].ResolvedTaskResources.TaskName != "other-task" {
+		t.Fatalf("Expected resolved Task %s but got %s", otherTask.Name, pipelineState[0].ResolvedTaskResources.TaskName)
+	}
+}
+
 func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 	tests := []struct {
 		name string
@@ -1289,7 +1336,7 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
 	getCondition := func(name string) (*v1alpha1.Condition, error) {
@@ -1522,7 +1569,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 
 	// The Task "task" doesn't actually take any inputs or outputs, but validating
 	// that is not done as part of Run resolution
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return nil, nil }
@@ -1570,7 +1617,7 @@ func TestResolveConditionChecks(t *testing.T) {
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return &condition, nil }
 	pr := v1alpha1.PipelineRun{
@@ -1649,7 +1696,7 @@ func TestResolveConditionChecks_ConditionDoesNotExist(t *testing.T) {
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
 		if name == ccName {
 			return nil, xerrors.Errorf("should not be called")
@@ -1704,7 +1751,7 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
 		if name == ccName {
 			return cc, nil
@@ -1776,7 +1823,7 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
 	}}
 
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
+	getTask := func(namespace, name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
 

@@ -297,8 +297,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 
 	pipelineState, err := resources.ResolvePipelineRun(
 		*pr,
-		func(name string) (v1alpha1.TaskInterface, error) {
-			return c.taskLister.Tasks(pr.Namespace).Get(name)
+		func(namespace, name string) (v1alpha1.TaskInterface, error) {
+			return c.taskLister.Tasks(namespace).Get(name)
 		},
 		func(name string) (*v1alpha1.TaskRun, error) {
 			return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
@@ -508,6 +508,11 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		return c.PipelineClientSet.TektonV1alpha1().TaskRuns(pr.Namespace).UpdateStatus(tr)
 	}
 
+	taskNS := pr.Namespace
+	if rprt.PipelineTask.TaskRef.Namespace != "" {
+		taskNS = rprt.PipelineTask.TaskRef.Namespace
+	}
+
 	tr = &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            rprt.TaskRunName,
@@ -518,8 +523,9 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 		},
 		Spec: v1alpha1.TaskRunSpec{
 			TaskRef: &v1alpha1.TaskRef{
-				Name: rprt.ResolvedTaskResources.TaskName,
-				Kind: rprt.ResolvedTaskResources.Kind,
+				Name:      rprt.ResolvedTaskResources.TaskName,
+				Namespace: taskNS,
+				Kind:      rprt.ResolvedTaskResources.Kind,
 			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: rprt.PipelineTask.Params,
