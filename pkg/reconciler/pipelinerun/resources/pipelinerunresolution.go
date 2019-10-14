@@ -245,13 +245,18 @@ func ResolvePipelineRun(
 		// Find the Task that this PipelineTask is using
 		var t v1alpha1.TaskInterface
 		var err error
+
 		if pt.TaskRef.Kind == v1alpha1.ClusterTaskKind {
 			t, err = getClusterTask(pt.TaskRef.Name)
-		} else if pt.TaskRef.Namespace != "" {
-			t, err = getTask(pt.TaskRef.Namespace, pt.TaskRef.Name)
 		} else {
-			t, err = getTask(pipelineRun.Namespace, pt.TaskRef.Name)
+			ns := pipelineRun.Namespace
+			if pt.TaskRef.Namespace != "" {
+				ns = pt.TaskRef.Namespace
+			}
+
+			t, err = getTask(ns, pt.TaskRef.Name)
 		}
+
 		if err != nil {
 			return nil, &TaskNotFoundError{
 				Name: pt.TaskRef.Name,
