@@ -56,7 +56,7 @@ func (pt *promptTest) runTest(t *testing.T, procedure func(*expect.Console) erro
 
 	// Multiplex output to a buffer as well for the raw bytes.
 	buf := new(bytes.Buffer)
-	c, state, err := vt10x.NewVT10XConsole(expect.WithStdout(buf), expect.WithDefaultTimeout(5*time.Second))
+	c, state, err := vt10x.NewVT10XConsole(expect.WithStdout(buf), expect.WithDefaultTimeout(1*time.Minute))
 	require.Nil(t, err)
 	defer c.Close()
 
