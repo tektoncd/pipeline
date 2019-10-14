@@ -169,9 +169,9 @@ works [with v0.3.1](#install-tekton))
 
 ```bash
 # Apply the Tasks we are using from the catalog
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/a844eaa0be8cba2c1fbe6c4c336a2333bdbcdf1c/golang/lint.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/a844eaa0be8cba2c1fbe6c4c336a2333bdbcdf1c/golang/build.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/a844eaa0be8cba2c1fbe6c4c336a2333bdbcdf1c/golang/tests.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/lint.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/build.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/tests.yaml
 
 # Apply the Tasks and Pipelines we use from this repo
 kubectl apply -f tekton/ci-images.yaml
