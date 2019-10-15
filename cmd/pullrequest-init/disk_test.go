@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"io/ioutil"
 	"net/url"
@@ -26,7 +25,6 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -131,7 +129,7 @@ func TestToDisk(t *testing.T) {
 			t.Errorf("Error decoding label text: %s", fi.Name())
 		}
 		labels[text] = struct{}{}
-		labelManifest[text] = true
+		labelManifest[fi.Name()] = true
 	}
 
 	for _, l := range tektonPr.Labels {
@@ -139,10 +137,13 @@ func TestToDisk(t *testing.T) {
 			t.Errorf("Expected label with text: %s, not found: %v", l.Text, labels)
 		}
 	}
-	gotManifest := readManifest(t, filepath.Join(d, "labels", manifestPath))
-	for _, m := range gotManifest {
-		if _, ok := labelManifest[m]; !ok {
-			t.Errorf("Label %s not found in manifest", m)
+	gotManifest, err := manifestFromDisk(filepath.Join(d, "labels", manifestPath))
+	if err != nil {
+		t.Fatalf("Error reading comment manifest: %v", err)
+	}
+	for m := range gotManifest {
+		if !labelManifest[m] {
+			t.Errorf("Label %s not found in manifest: %+v", m, labelManifest)
 		}
 	}
 	if len(labelManifest) != len(gotManifest) {
@@ -176,33 +177,18 @@ func TestToDisk(t *testing.T) {
 			t.Errorf("Get Comment: -want +got: %s", diff)
 		}
 	}
-	gotManifest = readManifest(t, filepath.Join(d, "comments", manifestPath))
-	for _, m := range gotManifest {
-		if _, ok := commentManifest[m]; !ok {
+	gotManifest, err = manifestFromDisk(filepath.Join(d, "comments", manifestPath))
+	if err != nil {
+		t.Fatalf("Error reading comment manifest: %v", err)
+	}
+	for m := range gotManifest {
+		if !commentManifest[m] {
 			t.Errorf("Comment %s not found in manifest", m)
 		}
 	}
 	if len(commentManifest) != len(gotManifest) {
 		t.Errorf("Comment manifest does not match expected length. Got %+v", gotManifest)
 	}
-}
-
-func readManifest(t *testing.T, path string) []string {
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-
-	var out []string
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		out = append(out, s.Text())
-	}
-	if s.Err() != nil {
-		t.Fatal(err)
-	}
-	return out
 }
 
 func TestFromDisk(t *testing.T) {
@@ -266,9 +252,7 @@ func TestFromDisk(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := ioutil.WriteFile(filepath.Join(d, "labels", manifestPath), []byte(strings.Join(labels, "\n")), 0600); err != nil {
-		t.Errorf("Error creating label manifest: %s", err)
-	}
+	writeManifest(t, labels, filepath.Join(d, "labels", manifestPath))
 
 	// Write some comments
 	comments := []Comment{
@@ -293,9 +277,7 @@ func TestFromDisk(t *testing.T) {
 		writeFile(filepath.Join(d, "comments", id+".json"), &c)
 		manifest = append(manifest, id)
 	}
-	if err := ioutil.WriteFile(filepath.Join(d, "comments", manifestPath), []byte(strings.Join(manifest, "\n")), 0700); err != nil {
-		t.Errorf("Error creating comment manifest: %s", err)
-	}
+	writeManifest(t, manifest, filepath.Join(d, "comments", manifestPath))
 
 	// Comments can also be plain text.
 	if err := ioutil.WriteFile(filepath.Join(d, "comments", "plain"), []byte("plaincomment"), 0700); err != nil {
@@ -514,6 +496,17 @@ func Test_statusToDisk(t *testing.T) {
 	}
 }
 
+func writeManifest(t *testing.T, items []string, path string) {
+	t.Helper()
+	m := Manifest{}
+	for _, i := range items {
+		m[i] = true
+	}
+	if err := manifestToDisk(m, path); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func Test_labelsFromDisk(t *testing.T) {
 	type args struct {
 		fileNames []string
@@ -566,9 +559,7 @@ func Test_labelsFromDisk(t *testing.T) {
 					t.Errorf("Error creating label: %s", err)
 				}
 			}
-			if err := ioutil.WriteFile(filepath.Join(d, manifestPath), []byte(strings.Join(tt.args.fileNames, "\n")), 0700); err != nil {
-				t.Errorf("Error creating label manifest: %s", err)
-			}
+			writeManifest(t, tt.args.fileNames, filepath.Join(d, manifestPath))
 			got, _, err := labelsFromDisk(d)
 			if err != nil {
 				t.Errorf("labelsFromDisk() error = %v", err)

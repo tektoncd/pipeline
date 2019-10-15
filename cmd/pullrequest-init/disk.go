@@ -17,9 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"bufio"
+	"encoding/gob"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -86,17 +85,7 @@ func ToDisk(pr *PullRequest, path string) error {
 }
 
 func commentsToDisk(path string, comments []*Comment) error {
-	// Create a manifest to keep track of the comments that existed when the
-	// resource was initialized. This is used to verify that a comment that
-	// doesn't exist on disk was actually deleted by the user and not newly
-	// created during upload.
-	f, err := os.Create(filepath.Join(path, manifestPath))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	manifest := bufio.NewWriter(f)
-
+	manifest := Manifest{}
 	for _, c := range comments {
 		id := strconv.FormatInt(c.ID, 10)
 		commentPath := filepath.Join(path, id+".json")
@@ -107,33 +96,27 @@ func commentsToDisk(path string, comments []*Comment) error {
 		if err := ioutil.WriteFile(commentPath, b, 0600); err != nil {
 			return err
 		}
-		if _, err := manifest.WriteString(fmt.Sprintf("%s\n", id)); err != nil {
-			return err
-		}
+		manifest[id] = true
 	}
-	return manifest.Flush()
+
+	// Create a manifest to keep track of the comments that existed when the
+	// resource was initialized. This is used to verify that a comment that
+	// doesn't exist on disk was actually deleted by the user and not newly
+	// created during upload.
+	return manifestToDisk(manifest, filepath.Join(path, manifestPath))
 }
 
 func labelsToDisk(path string, labels []*Label) error {
-	f, err := os.Create(filepath.Join(path, manifestPath))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	manifest := bufio.NewWriter(f)
-
+	manifest := Manifest{}
 	for _, l := range labels {
 		name := url.QueryEscape(l.Text)
 		labelPath := filepath.Join(path, name)
 		if err := ioutil.WriteFile(labelPath, []byte{}, 0600); err != nil {
 			return err
 		}
-		if _, err := manifest.WriteString(fmt.Sprintf("%s\n", l.Text)); err != nil {
-			return err
-		}
-
+		manifest[name] = true
 	}
-	return manifest.Flush()
+	return manifestToDisk(manifest, filepath.Join(path, manifestPath))
 }
 
 func statusToDisk(path string, statuses []*Status) error {
@@ -158,10 +141,6 @@ func refToDisk(name, path string, r *GitReference) error {
 	}
 	return ioutil.WriteFile(filepath.Join(path, name+".json"), b, 0700)
 }
-
-// Manifest is a list of sub-resources that exist within the PR resource to
-// determine whether an item existed when the resource was initialized.
-type Manifest map[string]bool
 
 // FromDisk outputs a PullRequest object from an on-disk representation at the specified path.
 func FromDisk(path string) (*PullRequest, map[string]Manifest, error) {
@@ -203,22 +182,33 @@ func FromDisk(path string) (*PullRequest, map[string]Manifest, error) {
 	return &pr, manifests, nil
 }
 
-func manifestFromDisk(path string) (map[string]bool, error) {
+// Manifest is a list of sub-resources that exist within the PR resource to
+// determine whether an item existed when the resource was initialized.
+type Manifest map[string]bool
+
+func manifestToDisk(manifest Manifest, path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := gob.NewEncoder(f)
+	return enc.Encode(manifest)
+}
+
+func manifestFromDisk(path string) (Manifest, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	out := make(map[string]bool)
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		out[s.Text()] = true
-	}
-	if s.Err() != nil {
+	m := Manifest{}
+	dec := gob.NewDecoder(f)
+	if err := dec.Decode(&m); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return m, nil
 }
 
 func commentsFromDisk(path string) ([]*Comment, Manifest, error) {
