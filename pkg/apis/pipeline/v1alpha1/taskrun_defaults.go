@@ -51,4 +51,9 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 	if trs.ServiceAccountName == "" && defaultSA != "" {
 		trs.ServiceAccountName = defaultSA
 	}
+
+	// If this taskrun has an embedded task, apply the usual task defaults
+	if trs.TaskSpec != nil {
+		trs.TaskSpec.SetDefaults(ctx)
+	}
 }

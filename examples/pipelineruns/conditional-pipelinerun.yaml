@@ -5,7 +5,6 @@ metadata:
 spec:
   params:
     - name: "path"
-      type: string
   resources:
     - name: workspace
       type: git
