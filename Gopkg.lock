@@ -288,22 +288,6 @@
   revision = "8d4083db9aa0d2fae6588c1acdbe6a1f5db461e3"
 
 [[projects]]
-  digest = "1:91099c6f78b1e7bdf9ed06eb4cb7f017174293a3689d76b995a06f4c8d64a7f0"
-  name = "github.com/google/go-github"
-  packages = ["github"]
-  pruneopts = "NUT"
-  revision = "9686ff0746200cf521ce225525b421e13b4eac1a"
-  version = "v28.1.1"
-
-[[projects]]
-  digest = "1:a63cff6b5d8b95638bfe300385d93b2a6d9d687734b863da8e09dc834510a690"
-  name = "github.com/google/go-querystring"
-  packages = ["query"]
-  pruneopts = "NUT"
-  revision = "44c6ddd0a2342c386950e880b658017258da92fc"
-  version = "v1.0.0"
-
-[[projects]]
   digest = "1:f9425215dccf1c63f659ec781ca46bc81804341821d0cd8d2459c5b58f8bd067"
   name = "github.com/google/gofuzz"
   packages = ["."]
@@ -353,14 +337,6 @@
   revision = "0c5108395e2debce0d731cf0287ddf7242066aba"
 
 [[projects]]
-  digest = "1:3c8c26bb118e3f02230d4f5f30b972dbfe0c6b371acea8f190aa99ceaaae7028"
-  name = "github.com/gorilla/mux"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "00bdffe0f3c77e27d2cf6f5c70232a2d3e4d9c15"
-  version = "v1.7.3"
-
-[[projects]]
   branch = "master"
   digest = "1:7fdf3223c7372d1ced0b98bf53457c5e89d89aecbad9a77ba9fcc6e01f9e5621"
   name = "github.com/gregjones/httpcache"
@@ -406,6 +382,20 @@
   version = "v0.3.7"
 
 [[projects]]
+  digest = "1:a8c65321b38b41bf6a74d08cb0941e039a9e4762230ba446d86b1c5d71772e38"
+  name = "github.com/jenkins-x/go-scm"
+  packages = [
+    "scm",
+    "scm/driver/fake",
+    "scm/driver/github",
+    "scm/driver/internal/hmac",
+    "scm/driver/internal/null",
+  ]
+  pruneopts = "NUT"
+  revision = "e94d536581a8e4d5197b9cde009c6fc0077ab6a5"
+  version = "v1.5.58"
+
+[[projects]]
   digest = "1:1f2aebae7e7c856562355ec0198d8ca2fa222fb05e5b1b66632a1fce39631885"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
@@ -433,6 +423,14 @@
   packages = ["tools/dep-collector"]
   pruneopts = "NUT"
   revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
+
+[[projects]]
+  digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
 
 [[projects]]
   digest = "1:56dbf15e091bf7926cb33a57cb6bdfc658fc6d3498d2f76f10a97ce7856f1fde"
@@ -481,14 +479,6 @@
   pruneopts = "NUT"
   revision = "4b7aa43c6742a2c18fdef89dd197aaae7dac7ccd"
   version = "1.0.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:048215a208d3f928e14cad3906c2aad4dc8412a81780f9a5260eaf7998c92df6"
-  name = "github.com/mohae/deepcopy"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "c48cc78d482608239f6c4c92a4abd87eb8761c90"
 
 [[projects]]
   branch = "master"
@@ -581,6 +571,34 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:a323fcc02578f8e8095a443cf06953af193330995fa99e05896152aa8137fdb6"
+  name = "github.com/shurcooL/githubv4"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "af46314aec7b150c60d4908f4b481aa87f055fc4"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ae48f0f40520744c5e6c603b61a16cfe0e4c778360fd53c7c8e2eeaa14b283c6"
+  name = "github.com/shurcooL/graphql"
+  packages = [
+    ".",
+    "ident",
+    "internal/jsonutil",
+  ]
+  pruneopts = "NUT"
+  revision = "d48a9a75455f6af30244670bc0c9d0e38e7392b5"
+
+[[projects]]
+  digest = "1:f4aaa07a6c33f2b354726d0571acbc8ca118837c75709f6353203ae1a3f8eeab"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "839c75faf7f98a33d445d181f3018b5c3409a45e"
+  version = "v1.4.2"
+
+[[projects]]
   digest = "1:9d8420bbf131d1618bde6530af37c3799340d3762cc47210c1d9532a4c3a2779"
   name = "github.com/spf13/pflag"
   packages = ["."]
@@ -658,16 +676,9 @@
   revision = "67bc79d13d155c02fd008f721863ff8cc5f30659"
 
 [[projects]]
-  digest = "1:9dbe000fb708ad27dc045553dee84e3c1592485086a56d1141c7136d0080b57b"
+  digest = "1:9c55ae5e8e4468c802a6bb582f91db6494fd084ff2dfa5559ff75e3b5edb2fa0"
   name = "golang.org/x/crypto"
   packages = [
-    "cast5",
-    "openpgp",
-    "openpgp/armor",
-    "openpgp/elgamal",
-    "openpgp/errors",
-    "openpgp/packet",
-    "openpgp/s2k",
     "pkcs12",
     "pkcs12/internal/rc2",
     "ssh/terminal",
@@ -1342,13 +1353,13 @@
     "github.com/google/go-containerregistry/pkg/v1/random",
     "github.com/google/go-containerregistry/pkg/v1/remote",
     "github.com/google/go-containerregistry/pkg/v1/types",
-    "github.com/google/go-github/github",
-    "github.com/gorilla/mux",
     "github.com/hashicorp/go-multierror",
     "github.com/hashicorp/golang-lru",
+    "github.com/jenkins-x/go-scm/scm",
+    "github.com/jenkins-x/go-scm/scm/driver/fake",
+    "github.com/jenkins-x/go-scm/scm/driver/github",
     "github.com/knative/test-infra/tools/dep-collector",
     "github.com/mitchellh/go-homedir",
-    "github.com/mohae/deepcopy",
     "github.com/pkg/errors",
     "github.com/tektoncd/plumbing/scripts",
     "go.opencensus.io/stats",
@@ -1358,7 +1369,6 @@
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest",
     "go.uber.org/zap/zaptest/observer",
-    "golang.org/x/oauth2",
     "golang.org/x/xerrors",
     "k8s.io/api/core/v1",
     "k8s.io/api/rbac/v1beta1",

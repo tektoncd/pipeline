@@ -18,6 +18,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 
 	"knative.dev/pkg/logging"
 )
@@ -34,7 +35,7 @@ func main() {
 	defer logger.Sync()
 	ctx := context.Background()
 
-	client, err := NewGitHubHandler(ctx, logger, *prURL)
+	client, err := NewGitHubHandler(logger, *prURL)
 	if err != nil {
 		logger.Fatalf("error creating GitHub client: %v", err)
 	}
@@ -42,8 +43,9 @@ func main() {
 	switch *mode {
 	case "download":
 		logger.Info("RUNNING DOWNLOAD!")
-		pr, err := client.Download(ctx, *path)
+		pr, err := client.Download(ctx)
 		if err != nil {
+			fmt.Println(err)
 			logger.Fatal(err)
 		}
 		if err := ToDisk(pr, *path); err != nil {
@@ -52,11 +54,11 @@ func main() {
 
 	case "upload":
 		logger.Info("RUNNING UPLOAD!")
-		pr, manifests, err := FromDisk(*path)
+		r, err := FromDisk(*path)
 		if err != nil {
 			logger.Fatal(err)
 		}
-		if err := client.Upload(ctx, pr, manifests); err != nil {
+		if err := client.Upload(ctx, r); err != nil {
 			logger.Fatal(err)
 		}
 	}
