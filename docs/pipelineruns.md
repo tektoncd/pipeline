@@ -51,6 +51,8 @@ following fields:
   - [`podTemplate`](#pod-template) - Specifies a subset of
     [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
 	configuration that will be used as the basis for the `Task` pod.
+  - [`expirationSecondsTTL`] - Specifies expirationSecondsTTL at least zero which means that completed PipelineRun will be deleted automatically. 
+    If `expirationSecondsTTL` is not set, PipelineRun will not be deleted.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -234,6 +236,20 @@ spec:
   # […]
   status: "PipelineRunCancelled"
 ```
+
+## Deleting completed PipelineRun
+Deleting completed PipelineRun automatically after *ExpirationSecondsTTL* time.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  expirationSecondsTTL: 300
+```
+
 
 ---
 

@@ -57,6 +57,9 @@ following fields:
   - [`podTemplate`](#pod-template) - Specifies a subset of
     [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
 	configuration that will be used as the basis for the `Task` pod.
+  - [`expirationSecondsTTL`] - Specifies expirationSecondsTTL at least zero which means that completed TaskRun will be deleted automatically. 
+    If `expirationSecondsTTL` is not set, TaskRun will not be deleted. And if a TaskRun is produced by PipelineRun, 
+    the value of expirationSecondsTTL of TaskRun will be ignored, then check PipelineRun's expirationSecondsTTL.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -585,6 +588,19 @@ order to terminate the sidecars they will be restarted with a new
 "nop" image that quickly exits. The result will be that your TaskRun's
 Pod will include the sidecar container with a Retry Count of 1 and
 with a different container image than you might be expecting.
+
+## Deleting completed TaskRun
+Deleting completed TaskRun automatically after *ExpirationSecondsTTL* time.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: go-example-git
+spec:
+  # […]
+  expirationSecondsTTL: 300
+```
 
 ---
 
