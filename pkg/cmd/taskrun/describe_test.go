@@ -26,17 +26,47 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
+func TestTaskRunDescribe_invalid_namespace(t *testing.T) {
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "defaul",
+				},
+			},
+		},
+	})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	taskrun := Command(p)
+	_, err := test.ExecuteCommand(taskrun, "desc", "bar", "-n", "invalid")
+	if err == nil {
+		t.Errorf("Expected error but did not get one")
+	}
+	expected := "namespaces \"invalid\" not found"
+	test.AssertOutput(t, expected, err.Error())
+}
+
 func TestTaskRunDescribe_not_found(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	taskrun := Command(p)
 	_, err := test.ExecuteCommand(taskrun, "desc", "bar", "-n", "ns")
 	if err == nil {
-		t.Errorf("Expected error, did not get any")
+		t.Errorf("Expected error but did not get one")
 	}
 	expected := "failed to find taskrun \"bar\""
 	test.AssertOutput(t, expected, err.Error())
@@ -60,9 +90,16 @@ func TestTaskRunDescribe_empty_taskrun(t *testing.T) {
 
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		TaskRuns: trs,
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	taskrun := Command(p)
 	clock.Advance(10 * time.Minute)
@@ -128,9 +165,16 @@ func TestTaskRunDescribe_only_taskrun(t *testing.T) {
 
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		TaskRuns: trs,
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	taskrun := Command(p)
 	clock.Advance(10 * time.Minute)
@@ -192,9 +236,16 @@ func TestTaskRunDescribe_failed(t *testing.T) {
 
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		TaskRuns: trs,
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	taskrun := Command(p)
 	clock.Advance(10 * time.Minute)
