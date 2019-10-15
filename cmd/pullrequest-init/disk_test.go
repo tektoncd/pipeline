@@ -28,48 +28,51 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/jenkins-x/go-scm/scm"
 )
 
 func TestToDisk(t *testing.T) {
-	tektonPr := PullRequest{
-		Type: "github",
-		ID:   123,
-		Head: &GitReference{
-			Repo:   "foo1",
-			Branch: "branch1",
-			SHA:    "sha1",
-		},
-		Base: &GitReference{
-			Repo:   "foo2",
-			Branch: "branch2",
-			SHA:    "sha2",
-		},
-		Statuses: []*Status{
-			{
-				ID:          "123",
-				Code:        Success,
-				Description: "foobar",
-				URL:         "https://foo.bar",
+	rsrc := &Resource{
+		PR: &scm.PullRequest{
+			Number: 123,
+			Head: scm.PullRequestBranch{
+				Ref:  "refs/heads/branch1",
+				Sha:  "sha1",
+				Repo: scm.Repository{Name: "repo1"},
 			},
-			{
-				ID:          "cla/foo",
-				Code:        Success,
-				Description: "bazbat",
-				URL:         "https://baz.bat",
+			Base: scm.PullRequestBranch{
+				Ref:  "refs/heads/branch1",
+				Sha:  "sha2",
+				Repo: scm.Repository{Name: "repo1"},
+			},
+			Labels: []*scm.Label{
+				{Name: "help"},
+				{Name: "me"},
+				{Name: "foo/bar"},
 			},
 		},
-		Comments: []*Comment{
-			{
-				Text:   "hey",
-				Author: "me",
-				ID:     123,
+		Status: &scm.CombinedStatus{
+			State: scm.StateSuccess,
+			Sha:   "sha1",
+			Statuses: []*scm.Status{
+				{
+					Label:  "123",
+					State:  scm.StateSuccess,
+					Desc:   "foobar",
+					Target: "https://foo.bar",
+				},
+				{
+					Label:  "cla/foo",
+					State:  scm.StateSuccess,
+					Desc:   "bazbat",
+					Target: "https://baz.bat",
+				},
 			},
 		},
-		Labels: []*Label{
-			{Text: "help"},
-			{Text: "me"},
-			{Text: "foo/bar"},
-		},
+		Comments: []*scm.Comment{{
+			ID:   123,
+			Body: "hey",
+		}},
 	}
 
 	d, err := ioutil.TempDir("", "")
@@ -77,20 +80,20 @@ func TestToDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(d)
-	if err := ToDisk(&tektonPr, d); err != nil {
+	if err := ToDisk(rsrc, d); err != nil {
 		t.Error(err)
 	}
 
 	// Check the refs
-	checkRef := func(name string, r GitReference) {
-		actualRef := GitReference{}
+	checkRef := func(name string, r scm.PullRequestBranch) {
+		actualRef := scm.PullRequestBranch{}
 		readAndUnmarshal(t, filepath.Join(d, name), &actualRef)
 		if diff := cmp.Diff(actualRef, r); diff != "" {
 			t.Errorf("Get PullRequest: -want +got: %s", diff)
 		}
 	}
-	checkRef("head.json", *tektonPr.Head)
-	checkRef("base.json", *tektonPr.Base)
+	checkRef("head.json", rsrc.PR.Head)
+	checkRef("base.json", rsrc.PR.Base)
 
 	// Check the Statuses
 	fis, err := ioutil.ReadDir(filepath.Join(d, "status"))
@@ -98,16 +101,16 @@ func TestToDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	statuses := map[string]Status{}
+	statuses := map[string]scm.Status{}
 	for _, fi := range fis {
-		status := Status{}
+		status := scm.Status{}
 		readAndUnmarshal(t, filepath.Join(d, "status", fi.Name()), &status)
-		statuses[status.ID] = status
+		statuses[status.Target] = status
 	}
-	for _, s := range tektonPr.Statuses {
-		actualStatus, ok := statuses[s.ID]
+	for _, s := range rsrc.Status.Statuses {
+		actualStatus, ok := statuses[s.Target]
 		if !ok {
-			t.Errorf("Expected status with ID: %s, not found: %v", s.ID, statuses)
+			t.Errorf("Expected status with ID: %s, not found: %v", s.Target, statuses)
 		}
 		if diff := cmp.Diff(actualStatus, *s); diff != "" {
 			t.Errorf("Get Status: -want +got: %s", diff)
@@ -132,9 +135,9 @@ func TestToDisk(t *testing.T) {
 		labelManifest[fi.Name()] = true
 	}
 
-	for _, l := range tektonPr.Labels {
-		if _, ok := labels[l.Text]; !ok {
-			t.Errorf("Expected label with text: %s, not found: %v", l.Text, labels)
+	for _, l := range rsrc.PR.Labels {
+		if _, ok := labels[l.Name]; !ok {
+			t.Errorf("Expected label with text: %s, not found: %v", l.Name, labels)
 		}
 	}
 	gotManifest, err := manifestFromDisk(filepath.Join(d, "labels", manifestPath))
@@ -156,19 +159,19 @@ func TestToDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	comments := map[int64]Comment{}
+	comments := map[int]scm.Comment{}
 	commentManifest := Manifest{}
 	for _, fi := range fis {
 		if fi.Name() == manifestPath {
 			continue
 		}
-		comment := Comment{}
+		comment := scm.Comment{}
 		path := filepath.Join(d, "comments", fi.Name())
 		readAndUnmarshal(t, path, &comment)
 		comments[comment.ID] = comment
-		commentManifest[strconv.FormatInt(comment.ID, 10)] = true
+		commentManifest[strconv.Itoa(comment.ID)] = true
 	}
-	for _, c := range tektonPr.Comments {
+	for _, c := range rsrc.Comments {
 		actualComment, ok := comments[c.ID]
 		if !ok {
 			t.Errorf("Expected comment with ID: %d, not found: %v", c.ID, comments)
@@ -199,16 +202,17 @@ func TestFromDisk(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	// Write some refs
-	base := GitReference{
-		Repo:   "repo1",
-		Branch: "branch1",
-		SHA:    "sha1",
+	base := scm.PullRequestBranch{
+		Repo: scm.Repository{Name: "repo1"},
+		Ref:  "refs/heads/branch1",
+		Sha:  "sha1",
 	}
-	head := GitReference{
-		Repo:   "repo2",
-		Branch: "branch2",
-		SHA:    "sha2",
+	head := scm.PullRequestBranch{
+		Repo: scm.Repository{Name: "repo2"},
+		Ref:  "refs/heads/branch2",
+		Sha:  "sha2",
 	}
+
 	writeFile := func(p string, v interface{}) {
 		b, err := json.Marshal(v)
 		if err != nil {
@@ -222,16 +226,16 @@ func TestFromDisk(t *testing.T) {
 	writeFile(filepath.Join(d, "head.json"), &head)
 
 	// Write some statuses
-	statuses := []Status{
+	statuses := []scm.Status{
 		{
-			ID:          "abc",
-			Description: "foo",
-			Code:        Success,
+			Label: "abc",
+			Desc:  "foo",
+			State: scm.StateSuccess,
 		},
 		{
-			ID:          "def",
-			Description: "bar",
-			Code:        Failure,
+			Label: "def",
+			Desc:  "bar",
+			State: scm.StateFailure,
 		},
 	}
 
@@ -239,7 +243,7 @@ func TestFromDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, s := range statuses {
-		writeFile(filepath.Join(d, "status", s.ID+".json"), &s)
+		writeFile(filepath.Join(d, "status", s.Label+".json"), &s)
 	}
 
 	// Write some labels
@@ -255,15 +259,15 @@ func TestFromDisk(t *testing.T) {
 	writeManifest(t, labels, filepath.Join(d, "labels", manifestPath))
 
 	// Write some comments
-	comments := []Comment{
+	comments := []scm.Comment{
 		{
-			Text:   "testing",
-			Author: "me",
+			Body:   "testing",
+			Author: scm.User{Login: "me"},
 			ID:     123,
 		},
 		{
-			Text:   "1212",
-			Author: "you",
+			Body:   "1212",
+			Author: scm.User{Login: "you"},
 			ID:     234,
 		},
 	}
@@ -273,7 +277,7 @@ func TestFromDisk(t *testing.T) {
 	}
 	manifest := make([]string, 0, len(comments))
 	for _, c := range comments {
-		id := strconv.FormatInt(c.ID, 10)
+		id := strconv.Itoa(c.ID)
 		writeFile(filepath.Join(d, "comments", id+".json"), &c)
 		manifest = append(manifest, id)
 	}
@@ -284,37 +288,37 @@ func TestFromDisk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pr, gotManifest, err := FromDisk(d)
+	rsrc, err := FromDisk(d)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Check the refs
-	if diff := cmp.Diff(pr.Base, &base); diff != "" {
+	if diff := cmp.Diff(rsrc.PR.Base, base); diff != "" {
 		t.Errorf("Get Base: -want +got: %s", diff)
 	}
-	if diff := cmp.Diff(pr.Head, &head); diff != "" {
+	if diff := cmp.Diff(rsrc.PR.Head, head); diff != "" {
 		t.Errorf("Get Head: -want +got: %s", diff)
 	}
 
 	// Check the comments
-	commentMap := map[int64]Comment{}
+	commentMap := map[int]scm.Comment{}
 	for _, c := range comments {
 		commentMap[c.ID] = c
 	}
-	commentMap[0] = Comment{
-		Text: "plaincomment",
+	commentMap[0] = scm.Comment{
+		Body: "plaincomment",
 	}
-	for _, c := range pr.Comments {
+	for _, c := range rsrc.Comments {
 		if diff := cmp.Diff(commentMap[c.ID], *c); diff != "" {
 			t.Errorf("Get comments: -want +got: %s", diff)
 		}
 	}
 	commentManifest := Manifest{}
 	for _, c := range comments {
-		commentManifest[strconv.FormatInt(c.ID, 10)] = true
+		commentManifest[strconv.Itoa(c.ID)] = true
 	}
-	if diff := cmp.Diff(commentManifest, gotManifest["comments"]); diff != "" {
+	if diff := cmp.Diff(commentManifest, rsrc.Manifests["comments"]); diff != "" {
 		t.Errorf("Comment manifest: -want + got: %s", diff)
 	}
 
@@ -323,8 +327,8 @@ func TestFromDisk(t *testing.T) {
 	for _, l := range labels {
 		labelsMap[l] = struct{}{}
 	}
-	for _, l := range pr.Labels {
-		key := url.QueryEscape(l.Text)
+	for _, l := range rsrc.PR.Labels {
+		key := url.QueryEscape(l.Name)
 		if diff := cmp.Diff(labelsMap[key], &l); diff != "" {
 			t.Errorf("Get labels: -want +got: %s", diff)
 		}
@@ -333,17 +337,17 @@ func TestFromDisk(t *testing.T) {
 	for _, l := range labels {
 		labelManifest[l] = true
 	}
-	if diff := cmp.Diff(labelManifest, gotManifest["labels"]); diff != "" {
+	if diff := cmp.Diff(labelManifest, rsrc.Manifests["labels"]); diff != "" {
 		t.Errorf("Label manifest: -want + got: %s", diff)
 	}
 
 	// Check the statuses
-	statusMap := map[string]Status{}
+	statusMap := map[string]scm.Status{}
 	for _, s := range statuses {
-		statusMap[s.ID] = s
+		statusMap[s.Label] = s
 	}
-	for _, s := range pr.Statuses {
-		if diff := cmp.Diff(statusMap[s.ID], *s); diff != "" {
+	for _, s := range rsrc.Status.Statuses {
+		if diff := cmp.Diff(statusMap[s.Label], *s); diff != "" {
 			t.Errorf("Get status: -want +got: %s", diff)
 		}
 	}
@@ -362,7 +366,7 @@ func readAndUnmarshal(t *testing.T, p string, v interface{}) {
 
 func Test_labelsToDisk(t *testing.T) {
 	type args struct {
-		labels []*Label
+		labels []*scm.Label
 	}
 	tests := []struct {
 		name      string
@@ -372,8 +376,8 @@ func Test_labelsToDisk(t *testing.T) {
 		{
 			name: "single label",
 			args: args{
-				labels: []*Label{
-					{Text: "foo"},
+				labels: []*scm.Label{
+					{Name: "foo"},
 				},
 			},
 			wantFiles: []string{
@@ -383,9 +387,9 @@ func Test_labelsToDisk(t *testing.T) {
 		{
 			name: "multiple labels",
 			args: args{
-				labels: []*Label{
-					{Text: "foo"},
-					{Text: "bar"},
+				labels: []*scm.Label{
+					{Name: "foo"},
+					{Name: "bar"},
 				},
 			},
 			wantFiles: []string{
@@ -396,10 +400,10 @@ func Test_labelsToDisk(t *testing.T) {
 		{
 			name: "complex labels",
 			args: args{
-				labels: []*Label{
-					{Text: "foo/bar"},
-					{Text: "help wanted"},
-					{Text: "simple"},
+				labels: []*scm.Label{
+					{Name: "foo/bar"},
+					{Name: "help wanted"},
+					{Name: "simple"},
 				},
 			},
 			wantFiles: []string{
@@ -430,7 +434,7 @@ func Test_labelsToDisk(t *testing.T) {
 
 func Test_statusToDisk(t *testing.T) {
 	type args struct {
-		statuses []*Status
+		statuses []*scm.Status
 	}
 	tests := []struct {
 		name      string
@@ -440,8 +444,8 @@ func Test_statusToDisk(t *testing.T) {
 		{
 			name: "single status",
 			args: args{
-				statuses: []*Status{
-					{ID: "foo"},
+				statuses: []*scm.Status{
+					{Label: "foo"},
 				},
 			},
 			wantFiles: []string{
@@ -451,9 +455,9 @@ func Test_statusToDisk(t *testing.T) {
 		{
 			name: "multiple statuses",
 			args: args{
-				statuses: []*Status{
-					{ID: "foo"},
-					{ID: "bar"},
+				statuses: []*scm.Status{
+					{Label: "foo"},
+					{Label: "bar"},
 				},
 			},
 			wantFiles: []string{
@@ -464,10 +468,10 @@ func Test_statusToDisk(t *testing.T) {
 		{
 			name: "complex statuses",
 			args: args{
-				statuses: []*Status{
-					{ID: "foo/bar"},
-					{ID: "help wanted"},
-					{ID: "simple"},
+				statuses: []*scm.Status{
+					{Label: "foo/bar"},
+					{Label: "help wanted"},
+					{Label: "simple"},
 				},
 			},
 			wantFiles: []string{
@@ -514,15 +518,15 @@ func Test_labelsFromDisk(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want []Label
+		want []scm.Label
 	}{
 		{
 			name: "single label",
 			args: args{
 				fileNames: []string{"foo"},
 			},
-			want: []Label{
-				{Text: "foo"},
+			want: []scm.Label{
+				{Name: "foo"},
 			},
 		},
 		{
@@ -530,9 +534,9 @@ func Test_labelsFromDisk(t *testing.T) {
 			args: args{
 				fileNames: []string{"foo", "bar"},
 			},
-			want: []Label{
-				{Text: "foo"},
-				{Text: "bar"},
+			want: []scm.Label{
+				{Name: "foo"},
+				{Name: "bar"},
 			},
 		},
 		{
@@ -540,9 +544,9 @@ func Test_labelsFromDisk(t *testing.T) {
 			args: args{
 				fileNames: []string{"foo%2Fbar", "bar+bat"},
 			},
-			want: []Label{
-				{Text: "foo/bar"},
-				{Text: "bar bat"},
+			want: []scm.Label{
+				{Name: "foo/bar"},
+				{Name: "bar bat"},
 			},
 		},
 	}
@@ -565,16 +569,16 @@ func Test_labelsFromDisk(t *testing.T) {
 				t.Errorf("labelsFromDisk() error = %v", err)
 			}
 
-			derefed := []Label{}
+			derefed := []scm.Label{}
 			for _, l := range got {
 				derefed = append(derefed, *l)
 			}
 
 			sort.Slice(derefed, func(i, j int) bool {
-				return derefed[i].Text < derefed[j].Text
+				return derefed[i].Name < derefed[j].Name
 			})
 			sort.Slice(tt.want, func(i, j int) bool {
-				return tt.want[i].Text < tt.want[j].Text
+				return tt.want[i].Name < tt.want[j].Name
 			})
 
 			if !reflect.DeepEqual(derefed, tt.want) {
