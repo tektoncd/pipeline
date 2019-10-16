@@ -44,7 +44,22 @@ spec:
   - name: builtGcsFetcherImage
     type: image
   tasks:
+    - name: precheck
+      taskRef:
+        name: prerelease-check
+      params:
+        - name: package
+          value: $(params.package)
+        - name: versionTag
+          value: $(params.versionTag)
+      resources:
+        inputs:
+          - name: release-bucket
+            resource: bucket
+          - name: source-to-release
+            resource: source-repo
     - name: lint
+      runAfter: [precheck]
       taskRef:
         name: golangci-lint
       params:
