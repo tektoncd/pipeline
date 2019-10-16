@@ -307,7 +307,7 @@ func (res *resource) askClusterParams() error {
 	}
 	switch ans {
 	case qsOpts[0]: // Using password authentication technique
-		passwordParam, err := askParam("password", res.askOpts)
+		passwordParam, err := askPassword(res.askOpts)
 		if err != nil {
 			return err
 		}
@@ -509,6 +509,25 @@ func askToSelect(message string, options []string, askOpts survey.AskOpt) (strin
 	}
 
 	return ans, nil
+}
+
+func askPassword(askOpts survey.AskOpt) (v1alpha1.ResourceParam, error) {
+	var param v1alpha1.ResourceParam
+	var qs = []*survey.Question{{
+		Name: "value",
+		Prompt: &survey.Password{
+			Message: fmt.Sprintf("Enter a value for password :"),
+		},
+	}}
+
+	err := survey.Ask(qs, &param, askOpts)
+	if err != nil {
+		return param, Error(err)
+	}
+
+	param.Name = "password"
+
+	return param, nil
 }
 
 func allResourceType() []string {

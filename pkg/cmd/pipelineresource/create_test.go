@@ -391,6 +391,10 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
+				if _, err := c.ExpectString("*********"); err != nil {
+					return err
+				}
+
 				if _, err := c.ExpectString("How do you want to set cadata?"); err != nil {
 					return err
 				}
@@ -839,6 +843,10 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 				}
 
 				if _, err := c.SendLine("abcd#@123"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("*********"); err != nil {
 					return err
 				}
 
