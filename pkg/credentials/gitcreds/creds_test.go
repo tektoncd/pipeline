@@ -220,11 +220,11 @@ func TestSSHFlagHandling(t *testing.T) {
 
 	expectedSSHConfig := fmt.Sprintf(`Host github.com
     HostName github.com
-    IdentityFile %s
     Port 22
-`, filepath.Join(os.Getenv("HOME"), ".ssh", "id_foo"))
-	if string(b) != expectedSSHConfig {
-		t.Errorf("got: %v, wanted: %v", string(b), expectedSSHConfig)
+    IdentityFile %s/.ssh/id_foo
+`, credentials.VolumePath)
+	if d := cmp.Diff(expectedSSHConfig, string(b)); d != "" {
+		t.Errorf("ssh_config diff: %s", d)
 	}
 
 	b, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".ssh", "known_hosts"))
@@ -283,8 +283,10 @@ func TestSSHFlagHandlingThrice(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	flags(fs)
 	err := fs.Parse([]string{
+		// Two secrets target github.com, and both will end up in the
+		// ssh config.
 		"-ssh-git=foo=github.com",
-		"-ssh-git=bar=gitlab.com",
+		"-ssh-git=bar=github.com",
 		"-ssh-git=baz=gitlab.example.com:2222",
 	})
 	if err != nil {
@@ -303,21 +305,16 @@ func TestSSHFlagHandlingThrice(t *testing.T) {
 
 	expectedSSHConfig := fmt.Sprintf(`Host github.com
     HostName github.com
-    IdentityFile %s
     Port 22
-Host gitlab.com
-    HostName gitlab.com
-    IdentityFile %s
-    Port 22
+    IdentityFile %s/.ssh/id_foo
+    IdentityFile %s/.ssh/id_bar
 Host gitlab.example.com
     HostName gitlab.example.com
-    IdentityFile %s
     Port 2222
-`, filepath.Join(os.Getenv("HOME"), ".ssh", "id_foo"),
-		filepath.Join(os.Getenv("HOME"), ".ssh", "id_bar"),
-		filepath.Join(os.Getenv("HOME"), ".ssh", "id_baz"))
-	if string(b) != expectedSSHConfig {
-		t.Errorf("got: %v, wanted: %v", string(b), expectedSSHConfig)
+    IdentityFile %s/.ssh/id_baz
+`, credentials.VolumePath, credentials.VolumePath, credentials.VolumePath)
+	if d := cmp.Diff(expectedSSHConfig, string(b)); d != "" {
+		t.Errorf("ssh_config diff: %s", d)
 	}
 
 	b, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".ssh", "known_hosts"))
@@ -327,8 +324,8 @@ Host gitlab.example.com
 	expectedSSHKnownHosts := `ssh-rsa aaaa
 ssh-rsa bbbb
 ssh-rsa cccc`
-	if string(b) != expectedSSHKnownHosts {
-		t.Errorf("got: %v, wanted: %v", string(b), expectedSSHKnownHosts)
+	if d := cmp.Diff(expectedSSHKnownHosts, string(b)); d != "" {
+		t.Errorf("known_hosts diff: %s", d)
 	}
 
 	b, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".ssh", "id_foo"))
@@ -370,28 +367,9 @@ func TestSSHFlagHandlingMissingFiles(t *testing.T) {
 	}
 	// No ssh-privatekey files yields an error.
 
-	cfg := sshGitConfig{entries: make(map[string]sshEntry)}
+	cfg := sshGitConfig{entries: make(map[string][]sshEntry)}
 	if err := cfg.Set("not-found=github.com"); err == nil {
 		t.Error("Set(); got success, wanted error.")
-	}
-}
-
-func TestSSHFlagHandlingURLCollision(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
-	dir := credentials.VolumeName("foo")
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
-		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, corev1.SSHAuthPrivateKey), []byte("bar"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(ssh-privatekey) = %v", err)
-	}
-
-	cfg := sshGitConfig{entries: make(map[string]sshEntry)}
-	if err := cfg.Set("foo=github.com"); err != nil {
-		t.Fatalf("First Set() = %v", err)
-	}
-	if err := cfg.Set("bar=github.com"); err == nil {
-		t.Error("Second Set(); got success, wanted error.")
 	}
 }
 
