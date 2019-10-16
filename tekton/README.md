@@ -144,10 +144,12 @@ The nightly release Pipeline is currently missing Tasks which we want to add onc
 
 ## Install Tekton
 
-The Pipelines and Tasks in this repo work with v0.3.1 due to
+Some of the Pipelines and Tasks in this repo work with v0.3.1 due to
 [Prow #13948](https://github.com/kubernetes/test-infra/issues/13948), so that
 they can be used [with Prow](https://github.com/tektoncd/plumbing/tree/master/prow).
 
+Specifically, nightly releases are triggered by Prow, so they are compatible with
+v0.3.1, while full releases are triggered manually and require Tekton >= v0.7.0.
 
 ```bash
 # If this is your first time installing Tekton in the cluster you might need to give yourself permission to do so
@@ -155,7 +157,10 @@ kubectl create clusterrolebinding cluster-admin-binding-someusername \
   --clusterrole=cluster-admin \
   --user=$(gcloud config get-value core/account)
 
-# Apply version v0.3.1 of Tekton
+# For Tekton v0.3.1 - apply version v0.3.1
+kubectl apply --filename  https://storage.googleapis.com/tekton-releases/previous/v0.3.1/release.yaml
+
+# For Tekton v0.7.0 - apply version v0.7.0 - Do not apply both versions in the same cluster!
 kubectl apply --filename  https://storage.googleapis.com/tekton-releases/previous/v0.3.1/release.yaml
 ```
 
@@ -164,15 +169,34 @@ kubectl apply --filename  https://storage.googleapis.com/tekton-releases/previou
 Add all the `Tasks` to the cluster, including the
 [`golang`](https://github.com/tektoncd/catalog/tree/master/golang)
 Tasks from the
-[`tektoncd/catalog`](https://github.com/tektoncd/catalog) (pinned to a version that
-works [with v0.3.1](#install-tekton))
+[`tektoncd/catalog`](https://github.com/tektoncd/catalog), and the
+[release pre-check](https://github.com/tektoncd/plumbing/tree/master/tekton/) Task from
+[`tektoncd/plumbing`](https://github.com/tektoncd/plumbing).
+
+For nightly releases, use a version of the [`tektoncdcatalog`](https://github.com/tektoncd/catalog)
+tasks that is compatible with Tekton v0.3.1:
 
 ```bash
 # Apply the Tasks we are using from the catalog
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/lint.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/build.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/14d38f2041312b0ad17bc079cfa9c0d66895cc7a/golang/tests.yaml
+```
 
+For full releases, use a version of the [`tektoncdcatalog`](https://github.com/tektoncd/catalog)
+tasks that is compatible with Tekton v0.7.0 (`master`) and install the pre-release
+check Task from plumbing too:
+
+```bash
+# Apply the Tasks we are using from the catalog
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/lint.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/master/tekton/prerelease_checks.yaml
+```
+
+Apply the tasks from the `pipeline` repo:
+```bash
 # Apply the Tasks and Pipelines we use from this repo
 kubectl apply -f tekton/ci-images.yaml
 kubectl apply -f tekton/publish.yaml
