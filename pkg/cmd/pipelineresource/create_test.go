@@ -367,11 +367,15 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter a value for insecure :"); err != nil {
+				if _, err := c.ExpectString("Is the cluster secure?"); err != nil {
 					return err
 				}
 
-				if _, err := c.SendLine("false"); err != nil {
+				if _, err := c.ExpectString("yes"); err != nil {
+					return err
+				}
+
+				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
 
@@ -501,11 +505,15 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter a value for insecure :"); err != nil {
+				if _, err := c.ExpectString("Is the cluster secure?"); err != nil {
 					return err
 				}
 
-				if _, err := c.SendLine("false"); err != nil {
+				if _, err := c.ExpectString("yes"); err != nil {
+					return err
+				}
+
+				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
 
@@ -822,11 +830,15 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter a value for insecure :"); err != nil {
+				if _, err := c.ExpectString("Is the cluster secure?"); err != nil {
 					return err
 				}
 
-				if _, err := c.SendLine("false"); err != nil {
+				if _, err := c.ExpectString("yes"); err != nil {
+					return err
+				}
+
+				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
 
@@ -972,11 +984,15 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 					return err
 				}
 
-				if _, err := c.ExpectString("Enter a value for insecure :"); err != nil {
+				if _, err := c.ExpectString("Is the cluster secure?"); err != nil {
 					return err
 				}
 
-				if _, err := c.SendLine("false"); err != nil {
+				if _, err := c.ExpectString("yes"); err != nil {
+					return err
+				}
+
+				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
 

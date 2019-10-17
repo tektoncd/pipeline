@@ -284,17 +284,18 @@ func (res *resource) askClusterParams() error {
 		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, usernameParam)
 	}
 
-	insecureParam, err := askParam("insecure", res.askOpts)
+	secure, err := askToSelect("Is the cluster secure?", []string{"yes", "no"}, res.askOpts)
 	if err != nil {
 		return err
 	}
-	if insecureParam.Name != "" {
-		res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, insecureParam)
+	insecureParam := v1alpha1.ResourceParam{}
+	insecureParam.Name = "insecure"
+	if secure == "yes" {
+		insecureParam.Value = "false"
+	} else {
+		insecureParam.Value = "true"
 	}
-	secure := true
-	if insecureParam.Name == "insecure" && insecureParam.Value == "true" {
-		secure = false
-	}
+	res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, insecureParam)
 
 	qs := "Which authentication technique you want to use?"
 	qsOpts := []string{
@@ -314,7 +315,7 @@ func (res *resource) askClusterParams() error {
 		if passwordParam.Name != "" {
 			res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, passwordParam)
 		}
-		if secure {
+		if secure == "yes" {
 			qs := "How do you want to set cadata?"
 			qsOpts := []string{
 				"Passing plain text as parameters",
@@ -367,7 +368,7 @@ func (res *resource) askClusterParams() error {
 			if tokenParam.Name != "" {
 				res.pipelineResource.Spec.Params = append(res.pipelineResource.Spec.Params, tokenParam)
 			}
-			if secure {
+			if secure == "yes" {
 				cadataParam, err := askParam("cadata", res.askOpts)
 				if err != nil {
 					return err
@@ -389,7 +390,7 @@ func (res *resource) askClusterParams() error {
 			}
 			res.pipelineResource.Spec.SecretParams = append(res.pipelineResource.Spec.SecretParams, secret)
 
-			if secure {
+			if secure == "yes" {
 				secret, err := askSecret("cadata", res.askOpts)
 				if err != nil {
 					return err
