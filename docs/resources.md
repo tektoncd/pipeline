@@ -701,8 +701,8 @@ service account.
 
 1.  Refer to
     [official documentation](https://cloud.google.com/compute/docs/access/service-accounts)
-    on how to create service accounts and configuring IAM permissions to access
-    bucket.
+    on how to create service accounts and configuring [IAM permissions](https://cloud.google.com/storage/docs/access-control/iam-permissions) to access bucket.
+    
 1.  Create a Kubernetes secret from downloaded service account json key
 
     ```bash
