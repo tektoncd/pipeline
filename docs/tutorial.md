@@ -182,7 +182,7 @@ spec:
         type: image
   steps:
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:v0.9.0
+      image: gcr.io/kaniko-project/executor:v0.13.0
       # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
       env:
         - name: "DOCKER_CONFIG"
