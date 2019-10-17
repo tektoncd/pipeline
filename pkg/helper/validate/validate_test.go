@@ -33,8 +33,9 @@ func TestNamespaceExists_Invalid_Namespace(t *testing.T) {
 	}
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
 	p := &test.Params{Kube: cs.Kube}
+	p.SetNamespace("foo")
 
-	err := NamespaceExists(p.Kube, "foo")
+	err := NamespaceExists(p)
 	test.AssertOutput(t, "namespaces \"foo\" not found", err.Error())
 }
 
@@ -49,6 +50,6 @@ func TestNamespaceExists_Valid_Namespace(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
 	p := &test.Params{Kube: cs.Kube}
 
-	err := NamespaceExists(p.Kube, "default")
+	err := NamespaceExists(p)
 	test.AssertOutput(t, nil, err)
 }

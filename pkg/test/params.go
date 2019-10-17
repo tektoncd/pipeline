@@ -53,7 +53,7 @@ func (p *Params) tektonClient() (versioned.Interface, error) {
 	return p.Tekton, nil
 }
 
-func (p *Params) kubeClient() (k8s.Interface, error) {
+func (p *Params) KubeClient() (k8s.Interface, error) {
 	return p.Kube, nil
 }
 
@@ -67,7 +67,7 @@ func (p *Params) Clients() (*cli.Clients, error) {
 		return nil, err
 	}
 
-	kube, err := p.kubeClient()
+	kube, err := p.KubeClient()
 	if err != nil {
 		return nil, err
 	}

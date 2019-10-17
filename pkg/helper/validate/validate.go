@@ -15,15 +15,26 @@
 package validate
 
 import (
-	k8s "k8s.io/client-go/kubernetes"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8s "k8s.io/client-go/kubernetes"
 )
 
-// Check if namespace exists. Returns error if namespace specified with -n doesn't exist or if user doesn't have permissions to view.
-func NamespaceExists(kube k8s.Interface, ns string) error {
+type params interface {
+	KubeClient() (k8s.Interface, error)
+	Namespace() string
+}
 
-	_, err := kube.CoreV1().Namespaces().Get(ns, metav1.GetOptions{})
+// Check if namespace exists. Returns error if namespace specified with -n doesn't exist or if user doesn't have permissions to view.
+func NamespaceExists(p params) error {
+
+	cs, err := p.KubeClient()
+	if err != nil {
+		return fmt.Errorf("failed to create kube client")
+	}
+
+	_, err = cs.CoreV1().Namespaces().Get(p.Namespace(), metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

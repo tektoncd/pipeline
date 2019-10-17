@@ -47,13 +47,31 @@ func (p *TektonParams) tektonClient(config *rest.Config) (versioned.Interface, e
 	return cs, nil
 }
 
+// Set kube client based on config
 func (p *TektonParams) kubeClient(config *rest.Config) (k8s.Interface, error) {
 	k8scs, err := k8s.NewForConfig(config)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to create ks8 client from config")
+		return nil, errors.Wrapf(err, "Failed to create k8s client from config")
 	}
 
 	return k8scs, nil
+}
+
+// Only returns kube client, not tekton client
+func (p *TektonParams) KubeClient() (k8s.Interface, error) {
+
+	config, err := p.config()
+	if err != nil {
+		return nil, err
+	}
+
+	kube, err := p.kubeClient(config)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return kube, nil
 }
 
 func (p *TektonParams) Clients() (*Clients, error) {

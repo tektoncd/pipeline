@@ -39,6 +39,7 @@ type Params interface {
 	// returned by Clientset function
 	SetKubeConfigPath(string)
 	Clients() (*Clients, error)
+	KubeClient() (k8s.Interface, error)
 
 	// SetNamespace can be used to store the namespace parameter that is needed
 	// by most commands

@@ -121,12 +121,7 @@ tkn t desc foo -n bar
 				Err: cmd.OutOrStderr(),
 			}
 
-			cs, err := p.Clients()
-			if err != nil {
-				return fmt.Errorf("failed to create tekton client")
-			}
-
-			if err := validate.NamespaceExists(cs.Kube, p.Namespace()); err != nil {
+			if err := validate.NamespaceExists(p); err != nil {
 				return err
 			}
 
