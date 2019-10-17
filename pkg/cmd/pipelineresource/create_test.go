@@ -1154,7 +1154,7 @@ func TestPipelineResource_create_pullRequestResource(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.SendLine("	https://github.com/wizzbangcorp/wizzbang/pulls/1"); err != nil {
+				if _, err := c.SendLine("https://github.com/wizzbangcorp/wizzbang/pulls/1"); err != nil {
 					return err
 				}
 

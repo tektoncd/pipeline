@@ -17,7 +17,6 @@ package pipelineresource
 import (
 	"bytes"
 	"testing"
-	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -56,7 +55,7 @@ func (pt *promptTest) runTest(t *testing.T, procedure func(*expect.Console) erro
 
 	// Multiplex output to a buffer as well for the raw bytes.
 	buf := new(bytes.Buffer)
-	c, state, err := vt10x.NewVT10XConsole(expect.WithStdout(buf), expect.WithDefaultTimeout(1*time.Minute))
+	c, state, err := vt10x.NewVT10XConsole(expect.WithStdout(buf))
 	require.Nil(t, err)
 	defer c.Close()
 
