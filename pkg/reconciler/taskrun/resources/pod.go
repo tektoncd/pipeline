@@ -45,13 +45,13 @@ import (
 
 const (
 	workspaceDir = "/workspace"
-	homeDir      = "/builder/home"
+	homeDir      = "/tekton/home"
 
 	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
 	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
 	ManagedByLabelValue = "tekton-pipelines"
 
-	scriptsDir = "/builder/scripts"
+	scriptsDir = "/tekton/scripts"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.

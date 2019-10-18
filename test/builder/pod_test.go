@@ -48,7 +48,7 @@ func TestPod(t *testing.T) {
 				tb.Command("ls", "-l"),
 				tb.Args(),
 				tb.WorkingDir("/workspace"),
-				tb.EnvVar("HOME", "/builder/home"),
+				tb.EnvVar("HOME", "/tekton/home"),
 				tb.VolumeMount("tools-volume", "/tools"),
 				tb.Resources(
 					tb.Limits(tb.Memory("1.5Gi")),
@@ -94,7 +94,7 @@ func TestPod(t *testing.T) {
 				WorkingDir: "/workspace",
 				Env: []corev1.EnvVar{{
 					Name:  "HOME",
-					Value: "/builder/home",
+					Value: "/tekton/home",
 				}},
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "tools-volume",

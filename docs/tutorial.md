@@ -182,7 +182,7 @@ spec:
       # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
       env:
         - name: "DOCKER_CONFIG"
-          value: "/builder/home/.docker/"
+          value: "/tekton/home/.docker/"
       command:
         - /kaniko/executor
       args:

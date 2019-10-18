@@ -37,9 +37,9 @@ const (
 	// MountName is the name of the pvc being mounted (which
 	// will contain the entrypoint binary and eventually the logs)
 	MountName              = "tools"
-	mountPoint             = "/builder/tools"
+	mountPoint             = "/tekton/tools"
 	DownwardMountName      = "downward"
-	DownwardMountPoint     = "/builder/downward"
+	DownwardMountPoint     = "/tekton/downward"
 	DownwardMountReadyFile = "ready"
 	binaryLocation         = mountPoint + "/entrypoint"
 	InitContainerName      = "place-tools"

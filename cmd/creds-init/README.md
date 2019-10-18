@@ -36,13 +36,13 @@ data:
 ```
 
 The flag `-ssh-git=ssh-key=github.com` (with the environment variable
-`HOME=/builder/home`) would result with the following files:
+`HOME=/tekton/home`) would result with the following files:
 
 - `~/.ssh/config`
 
 	```
 	HostName github.com
-	IdentityFile /builder/home/.ssh/id_foo
+	IdentityFile /tekton/home/.ssh/id_foo
 	Port 22
 	```
 - `~/.ssh/id_rsa` with the content of `ssh-privatekey` decoded
@@ -71,9 +71,9 @@ stringData:
 ```
 
 The flag `-basic-git=foo=github.com` (with the environment variable
-`HOME=/builder/home`) would result of the following files:
+`HOME=/tekton/home`) would result of the following files:
 
-- `/builder/home/.gitconfig`
+- `/tekton/home/.gitconfig`
 
   ```
   [credential]
@@ -82,7 +82,7 @@ The flag `-basic-git=foo=github.com` (with the environment variable
 	  username = <username>
   ```
 
-- `/builder/home/.git-credentials`
+- `/tekton/home/.git-credentials`
 
   ```
   https://<username>:<password>@github.com

@@ -106,8 +106,8 @@ func TestGetArgs(t *testing.T) {
 		commands: []string{"echo"},
 		args:     []string{"hello", "world"},
 		expectedArgs: []string{
-			"-wait_file", "/builder/downward/ready",
-			"-post_file", "/builder/tools/0",
+			"-wait_file", "/tekton/downward/ready",
+			"-post_file", "/tekton/tools/0",
 			"-wait_file_content",
 			"-entrypoint", "echo",
 			"--",
@@ -119,8 +119,8 @@ func TestGetArgs(t *testing.T) {
 		commands: []string{"echo", "hello"},
 		args:     []string{"world"},
 		expectedArgs: []string{
-			"-wait_file", "/builder/tools/3",
-			"-post_file", "/builder/tools/4",
+			"-wait_file", "/tekton/tools/3",
+			"-post_file", "/tekton/tools/4",
 			"-entrypoint", "echo",
 			"--",
 			"hello", "world",
@@ -131,8 +131,8 @@ func TestGetArgs(t *testing.T) {
 		commands: []string{"ls"},
 		args:     []string{},
 		expectedArgs: []string{
-			"-wait_file", "/builder/tools/3",
-			"-post_file", "/builder/tools/4",
+			"-wait_file", "/tekton/tools/3",
+			"-post_file", "/tekton/tools/4",
 			"-entrypoint", "ls",
 			"--",
 		},

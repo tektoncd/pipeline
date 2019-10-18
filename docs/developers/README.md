@@ -150,12 +150,12 @@ If the image is a private registry, the service account should include an
 
 ## Builder namespace on containers
 
-The `/builder/` namespace is reserved on containers for various system tools,
+The `/tekton/` namespace is reserved on containers for various system tools,
 such as the following:
 
-- The environment variable HOME is set to `/builder/home`, used by the builder
+- The environment variable HOME is set to `/tekton/home`, used by the builder
   tools and injected on into all of the step containers
-- Default location for output-images `/builder/output-images`
+- Default location for output-images `/tekton/output-images`
 
 ## Handling of injected sidecars
 

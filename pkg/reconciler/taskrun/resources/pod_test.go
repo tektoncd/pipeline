@@ -510,12 +510,12 @@ print("Hello from Python")`,
 				Image:   images.ShellImage,
 				Command: []string{"sh"},
 				TTY:     true,
-				Args: []string{"-c", `tmpfile="/builder/scripts/script-0-mssqb"
+				Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-mssqb"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
 echo hello from step one
 script-heredoc-randomly-generated-78c5n
-tmpfile="/builder/scripts/script-1-6nl7g"
+tmpfile="/tekton/scripts/script-1-6nl7g"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-j2tds'
 #!/usr/bin/env python
@@ -528,7 +528,7 @@ script-heredoc-randomly-generated-j2tds
 				Name:         "step-one",
 				Image:        "image",
 				Command:      []string{"entrypointer"},
-				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-0-mssqb"},
+				Args:         []string{"wait-file", "out-file", "-entrypoint", "/tekton/scripts/script-0-mssqb"},
 				Env:          implicitEnvVars,
 				VolumeMounts: append(implicitVolumeMounts, scriptsVolumeMount),
 				WorkingDir:   workspaceDir,
@@ -543,7 +543,7 @@ script-heredoc-randomly-generated-j2tds
 				Name:         "step-two",
 				Image:        "image",
 				Command:      []string{"entrypointer"},
-				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-1-6nl7g"},
+				Args:         []string{"wait-file", "out-file", "-entrypoint", "/tekton/scripts/script-1-6nl7g"},
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}}, append(implicitVolumeMounts, scriptsVolumeMount)...),
 				WorkingDir:   workspaceDir,

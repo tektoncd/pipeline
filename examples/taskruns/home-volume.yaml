@@ -8,19 +8,19 @@ spec:
     - name: write
       image: ubuntu
       command: ['bash']
-      args: ['-c', 'echo some stuff > /builder/home/stuff']
+      args: ['-c', 'echo some stuff > /tekton/home/stuff']
     - name: read
       image: ubuntu
       command: ['cat']
-      args: ['/builder/home/stuff']
+      args: ['/tekton/home/stuff']
     - name: override-homevol
       image: ubuntu
       command: ['bash']
-      # /builder/home/stuff *doesn't* exist.
-      args: ['-c', '[[ ! -f /builder/home/stuff ]]']
+      # /tekton/home/stuff *doesn't* exist.
+      args: ['-c', '[[ ! -f /tekton/home/stuff ]]']
       volumeMounts:
       - name: empty
-        mountPath: /builder/home
+        mountPath: /tekton/home
     volumes:
     - name: empty
       emptyDir: {}

@@ -156,26 +156,12 @@ spec:
       DATE=$(date +"%Y%m%d")
       VERSION_TAG="$DATE-$COMMIT"
 
-      echo $VERSION_TAG > "/builder/home/version"
-
-  - name: copy-to-tagged-bucket
-    image: busybox
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
-      set -e
-      set -x
-
       # Can't use workingDir due to #1267
       cd /workspace/bucket
 
       # TODO(https://github.com/tektoncd/triggers/issues/87) if the versionTag could be generated dynamically, we could use the same Task for nightly + official releases
-      export VERSION_TAG="$(cat /builder/home/version)"
-
-      mkdir -p /workspace/bucket/previous/$VERSION_TAG/
-      cp /workspace/bucket/latest/release.yaml /workspace/bucket/previous/$VERSION_TAG/release.yaml
+      mkdir -p /workspace/bucket/previous/${VERSION_TAG}/
+      cp /workspace/bucket/latest/release.yaml /workspace/bucket/previous/${VERSION_TAG}/release.yaml
 
   - name: tag-images
     image: google/cloud-sdk
@@ -188,7 +174,7 @@ spec:
       set -x
 
       # TODO(https://github.com/tektoncd/triggers/issues/87) if the versionTag could be generated dynamically, we could use the same Task for nightly + official releases
-      export VERSION_TAG="$(cat /builder/home/version)"
+      export VERSION_TAG="$(cat ${HOME}/version)"
 
       REGIONS=(us eu asia)
       IMAGES=(

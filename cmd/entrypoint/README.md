@@ -20,15 +20,15 @@ The following flags are available :
   content.
 
 The following example of usage for `entrypoint`, wait's for
-`/builder/downward/ready` file to exists and have some content before
+`/tekton/downward/ready` file to exists and have some content before
 executing `/ko-app/bash -- -args mkdir -p /workspace/git-resource`,
-and will write to `/builder/tools/0` in casse of succes, or
-`/builder/tools/0.err` in case of failure.
+and will write to `/tekton/tools/0` in casse of succes, or
+`/tekton/tools/0.err` in case of failure.
 
 ```
 entrypoint \
-	-wait_file /builder/downward/ready \
-	-post_file /builder/tools/0" \
+	-wait_file /tekton/downward/ready \
+	-post_file /tekton/tools/0" \
 	-wait_file_content  \
 	-entrypoint /ko-app/bash -- -args mkdir -p /workspace/git-resource
 ```
