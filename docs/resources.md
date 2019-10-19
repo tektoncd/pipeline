@@ -633,7 +633,7 @@ spec:
         type: cluster
   steps:
     - name: deploy
-      image: image-wtih-kubectl
+      image: image-with-kubectl
       command: ["bash"]
       args:
         - "-c"
