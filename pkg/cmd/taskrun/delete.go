@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
@@ -54,6 +55,10 @@ tkn tr rm foo -n bar
 				In:  cmd.InOrStdin(),
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
+			}
+
+			if err := validate.NamespaceExists(p); err != nil {
+				return err
 			}
 
 			if err := checkOptions(opts, s, p, args[0]); err != nil {
