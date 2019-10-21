@@ -21,6 +21,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/helper/pods"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 )
 
 const (
@@ -62,6 +63,11 @@ tkn taskrun logs -f foo -n bar
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
+
+			if err := validate.NamespaceExists(p); err != nil {
+				return err
+			}
+
 			opts.streamer = pods.NewStream
 
 			return opts.run()

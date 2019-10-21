@@ -30,10 +30,35 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 )
+
+func TestLog_invalid_namespace(t *testing.T) {
+	tr := []*v1alpha1.TaskRun{
+		tb.TaskRun("output-taskrun-1", "ns"),
+	}
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: tr, Namespaces: nsList})
+	watcher := watch.NewFake()
+	cs.Kube.PrependWatchReactor("pods", k8stest.DefaultWatchReactor(watcher, nil))
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	c := Command(p)
+	got, _ := test.ExecuteCommand(c, "logs", "output-taskrun-2", "-n", "invalid")
+	expected := "Error: namespaces \"invalid\" not found\n"
+	test.AssertOutput(t, expected, got)
+}
 
 func TestLog_no_taskrun_arg(t *testing.T) {
 	c := Command(&test.Params{})
@@ -48,7 +73,16 @@ func TestLog_missing_taskrun(t *testing.T) {
 	tr := []*v1alpha1.TaskRun{
 		tb.TaskRun("output-taskrun-1", "ns"),
 	}
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: tr})
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: tr, Namespaces: nsList})
 	watcher := watch.NewFake()
 	cs.Kube.PrependWatchReactor("pods", k8stest.DefaultWatchReactor(watcher, nil))
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
@@ -93,6 +127,15 @@ func TestLog_taskrun_logs(t *testing.T) {
 			),
 		),
 	}
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
 	ps := []*corev1.Pod{
 		tb.Pod(trPod, ns,
 			tb.PodSpec(
@@ -112,7 +155,7 @@ func TestLog_taskrun_logs(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: ps, Namespaces: nsList})
 	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, false)
 	output, _ := fetchLogs(trlo)
 
@@ -164,6 +207,14 @@ func TestLog_taskrun_all_steps(t *testing.T) {
 		),
 	}
 
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
 	p := []*corev1.Pod{
 		tb.Pod(trPod, ns,
 			tb.PodSpec(
@@ -189,7 +240,7 @@ func TestLog_taskrun_all_steps(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p, Namespaces: nsList})
 
 	trl := logOpts(trName, ns, cs, fake.Streamer(logs), true, false)
 	output, _ := fetchLogs(trl)
@@ -243,6 +294,14 @@ func TestLog_taskrun_follow_mode(t *testing.T) {
 		),
 	}
 
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
 	p := []*corev1.Pod{
 		tb.Pod(trPod, ns,
 			tb.PodSpec(
@@ -268,7 +327,7 @@ func TestLog_taskrun_follow_mode(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p, Namespaces: nsList})
 
 	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, true)
 	output, _ := fetchLogs(trlo)
