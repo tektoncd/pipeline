@@ -32,6 +32,15 @@ spec:
         #!/usr/bin/env bash
         /workspace/hello
 
+    - name: contains-eof
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        cat > file << EOF
+        this file has some contents
+        EOF
+        cat file
+
     - name: node
       image: node
       script: |
