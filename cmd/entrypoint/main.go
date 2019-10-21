@@ -46,9 +46,9 @@ func main() {
 		WaitFileContent: *waitFileContent,
 		PostFile:        *postFile,
 		Args:            flag.Args(),
-		Waiter:          &RealWaiter{},
-		Runner:          &RealRunner{},
-		PostWriter:      &RealPostWriter{},
+		Waiter:          &realWaiter{},
+		Runner:          &realRunner{},
+		PostWriter:      &realPostWriter{},
 	}
 	if err := e.Go(); err != nil {
 		switch t := err.(type) {

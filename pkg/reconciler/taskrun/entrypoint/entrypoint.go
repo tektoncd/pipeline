@@ -37,24 +37,25 @@ const (
 	// MountName is the name of the pvc being mounted (which
 	// will contain the entrypoint binary and eventually the logs)
 	MountName              = "tools"
-	MountPoint             = "/builder/tools"
+	mountPoint             = "/builder/tools"
 	DownwardMountName      = "downward"
 	DownwardMountPoint     = "/builder/downward"
 	DownwardMountReadyFile = "ready"
-	BinaryLocation         = MountPoint + "/entrypoint"
-	JSONConfigEnvVar       = "ENTRYPOINT_OPTIONS"
+	binaryLocation         = mountPoint + "/entrypoint"
 	InitContainerName      = "place-tools"
 	cacheSize              = 1024
 )
 
-var toolsMount = corev1.VolumeMount{
-	Name:      MountName,
-	MountPath: MountPoint,
-}
-var downwardMount = corev1.VolumeMount{
-	Name:      DownwardMountName,
-	MountPath: DownwardMountPoint,
-}
+var (
+	toolsMount = corev1.VolumeMount{
+		Name:      MountName,
+		MountPath: mountPoint,
+	}
+	downwardMount = corev1.VolumeMount{
+		Name:      DownwardMountName,
+		MountPath: DownwardMountPoint,
+	}
+)
 
 // Cache is a simple caching mechanism allowing for caching the results of
 // getting the Entrypoint of a container image from a remote registry. The
@@ -93,11 +94,9 @@ func AddToEntrypointCache(c *Cache, sha string, ep []string) {
 // subsequent steps and used to capture logs.
 func AddCopyStep(entrypointImage string, spec *v1alpha1.TaskSpec) {
 	cp := corev1.Container{
-		Name:    InitContainerName,
-		Image:   entrypointImage,
-		Command: []string{"/bin/sh"},
-		// based on the ko version, the binary could be in one of two different locations
-		Args:         []string{"-c", fmt.Sprintf("cp /ko-app/entrypoint %s", BinaryLocation)},
+		Name:         InitContainerName,
+		Image:        entrypointImage,
+		Command:      []string{"cp", "/ko-app/entrypoint", binaryLocation},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	spec.Steps = append([]v1alpha1.Step{{Container: cp}}, spec.Steps...)
@@ -134,7 +133,7 @@ func RedirectStep(cache *Cache, stepNum int, step *v1alpha1.Step, kubeclient kub
 	}
 
 	step.Args = GetArgs(stepNum, step.Command, step.Args)
-	step.Command = []string{BinaryLocation}
+	step.Command = []string{binaryLocation}
 	step.VolumeMounts = append(step.VolumeMounts, toolsMount)
 	// The first step in a Task waits for the existence of a file projected into the Pod
 	// from the Downward API. That file will be populated only when all sidecars are ready,
@@ -175,7 +174,7 @@ func getWaitFile(stepNum int) string {
 		return fmt.Sprintf("%s/%s", DownwardMountPoint, DownwardMountReadyFile)
 	}
 
-	return fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum-1))
+	return fmt.Sprintf("%s/%s", mountPoint, strconv.Itoa(stepNum-1))
 }
 
 // GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest

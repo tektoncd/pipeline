@@ -74,7 +74,7 @@ func TestRewriteSteps(t *testing.T) {
 		t.Errorf("failed to get resources: %v", err)
 	}
 	for _, input := range inputs {
-		if len(input.Command) == 0 || input.Command[0] != BinaryLocation {
+		if len(input.Command) == 0 || input.Command[0] != binaryLocation {
 			t.Errorf("command incorrectly set: %q", input.Command)
 		}
 		found := false
