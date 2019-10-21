@@ -46,7 +46,7 @@ spec:
   tasks:
     - name: precheck
       taskRef:
-        name: prerelease-check
+        name: prerelease-checks
       params:
         - name: package
           value: $(params.package)
