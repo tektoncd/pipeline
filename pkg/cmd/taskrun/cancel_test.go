@@ -24,6 +24,7 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
@@ -55,6 +56,7 @@ func TestTaskRunCancel(t *testing.T) {
 			),
 		),
 	}
+
 	trs2 := []*v1alpha1.TaskRun{
 		tb.TaskRun("failure-taskrun-1", "ns",
 			tb.TaskRunLabel("tekton.dev/task", "failure-task"),
@@ -67,8 +69,17 @@ func TestTaskRunCancel(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs})
-	cs2, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs2})
+
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Namespaces: ns})
+	cs2, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs2, Namespaces: ns})
 
 	cs2.Pipeline.PrependReactor("update", "taskruns", func(action k8stest.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("test error")
@@ -84,6 +95,13 @@ func TestTaskRunCancel(t *testing.T) {
 		wantError bool
 		want      string
 	}{
+		{
+			name:      "Invalid namespace",
+			command:   []string{"cancel", "taskrun-1", "-n", "invalid"},
+			input:     seeds[0],
+			wantError: true,
+			want:      "namespaces \"invalid\" not found",
+		},
 		{
 			name:      "Canceling taskrun successfully",
 			command:   []string{"cancel", "taskrun-1", "-n", "ns"},
@@ -116,7 +134,7 @@ func TestTaskRunCancel(t *testing.T) {
 
 	for _, tp := range testParams {
 		t.Run(tp.name, func(t *testing.T) {
-			p := &test.Params{Tekton: tp.input.Pipeline}
+			p := &test.Params{Tekton: tp.input.Pipeline, Kube: tp.input.Kube}
 			taskrun := Command(p)
 
 			out, err := test.ExecuteCommand(taskrun, tp.command...)
