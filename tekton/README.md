@@ -24,7 +24,7 @@ To start from scratch and use these Pipelines and Tasks:
 
 ## Create an official release
 
-Official releases are performed from [the `prow` cluster](https://github.com/tektoncd/plumbing#prow)
+Official releases are performed from the `dogfooding` cluster
 [in the `tekton-releases` GCP project](https://github.com/tektoncd/plumbing/blob/master/gcp.md).
 This cluster [already has the correct version of Tekton installed](#install-tekton).
 
@@ -81,7 +81,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 1. [Connect to the production cluster](https://github.com/tektoncd/plumbing#prow):
 
     ```bash
-    gcloud container clusters get-credentials prow --zone us-central1-a --project tekton-releases
+    gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
     ```
 
 1. Run the `release-pipeline` (assuming you are using the production cluster and
