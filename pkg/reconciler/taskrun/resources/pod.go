@@ -305,16 +305,25 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			// Append to the place-scripts script to place the
 			// script file in a known location in the scripts volume.
 			tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("script-%d", i)))
-			// NOTE: quotes around 'EOF' are important. Without
-			// them, ${}s in the file are interpreted as env vars
-			// and likely end up replaced with empty strings. See
+			// heredoc is the "here document" placeholder string
+			// used to cat script contents into the file. Typically
+			// this is the string "EOF" but if this value were
+			// "EOF" it would prevent users from including the
+			// string "EOF" in their own scripts. Instead we
+			// randomly generate a string to (hopefully) prevent
+			// collisions.
+			heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("script-heredoc-randomly-generated")
+			// NOTE: quotes around the heredoc string are
+			// important. Without them, ${}s in the file are
+			// interpreted as env vars and likely end up replaced
+			// with empty strings. See
 			// https://stackoverflow.com/a/27921346
 			placeScriptsStep.Args[1] += fmt.Sprintf(`tmpfile="%s"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'EOF'
+cat > ${tmpfile} << '%s'
 %s
-EOF
-`, tmpFile, s.Script)
+%s
+`, tmpFile, heredoc, s.Script, heredoc)
 			// The entrypoint redirecter has already run on this
 			// step, so we just need to replace the image's
 			// entrypoint (if any) with the script to run.
