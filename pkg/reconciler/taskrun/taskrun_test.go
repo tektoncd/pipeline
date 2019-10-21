@@ -194,14 +194,12 @@ var (
 		Name: "downward",
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path: "ready",
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: "metadata.annotations['tekton.dev/ready']",
-						},
+				Items: []corev1.DownwardAPIVolumeFile{{
+					Path: "ready",
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.annotations['tekton.dev/ready']",
 					},
-				},
+				}},
 			},
 		},
 	}
@@ -245,8 +243,8 @@ var (
 
 	getPlaceToolsInitContainer = func(ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
-			tb.Command("/bin/sh"),
-			tb.Args("-c", fmt.Sprintf("cp /ko-app/entrypoint %s", entrypointLocation)),
+			tb.Command("cp", "/ko-app/entrypoint", entrypointLocation),
+			tb.Args(),
 			tb.WorkingDir(workspaceDir),
 			tb.EnvVar("HOME", "/builder/home"),
 			tb.VolumeMount("tools", "/builder/tools"),
