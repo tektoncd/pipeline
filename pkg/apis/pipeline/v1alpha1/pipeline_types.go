@@ -190,7 +190,7 @@ type PipelineTaskInputResource struct {
 type PipelineTaskOutputResource struct {
 	// Name is the name of the PipelineResource as declared by the Task.
 	Name string `json:"name"`
-	// Resource is the name of the DeclaredPipelienResource to use.
+	// Resource is the name of the DeclaredPipelineResource to use.
 	Resource string `json:"resource"`
 }
 
