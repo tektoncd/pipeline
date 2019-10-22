@@ -416,11 +416,8 @@ use it to build a docker image:
 steps:
   - image: docker
     name: client
-    workingDir: /workspace
-    command:
-      - /bin/sh
-      - -c
-      - |
+    script: |
+        #!/usr/bin/env bash
         cat > Dockerfile << EOF
         FROM ubuntu
         RUN apt-get update
@@ -463,7 +460,7 @@ has been created to track this bug.
 [`outputs`](#outputs).
 
 
-Input parameters can be referenced in the `Task` spec using the variable substitution syntax below, 
+Input parameters can be referenced in the `Task` spec using the variable substitution syntax below,
 where `<name>` is the name of the parameter:
 
 ```shell
@@ -481,19 +478,19 @@ So, with the following parameter:
 inputs:
     params:
       - name: array-param
-        value: 
+        value:
           - "some"
           - "array"
           - "elements"
 ```
-then `command: ["first", "$(inputs.params.array-param)", "last"]` will become 
+then `command: ["first", "$(inputs.params.array-param)", "last"]` will become
 `command: ["first", "some", "array", "elements", "last"]`
 
 
-Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array. 
-Any other attempt to reference an array is invalid and will throw an error. 
+Note that array parameters __*must*__ be referenced in a completely isolated string within a larger string array.
+Any other attempt to reference an array is invalid and will throw an error.
 
-For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because 
+For instance, if `build-args` is a declared parameter of type `array`, then this is an invalid step because
 the string isn't isolated:
 ```
  - name: build-step
@@ -608,14 +605,17 @@ Mounting multiple volumes:
 spec:
   steps:
     - image: ubuntu
-      entrypoint: ["bash"]
-      args: ["-c", "curl https://foo.com > /var/my-volume"]
+      script: |
+        #!/usr/bin/env bash
+        curl https://foo.com > /var/my-volume
       volumeMounts:
         - name: my-volume
           mountPath: /var/my-volume
 
     - image: ubuntu
-      args: ["cat", "/etc/my-volume"]
+      script: |
+        #!/usr/bin/env bash
+        cat /etc/my-volume
       volumeMounts:
         - name: my-volume
           mountPath: /etc/my-volume
@@ -639,8 +639,9 @@ spec:
         description: Name of volume
   steps:
     - image: ubuntu
-      entrypoint: ["bash"]
-      args: ["-c", "cat /var/configmap/test"]
+      script: |
+        #!/usr/bin/env bash
+        cat /var/configmap/test
       volumeMounts:
         - name: "$(inputs.params.volumeName)"
           mountPath: /var/configmap

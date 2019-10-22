@@ -7,15 +7,17 @@ spec:
     steps:
     - name: write
       image: ubuntu
-      command: ["/bin/bash"]
-      args: ["-c", "echo some stuff > /im/a/custom/mount/path/file"]
+      script: |
+        #!/usr/bin/env bash
+        echo some stuff > /im/a/custom/mount/path/file
       volumeMounts:
       - name: custom
         mountPath: /im/a/custom/mount/path
     - name: read
       image: ubuntu
-      command: ["/bin/bash"]
-      args: ["-c", "cat /short/and/stout/file"]
+      script: |
+        #!/usr/bin/env bash
+        cat /short/and/stout/file
       volumeMounts:
       - name: custom
         mountPath: /short/and/stout

@@ -45,5 +45,6 @@ spec:
     steps:
     - name: config
       image: ubuntu
-      command: ["/bin/bash"]
-      args: ["-c", "cat /workspace/gitssh/README.md"]
+      script: |
+        #!/usr/bin/env bash
+        cat /workspace/gitssh/README.md
