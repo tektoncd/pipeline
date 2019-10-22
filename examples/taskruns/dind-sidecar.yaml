@@ -8,10 +8,8 @@ spec:
       - image: docker
         name: client
         workingDir: /workspace
-        command:
-          - /bin/sh
-          - -c
-          - |
+        script: |
+            #!/usr/bin/env sh
             cat > Dockerfile << EOF
             FROM ubuntu
             RUN apt-get update
