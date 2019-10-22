@@ -51,7 +51,10 @@ func IsFiltered(tr Run, allowed []string) bool {
 }
 
 func HasScheduled(trs *v1alpha1.PipelineRunTaskRunStatus) bool {
-	return trs.Status.PodName != ""
+	if trs.Status != nil {
+		return trs.Status.PodName != ""
+	}
+	return false
 }
 
 func Filter(trs []Run, ts []string) []Run {

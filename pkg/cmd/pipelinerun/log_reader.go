@@ -95,8 +95,10 @@ func (lr *LogReader) readLiveLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-chan 
 
 		wg.Wait()
 
-		if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
-			errC <- fmt.Errorf(pr.Status.Conditions[0].Message)
+		if pr.Status.Conditions != nil {
+			if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+				errC <- fmt.Errorf(pr.Status.Conditions[0].Message)
+			}
 		}
 	}()
 
