@@ -112,6 +112,7 @@ func TestReconcile(t *testing.T) {
 				tb.PipelineDeclaredResource("best-image", "image"),
 				tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
 				tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
+				tb.PipelineParamSpec("bar", v1alpha1.ParamTypeString),
 				// unit-test-3 uses runAfter to indicate it should run last
 				tb.PipelineTask("unit-test-3", "unit-test-task",
 					funParam, moreFunParam, templatedParam,
@@ -876,93 +877,65 @@ func TestReconcileCancelledPipelineRun(t *testing.T) {
 
 func TestReconcilePropagateLabels(t *testing.T) {
 	names.TestingSeed()
+	taskName := "hello-world-1"
 
-	tests := []struct {
-		name     string
-		taskName string
-		expected *v1alpha1.TaskRun
-	}{
-		{
-			name:     "with pipelinetask name",
-			taskName: "hello-world-1",
-			expected: tb.TaskRun("test-pipeline-run-with-labels-hello-world-1-9l9zj", "foo",
-				tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
-					tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
-					tb.Controller, tb.BlockOwnerDeletion,
-				),
-				tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
-				tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
-				tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
-				tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
-				tb.TaskRunSpec(
-					tb.TaskRunTaskRef("hello-world"),
-					tb.TaskRunServiceAccountName("test-sa"),
-				),
-			),
-		}, {
-			name: "without pipelinetask name",
-			expected: tb.TaskRun("test-pipeline-run-with-labels--mz4c7", "foo",
-				tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
-					tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
-					tb.Controller, tb.BlockOwnerDeletion,
-				),
-				tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
-				tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
-				tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
-				tb.TaskRunSpec(
-					tb.TaskRunTaskRef("hello-world"),
-					tb.TaskRunServiceAccountName("test-sa"),
-				),
-			),
-		},
+	ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
+		tb.PipelineTask(taskName, "hello-world"),
+	))}
+	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-labels", "foo",
+		tb.PipelineRunLabel("PipelineRunLabel", "PipelineRunValue"),
+		tb.PipelineRunLabel("tekton.dev/pipeline", "WillNotBeUsed"),
+		tb.PipelineRunSpec("test-pipeline",
+			tb.PipelineRunServiceAccountName("test-sa"),
+		),
+	)}
+	ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ps := []*v1alpha1.Pipeline{tb.Pipeline("test-pipeline", "foo", tb.PipelineSpec(
-				tb.PipelineTask(tt.taskName, "hello-world"),
-			))}
-			prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-with-labels", "foo",
-				tb.PipelineRunLabel("PipelineRunLabel", "PipelineRunValue"),
-				tb.PipelineRunLabel("tekton.dev/pipeline", "WillNotBeUsed"),
-				tb.PipelineRunSpec("test-pipeline",
-					tb.PipelineRunServiceAccountName("test-sa"),
-				),
-			)}
-			ts := []*v1alpha1.Task{tb.Task("hello-world", "foo")}
+	expected := tb.TaskRun("test-pipeline-run-with-labels-hello-world-1-9l9zj", "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-labels",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "hello-world-1"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-with-labels"),
+		tb.TaskRunLabel("PipelineRunLabel", "PipelineRunValue"),
+		tb.TaskRunSpec(
+			tb.TaskRunTaskRef("hello-world"),
+			tb.TaskRunServiceAccountName("test-sa"),
+		),
+	)
 
-			d := test.Data{
-				PipelineRuns: prs,
-				Pipelines:    ps,
-				Tasks:        ts,
-			}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
 
-			testAssets, cancel := getPipelineRunController(t, d)
-			defer cancel()
-			c := testAssets.Controller
-			clients := testAssets.Clients
+	err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-labels")
+	if err != nil {
+		t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
+	}
 
-			err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-with-labels")
-			if err != nil {
-				t.Errorf("Did not expect to see error when reconciling completed PipelineRun but saw %s", err)
-			}
+	// Check that the PipelineRun was reconciled correctly
+	_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-labels", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
+	}
 
-			// Check that the PipelineRun was reconciled correctly
-			_, err = clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-with-labels", metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("Somehow had error getting completed reconciled run out of fake client: %s", err)
-			}
+	// Check that the expected TaskRun was created
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
+	if actual == nil {
+		t.Errorf("Expected a TaskRun to be created, but it wasn't.")
+	}
 
-			// Check that the expected TaskRun was created
-			actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject().(*v1alpha1.TaskRun)
-			if actual == nil {
-				t.Errorf("Expected a TaskRun to be created, but it wasn't.")
-			}
-
-			if d := cmp.Diff(actual, tt.expected); d != "" {
-				t.Errorf("expected to see TaskRun %v created. Diff %s", tt.expected, d)
-			}
-		})
+	if d := cmp.Diff(actual, expected); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, d)
 	}
 }
 
