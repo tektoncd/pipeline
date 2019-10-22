@@ -30,18 +30,51 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestPipelinesList_invalid_namespace(t *testing.T) {
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: nsList})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pipeline := Command(p)
+	output, err := test.ExecuteCommand(pipeline, "list", "-n", "invalid")
+
+	if err == nil {
+		t.Errorf("Error expected for invalid namespace")
+	}
+
+	test.AssertOutput(t, "Error: namespaces \"invalid\" not found\n", output)
+}
 
 func TestPipelinesList_empty(t *testing.T) {
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "foo",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: nsList})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
 	output, err := test.ExecuteCommand(pipeline, "list", "-n", "foo")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
+
 	test.AssertOutput(t, "No pipelines\n", output)
 }
 
@@ -52,9 +85,17 @@ func TestPipelineList_only_pipelines(t *testing.T) {
 		{"bananas", 512 * time.Hour}, // 3 weeks
 	}
 
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
 	clock := clockwork.NewFakeClock()
-	cs, _ := seedPipelines(t, clock, pipelines, "namespace")
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	cs, _ := seedPipelines(t, clock, pipelines, "namespace", nsList)
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	pipeline := Command(p)
 	output, err := test.ExecuteCommand(pipeline, "list", "-n", "namespace")
@@ -104,9 +145,16 @@ func TestPipelinesList_with_single_run(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 	pipeline := Command(p)
 
 	// -5 : pipeline created
@@ -131,6 +179,7 @@ func TestPipelinesList_with_single_run(t *testing.T) {
 		t.Errorf("Unexpected output mismatch: \n%s\n", d)
 	}
 }
+
 func TestPipelinesList_latest_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 	//  Time --->
@@ -191,9 +240,16 @@ func TestPipelinesList_latest_run(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 	pipeline := Command(p)
 
 	clock.Advance(30 * time.Minute)
@@ -220,7 +276,7 @@ type pipelineDetails struct {
 	age  time.Duration
 }
 
-func seedPipelines(t *testing.T, clock clockwork.Clock, ps []pipelineDetails, ns string) (pipelinetest.Clients, pipelinetest.Informers) {
+func seedPipelines(t *testing.T, clock clockwork.Clock, ps []pipelineDetails, ns string, nsList []*corev1.Namespace) (pipelinetest.Clients, pipelinetest.Informers) {
 	pipelines := []*v1alpha1.Pipeline{}
 	for _, p := range ps {
 		pipelines = append(pipelines,
@@ -230,5 +286,5 @@ func seedPipelines(t *testing.T, clock clockwork.Clock, ps []pipelineDetails, ns
 		)
 	}
 
-	return test.SeedTestData(t, pipelinetest.Data{Pipelines: pipelines})
+	return test.SeedTestData(t, pipelinetest.Data{Pipelines: pipelines, Namespaces: nsList})
 }

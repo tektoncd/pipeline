@@ -161,7 +161,7 @@ func (opts *logOptions) init(args []string) error {
 }
 
 func (opts *logOptions) getAllInputs() error {
-	if err := validate(opts); err != nil {
+	if err := validateLogOpts(opts); err != nil {
 		return err
 	}
 
@@ -192,7 +192,7 @@ func (opts *logOptions) getAllInputs() error {
 }
 
 func (opts *logOptions) askRunName() error {
-	if err := validate(opts); err != nil {
+	if err := validateLogOpts(opts); err != nil {
 		return err
 	}
 
@@ -300,7 +300,7 @@ func allRuns(p cli.Params, pName string, limit int) ([]string, error) {
 	return ret, nil
 }
 
-func validate(opts *logOptions) error {
+func validateLogOpts(opts *logOptions) error {
 
 	if opts.limit <= 0 {
 		return fmt.Errorf("limit was %d but must be a positive number", opts.limit)
