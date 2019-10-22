@@ -43,7 +43,7 @@ following fields:
         should be executed after another Pipeline Task, but there is no
         [output linking](#from) required
       - [`retries`](#retries) - Used when the task is wanted to be executed if
-        it fails. Could a network error or a missing dependency. It does not
+        it fails. Could be a network error or a missing dependency. It does not
         apply to cancellations.
       - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
         conditions are evaluated to be true.
