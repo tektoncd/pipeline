@@ -42,9 +42,9 @@ following fields:
     object that enables your build to run with the defined authentication
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
     specified in the configmap - config-defaults will be applied.
-  - [`serviceAccountNames`](#service-accounts) - Specifies a list of `ServiceAccountName`
-    and `PipelineTask` pairs that enable you to overwrite `ServiceAccount` for concrete `PipelineTask`.
-  - [`timeout`] - Specifies timeout after which the `PipelineRun` will fail. If the value of
+  - [`serviceAccountNames`](#service-accounts) - Specifies a list of `serviceAccountName`
+    and `PipelineTask` pairs that enable you to overwrite a `ServiceAccount` for a concrete `PipelineTask`.
+  - `timeout` - Specifies timeout after which the `PipelineRun` will fail. If the value of
     `timeout` is empty, the default timeout will be applied. If the value is set to 0,
     there is no timeout. `PipelineRun` shares the same default timeout as `TaskRun`. You can
     follow the instruction [here](taskruns.md#Configuring-default-timeout) to configure the
@@ -85,14 +85,14 @@ spec:
 greetings while embedding the spec of the `Pipeline` directly in the `PipelineRun`.
 
 
-After creating such `PipelineRun`, logs from a pod displaying morning greetings:
+After creating such a `PipelineRun`, the logs from this pod are displaying morning greetings:
 
 ```bash
 kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-morning)
 Good Morning, Bob!
 ```
 
-And logs from a pod displaying morning greetings:
+And the logs from this pod are displaying evening greetings:
 ```bash
 kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-night)
 Good Night, Bob!
@@ -107,12 +107,12 @@ be run with different `PipelineResources` in cases such as:
 - When triggering the run of a `Pipeline` against a pull request, the triggering
   system must specify the commitish of a git `PipelineResource` to use
 - When invoking a `Pipeline` manually against one's own setup, one will need to
-  ensure that one's own GitHub fork (via the git `PipelineResource`), image
+  ensure one's own GitHub fork (via the git `PipelineResource`), image
   registry (via the image `PipelineResource`) and Kubernetes cluster (via the
   cluster `PipelineResource`).
 
-Specify the `PipelineResources` in the PipelineRun using the `resources` section
-in the `PipelineRun` spec, for example:
+Specify the `PipelineResources` in the `PipelineRun` using the `resources` section
+in the PipelineRun's spec, for example:
 
 ```yaml
 spec:
@@ -162,7 +162,7 @@ Specifies the `name` of a `ServiceAccount` resource object. Use the
 `serviceAccountName` field to run your `Pipeline` with the privileges of the
 specified service account. If no `serviceAccountName` field is specified, your
 resulting `TaskRuns` run using the service account specified in the ConfigMap
-`configmap-defaults` which if absent will default to
+`configmap-defaults` which if absent will default to the
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 of the `TaskRun` resource object.
@@ -172,9 +172,9 @@ For examples and more information about specifying service accounts, see the
 
 ### Service Accounts
 
-Specifies the list of `ServiceAccountName` and `PipelineTask` pairs. Specified
-`PipelineTask` will be run with configured `ServiceAccount`,
-overwriting [`serviceAccountName`](#service-account) configuration, for example:
+Specifies the list of `serviceAccountName` and `PipelineTask` pairs. A specified
+`PipelineTask` will be run with the configured `ServiceAccount`,
+overwriting the [`serviceAccountName`](#service-account) configuration, for example:
 
 ```yaml
 spec:
@@ -220,9 +220,9 @@ allows to customize some Pod specific field per `Task` execution, aka
   [runtime class](https://kubernetes.io/docs/concepts/containers/runtime-class/)
   to use to run the pod.
 
-In the following example, the Task is defined with a `volumeMount`
-(`my-cache`), that is provided by the PipelineRun, using a
-PersistenceVolumeClaim. The Pod will also run as a non-root user.
+In the following example, the `Task` is defined with a `volumeMount`
+(`my-cache`), that is provided by the `PipelineRun`, using a
+`persistenceVolumeClaim`. The Pod will also run as a non-root user.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
