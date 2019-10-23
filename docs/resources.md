@@ -1,6 +1,6 @@
 # PipelineResources
 
-`PipelinesResources` in a pipeline are the set of objects that are going to be
+`PipelineResources` in a pipeline are the set of objects that are going to be
 used as inputs to a [`Task`](tasks.md) and can be output by a `Task`.
 
 A `Task` can have multiple inputs and outputs.
@@ -48,16 +48,16 @@ Resources can be used in [Tasks](./tasks.md) and [Conditions](./conditions.md#re
 
 Input resources, like source code (git) or artifacts, are dumped at path
 `/workspace/task_resource_name` within a mounted
-[volume](https://kubernetes.io/docs/concepts/storage/volumes/) and is available
-to all [`steps`](#steps) of your `Task`. The path that the resources are mounted
+[volume](https://kubernetes.io/docs/concepts/storage/volumes/) and are available
+to all [`steps`](#steps) of your `Tasks`. The path that the resources are mounted
 at can be [overridden with the `targetPath` field](./resources.md#controlling-where-resources-are-mounted). 
 Steps can use the `path`[variable substitution](#variable-substitution) key to refer to the local path to the mounted resource.
 
 ### Variable substitution 
 
 `Task` and `Condition` specs can refer resource params as well as pre-defined variables such as 
-`path` using the variable substitution syntax below where `<name>` is the Resource Name and `<key>` 
-is a one of the resource's `params`:
+`path` using the variable substitution syntax below where `<name>` is the resource's `name` and `<key>` 
+is one of the resource's `params`:
 
 
 #### In Task Spec:
@@ -88,10 +88,10 @@ $(inputs.resources.<name>.path)
 
 ### Controlling where resources are mounted
 
-The optional field `targetPath` can be used to initialize a resource in specific
-directory. If `targetPath` is set then resource will be initialized under
-`/workspace/targetPath`. If `targetPath` is not specified then resource will be
-initialized under `/workspace`. Following example demonstrates how git input
+The optional field `targetPath` can be used to initialize a resource in a specific
+directory. If `targetPath` is set then the resource will be initialized under
+`/workspace/targetPath`. If `targetPath` is not specified then the resource will be
+initialized under `/workspace`. The following example demonstrates how git input
 repository could be initialized in `$GOPATH` to run tests:
 
 ```yaml
@@ -123,24 +123,23 @@ spec:
 
 When specifying input and output `PipelineResources`, you can optionally specify
 `paths` for each resource. `paths` will be used by `TaskRun` as the resource's
-new source paths i.e., copy the resource from specified list of paths. `TaskRun`
+new source paths i.e., copy the resource from a specified list of paths. `TaskRun`
 expects the folder and contents to be already present in specified paths.
-`paths` feature could be used to provide extra files or altered version of
-existing resource before execution of steps.
+The `paths` feature could be used to provide extra files or altered version of
+existing resources before the execution of steps.
 
-Output resource includes name and reference to pipeline resource and optionally
+The output resource includes the name and reference to the pipeline resource and optionally
 `paths`. `paths` will be used by `TaskRun` as the resource's new destination
 paths i.e., copy the resource entirely to specified paths. `TaskRun` will be
-responsible for creating required directories and copying contents over. `paths`
-feature could be used to inspect the results of taskrun after execution of
-steps.
+responsible for the creation of required directories and content transition.
+The `paths` feature could be used to inspect the results of `TaskRun` after the execution of steps.
 
-`paths` feature for input and output resource is heavily used to pass same
-version of resources across tasks in context of pipelinerun.
+`paths` feature for input and output resources is heavily used to pass the same
+version of resources across tasks in context of `PipelineRun`.
 
-In the following example, task and taskrun are defined with input resource,
-output resource and step which builds war artifact. After execution of
-taskrun(`volume-taskrun`), `custom` volume will have entire resource
+In the following example, `Task` and `TaskRun` are defined with an input resource,
+output resource and step, which builds a war artifact. After the execution of
+`TaskRun`(`volume-taskrun`), `custom` volume will have the entire resource
 `java-git-resource` (including the war artifact) copied to the destination path
 `/custom/workspace/`.
 
@@ -196,8 +195,8 @@ spec:
 
 ### Resource Status
 
-When resources are bound inside a TaskRun, they can include extra information in the TaskRun Status.ResourcesResult field.
-This information can be useful for auditing the exact resources used by a TaskRun later.
+When resources are bound inside a `TaskRun`, they can include extra information in the `TaskRun` Status.ResourcesResult field.
+This information can be useful for auditing the exact resources used by a `TaskRun` later.
 Currently the Image and Git resources use this mechanism.
 
 For an example of what this output looks like:
@@ -225,9 +224,9 @@ The following `PipelineResources` are currently supported:
 
 ### Git Resource
 
-Git resource represents a [git](https://git-scm.com/) repository, that contains
-the source code to be built by the pipeline. Adding the git resource as an input
-to a Task will clone this repository and allow the Task to perform the required
+The `git` resource represents a [git](https://git-scm.com/) repository, that contains
+the source code to be built by the pipeline. Adding the `git` resource as an input
+to a `Task` will clone this repository and allow the `Task` to perform the required
 actions on the contents of the repo.
 
 To create a git resource using the `PipelineResource` CRD:
@@ -313,17 +312,17 @@ spec:
 
 ### Pull Request Resource
 
-Pull Request resource represents a pull request event from a source control
+The `pullRequest` resource represents a pull request event from a source control
 system.
 
-Adding the Pull Request resource as an input to a Task will populate the
+Adding the Pull Request resource as an input to a `Task` will populate the
 workspace with a set of files containing generic pull request related metadata
 such as base/head commit, comments, and labels.
 
 The payloads will also contain
 links to raw service-specific payloads where appropriate.
 
-Adding the Pull Request resource as an output of a Task will update the source
+Adding the Pull Request resource as an output of a `Task` will update the source
 control system with any changes made to the pull request resource during the
 pipeline.
 
@@ -434,14 +433,14 @@ provider statuses, see
 
 #### GitHub
 
-The Pull Request resource will look for GitHub OAuth authentication tokens in
+The `pullRequest` resource will look for GitHub OAuth authentication tokens in
 spec secrets with a field name called `githubToken`.
 
 URLs should be of the form: https://github.com/tektoncd/pipeline/pull/1
 
 ### Image Resource
 
-An Image resource represents an image that lives in a remote repository. It is
+An `image` resource represents an image that lives in a remote repository. It is
 usually used as [a `Task` `output`](tasks.md#outputs) for `Tasks` that build
 images. This allows the same `Tasks` to be used to generically push to any
 registry.
@@ -528,15 +527,15 @@ in the `taskRun` output.
 
 ### Cluster Resource
 
-Cluster Resource represents a Kubernetes cluster other than the current cluster
+A `cluster` resource represents a Kubernetes cluster other than the current cluster
 Tekton Pipelines is running on. A common use case for this resource is to deploy
 your application/function on different clusters.
 
 The resource will use the provided parameters to create a
 [kubeconfig](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
-file that can be used by other steps in the pipeline Task to access the target
+file that can be used by other steps in the pipeline `Task` to access the target
 cluster. The kubeconfig will be placed in
-`/workspace/<your-cluster-name>/kubeconfig` on your Task container
+`/workspace/<your-cluster-name>/kubeconfig` on your `Task` container
 
 The Cluster resource has the following parameters:
 
@@ -557,7 +556,7 @@ Note: Since only one authentication technique is allowed per user, either a
 `token` or a `password` should be provided, if both are provided, the `password`
 will be ignored.
 
-The following example shows the syntax and structure of a Cluster Resource:
+The following example shows the syntax and structure of a `cluster` resource:
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -614,7 +613,7 @@ spec:
       secretName: target-cluster-secrets
 ```
 
-Example usage of the cluster resource in a Task, using [variable substitution](tasks.md#variable-substitution):
+Example usage of the `cluster` resource in a `Task`, using [variable substitution](tasks.md#variable-substitution):
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -644,9 +643,9 @@ spec:
 
 ### Storage Resource
 
-Storage resource represents blob storage, that contains either an object or
-directory. Adding the storage resource as an input to a Task will download the
-blob and allow the Task to perform the required actions on the contents of the
+The `storage` resource represents blob storage, that contains either an object or
+directory. Adding the storage resource as an input to a `Task` will download the
+blob and allow the `Task` to perform the required actions on the contents of the
 blob.
 
 Only blob storage type
@@ -656,7 +655,7 @@ of now via [GCS storage resource](#gcs-storage-resource) and
 
 #### GCS Storage Resource
 
-GCS Storage resource points to
+The `gcs` storage resource points to
 [Google Cloud Storage](https://cloud.google.com/storage/) blob.
 
 To create a GCS type of storage resource using the `PipelineResource` CRD:
@@ -684,35 +683,35 @@ Params that can be added are the following:
 1.  `type`: represents the type of blob storage. For GCS storage resource this
     value should be set to `gcs`.
 1.  `dir`: represents whether the blob storage is a directory or not. By default
-    storage artifact is considered not a directory.
+    a storage artifact is not considered a directory.
 
-    -   If artifact is a directory then `-r`(recursive) flag is used to copy all
-        files under source directory to GCS bucket. Eg: `gsutil cp -r
+    -   If the artifact is a directory then `-r`(recursive) flag is used, to copy all
+        files under the source directory to a GCS bucket. Eg: `gsutil cp -r
         source_dir/* gs://some-bucket`
-    -   If artifact is a single file like zip, tar files then copy will be only
-        1 level deep(no recursive). It will not trigger copy of sub directories
-        in source directory. Eg: `gsutil cp source.tar gs://some-bucket.tar`.
+    -   If an artifact is a single file like a zip or tar, then the copy will be only
+        1 level deep(not recursive). It will not trigger a copy of sub directories
+        in the source directory. Eg: `gsutil cp source.tar gs://some-bucket.tar`.
 
 Private buckets can also be configured as storage resources. To access GCS
-private buckets, service accounts are required with correct permissions. The
+private buckets, service accounts with correct permissions are required. The
 `secrets` field on the storage resource is used for configuring this
-information. Below is an example on how to create a storage resource with
+information. Below is an example on how to create a storage resource with a
 service account.
 
-1.  Refer to
+1.  Refer to the
     [official documentation](https://cloud.google.com/compute/docs/access/service-accounts)
-    on how to create service accounts and configuring [IAM permissions](https://cloud.google.com/storage/docs/access-control/iam-permissions) to access bucket.
+    on how to create service accounts and configuring [IAM permissions](https://cloud.google.com/storage/docs/access-control/iam-permissions) to access buckets.
     
-1.  Create a Kubernetes secret from downloaded service account json key
+1.  Create a Kubernetes secret from a downloaded service account json key
 
     ```bash
     kubectl create secret generic bucket-sa --from-file=./service_account.json
     ```
 
-1.  To access GCS private bucket environment variable
+1.  To access the GCS private bucket environment variable
     [`GOOGLE_APPLICATION_CREDENTIALS`](https://cloud.google.com/docs/authentication/production)
-    should be set so apply above created secret to the GCS storage resource
-    under `fieldName` key.
+    should be set, so apply the above created secret to the GCS storage resource
+    under the `fieldName` key.
 
     ```yaml
     apiVersion: tekton.dev/v1alpha1
@@ -739,21 +738,20 @@ service account.
 
 #### BuildGCS Storage Resource
 
-BuildGCS storage resource points to
+The `build-gcs` storage resource points to a
 [Google Cloud Storage](https://cloud.google.com/storage/) blob like
-[GCS Storage Resource](#gcs-storage-resource) either in the form of a .zip
+[GCS Storage Resource](#gcs-storage-resource), either in the form of a .zip
 archive, or based on the contents of a source manifest file.
 
 In addition to fetching an .zip archive, BuildGCS also unzips it.
 
-A
-[Source Manifest File](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests)
-is a JSON object listing other objects in Cloud Storage that should be fetched.
-The format of the manifest is a mapping of destination file path to the location
-in Cloud Storage where the file's contents can be found. BuildGCS resource can
-also do incremental uploads of sources via Source Manifest File.
+A [Source Manifest File](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests)
+is a JSON object, which is listing other objects in a Cloud Storage that should be fetched.
+The format of the manifest is a mapping of the destination file path to the location
+in a Cloud Storage, where the file's contents can be found. The `build-gcs` resource can
+also do incremental uploads of sources via the Source Manifest File.
 
-To create a BuildGCS type of storage resource using the `PipelineResource` CRD:
+To create a `build-gcs` type of storage resource using the `PipelineResource` CRD:
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
@@ -777,38 +775,38 @@ Params that can be added are the following:
 1.  `location`: represents the location of the blob storage.
 1.  `type`: represents the type of blob storage. For BuildGCS, this value should
     be set to `build-gcs`
-1.  `artifactType`: represent the type of GCS resource. Right now, we support
+1.  `artifactType`: represent the type of `gcs` resource. Right now, we support
     following types:
 
 * `ZipArchive`:
-  * ZipArchive indicates that resource fetched is an archive file in the zip format.
-  * It unzips the archive and places all the files in the directory which is set at runtime.
+  * ZipArchive indicates that the resource fetched is an archive file in the zip format.
+  * It unzips the archive and places all the files in the directory, which is set at runtime.
   * `Archive` is also supported and is equivalent to `ZipArchive`, but is deprecated.
 * `TarGzArchive`:
-  * TarGzArchive indicates that resource fetched is a gzipped archive file in the tar format.
-  * It unzips the archive and places all the files in the directory which is set at runtime.
+  * TarGzArchive indicates that the resource fetched is a gzipped archive file in the tar format.
+  * It unzips the archive and places all the files in the directory, which is set at runtime.
 * [`Manifest`](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher#source-manifests):
-  * Manifest indicates that resource should be fetched using a source manifest file.
+  * Manifest indicates that the resource should be fetched using a source manifest file.
 
-Private buckets other than ones accessible by
+Private buckets other than the ones accessible by a
 [TaskRun Service Account](./taskruns.md#service-account) can not be configured
-as storage resources for BuildGCS Storage Resource right now. This is because
+as `storage` resources for the `build-gcs` storage resource right now. This is because
 the container image
 [gcr.io/cloud-builders//gcs-fetcher](https://github.com/GoogleCloudPlatform/cloud-builders/tree/master/gcs-fetcher)
 does not support configuring secrets.
 
 ### Cloud Event Resource
 
-The Cloud Event Resource represents a [cloud event](https://github.com/cloudevents/spec)
+The `cloudevent` resource represents a [cloud event](https://github.com/cloudevents/spec)
 that is sent to a target `URI` upon completion of a `TaskRun`.
-The Cloud Event Resource sends Tekton specific events; the body of the event includes
-the entire TaskRun spec plus status; the types of events defined for now are:
+The `cloudevent` resource sends Tekton specific events; the body of the event includes
+the entire `TaskRun` spec plus status; the types of events defined for now are:
 
 - dev.tekton.event.task.unknown
 - dev.tekton.event.task.successful
 - dev.tekton.event.task.failed
 
-Cloud event resources are useful to notify a third party upon the completion and
+`cloudevent` resources are useful to notify a third party upon the completion and
 status of a `TaskRun`. In combinations with the [Tekton triggers](https://github.com/tektoncd/triggers)
 project they can be used to link `Task/PipelineRuns` asynchronously.
 
