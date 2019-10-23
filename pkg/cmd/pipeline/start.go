@@ -406,6 +406,7 @@ func (opt *startOptions) startPipeline(pName string) error {
 		Stream:          opt.stream,
 		Follow:          true,
 		Params:          opt.cliparams,
+		AllSteps:        false,
 	}
 	return runLogOpts.Run()
 }

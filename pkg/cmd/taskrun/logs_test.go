@@ -349,19 +349,19 @@ func logOpts(run, ns string, cs pipelinetest.Clients, streamer stream.NewStreame
 	p.SetNamespace(ns)
 
 	return &LogOptions{
-		taskrunName: run,
-		allSteps:    allSteps,
-		follow:      follow,
-		params:      &p,
-		streamer:    streamer,
+		TaskrunName: run,
+		AllSteps:    allSteps,
+		Follow:      follow,
+		Params:      &p,
+		Streamer:    streamer,
 	}
 }
 
 func fetchLogs(lo *LogOptions) (string, error) {
 	out := new(bytes.Buffer)
-	lo.stream = &cli.Stream{Out: out, Err: out}
+	lo.Stream = &cli.Stream{Out: out, Err: out}
 
-	err := lo.run()
+	err := lo.Run()
 
 	return out.String(), err
 }

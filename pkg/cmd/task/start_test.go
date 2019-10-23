@@ -176,6 +176,7 @@ func Test_start_task(t *testing.T) {
 		"-l=key=value",
 		"-o=code-image=output-image",
 		"-s=svc1",
+		"--showlog=false",
 		"-n=ns")
 
 	expected := "Taskrun started: \n\nIn order to track the taskrun progress run:\ntkn taskrun logs  -f -n ns\n"
@@ -278,6 +279,7 @@ func Test_start_task_last(t *testing.T) {
 	task := Command(p)
 	got, _ := test.ExecuteCommand(task, "start", "task",
 		"--last",
+		"--showlog=false",
 		"-n=ns")
 
 	expected := "Taskrun started: random\n\nIn order to track the taskrun progress run:\ntkn taskrun logs random -f -n ns\n"
@@ -373,6 +375,7 @@ func Test_start_task_last_with_inputs(t *testing.T) {
 		"-o=code-image=output-image",
 		"-s=svc1",
 		"-n=ns",
+		"--showlog=false",
 		"--last")
 
 	expected := "Taskrun started: random\n\nIn order to track the taskrun progress run:\ntkn taskrun logs random -f -n ns\n"

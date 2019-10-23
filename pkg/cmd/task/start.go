@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/cli/pkg/cmd/taskrun"
+
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/flags"
@@ -46,6 +48,7 @@ type startOptions struct {
 	ServiceAccountName string
 	Last               bool
 	Labels             []string
+	ShowLog            bool
 }
 
 // NameArg validates that the first argument is a valid task name
@@ -115,6 +118,7 @@ like cat,foo,bar
 	flags.AddShellCompletion(c.Flags().Lookup("serviceaccount"), "__kubectl_get_serviceaccount")
 	c.Flags().BoolVarP(&opt.Last, "last", "L", false, "re-run the task using last taskrun values")
 	c.Flags().StringSliceVarP(&opt.Labels, "labels", "l", []string{}, "pass labels as label=value.")
+	c.Flags().BoolVarP(&opt.ShowLog, "showlog", "", true, "show logs right after starting the task")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_task")
 
@@ -183,9 +187,21 @@ func startTask(opt startOptions, tname string) error {
 		return err
 	}
 
-	fmt.Fprintf(opt.stream.Out, "Taskrun started: %s\n\n"+
-		"In order to track the taskrun progress run:\ntkn taskrun logs %s -f -n %s\n", trCreated.Name, trCreated.Name, trCreated.Namespace)
-	return nil
+	fmt.Fprintf(opt.stream.Out, "Taskrun started: %s\n", trCreated.Name)
+	if !opt.ShowLog {
+		fmt.Fprintf(opt.stream.Out, "\nIn order to track the taskrun progress run:\ntkn taskrun logs %s -f -n %s\n", trCreated.Name, trCreated.Namespace)
+		return nil
+	}
+
+	fmt.Fprintf(opt.stream.Out, "Showing logs...\n")
+	runLogOpts := &taskrun.LogOptions{
+		TaskrunName: trCreated.Name,
+		Stream:      opt.stream,
+		Follow:      true,
+		Params:      opt.cliparams,
+		AllSteps:    false,
+	}
+	return runLogOpts.Run()
 }
 
 func mergeRes(r []v1alpha1.TaskResourceBinding, optRes []string) ([]v1alpha1.TaskResourceBinding, error) {

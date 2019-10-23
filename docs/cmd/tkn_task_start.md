@@ -34,6 +34,7 @@ like cat,foo,bar
   -o, --outputresource strings   pass the output resource name and ref as name=ref
   -p, --param stringArray        pass the param as key=value or key=value1,value2
   -s, --serviceaccount string    pass the serviceaccount name
+      --showlog                  show logs right after starting the task (default true)
 ```
 
 ### Options inherited from parent commands
