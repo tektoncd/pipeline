@@ -162,7 +162,7 @@ Specifies the `name` of a `ServiceAccount` resource object. Use the
 `serviceAccountName` field to run your `Pipeline` with the privileges of the
 specified service account. If no `serviceAccountName` field is specified, your
 resulting `TaskRuns` run using the service account specified in the ConfigMap
-`configmap-defaults` which if absent will default to
+`configmap-defaults` which if absent will default to the
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 of the `TaskRun` resource object.
