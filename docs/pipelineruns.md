@@ -85,14 +85,14 @@ spec:
 greetings while embedding the spec of the `Pipeline` directly in the `PipelineRun`.
 
 
-After creating such a `PipelineRun`, the logs from a pod are displaying morning greetings:
+After creating such a `PipelineRun`, the logs from this pod are displaying morning greetings:
 
 ```bash
 kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-morning)
 Good Morning, Bob!
 ```
 
-And logs from a pod displaying evening greetings:
+And the logs from this pod displaying evening greetings:
 ```bash
 kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-night)
 Good Night, Bob!
