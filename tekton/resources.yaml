@@ -177,3 +177,13 @@ spec:
   params:
     - name: url
       value: vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher # Registry is provided via parameter, this is a hack see #569
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: post-release-trigger
+spec:
+  type: cloudEvent
+  params:
+    - name: targetURI
+      value: http://post-release-trigger-sink # This has to be changed to a valid URL

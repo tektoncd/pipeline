@@ -148,6 +148,8 @@ spec:
     type: image
   - name: builtGcsFetcherImage
     type: image
+  - name: notification
+    type: cloudEvent    
   tasks:
     - name: lint
       taskRef:
@@ -242,3 +244,5 @@ spec:
             resource: builtPullRequestInitImage
           - name: builtGcsFetcherImage
             resource: builtGcsFetcherImage
+          - name: notification
+            resource: notification

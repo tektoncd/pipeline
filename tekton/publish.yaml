@@ -47,6 +47,8 @@ spec:
       type: image
     - name: builtGcsFetcherImage
       type: image
+    - name: notification
+      type: cloudEvent
   steps:
 
   - name: build-push-base-images
