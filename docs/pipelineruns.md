@@ -172,7 +172,7 @@ For examples and more information about specifying service accounts, see the
 
 ### Service Accounts
 
-Specifies the list of `ServiceAccountName` and `PipelineTask` pairs. Specified
+Specifies the list of `serviceAccountName` and `PipelineTask` pairs. Specified
 `PipelineTask` will be run with configured `ServiceAccount`,
 overwriting [`serviceAccountName`](#service-account) configuration, for example:
 
