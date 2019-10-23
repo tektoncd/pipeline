@@ -18,6 +18,7 @@ entire Kubernetes cluster.
 - [ClusterTasks](#clustertask)
 - [Syntax](#syntax)
   - [Steps](#steps)
+    - [Step script](#step-script)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
   - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
