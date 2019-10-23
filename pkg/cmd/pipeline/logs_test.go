@@ -31,6 +31,7 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -46,11 +47,43 @@ var (
 	ns           = "namespace"
 )
 
+func TestLogs_invalid_namespace(t *testing.T) {
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, ns),
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	c := Command(p)
+	out, err := test.ExecuteCommand(c, "logs", "-n", "invalid")
+	if err == nil {
+		t.Errorf("Expected error for invalid namespace")
+	}
+
+	expected := "Error: namespaces \"invalid\" not found\n"
+	test.AssertOutput(t, expected, out)
+}
+
 func TestLogs_no_pipeline(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
-		}})
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
@@ -66,7 +99,15 @@ func TestLogs_no_runs(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
-		}})
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
+		},
+	})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
@@ -82,7 +123,15 @@ func TestLogs_wrong_pipeline(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
-		}})
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
+		},
+	})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
@@ -96,7 +145,15 @@ func TestLogs_wrong_run(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
-		}})
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
@@ -110,7 +167,15 @@ func TestLogs_negative_limit(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Pipelines: []*v1alpha1.Pipeline{
 			tb.Pipeline(pipelineName, ns),
-		}})
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
+		},
+	})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
@@ -163,6 +228,13 @@ func TestLogs_interactive_get_all_inputs(t *testing.T) {
 					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
 				),
 			),
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
 		},
 	})
 
@@ -276,6 +348,13 @@ func TestLogs_interactive_ask_runs(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
+		},
 	})
 
 	tests := []promptTest{
@@ -362,6 +441,13 @@ func TestLogs_interactive_limit_2(t *testing.T) {
 					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
 				),
 			),
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
 		},
 	})
 
@@ -458,6 +544,13 @@ func TestLogs_interactive_limit_1(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
+		},
 	})
 
 	tests := []promptTest{
@@ -544,6 +637,13 @@ func TestLogs_interactive_ask_all_last_run(t *testing.T) {
 					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
 				),
 			),
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
 		},
 	})
 
@@ -633,6 +733,13 @@ func TestLogs_interactive_ask_run_last_run(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
+		},
 	})
 
 	tests := []promptTest{
@@ -704,6 +811,13 @@ func TestLogs_last_run_diff_namespace(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
+		},
 	})
 
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
@@ -743,6 +857,13 @@ func TestLogs_have_one_get_one(t *testing.T) {
 					cb.PipelineRunCompletionTime(clock.Now().Add(10*time.Minute)),
 				),
 			),
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ns,
+				},
+			},
 		},
 	})
 

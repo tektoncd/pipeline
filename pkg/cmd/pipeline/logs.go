@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/cli/pkg/formatted"
 	"github.com/tektoncd/cli/pkg/helper/pipeline"
 	prhsort "github.com/tektoncd/cli/pkg/helper/pipelinerun/sort"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -65,6 +66,7 @@ func logCommand(p cli.Params) *cobra.Command {
 				Out: os.Stdout,
 				Err: os.Stderr,
 			}
+
 			return nil
 		},
 	}
@@ -103,6 +105,11 @@ func logCommand(p cli.Params) *cobra.Command {
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
+
+			if err := validate.NamespaceExists(p); err != nil {
+				return err
+			}
+
 			return opts.run(args)
 		},
 	}
