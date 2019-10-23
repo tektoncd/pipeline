@@ -63,6 +63,26 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
        value: revision-for-vX.Y.Z-invalid-tags-boouuhhh # REPLACE with the commit you'd like to build from (not a tag, since that's not created yet)
    ```
 
+ 1. To use release post-processing services, update the
+    [`resources.yaml`](./resources.yaml) file to add a valid targetURL in the
+    cloud event `PipelineResoruce` named `post-release-trigger`:
+
+    ```yaml
+    apiVersion: tekton.dev/v1alpha1
+    kind: PipelineResource
+    metadata:
+      name: post-release-trigger
+    spec:
+      type: cloudEvent
+      params:
+        - name: targetURI
+          value: http://el-pipeline-release-post-processing.default.svc.cluster.local:8080 # This has to be changed to a valid URL
+    ```
+
+    The targetURL should point to the event listener configured in the cluster.
+    The example above is configured with the correct value for the  `dogfooding`
+    cluster.
+
 1. To run against your own infrastructure (if you are running
    [in the production cluster](https://github.com/tektoncd/plumbing#prow) the
    default account should already have these creds, this is just a bonus - plus
@@ -101,7 +121,7 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 
    tkn pipeline start \
 		--param=versionTag=${VERSION_TAG} \
-    --param=imageRegistry=${IMAGE_REGISTRY} \
+		--param=imageRegistry=${IMAGE_REGISTRY} \
 		--serviceaccount=release-right-meow \
 		--resource=source-repo=tekton-pipelines-git \
 		--resource=bucket=tekton-bucket \
@@ -117,7 +137,8 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--resource=builtWebhookImage=webhook-image \
 		--resource=builtDigestExporterImage=digest-exporter-image \
 		--resource=builtPullRequestInitImage=pull-request-init-image \
-                --resource=builtGcsFetcherImage=gcs-fetcher-image \
+		--resource=builtGcsFetcherImage=gcs-fetcher-image \
+		--resource=notification=post-release-trigger
 		pipeline-release
    ```
 
