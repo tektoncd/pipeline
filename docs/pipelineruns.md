@@ -42,7 +42,7 @@ following fields:
     object that enables your build to run with the defined authentication
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
     specified in the configmap - config-defaults will be applied.
-  - [`serviceAccountNames`](#service-accounts) - Specifies a list of `ServiceAccountName`
+  - [`serviceAccountNames`](#service-accounts) - Specifies a list of `serviceAccountName`
     and `PipelineTask` pairs that enable you to overwrite a `ServiceAccount` for a concrete `PipelineTask`.
   - `timeout` - Specifies timeout after which the `PipelineRun` will fail. If the value of
     `timeout` is empty, the default timeout will be applied. If the value is set to 0,
