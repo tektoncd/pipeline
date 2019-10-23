@@ -220,9 +220,9 @@ allows to customize some Pod specific field per `Task` execution, aka
   [runtime class](https://kubernetes.io/docs/concepts/containers/runtime-class/)
   to use to run the pod.
 
-In the following example, the Task is defined with a `volumeMount`
-(`my-cache`), that is provided by the PipelineRun, using a
-PersistenceVolumeClaim. The Pod will also run as a non-root user.
+In the following example, the `Task` is defined with a `volumeMount`
+(`my-cache`), that is provided by the `PipelineRun`, using a
+`persistenceVolumeClaim`. The Pod will also run as a non-root user.
 
 ```yaml
 apiVersion: tekton.dev/v1alpha1
