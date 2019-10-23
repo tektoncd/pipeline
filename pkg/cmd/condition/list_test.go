@@ -26,6 +26,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stest "k8s.io/client-go/testing"
 )
@@ -35,19 +37,32 @@ func TestConditionList(t *testing.T) {
 
 	seeds := make([]pipelinetest.Clients, 0)
 
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "empty",
+			},
+		},
+	}
+
 	// Testdata pattern1.
 	conditions := []*v1alpha1.Condition{
 		tb.Condition("condition1", "ns", cb.ConditionCreationTime(clock.Now().Add(-1*time.Minute))),
 		tb.Condition("condition2", "ns", cb.ConditionCreationTime(clock.Now().Add(-20*time.Second))),
 		tb.Condition("condition3", "ns", cb.ConditionCreationTime(clock.Now().Add(-512*time.Hour))),
 	}
-	s, _ := test.SeedTestData(t, pipelinetest.Data{Conditions: conditions})
+	s, _ := test.SeedTestData(t, pipelinetest.Data{Conditions: conditions, Namespaces: ns})
 
 	// Testdata pattern2.
 	conditions2 := []*v1alpha1.Condition{
 		tb.Condition("condition1", "ns", cb.ConditionCreationTime(clock.Now().Add(-1*time.Minute))),
 	}
-	s2, _ := test.SeedTestData(t, pipelinetest.Data{Conditions: conditions2})
+	s2, _ := test.SeedTestData(t, pipelinetest.Data{Conditions: conditions2, Namespaces: ns})
 	s2.Pipeline.PrependReactor("list", "conditions", func(action k8stest.Action) (bool, runtime.Object, error) {
 		return true, nil, errors.New("test error")
 	})
@@ -63,8 +78,15 @@ func TestConditionList(t *testing.T) {
 		want      []string
 	}{
 		{
+			name:      "Invalid Namespace",
+			command:   []string{"ls", "-n", "invalid"},
+			input:     seeds[0],
+			wantError: true,
+			want:      []string{"namespaces \"invalid\" not found"},
+		},
+		{
 			name:      "Found no conditions",
-			command:   []string{"ls", "-n", "notexist"},
+			command:   []string{"ls", "-n", "empty"},
 			input:     seeds[0],
 			wantError: false,
 			want:      []string{"No conditions found", ""},
@@ -137,7 +159,7 @@ func TestConditionList(t *testing.T) {
 
 	for _, tp := range testParams {
 		t.Run(tp.name, func(t *testing.T) {
-			p := &test.Params{Tekton: tp.input.Pipeline}
+			p := &test.Params{Tekton: tp.input.Pipeline, Kube: tp.input.Kube}
 			pipelineResource := Command(p)
 
 			want := strings.Join(tp.want, "\n")
