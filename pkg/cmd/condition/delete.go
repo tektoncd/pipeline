@@ -15,22 +15,17 @@
 package condition
 
 import (
-	"bufio"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/helper/options"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-type deleteOptions struct {
-	forceDelete bool
-}
-
 func deleteCommand(p cli.Params) *cobra.Command {
-	opts := &deleteOptions{forceDelete: false}
+	opts := &options.DeleteOptions{Resource: "condition", ForceDelete: false}
 	f := cliopts.NewPrintFlags("delete")
 	eg := `
 # Delete a Condition of name 'foo' in namespace 'bar'
@@ -56,7 +51,7 @@ tkn cond rm foo -n bar
 				Err: cmd.OutOrStderr(),
 			}
 
-			if err := checkOptions(opts, s, p, args[0]); err != nil {
+			if err := options.CheckDeleteOptions(opts, s, args[0]); err != nil {
 				return err
 			}
 
@@ -64,7 +59,7 @@ tkn cond rm foo -n bar
 		},
 	}
 	f.AddFlags(c)
-	c.Flags().BoolVarP(&opts.forceDelete, "force", "f", false, "Whether to force deletion (default: false)")
+	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_condition")
 	return c
 }
@@ -80,25 +75,5 @@ func deleteCondition(s *cli.Stream, p cli.Params, condName string) error {
 	}
 
 	fmt.Fprintf(s.Out, "Condition deleted: %s\n", condName)
-	return nil
-}
-
-func checkOptions(opts *deleteOptions, s *cli.Stream, p cli.Params, condName string) error {
-	if opts.forceDelete {
-		return nil
-	}
-
-	fmt.Fprintf(s.Out, "Are you sure you want to delete condition %q (y/n): ", condName)
-	scanner := bufio.NewScanner(s.In)
-	for scanner.Scan() {
-		t := strings.TrimSpace(scanner.Text())
-		if t == "y" {
-			break
-		} else if t == "n" {
-			return fmt.Errorf("canceled deleting condition %q", condName)
-		}
-		fmt.Fprint(s.Out, "Please enter (y/n): ")
-	}
-
 	return nil
 }
