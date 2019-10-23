@@ -43,7 +43,7 @@ following fields:
     information. When a `ServiceAccount` isn't specified, the `default-service-account`
     specified in the configmap - config-defaults will be applied.
   - [`serviceAccountNames`](#service-accounts) - Specifies a list of `ServiceAccountName`
-    and `PipelineTask` pairs that enable you to overwrite `ServiceAccount` for concrete `PipelineTask`.
+    and `PipelineTask` pairs that enable you to overwrite a `ServiceAccount` for a concrete `PipelineTask`.
   - [`timeout`] - Specifies timeout after which the `PipelineRun` will fail. If the value of
     `timeout` is empty, the default timeout will be applied. If the value is set to 0,
     there is no timeout. `PipelineRun` shares the same default timeout as `TaskRun`. You can
