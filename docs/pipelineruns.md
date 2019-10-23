@@ -92,7 +92,7 @@ kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-g
 Good Morning, Bob!
 ```
 
-And the logs from this pod displaying evening greetings:
+And the logs from this pod are displaying evening greetings:
 ```bash
 kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-night)
 Good Night, Bob!
@@ -111,8 +111,8 @@ be run with different `PipelineResources` in cases such as:
   registry (via the image `PipelineResource`) and Kubernetes cluster (via the
   cluster `PipelineResource`).
 
-Specify the `PipelineResources` in the PipelineRun using the `resources` section
-in the `PipelineRun` spec, for example:
+Specify the `PipelineResources` in the `PipelineRun` using the `resources` section
+in the PipelineRun's spec, for example:
 
 ```yaml
 spec:
