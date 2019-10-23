@@ -53,6 +53,11 @@ func TestPipelineResourceList(t *testing.T) {
 				tb.PipelineResourceSpecParam("URL", "quey.io/tekton/webhook"),
 			),
 		),
+		tb.PipelineResource("test-5", "test-ns-1",
+			tb.PipelineResourceSpec("cloudEvent",
+				tb.PipelineResourceSpecParam("targetURI", "http://sink"),
+			),
+		),
 	}
 
 	ns := []*corev1.Namespace{
@@ -90,11 +95,12 @@ func TestPipelineResourceList(t *testing.T) {
 			args:      []string{"list", "-n", "test-ns-1"},
 			wantError: false,
 			expected: []string{
-				"NAME     TYPE    DETAILS",
-				"test     git     url: git@github.com:tektoncd/cli-new.git",
-				"test-2   git     url: git@github.com:tektoncd/cli.git",
-				"test-1   image   URL: quey.io/tekton/controller",
-				"test-3   image   ---",
+				"NAME     TYPE         DETAILS",
+				"test-5   cloudEvent   targetURI: http://sink",
+				"test     git          url: git@github.com:tektoncd/cli-new.git",
+				"test-2   git          url: git@github.com:tektoncd/cli.git",
+				"test-1   image        URL: quey.io/tekton/controller",
+				"test-3   image        ---",
 				"",
 			},
 		},
@@ -148,6 +154,7 @@ func TestPipelineResourceList(t *testing.T) {
 			args:      []string{"list", "-n", "test-ns-1", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
 			wantError: false,
 			expected: []string{
+				"test-5",
 				"test",
 				"test-2",
 				"test-1",

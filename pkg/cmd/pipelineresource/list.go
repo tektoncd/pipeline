@@ -166,6 +166,8 @@ func details(pre v1alpha1.PipelineResource) string {
 	var key = "url"
 	if pre.Spec.Type == v1alpha1.PipelineResourceTypeStorage {
 		key = "location"
+	} else if pre.Spec.Type == v1alpha1.PipelineResourceTypeCloudEvent {
+		key = "targeturi"
 	}
 
 	for _, p := range pre.Spec.Params {
