@@ -92,7 +92,7 @@ kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-g
 Good Morning, Bob!
 ```
 
-And logs from a pod displaying morning greetings:
+And logs from a pod displaying evening greetings:
 ```bash
 kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-good-night)
 Good Night, Bob!
