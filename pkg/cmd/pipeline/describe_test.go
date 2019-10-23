@@ -28,12 +28,33 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
-func TestPipelineDescribe_invalid_pipeline(t *testing.T) {
+func TestPipelineDescribe_invalid_namespace(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pipeline := Command(p)
+	_, err := test.ExecuteCommand(pipeline, "desc", "bar", "-n", "invalid")
+	if err == nil {
+		t.Errorf("Error expected here for invalid namespace")
+	}
+	expected := "namespaces \"invalid\" not found"
+	test.AssertOutput(t, expected, err.Error())
+}
+
+func TestPipelineDescribe_invalid_pipeline(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
 	_, err := test.ExecuteCommand(pipeline, "desc", "bar")
@@ -55,9 +76,16 @@ func TestPipelinesDescribe_empty(t *testing.T) {
 			),
 		},
 		PipelineRuns: []*v1alpha1.PipelineRun{},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline}
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 	pipeline := Command(p)
 
 	got, err := test.ExecuteCommand(pipeline, "desc", "-n", "ns", "pipeline")
@@ -109,9 +137,16 @@ func TestPipelinesDescribe_with_run(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 	pipeline := Command(p)
 
 	// -5 : pipeline created
@@ -174,9 +209,16 @@ func TestPipelinesDescribe_with_task_run(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 	pipeline := Command(p)
 
 	// -5 : pipeline created
@@ -242,9 +284,16 @@ func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 	pipeline := Command(p)
 
 	// -5 : pipeline created
@@ -315,9 +364,16 @@ func TestPipelinesDescribe_with_multiple_resource_task_run(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 	pipeline := Command(p)
 
 	// -5 : pipeline created
