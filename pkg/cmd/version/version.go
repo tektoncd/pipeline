@@ -53,7 +53,7 @@ func Command() *cobra.Command {
 
 			client := NewClient(time.Duration(3 * time.Second))
 			output, err := checkRelease(client)
-			fmt.Fprintf(cmd.OutOrStdout(), output)
+			fmt.Fprint(cmd.OutOrStdout(), output)
 			return err
 		},
 	}
