@@ -3,17 +3,14 @@ module github.com/tektoncd/cli
 go 1.12
 
 require (
-	cloud.google.com/go v0.37.2 // indirect
-	contrib.go.opencensus.io/exporter/ocagent v0.2.0 // indirect
+	contrib.go.opencensus.io/exporter/ocagent v0.6.0 // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0 // indirect
-	contrib.go.opencensus.io/exporter/stackdriver v0.9.1 // indirect
+	contrib.go.opencensus.io/exporter/stackdriver v0.12.4 // indirect
 	github.com/AlecAivazis/survey/v2 v2.0.4
 	github.com/Azure/azure-sdk-for-go v26.1.0+incompatible // indirect
 	github.com/Azure/go-autorest v11.6.0+incompatible // indirect
 	github.com/Netflix/go-expect v0.0.0-20190729225929-0e00d9168667
-	github.com/aws/aws-sdk-go v1.19.11 // indirect
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/census-instrumentation/opencensus-proto v0.1.0 // indirect
 	github.com/cpuguy83/go-md2man v1.0.10
 	github.com/evanphx/json-patch v4.1.0+incompatible // indirect
 	github.com/fatih/color v1.7.0
@@ -22,6 +19,7 @@ require (
 	github.com/google/gofuzz v0.0.0-20161122191042-44d81051d367 // indirect
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d // indirect
+	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/hako/durafmt v0.0.0-20180520121703-7b7ae1e72ead
 	github.com/hinshun/vt10x v0.0.0-20180809195222-d55458df857c
 	github.com/imdario/mergo v0.3.7 // indirect
@@ -42,14 +40,14 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/tektoncd/pipeline v0.8.0
 	github.com/tektoncd/plumbing v0.0.0-20191008065817-933f0722e02c
+	go.opencensus.io v0.22.1 // indirect
 	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 // indirect
 	golang.org/x/net v0.0.0-20190923162816-aa69164e4478 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe // indirect
-	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7 // indirect
-	google.golang.org/appengine v1.5.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.0.0-20190226173710-145d52631d00
 	k8s.io/apimachinery v0.0.0-20190221084156-01f179d85dbc
 	k8s.io/cli-runtime v0.0.0-20190325194458-f2b4781c3ae1
