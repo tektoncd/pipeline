@@ -23,6 +23,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	validinput "github.com/tektoncd/cli/pkg/helper/validate"
 	"github.com/tektoncd/cli/pkg/printer"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -59,6 +60,11 @@ tkn pre list -n foo
 		},
 		Args: cobra.MinimumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if err := validinput.NamespaceExists(p); err != nil {
+				return err
+			}
+
 			cs, err := p.Clients()
 			if err != nil {
 				return err
