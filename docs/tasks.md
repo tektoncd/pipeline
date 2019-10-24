@@ -446,6 +446,14 @@ volumes:
     emptyDir: {}
 ```
 
+Note: There is a known bug with Tekton's existing sidecar implementation.
+Tekton uses a specific image, called "nop", to stop sidecars. The "nop" image
+is configurable using a flag of the Tekton controller. If the configured "nop"
+image contains the command that the sidecar was running before the sidecar
+was stopped then the sidecar will actually keep running, causing the TaskRun's
+Pod to remain running, and eventually causing the TaskRun to timeout rather
+then exit successfully. Issue https://github.com/tektoncd/pipeline/issues/1347
+has been created to track this bug.
 
 ### Variable Substitution
 
