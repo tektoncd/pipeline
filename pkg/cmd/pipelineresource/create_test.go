@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -42,6 +43,13 @@ func TestPipelineResource_resource_noName(t *testing.T) {
 				tb.PipelineResourceSpec("git",
 					tb.PipelineResourceSpecParam("url", "git@github.com:tektoncd/cli.git"),
 				)),
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
 		},
 	})
 
@@ -104,6 +112,13 @@ func TestPipelineResource_resource_already_exist(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
 	})
 
 	tests := []promptTest{
@@ -146,7 +161,15 @@ func TestPipelineResource_resource_already_exist(t *testing.T) {
 
 func TestPipelineResource_allResourceType(t *testing.T) {
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -246,7 +269,15 @@ func TestPipelineResource_allResourceType(t *testing.T) {
 }
 
 func TestPipelineResource_create_cloudEventResource(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -308,7 +339,15 @@ func TestPipelineResource_create_cloudEventResource(t *testing.T) {
 }
 
 func TestPipelineResource_create_clusterResource_secure_password_text(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -446,7 +485,15 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 }
 
 func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -588,7 +635,15 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 }
 
 func TestPipelineResource_create_gitResource(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -677,7 +732,15 @@ func TestPipelineResource_create_gitResource(t *testing.T) {
 }
 
 func TestPipelineResource_create_imageResource(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -771,7 +834,15 @@ func TestPipelineResource_create_imageResource(t *testing.T) {
 }
 
 func TestPipelineResource_create_clusterResource_secure_password_secret(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -925,7 +996,15 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 }
 
 func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -1091,7 +1170,15 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 }
 
 func TestPipelineResource_create_pullRequestResource(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -1212,7 +1299,15 @@ func TestPipelineResource_create_pullRequestResource(t *testing.T) {
 }
 
 func TestPipelineResource_create_gcsStorageResource(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
@@ -1346,7 +1441,15 @@ func TestPipelineResource_create_gcsStorageResource(t *testing.T) {
 }
 
 func TestPipelineResource_create_buildGCSstorageResource(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "namespace",
+				},
+			},
+		},
+	})
 
 	tests := []promptTest{
 		{
