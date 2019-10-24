@@ -189,7 +189,7 @@ func Test_start_task(t *testing.T) {
 		t.Errorf("Error labels generated is different Labels Got: %+v", tr.Items[0].ObjectMeta.Labels)
 	}
 
-	test.AssertOutput(t, "svc1", tr.Items[0].Spec.ServiceAccount)
+	test.AssertOutput(t, "svc1", tr.Items[0].Spec.DeprecatedServiceAccount)
 }
 
 func Test_start_task_last(t *testing.T) {
@@ -215,7 +215,7 @@ func Test_start_task_last(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/task", "task"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task"),
-				tb.TaskRunServiceAccount("svc"),
+				tb.TaskRunDeprecatedServiceAccount("", "svc"),
 				tb.TaskRunInputs(tb.TaskRunInputsParam("myarg", "value")),
 				tb.TaskRunInputs(tb.TaskRunInputsParam("print", "booms", "booms", "booms")),
 				tb.TaskRunInputs(tb.TaskRunInputsResource("my-repo", tb.TaskResourceBindingRef("git"))),
@@ -268,7 +268,7 @@ func Test_start_task_last(t *testing.T) {
 		}
 	}
 
-	test.AssertOutput(t, "svc", tr.Spec.ServiceAccount)
+	test.AssertOutput(t, "svc", tr.Spec.DeprecatedServiceAccount)
 }
 
 func Test_start_task_last_with_inputs(t *testing.T) {
@@ -294,7 +294,7 @@ func Test_start_task_last_with_inputs(t *testing.T) {
 			tb.TaskRunLabel("tekton.dev/task", "task"),
 			tb.TaskRunSpec(
 				tb.TaskRunTaskRef("task"),
-				tb.TaskRunServiceAccount("svc"),
+				tb.TaskRunDeprecatedServiceAccount("", "svc"),
 				tb.TaskRunInputs(tb.TaskRunInputsParam("myarg", "value")),
 				tb.TaskRunInputs(tb.TaskRunInputsParam("print", "booms", "booms", "booms")),
 				tb.TaskRunInputs(tb.TaskRunInputsResource("my-repo", tb.TaskResourceBindingRef("git"))),
@@ -352,7 +352,7 @@ func Test_start_task_last_with_inputs(t *testing.T) {
 		}
 	}
 
-	test.AssertOutput(t, "svc1", tr.Spec.ServiceAccount)
+	test.AssertOutput(t, "svc1", tr.Spec.DeprecatedServiceAccount)
 }
 
 func Test_start_task_last_without_pipelinerun(t *testing.T) {
@@ -539,14 +539,14 @@ func Test_start_task_invalid_label(t *testing.T) {
 }
 
 func Test_mergeResource(t *testing.T) {
-	res := []v1alpha1.TaskResourceBinding{
-		{
+	res := []v1alpha1.TaskResourceBinding{{
+		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "source",
 			ResourceRef: v1alpha1.PipelineResourceRef{
 				Name: "git",
 			},
 		},
-	}
+	}}
 
 	_, err := mergeRes(res, []string{"test"})
 	if err == nil {
@@ -587,14 +587,18 @@ func Test_parseRes(t *testing.T) {
 			res: []string{"source=git", "image=docker2"},
 		},
 		want: map[string]v1alpha1.TaskResourceBinding{"source": {
-			Name: "source",
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: "git",
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: "source",
+				ResourceRef: v1alpha1.PipelineResourceRef{
+					Name: "git",
+				},
 			},
 		}, "image": {
-			Name: "image",
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: "docker2",
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: "image",
+				ResourceRef: v1alpha1.PipelineResourceRef{
+					Name: "docker2",
+				},
 			},
 		}},
 		wantErr: false,

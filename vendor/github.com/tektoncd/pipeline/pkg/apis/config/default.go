@@ -30,17 +30,20 @@ const (
 	DefaultTimeoutMinutes    = 60
 	NoTimeoutDuration        = 0 * time.Minute
 	defaultTimeoutMinutesKey = "default-timeout-minutes"
+	defaultServiceAccountKey = "default-service-account"
 )
 
 // Defaults holds the default configurations
 // +k8s:deepcopy-gen=true
 type Defaults struct {
 	DefaultTimeoutMinutes int
+	DefaultServiceAccount string
 }
 
 // Equals returns true if two Configs are identical
 func (cfg *Defaults) Equals(other *Defaults) bool {
-	return other.DefaultTimeoutMinutes == cfg.DefaultTimeoutMinutes
+	return other.DefaultTimeoutMinutes == cfg.DefaultTimeoutMinutes &&
+		other.DefaultServiceAccount == cfg.DefaultServiceAccount
 }
 
 // NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
@@ -54,6 +57,10 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing tracing config %q", defaultTimeoutMinutesKey)
 		}
 		tc.DefaultTimeoutMinutes = int(timeout)
+	}
+
+	if defaultServiceAccount, ok := cfgMap[defaultServiceAccountKey]; ok {
+		tc.DefaultServiceAccount = defaultServiceAccount
 	}
 
 	return &tc, nil

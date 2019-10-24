@@ -117,7 +117,7 @@ type Inputs struct {
 // path to the volume mounted containing this Resource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
 type TaskResource struct {
-	ResourceDeclaration
+	ResourceDeclaration `json:",inline"`
 	// +optional
 	OutputImageDir string `json:"outputImageDir,omitempty"`
 }

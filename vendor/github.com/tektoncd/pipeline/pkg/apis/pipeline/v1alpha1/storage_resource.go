@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -38,7 +39,7 @@ type PipelineStorageResourceInterface interface {
 	GetSecretParams() []SecretParam
 }
 
-func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, error) {
+func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineStorageResourceInterface, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -47,9 +48,9 @@ func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, 
 		if strings.EqualFold(param.Name, "type") {
 			switch {
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeGCS)):
-				return NewGCSResource(r)
+				return NewGCSResource(images, r)
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeBuildGCS)):
-				return NewBuildGCSResource(r)
+				return NewBuildGCSResource(images, r)
 			default:
 				return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}
@@ -58,7 +59,7 @@ func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, 
 	return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
 }
 
-func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec *TaskSpec) ([]corev1.Volume, error) {
+func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec TaskSpec) []corev1.Volume {
 	var storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 
@@ -84,5 +85,5 @@ func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec *TaskSpec) ([
 			mountedSecrets[volName] = ""
 		}
 	}
-	return storageVol, nil
+	return storageVol
 }

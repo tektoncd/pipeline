@@ -17,18 +17,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"flag"
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
-)
-
-var (
-	buildGCSFetcherImage = flag.String("build-gcs-fetcher-image", "gcr.io/cloud-builders/gcs-fetcher:latest",
-		"The container image containing our GCS fetcher binary.")
 )
 
 // GCSArtifactType defines a type of GCS resource.
@@ -70,10 +65,13 @@ type BuildGCSResource struct {
 	Type         PipelineResourceType
 	Location     string
 	ArtifactType GCSArtifactType
+
+	BashNoopImage        string `json:"-"`
+	BuildGCSFetcherImage string `json:"-"`
 }
 
-// NewBuildGCSResource creates a new BuildGCS resource to pass to a Task
-func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
+//  creates a new BuildGCS resource to pass to a Task
+func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -101,10 +99,12 @@ func NewBuildGCSResource(r *PipelineResource) (*BuildGCSResource, error) {
 		return nil, xerrors.Errorf("BuildGCSResource: Need ArtifactType to be specified to create BuildGCS resource %s", r.Name)
 	}
 	return &BuildGCSResource{
-		Name:         r.Name,
-		Type:         r.Spec.Type,
-		Location:     location,
-		ArtifactType: aType,
+		Name:                 r.Name,
+		Type:                 r.Spec.Type,
+		Location:             location,
+		ArtifactType:         aType,
+		BashNoopImage:        images.BashNoopImage,
+		BuildGCSFetcherImage: images.BuildGCSFetcherImage,
 	}, nil
 }
 
@@ -117,14 +117,6 @@ func (s BuildGCSResource) GetType() PipelineResourceType { return PipelineResour
 // GetSecretParams returns nil because it takes no secret params.
 func (s *BuildGCSResource) GetSecretParams() []SecretParam { return nil }
 
-// GetUploadSteps returns nil because it does not support uploading as an
-// output resource.
-func (s *BuildGCSResource) GetUploadSteps(string) ([]Step, error) { return nil, nil }
-
-// GetUploadVolumeSpec returns nil because it does not support uploading as an
-// output resource.
-func (s *BuildGCSResource) GetUploadVolumeSpec(*TaskSpec) ([]corev1.Volume, error) { return nil, nil }
-
 // Replacements returns the set of available replacements for this resource.
 func (s *BuildGCSResource) Replacements() map[string]string {
 	return map[string]string{
@@ -134,23 +126,34 @@ func (s *BuildGCSResource) Replacements() map[string]string {
 	}
 }
 
-// GetDownloadSteps returns the Steps needed to populate the workspace with the
-// resource's data.
-func (s *BuildGCSResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
+// GetInputTaskModifier returns a TaskModifier that prepends a step to a Task to fetch the archive or manifest.
+func (s *BuildGCSResource) GetInputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
 	args := []string{"--type", string(s.ArtifactType), "--location", s.Location}
 	// dest_dir is the destination directory for GCS files to be copies"
 	if sourcePath != "" {
 		args = append(args, "--dest_dir", sourcePath)
 	}
 
-	return []Step{
-		CreateDirStep(s.Name, sourcePath),
+	steps := []Step{
+		CreateDirStep(s.BashNoopImage, s.Name, sourcePath),
 		{Container: corev1.Container{
 			Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("storage-fetch-%s", s.Name)),
 			Command: []string{"/ko-app/gcs-fetcher"},
-			Image:   *buildGCSFetcherImage,
+			Image:   s.BuildGCSFetcherImage,
 			Args:    args,
-		}}}, nil
+		}}}
+
+	volumes := getStorageVolumeSpec(s, *ts)
+
+	return &InternalTaskModifier{
+		StepsToPrepend: steps,
+		Volumes:        volumes,
+	}, nil
+}
+
+// GetOutputTaskModifier returns a No-op TaskModifier.
+func (s *BuildGCSResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath string) (TaskModifier, error) {
+	return &InternalTaskModifier{}, nil
 }
 
 func getArtifactType(val string) (GCSArtifactType, error) {
@@ -161,9 +164,4 @@ func getArtifactType(val string) (GCSArtifactType, error) {
 		}
 	}
 	return "", xerrors.Errorf("Invalid ArtifactType %s. Should be one of %s", val, validArtifactTypes)
-}
-
-// GetDownloadVolumeSpec returns the volumes needed by this resource.
-func (s *BuildGCSResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) {
-	return getStorageVolumeSpec(s, spec)
 }

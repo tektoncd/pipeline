@@ -33,8 +33,11 @@ import (
 const templ = `Name:	{{ .PipelineRun.Name }}
 Namespace:	{{ .PipelineRun.Namespace }}
 Pipeline Ref:	{{ .PipelineRun.Spec.PipelineRef.Name }}
-{{- if ne .PipelineRun.Spec.ServiceAccount "" }}
-Service Account:	{{ .PipelineRun.Spec.ServiceAccount }}
+{{- if ne .PipelineRun.Spec.DeprecatedServiceAccount "" }}
+Service Account (deprecated):	{{ .PipelineRun.Spec.DeprecatedServiceAccount }}
+{{- end }}
+{{- if ne .PipelineRun.Spec.ServiceAccountName "" }}
+Service Account:	{{ .PipelineRun.Spec.ServiceAccountName }}
 {{- end }}
 
 Status

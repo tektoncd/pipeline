@@ -18,6 +18,8 @@ package v1alpha1
 
 import (
 	"context"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -37,7 +39,7 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField(apis.CurrentField)
 	}
 	if rs.Type == PipelineResourceTypeCluster {
-		var usernameFound, cadataFound, nameFound bool
+		var usernameFound, cadataFound, nameFound, isInsecure bool
 		for _, param := range rs.Params {
 			switch {
 			case strings.EqualFold(param.Name, "URL"):
@@ -50,6 +52,9 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 				cadataFound = true
 			case strings.EqualFold(param.Name, "name"):
 				nameFound = true
+			case strings.EqualFold(param.Name, "insecure"):
+				b, _ := strconv.ParseBool(param.Value)
+				isInsecure = b
 			}
 		}
 
@@ -68,7 +73,7 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		if !usernameFound {
 			return apis.ErrMissingField("username param")
 		}
-		if !cadataFound {
+		if !cadataFound && !isInsecure {
 			return apis.ErrMissingField("CAData param")
 		}
 	}
@@ -112,4 +117,15 @@ func AllowedStorageType(gotType string) bool {
 		return true
 	}
 	return false
+}
+
+func validateURL(u, path string) *apis.FieldError {
+	if u == "" {
+		return nil
+	}
+	_, err := url.ParseRequestURI(u)
+	if err != nil {
+		return apis.ErrInvalidValue(u, path)
+	}
+	return nil
 }

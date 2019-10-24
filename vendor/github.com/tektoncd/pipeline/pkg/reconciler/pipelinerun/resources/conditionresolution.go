@@ -20,6 +20,7 @@ package resources
 import (
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -45,6 +46,8 @@ type ResolvedConditionCheck struct {
 	// Resolved resources is a map of pipeline resources for this condition
 	// keyed by the bound resource name (i.e. the name used in PipelineTaskCondition.Resources)
 	ResolvedResources map[string]*v1alpha1.PipelineResource
+
+	images pipeline.Images
 }
 
 // TaskConditionCheckState is a slice of ResolvedConditionCheck the represents the current execution
@@ -110,7 +113,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	// convert param strings of type $(params.x) to $(inputs.params.x)
 	convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
 	// convert resource strings of type $(resources.name.key) to $(inputs.resources.name.key)
-	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources)
+	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources, rcc.images)
 
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to replace resource template strings %w", err)
@@ -132,11 +135,11 @@ func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 
 // ApplyResources applies the substitution from values in resources which are referenced
 // in spec as subitems of the replacementStr.
-func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration) error {
+func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration, images pipeline.Images) error {
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
 		if rSpec, ok := resolvedResources[cr.Name]; ok {
-			r, err := v1alpha1.ResourceFromType(rSpec)
+			r, err := v1alpha1.ResourceFromType(rSpec, images)
 			if err != nil {
 				return xerrors.Errorf("Error trying to create resource: %w", err)
 			}
@@ -174,13 +177,24 @@ func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1alpha1.TaskResou
 	var trb []v1alpha1.TaskResourceBinding
 
 	for name, r := range rcc.ResolvedResources {
-		trb = append(trb, v1alpha1.TaskResourceBinding{
-			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
+		tr := v1alpha1.TaskResourceBinding{
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
+		}
+		if r.SelfLink != "" {
+			tr.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       r.Name,
 				APIVersion: r.APIVersion,
-			},
-		})
+			}
+		} else if r.Spec.Type != "" {
+			tr.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+				Type:         r.Spec.Type,
+				Params:       r.Spec.Params,
+				SecretParams: r.Spec.SecretParams,
+			}
+		}
+		trb = append(trb, tr)
 	}
 
 	return trb

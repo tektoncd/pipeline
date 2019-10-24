@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"flag"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -29,9 +28,6 @@ const WorkspaceDir = "/workspace"
 
 var (
 	gitSource = "git-source"
-	// The container with Git that we use to implement the Git source step.
-	gitImage = flag.String("git-image", "override-with-git:latest",
-		"The container image containing our Git binary.")
 )
 
 // GitResource is an endpoint from which to get data which is required
@@ -44,16 +40,19 @@ type GitResource struct {
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
 	Revision string `json:"revision"`
+
+	GitImage string `json:"-"`
 }
 
 // NewGitResource creates a new git resource to pass to a Task
-func NewGitResource(r *PipelineResource) (*GitResource, error) {
+func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) {
 	if r.Spec.Type != PipelineResourceTypeGit {
 		return nil, xerrors.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	gitResource := GitResource{
-		Name: r.Name,
-		Type: r.Spec.Type,
+		Name:     r.Name,
+		Type:     r.Spec.Type,
+		GitImage: gitImage,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -95,22 +94,34 @@ func (s *GitResource) Replacements() map[string]string {
 	}
 }
 
-func (s *GitResource) GetDownloadSteps(sourcePath string) ([]Step, error) {
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
+func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifier, error) {
 	args := []string{"-url", s.URL,
 		"-revision", s.Revision,
 	}
 
-	args = append(args, []string{"-path", sourcePath}...)
+	args = append(args, []string{"-path", path}...)
 
-	return []Step{{Container: corev1.Container{
-		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
-		Image:      *gitImage,
-		Command:    []string{"/ko-app/git-init"},
-		Args:       args,
-		WorkingDir: WorkspaceDir,
-	}}}, nil
+	step := Step{
+		Container: corev1.Container{
+			Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
+			Image:      s.GitImage,
+			Command:    []string{"/ko-app/git-init"},
+			Args:       args,
+			WorkingDir: WorkspaceDir,
+			// This is used to populate the ResourceResult status.
+			Env: []corev1.EnvVar{{
+				Name:  "TEKTON_RESOURCE_NAME",
+				Value: s.Name,
+			}},
+		},
+	}
+	return &InternalTaskModifier{
+		StepsToPrepend: []Step{step},
+	}, nil
 }
 
-func (s *GitResource) GetUploadSteps(sourcePath string) ([]Step, error)              { return nil, nil }
-func (s *GitResource) GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)   { return nil, nil }
-func (s *GitResource) GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error) { return nil, nil }
+// GetOutputTaskModifier returns a No-op TaskModifier.
+func (s *GitResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
+	return &InternalTaskModifier{}, nil
+}

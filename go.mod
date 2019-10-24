@@ -40,7 +40,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/stretchr/testify v1.4.0
-	github.com/tektoncd/pipeline v0.7.0
+	github.com/tektoncd/pipeline v0.8.0
 	github.com/tektoncd/plumbing v0.0.0-20191008065817-933f0722e02c
 	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 // indirect
 	golang.org/x/net v0.0.0-20190923162816-aa69164e4478 // indirect

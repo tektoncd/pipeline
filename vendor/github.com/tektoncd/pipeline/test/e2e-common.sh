@@ -89,13 +89,13 @@ function check_results() {
   return ${failed}
 }
 
-function apply_resources() {
+function create_resources() {
   local resource=$1
-  echo ">> Applying the resource ${resource}"
+  echo ">> Creating resources ${resource}"
 
   # Applying the resources, either *taskruns or * *pipelineruns
-  for file in $(find ${REPO_ROOT_DIR}/examples/${resource}s/ -name *.yaml | sort); do
-    perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
+  for file in $(find ${REPO_ROOT_DIR}/examples/${resource}s/ -name *.yaml -not -path "${REPO_ROOT_DIR}/examples/${resource}s/no-ci/*" | sort); do
+    perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko create -f - || return 1
   done
 }
 
@@ -119,7 +119,7 @@ function run_tests() {
 
 function run_yaml_tests() {
   echo ">> Starting tests for the resource ${1}"
-  apply_resources $1
+  create_resources ${1} || fail_test "Could not create ${1} from the examples"
   if ! run_tests ${1}; then
     return 1
   fi

@@ -19,6 +19,7 @@ package resources
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"golang.org/x/xerrors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ResolvedTaskResources contains all the data that is needed to execute
@@ -51,7 +52,7 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, kind v1alpha1.
 	}
 
 	for _, r := range inputs {
-		rr, err := getResource(&r, gr)
+		rr, err := GetResourceFromBinding(&r.PipelineResourceBinding, gr)
 		if err != nil {
 			return nil, xerrors.Errorf("couldn't retrieve referenced input PipelineResource %q: %w", r.ResourceRef.Name, err)
 		}
@@ -60,7 +61,7 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, kind v1alpha1.
 	}
 
 	for _, r := range outputs {
-		rr, err := getResource(&r, gr)
+		rr, err := GetResourceFromBinding(&r.PipelineResourceBinding, gr)
 
 		if err != nil {
 			return nil, xerrors.Errorf("couldn't retrieve referenced output PipelineResource %q: %w", r.ResourceRef.Name, err)
@@ -69,4 +70,24 @@ func ResolveTaskResources(ts *v1alpha1.TaskSpec, taskName string, kind v1alpha1.
 		rtr.Outputs[r.Name] = rr
 	}
 	return &rtr, nil
+}
+
+// GetResourceFromBinding will return an instance of a PipelineResource to use for r, either by getting it with getter or by
+// instantiating it from the embedded spec.
+func GetResourceFromBinding(r *v1alpha1.PipelineResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {
+	if r.ResourceRef.Name != "" && r.ResourceSpec != nil {
+		return nil, xerrors.New("Both ResourseRef and ResourceSpec are defined. Expected only one")
+	}
+	if r.ResourceRef.Name != "" {
+		return getter(r.ResourceRef.Name)
+	}
+	if r.ResourceSpec != nil {
+		return &v1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: r.Name,
+			},
+			Spec: *r.ResourceSpec,
+		}, nil
+	}
+	return nil, xerrors.New("Neither ResourseRef nor ResourceSpec is defined")
 }

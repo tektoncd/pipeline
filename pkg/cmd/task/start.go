@@ -138,7 +138,9 @@ func startTask(opt startOptions, tname string) error {
 		}
 		tr.Spec.Inputs = trLast.Spec.Inputs
 		tr.Spec.Outputs = trLast.Spec.Outputs
-		tr.Spec.ServiceAccount = trLast.Spec.ServiceAccount
+		tr.Spec.ServiceAccountName = trLast.Spec.ServiceAccountName
+		// FIXME(vdemeester) remove with bump to 0.9.0
+		tr.Spec.DeprecatedServiceAccount = trLast.Spec.DeprecatedServiceAccount
 	}
 
 	inputRes, err := mergeRes(tr.Spec.Inputs.Resources, opt.InputResources)
@@ -166,7 +168,8 @@ func startTask(opt startOptions, tname string) error {
 	tr.Spec.Inputs.Params = param
 
 	if len(opt.ServiceAccountName) > 0 {
-		tr.Spec.ServiceAccount = opt.ServiceAccountName
+		// FIXME(vdemeester) use ServiceAccountName with bump to 0.9.0
+		tr.Spec.DeprecatedServiceAccount = opt.ServiceAccountName
 	}
 
 	trCreated, err := cs.Tekton.TektonV1alpha1().TaskRuns(opt.cliparams.Namespace()).Create(tr)
@@ -209,9 +212,11 @@ func parseRes(res []string) (map[string]v1alpha1.TaskResourceBinding, error) {
 			return nil, errors.New(invalidResource + v)
 		}
 		resources[r[0]] = v1alpha1.TaskResourceBinding{
-			Name: r[0],
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name: r[1],
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: r[0],
+				ResourceRef: v1alpha1.PipelineResourceRef{
+					Name: r[1],
+				},
 			},
 		}
 	}

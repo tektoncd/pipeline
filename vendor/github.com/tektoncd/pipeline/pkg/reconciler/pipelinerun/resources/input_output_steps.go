@@ -27,14 +27,27 @@ func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, sto
 	var taskOutputResources []v1alpha1.TaskResourceBinding
 
 	for name, outputResource := range outputs {
-		taskOutputResources = append(taskOutputResources, v1alpha1.TaskResourceBinding{
-			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
-				Name:       outputResource.Name,
-				APIVersion: outputResource.APIVersion,
+		taskOutputResource := v1alpha1.TaskResourceBinding{
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
 			},
 			Paths: []string{filepath.Join(storageBasePath, taskName, name)},
-		})
+		}
+		// SelfLink is being checked there to determine if this PipelineResource is an instance that
+		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
+		if outputResource.SelfLink != "" {
+			taskOutputResource.ResourceRef = v1alpha1.PipelineResourceRef{
+				Name:       outputResource.Name,
+				APIVersion: outputResource.APIVersion,
+			}
+		} else if outputResource.Spec.Type != "" {
+			taskOutputResource.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+				Type:         outputResource.Spec.Type,
+				Params:       outputResource.Spec.Params,
+				SecretParams: outputResource.Spec.SecretParams,
+			}
+		}
+		taskOutputResources = append(taskOutputResources, taskOutputResource)
 	}
 	return taskOutputResources
 }
@@ -46,11 +59,23 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 
 	for name, inputResource := range inputs {
 		taskInputResource := v1alpha1.TaskResourceBinding{
-			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
+		}
+		// SelfLink is being checked there to determine if this PipelineResource is an instance that
+		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
+		if inputResource.SelfLink != "" {
+			taskInputResource.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       inputResource.Name,
 				APIVersion: inputResource.APIVersion,
-			},
+			}
+		} else if inputResource.Spec.Type != "" {
+			taskInputResource.ResourceSpec = &v1alpha1.PipelineResourceSpec{
+				Type:         inputResource.Spec.Type,
+				Params:       inputResource.Spec.Params,
+				SecretParams: inputResource.Spec.SecretParams,
+			}
 		}
 
 		var stepSourceNames []string

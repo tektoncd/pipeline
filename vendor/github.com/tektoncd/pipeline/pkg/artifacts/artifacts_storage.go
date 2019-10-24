@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
@@ -58,7 +59,7 @@ type ArtifactStorageInterface interface {
 
 // InitializeArtifactStorage will check if there is there is a
 // bucket configured or create a PVC
-func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
+func InitializeArtifactStorage(images pipeline.Images, pr *v1alpha1.PipelineRun, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
 	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
 	shouldCreatePVC, err := NeedsPVC(configMap, err, logger)
 	if err != nil {
@@ -69,10 +70,10 @@ func InitializeArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface,
 		if err != nil {
 			return nil, err
 		}
-		return &v1alpha1.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc}, nil
+		return &v1alpha1.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc, BashNoopImage: images.BashNoopImage}, nil
 	}
 
-	return NewArtifactBucketConfigFromConfigMap(configMap)
+	return NewArtifactBucketConfigFromConfigMap(images)(configMap)
 }
 
 // CleanupArtifactStorage will delete the PipelineRun's artifact storage PVC if it exists. The PVC is created for using
@@ -121,40 +122,48 @@ func NeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.SugaredLogger)
 
 // GetArtifactStorage returns the storage interface to enable
 // consumer code to get a container step for copy to/from storage
-func GetArtifactStorage(prName string, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
+func GetArtifactStorage(images pipeline.Images, prName string, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
 	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
 	pvc, err := NeedsPVC(configMap, err, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't determine if PVC was needed from config map: %w", err)
 	}
 	if pvc {
-		return &v1alpha1.ArtifactPVC{Name: prName}, nil
+		return &v1alpha1.ArtifactPVC{Name: prName, BashNoopImage: images.BashNoopImage}, nil
 	}
-	return NewArtifactBucketConfigFromConfigMap(configMap)
+	return NewArtifactBucketConfigFromConfigMap(images)(configMap)
 }
 
 // NewArtifactBucketConfigFromConfigMap creates a Bucket from the supplied ConfigMap
-func NewArtifactBucketConfigFromConfigMap(configMap *corev1.ConfigMap) (*v1alpha1.ArtifactBucket, error) {
-	c := &v1alpha1.ArtifactBucket{}
+func NewArtifactBucketConfigFromConfigMap(images pipeline.Images) func(configMap *corev1.ConfigMap) (*v1alpha1.ArtifactBucket, error) {
+	return func(configMap *corev1.ConfigMap) (*v1alpha1.ArtifactBucket, error) {
+		c := &v1alpha1.ArtifactBucket{
+			BashNoopImage: images.BashNoopImage,
+			GsutilImage:   images.GsutilImage,
+		}
 
-	if configMap.Data == nil {
+		if configMap.Data == nil {
+			return c, nil
+		}
+		if location, ok := configMap.Data[v1alpha1.BucketLocationKey]; !ok {
+			c.Location = ""
+		} else {
+			c.Location = location
+		}
+		sp := v1alpha1.SecretParam{}
+		if secretName, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretName]; ok {
+			if secretKey, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretKey]; ok {
+				sp.FieldName = "GOOGLE_APPLICATION_CREDENTIALS"
+				if fieldName, ok := configMap.Data[v1alpha1.BucketServiceAccountFieldName]; ok {
+					sp.FieldName = fieldName
+				}
+				sp.SecretName = secretName
+				sp.SecretKey = secretKey
+				c.Secrets = append(c.Secrets, sp)
+			}
+		}
 		return c, nil
 	}
-	if location, ok := configMap.Data[v1alpha1.BucketLocationKey]; !ok {
-		c.Location = ""
-	} else {
-		c.Location = location
-	}
-	sp := v1alpha1.SecretParam{}
-	if secretName, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretName]; ok {
-		if secretKey, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretKey]; ok {
-			sp.FieldName = "GOOGLE_APPLICATION_CREDENTIALS"
-			sp.SecretName = secretName
-			sp.SecretKey = secretKey
-			c.Secrets = append(c.Secrets, sp)
-		}
-	}
-	return c, nil
 }
 
 func createPVC(pr *v1alpha1.PipelineRun, c kubernetes.Interface) (*corev1.PersistentVolumeClaim, error) {

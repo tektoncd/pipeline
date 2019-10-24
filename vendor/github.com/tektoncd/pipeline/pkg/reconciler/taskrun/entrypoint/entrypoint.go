@@ -17,7 +17,6 @@ limitations under the License.
 package entrypoint
 
 import (
-	"flag"
 	"fmt"
 	"strconv"
 
@@ -56,10 +55,6 @@ var downwardMount = corev1.VolumeMount{
 	Name:      DownwardMountName,
 	MountPath: DownwardMountPoint,
 }
-var (
-	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
-		"The container image containing our entrypoint binary.")
-)
 
 // Cache is a simple caching mechanism allowing for caching the results of
 // getting the Entrypoint of a container image from a remote registry. The
@@ -96,10 +91,10 @@ func AddToEntrypointCache(c *Cache, sha string, ep []string) {
 // copy the entrypoint binary from the entrypoint image into the
 // volume mounted at MountPoint, so that it can be mounted by
 // subsequent steps and used to capture logs.
-func AddCopyStep(spec *v1alpha1.TaskSpec) {
+func AddCopyStep(entrypointImage string, spec *v1alpha1.TaskSpec) {
 	cp := corev1.Container{
 		Name:    InitContainerName,
-		Image:   *entrypointImage,
+		Image:   entrypointImage,
 		Command: []string{"/bin/sh"},
 		// based on the ko version, the binary could be in one of two different locations
 		Args:         []string{"-c", fmt.Sprintf("cp /ko-app/entrypoint %s", BinaryLocation)},
@@ -238,7 +233,7 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, taskRun *v1al
 
 	kc, err := k8schain.New(kubeclient, k8schain.Options{
 		Namespace:          taskRun.Namespace,
-		ServiceAccountName: taskRun.Spec.ServiceAccount,
+		ServiceAccountName: taskRun.GetServiceAccountName(),
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to create k8schain: %w", err)

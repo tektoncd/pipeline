@@ -35,7 +35,7 @@ func TestTaskRunDescribe_invalid_namespace(t *testing.T) {
 		Namespaces: []*corev1.Namespace{
 			{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "defaul",
+					Name: "default",
 				},
 			},
 		},

@@ -17,8 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"golang.org/x/xerrors"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -56,10 +57,49 @@ type PipelineResourceInterface interface {
 	GetName() string
 	GetType() PipelineResourceType
 	Replacements() map[string]string
-	GetDownloadSteps(sourcePath string) ([]Step, error)
-	GetUploadSteps(sourcePath string) ([]Step, error)
-	GetUploadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
-	GetDownloadVolumeSpec(spec *TaskSpec) ([]corev1.Volume, error)
+	GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
+	GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
+}
+
+// TaskModifier is an interface to be implemented by different PipelineResources
+type TaskModifier interface {
+	GetStepsToPrepend() []Step
+	GetStepsToAppend() []Step
+	GetVolumes() []v1.Volume
+}
+
+// InternalTaskModifier implements TaskModifier for resources that are built-in to Tekton Pipelines.
+type InternalTaskModifier struct {
+	StepsToPrepend []Step
+	StepsToAppend  []Step
+	Volumes        []v1.Volume
+}
+
+// GetStepsToPrepend returns a set of Steps to prepend to the Task.
+func (tm *InternalTaskModifier) GetStepsToPrepend() []Step {
+	return tm.StepsToPrepend
+}
+
+// GetStepsToPrepend returns a set of Steps to append to the Task.
+func (tm *InternalTaskModifier) GetStepsToAppend() []Step {
+	return tm.StepsToAppend
+}
+
+// GetVolumes returns a set of Volumes to prepend to the Task pod.
+func (tm *InternalTaskModifier) GetVolumes() []v1.Volume {
+	return tm.Volumes
+}
+
+// ApplyTaskModifier applies a modifier to the task by appending and prepending steps and volumes.
+func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) {
+	steps := tm.GetStepsToPrepend()
+	ts.Steps = append(steps, ts.Steps...)
+
+	steps = tm.GetStepsToAppend()
+	ts.Steps = append(ts.Steps, steps...)
+
+	volumes := tm.GetVolumes()
+	ts.Volumes = append(ts.Volumes, volumes...)
 }
 
 // SecretParam indicates which secret can be used to populate a field of the resource
@@ -116,12 +156,21 @@ type PipelineResourceBinding struct {
 	// ResourceRef is a reference to the instance of the actual PipelineResource
 	// that should be used
 	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
+	// +optional
+	// ResourceSpec is specification of a resource that should be created and
+	// consumed by the task
+	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
 }
 
 // PipelineResourceResult used to export the image name and digest as json
 type PipelineResourceResult struct {
+	// Name and Digest are deprecated.
 	Name   string `json:"name"`
 	Digest string `json:"digest"`
+	// These will replace Name and Digest (https://github.com/tektoncd/pipeline/issues/1392)
+	Key         string              `json:"key"`
+	Value       string              `json:"value"`
+	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -153,18 +202,18 @@ type ResourceDeclaration struct {
 }
 
 // ResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
-func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
+func ResourceFromType(r *PipelineResource, images pipeline.Images) (PipelineResourceInterface, error) {
 	switch r.Spec.Type {
 	case PipelineResourceTypeGit:
-		return NewGitResource(r)
+		return NewGitResource(images.GitImage, r)
 	case PipelineResourceTypeImage:
 		return NewImageResource(r)
 	case PipelineResourceTypeCluster:
-		return NewClusterResource(r)
+		return NewClusterResource(images.KubeconfigWriterImage, r)
 	case PipelineResourceTypeStorage:
-		return NewStorageResource(r)
+		return NewStorageResource(images, r)
 	case PipelineResourceTypePullRequest:
-		return NewPullRequestResource(r)
+		return NewPullRequestResource(images.PRImage, r)
 	case PipelineResourceTypeCloudEvent:
 		return NewCloudEventResource(r)
 	}

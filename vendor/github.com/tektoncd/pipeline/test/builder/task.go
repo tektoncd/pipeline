@@ -335,6 +335,13 @@ func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 	}
 }
 
+// TaskRunCompletionTime sets the start time to the TaskRunStatus.
+func TaskRunCompletionTime(completionTime time.Time) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.CompletionTime = &metav1.Time{Time: completionTime}
+	}
+}
+
 // TaskRunCloudEvent adds an event to the TaskRunStatus.
 func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
@@ -508,9 +515,17 @@ func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
 }
 
 // TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
-func TaskRunServiceAccount(sa string) TaskRunSpecOp {
+func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 	return func(trs *v1alpha1.TaskRunSpec) {
-		trs.ServiceAccount = sa
+		trs.ServiceAccountName = sa
+	}
+}
+
+// TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
+func TaskRunDeprecatedServiceAccount(sa, deprecatedSA string) TaskRunSpecOp {
+	return func(trs *v1alpha1.TaskRunSpec) {
+		trs.ServiceAccountName = sa
+		trs.DeprecatedServiceAccount = deprecatedSA
 	}
 }
 
@@ -542,7 +557,9 @@ func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunI
 func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInputsOp {
 	return func(i *v1alpha1.TaskRunInputs) {
 		binding := &v1alpha1.TaskResourceBinding{
-			Name: name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 		}
 		for _, op := range ops {
 			op(binding)
@@ -596,8 +613,7 @@ func TaskRunOutputs(ops ...TaskRunOutputsOp) TaskRunSpecOp {
 func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOutputsOp {
 	return func(i *v1alpha1.TaskRunOutputs) {
 		binding := &v1alpha1.TaskResourceBinding{
-			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 				Name: name,
 			},
 		}

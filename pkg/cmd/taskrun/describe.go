@@ -33,8 +33,11 @@ import (
 const templ = `Name:	{{ .TaskRun.Name }}
 Namespace:	{{ .TaskRun.Namespace }}
 Task Ref:	{{ .TaskRun.Spec.TaskRef.Name }}
-{{- if ne .TaskRun.Spec.ServiceAccount "" }}
-Service Account:	{{ .TaskRun.Spec.ServiceAccount }}
+{{- if ne .TaskRun.Spec.DeprecatedServiceAccount "" }}
+Service Account (deprecated):	{{ .TaskRun.Spec.DeprecatedServiceAccount }}
+{{- end }}
+{{- if ne .TaskRun.Spec.ServiceAccountName "" }}
+Service Account:	{{ .TaskRun.Spec.ServiceAccountName }}
 {{- end }}
 
 Status
