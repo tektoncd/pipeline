@@ -27,6 +27,7 @@ entire Kubernetes cluster.
   - [Step Template](#step-template)
   - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
+- [Debugging Tips](#debugging)
 
 ## ClusterTask
 
@@ -684,3 +685,46 @@ Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
 and code samples are licensed under the
 [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+## Debugging a Task
+
+In software, we do things not because they are easy, but because we think they will be.
+Lots of things can go wrong when writing a Task.
+This section contains some tips on how to debug one.
+
+### Inspecting the Filesystem
+
+One common problem when writing Tasks is not understanding where files are on disk.
+For the most part, these all live somewhere under `/workspace`, but the exact layout can
+be tricky.
+To see where things are before your task runs, you can add a step like this:
+
+```yaml
+- name: build-and-push-1
+  image: ubuntu
+  command:
+  - /bin/bash
+  args:
+  - -c
+  - |
+    set -ex
+    find /workspace
+```
+
+This step will output the name of every file under /workspace to your build logs.
+
+To see the contents of every file, you can use a similar step:
+
+```yaml
+- name: build-and-push-1
+  image: ubuntu
+  command:
+  - /bin/bash
+  args:
+  - -c
+  - |
+    set -ex
+    find /workspace | xargs cat
+```
+
+These steps are useful both before and after your Task steps!
