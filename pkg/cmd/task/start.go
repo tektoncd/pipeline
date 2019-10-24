@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tektoncd/cli/pkg/cmd/taskrun"
-
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/cmd/taskrun"
 	"github.com/tektoncd/cli/pkg/flags"
 	"github.com/tektoncd/cli/pkg/helper/labels"
 	"github.com/tektoncd/cli/pkg/helper/params"

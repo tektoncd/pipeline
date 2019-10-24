@@ -68,8 +68,6 @@ tkn taskrun logs -f foo -n bar
 				return err
 			}
 
-			opts.Streamer = pods.NewStream
-
 			return opts.Run()
 		},
 	}
@@ -83,7 +81,12 @@ tkn taskrun logs -f foo -n bar
 
 func (lo *LogOptions) Run() error {
 	if lo.TaskrunName == "" {
-		return fmt.Errorf("missing mandatory argument taskrun")
+		return fmt.Errorf("missing mandatory argument taskrun name")
+	}
+
+	streamer := pods.NewStream
+	if lo.Streamer != nil {
+		streamer = lo.Streamer
 	}
 
 	cs, err := lo.Params.Clients()
@@ -95,7 +98,8 @@ func (lo *LogOptions) Run() error {
 		Run:      lo.TaskrunName,
 		Ns:       lo.Params.Namespace(),
 		Clients:  cs,
-		Streamer: lo.Streamer,
+		Streamer: streamer,
+		Stream:   lo.Stream,
 		Follow:   lo.Follow,
 		AllSteps: lo.AllSteps,
 	}

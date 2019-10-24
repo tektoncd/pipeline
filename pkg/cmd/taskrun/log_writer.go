@@ -53,7 +53,7 @@ func (lw *LogWriter) Write(s *cli.Stream, logC <-chan Log, errC <-chan error) {
 				errC = nil
 				continue
 			}
-			lw.fmt.Error(s.Out, "%s\n", e)
+			lw.fmt.Error(s.Err, "%s\n", e)
 		}
 	}
 }

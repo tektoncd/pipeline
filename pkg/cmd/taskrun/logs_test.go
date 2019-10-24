@@ -168,6 +168,63 @@ func TestLog_taskrun_logs(t *testing.T) {
 	test.AssertOutput(t, expected, output)
 }
 
+func TestLog_taskrun_logs_no_pod_name(t *testing.T) {
+	var (
+		ns          = "namespace"
+		taskName    = "output-task"
+		trName      = "output-task-1"
+		trStartTime = clockwork.NewFakeClock().Now().Add(20 * time.Second)
+		trStep1Name = "writefile-step"
+		nopStep     = "nop"
+	)
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(trName, ns,
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(trStartTime),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+				tb.StepState(
+					cb.StepName(trStep1Name),
+					tb.StateTerminated(0),
+				),
+				tb.StepState(
+					cb.StepName(nopStep),
+					tb.StateTerminated(0),
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(taskName),
+			),
+		),
+	}
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
+	ps := []*corev1.Pod{}
+
+	logs := fake.Logs()
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: ps, Namespaces: nsList})
+	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, false)
+	_, err := fetchLogs(trlo)
+
+	if err == nil {
+		t.Error("Expecting an error but it's empty")
+	}
+
+	expected := "pod for taskrun output-task-1 not available yet"
+	test.AssertOutput(t, expected, err.Error())
+}
+
 func TestLog_taskrun_all_steps(t *testing.T) {
 	var (
 		prstart  = clockwork.NewFakeClock()
@@ -339,6 +396,275 @@ func TestLog_taskrun_follow_mode(t *testing.T) {
 	expected := strings.Join(expectedLogs, "\n") + "\n"
 
 	test.AssertOutput(t, expected, output)
+}
+
+func TestLog_taskrun_follow_mode_no_pod_name(t *testing.T) {
+	var (
+		prstart     = clockwork.NewFakeClock()
+		ns          = "namespace"
+		taskName    = "output-task"
+		trName      = "output-task-run"
+		trStartTime = prstart.Now().Add(20 * time.Second)
+		trPod       = "output-task-pod-123456"
+		trStep1Name = "writefile-step"
+		trInitStep1 = "credential-initializer-mdzbr"
+		trInitStep2 = "place-tools"
+		nopStep     = "nop"
+	)
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(trName, ns,
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(trStartTime),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+				tb.StepState(
+					cb.StepName(trStep1Name),
+					tb.StateTerminated(0),
+				),
+				tb.StepState(
+					cb.StepName(nopStep),
+					tb.StateTerminated(0),
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(taskName),
+			),
+		),
+	}
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
+	p := []*corev1.Pod{
+		tb.Pod(trPod, ns,
+			tb.PodSpec(
+				tb.PodInitContainer(trInitStep1, "override-with-creds:latest"),
+				tb.PodInitContainer(trInitStep2, "override-with-tools:latest"),
+				tb.PodContainer(trStep1Name, trStep1Name+":latest"),
+				tb.PodContainer(nopStep, "override-with-nop:latest"),
+			),
+			cb.PodStatus(
+				cb.PodPhase(corev1.PodSucceeded),
+				cb.PodInitContainerStatus(trInitStep1, "override-with-creds:latest"),
+				cb.PodInitContainerStatus(trInitStep2, "override-with-tools:latest"),
+			),
+		),
+	}
+
+	logs := fake.Logs(
+		fake.Task(trPod,
+			fake.Step(trInitStep1, "initialized the credentials"),
+			fake.Step(trInitStep2, "place tools log"),
+			fake.Step(trStep1Name, "wrote a file"),
+			fake.Step(nopStep, "Build successful"),
+		),
+	)
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p, Namespaces: nsList})
+
+	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, true)
+	_, err := fetchLogs(trlo)
+
+	if err == nil {
+		t.Error("Expecting an error but it's empty")
+	}
+
+	expected := "task output-task create failed or has not started yet or pod for task not yet available"
+	test.AssertOutput(t, expected, err.Error())
+}
+
+func TestLog_taskrun_follow_mode_update_pod_name(t *testing.T) {
+	var (
+		prstart     = clockwork.NewFakeClock()
+		ns          = "namespace"
+		taskName    = "output-task"
+		trName      = "output-task-run"
+		trStartTime = prstart.Now().Add(20 * time.Second)
+		trPod       = "output-task-pod-123456"
+		trStep1Name = "writefile-step"
+		trInitStep1 = "credential-initializer-mdzbr"
+		trInitStep2 = "place-tools"
+		nopStep     = "nop"
+	)
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(trName, ns,
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(trStartTime),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+				tb.StepState(
+					cb.StepName(trStep1Name),
+					tb.StateTerminated(0),
+				),
+				tb.StepState(
+					cb.StepName(nopStep),
+					tb.StateTerminated(0),
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(taskName),
+			),
+		),
+	}
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
+	p := []*corev1.Pod{
+		tb.Pod(trPod, ns,
+			tb.PodSpec(
+				tb.PodInitContainer(trInitStep1, "override-with-creds:latest"),
+				tb.PodInitContainer(trInitStep2, "override-with-tools:latest"),
+				tb.PodContainer(trStep1Name, trStep1Name+":latest"),
+				tb.PodContainer(nopStep, "override-with-nop:latest"),
+			),
+			cb.PodStatus(
+				cb.PodPhase(corev1.PodSucceeded),
+				cb.PodInitContainerStatus(trInitStep1, "override-with-creds:latest"),
+				cb.PodInitContainerStatus(trInitStep2, "override-with-tools:latest"),
+			),
+		),
+	}
+
+	logs := fake.Logs(
+		fake.Task(trPod,
+			fake.Step(trInitStep1, "initialized the credentials"),
+			fake.Step(trInitStep2, "place tools log"),
+			fake.Step(trStep1Name, "wrote a file"),
+			fake.Step(nopStep, "Build successful"),
+		),
+	)
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p, Namespaces: nsList})
+	watcher := watch.NewRaceFreeFake()
+	cs.Pipeline.PrependWatchReactor("taskruns", k8stest.DefaultWatchReactor(watcher, nil))
+	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, true)
+
+	go func() {
+		time.Sleep(time.Second * 1)
+		trs[0].Status.PodName = trPod
+		watcher.Modify(trs[0])
+	}()
+
+	output, err := fetchLogs(trlo)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	expectedLogs := []string{
+		"[writefile-step] wrote a file\n",
+		"[nop] Build successful\n",
+	}
+	expected := strings.Join(expectedLogs, "\n") + "\n"
+	test.AssertOutput(t, expected, output)
+}
+
+func TestLog_taskrun_follow_mode_update_timeout(t *testing.T) {
+	var (
+		prstart     = clockwork.NewFakeClock()
+		ns          = "namespace"
+		taskName    = "output-task"
+		trName      = "output-task-run"
+		trStartTime = prstart.Now().Add(20 * time.Second)
+		trPod       = "output-task-pod-123456"
+		trStep1Name = "writefile-step"
+		trInitStep1 = "credential-initializer-mdzbr"
+		trInitStep2 = "place-tools"
+		nopStep     = "nop"
+	)
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun(trName, ns,
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(trStartTime),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+				tb.StepState(
+					cb.StepName(trStep1Name),
+					tb.StateTerminated(0),
+				),
+				tb.StepState(
+					cb.StepName(nopStep),
+					tb.StateTerminated(0),
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef(taskName),
+			),
+		),
+	}
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
+	p := []*corev1.Pod{
+		tb.Pod(trPod, ns,
+			tb.PodSpec(
+				tb.PodInitContainer(trInitStep1, "override-with-creds:latest"),
+				tb.PodInitContainer(trInitStep2, "override-with-tools:latest"),
+				tb.PodContainer(trStep1Name, trStep1Name+":latest"),
+				tb.PodContainer(nopStep, "override-with-nop:latest"),
+			),
+			cb.PodStatus(
+				cb.PodPhase(corev1.PodSucceeded),
+				cb.PodInitContainerStatus(trInitStep1, "override-with-creds:latest"),
+				cb.PodInitContainerStatus(trInitStep2, "override-with-tools:latest"),
+			),
+		),
+	}
+
+	logs := fake.Logs(
+		fake.Task(trPod,
+			fake.Step(trInitStep1, "initialized the credentials"),
+			fake.Step(trInitStep2, "place tools log"),
+			fake.Step(trStep1Name, "wrote a file"),
+			fake.Step(nopStep, "Build successful"),
+		),
+	)
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{TaskRuns: trs, Pods: p, Namespaces: nsList})
+	watcher := watch.NewRaceFreeFake()
+	cs.Pipeline.PrependWatchReactor("taskruns", k8stest.DefaultWatchReactor(watcher, nil))
+	trlo := logOpts(trName, ns, cs, fake.Streamer(logs), false, true)
+
+	go func() {
+		time.Sleep(time.Second * 1)
+		watcher.Action("MODIFIED", trs[0])
+	}()
+
+	output, err := fetchLogs(trlo)
+	if err == nil {
+		t.Error("Expecting an error but it's empty")
+	}
+
+	expectedOut := "Task still running ...\n"
+	test.AssertOutput(t, expectedOut, output)
+
+	expectedErr := "task output-task create failed or has not started yet or pod for task not yet available"
+	test.AssertOutput(t, expectedErr, err.Error())
 }
 
 func logOpts(run, ns string, cs pipelinetest.Clients, streamer stream.NewStreamerFunc, allSteps bool, follow bool) *LogOptions {

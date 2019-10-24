@@ -16,6 +16,7 @@ package taskrun
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -25,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 )
 
 type step struct {
@@ -53,6 +55,7 @@ type LogReader struct {
 	Streamer stream.NewStreamerFunc
 	Follow   bool
 	AllSteps bool
+	Stream   *cli.Stream
 }
 
 func (lr *LogReader) Read() (<-chan Log, <-chan error, error) {
@@ -69,7 +72,7 @@ func (lr *LogReader) Read() (<-chan Log, <-chan error, error) {
 
 func (lr *LogReader) readLogs(tr *v1alpha1.TaskRun) (<-chan Log, <-chan error, error) {
 	if lr.Follow {
-		return lr.readLiveLogs(tr)
+		return lr.readLiveLogs()
 	}
 	return lr.readAvailableLogs(tr)
 }
@@ -92,7 +95,12 @@ func (lr *LogReader) formTaskName(tr *v1alpha1.TaskRun) {
 	lr.Task = fmt.Sprintf("Task %d", lr.Number)
 }
 
-func (lr *LogReader) readLiveLogs(tr *v1alpha1.TaskRun) (<-chan Log, <-chan error, error) {
+func (lr *LogReader) readLiveLogs() (<-chan Log, <-chan error, error) {
+	tr, err := lr.waitUntilPodNameAvailable(10)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var (
 		podName = tr.Status.PodName
 		kube    = lr.Clients.Kube
@@ -110,14 +118,18 @@ func (lr *LogReader) readLiveLogs(tr *v1alpha1.TaskRun) (<-chan Log, <-chan erro
 }
 
 func (lr *LogReader) readAvailableLogs(tr *v1alpha1.TaskRun) (<-chan Log, <-chan error, error) {
+	if !tr.HasStarted() {
+		return nil, nil, fmt.Errorf("task %s has not started yet", lr.Task)
+	}
+
+	if tr.Status.PodName == "" {
+		return nil, nil, fmt.Errorf("pod for taskrun %s not available yet", tr.Name)
+	}
+
 	var (
 		kube    = lr.Clients.Kube
 		podName = tr.Status.PodName
 	)
-
-	if !tr.HasStarted() {
-		return nil, nil, fmt.Errorf("task %s has not hasStarted yet", lr.Task)
-	}
 
 	p := pods.New(podName, lr.Ns, kube, lr.Streamer)
 	pod, err := p.Get()
@@ -226,4 +238,46 @@ func getSteps(pod *corev1.Pod) []*step {
 	}
 
 	return steps
+}
+
+// reading of logs should wait untill the name of pod is
+// updates in the status. Open a watch channel on run
+// and keep checking the status until the pod name updatea
+// or the timeout is reached
+func (lr *LogReader) waitUntilPodNameAvailable(timeout time.Duration) (*v1alpha1.TaskRun, error) {
+	var first = true
+	opts := metav1.ListOptions{
+		FieldSelector: fields.OneTermEqualSelector("metadata.name", lr.Run).String(),
+	}
+	tkn := lr.Clients.Tekton
+	run, err := tkn.TektonV1alpha1().TaskRuns(lr.Ns).Get(lr.Run, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	if run.Status.PodName != "" {
+		return run, nil
+	}
+
+	watchRun, err := tkn.TektonV1alpha1().TaskRuns(lr.Ns).Watch(opts)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		select {
+		case event := <-watchRun.ResultChan():
+			run := event.Object.(*v1alpha1.TaskRun)
+			if run.Status.PodName != "" {
+				watchRun.Stop()
+				return run, nil
+			}
+			if first {
+				first = false
+				fmt.Fprintln(lr.Stream.Out, "Task still running ...")
+			}
+		case <-time.After(timeout * time.Second):
+			watchRun.Stop()
+			return nil, fmt.Errorf("task %s create failed or has not started yet or pod for task not yet available", lr.Task)
+		}
+	}
 }
