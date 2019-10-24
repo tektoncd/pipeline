@@ -26,10 +26,20 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestConditionDelete(t *testing.T) {
 	clock := clockwork.NewFakeClock()
+
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
 
 	seeds := make([]pipelinetest.Clients, 0)
 
@@ -37,7 +47,7 @@ func TestConditionDelete(t *testing.T) {
 		conditions := []*v1alpha1.Condition{
 			tb.Condition("condition1", "ns", cb.ConditionCreationTime(clock.Now().Add(-1*time.Minute))),
 		}
-		s, _ := test.SeedTestData(t, pipelinetest.Data{Conditions: conditions})
+		s, _ := test.SeedTestData(t, pipelinetest.Data{Conditions: conditions, Namespaces: ns})
 		seeds = append(seeds, s)
 	}
 
@@ -49,6 +59,14 @@ func TestConditionDelete(t *testing.T) {
 		wantError   bool
 		want        string
 	}{
+		{
+			name:        "Invalid namespace",
+			command:     []string{"rm", "condition1", "-n", "invalid"},
+			input:       seeds[0],
+			inputStream: nil,
+			wantError:   true,
+			want:        "namespaces \"invalid\" not found",
+		},
 		{
 			name:        "With force delete flag (shorthand)",
 			command:     []string{"rm", "condition1", "-n", "ns", "-f"},
@@ -93,7 +111,7 @@ func TestConditionDelete(t *testing.T) {
 
 	for _, tp := range testParams {
 		t.Run(tp.name, func(t *testing.T) {
-			p := &test.Params{Tekton: tp.input.Pipeline}
+			p := &test.Params{Tekton: tp.input.Pipeline, Kube: tp.input.Kube}
 			condition := Command(p)
 
 			if tp.inputStream != nil {
