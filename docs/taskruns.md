@@ -590,6 +590,12 @@ order to terminate the sidecars they will be restarted with a new
 Pod will include the sidecar container with a Retry Count of 1 and
 with a different container image than you might be expecting.
 
+Note: The configured "nop" image must not provide the command that the
+sidecar is expected to run. If it does provide the command then it will
+not exit. This will result in the sidecar running forever and the Task
+eventually timing out. https://github.com/tektoncd/pipeline/issues/1347
+is the issue where this bug is being tracked.
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the
