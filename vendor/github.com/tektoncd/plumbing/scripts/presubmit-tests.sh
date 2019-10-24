@@ -49,7 +49,7 @@ function pr_only_contains() {
 # List changed files in the current PR.
 # This is implemented as a function so it can be mocked in unit tests.
 function list_changed_files() {
-  /workspace/githubhelper -list-changed-files
+  githubhelper -list-changed-files
 }
 
 # Initialize flags and context for presubmit tests:
