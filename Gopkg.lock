@@ -590,11 +590,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:52353264b6df3bd5c5da47f84904456a0c81f7f59d224b4da9675d0dc78bbf3e"
+  digest = "1:e2155887812e57c490cb743ec4d388681253f69965fd1203d9bbc75c9e512b6d"
   name = "github.com/tektoncd/plumbing"
   packages = ["scripts"]
   pruneopts = "UT"
-  revision = "933f0722e02cf10a891027381ba8a01ac4c8530e"
+  revision = "ea00721be13d2549caf5550db5de50b9902f1075"
 
 [[projects]]
   digest = "1:b7d98c64e9467a8e5e67509031cd6baee81fba090ba2c3d30df1ff3d02d1d035"
@@ -1294,6 +1294,7 @@
     "logging/testing",
     "metrics",
     "metrics/metricskey",
+    "metrics/metricstest",
     "profiling",
     "reconciler/testing",
     "signals",
@@ -1348,6 +1349,7 @@
     "github.com/knative/test-infra/tools/dep-collector",
     "github.com/mitchellh/go-homedir",
     "github.com/mohae/deepcopy",
+    "github.com/pkg/errors",
     "github.com/tektoncd/plumbing/scripts",
     "go.opencensus.io/stats",
     "go.opencensus.io/stats/view",
@@ -1364,7 +1366,6 @@
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
-    "k8s.io/apimachinery/pkg/fields",
     "k8s.io/apimachinery/pkg/labels",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
@@ -1415,6 +1416,7 @@
     "knative.dev/pkg/logging/logkey",
     "knative.dev/pkg/logging/testing",
     "knative.dev/pkg/metrics",
+    "knative.dev/pkg/metrics/metricstest",
     "knative.dev/pkg/reconciler/testing",
     "knative.dev/pkg/signals",
     "knative.dev/pkg/test",
