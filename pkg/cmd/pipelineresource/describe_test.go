@@ -22,22 +22,63 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func TestPipelineResourceDescribe_Invalid_Namespace(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	res := Command(p)
+	_, err := test.ExecuteCommand(res, "desc", "bar", "-n", "invalid")
+	if err == nil {
+		t.Errorf("Error expected here")
+	}
+
+	expected := "namespaces \"invalid\" not found"
+	test.AssertOutput(t, expected, err.Error())
+}
+
 func TestPipelineResourceDescribe_Empty(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	res := Command(p)
 	_, err := test.ExecuteCommand(res, "desc", "bar")
 	if err == nil {
 		t.Errorf("Error expected here")
 	}
+
 	expected := "failed to find pipelineresource \"bar\""
 	test.AssertOutput(t, expected, err.Error())
 }
 
 func TestPipelineResourceDescribe_WithParams(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-ns-1",
+			},
+		},
+	}
+
 	pres := []*v1alpha1.PipelineResource{
 		tb.PipelineResource("test-1", "test-ns-1",
 			tb.PipelineResourceSpec("image",
@@ -46,8 +87,8 @@ func TestPipelineResourceDescribe_WithParams(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
-	p := &test.Params{Tekton: cs.Pipeline}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres, Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 	pipelineresource := Command(p)
 	out, _ := test.ExecuteCommand(pipelineresource, "desc", "test-1", "-n", "test-ns-1")
 	expected := []string{
@@ -63,10 +104,19 @@ func TestPipelineResourceDescribe_WithParams(t *testing.T) {
 		"No secret params",
 		"",
 	}
+
 	test.AssertOutput(t, strings.Join(expected, "\n"), out)
 }
 
 func TestPipelineResourceDescribe_WithSecretParams(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-ns-1",
+			},
+		},
+	}
+
 	pres := []*v1alpha1.PipelineResource{
 		tb.PipelineResource("test-1", "test-ns-1",
 			tb.PipelineResourceSpec("image",
@@ -77,8 +127,8 @@ func TestPipelineResourceDescribe_WithSecretParams(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres})
-	p := &test.Params{Tekton: cs.Pipeline}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineResources: pres, Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 	pipelineresource := Command(p)
 	out, _ := test.ExecuteCommand(pipelineresource, "desc", "test-1", "-n", "test-ns-1")
 	expected := []string{
@@ -96,5 +146,6 @@ func TestPipelineResourceDescribe_WithSecretParams(t *testing.T) {
 		"githubToken   github-secrets",
 		"",
 	}
+
 	test.AssertOutput(t, strings.Join(expected, "\n"), out)
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	validateinput "github.com/tektoncd/cli/pkg/helper/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
@@ -75,6 +76,11 @@ tkn res desc foo -n bar
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
+
+			if err := validateinput.NamespaceExists(p); err != nil {
+				return err
+			}
+
 			return printPipelineResourceDescription(s, p, args[0])
 		},
 	}
