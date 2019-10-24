@@ -478,9 +478,9 @@ To surface the image digest in the output of the `taskRun` the builder tool
 should produce this information in a
 [OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/image-layout.md)
 `index.json` file. This file should be placed on a location as specified in the
-task definition under the resource `outputImageDir`. If there is only one image
-in the `index.json` file, the digest of that image is exported; otherwise, the
-digest of the whole image index would be exported.
+task definition under the default resource directory, or the specified `targetPath`.
+If there is only one image in the `index.json` file, the digest of that image is exported;
+otherwise, the digest of the whole image index would be exported.
 
 For example this build-push task defines the `outputImageDir` for the
 `builtImage` resource in `/workspace/buildImage`
@@ -499,12 +499,12 @@ spec:
     resources:
       - name: builtImage
         type: image
-        outputImageDir: /workspace/builtImage
+        targetPath: /workspace/builtImage
   steps: ...
 ```
 
-If no value is specified for `outputImageDir`, it will default to
-`/builder/home/image-outputs/{resource-name}`.
+If no value is specified for `targetPath`, it will default to
+`/workspace/output/{resource-name}`.
 
 _Please check the builder tool used on how to pass this path to create the
 output file._
@@ -640,6 +640,45 @@ spec:
         - kubectl --kubeconfig
           /workspace/$(inputs.resources.testCluster.name)/kubeconfig --context
           $(inputs.resources.testCluster.name) apply -f /workspace/service.yaml'
+```
+
+To use the `cluster` resource with Google Kubernetes Engine, you should use the `cadata` authentication
+mechanism.
+
+To determine the caData, you can use the following `gcloud` commands:
+
+```shell
+gcloud container clusters describe <cluster-name> --format='value(masterAuth.clusterCaCertificate)'
+```
+
+To create a secret with this information, you can use:
+
+```shell
+CADATA=$(gcloud container clusters describe <cluster-name> --format='value(masterAuth.clusterCaCertificate)')
+kubectl create secret generic cluster-ca-data --from-literal=cadata=$CADATA
+```
+
+To retrieve the URL, you can use this gcloud command:
+
+```shell
+gcloud container clusters describe <cluster-name> --format='value(endpoint)'
+```
+
+Then to use these in a resource, reference the cadata from the secret you created above, and use the IP address
+from the gcloud command as your url (prefixed with https://):
+
+```yaml
+spec:
+  type: cluster
+  params:
+    - name: url
+      value: https://<ip address determined above>
+    - name: name
+      value: mycluster
+  secrets:
+    - fieldName: cadata
+      secretName: cluster-ca-data
+      secretKey: cadata
 ```
 
 ### Storage Resource
