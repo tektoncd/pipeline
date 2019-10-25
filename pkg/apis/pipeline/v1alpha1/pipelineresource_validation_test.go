@@ -119,8 +119,8 @@ func TestResourceValidation_Invalid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.res.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), tt.want.Error()); d != "" {
-				t.Errorf("PipelineResource.Validate/%s (-want, +got) = %v", tt.name, d)
+			if d := cmp.Diff(tt.want.Error(), err.Error()); d != "" {
+				t.Errorf("Didn't get expected error for %s (-want, +got) = %v", tt.name, d)
 			}
 		})
 	}

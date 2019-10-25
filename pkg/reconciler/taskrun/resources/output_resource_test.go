@@ -795,8 +795,8 @@ func TestValidOutputResources(t *testing.T) {
 			}
 
 			if got != nil {
-				if d := cmp.Diff(got.Steps, c.wantSteps); d != "" {
-					t.Fatalf("post build steps mismatch: %s", d)
+				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
+					t.Fatalf("post build steps mismatch (-want, +got): %s", d)
 				}
 
 				if c.taskRun.GetPipelineRunPVCName() != "" {
@@ -812,8 +812,8 @@ func TestValidOutputResources(t *testing.T) {
 						},
 					)
 				}
-				if d := cmp.Diff(got.Volumes, c.wantVolumes); d != "" {
-					t.Fatalf("post build steps volumes mismatch: %s", d)
+				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
+					t.Fatalf("post build steps volumes mismatch (-want, +got): %s", d)
 				}
 			}
 		})
@@ -1010,8 +1010,8 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
 			if got != nil {
-				if d := cmp.Diff(got.Steps, c.wantSteps); d != "" {
-					t.Fatalf("post build steps mismatch: %s", d)
+				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
+					t.Fatalf("post build steps mismatch (-want, got): %s", d)
 				}
 			}
 		})
