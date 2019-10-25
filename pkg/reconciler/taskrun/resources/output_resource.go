@@ -110,6 +110,7 @@ func AddOutputResources(
 		}
 		v1alpha1.ApplyTaskModifier(taskSpec, modifier)
 
+		// Attach the PVC that will be used for `from` copying.
 		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 			if pvcName == "" {
 				return taskSpec, nil

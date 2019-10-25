@@ -54,10 +54,18 @@ var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineR
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {
+	// GetName returns the name of this PipelineResource instance.
 	GetName() string
+	// GetType returns the type of this PipelineResource (often a super type, e.g. in the case of storage).
 	GetType() PipelineResourceType
+	// Replacements returns all the attributes that this PipelineResource has that
+	// can be used for variable replacement.
 	Replacements() map[string]string
+	// GetOutputTaskModifier returns the TaskModifier instance that should be used on a Task
+	// in order to add this kind of resource when it is being used as an output.
 	GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
+	// GetInputTaskModifier returns the TaskModifier instance that should be used on a Task
+	// in order to add this kind of resource when it is being used as an input.
 	GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
 }
 
@@ -201,7 +209,9 @@ type ResourceDeclaration struct {
 	TargetPath string `json:"targetPath,omitempty"`
 }
 
-// ResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
+// ResourceFromType returns an instance of the correct PipelineResource object type which can be
+// used to add input and ouput containers as well as volumes to a TaskRun's pod in order to realize
+// a PipelineResource in a pod.
 func ResourceFromType(r *PipelineResource, images pipeline.Images) (PipelineResourceInterface, error) {
 	switch r.Spec.Type {
 	case PipelineResourceTypeGit:

@@ -28,17 +28,24 @@ import (
 type PipelineResourceStorageType string
 
 const (
-	// PipelineResourceTypeGCS indicates that resource source is a GCS blob/directory.
-	PipelineResourceTypeGCS      PipelineResourceType = "gcs"
+	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
+	PipelineResourceTypeGCS PipelineResourceType = "gcs"
+
+	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
+	// with additional funcitonality that was added to be compatible with knative build.
 	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
 )
 
-// PipelineResourceInterface interface to be implemented by different PipelineResource types
+// PipelineStorageResourceInterface is the interface for subtypes of the storage type.
+// It adds a function to the PipelineResourceInterface for retrieving secrets that are usually
+// needed for storage PipelineResources.
 type PipelineStorageResourceInterface interface {
 	PipelineResourceInterface
 	GetSecretParams() []SecretParam
 }
 
+// NewStorageResource returns an instance of the requested storage subtype, which can be used
+// to add input and output steps and volumes to an executing pod.
 func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineStorageResourceInterface, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)

@@ -28,8 +28,7 @@ var (
 	pvcDir = "/pvc"
 )
 
-// ArtifactPVC represents the pvc created by the pipelinerun
-// for artifacts temporary storage
+// ArtifactPVC represents the pvc created by the pipelinerun for artifacts temporary storage.
 type ArtifactPVC struct {
 	Name                  string
 	PersistentVolumeClaim *corev1.PersistentVolumeClaim
@@ -37,17 +36,17 @@ type ArtifactPVC struct {
 	BashNoopImage string
 }
 
-// GetType returns the type of the artifact storage
+// GetType returns the type of the artifact storage.
 func (p *ArtifactPVC) GetType() string {
 	return ArtifactStoragePVCType
 }
 
-// StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage
+// StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage.
 func (p *ArtifactPVC) StorageBasePath(pr *PipelineRun) string {
 	return pvcDir
 }
 
-// GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage
+// GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage.
 func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []Step {
 	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
@@ -57,7 +56,7 @@ func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPat
 	}}}
 }
 
-// GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage
+// GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage.
 func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []Step {
 	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-mkdir-%s", name)),
@@ -78,7 +77,7 @@ func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPat
 	}}}
 }
 
-// GetPvcMount returns a mounting of the volume with the mount path /pvc
+// GetPvcMount returns a mounting of the volume with the mount path /pvc.
 func GetPvcMount(name string) corev1.VolumeMount {
 	return corev1.VolumeMount{
 		Name:      name,   // taskrun pvc name
@@ -86,7 +85,8 @@ func GetPvcMount(name string) corev1.VolumeMount {
 	}
 }
 
-// CreateDirStep returns a container step to create a dir
+// CreateDirStep returns a container step to create a dir at destinationPath. The name
+// of the step will include name.
 func CreateDirStep(bashNoopImage string, name, destinationPath string) Step {
 	return Step{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", strings.ToLower(name))),

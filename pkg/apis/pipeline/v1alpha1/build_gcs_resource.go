@@ -59,7 +59,6 @@ var validArtifactTypes = []GCSArtifactType{
 // BuildGCSResource describes a resource in the form of an archive,
 // or a source manifest describing files to fetch.
 // BuildGCSResource does incremental uploads for files in  directory.
-
 type BuildGCSResource struct {
 	Name         string
 	Type         PipelineResourceType
@@ -70,7 +69,7 @@ type BuildGCSResource struct {
 	BuildGCSFetcherImage string `json:"-"`
 }
 
-//  creates a new BuildGCS resource to pass to a Task
+// NewBuildGCSResource creates a new BuildGCS resource to pass to a Task.
 func NewBuildGCSResource(images pipeline.Images, r *PipelineResource) (*BuildGCSResource, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("BuildGCSResource: Cannot create a BuildGCS resource from a %s Pipeline Resource", r.Spec.Type)
