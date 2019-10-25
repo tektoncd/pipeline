@@ -28,11 +28,20 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
 func TestPipelineRunDelete(t *testing.T) {
 	clock := clockwork.NewFakeClock()
+
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
 
 	seeds := make([]pipelinetest.Clients, 0)
 	for i := 0; i < 3; i++ {
@@ -60,6 +69,7 @@ func TestPipelineRunDelete(t *testing.T) {
 					),
 				),
 			},
+			Namespaces: ns,
 		})
 		seeds = append(seeds, cs)
 	}
@@ -72,6 +82,14 @@ func TestPipelineRunDelete(t *testing.T) {
 		wantError   bool
 		want        string
 	}{
+		{
+			name:        "Invalid namespace",
+			command:     []string{"rm", "pipeline-run-1", "-n", "invalid"},
+			input:       seeds[0],
+			inputStream: nil,
+			wantError:   true,
+			want:        "namespaces \"invalid\" not found",
+		},
 		{
 			name:        "With force delete flag (shorthand)",
 			command:     []string{"rm", "pipeline-run-1", "-n", "ns", "-f"},
@@ -116,7 +134,7 @@ func TestPipelineRunDelete(t *testing.T) {
 
 	for _, tp := range testParams {
 		t.Run(tp.name, func(t *testing.T) {
-			p := &test.Params{Tekton: tp.input.Pipeline}
+			p := &test.Params{Tekton: tp.input.Pipeline, Kube: tp.input.Kube}
 			pipelinerun := Command(p)
 
 			if tp.inputStream != nil {
