@@ -26,12 +26,42 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
+func TestPipelineRunDescribe_invalid_namespace(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pipelinerun := Command(p)
+	_, err := test.ExecuteCommand(pipelinerun, "desc", "bar", "-n", "invalid")
+	if err == nil {
+		t.Errorf("Expected error for invalid namespace")
+	}
+	expected := "namespaces \"invalid\" not found"
+	test.AssertOutput(t, expected, err.Error())
+}
+
 func TestPipelineRunDescribe_not_found(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipelinerun := Command(p)
 	_, err := test.ExecuteCommand(pipelinerun, "desc", "bar", "-n", "ns")
@@ -78,9 +108,16 @@ func TestPipelineRunDescribe_only_taskrun(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	pipelinerun := Command(p)
 	clock.Advance(10 * time.Minute)
@@ -160,9 +197,16 @@ func TestPipelineRunDescribe_multiple_taskrun_ordering(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 	pipelinerun := Command(p)
 	clock.Advance(10 * time.Minute)
 	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
@@ -232,9 +276,16 @@ func TestPipelineRunDescribe_failed(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	pipelinerun := Command(p)
 	clock.Advance(10 * time.Minute)
@@ -303,9 +354,16 @@ func TestPipelineRunDescribe_failed_withoutTRCondition(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	pipelinerun := Command(p)
 	clock.Advance(10 * time.Minute)
@@ -369,9 +427,16 @@ func TestPipelineRunDescribe_failed_withoutPRCondition(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	pipelinerun := Command(p)
 	clock.Advance(10 * time.Minute)
@@ -444,9 +509,16 @@ func TestPipelineRunDescribe_with_resources_taskrun(t *testing.T) {
 				),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	pipelinerun := Command(p)
 	clock.Advance(10 * time.Minute)
@@ -492,9 +564,16 @@ func TestPipelineRunDescribe_without_start_time(t *testing.T) {
 				tb.PipelineRunStatus(),
 			),
 		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
 	})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	pipelinerun := Command(p)
 	clock.Advance(10 * time.Minute)
