@@ -124,20 +124,20 @@ or a [GCS storage bucket](https://cloud.google.com/storage/)
 The PVC option can be configured using a ConfigMap with the name
 `config-artifact-pvc` and the following attributes:
 
-- size: the size of the volume (5Gi by default)
-- storageClassName: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
+- `size`: the size of the volume (5Gi by default)
+- `storageClassName`: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
 
 The GCS storage bucket can be configured using a ConfigMap with the name
 `config-artifact-bucket` with the following attributes:
 
-- location: the address of the bucket (for example gs://mybucket)
+- `location`: the address of the bucket (for example gs://mybucket)
 - bucket.service.account.secret.name: the name of the secret that will contain
   the credentials for the service account with access to the bucket
-- bucket.service.account.secret.key: the key in the secret with the required
+- `bucket.service.account.secret.key`: the key in the secret with the required
   service account json.
 - The bucket is recommended to be configured with a retention policy after which
   files will be deleted.
-- bucket.service.account.field.name: the name of the environment variable to use when specifying the
+- `bucket.service.account.field.name`: the name of the environment variable to use when specifying the
   secret path. Defaults to `GOOGLE_APPLICATION_CREDENTIALS`. Set to `BOTO_CONFIG` if using S3 instead of GCS.
 
 Both options provide the same functionality to the pipeline. The choice is based

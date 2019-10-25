@@ -17,6 +17,14 @@ For example:
 
 -   [Syntax](#syntax)
 -   [Resource types](#resource-types)
+    -   [Git Resource](#git-resource)
+    -   [Pull Request Resource](#pull-request-resource)
+    -   [Image Resource](#image-resource)
+    -   [Cluster Resource](#cluster-resource)
+    -   [Storage Resource](#storage-resource)
+        -   [GCS Storage Resource](#gcs-storage-resource)
+        -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
+    -   [Cloud Event Resource](#cloud-event-resource)
 -   [Using Resources](#using-resources)
 
 ## Syntax
@@ -210,17 +218,6 @@ resourcesResult:
 ```
 
 ## Resource Types
-
-The following `PipelineResources` are currently supported:
-
--   [Git Resource](#git-resource)
--   [Pull Request Resource](#pull-request-resource)
--   [Image Resource](#image-resource)
--   [Cluster Resource](#cluster-resource)
--   [Storage Resource](#storage-resource)
-    -   [GCS Storage Resource](#gcs-storage-resource)
-    -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
--   [Cloud Event Resource](#cloud-event-resource)
 
 ### Git Resource
 
