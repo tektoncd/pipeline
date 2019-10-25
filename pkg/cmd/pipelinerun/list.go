@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/formatted"
 	prhsort "github.com/tektoncd/cli/pkg/helper/pipelinerun/sort"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	"github.com/tektoncd/cli/pkg/printer"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,6 +65,10 @@ tkn pr list -n foo
 
 			if len(args) > 0 {
 				pipeline = args[0]
+			}
+
+			if err := validate.NamespaceExists(p); err != nil {
+				return err
 			}
 
 			if opts.Limit < 0 {

@@ -29,6 +29,7 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -83,16 +84,33 @@ func TestListPipelineRuns(t *testing.T) {
 		),
 	}
 
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "namespace",
+			},
+		},
+	}
+
 	tests := []struct {
-		name     string
-		command  *cobra.Command
-		args     []string
-		expected []string
+		name      string
+		command   *cobra.Command
+		args      []string
+		wantError bool
+		expected  []string
 	}{
 		{
-			name:    "by pipeline name",
-			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "pipeline", "-n", "namespace"},
+			name:      "Invalid namespace",
+			command:   command(t, prs, clock.Now(), ns),
+			args:      []string{"list", "-n", "invalid"},
+			wantError: true,
+			expected:  []string{"Error: namespaces \"invalid\" not found\n"},
+		},
+		{
+			name:      "by pipeline name",
+			command:   command(t, prs, clock.Now(), ns),
+			args:      []string{"list", "pipeline", "-n", "namespace"},
+			wantError: false,
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS      ",
 				"pr1-1   59 minutes ago   1 minute   Succeeded   ",
@@ -100,9 +118,10 @@ func TestListPipelineRuns(t *testing.T) {
 			},
 		},
 		{
-			name:    "all in namespace",
-			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace"},
+			name:      "all in namespace",
+			command:   command(t, prs, clock.Now(), ns),
+			args:      []string{"list", "-n", "namespace"},
+			wantError: false,
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS               ",
 				"pr0-1   ---              ---        ---                  ",
@@ -114,9 +133,10 @@ func TestListPipelineRuns(t *testing.T) {
 			},
 		},
 		{
-			name:    "by template",
-			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
+			name:      "by template",
+			command:   command(t, prs, clock.Now(), ns),
+			args:      []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}"},
+			wantError: false,
 			expected: []string{
 				"pr0-1",
 				"pr3-1",
@@ -127,9 +147,10 @@ func TestListPipelineRuns(t *testing.T) {
 			},
 		},
 		{
-			name:    "limit pipelineruns returned to 1",
-			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", 1)},
+			name:      "limit pipelineruns returned to 1",
+			command:   command(t, prs, clock.Now(), ns),
+			args:      []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", 1)},
+			wantError: false,
 			expected: []string{
 				"NAME    STARTED   DURATION   STATUS   ",
 				"pr0-1   ---       ---        ---      ",
@@ -137,17 +158,19 @@ func TestListPipelineRuns(t *testing.T) {
 			},
 		},
 		{
-			name:    "limit pipelineruns negative case",
-			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", -1)},
+			name:      "limit pipelineruns negative case",
+			command:   command(t, prs, clock.Now(), ns),
+			args:      []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", -1)},
+			wantError: false,
 			expected: []string{
 				"",
 			},
 		},
 		{
-			name:    "limit pipelineruns greater than maximum case",
-			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", 7)},
+			name:      "limit pipelineruns greater than maximum case",
+			command:   command(t, prs, clock.Now(), ns),
+			args:      []string{"list", "-n", "namespace", "--limit", fmt.Sprintf("%d", 7)},
+			wantError: false,
 			expected: []string{
 				"NAME    STARTED          DURATION   STATUS               ",
 				"pr0-1   ---              ---        ---                  ",
@@ -159,9 +182,10 @@ func TestListPipelineRuns(t *testing.T) {
 			},
 		},
 		{
-			name:    "limit pipelineruns with output flag set",
-			command: command(t, prs, clock.Now()),
-			args:    []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "--limit", fmt.Sprintf("%d", 2)},
+			name:      "limit pipelineruns with output flag set",
+			command:   command(t, prs, clock.Now(), ns),
+			args:      []string{"list", "-n", "namespace", "-o", "jsonpath={range .items[*]}{.metadata.name}{\"\\n\"}{end}", "--limit", fmt.Sprintf("%d", 2)},
+			wantError: false,
 			expected: []string{
 				"pr0-1",
 				"pr3-1",
@@ -174,7 +198,7 @@ func TestListPipelineRuns(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			got, err := test.ExecuteCommand(td.command, td.args...)
 
-			if err != nil {
+			if !td.wantError && err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
 			test.AssertOutput(t, strings.Join(td.expected, "\n"), got)
@@ -183,26 +207,34 @@ func TestListPipelineRuns(t *testing.T) {
 }
 
 func TestListPipeline_empty(t *testing.T) {
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
-	p := &test.Params{Tekton: cs.Pipeline}
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pipeline := Command(p)
 	output, err := test.ExecuteCommand(pipeline, "list", "-n", "ns")
-
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
+
 	test.AssertOutput(t, emptyMsg+"\n", output)
 }
 
-func command(t *testing.T, prs []*v1alpha1.PipelineRun, now time.Time) *cobra.Command {
+func command(t *testing.T, prs []*v1alpha1.PipelineRun, now time.Time, ns []*corev1.Namespace) *cobra.Command {
 	// fake clock advanced by 1 hour
 	clock := clockwork.NewFakeClockAt(now)
 	clock.Advance(time.Duration(60) * time.Minute)
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Namespaces: ns})
 
-	p := &test.Params{Tekton: cs.Pipeline, Clock: clock}
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
 
 	return Command(p)
 }
