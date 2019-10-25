@@ -1,4 +1,6 @@
 run:
+  timeout: 20m
+
   build-tags:
   - e2e
   skip-dirs:
