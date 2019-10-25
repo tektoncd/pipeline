@@ -23,6 +23,7 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
@@ -35,7 +36,35 @@ var (
 	failure = apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}
 )
 
+func Test_cancel_invalid_namespace(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	prName := "test-pipeline-run-123"
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+
+	pRun := Command(p)
+	got, _ := tu.ExecuteCommand(pRun, "cancel", prName, "-n", "invalid")
+
+	expected := "Error: namespaces \"invalid\" not found\n"
+	tu.AssertOutput(t, expected, got)
+}
+
 func Test_cancel_pipelinerun(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
 
 	prName := "test-pipeline-run-123"
 
@@ -52,7 +81,7 @@ func Test_cancel_pipelinerun(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Namespaces: ns})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pRun := Command(p)
@@ -63,10 +92,17 @@ func Test_cancel_pipelinerun(t *testing.T) {
 }
 
 func Test_cancel_pipelinerun_not_found(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
 
 	prName := "test-pipeline-run-123"
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pRun := Command(p)
@@ -77,6 +113,13 @@ func Test_cancel_pipelinerun_not_found(t *testing.T) {
 }
 
 func Test_cancel_pipelinerun_client_err(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
 
 	prName := "test-pipeline-run-123"
 	errStr := "test generated error"
@@ -94,7 +137,7 @@ func Test_cancel_pipelinerun_client_err(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Namespaces: ns})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	cs.Pipeline.PrependReactor("update", "pipelineruns", func(action k8stest.Action) (bool, runtime.Object, error) {
@@ -109,6 +152,13 @@ func Test_cancel_pipelinerun_client_err(t *testing.T) {
 }
 
 func Test_finished_pipelinerun_success(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
 
 	prName := "test-pipeline-run-123"
 
@@ -128,7 +178,7 @@ func Test_finished_pipelinerun_success(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Namespaces: ns})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pRun := Command(p)
@@ -139,6 +189,13 @@ func Test_finished_pipelinerun_success(t *testing.T) {
 }
 
 func Test_finished_pipelinerun_failure(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
 
 	prName := "test-pipeline-run-123"
 
@@ -158,7 +215,7 @@ func Test_finished_pipelinerun_failure(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Namespaces: ns})
 	p := &tu.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	pRun := Command(p)
