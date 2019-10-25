@@ -278,6 +278,9 @@ func TestReconcile(t *testing.T) {
 	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task-78c5n"]; !exists {
 		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
 	}
+
+	// A PVC should have been created to deal with output -> input linking
+	ensurePVCCreated(t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
 }
 
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
@@ -1587,4 +1590,21 @@ func makeExpectedTr(condName, ccName string) *v1alpha1.TaskRun {
 			tb.TaskRunServiceAccountName("test-sa"),
 		),
 	)
+}
+
+func ensurePVCCreated(t *testing.T, clients test.Clients, name, namespace string) {
+	t.Helper()
+	_, err := clients.Kube.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Expected PVC %s to be created for VolumeResource but did not exist", name)
+	}
+	pvcCreated := false
+	for _, a := range clients.Kube.Actions() {
+		if a.GetVerb() == "create" && a.GetResource().Resource == "persistentvolumeclaims" {
+			pvcCreated = true
+		}
+	}
+	if !pvcCreated {
+		t.Errorf("Expected to see volume resource PVC created but didn't")
+	}
 }
