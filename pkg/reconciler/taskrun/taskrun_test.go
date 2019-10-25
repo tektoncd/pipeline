@@ -426,12 +426,12 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
 
-			if d := cmp.Diff(pod.ObjectMeta, tc.wantPod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
-				t.Errorf("Pod metadata doesn't match, diff: %s", d)
+			if d := cmp.Diff(tc.wantPod.ObjectMeta, pod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
+				t.Errorf("Pod metadata doesn't match (-want, +got): %s", d)
 			}
 
-			if d := cmp.Diff(pod.Spec, tc.wantPod.Spec, resourceQuantityCmp); d != "" {
-				t.Errorf("Pod spec doesn't match, diff: %s", d)
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
+				t.Errorf("Pod spec doesn't match, (-want, +got): %s", d)
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
@@ -1302,12 +1302,12 @@ func TestReconcile(t *testing.T) {
 				t.Fatalf("Failed to fetch build pod: %v", err)
 			}
 
-			if d := cmp.Diff(pod.ObjectMeta, tc.wantPod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
-				t.Errorf("Pod metadata doesn't match, diff: %s", d)
+			if d := cmp.Diff(tc.wantPod.ObjectMeta, pod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
+				t.Errorf("Pod metadata doesn't match (-want, +got): %s", d)
 			}
 
-			if d := cmp.Diff(pod.Spec, tc.wantPod.Spec, resourceQuantityCmp); d != "" {
-				t.Errorf("Pod spec doesn't match, diff: %s", d)
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
+				t.Errorf("Pod spec doesn't match (-want, +got): %s", d)
 			}
 			if len(clients.Kube.Actions()) == 0 {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
@@ -1394,10 +1394,10 @@ func TestReconcile_SortTaskRunStatusSteps(t *testing.T) {
 	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
-	verify_TaskRunStatusStep(t, taskRun)
+	verifyTaskRunStatusStep(t, taskRun)
 }
 
-func verify_TaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun) {
+func verifyTaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun) {
 	actualStepOrder := []string{}
 	for _, state := range taskRun.Status.Steps {
 		actualStepOrder = append(actualStepOrder, state.Name)
@@ -1408,8 +1408,8 @@ func verify_TaskRunStatusStep(t *testing.T, taskRun *v1alpha1.TaskRun) {
 	}
 	// Add a nop in the end. This may be removed in future.
 	expectedStepOrder = append(expectedStepOrder, "nop")
-	if d := cmp.Diff(actualStepOrder, expectedStepOrder); d != "" {
-		t.Errorf("The status steps in TaksRun doesn't match the spec steps in Task, diff: %s", d)
+	if d := cmp.Diff(expectedStepOrder, actualStepOrder); d != "" {
+		t.Errorf("The status steps in TaksRun doesn't match the spec steps in Task (-want, +got): %s", d)
 	}
 }
 
@@ -1573,13 +1573,13 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), &apis.Condition{
+	if d := cmp.Diff(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
 		Reason:  "Running",
 		Message: "Not all Steps in the Task have finished executing",
-	}, ignoreLastTransitionTime); d != "" {
-		t.Fatalf("-got, +want: %v", d)
+	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
+		t.Fatalf("Did not get expected condition (-want, +got): %v", d)
 	}
 
 	// update pod status and trigger reconcile : build is completed
@@ -1597,13 +1597,13 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unexpected error fetching taskrun: %v", err)
 	}
-	if d := cmp.Diff(newTr.Status.GetCondition(apis.ConditionSucceeded), &apis.Condition{
+	if d := cmp.Diff(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
 		Reason:  status.ReasonSucceeded,
 		Message: "All Steps have completed executing",
-	}, ignoreLastTransitionTime); d != "" {
-		t.Errorf("Taskrun Status diff -got, +want: %v", d)
+	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
+		t.Errorf("Did not get expected condition (-want, +got): %v", d)
 	}
 }
 
@@ -1665,7 +1665,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
 	}
 	if d := cmp.Diff(taskSt, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Fatalf("Did not get expected conditon (-want, +got): %v", d)
 	}
 }
 
@@ -1702,7 +1702,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
 	}
 	if d := cmp.Diff(expectedStatus, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
-		t.Fatalf("-want, +got: %v", d)
+		t.Fatalf("Did not get expected condition (-want, +got): %v", d)
 	}
 }
 
@@ -1784,7 +1784,7 @@ func TestReconcileTimeouts(t *testing.T) {
 		}
 		condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
 		if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
-			t.Fatalf("-want, +got: %v", d)
+			t.Fatalf("Did not get expected condition (-want, +got): %v", d)
 		}
 	}
 }
@@ -2080,8 +2080,8 @@ func TestUpdateTaskRunStatus_withValidJson(t *testing.T) {
 			if err := updateTaskRunStatusWithResourceResult(c.taskRun, c.podLog); err != nil {
 				t.Errorf("UpdateTaskRunStatusWithResourceResult failed with error: %s", err)
 			}
-			if d := cmp.Diff(c.taskRun.Status.ResourcesResult, c.want); d != "" {
-				t.Errorf("post build steps mismatch: %s", d)
+			if d := cmp.Diff(c.want, c.taskRun.Status.ResourcesResult); d != "" {
+				t.Errorf("post build steps mismatch (-want, +got): %s", d)
 			}
 		})
 	}
@@ -2145,8 +2145,8 @@ func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
 			if err := updateTaskRunStatusWithResourceResult(c.taskRun, c.podLog); err == nil {
 				t.Error("UpdateTaskRunStatusWithResourceResult expected to fail with error")
 			}
-			if d := cmp.Diff(c.taskRun.Status.ResourcesResult, c.want); d != "" {
-				t.Errorf("post build steps mismatch: %s", d)
+			if d := cmp.Diff(c.want, c.taskRun.Status.ResourcesResult); d != "" {
+				t.Errorf("post build steps mismatch (-want, +got): %s", d)
 			}
 		})
 	}

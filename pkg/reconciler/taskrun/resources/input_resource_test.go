@@ -968,8 +968,8 @@ func TestStorageInputResource(t *testing.T) {
 			if (err != nil) != c.wantErr {
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
-			if d := cmp.Diff(got, c.want); d != "" {
-				t.Errorf("Diff:\n%s", d)
+			if d := cmp.Diff(c.want, got); d != "" {
+				t.Errorf("Didn't get expected Task spec (-want, +got): %s", d)
 			}
 		})
 	}
@@ -1209,8 +1209,8 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 			if err != nil {
 				t.Errorf("Test: %q; AddInputResource() error = %v", c.desc, err)
 			}
-			if d := cmp.Diff(got, c.want); d != "" {
-				t.Errorf("Diff:\n%s", d)
+			if d := cmp.Diff(c.want, got); d != "" {
+				t.Errorf("Didn't get expected TaskSpec (-want, +got): %s", d)
 			}
 		})
 	}
