@@ -16,9 +16,7 @@ builds:
   - darwin
   - windows
   goarch:
-  - 386
   - amd64
-  - arm
   - arm64
   ldflags:
   - -w -X github.com/tektoncd/cli/pkg/cmd/version.clientVersion={{.Version}}
