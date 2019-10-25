@@ -79,6 +79,7 @@ func getClusterResource(namespace, name, sname string) *v1alpha1.PipelineResourc
 		tb.PipelineResourceSpecParam("Url", "https://1.1.1.1"),
 		tb.PipelineResourceSpecParam("username", "test-user"),
 		tb.PipelineResourceSpecParam("password", "test-password"),
+		tb.PipelineResourceSpecParam("authProvider", "foo"),
 		tb.PipelineResourceSpecSecretParam("cadata", sname, "cadatakey"),
 		tb.PipelineResourceSpecSecretParam("token", sname, "tokenkey"),
 	))
@@ -133,11 +134,12 @@ func getClusterConfigMap(namespace, name string) *corev1.ConfigMap {
 			Namespace: namespace,
 			Name:      name,
 		},
+		// The certificate-authority-data value is just 'ca-cert' base64 encoded.
 		Data: map[string]string{
 			"test.data": `apiVersion: v1
 clusters:
 - cluster:
-    certificate-authority-data: WTJFdFkyVnlkQW89
+    certificate-authority-data: Y2EtY2VydAo=
     server: https://1.1.1.1
   name: helloworld-cluster
 contexts:
@@ -151,6 +153,9 @@ preferences: {}
 users:
 - name: test-user
   user:
+    auth-provider:
+      config: null
+      name: foo
     token: dG9rZW4K
 `,
 		},

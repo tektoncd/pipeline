@@ -550,6 +550,8 @@ The Cluster resource has the following parameters:
     certificate.
 -   `cadata` (required): holds PEM-encoded bytes (typically read from a root
     certificates bundle).
+-   `authProvider`: specifies an optional kubectl auth provider to use. For more information, see:
+    [the kubectl docs](https://manpages.debian.org/unstable/kubernetes-client/kubectl-config-set-credentials.1.en.html).
 
 Note: Since only one authentication technique is allowed per user, either a
 `token` or a `password` should be provided, if both are provided, the `password`
@@ -641,7 +643,7 @@ spec:
 ```
 
 To use the `cluster` resource with Google Kubernetes Engine, you should use the `cadata` authentication
-mechanism.
+mechanism, and specify the "gcp" authProvider parameter.
 
 To determine the caData, you can use the following `gcloud` commands:
 
@@ -673,6 +675,8 @@ spec:
       value: https://<ip address determined above>
     - name: name
       value: mycluster
+    - name: authProvider
+      value: gcp
   secrets:
     - fieldName: cadata
       secretName: cluster-ca-data

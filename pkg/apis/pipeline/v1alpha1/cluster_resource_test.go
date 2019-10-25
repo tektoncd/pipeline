@@ -158,7 +158,7 @@ func Test_ClusterResource_GetInputTaskModifier(t *testing.T) {
 		Name:    "kubeconfig-9l9zj",
 		Image:   "override-with-kubeconfig-writer:latest",
 		Command: []string{"/ko-app/kubeconfigwriter"},
-		Args:    []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
+		Args:    []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","authProvider":"","token":"","Insecure":false,"cadata":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
 		Env: []corev1.EnvVar{{
 			Name: "CADATA",
 			ValueFrom: &corev1.EnvVarSource{

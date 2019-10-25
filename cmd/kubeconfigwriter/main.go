@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -57,7 +58,11 @@ func createKubeconfigFile(resource *v1alpha1.ClusterResource, logger *zap.Sugare
 		CertificateAuthorityData: resource.CAData,
 	}
 	if caFromEnv := os.Getenv("CADATA"); caFromEnv != "" {
-		cluster.CertificateAuthorityData = []byte(caFromEnv)
+		dec, err := base64.StdEncoding.DecodeString(caFromEnv)
+		if err != nil {
+			logger.Fatal("Error decoding cadata: %s", err)
+		}
+		cluster.CertificateAuthorityData = dec
 	}
 	if tokenFromEnv := os.Getenv("TOKEN"); tokenFromEnv != "" {
 		resource.Token = strings.TrimRight(tokenFromEnv, "\r\n")
@@ -80,6 +85,11 @@ func createKubeconfigFile(resource *v1alpha1.ClusterResource, logger *zap.Sugare
 		Username: user,
 		Password: pass,
 	}
+	if resource.AuthProvider != "" {
+		auth.AuthProvider = &clientcmdapi.AuthProviderConfig{
+			Name: resource.AuthProvider,
+		}
+	}
 	context := &clientcmdapi.Context{
 		Cluster:  resource.Name,
 		AuthInfo: resource.Username,
@@ -90,6 +100,7 @@ func createKubeconfigFile(resource *v1alpha1.ClusterResource, logger *zap.Sugare
 	c.Clusters[resource.Name] = cluster
 	c.AuthInfos[resource.Username] = auth
 	c.Contexts[resource.Name] = context
+
 	c.CurrentContext = resource.Name
 	c.APIVersion = "v1"
 	c.Kind = "Config"

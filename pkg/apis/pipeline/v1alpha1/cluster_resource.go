@@ -39,6 +39,8 @@ type ClusterResource struct {
 	Username  string `json:"username"`
 	Password  string `json:"password"`
 	Namespace string `json:"namespace"`
+	// AuthProvider corresponds to a custom kubectl auth provider
+	AuthProvider string `json:"authProvider"`
 	// Server requires Bearer authentication. This client will not attempt to use
 	// refresh tokens for an OAuth2 flow.
 	// Token overrides userame and password
@@ -79,6 +81,8 @@ func NewClusterResource(kubeconfigWriterImage string, r *PipelineResource) (*Clu
 			clusterResource.Password = param.Value
 		case strings.EqualFold(param.Name, "Token"):
 			clusterResource.Token = param.Value
+		case strings.EqualFold(param.Name, "AuthProvider"):
+			clusterResource.AuthProvider = param.Value
 		case strings.EqualFold(param.Name, "Insecure"):
 			b, _ := strconv.ParseBool(param.Value)
 			clusterResource.Insecure = b
