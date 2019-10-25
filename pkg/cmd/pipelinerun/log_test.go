@@ -31,13 +31,47 @@ import (
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	k8stest "k8s.io/client-go/testing"
 	"knative.dev/pkg/apis"
 )
 
+func TestLog_invalid_namespace(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	c := Command(p)
+
+	_, err := test.ExecuteCommand(c, "logs", "pipelinerun", "-n", "invalid")
+
+	if err == nil {
+		t.Errorf("Expecting error for invalid namespace")
+	}
+
+	expected := "namespaces \"invalid\" not found"
+	test.AssertOutput(t, expected, err.Error())
+}
+
 func TestLog_no_pipelinerun_argument(t *testing.T) {
-	c := Command(&test.Params{})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
+	c := Command(p)
 
 	_, err := test.ExecuteCommand(c, "logs", "-n", "ns")
 
@@ -58,7 +92,16 @@ func TestLog_run_not_found(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: pr})
+
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: pr, Namespaces: ns})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	c := Command(p)
@@ -90,6 +133,14 @@ func TestPipelinerunLogs(t *testing.T) {
 
 		nopStep = "nop"
 	)
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		},
+	}
 
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun(tr1Name, ns,
@@ -246,7 +297,7 @@ func TestPipelinerunLogs(t *testing.T) {
 
 	for _, s := range scenarios {
 		t.Run(s.name, func(t *testing.T) {
-			cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+			cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p, Namespaces: nsList})
 
 			prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogs), s.allSteps, false, s.tasks...)
 			output, _ := fetchLogs(prlo)
@@ -280,6 +331,14 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 
 		task4Name = "teardown"
 	)
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		},
+	}
 
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun(tr1Name, ns,
@@ -352,7 +411,7 @@ func TestPipelinerunLog_completed_taskrun_only(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p, Namespaces: nsList})
 	prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogStream), false, false)
 	output, _ := fetchLogs(prlo)
 
@@ -378,6 +437,14 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 		tr1Pod       = "output-task-pod-123456"
 		tr1Step1Name = "writefile-step"
 	)
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		},
+	}
 
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun(tr1Name, ns,
@@ -455,7 +522,7 @@ func TestPipelinerunLog_follow_mode(t *testing.T) {
 		),
 	)
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: pps, TaskRuns: trs, Pods: p, Namespaces: nsList})
 	prlo := logOpts(prName, ns, cs, fake.Streamer(fakeLogStream), false, true)
 	output, _ := fetchLogs(prlo)
 
@@ -479,6 +546,14 @@ func TestLogs_error_log(t *testing.T) {
 		taskName     = "errlogs-task"
 		errMsg       = "Pipeline tektoncd/errlog-pipeline can't be Run; it contains Tasks that don't exist: Couldn't retrieve Task errlog-tasks: task.tekton.dev errlog-tasks not found"
 	)
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		},
+	}
 
 	ts := []*v1alpha1.Task{
 		tb.Task(taskName, ns,
@@ -505,7 +580,7 @@ func TestLogs_error_log(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps, Tasks: ts})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps, Tasks: ts, Namespaces: nsList})
 	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
 	output, err := fetchLogs(prlo)
 	if err != nil {
@@ -521,6 +596,14 @@ func TestLogs_nologs(t *testing.T) {
 		ns           = "namespace"
 		taskName     = "nologs-task"
 	)
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		},
+	}
 
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun(prName, ns,
@@ -542,7 +625,7 @@ func TestLogs_nologs(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps, Namespaces: nsList})
 	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
 	output, err := fetchLogs(prlo)
 	if err != nil {
@@ -559,6 +642,14 @@ func TestLog_run_failed_with_and_without_follow(t *testing.T) {
 		taskName     = "fail-task"
 		failMessage  = "Failed because I wanted"
 	)
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		},
+	}
 
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun(prName, ns,
@@ -581,7 +672,7 @@ func TestLog_run_failed_with_and_without_follow(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps, Namespaces: nsList})
 
 	// follow mode disabled
 	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
@@ -607,6 +698,14 @@ func TestLog_pipeline_still_running(t *testing.T) {
 		ns           = "namespace"
 		taskName     = "inprogress-task"
 	)
+
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		},
+	}
 
 	initialPRs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun(prName, ns,
@@ -651,7 +750,7 @@ func TestLog_pipeline_still_running(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: initialPRs, Pipelines: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: initialPRs, Pipelines: ps, Namespaces: nsList})
 	watcher := watch.NewFake()
 	cs.Pipeline.PrependWatchReactor("pipelineruns", k8stest.DefaultWatchReactor(watcher, nil))
 	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)
@@ -674,6 +773,14 @@ func TestLog_pipeline_status_done(t *testing.T) {
 		taskName     = "done-task"
 	)
 
+	nsList := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: ns,
+			},
+		},
+	}
+
 	prs := []*v1alpha1.PipelineRun{
 		tb.PipelineRun(prName, ns,
 			tb.PipelineRunLabel("tekton.dev/pipeline", prName),
@@ -695,7 +802,7 @@ func TestLog_pipeline_status_done(t *testing.T) {
 			),
 		),
 	}
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps})
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{PipelineRuns: prs, Pipelines: ps, Namespaces: nsList})
 	watcher := watch.NewFake()
 	cs.Pipeline.PrependWatchReactor("pipelineruns", k8stest.DefaultWatchReactor(watcher, nil))
 	prlo := logOpts(prName, ns, cs, fake.Streamer([]fake.Log{}), false, false)

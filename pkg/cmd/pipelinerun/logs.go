@@ -21,6 +21,7 @@ import (
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/helper/pods"
 	"github.com/tektoncd/cli/pkg/helper/pods/stream"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 )
 
 type LogOptions struct {
@@ -59,11 +60,16 @@ func logCommand(p cli.Params) *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.PipelineRunName = args[0]
+
 			opts.Stream = &cli.Stream{
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
-			// opts.Streamer = pods.NewStream
+
+			if err := validate.NamespaceExists(p); err != nil {
+				return err
+			}
+
 			return opts.Run()
 		},
 	}
