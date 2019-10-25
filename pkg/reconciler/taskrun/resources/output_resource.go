@@ -108,7 +108,9 @@ func AddOutputResources(
 		if err != nil {
 			return nil, err
 		}
-		v1alpha1.ApplyTaskModifier(taskSpec, modifier)
+		if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+			return nil, xerrors.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
+		}
 
 		// Attach the PVC that will be used for `from` copying.
 		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
