@@ -55,16 +55,6 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			want: apis.ErrMissingField("username or CAData  or token param"),
 		},
 		{
-			name: "cluster with missing name",
-			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
-				v1alpha1.PipelineResourceTypeCluster,
-				tb.PipelineResourceSpecParam("url", "http://10.10.10.10"),
-				tb.PipelineResourceSpecParam("cadata", "bXktY2x1c3Rlci1jZXJ0Cg"),
-				tb.PipelineResourceSpecParam("token", "my-token"),
-			)),
-			want: apis.ErrMissingField("name param"),
-		},
-		{
 			name: "cluster with missing cadata",
 			res: tb.PipelineResource("test-cluster-resource", "foo", tb.PipelineResourceSpec(
 				v1alpha1.PipelineResourceTypeCluster,

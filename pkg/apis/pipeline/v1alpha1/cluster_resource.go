@@ -62,6 +62,7 @@ func NewClusterResource(kubeconfigWriterImage string, r *PipelineResource) (*Clu
 	clusterResource := ClusterResource{
 		Type:                  r.Spec.Type,
 		KubeconfigWriterImage: kubeconfigWriterImage,
+		Name:                  r.Name,
 	}
 	for _, param := range r.Spec.Params {
 		switch {

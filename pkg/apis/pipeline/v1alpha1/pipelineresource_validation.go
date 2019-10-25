@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
+	logging "knative.dev/pkg/logging"
 )
 
 var _ apis.Validatable = (*PipelineResource)(nil)
@@ -74,8 +75,9 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 			}
 		}
 
-		if !nameFound {
-			return apis.ErrMissingField("name param")
+		if nameFound {
+			logging.FromContext(ctx).Warn(
+				"The name parameter on the cluster resource is deprecated. Support will be removed in a future release")
 		}
 		// One auth method must be supplied
 		if !(authFound) {
