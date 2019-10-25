@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"golang.org/x/xerrors"
 	v1 "k8s.io/api/core/v1"
@@ -80,7 +81,7 @@ func (tm *InternalTaskModifier) GetStepsToPrepend() []Step {
 	return tm.StepsToPrepend
 }
 
-// GetStepsToPrepend returns a set of Steps to append to the Task.
+// GetStepsToAppend returns a set of Steps to append to the Task.
 func (tm *InternalTaskModifier) GetStepsToAppend() []Step {
 	return tm.StepsToAppend
 }
@@ -90,16 +91,55 @@ func (tm *InternalTaskModifier) GetVolumes() []v1.Volume {
 	return tm.Volumes
 }
 
+func checkStepNotAlreadyAdded(s Step, steps []Step) error {
+	for _, step := range steps {
+		if s.Name == step.Name {
+			return xerrors.Errorf("Step %s cannot be added again", step.Name)
+		}
+	}
+	return nil
+}
+
 // ApplyTaskModifier applies a modifier to the task by appending and prepending steps and volumes.
-func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) {
+// If steps with the same name exist in ts an error will be returned. If identical Volumes have
+// been added, they will not be added again. If Volumes with the same name but different contents
+// have been added, an error will be returned.
+func ApplyTaskModifier(ts *TaskSpec, tm TaskModifier) error {
 	steps := tm.GetStepsToPrepend()
+	for _, step := range steps {
+		if err := checkStepNotAlreadyAdded(step, ts.Steps); err != nil {
+			return err
+		}
+	}
 	ts.Steps = append(steps, ts.Steps...)
 
 	steps = tm.GetStepsToAppend()
+	for _, step := range steps {
+		if err := checkStepNotAlreadyAdded(step, ts.Steps); err != nil {
+			return err
+		}
+	}
 	ts.Steps = append(ts.Steps, steps...)
 
 	volumes := tm.GetVolumes()
-	ts.Volumes = append(ts.Volumes, volumes...)
+	for _, volume := range volumes {
+		var alreadyAdded bool
+		for _, v := range ts.Volumes {
+			if volume.Name == v.Name {
+				// If a Volume with the same name but different contents has already been added, we can't add both
+				if d := cmp.Diff(volume, v); d != "" {
+					return xerrors.Errorf("Tried to add volume %s already added but with different contents", volume.Name)
+				}
+				// If an identical Volume has already been added, don't add it again
+				alreadyAdded = true
+			}
+		}
+		if !alreadyAdded {
+			ts.Volumes = append(ts.Volumes, volume)
+		}
+	}
+
+	return nil
 }
 
 // SecretParam indicates which secret can be used to populate a field of the resource
