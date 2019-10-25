@@ -110,9 +110,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 		})
 	}
 
-	// convert param strings of type $(params.x) to $(inputs.params.x)
 	convertParamTemplates(&t.Steps[0], rcc.Condition.Spec.Params)
-	// convert resource strings of type $(resources.name.key) to $(inputs.resources.name.key)
 	err := ApplyResourceSubstitution(&t.Steps[0], rcc.ResolvedResources, rcc.Condition.Spec.Resources, rcc.images)
 
 	if err != nil {
@@ -122,7 +120,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	return t, nil
 }
 
-// Replaces all instances of $(params.x) in the container to $(inputs.params.x) for each param name
+// convertParamTemplates replaces all instances of $(params.x) in the container to $(inputs.params.x) for each param name.
 func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 	replacements := make(map[string]string)
 	for _, p := range params {
@@ -133,8 +131,7 @@ func convertParamTemplates(step *v1alpha1.Step, params []v1alpha1.ParamSpec) {
 	v1alpha1.ApplyStepReplacements(step, replacements, map[string][]string{})
 }
 
-// ApplyResources applies the substitution from values in resources which are referenced
-// in spec as subitems of the replacementStr.
+// ApplyResourceSubstitution applies resource attribute variable substitution.
 func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string]*v1alpha1.PipelineResource, conditionResources []v1alpha1.ResourceDeclaration, images pipeline.Images) error {
 	replacements := make(map[string]string)
 	for _, cr := range conditionResources {
@@ -153,7 +150,7 @@ func ApplyResourceSubstitution(step *v1alpha1.Step, resolvedResources map[string
 	return nil
 }
 
-// NewConditionCheck status creates a ConditionCheckStatus from a ConditionCheck
+// NewConditionCheckStatus creates a ConditionCheckStatus from a ConditionCheck
 func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1alpha1.ConditionCheckStatus {
 	var checkStep corev1.ContainerState
 	trs := rcc.ConditionCheck.Status
