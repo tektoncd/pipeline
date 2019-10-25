@@ -55,6 +55,7 @@ var (
 	args = flag.String("args", "", "space separated arguments for shell")
 )
 
+// nolint: gosec
 func main() {
 	flag.Parse()
 	logger, _ := logging.NewLogger("", "shell_command")
