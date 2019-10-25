@@ -14,4 +14,3 @@ linters:
   - goimports
   - gosec
   - gocritic
-  - unparam
