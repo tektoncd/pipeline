@@ -552,8 +552,6 @@ cluster. The kubeconfig will be placed in
 
 The Cluster resource has the following parameters:
 
--   `name` (required): The name to be given to the target cluster, will be used
-    in the kubeconfig and also as part of the path to the kubeconfig file
 -   `url` (required): Host url of the master node
 -   `username` (required): the user with access to the cluster
 -   `password`: to be used for clusters with basic auth
@@ -687,8 +685,6 @@ spec:
   params:
     - name: url
       value: https://<ip address determined above>
-    - name: name
-      value: mycluster
   secrets:
     - fieldName: cadata
       secretName: cluster-ca-data
