@@ -74,6 +74,17 @@ type PipelineRunSpec struct {
 
 	// PodTemplate holds pod specific configuration
 	PodTemplate PodTemplate `json:"podTemplate,omitempty"`
+
+	// ExpirationSecondsTTL limits the lifetime of a PipelineRun that has finished
+	// execution (either Succeeded or Failed). If this field is set,
+	// ExpirationSecondsTTL after the PipelineRun finishes, it is eligible to be
+	// automatically deleted. When the PipelineRun is being deleted, its lifecycle
+	// guarantees (e.g. finalizers) will be honored. If this field is unset,
+	// the PipelineRun won't be automatically deleted. If this field is set to zero,
+	// the PipelineRun becomes eligible to be deleted immediately after it finishes.
+	// This field is alpha-level.
+	// +optional
+	ExpirationSecondsTTL *metav1.Duration `json:"expirationSecondsTTL,omitempty"`
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide
