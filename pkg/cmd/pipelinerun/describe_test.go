@@ -601,3 +601,134 @@ No taskruns
 
 	test.AssertOutput(t, expected, actual)
 }
+
+func TestPipelineRunDescribe_without_pipelineref(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("pipeline-run", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunStatus(),
+			),
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
+
+	pipelinerun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:        pipeline-run
+Namespace:   ns
+
+Status
+STARTED   DURATION   STATUS
+---       ---        ---
+
+Resources
+No resources
+
+Params
+No params
+
+Taskruns
+No taskruns
+`
+
+	test.AssertOutput(t, expected, actual)
+}
+
+func TestPipelineRunDescribe_no_resourceref(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clock.Now().Add(2*time.Minute)),
+				cb.TaskRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		PipelineRuns: []*v1alpha1.PipelineRun{
+			tb.PipelineRun("pipeline-run", "ns",
+				cb.PipelineRunCreationTimestamp(clock.Now()),
+				tb.PipelineRunLabel("tekton.dev/pipeline", "pipeline"),
+				tb.PipelineRunSpec("pipeline",
+					tb.PipelineRunDeprecatedServiceAccountName("test-sa", "test-sa-deprecated"),
+					tb.PipelineRunParam("test-param", "param-value"),
+					tb.PipelineRunResourceBinding("test-resource"),
+				),
+				tb.PipelineRunStatus(
+					tb.PipelineRunTaskRunsStatus("tr-1", &v1alpha1.PipelineRunTaskRunStatus{
+						PipelineTaskName: "t-1",
+						Status:           &trs[0].Status,
+					}),
+					tb.PipelineRunStatusCondition(apis.Condition{
+						Status: corev1.ConditionTrue,
+						Reason: resources.ReasonSucceeded,
+					}),
+					tb.PipelineRunStartTime(clock.Now()),
+					cb.PipelineRunCompletionTime(clock.Now().Add(5*time.Minute)),
+				),
+			),
+		},
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
+
+	pipelinerun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(pipelinerun, "desc", "pipeline-run", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:                           pipeline-run
+Namespace:                      ns
+Pipeline Ref:                   pipeline
+Service Account (deprecated):   test-sa-deprecated
+Service Account:                test-sa
+
+Status
+STARTED          DURATION    STATUS
+10 minutes ago   5 minutes   Succeeded
+
+Resources
+NAME            RESOURCE REF
+test-resource   
+
+Params
+NAME         VALUE
+test-param   param-value
+
+Taskruns
+NAME   TASK NAME   STARTED         DURATION    STATUS
+tr-1   t-1         8 minutes ago   3 minutes   Succeeded
+`
+
+	test.AssertOutput(t, expected, actual)
+}

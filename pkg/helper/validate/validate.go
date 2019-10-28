@@ -17,8 +17,13 @@ package validate
 import (
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
+)
+
+const (
+	fieldNotPresent = ""
 )
 
 type params interface {
@@ -40,4 +45,14 @@ func NamespaceExists(p params) error {
 	}
 
 	return nil
+}
+
+// Check if TaskRef exists on a TaskRunSpec. Returns empty string if not present.
+func TaskRefExists(spec v1alpha1.TaskRunSpec) string {
+
+	if spec.TaskRef == nil {
+		return fieldNotPresent
+	}
+
+	return spec.TaskRef.Name
 }

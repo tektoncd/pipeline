@@ -32,7 +32,9 @@ import (
 
 const templ = `Name:	{{ .TaskRun.Name }}
 Namespace:	{{ .TaskRun.Namespace }}
-Task Ref:	{{ .TaskRun.Spec.TaskRef.Name }}
+{{- $tRefName := taskRefExists .TaskRun.Spec }}{{- if ne $tRefName "" }}
+Task Ref:    {{ $tRefName }}
+{{- end }}
 {{- if ne .TaskRun.Spec.DeprecatedServiceAccount "" }}
 Service Account (deprecated):	{{ .TaskRun.Spec.DeprecatedServiceAccount }}
 {{- end }}
@@ -158,6 +160,7 @@ func printTaskRunDescription(s *cli.Stream, trName string, p cli.Params) error {
 		"formatDuration":  formatted.Duration,
 		"formatCondition": formatted.Condition,
 		"hasFailed":       hasFailed,
+		"taskRefExists":   validate.TaskRefExists,
 	}
 
 	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)
