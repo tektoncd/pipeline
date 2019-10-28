@@ -91,7 +91,7 @@ func Test_start_invalid_namespace(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{})
 	c := Command(&test.Params{Tekton: cs.Pipeline, Kube: cs.Kube})
 
-	_, err := test.ExecuteCommand(c, "start", "task", "-n", "invalid")
+	_, err := test.ExecuteCommand(c, "start", "pipeline", "-n", "invalid")
 
 	if err == nil {
 		t.Error("Expected an error for invalid namespace")

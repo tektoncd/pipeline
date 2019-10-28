@@ -54,6 +54,10 @@ func NameArg(args []string, p cli.Params) error {
 		return errNoTask
 	}
 
+	if err := validate.NamespaceExists(p); err != nil {
+		return err
+	}
+
 	c, err := p.Clients()
 	if err != nil {
 		return err
@@ -98,10 +102,6 @@ like cat,foo,bar
 			opt.stream = &cli.Stream{
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
-			}
-
-			if err := validate.NamespaceExists(p); err != nil {
-				return err
 			}
 
 			return startTask(opt, args[0])
