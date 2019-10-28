@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-for-testing
+  name: config-for-testing-configmaps
 data:
   test.data: tasks are my jam
 ---
@@ -22,7 +22,7 @@ spec:
       - name: TEST_DATA
         valueFrom:
           configMapKeyRef:
-            name: config-for-testing
+            name: config-for-testing-configmaps
             key: test.data
       volumeMounts:
       - name: config-volume
@@ -30,4 +30,4 @@ spec:
     volumes:
     - name: config-volume
       configMap:
-        name: config-for-testing
+        name: config-for-testing-configmaps

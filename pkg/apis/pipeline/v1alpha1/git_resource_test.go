@@ -27,7 +27,7 @@ import (
 )
 
 func Test_Invalid_NewGitResource(t *testing.T) {
-	if _, err := v1alpha1.NewGitResource(tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGCS))); err == nil {
+	if _, err := v1alpha1.NewGitResource("override-with-git:latest", tb.PipelineResource("git-resource", "default", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGCS))); err == nil {
 		t.Error("Expected error creating Git resource")
 	}
 }
@@ -50,6 +50,7 @@ func Test_Valid_NewGitResource(t *testing.T) {
 			Type:     v1alpha1.PipelineResourceTypeGit,
 			URL:      "git@github.com:test/test.git",
 			Revision: "test",
+			GitImage: "override-with-git:latest",
 		},
 	}, {
 		desc: "Without Revision",
@@ -63,10 +64,11 @@ func Test_Valid_NewGitResource(t *testing.T) {
 			Type:     v1alpha1.PipelineResourceTypeGit,
 			URL:      "git@github.com:test/test.git",
 			Revision: "master",
+			GitImage: "override-with-git:latest",
 		},
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
-			got, err := v1alpha1.NewGitResource(tc.pipelineResource)
+			got, err := v1alpha1.NewGitResource("override-with-git:latest", tc.pipelineResource)
 			if err != nil {
 				t.Fatalf("Unexpected error creating Git resource: %s", err)
 			}
@@ -108,6 +110,7 @@ func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
 		Type:     v1alpha1.PipelineResourceTypeGit,
 		URL:      "git@github.com:test/test.git",
 		Revision: "master",
+		GitImage: "override-with-git:latest",
 	}
 
 	ts := v1alpha1.TaskSpec{}
@@ -129,6 +132,7 @@ func Test_GitResource_GetDownloadTaskModifier(t *testing.T) {
 			"/test/test",
 		},
 		WorkingDir: "/workspace",
+		Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "git-resource"}},
 	}}}
 
 	if diff := cmp.Diff(want, modifier.GetStepsToPrepend()); diff != "" {

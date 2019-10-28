@@ -112,8 +112,8 @@ func (client RegistriesClient) CheckNameAvailabilityPreparer(ctx context.Context
 // CheckNameAvailabilitySender sends the CheckNameAvailability request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) CheckNameAvailabilitySender(req *http.Request) (*http.Response, error) {
-	return autorest.SendWithSender(client, req,
-		azure.DoRetryWithRegistration(client.Client))
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
+	return autorest.SendWithSender(client, req, sd...)
 }
 
 // CheckNameAvailabilityResponder handles the response to the CheckNameAvailability request. The method always
@@ -202,9 +202,14 @@ func (client RegistriesClient) CreatePreparer(ctx context.Context, resourceGroup
 // CreateSender sends the Create request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) CreateSender(req *http.Request) (future RegistriesCreateFuture, err error) {
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
 	var resp *http.Response
+<<<<<<< HEAD
 	resp, err = autorest.SendWithSender(client, req,
 		azure.DoRetryWithRegistration(client.Client))
+=======
+	resp, err = autorest.SendWithSender(client, req, sd...)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 	if err != nil {
 		return
 	}
@@ -289,9 +294,14 @@ func (client RegistriesClient) DeletePreparer(ctx context.Context, resourceGroup
 // DeleteSender sends the Delete request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) DeleteSender(req *http.Request) (future RegistriesDeleteFuture, err error) {
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
 	var resp *http.Response
+<<<<<<< HEAD
 	resp, err = autorest.SendWithSender(client, req,
 		azure.DoRetryWithRegistration(client.Client))
+=======
+	resp, err = autorest.SendWithSender(client, req, sd...)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 	if err != nil {
 		return
 	}
@@ -381,8 +391,8 @@ func (client RegistriesClient) GetPreparer(ctx context.Context, resourceGroupNam
 // GetSender sends the Get request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) GetSender(req *http.Request) (*http.Response, error) {
-	return autorest.SendWithSender(client, req,
-		azure.DoRetryWithRegistration(client.Client))
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
+	return autorest.SendWithSender(client, req, sd...)
 }
 
 // GetResponder handles the response to the Get request. The method always
@@ -471,9 +481,14 @@ func (client RegistriesClient) ImportImagePreparer(ctx context.Context, resource
 // ImportImageSender sends the ImportImage request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) ImportImageSender(req *http.Request) (future RegistriesImportImageFuture, err error) {
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
 	var resp *http.Response
+<<<<<<< HEAD
 	resp, err = autorest.SendWithSender(client, req,
 		azure.DoRetryWithRegistration(client.Client))
+=======
+	resp, err = autorest.SendWithSender(client, req, sd...)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 	if err != nil {
 		return
 	}
@@ -549,8 +564,8 @@ func (client RegistriesClient) ListPreparer(ctx context.Context) (*http.Request,
 // ListSender sends the List request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) ListSender(req *http.Request) (*http.Response, error) {
-	return autorest.SendWithSender(client, req,
-		azure.DoRetryWithRegistration(client.Client))
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
+	return autorest.SendWithSender(client, req, sd...)
 }
 
 // ListResponder handles the response to the List request. The method always
@@ -668,8 +683,8 @@ func (client RegistriesClient) ListByResourceGroupPreparer(ctx context.Context, 
 // ListByResourceGroupSender sends the ListByResourceGroup request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) ListByResourceGroupSender(req *http.Request) (*http.Response, error) {
-	return autorest.SendWithSender(client, req,
-		azure.DoRetryWithRegistration(client.Client))
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
+	return autorest.SendWithSender(client, req, sd...)
 }
 
 // ListByResourceGroupResponder handles the response to the ListByResourceGroup request. The method always
@@ -792,8 +807,8 @@ func (client RegistriesClient) ListCredentialsPreparer(ctx context.Context, reso
 // ListCredentialsSender sends the ListCredentials request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) ListCredentialsSender(req *http.Request) (*http.Response, error) {
-	return autorest.SendWithSender(client, req,
-		azure.DoRetryWithRegistration(client.Client))
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
+	return autorest.SendWithSender(client, req, sd...)
 }
 
 // ListCredentialsResponder handles the response to the ListCredentials request. The method always
@@ -879,8 +894,8 @@ func (client RegistriesClient) ListPoliciesPreparer(ctx context.Context, resourc
 // ListPoliciesSender sends the ListPolicies request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) ListPoliciesSender(req *http.Request) (*http.Response, error) {
-	return autorest.SendWithSender(client, req,
-		azure.DoRetryWithRegistration(client.Client))
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
+	return autorest.SendWithSender(client, req, sd...)
 }
 
 // ListPoliciesResponder handles the response to the ListPolicies request. The method always
@@ -966,8 +981,8 @@ func (client RegistriesClient) ListUsagesPreparer(ctx context.Context, resourceG
 // ListUsagesSender sends the ListUsages request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) ListUsagesSender(req *http.Request) (*http.Response, error) {
-	return autorest.SendWithSender(client, req,
-		azure.DoRetryWithRegistration(client.Client))
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
+	return autorest.SendWithSender(client, req, sd...)
 }
 
 // ListUsagesResponder handles the response to the ListUsages request. The method always
@@ -1057,8 +1072,8 @@ func (client RegistriesClient) RegenerateCredentialPreparer(ctx context.Context,
 // RegenerateCredentialSender sends the RegenerateCredential request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) RegenerateCredentialSender(req *http.Request) (*http.Response, error) {
-	return autorest.SendWithSender(client, req,
-		azure.DoRetryWithRegistration(client.Client))
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
+	return autorest.SendWithSender(client, req, sd...)
 }
 
 // RegenerateCredentialResponder handles the response to the RegenerateCredential request. The method always
@@ -1141,9 +1156,14 @@ func (client RegistriesClient) UpdatePreparer(ctx context.Context, resourceGroup
 // UpdateSender sends the Update request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) UpdateSender(req *http.Request) (future RegistriesUpdateFuture, err error) {
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
 	var resp *http.Response
+<<<<<<< HEAD
 	resp, err = autorest.SendWithSender(client, req,
 		azure.DoRetryWithRegistration(client.Client))
+=======
+	resp, err = autorest.SendWithSender(client, req, sd...)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 	if err != nil {
 		return
 	}
@@ -1231,9 +1251,14 @@ func (client RegistriesClient) UpdatePoliciesPreparer(ctx context.Context, resou
 // UpdatePoliciesSender sends the UpdatePolicies request. The method will close the
 // http.Response Body if it receives an error.
 func (client RegistriesClient) UpdatePoliciesSender(req *http.Request) (future RegistriesUpdatePoliciesFuture, err error) {
+	sd := autorest.GetSendDecorators(req.Context(), azure.DoRetryWithRegistration(client.Client))
 	var resp *http.Response
+<<<<<<< HEAD
 	resp, err = autorest.SendWithSender(client, req,
 		azure.DoRetryWithRegistration(client.Client))
+=======
+	resp, err = autorest.SendWithSender(client, req, sd...)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 	if err != nil {
 		return
 	}

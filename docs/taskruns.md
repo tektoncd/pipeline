@@ -44,9 +44,10 @@ following fields:
       the [`Task`](tasks.md) you want to run
 - Optional:
 
-  - [`serviceAccount`](#service-account) - Specifies a `ServiceAccount` resource
+  - [`serviceAccountName`](#service-account) - Specifies a `ServiceAccount` resource
     object that enables your build to run with the defined authentication
-    information.
+    information. When a `ServiceAccount` isn't specified, the `default-service-account`
+    specified in the configmap - config-defaults will be applied.
   - [`inputs`] - Specifies [input parameters](#input-parameters) and
     [input resources](#providing-resources)
   - [`outputs`] - Specifies [output resources](#providing-resources)
@@ -158,12 +159,12 @@ default, if `default-timeout-minutes` is set to 0.
 ### Service Account
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Task` with the privileges of the specified
-service account. If no `serviceAccount` field is specified, your `Task` runs
-using the
+`serviceAccountName` field to run your `Task` with the privileges of the specified
+service account. If no `serviceAccountName` field is specified, your `Task` runs
+using the service account specified in the ConfigMap `configmap-defaults`
+which if absent will default to
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
-that is in the
-[namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+that is in the [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 of the `TaskRun` resource object.
 
 For examples and more information about specifying service accounts, see the
@@ -188,7 +189,10 @@ allows to customize some Pod specific field per `Task` execution, aka
 - `volumes`: list of volumes that can be mounted by containers
   belonging to the pod. This lets the user of a Task define which type
   of volume to use for a Task `volumeMount`
-  
+- `runtimeClassName`: the name of a
+  [runtime class](https://kubernetes.io/docs/concepts/containers/runtime-class/)
+  to use to run the pod.
+
 In the following example, the Task is defined with a `volumeMount`
 (`my-cache`), that is provided by the TaskRun, using a
 PersistenceVolumeClaim. The Pod will also run as a non-root user.
@@ -197,7 +201,7 @@ PersistenceVolumeClaim. The Pod will also run as a non-root user.
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: myTask
+  name: mytask
   namespace: default
 spec:
   steps:
@@ -212,11 +216,11 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
 metadata:
-  name: myTaskRun
+  name: mytaskRun
   namespace: default
 spec:
   taskRef:
-    name: myTask
+    name: mytask
   podTemplate:
     securityContext:
       runAsNonRoot: true
@@ -519,7 +523,7 @@ kind: TaskRun
 metadata:
   name: test-task-with-serviceaccount-git-ssh
 spec:
-  serviceAccount: test-task-robot-git-ssh
+  serviceAccountName: test-task-robot-git-ssh
   inputs:
     resources:
       - name: workspace
@@ -531,7 +535,7 @@ spec:
       args: ["-c", "cat README.md"]
 ```
 
-Where `serviceAccount: test-build-robot-git-ssh` references the following
+Where `serviceAccountName: test-build-robot-git-ssh` references the following
 `ServiceAccount`:
 
 ```yaml
@@ -563,8 +567,8 @@ data:
 ```
 
 Specifies the `name` of a `ServiceAccount` resource object. Use the
-`serviceAccount` field to run your `Task` with the privileges of the specified
-service account. If no `serviceAccount` field is specified, your `Task` runs
+`serviceAccountName` field to run your `Task` with the privileges of the specified
+service account. If no `serviceAccountName` field is specified, your `Task` runs
 using the
 [`default` service account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server)
 that is in the
@@ -589,6 +593,7 @@ order to terminate the sidecars they will be restarted with a new
 Pod will include the sidecar container with a Retry Count of 1 and
 with a different container image than you might be expecting.
 
+<<<<<<< HEAD
 ## Deleting completed TaskRun
 Deleting completed TaskRun automatically after *ExpirationSecondsTTL* time.
 
@@ -601,6 +606,13 @@ spec:
   # […]
   expirationSecondsTTL: 300
 ```
+=======
+Note: The configured "nop" image must not provide the command that the
+sidecar is expected to run. If it does provide the command then it will
+not exit. This will result in the sidecar running forever and the Task
+eventually timing out. https://github.com/tektoncd/pipeline/issues/1347
+is the issue where this bug is being tracked.
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 
 ---
 

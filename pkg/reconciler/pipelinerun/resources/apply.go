@@ -23,7 +23,7 @@ import (
 )
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
-func ApplyParameters(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) *v1alpha1.Pipeline {
+func ApplyParameters(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) *v1alpha1.PipelineSpec {
 	// This assumes that the PipelineRun inputs have been validated against what the Pipeline requests.
 
 	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
@@ -32,7 +32,7 @@ func ApplyParameters(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) *v1alpha1.P
 	arrayReplacements := map[string][]string{}
 
 	// Set all the default stringReplacements
-	for _, p := range p.Spec.Params {
+	for _, p := range p.Params {
 		if p.Default != nil {
 			if p.Default.Type == v1alpha1.ParamTypeString {
 				stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.StringVal
@@ -54,10 +54,10 @@ func ApplyParameters(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) *v1alpha1.P
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
-func ApplyReplacements(p *v1alpha1.Pipeline, replacements map[string]string, arrayReplacements map[string][]string) *v1alpha1.Pipeline {
+func ApplyReplacements(p *v1alpha1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string) *v1alpha1.PipelineSpec {
 	p = p.DeepCopy()
 
-	tasks := p.Spec.Tasks
+	tasks := p.Tasks
 
 	for i := range tasks {
 		tasks[i].Params = replaceParamValues(tasks[i].Params, replacements, arrayReplacements)

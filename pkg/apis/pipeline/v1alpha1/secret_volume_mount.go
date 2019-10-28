@@ -29,12 +29,16 @@ func getSecretEnvVarsAndVolumeMounts(name, mountPath string, secrets []SecretPar
 	var (
 		envVars           []corev1.EnvVar
 		secretVolumeMount []corev1.VolumeMount
-		authVar           bool
 	)
 
+	allowedFields := map[string]bool{
+		"GOOGLE_APPLICATION_CREDENTIALS": false,
+		"BOTO_CONFIG":                    false,
+	}
+
 	for _, secretParam := range secrets {
-		if secretParam.FieldName == "GOOGLE_APPLICATION_CREDENTIALS" && !authVar {
-			authVar = true
+		if authVar, ok := allowedFields[secretParam.FieldName]; ok && !authVar {
+			allowedFields[secretParam.FieldName] = true
 			mountPath := filepath.Join(mountPath, secretParam.SecretName)
 
 			envVars = append(envVars, corev1.EnvVar{

@@ -19,6 +19,7 @@ type RepositoriesService service
 
 // Repository represents a GitHub repository.
 type Repository struct {
+<<<<<<< HEAD
 	ID               *int64           `json:"id,omitempty"`
 	NodeID           *string          `json:"node_id,omitempty"`
 	Owner            *User            `json:"owner,omitempty"`
@@ -56,6 +57,48 @@ type Repository struct {
 	AllowSquashMerge *bool            `json:"allow_squash_merge,omitempty"`
 	AllowMergeCommit *bool            `json:"allow_merge_commit,omitempty"`
 	Topics           []string         `json:"topics,omitempty"`
+=======
+	ID                 *int64           `json:"id,omitempty"`
+	NodeID             *string          `json:"node_id,omitempty"`
+	Owner              *User            `json:"owner,omitempty"`
+	Name               *string          `json:"name,omitempty"`
+	FullName           *string          `json:"full_name,omitempty"`
+	Description        *string          `json:"description,omitempty"`
+	Homepage           *string          `json:"homepage,omitempty"`
+	CodeOfConduct      *CodeOfConduct   `json:"code_of_conduct,omitempty"`
+	DefaultBranch      *string          `json:"default_branch,omitempty"`
+	MasterBranch       *string          `json:"master_branch,omitempty"`
+	CreatedAt          *Timestamp       `json:"created_at,omitempty"`
+	PushedAt           *Timestamp       `json:"pushed_at,omitempty"`
+	UpdatedAt          *Timestamp       `json:"updated_at,omitempty"`
+	HTMLURL            *string          `json:"html_url,omitempty"`
+	CloneURL           *string          `json:"clone_url,omitempty"`
+	GitURL             *string          `json:"git_url,omitempty"`
+	MirrorURL          *string          `json:"mirror_url,omitempty"`
+	SSHURL             *string          `json:"ssh_url,omitempty"`
+	SVNURL             *string          `json:"svn_url,omitempty"`
+	Language           *string          `json:"language,omitempty"`
+	Fork               *bool            `json:"fork,omitempty"`
+	ForksCount         *int             `json:"forks_count,omitempty"`
+	NetworkCount       *int             `json:"network_count,omitempty"`
+	OpenIssuesCount    *int             `json:"open_issues_count,omitempty"`
+	StargazersCount    *int             `json:"stargazers_count,omitempty"`
+	SubscribersCount   *int             `json:"subscribers_count,omitempty"`
+	WatchersCount      *int             `json:"watchers_count,omitempty"`
+	Size               *int             `json:"size,omitempty"`
+	AutoInit           *bool            `json:"auto_init,omitempty"`
+	Parent             *Repository      `json:"parent,omitempty"`
+	Source             *Repository      `json:"source,omitempty"`
+	TemplateRepository *Repository      `json:"template_repository,omitempty"`
+	Organization       *Organization    `json:"organization,omitempty"`
+	Permissions        *map[string]bool `json:"permissions,omitempty"`
+	AllowRebaseMerge   *bool            `json:"allow_rebase_merge,omitempty"`
+	AllowSquashMerge   *bool            `json:"allow_squash_merge,omitempty"`
+	AllowMergeCommit   *bool            `json:"allow_merge_commit,omitempty"`
+	Topics             []string         `json:"topics,omitempty"`
+	Archived           *bool            `json:"archived,omitempty"`
+	Disabled           *bool            `json:"disabled,omitempty"`
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 
 	// Only provided when using RepositoriesService.Get while in preview
 	License *License `json:"license,omitempty"`
@@ -67,6 +110,7 @@ type Repository struct {
 	HasPages          *bool   `json:"has_pages,omitempty"`
 	HasProjects       *bool   `json:"has_projects,omitempty"`
 	HasDownloads      *bool   `json:"has_downloads,omitempty"`
+	IsTemplate        *bool   `json:"is_template,omitempty"`
 	LicenseTemplate   *string `json:"license_template,omitempty"`
 	GitignoreTemplate *string `json:"gitignore_template,omitempty"`
 	Archived          *bool   `json:"archived,omitempty"`
@@ -259,6 +303,37 @@ func (s *RepositoriesService) ListAll(ctx context.Context, opt *RepositoryListAl
 	return repos, resp, nil
 }
 
+<<<<<<< HEAD
+=======
+// createRepoRequest is a subset of Repository and is used internally
+// by Create to pass only the known fields for the endpoint.
+//
+// See https://github.com/google/go-github/issues/1014 for more
+// information.
+type createRepoRequest struct {
+	// Name is required when creating a repo.
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Homepage    *string `json:"homepage,omitempty"`
+
+	Private     *bool `json:"private,omitempty"`
+	HasIssues   *bool `json:"has_issues,omitempty"`
+	HasProjects *bool `json:"has_projects,omitempty"`
+	HasWiki     *bool `json:"has_wiki,omitempty"`
+	IsTemplate  *bool `json:"is_template,omitempty"`
+
+	// Creating an organization repository. Required for non-owners.
+	TeamID *int64 `json:"team_id,omitempty"`
+
+	AutoInit          *bool   `json:"auto_init,omitempty"`
+	GitignoreTemplate *string `json:"gitignore_template,omitempty"`
+	LicenseTemplate   *string `json:"license_template,omitempty"`
+	AllowSquashMerge  *bool   `json:"allow_squash_merge,omitempty"`
+	AllowMergeCommit  *bool   `json:"allow_merge_commit,omitempty"`
+	AllowRebaseMerge  *bool   `json:"allow_rebase_merge,omitempty"`
+}
+
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 // Create a new repository. If an organization is specified, the new
 // repository will be created under that org. If the empty string is
 // specified, it will be created for the authenticated user.
@@ -272,11 +347,65 @@ func (s *RepositoriesService) Create(ctx context.Context, org string, repo *Repo
 		u = "user/repos"
 	}
 
+<<<<<<< HEAD
 	req, err := s.client.NewRequest("POST", u, repo)
+=======
+	repoReq := &createRepoRequest{
+		Name:              repo.Name,
+		Description:       repo.Description,
+		Homepage:          repo.Homepage,
+		Private:           repo.Private,
+		HasIssues:         repo.HasIssues,
+		HasProjects:       repo.HasProjects,
+		HasWiki:           repo.HasWiki,
+		IsTemplate:        repo.IsTemplate,
+		TeamID:            repo.TeamID,
+		AutoInit:          repo.AutoInit,
+		GitignoreTemplate: repo.GitignoreTemplate,
+		LicenseTemplate:   repo.LicenseTemplate,
+		AllowSquashMerge:  repo.AllowSquashMerge,
+		AllowMergeCommit:  repo.AllowMergeCommit,
+		AllowRebaseMerge:  repo.AllowRebaseMerge,
+	}
+
+	req, err := s.client.NewRequest("POST", u, repoReq)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 	if err != nil {
 		return nil, nil, err
 	}
 
+	req.Header.Set("Accept", mediaTypeRepositoryTemplatePreview)
+	r := new(Repository)
+	resp, err := s.client.Do(ctx, req, r)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return r, resp, nil
+}
+
+// TemplateRepoRequest represents a request to create a repository from a template.
+type TemplateRepoRequest struct {
+	// Name is required when creating a repo.
+	Name        *string `json:"name,omitempty"`
+	Owner       *string `json:"owner,omitempty"`
+	Description *string `json:"description,omitempty"`
+
+	Private *bool `json:"private,omitempty"`
+}
+
+// CreateFromTemplate generates a repository from a template.
+//
+// GitHub API docs: https://developer.github.com/v3/repos/#create-repository-using-a-repository-template
+func (s *RepositoriesService) CreateFromTemplate(ctx context.Context, templateOwner, templateRepo string, templateRepoReq *TemplateRepoRequest) (*Repository, *Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/generate", templateOwner, templateRepo)
+
+	req, err := s.client.NewRequest("POST", u, templateRepoReq)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	req.Header.Set("Accept", mediaTypeRepositoryTemplatePreview)
 	r := new(Repository)
 	resp, err := s.client.Do(ctx, req, r)
 	if err != nil {
@@ -298,7 +427,7 @@ func (s *RepositoriesService) Get(ctx context.Context, owner, repo string) (*Rep
 
 	// TODO: remove custom Accept header when the license support fully launches
 	// https://developer.github.com/v3/licenses/#get-a-repositorys-license
-	acceptHeaders := []string{mediaTypeCodesOfConductPreview, mediaTypeTopicsPreview}
+	acceptHeaders := []string{mediaTypeCodesOfConductPreview, mediaTypeTopicsPreview, mediaTypeRepositoryTemplatePreview}
 	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
 
 	repository := new(Repository)
@@ -361,6 +490,7 @@ func (s *RepositoriesService) Edit(ctx context.Context, owner, repo string, repo
 		return nil, nil, err
 	}
 
+	req.Header.Set("Accept", mediaTypeRepositoryTemplatePreview)
 	r := new(Repository)
 	resp, err := s.client.Do(ctx, req, r)
 	if err != nil {
@@ -414,6 +544,77 @@ type ListContributorsOptions struct {
 	ListOptions
 }
 
+<<<<<<< HEAD
+=======
+// EnableVulnerabilityAlerts enables vulnerability alerts and the dependency graph for a repository.
+//
+// GitHub API docs: https://developer.github.com/v3/repos/#enable-vulnerability-alerts
+func (s *RepositoriesService) EnableVulnerabilityAlerts(ctx context.Context, owner, repository string) (*Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/vulnerability-alerts", owner, repository)
+
+	req, err := s.client.NewRequest("PUT", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: remove custom Accept header when this API fully launches
+	req.Header.Set("Accept", mediaTypeRequiredVulnerabilityAlertsPreview)
+
+	return s.client.Do(ctx, req, nil)
+}
+
+// DisableVulnerabilityAlerts disables vulnerability alerts and the dependency graph for a repository.
+//
+// GitHub API docs: https://developer.github.com/v3/repos/#disable-vulnerability-alerts
+func (s *RepositoriesService) DisableVulnerabilityAlerts(ctx context.Context, owner, repository string) (*Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/vulnerability-alerts", owner, repository)
+
+	req, err := s.client.NewRequest("DELETE", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: remove custom Accept header when this API fully launches
+	req.Header.Set("Accept", mediaTypeRequiredVulnerabilityAlertsPreview)
+
+	return s.client.Do(ctx, req, nil)
+}
+
+// EnableAutomatedSecurityFixes enables the automated security fixes for a repository.
+//
+// GitHub API docs: https://developer.github.com/v3/repos/#enable-automated-security-fixes
+func (s *RepositoriesService) EnableAutomatedSecurityFixes(ctx context.Context, owner, repository string) (*Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/automated-security-fixes", owner, repository)
+
+	req, err := s.client.NewRequest("PUT", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: remove custom Accept header when this API fully launches
+	req.Header.Set("Accept", mediaTypeRequiredAutomatedSecurityFixesPreview)
+
+	return s.client.Do(ctx, req, nil)
+}
+
+// DisableAutomatedSecurityFixes disables vulnerability alerts and the dependency graph for a repository.
+//
+// GitHub API docs: https://developer.github.com/v3/repos/#disable-automated-security-fixes
+func (s *RepositoriesService) DisableAutomatedSecurityFixes(ctx context.Context, owner, repository string) (*Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/automated-security-fixes", owner, repository)
+
+	req, err := s.client.NewRequest("DELETE", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: remove custom Accept header when this API fully launches
+	req.Header.Set("Accept", mediaTypeRequiredAutomatedSecurityFixesPreview)
+
+	return s.client.Do(ctx, req, nil)
+}
+
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 // ListContributors lists contributors for a repository.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/#list-contributors

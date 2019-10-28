@@ -22,6 +22,12 @@ const (
 	mfaSerialKey        = `mfa_serial`        // optional
 	roleSessionNameKey  = `role_session_name` // optional
 
+	// CSM options
+	csmEnabledKey  = `csm_enabled`
+	csmHostKey     = `csm_host`
+	csmPortKey     = `csm_port`
+	csmClientIDKey = `csm_client_id`
+
 	// Additional Config fields
 	regionKey = `region`
 
@@ -56,6 +62,7 @@ type sharedConfig struct {
 	CredentialSource     string
 	CredentialProcess    string
 	WebIdentityTokenFile string
+<<<<<<< HEAD
 
 	RoleARN         string
 	RoleSessionName string
@@ -65,6 +72,17 @@ type sharedConfig struct {
 	SourceProfileName string
 	SourceProfile     *sharedConfig
 
+=======
+
+	RoleARN         string
+	RoleSessionName string
+	ExternalID      string
+	MFASerial       string
+
+	SourceProfileName string
+	SourceProfile     *sharedConfig
+
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 	// Region is the region the SDK should use for looking up AWS service
 	// endpoints and signing requests.
 	//
@@ -76,6 +94,12 @@ type sharedConfig struct {
 	//
 	//	endpoint_discovery_enabled = true
 	EnableEndpointDiscovery *bool
+
+	// CSM Options
+	CSMEnabled  *bool
+	CSMHost     string
+	CSMPort     string
+	CSMClientID string
 }
 
 type sharedConfigFile struct {
@@ -232,6 +256,24 @@ func (cfg *sharedConfig) setFromIniFile(profile string, file sharedConfigFile, e
 		updateString(&cfg.RoleSessionName, section, roleSessionNameKey)
 		updateString(&cfg.SourceProfileName, section, sourceProfileKey)
 		updateString(&cfg.CredentialSource, section, credentialSourceKey)
+<<<<<<< HEAD
+
+		updateString(&cfg.Region, section, regionKey)
+	}
+
+	updateString(&cfg.CredentialProcess, section, credentialProcessKey)
+	updateString(&cfg.WebIdentityTokenFile, section, webIdentityTokenFileKey)
+
+	// Shared Credentials
+	creds := credentials.Value{
+		AccessKeyID:     section.String(accessKeyIDKey),
+		SecretAccessKey: section.String(secretAccessKey),
+		SessionToken:    section.String(sessionTokenKey),
+		ProviderName:    fmt.Sprintf("SharedConfigCredentials: %s", file.Filename),
+	}
+	if creds.HasKeys() {
+		cfg.Creds = creds
+=======
 
 		updateString(&cfg.Region, section, regionKey)
 	}
@@ -251,12 +293,115 @@ func (cfg *sharedConfig) setFromIniFile(profile string, file sharedConfigFile, e
 	}
 
 	// Endpoint discovery
-	if section.Has(enableEndpointDiscoveryKey) {
-		v := section.Bool(enableEndpointDiscoveryKey)
-		cfg.EnableEndpointDiscovery = &v
+	updateBoolPtr(&cfg.EnableEndpointDiscovery, section, enableEndpointDiscoveryKey)
+
+	// CSM options
+	updateBoolPtr(&cfg.CSMEnabled, section, csmEnabledKey)
+	updateString(&cfg.CSMHost, section, csmHostKey)
+	updateString(&cfg.CSMPort, section, csmPortKey)
+	updateString(&cfg.CSMClientID, section, csmClientIDKey)
+
+	return nil
+}
+
+func (cfg *sharedConfig) validateCredentialsRequireARN(profile string) error {
+	var credSource string
+
+	switch {
+	case len(cfg.SourceProfileName) != 0:
+		credSource = sourceProfileKey
+	case len(cfg.CredentialSource) != 0:
+		credSource = credentialSourceKey
+	case len(cfg.WebIdentityTokenFile) != 0:
+		credSource = webIdentityTokenFileKey
+	}
+
+	if len(credSource) != 0 && len(cfg.RoleARN) == 0 {
+		return CredentialRequiresARNError{
+			Type:    credSource,
+			Profile: profile,
+		}
 	}
 
 	return nil
+}
+
+func (cfg *sharedConfig) validateCredentialType() error {
+	// Only one or no credential type can be defined.
+	if !oneOrNone(
+		len(cfg.SourceProfileName) != 0,
+		len(cfg.CredentialSource) != 0,
+		len(cfg.CredentialProcess) != 0,
+		len(cfg.WebIdentityTokenFile) != 0,
+	) {
+		return ErrSharedConfigSourceCollision
+	}
+
+	return nil
+}
+
+func (cfg *sharedConfig) hasCredentials() bool {
+	switch {
+	case len(cfg.SourceProfileName) != 0:
+	case len(cfg.CredentialSource) != 0:
+	case len(cfg.CredentialProcess) != 0:
+	case len(cfg.WebIdentityTokenFile) != 0:
+	case cfg.Creds.HasKeys():
+	default:
+		return false
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
+	}
+
+	return true
+}
+
+func (cfg *sharedConfig) clearCredentialOptions() {
+	cfg.CredentialSource = ""
+	cfg.CredentialProcess = ""
+	cfg.WebIdentityTokenFile = ""
+	cfg.Creds = credentials.Value{}
+}
+
+func (cfg *sharedConfig) clearAssumeRoleOptions() {
+	cfg.RoleARN = ""
+	cfg.ExternalID = ""
+	cfg.MFASerial = ""
+	cfg.RoleSessionName = ""
+	cfg.SourceProfileName = ""
+}
+
+func oneOrNone(bs ...bool) bool {
+	var count int
+
+	for _, b := range bs {
+		if b {
+			count++
+			if count > 1 {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+// updateString will only update the dst with the value in the section key, key
+// is present in the section.
+func updateString(dst *string, section ini.Section, key string) {
+	if !section.Has(key) {
+		return
+	}
+	*dst = section.String(key)
+}
+
+// updateBoolPtr will only update the dst with the value in the section key,
+// key is present in the section.
+func updateBoolPtr(dst **bool, section ini.Section, key string) {
+	if !section.Has(key) {
+		return
+	}
+	*dst = new(bool)
+	**dst = section.Bool(key)
 }
 
 func (cfg *sharedConfig) validateCredentialsRequireARN(profile string) error {

@@ -10,12 +10,12 @@ import (
 // TODO(jasonhall): Test that original exit code is propagated and that
 // stdout/stderr are collected -- needs e2e tests.
 
-// RealRunner actually runs commands.
-type RealRunner struct{}
+// realRunner actually runs commands.
+type realRunner struct{}
 
-var _ entrypoint.Runner = (*RealRunner)(nil)
+var _ entrypoint.Runner = (*realRunner)(nil)
 
-func (*RealRunner) Run(args ...string) error {
+func (*realRunner) Run(args ...string) error {
 	if len(args) == 0 {
 		return nil
 	}

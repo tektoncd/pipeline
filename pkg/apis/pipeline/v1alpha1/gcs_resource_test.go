@@ -68,7 +68,7 @@ func Test_Invalid_NewStorageResource(t *testing.T) {
 		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := v1alpha1.NewStorageResource(tc.pipelineResource)
+			_, err := v1alpha1.NewStorageResource(images, tc.pipelineResource)
 			if err == nil {
 				t.Error("Expected error creating GCS resource")
 			}
@@ -94,9 +94,11 @@ func Test_Valid_NewGCSResource(t *testing.T) {
 			SecretKey:  "secretKey",
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 		}},
+		BashNoopImage: "override-with-bash-noop:latest",
+		GsutilImage:   "override-with-gsutil-image:latest",
 	}
 
-	gcsRes, err := v1alpha1.NewGCSResource(pr)
+	gcsRes, err := v1alpha1.NewGCSResource(images, pr)
 	if err != nil {
 		t.Fatalf("Unexpected error creating GCS resource: %s", err)
 	}
@@ -128,7 +130,7 @@ func Test_GetParams(t *testing.T) {
 		tb.PipelineResourceSpecParam("type", "gcs"),
 		tb.PipelineResourceSpecSecretParam("test-field-name", "test-secret-name", "test-secret-key"),
 	))
-	gcsResource, err := v1alpha1.NewStorageResource(pr)
+	gcsResource, err := v1alpha1.NewStorageResource(images, pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())
 	}
@@ -161,6 +163,8 @@ func Test_GetInputSteps(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
 			}},
+			BashNoopImage: "override-with-bash-noop:latest",
+			GsutilImage:   "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-9l9zj",
@@ -195,6 +199,8 @@ func Test_GetInputSteps(t *testing.T) {
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
+			BashNoopImage: "override-with-bash-noop:latest",
+			GsutilImage:   "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-mssqb",
@@ -248,6 +254,7 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
 			}},
+			GsutilImage: "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-9l9zj",
@@ -274,6 +281,7 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
+			GsutilImage: "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mz4c7",
@@ -291,9 +299,10 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 	}, {
 		name: "valid upload to protected buckets with single file",
 		gcsResource: &v1alpha1.GCSResource{
-			Name:     "gcs-valid",
-			Location: "gs://some-bucket",
-			TypeDir:  false,
+			Name:        "gcs-valid",
+			Location:    "gs://some-bucket",
+			TypeDir:     false,
+			GsutilImage: "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mssqb",

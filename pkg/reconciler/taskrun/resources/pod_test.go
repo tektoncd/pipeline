@@ -39,6 +39,8 @@ var (
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
+	credsImage    = "override-with-creds:latest"
+	bashNoopImage = "override-with-bash-noop:latest"
 )
 
 func TestTryGetPod(t *testing.T) {
@@ -115,6 +117,8 @@ func TestMakePod(t *testing.T) {
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
 	})
 
+	runtimeClassName := "gvisor"
+
 	randReader = strings.NewReader(strings.Repeat("a", 10000))
 	defer func() { randReader = rand.Reader }()
 
@@ -140,7 +144,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -172,14 +176,14 @@ func TestMakePod(t *testing.T) {
 			}}},
 		},
 		trs: v1alpha1.TaskRunSpec{
-			ServiceAccount: "service-account",
+			ServiceAccountName: "service-account",
 		},
 		want: &corev1.PodSpec{
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:    containerPrefix + credsInit + "-mz4c7",
-				Image:   *credsImage,
+				Image:   credsImage,
 				Command: []string{"/ko-app/creds-init"},
 				Args: []string{
 					"-basic-docker=multi-creds=https://docker.io",
@@ -208,6 +212,101 @@ func TestMakePod(t *testing.T) {
 			Volumes: implicitVolumesWithSecrets,
 		},
 	}, {
+		desc: "with-deprecated-service-account",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:  "name",
+				Image: "image",
+			}}},
+		},
+		trs: v1alpha1.TaskRunSpec{
+			DeprecatedServiceAccount: "service-account",
+		},
+		want: &corev1.PodSpec{
+			ServiceAccountName: "service-account",
+			RestartPolicy:      corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{{
+				Name:    containerPrefix + credsInit + "-mz4c7",
+				Image:   credsImage,
+				Command: []string{"/ko-app/creds-init"},
+				Args: []string{
+					"-basic-docker=multi-creds=https://docker.io",
+					"-basic-docker=multi-creds=https://us.gcr.io",
+					"-basic-git=multi-creds=github.com",
+					"-basic-git=multi-creds=gitlab.com",
+				},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMountsWithSecrets,
+				WorkingDir:   workspaceDir,
+			}},
+			Containers: []corev1.Container{{
+				Name:         "step-name",
+				Image:        "image",
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}},
+			Volumes: implicitVolumesWithSecrets,
+		},
+	}, {
+		desc: "with-pod-template",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:  "name",
+				Image: "image",
+			}}},
+		},
+		trs: v1alpha1.TaskRunSpec{
+			PodTemplate: v1alpha1.PodTemplate{
+				SecurityContext: &corev1.PodSecurityContext{
+					Sysctls: []corev1.Sysctl{
+						{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+					},
+				},
+				RuntimeClassName: &runtimeClassName,
+			},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{{
+				Name:         containerPrefix + credsInit + "-9l9zj",
+				Image:        credsImage,
+				Command:      []string{"/ko-app/creds-init"},
+				Args:         []string{},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+			}},
+			Containers: []corev1.Container{{
+				Name:         "step-name",
+				Image:        "image",
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}},
+			Volumes: implicitVolumes,
+			SecurityContext: &corev1.PodSecurityContext{
+				Sysctls: []corev1.Sysctl{
+					{Name: "net.ipv4.tcp_syncookies", Value: "1"},
+				},
+			},
+			RuntimeClassName: &runtimeClassName,
+		},
+	}, {
 		desc: "very-long-step-name",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -222,7 +321,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -260,7 +359,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -296,7 +395,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -304,7 +403,7 @@ func TestMakePod(t *testing.T) {
 				WorkingDir:   workspaceDir,
 			}, {
 				Name:         containerPrefix + workingDirInit + "-mz4c7",
-				Image:        *v1alpha1.BashNoopImage,
+				Image:        bashNoopImage,
 				Command:      []string{"/ko-app/bash"},
 				Args:         []string{"-args", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
 				Env:          implicitEnvVars,
@@ -328,7 +427,6 @@ func TestMakePod(t *testing.T) {
 			Volumes: implicitVolumes,
 		},
 	}, {
-
 		desc: "additional-sidecar-container",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
@@ -344,7 +442,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        *credsImage,
+				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
 				Env:          implicitEnvVars,
@@ -364,16 +462,100 @@ func TestMakePod(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-				{
-					Name:  "sidecar-name",
-					Image: "sidecar-image",
-					Resources: corev1.ResourceRequirements{
-						Requests: nil,
+			}, {
+				Name:  "sidecar-name",
+				Image: "sidecar-image",
+				Resources: corev1.ResourceRequirements{
+					Requests: nil,
+				},
+			}},
+			Volumes: implicitVolumes,
+		},
+	}, {
+		desc: "step with script",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Name:    "one",
+					Image:   "image",
+					Command: []string{"entrypointer"},
+					Args:    []string{"wait-file", "out-file", "-entrypoint", "image-entrypoint", "--"},
+				},
+				Script: "echo hello from step one",
+			}, {
+				Container: corev1.Container{
+					Name:         "two",
+					Image:        "image",
+					VolumeMounts: []corev1.VolumeMount{{Name: "i-have-a-volume-mount"}},
+					Command:      []string{"entrypointer"},
+					// args aren't valid, but just in case they end up here we'll replace them.
+					Args: []string{"wait-file", "out-file", "-entrypoint", "image-entrypoint", "--", "args", "somehow"},
+				},
+				Script: `#!/usr/bin/env python
+print("Hello from Python")`,
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{{
+				Name:         containerPrefix + credsInit + "-9l9zj",
+				Image:        credsImage,
+				Command:      []string{"/ko-app/creds-init"},
+				Args:         []string{},
+				Env:          implicitEnvVars,
+				VolumeMounts: implicitVolumeMounts,
+				WorkingDir:   workspaceDir,
+			}, {
+				Name:    "place-scripts-mz4c7",
+				Image:   images.BashNoopImage,
+				Command: []string{"/ko-app/bash"},
+				TTY:     true,
+				Args: []string{"-args", `tmpfile="/builder/scripts/script-0-mssqb"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
+echo hello from step one
+script-heredoc-randomly-generated-78c5n
+tmpfile="/builder/scripts/script-1-6nl7g"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-j2tds'
+#!/usr/bin/env python
+print("Hello from Python")
+script-heredoc-randomly-generated-j2tds
+`},
+				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+			}},
+			Containers: []corev1.Container{{
+				Name:         "step-one",
+				Image:        "image",
+				Command:      []string{"entrypointer"},
+				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-0-mssqb"},
+				Env:          implicitEnvVars,
+				VolumeMounts: append(implicitVolumeMounts, scriptsVolumeMount),
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
 					},
 				},
-			},
-			Volumes: implicitVolumes,
+			}, {
+				Name:         "step-two",
+				Image:        "image",
+				Command:      []string{"entrypointer"},
+				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-1-6nl7g"},
+				Env:          implicitEnvVars,
+				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}}, append(implicitVolumeMounts, scriptsVolumeMount)...),
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}},
+			Volumes: append(implicitVolumes, scriptsVolume),
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -407,7 +589,7 @@ func TestMakePod(t *testing.T) {
 				},
 				Spec: c.trs,
 			}
-			got, err := MakePod(tr, c.ts, cs)
+			got, err := MakePod(images, tr, c.ts, cs)
 			if err != c.wantErr {
 				t.Fatalf("MakePod: %v", err)
 			}
@@ -551,9 +733,11 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 	trs := v1alpha1.TaskRunSpec{
 		Outputs: v1alpha1.TaskRunOutputs{
 			Resources: []v1alpha1.TaskResourceBinding{{
-				Name: "outputimage",
-				ResourceRef: v1alpha1.PipelineResourceRef{
+				PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 					Name: "outputimage",
+					ResourceRef: v1alpha1.PipelineResourceRef{
+						Name: "outputimage",
+					},
 				},
 			}},
 		},
@@ -579,7 +763,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 		RestartPolicy: corev1.RestartPolicyNever,
 		InitContainers: []corev1.Container{{
 			Name:         containerPrefix + credsInit + "-9l9zj",
-			Image:        *credsImage,
+			Image:        credsImage,
 			Command:      []string{"/ko-app/creds-init"},
 			Args:         []string{},
 			Env:          implicitEnvVars,
@@ -638,7 +822,7 @@ func TestInitOutputResourcesDefaultDir(t *testing.T) {
 		},
 		Spec: trs,
 	}
-	got, err := MakePod(tr, ts, cs)
+	got, err := MakePod(images, tr, ts, cs)
 	if err != nil {
 		t.Fatalf("MakePod: %v", err)
 	}

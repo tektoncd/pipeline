@@ -73,19 +73,14 @@ required = [
   revision = "2032732871ff807958e045858b462d372eec9587"
 
 [[constraint]]
-  name = "github.com/tektoncd/plumbing"
-  # HEAD as of 2019-06-24
-  revision = "a51e87c5261fdb718470c077c155e070aca690a8"
-
-[[constraint]]
   name = "github.com/knative/test-infra"
   # HEAD as of 2019-06-25
   revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
 
 [[override]]
   name = "knative.dev/pkg"
-  # HEAD as of 2019-07-23 💖
-  revision = "e4bc08cc8deda3eac40a8d53984d09c9d0e1ad48"
+  # HEAD as of 2019-09-09 💖
+  revision = "528ad1c1dd627059b95aef17ccf27f9ab0f46c10"
 
 [[override]]
   name = "knative.dev/eventing-contrib"

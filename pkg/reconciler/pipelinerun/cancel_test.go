@@ -22,11 +22,11 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestCancelPipelineRun(t *testing.T) {
@@ -74,7 +74,7 @@ func TestCancelPipelineRun(t *testing.T) {
 				PipelineRuns: []*v1alpha1.PipelineRun{tc.pipelineRun},
 				TaskRuns:     tc.taskRuns,
 			}
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := ttesting.SetupFakeContext(t)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, _ := test.SeedTestData(t, ctx, d)

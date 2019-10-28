@@ -41,11 +41,12 @@ func TestNewClusterResource(t *testing.T) {
 			tb.PipelineResourceSpecParam("token", "my-token"),
 		)),
 		want: &v1alpha1.ClusterResource{
-			Name:   "test_cluster_resource",
-			Type:   v1alpha1.PipelineResourceTypeCluster,
-			URL:    "http://10.10.10.10",
-			CAData: []byte("my-cluster-cert"),
-			Token:  "my-token",
+			Name:                  "test_cluster_resource",
+			Type:                  v1alpha1.PipelineResourceTypeCluster,
+			URL:                   "http://10.10.10.10",
+			CAData:                []byte("my-cluster-cert"),
+			Token:                 "my-token",
+			KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		},
 	}, {
 		desc: "resource with password instead of token",
@@ -58,12 +59,13 @@ func TestNewClusterResource(t *testing.T) {
 			tb.PipelineResourceSpecParam("password", "pass"),
 		)),
 		want: &v1alpha1.ClusterResource{
-			Name:     "test_cluster_resource",
-			Type:     v1alpha1.PipelineResourceTypeCluster,
-			URL:      "http://10.10.10.10",
-			CAData:   []byte("my-cluster-cert"),
-			Username: "user",
-			Password: "pass",
+			Name:                  "test_cluster_resource",
+			Type:                  v1alpha1.PipelineResourceTypeCluster,
+			URL:                   "http://10.10.10.10",
+			CAData:                []byte("my-cluster-cert"),
+			Username:              "user",
+			Password:              "pass",
+			KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		},
 	}, {
 		desc: "set insecure flag to true when there is no cert",
@@ -74,11 +76,12 @@ func TestNewClusterResource(t *testing.T) {
 			tb.PipelineResourceSpecParam("token", "my-token"),
 		)),
 		want: &v1alpha1.ClusterResource{
-			Name:     "test.cluster.resource",
-			Type:     v1alpha1.PipelineResourceTypeCluster,
-			URL:      "http://10.10.10.10",
-			Token:    "my-token",
-			Insecure: true,
+			Name:                  "test.cluster.resource",
+			Type:                  v1alpha1.PipelineResourceTypeCluster,
+			URL:                   "http://10.10.10.10",
+			Token:                 "my-token",
+			Insecure:              true,
+			KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		},
 	}, {
 		desc: "basic cluster resource with namespace",
@@ -91,12 +94,13 @@ func TestNewClusterResource(t *testing.T) {
 			tb.PipelineResourceSpecParam("namespace", "my-namespace"),
 		)),
 		want: &v1alpha1.ClusterResource{
-			Name:      "test_cluster_resource",
-			Type:      v1alpha1.PipelineResourceTypeCluster,
-			URL:       "http://10.10.10.10",
-			CAData:    []byte("my-cluster-cert"),
-			Token:     "my-token",
-			Namespace: "my-namespace",
+			Name:                  "test_cluster_resource",
+			Type:                  v1alpha1.PipelineResourceTypeCluster,
+			URL:                   "http://10.10.10.10",
+			CAData:                []byte("my-cluster-cert"),
+			Token:                 "my-token",
+			Namespace:             "my-namespace",
+			KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		},
 	}, {
 		desc: "basic resource with secrets",
@@ -120,10 +124,11 @@ func TestNewClusterResource(t *testing.T) {
 				SecretKey:  "tokenkey",
 				SecretName: "secret1",
 			}},
+			KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			got, err := v1alpha1.NewClusterResource(c.resource)
+			got, err := v1alpha1.NewClusterResource("override-with-kubeconfig-writer:latest", c.resource)
 			if err != nil {
 				t.Errorf("Test: %q; TestNewClusterResource() error = %v", c.desc, err)
 			}
@@ -145,6 +150,7 @@ func Test_ClusterResource_GetInputTaskModifier(t *testing.T) {
 			SecretKey:  "cadatakey",
 			SecretName: "secret1",
 		}},
+		KubeconfigWriterImage: "override-with-kubeconfig-writer:latest",
 	}
 
 	ts := v1alpha1.TaskSpec{}

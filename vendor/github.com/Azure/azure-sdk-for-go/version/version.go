@@ -18,4 +18,8 @@ package version
 // Changes may cause incorrect behavior and will be lost if the code is regenerated.
 
 // Number contains the semantic version of this SDK.
+<<<<<<< HEAD
 const Number = "v28.1.0"
+=======
+const Number = "v33.2.0"
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae

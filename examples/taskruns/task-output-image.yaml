@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-image-leeroy-web
+  name: skaffold-image-leeroy-web-output-image
 spec:
   type: image
   params:
@@ -14,7 +14,7 @@ spec:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: default-cluster-admin
+  generateName: default-cluster-admin-
 subjects:
   - kind: ServiceAccount
     name: default
@@ -27,7 +27,7 @@ roleRef:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-output-image
 spec:
   type: git
   params:
@@ -36,7 +36,7 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-# This task is currently hardcoding a index.json file instead of 
+# This task is currently hardcoding a index.json file instead of
 # building an image since kaniko and other easy to use tools don't
 # support exporting this file yet
 apiVersion: tekton.dev/v1alpha1
@@ -95,9 +95,9 @@ spec:
     resources:
     - name: sourcerepo
       resourceRef:
-        name: skaffold-git
+        name: skaffold-git-output-image
   outputs:
     resources:
     - name: builtImage
       resourceRef:
-        name: skaffold-image-leeroy-web
+        name: skaffold-image-leeroy-web-output-image

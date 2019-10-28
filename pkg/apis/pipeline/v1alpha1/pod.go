@@ -45,4 +45,14 @@ type PodTemplate struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes
 	// +optional
 	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
+
+	// RuntimeClassName refers to a RuntimeClass object in the node.k8s.io
+	// group, which should be used to run this pod. If no RuntimeClass resource
+	// matches the named class, the pod will not be run. If unset or empty, the
+	// "legacy" RuntimeClass will be used, which is an implicit class with an
+	// empty definition that uses the default runtime handler.
+	// More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md
+	// This is a beta feature as of Kubernetes v1.14.
+	// +optional
+	RuntimeClassName *string `json:"runtimeClassName,omitempty" protobuf:"bytes,2,opt,name=runtimeClassName"`
 }

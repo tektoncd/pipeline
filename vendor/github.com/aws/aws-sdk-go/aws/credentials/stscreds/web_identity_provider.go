@@ -26,9 +26,13 @@ const (
 // now is used to return a time.Time object representing
 // the current time. This can be used to easily test and
 // compare test values.
+<<<<<<< HEAD
 var now = func() time.Time {
 	return time.Now()
 }
+=======
+var now = time.Now
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 
 // WebIdentityRoleProvider is used to retrieve credentials using
 // an OIDC token.
@@ -78,12 +82,23 @@ func (p *WebIdentityRoleProvider) Retrieve() (credentials.Value, error) {
 		// uses unix time in nanoseconds to uniquely identify sessions.
 		sessionName = strconv.FormatInt(now().UnixNano(), 10)
 	}
+<<<<<<< HEAD
 	resp, err := p.client.AssumeRoleWithWebIdentity(&sts.AssumeRoleWithWebIdentityInput{
+=======
+	req, resp := p.client.AssumeRoleWithWebIdentityRequest(&sts.AssumeRoleWithWebIdentityInput{
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 		RoleArn:          &p.roleARN,
 		RoleSessionName:  &sessionName,
 		WebIdentityToken: aws.String(string(b)),
 	})
+<<<<<<< HEAD
 	if err != nil {
+=======
+	// InvalidIdentityToken error is a temporary error that can occur
+	// when assuming an Role with a JWT web identity token.
+	req.RetryErrorCodes = append(req.RetryErrorCodes, sts.ErrCodeInvalidIdentityTokenException)
+	if err := req.Send(); err != nil {
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 		return credentials.Value{}, awserr.New(ErrCodeWebIdentity, "failed to retrieve credentials", err)
 	}
 

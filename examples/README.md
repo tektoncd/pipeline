@@ -5,6 +5,9 @@ This directory contains examples of [Tekton Pipelines](../README.md) in action.
 To deploy them to your cluster (after
 [installing the CRDs and running the controller](../DEVELOPMENT.md#getting-started)):
 
+Some examples have `metadata:generateName` instead of `metadata:name`.  These examples
+can not be executed by `kubectl apply`.  Please use `kubectl create` instead.
+
 In few examples to demonstrate tasks that push image to registry, sample URL
 `gcr.io/christiewilson-catfactory` is used. To run these examples yourself, you
 will need to change the values of this sample registry URL to a registry you can

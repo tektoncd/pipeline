@@ -51,11 +51,11 @@ To add the Tekton Pipelines component to an existing cluster:
    and its dependencies:
 
    ```bash
-   kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
+   kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
    ```
 
    _(Previous versions will be available at `previous/$VERSION_NUMBER`, e.g.
-   https://storage.googleapis.com/tekton-releases/previous/0.2.0/release.yaml.)_
+   https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml.)_
 
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
@@ -124,25 +124,46 @@ or a [GCS storage bucket](https://cloud.google.com/storage/)
 The PVC option can be configured using a ConfigMap with the name
 `config-artifact-pvc` and the following attributes:
 
-- size: the size of the volume (5Gi by default)
-- storageClassName: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
+- `size`: the size of the volume (5Gi by default)
+- `storageClassName`: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
 
 The GCS storage bucket can be configured using a ConfigMap with the name
 `config-artifact-bucket` with the following attributes:
 
-- location: the address of the bucket (for example gs://mybucket)
+- `location`: the address of the bucket (for example gs://mybucket)
 - bucket.service.account.secret.name: the name of the secret that will contain
   the credentials for the service account with access to the bucket
-- bucket.service.account.secret.key: the key in the secret with the required
+- `bucket.service.account.secret.key`: the key in the secret with the required
   service account json.
 - The bucket is recommended to be configured with a retention policy after which
   files will be deleted.
+- `bucket.service.account.field.name`: the name of the environment variable to use when specifying the
+  secret path. Defaults to `GOOGLE_APPLICATION_CREDENTIALS`. Set to `BOTO_CONFIG` if using S3 instead of GCS.
 
 Both options provide the same functionality to the pipeline. The choice is based
 on the infrastructure used, for example in some Kubernetes platforms, the
 creation of a persistent volume could be slower than uploading/downloading files
 to a bucket, or if the the cluster is running in multiple zones, the access to
 the persistent volume can fail.
+
+### Overriding  default ServiceAccount used for TaskRun and PipelineRun
+
+The ConfigMap `config-defaults` can be used to override default service account
+e.g. to override the default service account (`default`) to `tekton` apply the
+following
+
+```yaml
+
+### config-defaults.yaml
+apiVersion: v1
+kind: ConfigMap
+data:
+  default-service-account: "tekton"
+
+```
+
+*NOTE:* The `_example` key contains of the keys that can be overriden and their
+default values.
 
 ## Custom Releases
 

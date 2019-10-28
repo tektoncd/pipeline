@@ -18,6 +18,7 @@ entire Kubernetes cluster.
 - [ClusterTasks](#clustertask)
 - [Syntax](#syntax)
   - [Steps](#steps)
+    - [Step script](#step-script)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
   - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
@@ -26,6 +27,7 @@ entire Kubernetes cluster.
   - [Step Template](#step-template)
   - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
+- [Debugging Tips](#debugging)
 
 ## ClusterTask
 
@@ -129,7 +131,7 @@ The `steps` field is required. You define one or more `steps` fields to define
 the body of a `Task`.
 
 If multiple `steps` are defined, they will be executed in the same order as they
-are defined, if the `Task` is invoked by a [TaskRun](taskruns.md).
+are defined, if the `Task` is invoked by a [`TaskRun`](taskruns.md).
 
 Each `steps` in a `Task` must specify a container image that adheres to the
 [container contract](./container-contract.md). For each of the `steps` fields,
@@ -145,6 +147,67 @@ or container images that you define:
   will only request the resources necessary to execute any single container
   image in the Task, rather than requesting the sum of all of the container
   image's resource requests.
+
+#### Step Script
+
+To simplify executing scripts inside a container, a step can specify a `script`.
+If this field is present, the step cannot specify `command` or `args`.
+
+When specified, a `script` gets invoked as if it were the contents of a file in
+the container. Scripts should start with a
+[shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) line to declare what
+tool should be used to interpret the script. That tool must then also be
+available within the step's container.
+
+This allows you to execute a Bash script, if the image includes `bash`:
+
+```yaml
+steps:
+- image: ubuntu  # contains bash
+  script: |
+    #!/usr/bin/env bash
+    echo "Hello from Bash!"
+```
+
+...or to execute a Python script, if the image includes `python`:
+
+```yaml
+steps:
+- image: python  # contains python
+  script: |
+    #!/usr/bin/env python3
+    print("Hello from Python!")
+```
+
+...or to execute a Node script, if the image includes `node`:
+
+```yaml
+steps:
+- image: node  # contains node
+  script: |
+    #!/usr/bin/env node
+    console.log("Hello from Node!")
+```
+
+This also simplifies executing script files in the workspace:
+
+```yaml
+steps:
+- image: ubuntu
+  script: |
+    #!/usr/bin/env bash
+    /workspace/my-script.sh  # provided by an input resource
+```
+
+...or in the container image:
+
+```yaml
+steps:
+- image: my-image  # contains /bin/my-binary
+  script: |
+    #!/usr/bin/env bash
+    /bin/my-binary
+```
 
 ### Inputs
 
@@ -384,6 +447,14 @@ volumes:
     emptyDir: {}
 ```
 
+Note: There is a known bug with Tekton's existing sidecar implementation.
+Tekton uses a specific image, called "nop", to stop sidecars. The "nop" image
+is configurable using a flag of the Tekton controller. If the configured "nop"
+image contains the command that the sidecar was running before the sidecar
+was stopped then the sidecar will actually keep running, causing the TaskRun's
+Pod to remain running, and eventually causing the TaskRun to timeout rather
+then exit successfully. Issue https://github.com/tektoncd/pipeline/issues/1347
+has been created to track this bug.
 
 ### Variable Substitution
 
@@ -622,3 +693,46 @@ Except as otherwise noted, the content of this page is licensed under the
 [Creative Commons Attribution 4.0 License](https://creativecommons.org/licenses/by/4.0/),
 and code samples are licensed under the
 [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
+
+## Debugging a Task
+
+In software, we do things not because they are easy, but because we think they will be.
+Lots of things can go wrong when writing a Task.
+This section contains some tips on how to debug one.
+
+### Inspecting the Filesystem
+
+One common problem when writing Tasks is not understanding where files are on disk.
+For the most part, these all live somewhere under `/workspace`, but the exact layout can
+be tricky.
+To see where things are before your task runs, you can add a step like this:
+
+```yaml
+- name: build-and-push-1
+  image: ubuntu
+  command:
+  - /bin/bash
+  args:
+  - -c
+  - |
+    set -ex
+    find /workspace
+```
+
+This step will output the name of every file under /workspace to your build logs.
+
+To see the contents of every file, you can use a similar step:
+
+```yaml
+- name: build-and-push-1
+  image: ubuntu
+  command:
+  - /bin/bash
+  args:
+  - -c
+  - |
+    set -ex
+    find /workspace | xargs cat
+```
+
+These steps are useful both before and after your Task steps!

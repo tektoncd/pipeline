@@ -26,16 +26,21 @@ import (
 	"golang.org/x/xerrors"
 )
 
-func run(logger *zap.SugaredLogger, cmd string, args ...string) error {
-	c := exec.Command(cmd, args...)
+func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) {
+	c := exec.Command("git", args...)
 	var output bytes.Buffer
 	c.Stderr = &output
 	c.Stdout = &output
-	if err := c.Run(); err != nil {
-		logger.Errorf("Error running %v %v: %v\n%v", cmd, args, err, output.String())
-		return err
+	// This is the optional working directory. If not set, it defaults to the current
+	// working directory of the process.
+	if dir != "" {
+		c.Dir = dir
 	}
-	return nil
+	if err := c.Run(); err != nil {
+		logger.Errorf("Error running git %v: %v\n%v", args, err, output.String())
+		return "", err
+	}
+	return output.String(), nil
 }
 
 // Fetch fetches the specified git repository at the revision into path.
@@ -70,35 +75,39 @@ func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
 		revision = "master"
 	}
 	if path != "" {
-		if err := run(logger, "git", "init", path); err != nil {
+		if _, err := run(logger, "", "init", path); err != nil {
 			return err
 		}
 		if err := os.Chdir(path); err != nil {
 			return xerrors.Errorf("Failed to change directory with path %s; err: %w", path, err)
 		}
-	} else {
-		if err := run(logger, "git", "init"); err != nil {
-			return err
-		}
-	}
-	trimmedURL := strings.TrimSpace(url)
-	if err := run(logger, "git", "remote", "add", "origin", trimmedURL); err != nil {
+	} else if _, err := run(logger, "", "init"); err != nil {
 		return err
 	}
-	if err := run(logger, "git", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", revision); err != nil {
+	trimmedURL := strings.TrimSpace(url)
+	if _, err := run(logger, "", "remote", "add", "origin", trimmedURL); err != nil {
+		return err
+	}
+	if _, err := run(logger, "", "fetch", "--depth=1", "--recurse-submodules=yes", "origin", revision); err != nil {
 		// Fetch can fail if an old commitid was used so try git pull, performing regardless of error
 		// as no guarantee that the same error is returned by all git servers gitlab, github etc...
-		if err := run(logger, "git", "pull", "--recurse-submodules=yes", "origin"); err != nil {
+		if _, err := run(logger, "", "pull", "--recurse-submodules=yes", "origin"); err != nil {
 			logger.Warnf("Failed to pull origin : %s", err)
 		}
-		if err := run(logger, "git", "checkout", revision); err != nil {
+		if _, err := run(logger, "", "checkout", revision); err != nil {
 			return err
 		}
-	} else {
-		if err := run(logger, "git", "reset", "--hard", "FETCH_HEAD"); err != nil {
-			return err
-		}
+	} else if _, err := run(logger, "", "reset", "--hard", "FETCH_HEAD"); err != nil {
+		return err
 	}
 	logger.Infof("Successfully cloned %s @ %s in path %s", trimmedURL, revision, path)
 	return nil
+}
+
+func Commit(logger *zap.SugaredLogger, revision, path string) (string, error) {
+	output, err := run(logger, path, "rev-parse", "HEAD")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(output, "\n"), nil
 }

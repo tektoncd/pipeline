@@ -26,6 +26,7 @@ import (
 func TestNewDefaultsFromConfigMap(t *testing.T) {
 	expectedConfig := &Defaults{
 		DefaultTimeoutMinutes: 50,
+		DefaultServiceAccount: "tekton",
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigName, expectedConfig)
 }

@@ -66,13 +66,6 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
-	// check for results
-	if ts.Results != nil {
-		if err := ts.Results.Validate(ctx, "spec.results"); err != nil {
-			return err
-		}
-	}
-
 	if ts.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ts.Timeout.Duration < 0 {

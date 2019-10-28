@@ -183,5 +183,15 @@ begin.
 On completion of all steps in a Task the TaskRun reconciler stops any
 sidecar containers. The `Image` field of any sidecar containers is swapped
 to the nop image. Kubernetes observes the change and relaunches the container
-with updated container image. The nop container image exits. The container
-is considered `Terminated` by Kubernetes and the TaskRun's Pod stops.
+with updated container image. The nop container image exits immediately
+*because it does not provide the command that the sidecar is configured to run*.
+The container is considered `Terminated` by Kubernetes and the TaskRun's Pod
+stops.
+
+There is a known issue with this implementation of sidecar support. When the
+`nop` image does provide the sidecar's command, the sidecar will continue to
+run even after `nop` has been swapped into the sidecar container's image
+field. See https://github.com/tektoncd/pipeline/issues/1347 for the issue
+tracking this bug. Until this issue is resolved the best way to avoid it is to
+avoid overriding the `nop` image when deploying the tekton controller, or
+ensuring that the overridden `nop` image contains as few commands as possible.
