@@ -694,7 +694,7 @@ Except as otherwise noted, the content of this page is licensed under the
 and code samples are licensed under the
 [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0).
 
-## Debugging a Task
+## Debugging
 
 In software, we do things not because they are easy, but because we think they will be.
 Lots of things can go wrong when writing a Task.
@@ -736,3 +736,14 @@ To see the contents of every file, you can use a similar step:
 ```
 
 These steps are useful both before and after your Task steps!
+
+### Inspecting the pod
+
+One `task` will map to one `Pod`, to check arbitrary thing in `Pod`, the best way is to login the `pod`, add a step at the position you want to `pause` the task, then checking.
+
+```yaml
+- name: pause
+  image: docker
+  args: ["sleep", "6000"]
+
+```
