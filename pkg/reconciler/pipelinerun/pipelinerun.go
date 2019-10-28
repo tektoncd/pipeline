@@ -39,7 +39,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -102,6 +104,16 @@ type Reconciler struct {
 	configStore       configStore
 	timeoutHandler    *reconciler.TimeoutSet
 	metrics           *Recorder
+
+	// The clock for tracking time
+	clock clock.Clock
+
+	// PipelineRuns that the controller will check its TTL and attempt to delete when the TTL expires.
+	queue workqueue.RateLimitingInterface
+
+	// ListerSynced returns true if the TaskRun store has been synced at least once.
+	// Added as a member to the struct to allow injection for testing.
+	ListerSynced cache.InformerSynced
 }
 
 var (
@@ -214,7 +226,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		}(c.metrics)
 	}
 
-	return merr
+	return multierror.Append(merr, c.processPipelineRunExpired(namespace, name, pr))
 }
 
 func (c *Reconciler) getPipelineFunc(tr *v1alpha1.PipelineRun) resources.GetPipeline {
