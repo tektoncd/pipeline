@@ -64,26 +64,6 @@ spec:
       protocol: TCP
 ---
 apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: to-message-sink
-spec:
-  type: cloudEvent
-  params:
-  - name: targetURI
-    value: http://sink.default:8080
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: fake-image
-spec:
-  type: image
-  params:
-  - name: url
-    value: fake-registry/test/fake-image
----
-apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: send-cloud-event-task
@@ -153,7 +133,7 @@ spec:
           digest = taskrun['taskRun']['status']['resourcesResult'][0]['digest']
           image_name = taskrun['taskRun']['status']['resourcesResult'][0]['name']
           print("Got digest %s for image %s" % (digest, image_name))
-          if image_name == "fake-image" and digest:
+          if image_name == "myimage" and digest:
             break
           else:
             sys.exit(1)
@@ -169,11 +149,17 @@ spec:
   outputs:
     resources:
     - name: myimage
-      resourceRef:
-        name: fake-image
+      resourceSpec:
+        type: image
+        params:
+        - name: url
+          value: fake-registry/test/fake-image
     - name: notification
-      resourceRef:
-        name: to-message-sink
+      resourceSpec:
+        type: cloudEvent
+        params:
+        - name: targetURI
+          value: http://sink.default:8080
   taskRef:
     name: send-cloud-event-task
 ---
