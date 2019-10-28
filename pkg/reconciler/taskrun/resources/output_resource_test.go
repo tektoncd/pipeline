@@ -32,7 +32,7 @@ var (
 	outputResources map[string]v1alpha1.PipelineResourceInterface
 )
 
-func outputResourceSetup(t *testing.T) {
+func outputResourceSetup() {
 	logger, _ = logging.NewLogger("", "")
 
 	rs := []*v1alpha1.PipelineResource{{
@@ -93,7 +93,7 @@ func outputResourceSetup(t *testing.T) {
 
 	outputResources = make(map[string]v1alpha1.PipelineResourceInterface)
 	for _, r := range rs {
-		ri, _ := v1alpha1.ResourceFromType(r)
+		ri, _ := v1alpha1.ResourceFromType(r, images)
 		outputResources[r.Name] = ri
 	}
 }
@@ -121,17 +121,21 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
 						},
 						Paths: []string{"pipeline-task-name"},
 					}},
@@ -199,9 +203,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
 						},
 						Paths: []string{"pipeline-task-name"},
 					}},
@@ -262,9 +268,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
 						},
 						Paths: []string{"pipeline-task-name"},
 					}},
@@ -304,9 +312,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
 						},
 					}},
 				},
@@ -348,17 +358,21 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
 						},
 						Paths: []string{"pipeline-task-path"},
 					}},
@@ -445,9 +459,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
 						},
 						Paths: []string{"pipeline-task-path"},
 					}},
@@ -520,9 +536,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
 						},
 						Paths: []string{"pipeline-task-path"},
 					}},
@@ -581,9 +599,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
 						},
 					}},
 				},
@@ -645,9 +665,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
 						},
 					}},
 				},
@@ -689,9 +711,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
 						},
 					}},
 				},
@@ -729,9 +753,11 @@ func TestValidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-image",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
 						},
 					}},
 				},
@@ -761,16 +787,16 @@ func TestValidOutputResources(t *testing.T) {
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()
-			outputResourceSetup(t)
+			outputResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
+			got, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
 
 			if got != nil {
-				if d := cmp.Diff(got.Steps, c.wantSteps); d != "" {
-					t.Fatalf("post build steps mismatch: %s", d)
+				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
+					t.Fatalf("post build steps mismatch (-want, +got): %s", d)
 				}
 
 				if c.taskRun.GetPipelineRunPVCName() != "" {
@@ -786,8 +812,8 @@ func TestValidOutputResources(t *testing.T) {
 						},
 					)
 				}
-				if d := cmp.Diff(got.Volumes, c.wantVolumes); d != "" {
-					t.Fatalf("post build steps volumes mismatch: %s", d)
+				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
+					t.Fatalf("post build steps volumes mismatch (-want, +got): %s", d)
 				}
 			}
 		})
@@ -816,17 +842,21 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Inputs: v1alpha1.TaskRunInputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
 						},
 					}},
 				},
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
 						},
 						Paths: []string{"pipeline-task-name"},
 					}},
@@ -881,9 +911,11 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
 						},
 						Paths: []string{"pipeline-task-name"},
 					}},
@@ -927,9 +959,11 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-git",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-git",
+							},
 						},
 					}},
 				},
@@ -958,7 +992,7 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 		}}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
-			outputResourceSetup(t)
+			outputResourceSetup()
 			names.TestingSeed()
 			fakekubeclient := fakek8s.NewSimpleClientset(
 				&corev1.ConfigMap{
@@ -971,13 +1005,13 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 					},
 				},
 			)
-			got, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
+			got, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if err != nil {
 				t.Fatalf("Failed to declare output resources for test name %q ; test description %q: error %v", c.name, c.desc, err)
 			}
 			if got != nil {
-				if d := cmp.Diff(got.Steps, c.wantSteps); d != "" {
-					t.Fatalf("post build steps mismatch: %s", d)
+				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
+					t.Fatalf("post build steps mismatch (-want, got): %s", d)
 				}
 			}
 		})
@@ -1039,9 +1073,11 @@ func TestInvalidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "source-gcs",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "source-gcs",
+							},
 						},
 						Paths: []string{"test-path"},
 					}},
@@ -1087,9 +1123,11 @@ func TestInvalidOutputResources(t *testing.T) {
 			Spec: v1alpha1.TaskRunSpec{
 				Outputs: v1alpha1.TaskRunOutputs{
 					Resources: []v1alpha1.TaskResourceBinding{{
-						Name: "source-workspace",
-						ResourceRef: v1alpha1.PipelineResourceRef{
-							Name: "invalid-source-storage",
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: v1alpha1.PipelineResourceRef{
+								Name: "invalid-source-storage",
+							},
 						},
 					}},
 				},
@@ -1113,9 +1151,9 @@ func TestInvalidOutputResources(t *testing.T) {
 		wantErr: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			outputResourceSetup(t)
+			outputResourceSetup()
 			fakekubeclient := fakek8s.NewSimpleClientset()
-			_, err := AddOutputResources(fakekubeclient, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
+			_, err := AddOutputResources(fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, resolveOutputResources(c.taskRun), logger)
 			if (err != nil) != c.wantErr {
 				t.Fatalf("Test AddOutputResourceSteps %v : error%v", c.desc, err)
 			}
@@ -1136,7 +1174,7 @@ func resolveOutputResources(taskRun *v1alpha1.TaskRun) map[string]v1alpha1.Pipel
 					Name: r.Name,
 				},
 				Spec: *r.ResourceSpec,
-			})
+			}, images)
 			resolved[r.Name] = i
 		}
 	}

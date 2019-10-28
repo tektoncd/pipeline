@@ -22,15 +22,19 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-// GetOutputSteps will add the correct `path` to the input resources for pt
+// GetOutputSteps will add the correct `path` to the output resources for pt
 func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, storageBasePath string) []v1alpha1.TaskResourceBinding {
 	var taskOutputResources []v1alpha1.TaskResourceBinding
 
 	for name, outputResource := range outputs {
 		taskOutputResource := v1alpha1.TaskResourceBinding{
-			Name:  name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 			Paths: []string{filepath.Join(storageBasePath, taskName, name)},
 		}
+		// SelfLink is being checked there to determine if this PipelineResource is an instance that
+		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
 		if outputResource.SelfLink != "" {
 			taskOutputResource.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       outputResource.Name,
@@ -55,8 +59,12 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 
 	for name, inputResource := range inputs {
 		taskInputResource := v1alpha1.TaskResourceBinding{
-			Name: name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 		}
+		// SelfLink is being checked there to determine if this PipelineResource is an instance that
+		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
 		if inputResource.SelfLink != "" {
 			taskInputResource.ResourceRef = v1alpha1.PipelineResourceRef{
 				Name:       inputResource.Name,
@@ -70,6 +78,8 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 			}
 		}
 
+		// Determine if the value is meant to come `from` a previous Task - if so, add the path to the pvc
+		// that contains the data as the `path` the resulting TaskRun should get the data from.
 		var stepSourceNames []string
 		if pt.Resources != nil {
 			for _, pipelineTaskInput := range pt.Resources.Inputs {

@@ -7,12 +7,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 )
 
-// RealPostWriter actually writes files.
-type RealPostWriter struct{}
+// realPostWriter actually writes files.
+type realPostWriter struct{}
 
-var _ entrypoint.PostWriter = (*RealPostWriter)(nil)
+var _ entrypoint.PostWriter = (*realPostWriter)(nil)
 
-func (*RealPostWriter) Write(file string) {
+func (*realPostWriter) Write(file string) {
 	if file == "" {
 		return
 	}

@@ -192,6 +192,18 @@ func TestTaskSpecValidate(t *testing.T) {
 				Image: "some-image",
 			},
 		},
+	}, {
+		name: "valid step with script",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+				},
+				Script: `
+				#!/usr/bin/env bash
+				hello world`,
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -215,6 +227,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		Inputs  *v1alpha1.Inputs
 		Outputs *v1alpha1.Outputs
 		Steps   []v1alpha1.Step
+		Volumes []corev1.Volume
 	}
 	tests := []struct {
 		name          string
@@ -262,19 +275,17 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
-				Params: []v1alpha1.ParamSpec{
-					{
-						Name:        "validparam",
-						Type:        v1alpha1.ParamTypeString,
-						Description: "parameter",
-						Default:     builder.ArrayOrString("default"),
-					}, {
-						Name:        "param-with-invalid-type",
-						Type:        "invalidtype",
-						Description: "invalidtypedesc",
-						Default:     builder.ArrayOrString("default"),
-					},
-				},
+				Params: []v1alpha1.ParamSpec{{
+					Name:        "validparam",
+					Type:        v1alpha1.ParamTypeString,
+					Description: "parameter",
+					Default:     builder.ArrayOrString("default"),
+				}, {
+					Name:        "param-with-invalid-type",
+					Type:        "invalidtype",
+					Description: "invalidtypedesc",
+					Default:     builder.ArrayOrString("default"),
+				}},
 			},
 			Steps: validSteps,
 		},
@@ -287,14 +298,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
-				Params: []v1alpha1.ParamSpec{
-					{
-						Name:        "task",
-						Type:        v1alpha1.ParamTypeArray,
-						Description: "param",
-						Default:     builder.ArrayOrString("default"),
-					},
-				},
+				Params: []v1alpha1.ParamSpec{{
+					Name:        "task",
+					Type:        v1alpha1.ParamTypeArray,
+					Description: "param",
+					Default:     builder.ArrayOrString("default"),
+				}},
 			},
 			Steps: validSteps,
 		},
@@ -307,14 +316,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Inputs: &v1alpha1.Inputs{
 				Resources: []v1alpha1.TaskResource{validResource},
-				Params: []v1alpha1.ParamSpec{
-					{
-						Name:        "task",
-						Type:        v1alpha1.ParamTypeString,
-						Description: "param",
-						Default:     builder.ArrayOrString("default", "array"),
-					},
-				},
+				Params: []v1alpha1.ParamSpec{{
+					Name:        "task",
+					Type:        v1alpha1.ParamTypeString,
+					Description: "param",
+					Default:     builder.ArrayOrString("default", "array"),
+				}},
 			},
 			Steps: validSteps,
 		},
@@ -597,6 +604,64 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: `non-existent variable in "$(inputs.params.foo) && $(inputs.params.inexistent)" for step arg[0]`,
 			Paths:   []string{"taskspec.steps.arg[0]"},
 		},
+	}, {
+		name: "Multiple volumes with same name",
+		fields: fields{
+			Steps: validSteps,
+			Volumes: []corev1.Volume{{
+				Name: "workspace",
+			}, {
+				Name: "workspace",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `multiple volumes with same name "workspace"`,
+			Paths:   []string{"volumes.name"},
+		},
+	}, {
+		name: "step with script and args",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image: "myimage",
+					Args:  []string{"arg"},
+				},
+				Script: "script",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "script cannot be used with args or command",
+			Paths:   []string{"steps.script"},
+		},
+	}, {
+		name: "step with script without shebang",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+				},
+				Script: "does not begin with shebang",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "script must start with a shebang (#!)",
+			Paths:   []string{"steps.script"},
+		},
+	}, {
+		name: "step with script and command",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image:   "myimage",
+					Command: []string{"command"},
+				},
+				Script: "script",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "script cannot be used with args or command",
+			Paths:   []string{"steps.script"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -604,6 +669,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Inputs:  tt.fields.Inputs,
 				Outputs: tt.fields.Outputs,
 				Steps:   tt.fields.Steps,
+				Volumes: tt.fields.Volumes,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)

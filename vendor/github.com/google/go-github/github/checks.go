@@ -47,6 +47,7 @@ type CheckRunOutput struct {
 
 // CheckRunAnnotation represents an annotation object for a CheckRun output.
 type CheckRunAnnotation struct {
+<<<<<<< HEAD
 	FileName     *string `json:"filename,omitempty"`
 	BlobHRef     *string `json:"blob_href,omitempty"`
 	StartLine    *int    `json:"start_line,omitempty"`
@@ -55,6 +56,18 @@ type CheckRunAnnotation struct {
 	Message      *string `json:"message,omitempty"`
 	Title        *string `json:"title,omitempty"`
 	RawDetails   *string `json:"raw_details,omitempty"`
+=======
+	Path            *string `json:"path,omitempty"`
+	BlobHRef        *string `json:"blob_href,omitempty"`
+	StartLine       *int    `json:"start_line,omitempty"`
+	EndLine         *int    `json:"end_line,omitempty"`
+	StartColumn     *int    `json:"start_column,omitempty"`
+	EndColumn       *int    `json:"end_column,omitempty"`
+	AnnotationLevel *string `json:"annotation_level,omitempty"`
+	Message         *string `json:"message,omitempty"`
+	Title           *string `json:"title,omitempty"`
+	RawDetails      *string `json:"raw_details,omitempty"`
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 }
 
 // CheckRunImage represents an image object for a CheckRun output.

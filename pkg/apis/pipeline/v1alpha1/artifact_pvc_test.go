@@ -30,7 +30,8 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
 	pvc := v1alpha1.ArtifactPVC{
-		Name: "pipelinerun-pvc",
+		Name:          "pipelinerun-pvc",
+		BashNoopImage: "override-with-bash-noop:latest",
 	}
 	want := []v1alpha1.Step{{Container: corev1.Container{
 		Name:    "source-copy-workspace-9l9zj",
@@ -49,7 +50,8 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
 	pvc := v1alpha1.ArtifactPVC{
-		Name: "pipelinerun-pvc",
+		Name:          "pipelinerun-pvc",
+		BashNoopImage: "override-with-bash-noop:latest",
 	}
 	want := []v1alpha1.Step{{Container: corev1.Container{
 		Name:         "source-mkdir-workspace-9l9zj",
@@ -95,7 +97,7 @@ func TestPVCGetMakeStep(t *testing.T) {
 		Command: []string{"/ko-app/bash"},
 		Args:    []string{"-args", "mkdir -p /workspace/destination"},
 	}}
-	got := v1alpha1.CreateDirStep("workspace", "/workspace/destination")
+	got := v1alpha1.CreateDirStep("override-with-bash-noop:latest", "workspace", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", d)
 	}

@@ -1,0 +1,54 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: task-echo-message
+spec:
+  inputs:
+    params:
+      - name: MESSAGE
+        type: string
+        default: "Hello World"
+  steps:
+    - name: echo
+      image: ubuntu
+      command:
+        - echo
+      args:
+        - "$(inputs.params.MESSAGE)"
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-echo-greetings
+spec:
+  pipelineSpec:
+    params:
+      - name: MORNING_GREETINGS
+        description: "morning greetings, default is Good Morning!"
+        type: string
+        default: "Good Morning!"
+      - name: NIGHT_GREETINGS
+        description: "Night greetings, default is Good Night!"
+        type: string
+        default: "Good Night!"
+    tasks:
+      # Task to display morning greetings
+      - name: echo-good-morning
+        taskRef:
+          name: task-echo-message
+        params:
+          - name: MESSAGE
+            value: $(params.MORNING_GREETINGS)
+      # Task to display night greetings
+      - name: echo-good-night
+        taskRef:
+          name: task-echo-message
+        params:
+          - name: MESSAGE
+            value: $(params.NIGHT_GREETINGS)
+  params:
+    - name: MORNING_GREETINGS
+      value: "Good Morning, Bob!"
+    - name: NIGHT_GREETINGS
+      value: "Good Night, Bob!"

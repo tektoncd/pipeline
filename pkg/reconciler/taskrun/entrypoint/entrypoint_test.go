@@ -74,7 +74,7 @@ func TestRewriteSteps(t *testing.T) {
 		t.Errorf("failed to get resources: %v", err)
 	}
 	for _, input := range inputs {
-		if len(input.Command) == 0 || input.Command[0] != BinaryLocation {
+		if len(input.Command) == 0 || input.Command[0] != binaryLocation {
 			t.Errorf("command incorrectly set: %q", input.Command)
 		}
 		found := false
@@ -266,7 +266,7 @@ func TestGetRemoteEntrypoint(t *testing.T) {
 			Name:      "taskRun",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			ServiceAccount: "default",
+			ServiceAccountName: "default",
 			TaskSpec: &v1alpha1.TaskSpec{
 				Steps: []v1alpha1.Step{{Container: corev1.Container{
 					Image:   "ubuntu",
@@ -314,7 +314,7 @@ func TestGetRemoteEntrypointStale(t *testing.T) {
 			Name:      "taskRun",
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			ServiceAccount: "default",
+			ServiceAccountName: "default",
 		},
 	}
 	c := fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
@@ -391,38 +391,50 @@ func TestGetRemoteEntrypointWithNonDefaultSA(t *testing.T) {
 	image := path.Join(strings.TrimPrefix(server.URL, "http://"), expectedRepo)
 	finalDigest := image + "@" + digetsSha
 
-	entrypointCache, err := NewCache()
-	if err != nil {
-		t.Fatalf("couldn't create new entrypoint cache: %v", err)
-	}
-	taskRun := &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "foo",
-			Name:      "taskRun",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			ServiceAccount: "some-other-sa",
-			TaskSpec: &v1alpha1.TaskSpec{
-				Steps: []v1alpha1.Step{{Container: corev1.Container{
-					Image:   "ubuntu",
-					Command: []string{"echo"},
-					Args:    []string{"hello"},
-				}}},
-			},
-		},
-	}
 	c := fakekubeclientset.NewSimpleClientset(&corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "some-other-sa",
 			Namespace: "foo",
 		},
 	})
-	ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest, c, taskRun)
-	if err != nil {
-		t.Errorf("couldn't get entrypoint remote: %v", err)
-	}
-	if !reflect.DeepEqual(ep, expectedEntrypoint) {
-		t.Errorf("entrypoints do not match: %s should be %s", ep[0], expectedEntrypoint)
+
+	for _, tt := range []func(taskRun *v1alpha1.TaskRun) *v1alpha1.TaskRun{
+		func(tr *v1alpha1.TaskRun) *v1alpha1.TaskRun { return tr },
+		func(tr *v1alpha1.TaskRun) *v1alpha1.TaskRun {
+			tr.Spec.ServiceAccountName = ""
+			tr.Spec.DeprecatedServiceAccount = "some-other-sa"
+			return tr
+		},
+	} {
+		taskRun := &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "taskRun",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				ServiceAccountName: "some-other-sa",
+				TaskSpec: &v1alpha1.TaskSpec{
+					Steps: []v1alpha1.Step{{Container: corev1.Container{
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"hello"},
+					}}},
+				},
+			},
+		}
+
+		entrypointCache, err := NewCache()
+		if err != nil {
+			t.Fatalf("couldn't create new entrypoint cache: %v", err)
+		}
+
+		ep, err := GetRemoteEntrypoint(entrypointCache, finalDigest, c, tt(taskRun))
+		if err != nil {
+			t.Errorf("couldn't get entrypoint remote: %v", err)
+		}
+		if !reflect.DeepEqual(ep, expectedEntrypoint) {
+			t.Errorf("entrypoints do not match: %s should be %s", ep[0], expectedEntrypoint)
+		}
 	}
 }
 
@@ -461,7 +473,7 @@ func TestAddCopyStep(t *testing.T) {
 	}
 
 	expectedSteps := len(ts.Steps) + 1
-	AddCopyStep(ts)
+	AddCopyStep("override-with-entrypoint:latest", ts)
 	if len(ts.Steps) != 3 {
 		t.Errorf("BuildSpec has the wrong step count: %d should be %d", len(ts.Steps), expectedSteps)
 	}

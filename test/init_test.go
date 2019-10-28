@@ -145,7 +145,7 @@ func TestMain(m *testing.M) {
 
 func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 	var output []byte
-	printOrAdd := func(kind, name string, i interface{}) {
+	printOrAdd := func(i interface{}) {
 		bs, err := yaml.Marshal(i)
 		if err != nil {
 			return
@@ -159,7 +159,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		return nil, xerrors.Errorf("could not get pipeline: %w", err)
 	}
 	for _, i := range ps.Items {
-		printOrAdd("Pipeline", i.Name, i)
+		printOrAdd(i)
 	}
 
 	prs, err := cs.PipelineResourceClient.List(metav1.ListOptions{})
@@ -167,7 +167,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		return nil, xerrors.Errorf("could not get pipelinerun resource: %w", err)
 	}
 	for _, i := range prs.Items {
-		printOrAdd("PipelineResource", i.Name, i)
+		printOrAdd(i)
 	}
 
 	prrs, err := cs.PipelineRunClient.List(metav1.ListOptions{})
@@ -175,7 +175,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		return nil, xerrors.Errorf("could not get pipelinerun: %w", err)
 	}
 	for _, i := range prrs.Items {
-		printOrAdd("PipelineRun", i.Name, i)
+		printOrAdd(i)
 	}
 
 	ts, err := cs.TaskClient.List(metav1.ListOptions{})
@@ -183,14 +183,14 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		return nil, xerrors.Errorf("could not get tasks: %w", err)
 	}
 	for _, i := range ts.Items {
-		printOrAdd("Task", i.Name, i)
+		printOrAdd(i)
 	}
 	trs, err := cs.TaskRunClient.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, xerrors.Errorf("could not get taskrun: %w", err)
 	}
 	for _, i := range trs.Items {
-		printOrAdd("TaskRun", i.Name, i)
+		printOrAdd(i)
 	}
 
 	pods, err := cs.KubeClient.Kube.CoreV1().Pods(ns).List(metav1.ListOptions{})
@@ -198,7 +198,7 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		return nil, xerrors.Errorf("could not get pods: %w", err)
 	}
 	for _, i := range pods.Items {
-		printOrAdd("Pod", i.Name, i)
+		printOrAdd(i)
 	}
 
 	return output, nil

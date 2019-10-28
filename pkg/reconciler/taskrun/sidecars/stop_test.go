@@ -24,6 +24,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var (
+	nopImage = "nopImage"
+)
+
 // TestStop exercises the Stop() method of the sidecars package.
 // A sidecar is killed by having its container image changed to that of the nop image.
 // This test therefore runs through a series of pod and sidecar configurations,
@@ -47,7 +51,7 @@ func TestStop(t *testing.T) {
 		sidecarState: corev1.ContainerState{
 			Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now())},
 		},
-		expectedImage: *nopImage,
+		expectedImage: nopImage,
 	}, {
 		description: "a pending pod should not have its sidecars stopped",
 		podPhase:    corev1.PodPending,
@@ -106,7 +110,7 @@ func TestStop(t *testing.T) {
 				},
 			}
 			updatePod := func(p *corev1.Pod) (*corev1.Pod, error) { return nil, nil }
-			if err := Stop(pod, updatePod); err != nil {
+			if err := Stop(pod, nopImage, updatePod); err != nil {
 				t.Errorf("error stopping sidecar: %v", err)
 			}
 			sidecarIdx := len(pod.Spec.Containers) - 1

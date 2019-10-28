@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: config-for-testing
+  name: config-for-testing-volume-args
 data:
   test.data: tasks are my jam
 ---
@@ -15,6 +15,7 @@ spec:
       params:
       - name: CFGNAME
         description: Name of config map
+        type: string
     steps:
     - name: read
       image: ubuntu
@@ -30,4 +31,4 @@ spec:
   inputs:
     params:
     - name: CFGNAME
-      value: config-for-testing
+      value: config-for-testing-volume-args

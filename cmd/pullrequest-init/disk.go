@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"io/ioutil"
 	"net/url"
@@ -39,6 +40,10 @@ import (
 // /workspace/<resource>/base.json
 
 // Filenames for labels and statuses are URL encoded for safety.
+
+const (
+	manifestPath = ".MANIFEST"
+)
 
 // ToDisk converts a PullRequest object to an on-disk representation at the specified path.
 func ToDisk(pr *PullRequest, path string) error {
@@ -80,28 +85,38 @@ func ToDisk(pr *PullRequest, path string) error {
 }
 
 func commentsToDisk(path string, comments []*Comment) error {
+	manifest := Manifest{}
 	for _, c := range comments {
-		commentPath := filepath.Join(path, strconv.FormatInt(c.ID, 10)+".json")
+		id := strconv.FormatInt(c.ID, 10)
+		commentPath := filepath.Join(path, id+".json")
 		b, err := json.Marshal(c)
 		if err != nil {
 			return err
 		}
-		if err := ioutil.WriteFile(commentPath, b, 0700); err != nil {
+		if err := ioutil.WriteFile(commentPath, b, 0600); err != nil {
 			return err
 		}
+		manifest[id] = true
 	}
-	return nil
+
+	// Create a manifest to keep track of the comments that existed when the
+	// resource was initialized. This is used to verify that a comment that
+	// doesn't exist on disk was actually deleted by the user and not newly
+	// created during upload.
+	return manifestToDisk(manifest, filepath.Join(path, manifestPath))
 }
 
 func labelsToDisk(path string, labels []*Label) error {
+	manifest := Manifest{}
 	for _, l := range labels {
 		name := url.QueryEscape(l.Text)
 		labelPath := filepath.Join(path, name)
-		if err := ioutil.WriteFile(labelPath, []byte{}, 0700); err != nil {
+		if err := ioutil.WriteFile(labelPath, []byte{}, 0600); err != nil {
 			return err
 		}
+		manifest[name] = true
 	}
-	return nil
+	return manifestToDisk(manifest, filepath.Join(path, manifestPath))
 }
 
 func statusToDisk(path string, statuses []*Status) error {
@@ -128,56 +143,87 @@ func refToDisk(name, path string, r *GitReference) error {
 }
 
 // FromDisk outputs a PullRequest object from an on-disk representation at the specified path.
-func FromDisk(path string) (*PullRequest, error) {
+func FromDisk(path string) (*PullRequest, map[string]Manifest, error) {
 	labelsPath := filepath.Join(path, "labels")
 	commentsPath := filepath.Join(path, "comments")
 	statusesPath := filepath.Join(path, "status")
 
 	pr := PullRequest{}
+	manifests := make(map[string]Manifest)
 
 	var err error
+	var manifest Manifest
 
-	// Start with comments
-	pr.Comments, err = commentsFromDisk(commentsPath)
+	pr.Comments, manifest, err = commentsFromDisk(commentsPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	manifests["comments"] = manifest
 
-	// Now Labels
-	pr.Labels, err = labelsFromDisk(labelsPath)
+	pr.Labels, manifest, err = labelsFromDisk(labelsPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	manifests["labels"] = manifest
 
-	// Now statuses
 	pr.Statuses, err = statusesFromDisk(statusesPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	// Finally refs
 
 	pr.Base, err = refFromDisk(path, "base.json")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pr.Head, err = refFromDisk(path, "head.json")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return &pr, nil
+	return &pr, manifests, nil
 }
 
-func commentsFromDisk(path string) ([]*Comment, error) {
-	fis, err := ioutil.ReadDir(path)
+// Manifest is a list of sub-resources that exist within the PR resource to
+// determine whether an item existed when the resource was initialized.
+type Manifest map[string]bool
+
+func manifestToDisk(manifest Manifest, path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := gob.NewEncoder(f)
+	return enc.Encode(manifest)
+}
+
+func manifestFromDisk(path string) (Manifest, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+
+	m := Manifest{}
+	dec := gob.NewDecoder(f)
+	if err := dec.Decode(&m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func commentsFromDisk(path string) ([]*Comment, Manifest, error) {
+	fis, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, nil, err
+	}
 	comments := []*Comment{}
 	for _, fi := range fis {
+		if fi.Name() == manifestPath {
+			continue
+		}
 		b, err := ioutil.ReadFile(filepath.Join(path, fi.Name()))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		comment := Comment{}
 		if err := json.Unmarshal(b, &comment); err != nil {
@@ -186,23 +232,38 @@ func commentsFromDisk(path string) ([]*Comment, error) {
 		}
 		comments = append(comments, &comment)
 	}
-	return comments, nil
+
+	manifest, err := manifestFromDisk(filepath.Join(path, manifestPath))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return comments, manifest, nil
 }
 
-func labelsFromDisk(path string) ([]*Label, error) {
+func labelsFromDisk(path string) ([]*Label, Manifest, error) {
 	fis, err := ioutil.ReadDir(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	labels := []*Label{}
 	for _, fi := range fis {
+		if fi.Name() == manifestPath {
+			continue
+		}
 		text, err := url.QueryUnescape(fi.Name())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		labels = append(labels, &Label{Text: text})
 	}
-	return labels, nil
+
+	manifest, err := manifestFromDisk(filepath.Join(path, manifestPath))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return labels, manifest, nil
 }
 
 func statusesFromDisk(path string) ([]*Status, error) {

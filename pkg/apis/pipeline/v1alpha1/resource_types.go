@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"golang.org/x/xerrors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,10 +54,18 @@ var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineR
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {
+	// GetName returns the name of this PipelineResource instance.
 	GetName() string
+	// GetType returns the type of this PipelineResource (often a super type, e.g. in the case of storage).
 	GetType() PipelineResourceType
+	// Replacements returns all the attributes that this PipelineResource has that
+	// can be used for variable replacement.
 	Replacements() map[string]string
+	// GetOutputTaskModifier returns the TaskModifier instance that should be used on a Task
+	// in order to add this kind of resource when it is being used as an output.
 	GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
+	// GetInputTaskModifier returns the TaskModifier instance that should be used on a Task
+	// in order to add this kind of resource when it is being used as an input.
 	GetInputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error)
 }
 
@@ -163,8 +172,13 @@ type PipelineResourceBinding struct {
 
 // PipelineResourceResult used to export the image name and digest as json
 type PipelineResourceResult struct {
+	// Name and Digest are deprecated.
 	Name   string `json:"name"`
 	Digest string `json:"digest"`
+	// These will replace Name and Digest (https://github.com/tektoncd/pipeline/issues/1392)
+	Key         string              `json:"key"`
+	Value       string              `json:"value"`
+	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -195,19 +209,21 @@ type ResourceDeclaration struct {
 	TargetPath string `json:"targetPath,omitempty"`
 }
 
-// ResourceFromType returns a PipelineResourceInterface from a PipelineResource's type.
-func ResourceFromType(r *PipelineResource) (PipelineResourceInterface, error) {
+// ResourceFromType returns an instance of the correct PipelineResource object type which can be
+// used to add input and ouput containers as well as volumes to a TaskRun's pod in order to realize
+// a PipelineResource in a pod.
+func ResourceFromType(r *PipelineResource, images pipeline.Images) (PipelineResourceInterface, error) {
 	switch r.Spec.Type {
 	case PipelineResourceTypeGit:
-		return NewGitResource(r)
+		return NewGitResource(images.GitImage, r)
 	case PipelineResourceTypeImage:
 		return NewImageResource(r)
 	case PipelineResourceTypeCluster:
-		return NewClusterResource(r)
+		return NewClusterResource(images.KubeconfigWriterImage, r)
 	case PipelineResourceTypeStorage:
-		return NewStorageResource(r)
+		return NewStorageResource(images, r)
 	case PipelineResourceTypePullRequest:
-		return NewPullRequestResource(r)
+		return NewPullRequestResource(images.PRImage, r)
 	case PipelineResourceTypeCloudEvent:
 		return NewCloudEventResource(r)
 	}

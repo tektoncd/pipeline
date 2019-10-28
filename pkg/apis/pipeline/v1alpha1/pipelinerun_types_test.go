@@ -192,7 +192,13 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 		timeout:   25 * time.Hour,
 		starttime: time.Now().AddDate(0, 0, -1),
 		expected:  false,
-	}}
+	}, {
+		name:      "notimeoutspecified",
+		timeout:   0 * time.Second,
+		starttime: time.Now().AddDate(0, 0, -1),
+		expected:  false,
+	},
+	}
 
 	for _, tc := range tcs {
 		t.Run(t.Name(), func(t *testing.T) {
@@ -209,5 +215,59 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				t.Fatalf("Expected isTimedOut to be %t", tc.expected)
 			}
 		})
+	}
+}
+
+func TestPipelineRunGetServiceAccountName(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		pr      *v1alpha1.PipelineRun
+		saNames map[string]string
+	}{
+		{
+			"default SA",
+			tb.PipelineRun("pr", "ns",
+				tb.PipelineRunSpec("prs",
+					tb.PipelineRunServiceAccountName("defaultSA"),
+					tb.PipelineRunServiceAccountNameTask("taskName", "taskSA"))),
+			map[string]string{
+				"unknown":  "defaultSA",
+				"taskName": "taskSA",
+			},
+		},
+		{
+			"deprecated default SA",
+			tb.PipelineRun("pr", "ns",
+				tb.PipelineRunSpec("prs",
+					tb.PipelineRunDeprecatedServiceAccountName("", "deprecatedSA"),
+					tb.PipelineRunDeprecatedServiceAccountTask("taskName", "deprecatedTaskSA"))),
+			map[string]string{
+				"unknown":  "deprecatedSA",
+				"taskName": "deprecatedTaskSA",
+			},
+		},
+		{
+			"mixed default SA",
+			tb.PipelineRun("defaultSA", "defaultSA",
+				tb.PipelineRunSpec("defaultSA",
+					tb.PipelineRunDeprecatedServiceAccountName("defaultSA", "deprecatedSA"),
+					tb.PipelineRunServiceAccountNameTask("task1", "task1SA"),
+					tb.PipelineRunServiceAccountNameTask("task2", "task2SA"),
+					tb.PipelineRunDeprecatedServiceAccountTask("deprecatedTask3", "deprecatedTask3SA"),
+					tb.PipelineRunDeprecatedServiceAccountTask("task2", "deprecated"))),
+			map[string]string{
+				"unknown":         "defaultSA",
+				"task1":           "task1SA",
+				"task2":           "task2SA",
+				"deprecatedTask3": "deprecatedTask3SA",
+			},
+		},
+	} {
+		for taskName, expected := range tt.saNames {
+			sa := tt.pr.GetServiceAccountName(taskName)
+			if expected != sa {
+				t.Errorf("%s: wrong service account: got: %v, want: %v", tt.name, sa, expected)
+			}
+		}
 	}
 }

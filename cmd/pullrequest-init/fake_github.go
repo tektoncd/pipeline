@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
+	"github.com/mohae/deepcopy"
 )
 
 const (
@@ -68,7 +69,8 @@ func NewFakeGitHub() *FakeGitHub {
 	s.HandleFunc("/repos/{owner}/{repo}/issues/{number}/comments", s.createComment).Methods(http.MethodPost)
 	s.HandleFunc("/repos/{owner}/{repo}/issues/comments/{number}", s.updateComment).Methods(http.MethodPatch)
 	s.HandleFunc("/repos/{owner}/{repo}/issues/comments/{number}", s.deleteComment).Methods(http.MethodDelete)
-	s.HandleFunc("/repos/{owner}/{repo}/issues/{number}/labels", s.updateLabels).Methods(http.MethodPut)
+	s.HandleFunc("/repos/{owner}/{repo}/issues/{number}/labels", s.updateLabels).Methods(http.MethodPut, http.MethodPost)
+	s.HandleFunc("/repos/{owner}/{repo}/issues/{number}/labels", s.listLabels).Methods(http.MethodGet)
 	s.HandleFunc("/repos/{owner}/{repo}/statuses/{revision}", s.createStatus).Methods(http.MethodPost)
 	s.HandleFunc("/repos/{owner}/{repo}/commits/{revision}/status", s.getStatuses).Methods(http.MethodGet)
 
@@ -96,7 +98,7 @@ func (g *FakeGitHub) AddPullRequest(pr *github.PullRequest) {
 		repo:  pr.GetBase().GetRepo().GetName(),
 		id:    pr.GetID(),
 	}
-	g.pr[key] = pr
+	g.pr[key] = deepcopy.Copy(pr).(*github.PullRequest)
 }
 
 func (g *FakeGitHub) getPullRequest(w http.ResponseWriter, r *http.Request) {
@@ -241,7 +243,11 @@ func (g *FakeGitHub) updateLabels(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	pr.Labels = make([]*github.Label, 0, len(payload))
+
+	if r.Method == http.MethodPut {
+		// This operation is a replace, so clear out all existing labels.
+		pr.Labels = make([]*github.Label, 0, len(payload))
+	}
 	for _, l := range payload {
 		pr.Labels = append(pr.Labels, &github.Label{
 			Name: github.String(l),
@@ -249,6 +255,25 @@ func (g *FakeGitHub) updateLabels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (g *FakeGitHub) listLabels(w http.ResponseWriter, r *http.Request) {
+	key, err := prKey(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	pr, ok := g.pr[key]
+	if !ok {
+		http.Error(w, "pull request not found", http.StatusNotFound)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(pr.Labels); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 type statusKey struct {

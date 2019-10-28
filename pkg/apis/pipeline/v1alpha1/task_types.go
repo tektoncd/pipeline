@@ -66,6 +66,11 @@ type TaskSpec struct {
 // provided by Container.
 type Step struct {
 	corev1.Container
+
+	// Script is the contents of an executable file to execute.
+	//
+	// If Script is not empty, the Step cannot have an Command or Args.
+	Script string `json:"script,omitempty"`
 }
 
 // Check that Task may be validated and defaulted.
@@ -117,7 +122,7 @@ type Inputs struct {
 // path to the volume mounted containing this Resource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
 type TaskResource struct {
-	ResourceDeclaration
+	ResourceDeclaration `json:",inline"`
 	// +optional
 	OutputImageDir string `json:"outputImageDir,omitempty"`
 }

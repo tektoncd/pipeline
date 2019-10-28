@@ -8,10 +8,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// RealWaiter actually waits for files, by polling.
-type RealWaiter struct{}
+// realWaiter actually waits for files, by polling.
+type realWaiter struct{}
 
-var _ entrypoint.Waiter = (*RealWaiter)(nil)
+var _ entrypoint.Waiter = (*realWaiter)(nil)
 
 // Wait watches a file and returns when either a) the file exists and, if
 // the expectContent argument is true, the file has non-zero size or b) there
@@ -22,7 +22,7 @@ var _ entrypoint.Waiter = (*RealWaiter)(nil)
 //
 // If a file of the same name with a ".err" extension exists then this Wait
 // will end with a skipError.
-func (*RealWaiter) Wait(file string, expectContent bool) error {
+func (*realWaiter) Wait(file string, expectContent bool) error {
 	if file == "" {
 		return nil
 	}

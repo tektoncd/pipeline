@@ -22,10 +22,10 @@ import (
 )
 
 // Validate that parameters in PipelineRun override corresponding parameters in Pipeline of the same type.
-func ValidateParamTypesMatching(p *v1alpha1.Pipeline, pr *v1alpha1.PipelineRun) error {
+func ValidateParamTypesMatching(p *v1alpha1.PipelineSpec, pr *v1alpha1.PipelineRun) error {
 	// Build a map of parameter names/types declared in p.
 	paramTypes := make(map[string]v1alpha1.ParamType)
-	for _, param := range p.Spec.Params {
+	for _, param := range p.Params {
 		paramTypes[param.Name] = param.Type
 	}
 

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/builder"
@@ -27,326 +28,341 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var simpleTaskSpec = &v1alpha1.TaskSpec{
-	Inputs: &v1alpha1.Inputs{
-		Resources: []v1alpha1.TaskResource{{
-			ResourceDeclaration: v1alpha1.ResourceDeclaration{
-				Name: "workspace",
-			},
-		}},
-	},
-	Outputs: &v1alpha1.Outputs{
-		Resources: []v1alpha1.TaskResource{{
-			ResourceDeclaration: v1alpha1.ResourceDeclaration{
-				Name: "imageToUse",
-			},
-		}},
-	},
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "foo",
-		Image: "$(inputs.params.myimage)",
-	}}, {Container: corev1.Container{
-		Name:       "baz",
-		Image:      "bat",
-		WorkingDir: "$(inputs.resources.workspace.path)",
-		Args:       []string{"$(inputs.resources.workspace.url)"},
-	}}, {Container: corev1.Container{
-		Name:  "qux",
-		Image: "quux",
-		Args:  []string{"$(outputs.resources.imageToUse.url)"},
-	}}, {Container: corev1.Container{
-		Name:  "foo",
-		Image: "$(inputs.params.myimage)",
-	}}, {Container: corev1.Container{
-		Name:       "baz",
-		Image:      "bat",
-		WorkingDir: "$(inputs.resources.workspace.path)",
-		Args:       []string{"$(inputs.resources.workspace.url)"},
-	}}, {Container: corev1.Container{
-		Name:  "qux",
-		Image: "quux",
-		Args:  []string{"$(outputs.resources.imageToUse.url)"},
-	}}},
-}
+var (
+	images = pipeline.Images{
+		EntryPointImage:          "override-with-entrypoint:latest",
+		NopImage:                 "override-with-nop:latest",
+		GitImage:                 "override-with-git:latest",
+		CredsImage:               "override-with-creds:latest",
+		KubeconfigWriterImage:    "override-with-kubeconfig-writer-image:latest",
+		BashNoopImage:            "override-with-bash-noop:latest",
+		GsutilImage:              "override-with-gsutil-image:latest",
+		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
+		PRImage:                  "override-with-pr:latest",
+		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
+	}
 
-var envTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "foo",
-		Image: "busybox:$(inputs.params.FOO)",
-		Env: []corev1.EnvVar{{
-			Name:  "foo",
-			Value: "value-$(inputs.params.FOO)",
-		}, {
-			Name: "bar",
-			ValueFrom: &corev1.EnvVarSource{
-				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
-					Key:                  "config-key-$(inputs.params.FOO)",
+	simpleTaskSpec = &v1alpha1.TaskSpec{
+		Inputs: &v1alpha1.Inputs{
+			Resources: []v1alpha1.TaskResource{{
+				ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name: "workspace",
 				},
-			},
-		}, {
-			Name: "baz",
-			ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
-					Key:                  "secret-key-$(inputs.params.FOO)",
-				},
-			},
-		}},
-		EnvFrom: []corev1.EnvFromSource{{
-			Prefix: "prefix-0-$(inputs.params.FOO)",
-			ConfigMapRef: &corev1.ConfigMapEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
-			},
-		}, {
-			Prefix: "prefix-1-$(inputs.params.FOO)",
-			SecretRef: &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
-			},
-		}},
-	}}},
-}
-
-var stepTemplateTaskSpec = &v1alpha1.TaskSpec{
-	StepTemplate: &corev1.Container{
-		Env: []corev1.EnvVar{{
-			Name:  "template-var",
-			Value: "$(inputs.params.FOO)",
-		}},
-	},
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "simple-image",
-		Image: "$(inputs.params.myimage)",
-	}}, {Container: corev1.Container{
-		Name:  "image-with-env-specified",
-		Image: "some-other-image",
-		Env: []corev1.EnvVar{{
-			Name:  "template-var",
-			Value: "overridden-value",
-		}},
-	}}},
-}
-
-var volumeMountTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "foo",
-		Image: "busybox:$(inputs.params.FOO)",
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "$(inputs.params.FOO)",
-			MountPath: "path/to/$(inputs.params.FOO)",
-			SubPath:   "sub/$(inputs.params.FOO)/path",
-		}},
-	}}},
-}
-
-var gcsTaskSpec = &v1alpha1.TaskSpec{
-	Outputs: &v1alpha1.Outputs{
-		Resources: []v1alpha1.TaskResource{{
-			ResourceDeclaration: v1alpha1.ResourceDeclaration{
-				Name: "bucket",
-			},
-		}},
-	},
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "foobar",
-		Image: "someImage",
-		Args:  []string{"$(outputs.resources.bucket.path)"},
-	}}},
-}
-
-var arrayParamTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "simple-image",
-		Image: "some-image",
-	}}, {Container: corev1.Container{
-		Name:    "image-with-args-specified",
-		Image:   "some-other-image",
-		Command: []string{"echo"},
-		Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
-	}}},
-}
-
-var arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "simple-image",
-		Image: "some-image",
-	}}, {Container: corev1.Container{
-		Name:    "image-with-args-specified",
-		Image:   "some-other-image",
-		Command: []string{"echo"},
-		Args:    []string{"$(inputs.params.normal-param)", "second", "$(inputs.params.array-param)", "last"},
-	}}},
-}
-
-var multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "simple-image",
-		Image: "some-image",
-	}}, {Container: corev1.Container{
-		Name:    "image-with-args-specified",
-		Image:   "some-other-image",
-		Command: []string{"cmd", "$(inputs.params.another-array-param)"},
-		Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
-	}}},
-}
-
-var multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{
-	Steps: []v1alpha1.Step{{Container: corev1.Container{
-		Name:  "simple-image",
-		Image: "image-$(inputs.params.string-param2)",
-	}}, {Container: corev1.Container{
-		Name:    "image-with-args-specified",
-		Image:   "some-other-image",
-		Command: []string{"cmd", "$(inputs.params.array-param1)"},
-		Args:    []string{"$(inputs.params.array-param2)", "second", "$(inputs.params.array-param1)", "$(inputs.params.string-param1)", "last"},
-	}}},
-}
-
-var paramTaskRun = &v1alpha1.TaskRun{
-	Spec: v1alpha1.TaskRunSpec{
-		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{{
-				Name:  "myimage",
-				Value: *builder.ArrayOrString("bar"),
 			}},
 		},
-	},
-}
+		Outputs: &v1alpha1.Outputs{
+			Resources: []v1alpha1.TaskResource{{
+				ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name: "imageToUse",
+				},
+			}},
+		},
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "foo",
+			Image: "$(inputs.params.myimage)",
+		}}, {Container: corev1.Container{
+			Name:       "baz",
+			Image:      "bat",
+			WorkingDir: "$(inputs.resources.workspace.path)",
+			Args:       []string{"$(inputs.resources.workspace.url)"},
+		}}, {Container: corev1.Container{
+			Name:  "qux",
+			Image: "quux",
+			Args:  []string{"$(outputs.resources.imageToUse.url)"},
+		}}, {Container: corev1.Container{
+			Name:  "foo",
+			Image: "$(inputs.params.myimage)",
+		}}, {Container: corev1.Container{
+			Name:       "baz",
+			Image:      "bat",
+			WorkingDir: "$(inputs.resources.workspace.path)",
+			Args:       []string{"$(inputs.resources.workspace.url)"},
+		}}, {Container: corev1.Container{
+			Name:  "qux",
+			Image: "quux",
+			Args:  []string{"$(outputs.resources.imageToUse.url)"},
+		}}},
+	}
 
-var arrayTaskRun0Elements = &v1alpha1.TaskRun{
-	Spec: v1alpha1.TaskRunSpec{
-		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{{
-				Name: "array-param",
-				Value: v1alpha1.ArrayOrString{
-					Type:     v1alpha1.ParamTypeArray,
-					ArrayVal: []string{},
+	envTaskSpec = &v1alpha1.TaskSpec{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "foo",
+			Image: "busybox:$(inputs.params.FOO)",
+			Env: []corev1.EnvVar{{
+				Name:  "foo",
+				Value: "value-$(inputs.params.FOO)",
+			}, {
+				Name: "bar",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
+						Key:                  "config-key-$(inputs.params.FOO)",
+					},
+				},
+			}, {
+				Name: "baz",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
+						Key:                  "secret-key-$(inputs.params.FOO)",
+					},
+				},
+			}},
+			EnvFrom: []corev1.EnvFromSource{{
+				Prefix: "prefix-0-$(inputs.params.FOO)",
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(inputs.params.FOO)"},
+				},
+			}, {
+				Prefix: "prefix-1-$(inputs.params.FOO)",
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(inputs.params.FOO)"},
+				},
+			}},
+		}}},
+	}
+
+	stepTemplateTaskSpec = &v1alpha1.TaskSpec{
+		StepTemplate: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name:  "template-var",
+				Value: "$(inputs.params.FOO)",
+			}},
+		},
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "simple-image",
+			Image: "$(inputs.params.myimage)",
+		}}, {Container: corev1.Container{
+			Name:  "image-with-env-specified",
+			Image: "some-other-image",
+			Env: []corev1.EnvVar{{
+				Name:  "template-var",
+				Value: "overridden-value",
+			}},
+		}}},
+	}
+
+	volumeMountTaskSpec = &v1alpha1.TaskSpec{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "foo",
+			Image: "busybox:$(inputs.params.FOO)",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(inputs.params.FOO)",
+				MountPath: "path/to/$(inputs.params.FOO)",
+				SubPath:   "sub/$(inputs.params.FOO)/path",
+			}},
+		}}},
+	}
+
+	gcsTaskSpec = &v1alpha1.TaskSpec{
+		Outputs: &v1alpha1.Outputs{
+			Resources: []v1alpha1.TaskResource{{
+				ResourceDeclaration: v1alpha1.ResourceDeclaration{
+					Name: "bucket",
+				},
+			}},
+		},
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "foobar",
+			Image: "someImage",
+			Args:  []string{"$(outputs.resources.bucket.path)"},
+		}}},
+	}
+
+	arrayParamTaskSpec = &v1alpha1.TaskSpec{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "simple-image",
+			Image: "some-image",
+		}}, {Container: corev1.Container{
+			Name:    "image-with-args-specified",
+			Image:   "some-other-image",
+			Command: []string{"echo"},
+			Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
+		}}},
+	}
+
+	arrayAndStringParamTaskSpec = &v1alpha1.TaskSpec{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "simple-image",
+			Image: "some-image",
+		}}, {Container: corev1.Container{
+			Name:    "image-with-args-specified",
+			Image:   "some-other-image",
+			Command: []string{"echo"},
+			Args:    []string{"$(inputs.params.normal-param)", "second", "$(inputs.params.array-param)", "last"},
+		}}},
+	}
+
+	multipleArrayParamsTaskSpec = &v1alpha1.TaskSpec{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "simple-image",
+			Image: "some-image",
+		}}, {Container: corev1.Container{
+			Name:    "image-with-args-specified",
+			Image:   "some-other-image",
+			Command: []string{"cmd", "$(inputs.params.another-array-param)"},
+			Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
+		}}},
+	}
+
+	multipleArrayAndStringsParamsTaskSpec = &v1alpha1.TaskSpec{
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:  "simple-image",
+			Image: "image-$(inputs.params.string-param2)",
+		}}, {Container: corev1.Container{
+			Name:    "image-with-args-specified",
+			Image:   "some-other-image",
+			Command: []string{"cmd", "$(inputs.params.array-param1)"},
+			Args:    []string{"$(inputs.params.array-param2)", "second", "$(inputs.params.array-param1)", "$(inputs.params.string-param1)", "last"},
+		}}},
+	}
+
+	paramTaskRun = &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "myimage",
+					Value: *builder.ArrayOrString("bar"),
 				}},
 			},
 		},
-	},
-}
+	}
 
-var arrayTaskRun1Elements = &v1alpha1.TaskRun{
-	Spec: v1alpha1.TaskRunSpec{
-		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{{
-				Name:  "array-param",
-				Value: *builder.ArrayOrString("foo"),
+	arrayTaskRun0Elements = &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name: "array-param",
+					Value: v1alpha1.ArrayOrString{
+						Type:     v1alpha1.ParamTypeArray,
+						ArrayVal: []string{},
+					}},
+				},
+			},
+		},
+	}
+
+	arrayTaskRun1Elements = &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "array-param",
+					Value: *builder.ArrayOrString("foo"),
+				}},
+			},
+		},
+	}
+
+	arrayTaskRun3Elements = &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "array-param",
+					Value: *builder.ArrayOrString("foo", "bar", "third"),
+				}},
+			},
+		},
+	}
+
+	arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "array-param",
+					Value: *builder.ArrayOrString("foo", "bar", "third"),
+				}, {
+					Name:  "another-array-param",
+					Value: *builder.ArrayOrString("part1", "part2"),
+				}},
+			},
+		},
+	}
+
+	arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "array-param",
+					Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
+				}, {
+					Name:  "normal-param",
+					Value: *builder.ArrayOrString("foo"),
+				}},
+			},
+		},
+	}
+
+	arrayTaskRunMultipleArraysAndStrings = &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Inputs: v1alpha1.TaskRunInputs{
+				Params: []v1alpha1.Param{{
+					Name:  "array-param1",
+					Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
+				}, {
+					Name:  "array-param2",
+					Value: *builder.ArrayOrString("1-param2", "2-param2", "2-param3"),
+				}, {
+					Name:  "string-param1",
+					Value: *builder.ArrayOrString("foo"),
+				}, {
+					Name:  "string-param2",
+					Value: *builder.ArrayOrString("bar"),
+				}},
+			},
+		},
+	}
+
+	inputs = map[string]v1alpha1.PipelineResourceInterface{
+		"workspace": gitResource,
+	}
+
+	outputs = map[string]v1alpha1.PipelineResourceInterface{
+		"imageToUse": imageResource,
+		"bucket":     gcsResource,
+	}
+
+	gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "git-resource",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "URL",
+				Value: "https://git-repo",
 			}},
 		},
-	},
-}
+	}, images)
 
-var arrayTaskRun3Elements = &v1alpha1.TaskRun{
-	Spec: v1alpha1.TaskRunSpec{
-		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{{
-				Name:  "array-param",
-				Value: *builder.ArrayOrString("foo", "bar", "third"),
+	imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "image-resource",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeImage,
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "URL",
+				Value: "gcr.io/hans/sandwiches",
 			}},
 		},
-	},
-}
+	}, images)
 
-var arrayTaskRunMultipleArrays = &v1alpha1.TaskRun{
-	Spec: v1alpha1.TaskRunSpec{
-		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{{
-				Name:  "array-param",
-				Value: *builder.ArrayOrString("foo", "bar", "third"),
+	gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "gcs-resource",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeStorage,
+			Params: []v1alpha1.ResourceParam{{
+				Name:  "type",
+				Value: "gcs",
 			}, {
-				Name:  "another-array-param",
-				Value: *builder.ArrayOrString("part1", "part2"),
+				Name:  "location",
+				Value: "theCloud?",
 			}},
 		},
-	},
-}
-
-var arrayTaskRunWith1StringParam = &v1alpha1.TaskRun{
-	Spec: v1alpha1.TaskRunSpec{
-		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{{
-				Name:  "array-param",
-				Value: *builder.ArrayOrString("middlefirst", "middlesecond"),
-			}, {
-				Name:  "normal-param",
-				Value: *builder.ArrayOrString("foo"),
-			}},
-		},
-	},
-}
-
-var arrayTaskRunMultipleArraysAndStrings = &v1alpha1.TaskRun{
-	Spec: v1alpha1.TaskRunSpec{
-		Inputs: v1alpha1.TaskRunInputs{
-			Params: []v1alpha1.Param{{
-				Name:  "array-param1",
-				Value: *builder.ArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
-			}, {
-				Name:  "array-param2",
-				Value: *builder.ArrayOrString("1-param2", "2-param2", "2-param3"),
-			}, {
-				Name:  "string-param1",
-				Value: *builder.ArrayOrString("foo"),
-			}, {
-				Name:  "string-param2",
-				Value: *builder.ArrayOrString("bar"),
-			}},
-		},
-	},
-}
-
-var inputs = map[string]v1alpha1.PipelineResourceInterface{
-	"workspace": gitResource,
-}
-
-var outputs = map[string]v1alpha1.PipelineResourceInterface{
-	"imageToUse": imageResource,
-	"bucket":     gcsResource,
-}
-
-var gitResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "git-resource",
-	},
-	Spec: v1alpha1.PipelineResourceSpec{
-		Type: v1alpha1.PipelineResourceTypeGit,
-		Params: []v1alpha1.ResourceParam{{
-			Name:  "URL",
-			Value: "https://git-repo",
-		}},
-	},
-})
-
-var imageResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "image-resource",
-	},
-	Spec: v1alpha1.PipelineResourceSpec{
-		Type: v1alpha1.PipelineResourceTypeImage,
-		Params: []v1alpha1.ResourceParam{{
-			Name:  "URL",
-			Value: "gcr.io/hans/sandwiches",
-		}},
-	},
-})
-
-var gcsResource, _ = v1alpha1.ResourceFromType(&v1alpha1.PipelineResource{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "gcs-resource",
-	},
-	Spec: v1alpha1.PipelineResourceSpec{
-		Type: v1alpha1.PipelineResourceTypeStorage,
-		Params: []v1alpha1.ResourceParam{{
-			Name:  "type",
-			Value: "gcs",
-		}, {
-			Name:  "location",
-			Value: "theCloud?",
-		}},
-	},
-})
+	}, images)
+)
 
 func applyMutation(ts *v1alpha1.TaskSpec, f func(*v1alpha1.TaskSpec)) *v1alpha1.TaskSpec {
 	ts = ts.DeepCopy()

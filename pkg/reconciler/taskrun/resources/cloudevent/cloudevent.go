@@ -114,13 +114,14 @@ func SendTaskRunCloudEvent(sinkURI string, taskRun *v1alpha1.TaskRun, logger *za
 	eventID := taskRun.ObjectMeta.Name
 	taskRunStatus := taskRun.Status.GetCondition(apis.ConditionSucceeded)
 	var eventType TektonEventType
-	if taskRunStatus.IsUnknown() {
+	switch {
+	case taskRunStatus.IsUnknown():
 		eventType = TektonTaskRunUnknownV1
-	} else if taskRunStatus.IsFalse() {
+	case taskRunStatus.IsFalse():
 		eventType = TektonTaskRunFailedV1
-	} else if taskRunStatus.IsTrue() {
+	case taskRunStatus.IsTrue():
 		eventType = TektonTaskRunSuccessfulV1
-	} else {
+	default:
 		return event, fmt.Errorf("Unknown condition for in TaskRun.Status %s", taskRunStatus.Status)
 	}
 	eventSourceURI := taskRun.ObjectMeta.SelfLink

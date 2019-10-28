@@ -73,7 +73,7 @@ func TestValidateParamTypesMatching_Valid(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateParamTypesMatching(tc.p, tc.pr)
+			err := ValidateParamTypesMatching(&tc.p.Spec, tc.pr)
 			if (!tc.errorExpected) && (err != nil) {
 				t.Errorf("Pipeline.Validate() returned error: %v", err)
 			}
@@ -115,7 +115,7 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateParamTypesMatching(tc.p, tc.pr); err == nil {
+			if err := ValidateParamTypesMatching(&tc.p.Spec, tc.pr); err == nil {
 				t.Errorf("Expected to see error when validating PipelineRun/Pipeline param types but saw none")
 			}
 		})

@@ -26,7 +26,7 @@ args: ['-args', 'ARGUMENTS_FOR_SHELL_COMMAND']
 For help, run `man sub-command`
 ```
 image: github.com/tektoncd/pipeline/cmd/bash
-args: ['-args', `man`,`mkdir`]
+args: ['-args', 'man mkdir']
 ```
 
 For example:
@@ -34,8 +34,11 @@ Following example executes shell sub-command `mkdir`
 
 ```
 image: github.com/tektoncd/pipeline/cmd/bash
-args:  ['-args', 'mkdir', '-p', '/workspace/gcs-dir']
+args:  ['-args', 'mkdir -p /workspace/gcs-dir']
 ```
+
+Be sure not to pass multiple args to `-args`, only a single quoted string to
+execute. Passing further args will cause the image to raise an error.
 */
 
 package main
@@ -52,11 +55,16 @@ var (
 	args = flag.String("args", "", "space separated arguments for shell")
 )
 
+// nolint: gosec
 func main() {
 	flag.Parse()
 	logger, _ := logging.NewLogger("", "shell_command")
 	defer logger.Sync()
-	cmd := exec.Command("sh", "-c", *args)
+	if len(flag.Args()) > 0 {
+		logger.Fatalf("Extra args were provided, and would be ignored: %v", flag.Args())
+	}
+
+	cmd := exec.Command("bash", "-c", *args)
 	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
 		logger.Fatalf("Error executing command %q ; error %s; cmd_output %s", strings.Join(cmd.Args, " "), err.Error(), stdoutStderr)

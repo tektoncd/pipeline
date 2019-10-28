@@ -77,7 +77,7 @@ func SendCloudEvents(tr *v1alpha1.TaskRun, ceclient CEClient, logger *zap.Sugare
 		}
 		_, err := SendTaskRunCloudEvent(cloudEventDelivery.Target, tr, logger, ceclient)
 		eventStatus.SentAt = &metav1.Time{Time: time.Now()}
-		eventStatus.RetryCount = eventStatus.RetryCount + 1
+		eventStatus.RetryCount++
 		if err != nil {
 			merr = multierror.Append(merr, err)
 			eventStatus.Condition = v1alpha1.CloudEventConditionFailed

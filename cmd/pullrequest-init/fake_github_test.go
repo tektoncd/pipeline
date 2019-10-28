@@ -115,3 +115,46 @@ func TestFakeGitHubStatus(t *testing.T) {
 		t.Errorf("GetCombinedStatus: -want +got: %s", diff)
 	}
 }
+
+func TestFakeGitHubLabels(t *testing.T) {
+	ctx := context.Background()
+	gh := NewFakeGitHub()
+	client, close := githubClient(t, gh)
+	defer close()
+	gh.AddPullRequest(pr)
+
+	if got, resp, err := client.Issues.ListLabelsByIssue(ctx, owner, repo, prNum, nil); err != nil || len(got) != 0 {
+		t.Fatalf("List Issues: wanted [], got %+v, %+v, %v", got, resp, err)
+	}
+
+	check := func(labels ...string) {
+		got, resp, err := client.Issues.ListLabelsByIssue(ctx, owner, repo, prNum, nil)
+		if err != nil {
+			t.Fatalf("List Issues: wanted OK, got %+v, %v", resp, err)
+		}
+		want := make([]*github.Label, 0, len(labels))
+		for _, l := range labels {
+			want = append(want, &github.Label{
+				Name: github.String(l),
+			})
+		}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("List Issues: -want +got: %s", diff)
+		}
+	}
+
+	if _, _, err := client.Issues.AddLabelsToIssue(ctx, owner, repo, prNum, []string{"a"}); err != nil {
+		t.Fatalf("AddLabelsToIssue(a): %v", err)
+	}
+	check("a")
+
+	if _, _, err := client.Issues.AddLabelsToIssue(ctx, owner, repo, prNum, []string{"b"}); err != nil {
+		t.Fatalf("AddLabelsToIssue(b): %v", err)
+	}
+	check("a", "b")
+
+	if _, _, err := client.Issues.ReplaceLabelsForIssue(ctx, owner, repo, prNum, []string{"c"}); err != nil {
+		t.Fatalf("ReplaceLabelsForIssue: %v", err)
+	}
+	check("c")
+}

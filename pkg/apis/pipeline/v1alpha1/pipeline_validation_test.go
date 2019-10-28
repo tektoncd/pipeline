@@ -66,6 +66,24 @@ func TestPipeline_Validate(t *testing.T) {
 			tb.PipelineTask("foo", "foo-task"),
 		)),
 		failureExpected: true,
+	}, {
+		name: "pipeline spec empty task name",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("", "foo-task"),
+		)),
+		failureExpected: true,
+	}, {
+		name: "pipeline spec invalid task name",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("_foo", "foo-task"),
+		)),
+		failureExpected: true,
+	}, {
+		name: "pipeline spec invalid taskref name",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("foo", "_foo-task"),
+		)),
+		failureExpected: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

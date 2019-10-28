@@ -43,7 +43,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 	taskRun := tb.TaskRun("apple", namespace, tb.TaskRunSpec(
-		tb.TaskRunTaskRef("banana"), tb.TaskRunServiceAccount("inexistent"),
+		tb.TaskRunTaskRef("banana"), tb.TaskRunServiceAccountName("inexistent"),
 	))
 	if _, err := c.TaskRunClient.Create(taskRun); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
@@ -58,7 +58,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		tb.PipelineSpec(tb.PipelineTask("foo", "banana")),
 	)
 	pipelineRun := tb.PipelineRun("pear", namespace, tb.PipelineRunSpec(
-		"tomatoes", tb.PipelineRunServiceAccount("inexistent"),
+		"tomatoes", tb.PipelineRunServiceAccountName("inexistent"),
 	))
 	if _, err := c.PipelineClient.Create(pipeline); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)

@@ -22,8 +22,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"go.uber.org/zap"
@@ -31,14 +33,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 // Test case for providing recorder in the option
 func TestRecorderOptions(t *testing.T) {
 
 	prs := []*v1alpha1.PipelineRun{tb.PipelineRun("test-pipeline-run-completed", "foo",
-		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccount("test-sa")),
+		tb.PipelineRunSpec("test-pipeline", tb.PipelineRunServiceAccountName("test-sa")),
 		tb.PipelineRunStatus(tb.PipelineRunStatusCondition(apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionTrue,
@@ -55,7 +56,7 @@ func TestRecorderOptions(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, _ := test.SeedTestData(t, ctx, d)
@@ -67,7 +68,7 @@ func TestRecorderOptions(t *testing.T) {
 		Logger:            zap.New(observer).Sugar(),
 		KubeClientSet:     c.Kube,
 		PipelineClientSet: c.Pipeline,
-	}, "test")
+	}, "test", pipeline.Images{})
 
 	if strings.Compare(reflect.TypeOf(b.Recorder).String(), "*record.recorderImpl") != 0 {
 		t.Errorf("Expected recorder type '*record.recorderImpl' but actual type is: %s", reflect.TypeOf(b.Recorder).String())
@@ -81,7 +82,7 @@ func TestRecorderOptions(t *testing.T) {
 		KubeClientSet:     c.Kube,
 		PipelineClientSet: c.Pipeline,
 		Recorder:          fr,
-	}, "test")
+	}, "test", pipeline.Images{})
 
 	if strings.Compare(reflect.TypeOf(b.Recorder).String(), "*record.FakeRecorder") != 0 {
 		t.Errorf("Expected recorder type '*record.FakeRecorder' but actual type is: %s", reflect.TypeOf(b.Recorder).String())

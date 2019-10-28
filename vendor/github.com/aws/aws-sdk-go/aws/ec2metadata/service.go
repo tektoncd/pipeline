@@ -123,7 +123,11 @@ func unmarshalHandler(r *request.Request) {
 	defer r.HTTPResponse.Body.Close()
 	b := &bytes.Buffer{}
 	if _, err := io.Copy(b, r.HTTPResponse.Body); err != nil {
+<<<<<<< HEAD
 		r.Error = awserr.New(request.ErrCodeSerialization, "unable to unmarshal EC2 metadata respose", err)
+=======
+		r.Error = awserr.New(request.ErrCodeSerialization, "unable to unmarshal EC2 metadata response", err)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 		return
 	}
 
@@ -136,7 +140,11 @@ func unmarshalError(r *request.Request) {
 	defer r.HTTPResponse.Body.Close()
 	b := &bytes.Buffer{}
 	if _, err := io.Copy(b, r.HTTPResponse.Body); err != nil {
+<<<<<<< HEAD
 		r.Error = awserr.New(request.ErrCodeSerialization, "unable to unmarshal EC2 metadata error respose", err)
+=======
+		r.Error = awserr.New(request.ErrCodeSerialization, "unable to unmarshal EC2 metadata error response", err)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 		return
 	}
 

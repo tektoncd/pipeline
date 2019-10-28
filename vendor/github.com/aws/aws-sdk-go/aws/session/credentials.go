@@ -21,9 +21,16 @@ func resolveCredentials(cfg *aws.Config,
 ) (*credentials.Credentials, error) {
 
 	switch {
+<<<<<<< HEAD
 	case len(envCfg.Profile) != 0:
 		// User explicitly provided an Profile, so load from shared config
 		// first.
+=======
+	case len(sessOpts.Profile) != 0:
+		// User explicitly provided an Profile in the session's configuration
+		// so load that profile from shared config first.
+		// Github(aws/aws-sdk-go#2727)
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 		return resolveCredsFromProfile(cfg, envCfg, sharedCfg, handlers, sessOpts)
 
 	case envCfg.Creds.HasKeys():
@@ -250,8 +257,11 @@ type credProviderError struct {
 	Err error
 }
 
+<<<<<<< HEAD
 var emptyCreds = credentials.Value{}
 
+=======
+>>>>>>> fa1704dac6afad20b5beee2c4bbc9ab2b0eb50ae
 func (c credProviderError) Retrieve() (credentials.Value, error) {
 	return credentials.Value{}, c.Err
 }

@@ -20,9 +20,6 @@ package test
 
 import (
 	"fmt"
-	"io/ioutil"
-	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -34,32 +31,44 @@ import (
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
 )
 
 const (
-	kanikoTaskName     = "kanikotask"
-	kanikoTaskRunName  = "kanikotask-run"
-	kanikoResourceName = "go-example-git"
+	kanikoTaskName          = "kanikotask"
+	kanikoTaskRunName       = "kanikotask-run"
+	kanikoGitResourceName   = "go-example-git"
+	kanikoImageResourceName = "go-example-image"
+	// This is a random revision chosen on 10/11/2019
+	revision = "1c9d566ecd13535f93789595740f20932f655905"
 )
 
 func getGitResource(namespace string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoResourceName, namespace, tb.PipelineResourceSpec(
+	return tb.PipelineResource(kanikoGitResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
 		tb.PipelineResourceSpecParam("Url", "https://github.com/GoogleContainerTools/kaniko"),
+		tb.PipelineResourceSpecParam("Revision", revision),
+	))
+}
+
+func getImageResource(namespace, repo string) *v1alpha1.PipelineResource {
+	return tb.PipelineResource(kanikoImageResourceName, namespace, tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeImage,
+		tb.PipelineResourceSpecParam("url", repo),
 	))
 }
 
 func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 	taskSpecOps := []tb.TaskSpecOp{
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskOutputs(tb.OutputsResource("builtImage", v1alpha1.PipelineResourceTypeImage)),
 	}
 	stepOps := []tb.StepOp{
 		tb.StepArgs(
 			"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
 			fmt.Sprintf("--destination=%s", repo),
 			"--context=/workspace/gitsource",
+			"--oci-layout-path=/builder/home/image-outputs/builtImage",
 		),
 	}
 	if withSecretConfig {
@@ -73,7 +82,7 @@ func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
 			},
 		})))
 	}
-	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.9.0", stepOps...)
+	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.13.0", stepOps...)
 	taskSpecOps = append(taskSpecOps, step)
 
 	return tb.Task(kanikoTaskName, namespace, tb.TaskSpec(taskSpecOps...))
@@ -83,7 +92,8 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 	return tb.TaskRun(kanikoTaskRunName, namespace, tb.TaskRunSpec(
 		tb.TaskRunTaskRef(kanikoTaskName),
 		tb.TaskRunTimeout(2*time.Minute),
-		tb.TaskRunInputs(tb.TaskRunInputsResource("gitsource", tb.TaskResourceBindingRef(kanikoResourceName))),
+		tb.TaskRunInputs(tb.TaskRunInputsResource("gitsource", tb.TaskResourceBindingRef(kanikoGitResourceName))),
+		tb.TaskRunOutputs(tb.TaskRunOutputsResource("builtImage", tb.TaskResourceBindingRef(kanikoImageResourceName))),
 	))
 }
 
@@ -101,9 +111,14 @@ func TestKanikoTaskRun(t *testing.T) {
 		t.Fatalf("Expected to create kaniko creds: %v", err)
 	}
 
-	t.Logf("Creating Git PipelineResource %s", kanikoResourceName)
+	t.Logf("Creating Git PipelineResource %s", kanikoGitResourceName)
 	if _, err := c.PipelineResourceClient.Create(getGitResource(namespace)); err != nil {
-		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoResourceName, err)
+		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
+	}
+
+	t.Logf("Creating Image PipelineResource %s", repo)
+	if _, err := c.PipelineResourceClient.Create(getImageResource(namespace, repo)); err != nil {
+		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", kanikoTaskName)
@@ -117,32 +132,39 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 
 	// Verify status of TaskRun (wait for it)
-	var podName string
+
 	if err := WaitForTaskRunState(c, kanikoTaskRunName, func(tr *v1alpha1.TaskRun) (bool, error) {
-		podName = tr.Status.PodName
 		return TaskRunSucceed(kanikoTaskRunName)(tr)
 	}, "TaskRunCompleted"); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", kanikoTaskRunName, err)
 	}
 
-	// There will be a Pod with the expected name.
-	if _, err := c.KubeClient.Kube.CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{}); err != nil {
-		t.Fatalf("Error getting build pod: %v", err)
+	tr, err := c.TaskRunClient.Get(kanikoTaskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Errorf("Error retrieving taskrun: %s", err)
+	}
+	digest := ""
+	commit := ""
+	for _, rr := range tr.Status.ResourcesResult {
+		switch rr.Key {
+		case "digest":
+			digest = rr.Value
+		case "commit":
+			commit = rr.Value
+		}
+	}
+	if digest == "" {
+		t.Errorf("Digest not found in TaskRun.Status: %v", tr.Status)
+	}
+	if commit == "" {
+		t.Errorf("Commit not found in TaskRun.Status: %v", tr.Status)
 	}
 
-	logs, err := getAllLogsFromPod(c.KubeClient.Kube, podName, namespace)
-	if err != nil {
-		t.Fatalf("Expected to get logs from pod %s: %v", podName, err)
+	if revision != commit {
+		t.Fatalf("Expected remote commit to match local revision: %s, %s", commit, revision)
 	}
-	// make sure the pushed digest matches the one we pushed
-	re := regexp.MustCompile(`digest: (sha256:\w+)`)
-	match := re.FindStringSubmatch(logs)
-	// make sure we found a match and it has the capture group
-	if len(match) != 2 {
-		t.Fatalf("Expected to find an image digest in the build output: %s", logs)
-	}
+
 	// match the local digest, which is first capture group against the remote image
-	digest := match[1]
 	remoteDigest, err := getRemoteDigest(repo)
 	if err != nil {
 		t.Fatalf("Expected to get digest for remote image %s", repo)
@@ -150,40 +172,6 @@ func TestKanikoTaskRun(t *testing.T) {
 	if digest != remoteDigest {
 		t.Fatalf("Expected local digest %s to match remote digest %s", digest, remoteDigest)
 	}
-}
-
-func getContainerLogs(c kubernetes.Interface, pod, namespace string, containers ...string) (string, error) {
-	sb := strings.Builder{}
-	for _, container := range containers {
-		req := c.CoreV1().Pods(namespace).GetLogs(pod, &corev1.PodLogOptions{Follow: true, Container: container})
-		rc, err := req.Stream()
-		if err != nil {
-			return "", err
-		}
-		bs, err := ioutil.ReadAll(rc)
-		if err != nil {
-			return "", err
-		}
-		sb.Write(bs)
-	}
-	return sb.String(), nil
-}
-
-func getAllLogsFromPod(c kubernetes.Interface, pod, namespace string) (string, error) {
-	p, err := c.CoreV1().Pods(namespace).Get(pod, metav1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	var containers []string
-	for _, initContainer := range p.Spec.InitContainers {
-		containers = append(containers, initContainer.Name)
-	}
-	for _, container := range p.Spec.Containers {
-		containers = append(containers, container.Name)
-	}
-
-	return getContainerLogs(c, pod, namespace, containers...)
 }
 
 func getRemoteDigest(image string) (string, error) {
