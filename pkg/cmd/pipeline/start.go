@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/cli/pkg/helper/labels"
 	"github.com/tektoncd/cli/pkg/helper/params"
 	"github.com/tektoncd/cli/pkg/helper/pipeline"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,6 +71,10 @@ type resourceOptionsFilter struct {
 func NameArg(args []string, p cli.Params) error {
 	if len(args) == 0 {
 		return errNoPipeline
+	}
+
+	if err := validate.NamespaceExists(p); err != nil {
+		return err
 	}
 
 	c, err := p.Clients()
@@ -118,6 +123,7 @@ like cat,foo,bar
 			if err := flags.InitParams(p, cmd); err != nil {
 				return err
 			}
+
 			return NameArg(args, p)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -125,6 +131,7 @@ like cat,foo,bar
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
+
 			return opt.run(args[0])
 		},
 	}
