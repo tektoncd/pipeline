@@ -25,13 +25,14 @@ import (
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	pipelinetest "github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	util_runtime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
-	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	k8stest "k8s.io/client-go/testing"
 )
 
@@ -105,7 +106,15 @@ func Test_start_task_not_found(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks, Namespaces: ns})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	task := Command(p)
@@ -133,7 +142,15 @@ func Test_start_task(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks, Namespaces: ns})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	task := Command(p)
@@ -224,12 +241,23 @@ func Test_start_task_last(t *testing.T) {
 		),
 	}
 
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	//Add namespaces to kube client
+	seedData, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+
 	objs := []runtime.Object{tasks[0], taskruns[0]}
 	pClient := newPipelineClient(objs...)
 
 	cs := pipelinetest.Clients{
 		Pipeline: pClient,
-		Kube:     fakekubeclientset.NewSimpleClientset(),
+		Kube:     seedData.Kube,
 	}
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
@@ -303,12 +331,23 @@ func Test_start_task_last_with_inputs(t *testing.T) {
 		),
 	}
 
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	//Add namespaces to kube client
+	seedData, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+
 	objs := []runtime.Object{tasks[0], taskruns[0]}
 	pClient := newPipelineClient(objs...)
 
 	cs := pipelinetest.Clients{
 		Pipeline: pClient,
-		Kube:     fakekubeclientset.NewSimpleClientset(),
+		Kube:     seedData.Kube,
 	}
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
@@ -374,7 +413,15 @@ func Test_start_task_last_without_pipelinerun(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks, Namespaces: ns})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	task := Command(p)
@@ -402,7 +449,15 @@ func Test_start_task_client_error(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks, Namespaces: ns})
 	cs.Pipeline.PrependReactor("create", "*", func(_ k8stest.Action) (bool, runtime.Object, error) {
 		return true, nil, fmt.Errorf("cluster not accessible")
 	})
@@ -433,7 +488,15 @@ func Test_start_task_invalid_input_res(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks, Namespaces: ns})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	task := Command(p)
@@ -464,7 +527,15 @@ func Test_start_task_invalid_output_res(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks, Namespaces: ns})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	task := Command(p)
@@ -495,7 +566,15 @@ func Test_start_task_invalid_param(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks, Namespaces: ns})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	task := Command(p)
@@ -526,7 +605,15 @@ func Test_start_task_invalid_label(t *testing.T) {
 		),
 	}
 
-	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks})
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Tasks: tasks, Namespaces: ns})
 	p := &test.Params{Tekton: cs.Pipeline, Kube: cs.Kube}
 
 	task := Command(p)

@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/cli/pkg/helper/labels"
 	"github.com/tektoncd/cli/pkg/helper/params"
 	"github.com/tektoncd/cli/pkg/helper/task"
+	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -98,6 +99,11 @@ like cat,foo,bar
 				Out: cmd.OutOrStdout(),
 				Err: cmd.OutOrStderr(),
 			}
+
+			if err := validate.NamespaceExists(p); err != nil {
+				return err
+			}
+
 			return startTask(opt, args[0])
 		},
 	}
