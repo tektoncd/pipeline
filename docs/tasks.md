@@ -297,8 +297,8 @@ next Task is expected to be present under the path
 `/workspace/output/resource_name/`.
 
 ```yaml
-resources:
-  outputs:
+outputs:
+  resources:
     name: storage-gcs
     type: gcs
 steps:
@@ -325,11 +325,12 @@ directory. After execution of the Task steps, (new) tar file in directory
 `tar-artifact` resource definition.
 
 ```yaml
-resources:
-  inputs:
+inputs:
+  resources:
     name: tar-artifact
     targetPath: customworkspace
-  outputs:
+outputs:
+  resources:
     name: tar-artifact
 steps:
  - name: untar
