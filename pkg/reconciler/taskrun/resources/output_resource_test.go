@@ -807,6 +807,61 @@ func TestValidOutputResources(t *testing.T) {
 			Image:   "busybox",
 			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}},
+	}, {
+		desc: "multiple image output resource with no steps",
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-output-steps",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Outputs: v1alpha1.TaskRunOutputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
+						},
+					}, {
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							Name: "source-workspace-1",
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "source-image",
+							},
+						},
+					}},
+				},
+			},
+		},
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace",
+							Type: "image",
+						}}, {
+						ResourceDeclaration: v1alpha1.ResourceDeclaration{
+							Name: "source-workspace-1",
+							Type: "image",
+						}}},
+				},
+			},
+		},
+		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:    "create-dir-source-workspace-1-mz4c7",
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace-1"},
+		}}, {Container: corev1.Container{
+			Name:    "create-dir-source-workspace-9l9zj",
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
+		}}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()
