@@ -128,7 +128,7 @@ func TestTaskDelete(t *testing.T) {
 			input:       seeds[3],
 			inputStream: strings.NewReader("y"),
 			wantError:   false,
-			want:        "Are you sure you want to delete task and related resources (taskruns) \"task\" (y/n): Task deleted: task\nTaskRun deleted: task-run-1\nTaskRun deleted: task-run-2\n",
+			want:        "Are you sure you want to delete task and related resources \"task\" (y/n): Task deleted: task\nTaskRun deleted: task-run-1\nTaskRun deleted: task-run-2\n",
 		},
 		{
 			name:        "With delete all and force delete flag",

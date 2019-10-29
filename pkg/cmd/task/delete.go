@@ -15,27 +15,18 @@
 package task
 
 import (
-	"bufio"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/helper/options"
 	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-type deleteOptions struct {
-	forceDelete bool
-	deleteAll   bool
-}
-
 func deleteCommand(p cli.Params) *cobra.Command {
-	opts := &deleteOptions{
-		forceDelete: false,
-		deleteAll:   false,
-	}
+	opts := &options.DeleteOptions{Resource: "task", ForceDelete: false, DeleteAll: false}
 	f := cliopts.NewPrintFlags("delete")
 	eg := `
 # Delete a Task of name 'foo' in namespace 'bar'
@@ -65,7 +56,7 @@ tkn t rm foo -n bar
 				return err
 			}
 
-			if err := checkOptions(opts, s, p, args[0]); err != nil {
+			if err := opts.CheckOptions(s, args[0]); err != nil {
 				return err
 			}
 
@@ -73,14 +64,14 @@ tkn t rm foo -n bar
 		},
 	}
 	f.AddFlags(c)
-	c.Flags().BoolVarP(&opts.forceDelete, "force", "f", false, "Whether to force deletion (default: false)")
-	c.Flags().BoolVarP(&opts.deleteAll, "all", "a", false, "Whether to delete related resources (taskruns) (default: false)")
+	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
+	c.Flags().BoolVarP(&opts.DeleteAll, "all", "a", false, "Whether to delete related resources (taskruns) (default: false)")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_task")
 	return c
 }
 
-func deleteTask(opts *deleteOptions, s *cli.Stream, p cli.Params, tName string) error {
+func deleteTask(opts *options.DeleteOptions, s *cli.Stream, p cli.Params, tName string) error {
 	cs, err := p.Clients()
 	if err != nil {
 		return fmt.Errorf("failed to create tekton client")
@@ -91,7 +82,7 @@ func deleteTask(opts *deleteOptions, s *cli.Stream, p cli.Params, tName string) 
 	}
 	fmt.Fprintf(s.Out, "Task deleted: %s\n", tName)
 
-	if !opts.deleteAll {
+	if !opts.DeleteAll {
 		return nil
 	}
 
@@ -110,31 +101,6 @@ func deleteTask(opts *deleteOptions, s *cli.Stream, p cli.Params, tName string) 
 		}
 
 		fmt.Fprintf(s.Out, "TaskRun deleted: %s\n", tr.Name)
-	}
-
-	return nil
-}
-
-func checkOptions(opts *deleteOptions, s *cli.Stream, p cli.Params, tName string) error {
-	if opts.forceDelete {
-		return nil
-	}
-
-	if opts.deleteAll {
-		fmt.Fprintf(s.Out, "Are you sure you want to delete task and related resources (taskruns) %q (y/n): ", tName)
-	} else {
-		fmt.Fprintf(s.Out, "Are you sure you want to delete task %q (y/n): ", tName)
-	}
-
-	scanner := bufio.NewScanner(s.In)
-	for scanner.Scan() {
-		t := strings.TrimSpace(scanner.Text())
-		if t == "y" {
-			break
-		} else if t == "n" {
-			return fmt.Errorf("canceled deleting task %q", tName)
-		}
-		fmt.Fprint(s.Out, "Please enter (y/n): ")
 	}
 
 	return nil

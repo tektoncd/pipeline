@@ -56,7 +56,7 @@ tkn cond rm foo -n bar
 				return err
 			}
 
-			if err := options.CheckDeleteOptions(opts, s, args[0]); err != nil {
+			if err := opts.CheckOptions(s, args[0]); err != nil {
 				return err
 			}
 

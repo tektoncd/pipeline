@@ -87,7 +87,7 @@ func TestPipelineResourceDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("n"),
 			wantError:   true,
-			want:        "Canceled deleting pipelineresource \"pre-1\"",
+			want:        "canceled deleting pipelineresource \"pre-1\"",
 		},
 		{
 			name:        "Without force delete flag, reply yes",

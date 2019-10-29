@@ -15,23 +15,18 @@
 package clustertask
 
 import (
-	"bufio"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
+	"github.com/tektoncd/cli/pkg/helper/options"
 	validate "github.com/tektoncd/cli/pkg/helper/validate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-type deleteOptions struct {
-	forceDelete bool
-}
-
 func deleteCommand(p cli.Params) *cobra.Command {
-	opts := &deleteOptions{forceDelete: false}
+	opts := &options.DeleteOptions{Resource: "clustertask", ForceDelete: false}
 	f := cliopts.NewPrintFlags("delete")
 	eg := `
 # Delete a ClusterTask of name 'foo'
@@ -61,7 +56,7 @@ tkn ct rm foo
 				return err
 			}
 
-			if err := checkOptions(opts, s, p, args[0]); err != nil {
+			if err := opts.CheckOptions(s, args[0]); err != nil {
 				return err
 			}
 
@@ -69,7 +64,7 @@ tkn ct rm foo
 		},
 	}
 	f.AddFlags(c)
-	c.Flags().BoolVarP(&opts.forceDelete, "force", "f", false, "Whether to force deletion (default: false)")
+	c.Flags().BoolVarP(&opts.ForceDelete, "force", "f", false, "Whether to force deletion (default: false)")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_clustertasks")
 	return c
@@ -86,25 +81,5 @@ func deleteClusterTask(s *cli.Stream, p cli.Params, tName string) error {
 	}
 
 	fmt.Fprintf(s.Out, "ClusterTask deleted: %s\n", tName)
-	return nil
-}
-
-func checkOptions(opts *deleteOptions, s *cli.Stream, p cli.Params, tName string) error {
-	if opts.forceDelete {
-		return nil
-	}
-
-	fmt.Fprintf(s.Out, "Are you sure you want to delete clustertask %q (y/n): ", tName)
-	scanner := bufio.NewScanner(s.In)
-	for scanner.Scan() {
-		t := strings.TrimSpace(scanner.Text())
-		if t == "y" {
-			break
-		} else if t == "n" {
-			return fmt.Errorf("Canceled deleting clustertask %q", tName)
-		}
-		fmt.Fprint(s.Out, "Please enter (y/n): ")
-	}
-
 	return nil
 }

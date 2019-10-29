@@ -25,21 +25,27 @@ import (
 type DeleteOptions struct {
 	Resource    string
 	ForceDelete bool
+	DeleteAll   bool
 }
 
-func CheckDeleteOptions(opts *DeleteOptions, s *cli.Stream, resoureName string) error {
-	if opts.ForceDelete {
+func (o *DeleteOptions) CheckOptions(s *cli.Stream, resourceName string) error {
+	if o.ForceDelete {
 		return nil
 	}
 
-	fmt.Fprintf(s.Out, "Are you sure you want to delete %s %q (y/n): ", opts.Resource, resoureName)
+	if o.DeleteAll {
+		fmt.Fprintf(s.Out, "Are you sure you want to delete %s and related resources %q (y/n): ", o.Resource, resourceName)
+	} else {
+		fmt.Fprintf(s.Out, "Are you sure you want to delete %s %q (y/n): ", o.Resource, resourceName)
+	}
+
 	scanner := bufio.NewScanner(s.In)
 	for scanner.Scan() {
 		t := strings.TrimSpace(scanner.Text())
 		if t == "y" {
 			break
 		} else if t == "n" {
-			return fmt.Errorf("canceled deleting %s %q", opts.Resource, resoureName)
+			return fmt.Errorf("canceled deleting %s %q", o.Resource, resourceName)
 		}
 		fmt.Fprint(s.Out, "Please enter (y/n): ")
 	}

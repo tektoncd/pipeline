@@ -88,7 +88,7 @@ func TestClusterTaskDelete(t *testing.T) {
 			input:       seeds[2],
 			inputStream: strings.NewReader("n"),
 			wantError:   true,
-			want:        "Canceled deleting clustertask \"tomatoes\"",
+			want:        "canceled deleting clustertask \"tomatoes\"",
 		},
 		{
 			name:        "Without force delete flag, reply yes",
