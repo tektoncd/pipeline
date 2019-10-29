@@ -64,7 +64,7 @@ func AddOutputResources(
 	if err != nil {
 		return nil, err
 	}
-
+	needsPvc := false
 	for _, output := range taskSpec.Outputs.Resources {
 		boundResource, err := getBoundResource(output.Name, taskRun.Spec.Outputs.Resources)
 		if err != nil {
@@ -87,7 +87,6 @@ func AddOutputResources(
 		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
 		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
-		needsPvc := false
 		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []v1alpha1.Step
 			for _, dPath := range boundResource.Paths {
@@ -106,22 +105,21 @@ func AddOutputResources(
 		if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
 			return nil, xerrors.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
 		}
+	}
+	// Attach the PVC that will be used for `from` copying.
+	if as.GetType() == pipeline.ArtifactStoragePVCType {
+		if pvcName == "" {
+			return taskSpec, nil
+		}
 
-		// Attach the PVC that will be used for `from` copying.
-		if as.GetType() == pipeline.ArtifactStoragePVCType {
-			if pvcName == "" {
+		// attach pvc volume only if it is not already attached
+		for _, buildVol := range taskSpec.Volumes {
+			if buildVol.Name == pvcName {
 				return taskSpec, nil
 			}
-
-			// attach pvc volume only if it is not already attached
-			for _, buildVol := range taskSpec.Volumes {
-				if buildVol.Name == pvcName {
-					return taskSpec, nil
-				}
-			}
-			if needsPvc {
-				taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
-			}
+		}
+		if needsPvc {
+			taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 		}
 	}
 	return taskSpec, nil
