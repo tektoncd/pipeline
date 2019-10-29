@@ -12,6 +12,7 @@ Tekton!
 Download the latest binary executable for your operating system:
 
 * Mac OS X
+
   - `tektoncd-cli` can be installed as a [brew tap](https://brew.sh) :
 
   ```shell
@@ -27,6 +28,11 @@ Download the latest binary executable for your operating system:
   # Extract tkn to your PATH (e.g. /usr/local/bin)
   sudo tar xvzf tkn_0.4.0_Darwin_x86_64.tar.gz -C /usr/local/bin tkn
   ```
+
+* Windows
+
+  - Uncompress the [zip file](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Windows_x86_64.zip)
+    and use it from the Windows PowerShell.
 
 * [Linux AMD 64](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Linux_x86_64.tar.gz)
 
