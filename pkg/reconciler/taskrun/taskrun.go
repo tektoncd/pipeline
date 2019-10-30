@@ -602,6 +602,11 @@ func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun, dp Dele
 	})
 	// update tr completed time
 	tr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+	// update tr expiration time
+	if tr.Spec.ExpirationSecondsTTL != nil {
+		tr.Status.ExpirationTime.Time = tr.Status.CompletionTime.Add(tr.Spec.ExpirationSecondsTTL.Duration * time.Second)
+	}
 	return nil
 }
 

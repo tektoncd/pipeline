@@ -135,10 +135,12 @@ func TestPipelineRun(t *testing.T) {
 		tb.PipelineRunTimeout(1*time.Hour),
 		tb.PipelineRunResourceBinding("some-resource", tb.PipelineResourceBindingRef("my-special-resource")),
 		tb.PipelineRunServiceAccountNameTask("foo", "sa-2"),
+		tb.PipelineRunExpirationSecondsTTL(1*time.Hour),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
 		tb.PipelineRunCompletionTime(completedTime),
+		tb.PipelineRunExpirationTime(),
 		tb.PipelineRunTaskRunsStatus("trname", &v1alpha1.PipelineRunTaskRunStatus{
 			PipelineTaskName: "task-1",
 		}),
@@ -162,7 +164,8 @@ func TestPipelineRun(t *testing.T) {
 				Name:  "second-param-array",
 				Value: *tb.ArrayOrString("some", "array"),
 			}},
-			Timeout: &metav1.Duration{Duration: 1 * time.Hour},
+			Timeout:              &metav1.Duration{Duration: 1 * time.Hour},
+			ExpirationSecondsTTL: &metav1.Duration{Duration: 1 * time.Hour},
 			Resources: []v1alpha1.PipelineResourceBinding{{
 				Name: "some-resource",
 				ResourceRef: v1alpha1.PipelineResourceRef{
@@ -176,6 +179,7 @@ func TestPipelineRun(t *testing.T) {
 			},
 			StartTime:      &metav1.Time{Time: startTime},
 			CompletionTime: &metav1.Time{Time: completedTime},
+			ExpirationTime: &metav1.Time{Time: completedTime.Add(1 * time.Hour)},
 			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
 				"trname": {PipelineTaskName: "task-1"},
 			},
@@ -207,6 +211,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
 		tb.PipelineRunCompletionTime(completedTime),
+		tb.PipelineRunExpirationTime(),
 		tb.PipelineRunTaskRunsStatus("trname", &v1alpha1.PipelineRunTaskRunStatus{
 			PipelineTaskName: "task-1",
 		}),
@@ -242,6 +247,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 					SecretParams: nil,
 				},
 			}},
+			ExpirationSecondsTTL: &metav1.Duration{Duration: 1 * time.Hour},
 		},
 		Status: v1alpha1.PipelineRunStatus{
 			Status: duckv1beta1.Status{
@@ -252,6 +258,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
 				"trname": {PipelineTaskName: "task-1"},
 			},
+			ExpirationTime: &metav1.Time{Time: completedTime.Add(1 * time.Hour)},
 		},
 	}
 	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {

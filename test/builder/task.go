@@ -342,6 +342,15 @@ func TaskRunCompletionTime(completionTime time.Time) TaskRunStatusOp {
 	}
 }
 
+func TaskRunExpirationTime() TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		var spec v1alpha1.TaskRunSpec
+		if spec.ExpirationSecondsTTL != nil {
+			s.ExpirationTime.Time = s.CompletionTime.Add(spec.ExpirationSecondsTTL.Duration * time.Second)
+		}
+	}
+}
+
 // TaskRunCloudEvent adds an event to the TaskRunStatus.
 func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
@@ -391,6 +400,17 @@ func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.Affinity = affinity
 	}
+}
+
+func TaskRunExpirationSecondsTTL(duration time.Duration) TaskRunSpecOp {
+	return func(trs *v1alpha1.TaskRunSpec) {
+		trs.ExpirationSecondsTTL = &metav1.Duration{Duration: duration}
+	}
+}
+
+// TaskRunNilExpirationSecondsTTL sets the timeout duration to nil on the TaskRunSpec.
+func TaskRunNilExpirationSecondsTTL(spec *v1alpha1.TaskRunSpec) {
+	spec.ExpirationSecondsTTL = nil
 }
 
 // StateTerminated set Terminated to the StepState.

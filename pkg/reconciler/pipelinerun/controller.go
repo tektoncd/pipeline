@@ -18,6 +18,7 @@ package pipelinerun
 
 import (
 	"context"
+	"k8s.io/client-go/util/workqueue"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -80,6 +81,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			conditionLister:   conditionInformer.Lister(),
 			timeoutHandler:    timeoutHandler,
 			metrics:           metrics,
+			queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ttl_pipelineruns_to_delete"),
 		}
 		impl := controller.NewImpl(c, c.Logger, pipelineRunControllerName)
 
@@ -92,6 +94,13 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			UpdateFunc: controller.PassNew(impl.Enqueue),
 			DeleteFunc: impl.Enqueue,
 		})
+
+		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.AddPipelineRun,
+			UpdateFunc: c.UpdatePipelineRun,
+		})
+
+		c.ListerSynced = pipelineRunInformer.Informer().HasSynced
 
 		c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
