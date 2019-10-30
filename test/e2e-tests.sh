@@ -22,6 +22,8 @@
 
 source $(dirname $0)/e2e-common.sh
 
+cd $(dirname $(readlink -f $0))/../
+
 ci_run && {
   header "Setting up environment"
   initialize $@
