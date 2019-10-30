@@ -90,6 +90,11 @@ func updateCompletedTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 	}
 	// update tr completed time
 	taskRun.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+	// update tr expiration time
+	if taskRun.Spec.ExpirationSecondsTTL != nil {
+		taskRun.Status.ExpirationTime.Time = taskRun.Status.CompletionTime.Add(taskRun.Spec.ExpirationSecondsTTL.Duration * time.Second)
+	}
 }
 
 func updateIncompleteTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {

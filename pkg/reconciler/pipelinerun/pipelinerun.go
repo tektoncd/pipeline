@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
+	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -41,6 +42,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/configmap"
@@ -578,6 +580,7 @@ func addRetryHistory(tr *v1alpha1.TaskRun) {
 func clearStatus(tr *v1alpha1.TaskRun) {
 	tr.Status.StartTime = nil
 	tr.Status.CompletionTime = nil
+	tr.Status.ExpirationTime = nil
 	tr.Status.PodName = ""
 }
 
@@ -639,6 +642,11 @@ func (c *Reconciler) updateStatus(pr *v1alpha1.PipelineRun) (*v1alpha1.PipelineR
 	if succeeded.Status == corev1.ConditionFalse || succeeded.Status == corev1.ConditionTrue {
 		// update pr completed time
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+
+		// update pr expiration time
+		if pr.Spec.ExpirationSecondsTTL != nil {
+			pr.Status.ExpirationTime.Time = pr.Status.CompletionTime.Add(pr.Spec.ExpirationSecondsTTL.Duration * time.Second)
+		}
 
 	}
 	if !reflect.DeepEqual(pr.Status, newPr.Status) {

@@ -222,7 +222,8 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					Paths: []string{"output-folder"},
 				}},
 			},
-			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			Timeout:              &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			ExpirationSecondsTTL: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			TaskRef: &v1alpha1.TaskRef{
 				Name:       "task-output",
 				Kind:       v1alpha1.ClusterTaskKind,
@@ -252,6 +253,7 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 		tb.TaskRunServiceAccountName("sa"),
 		tb.TaskRunTimeout(2*time.Minute),
 		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled),
+		tb.TaskRunExpirationSecondsTTL(2*time.Minute),
 	))
 	expectedTaskRun := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -266,9 +268,10 @@ func TestTaskRunWithTaskSpec(t *testing.T) {
 					Command: []string{"/mycmd"},
 				}}},
 			},
-			ServiceAccountName: "sa",
-			Status:             v1alpha1.TaskRunSpecStatusCancelled,
-			Timeout:            &metav1.Duration{Duration: 2 * time.Minute},
+			ServiceAccountName:   "sa",
+			Status:               v1alpha1.TaskRunSpecStatusCancelled,
+			Timeout:              &metav1.Duration{Duration: 2 * time.Minute},
+			ExpirationSecondsTTL: &metav1.Duration{Duration: 2 * time.Minute},
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {

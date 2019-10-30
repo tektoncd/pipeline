@@ -420,6 +420,12 @@ func PipelineRunAffinity(affinity *corev1.Affinity) PipelineRunSpecOp {
 	}
 }
 
+func PipelineRunExpirationSecondsTTL(duration time.Duration) PipelineRunSpecOp {
+	return func(prs *v1alpha1.PipelineRunSpec) {
+		prs.ExpirationSecondsTTL = &metav1.Duration{Duration: duration}
+	}
+}
+
 // PipelineRunStatus sets the PipelineRunStatus to the PipelineRun.
 // Any number of PipelineRunStatus modifier can be passed to transform it.
 func PipelineRunStatus(ops ...PipelineRunStatusOp) PipelineRunOp {
@@ -450,6 +456,16 @@ func PipelineRunStartTime(startTime time.Time) PipelineRunStatusOp {
 func PipelineRunCompletionTime(t time.Time) PipelineRunStatusOp {
 	return func(s *v1alpha1.PipelineRunStatus) {
 		s.CompletionTime = &metav1.Time{Time: t}
+	}
+}
+
+// PipelineRunExpirationTime sets the expiration time to the PipelineRunStatus.
+func PipelineRunExpirationTime() PipelineRunStatusOp {
+	return func(s *v1alpha1.PipelineRunStatus) {
+		var spec v1alpha1.PipelineRunSpec
+		if spec.ExpirationSecondsTTL != nil {
+			s.ExpirationTime.Time = s.CompletionTime.Add(spec.ExpirationSecondsTTL.Duration * time.Second)
+		}
 	}
 }
 

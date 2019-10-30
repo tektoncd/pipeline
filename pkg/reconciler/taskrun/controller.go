@@ -18,6 +18,7 @@ package taskrun
 
 import (
 	"context"
+	"k8s.io/client-go/util/workqueue"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -76,6 +77,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			timeoutHandler:    timeoutHandler,
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           metrics,
+			queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ttl_taskruns_to_delete"),
 		}
 		impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
@@ -87,6 +89,13 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			AddFunc:    impl.Enqueue,
 			UpdateFunc: controller.PassNew(impl.Enqueue),
 		})
+
+		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.AddTaskRun,
+			UpdateFunc: c.UpdateTaskRun,
+		})
+
+		c.ListerSynced = taskRunInformer.Informer().HasSynced
 
 		c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
 

@@ -182,7 +182,7 @@ type Middleware func(next nethttp.Handler) nethttp.Handler
 // Middleware is applied to everything before it. For example
 // `NewClient(WithMiddleware(foo), WithMiddleware(bar))` would result in `bar(foo(original))`.
 func WithMiddleware(middleware Middleware) Option {
-	return func (t *Transport) error {
+	return func(t *Transport) error {
 		if t == nil {
 			return fmt.Errorf("http middleware option can not set nil transport")
 		}

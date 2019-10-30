@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
 	"knative.dev/pkg/apis"
 
@@ -17,7 +16,7 @@ import (
 
 func (tc *Reconciler) AddPipelineRun(obj interface{}) {
 	pr := obj.(*apispipeline.PipelineRun)
-	klog.V(4).Infof("Adding PipelineRun %s/%s", pr.Namespace, pr.Name)
+	tc.Logger.Info("Adding PipelineRun %s/%s", pr.Namespace, pr.Name)
 
 	if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
 		tc.PrEnqueue(pr)
@@ -26,7 +25,7 @@ func (tc *Reconciler) AddPipelineRun(obj interface{}) {
 
 func (tc *Reconciler) UpdatePipelineRun(old, cur interface{}) {
 	pr := cur.(*apispipeline.PipelineRun)
-	klog.V(4).Infof("Updating PipelineRun %s/%s", pr.Namespace, pr.Name)
+	tc.Logger.Info("Updating PipelineRun %s/%s", pr.Namespace, pr.Name)
 
 	if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
 		tc.PrEnqueue(pr)
@@ -34,7 +33,7 @@ func (tc *Reconciler) UpdatePipelineRun(old, cur interface{}) {
 }
 
 func (tc *Reconciler) PrEnqueue(pr *apispipeline.PipelineRun) {
-	klog.V(4).Infof("Add PipelineRun %s/%s to cleanup", pr.Namespace, pr.Name)
+	tc.Logger.Info("Add PipelineRun %s/%s to cleanup", pr.Namespace, pr.Name)
 	key, err := controller.KeyFunc(pr)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", pr, err))
@@ -59,8 +58,8 @@ func (tc *Reconciler) PrEnqueueAfter(pr *apispipeline.PipelineRun, after time.Du
 // its TTL hasn't expired, it will be added to the queue after the TTL is expected
 // to expire.
 // This function is not meant to be invoked concurrently with the same key.
-func (c *Reconciler) processPipelineRunExpired(namespace, name string, pr *apispipeline.PipelineRun) error {
-	if expired, err := c.processPrTTL(pr); err != nil {
+func (tc *Reconciler) processPipelineRunExpired(namespace, name string, pr *apispipeline.PipelineRun) error {
+	if expired, err := tc.processPrTTL(pr); err != nil {
 		return err
 	} else if !expired {
 		return nil
@@ -70,7 +69,7 @@ func (c *Reconciler) processPipelineRunExpired(namespace, name string, pr *apisp
 	// Before deleting the PipelineRun, do a final sanity check.
 	// If TTL is modified before we do this check, we cannot be sure if the TTL truly expires.
 	// The latest PipelineRun may have a different UID, but it's fine because the checks will be run again.
-	fresh, err := c.PipelineClientSet.TektonV1alpha1().PipelineRuns(namespace).Get(name, metav1.GetOptions{})
+	fresh, err := tc.PipelineClientSet.TektonV1alpha1().PipelineRuns(namespace).Get(name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		return nil
 	}
@@ -78,7 +77,7 @@ func (c *Reconciler) processPipelineRunExpired(namespace, name string, pr *apisp
 		return err
 	}
 	// Use the latest PipelineRun TTL to see if the TTL truly expires.
-	if expired, err := c.processPrTTL(fresh); err != nil {
+	if expired, err := tc.processPrTTL(fresh); err != nil {
 		return err
 	} else if !expired {
 		return nil
@@ -89,9 +88,9 @@ func (c *Reconciler) processPipelineRunExpired(namespace, name string, pr *apisp
 		PropagationPolicy: &policy,
 		Preconditions:     &metav1.Preconditions{UID: &fresh.UID},
 	}
-	klog.V(4).Infof("Cleaning up PipelineRun %s/%s", namespace, name)
+	tc.Logger.Info("Cleaning up PipelineRun %s/%s", namespace, name)
 
-	return c.PipelineClientSet.TektonV1alpha1().PipelineRuns(fresh.Namespace).Delete(fresh.Name, options)
+	return tc.PipelineClientSet.TektonV1alpha1().PipelineRuns(fresh.Namespace).Delete(fresh.Name, options)
 }
 
 // processTTL checks whether a given PipelineRun's TTL has expired, and add it to the queue after the TTL is expected to expire
@@ -103,7 +102,7 @@ func (tc *Reconciler) processPrTTL(pr *apispipeline.PipelineRun) (expired bool, 
 	}
 
 	now := tc.clock.Now()
-	t, err := prTimeLeft(pr, &now)
+	t, err := tc.prTimeLeft(pr, &now)
 	if err != nil {
 		return false, err
 	}
@@ -139,16 +138,16 @@ func getPrFinishAndExpireTime(pr *apispipeline.PipelineRun) (*time.Time, *time.T
 	return &finishAtUTC, &expireAtUTC, nil
 }
 
-func prTimeLeft(pr *apispipeline.PipelineRun, since *time.Time) (*time.Duration, error) {
+func (tc *Reconciler) prTimeLeft(pr *apispipeline.PipelineRun, since *time.Time) (*time.Duration, error) {
 	finishAt, expireAt, err := getPrFinishAndExpireTime(pr)
 	if err != nil {
 		return nil, err
 	}
 	if finishAt.UTC().After(since.UTC()) {
-		klog.Warningf("Warning: Found PipelineRun %s/%s succeeded in the future. This is likely due to time skew in the cluster. PipelineRun cleanup will be deferred.", pr.Namespace, pr.Name)
+		tc.Logger.Warnf("Warning: Found PipelineRun %s/%s succeeded in the future. This is likely due to time skew in the cluster. PipelineRun cleanup will be deferred.", pr.Namespace, pr.Name)
 	}
 	remaining := expireAt.UTC().Sub(since.UTC())
-	klog.V(4).Infof("Found PipelineRun %s/%s succeeded at %v, remaining TTL %v since %v, TTL will expire at %v", pr.Namespace, pr.Name, finishAt.UTC(), remaining, since.UTC(), expireAt.UTC())
+	tc.Logger.Infof("Found PipelineRun %s/%s succeeded at %v, remaining TTL %v since %v, TTL will expire at %v", pr.Namespace, pr.Name, finishAt.UTC(), remaining, since.UTC(), expireAt.UTC())
 	return &remaining, nil
 }
 

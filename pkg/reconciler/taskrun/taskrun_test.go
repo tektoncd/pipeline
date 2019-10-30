@@ -1789,6 +1789,87 @@ func TestReconcileTimeouts(t *testing.T) {
 	}
 }
 
+func TestReconcileExpirationSecondsTTL(t *testing.T) {
+	type testCase struct {
+		taskRun        *v1alpha1.TaskRun
+		expectedStatus *apis.Condition
+	}
+
+	testcases := []testCase{
+		{
+			taskRun: tb.TaskRun("test-taskrun-zero-expirationSecondsTTL", "foo",
+				tb.TaskRunSpec(
+					tb.TaskRunTaskRef(simpleTask.Name),
+					tb.TaskRunExpirationSecondsTTL(0*time.Second)),
+				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown}),
+					tb.TaskRunCompletionTime(time.Now()))),
+
+			expectedStatus: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "TaskRun is deleted immediately",
+				Message: `TaskRun "test-taskrun-zero-expirationSecondsTTL" is deleted immediately when TaskRun is completed"`,
+			},
+		}, {
+			taskRun: tb.TaskRun("test-taskrun-nil-expirationSecondsTTL", "foo",
+				tb.TaskRunSpec(
+					tb.TaskRunTaskRef(simpleTask.Name),
+					tb.TaskRunNilExpirationSecondsTTL,
+				),
+				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown}),
+					tb.TaskRunStartTime(time.Now().Add(-999999*time.Hour)))),
+
+			expectedStatus: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionTrue,
+				Reason:  "Completed TaskRun is not deleted",
+				Message: `TaskRun "test-taskrun-nil-expirationSecondsTTL" will not be deleted, because field '.spec.ExpirationSecondsTTL' is not set"`,
+			},
+		}, {
+			taskRun: tb.TaskRun("test-taskrun-expirationSecondsTTL", "foo",
+				tb.TaskRunSpec(
+					tb.TaskRunTaskRef(simpleTask.Name),
+					tb.TaskRunExpirationSecondsTTL(10*time.Minute),
+				),
+				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown}),
+					tb.TaskRunStartTime(time.Now().Add(-61*time.Minute)))),
+
+			expectedStatus: &apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  "Completed TaskRun is deleted",
+				Message: `TaskRun "test-taskrun-expirationSecondsTTL" is deleted after 10 minutes`,
+			},
+		}}
+	for _, tc := range testcases {
+		d := test.Data{
+			TaskRuns: []*v1alpha1.TaskRun{tc.taskRun},
+			Tasks:    []*v1alpha1.Task{simpleTask},
+		}
+		testAssets, cancel := getTaskRunController(t, d)
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+
+		if err := c.Reconciler.Reconcile(context.Background(), fmt.Sprintf("%s/%s", tc.taskRun.Namespace, tc.taskRun.Name)); err != nil {
+			t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+		}
+		newTr, err := clients.Pipeline.TektonV1alpha1().TaskRuns(tc.taskRun.Namespace).Get(tc.taskRun.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.taskRun.Name, err)
+		}
+		condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
+		if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
+			t.Fatalf("Did not get expected condition (-want, +got): %v", d)
+		}
+	}
+}
 func TestHandlePodCreationError(t *testing.T) {
 	taskRun := tb.TaskRun("test-taskrun-pod-creation-failed", "foo", tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name),

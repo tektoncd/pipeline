@@ -9,14 +9,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
 	"knative.dev/pkg/apis"
 )
 
 func (tc *Reconciler) AddTaskRun(obj interface{}) {
 	tr := obj.(*apispipeline.TaskRun)
-	klog.V(4).Infof("Adding TaskRun %s/%s", tr.Namespace, tr.Name)
+	tc.Logger.Info("Adding TaskRun %s/%s", tr.Namespace, tr.Name)
 
 	if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
 		tc.TrEnqueue(tr)
@@ -25,7 +24,7 @@ func (tc *Reconciler) AddTaskRun(obj interface{}) {
 
 func (tc *Reconciler) UpdateTaskRun(old, cur interface{}) {
 	tr := cur.(*apispipeline.TaskRun)
-	klog.V(4).Infof("Updating TaskRun %s/%s", tr.Namespace, tr.Name)
+	tc.Logger.Info("Updating TaskRun %s/%s", tr.Namespace, tr.Name)
 
 	if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
 		tc.TrEnqueue(tr)
@@ -33,7 +32,7 @@ func (tc *Reconciler) UpdateTaskRun(old, cur interface{}) {
 }
 
 func (tc *Reconciler) TrEnqueue(tr *apispipeline.TaskRun) {
-	klog.V(4).Infof("Add TaskRun %s/%s to cleanup", tr.Namespace, tr.Name)
+	tc.Logger.Info("Add TaskRun %s/%s to cleanup", tr.Namespace, tr.Name)
 	key, err := controller.KeyFunc(tr)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", tr, err))
@@ -59,7 +58,7 @@ func (tc *Reconciler) TrEnqueueAfter(tr *apispipeline.TaskRun, after time.Durati
 // to expire.
 // This function is not meant to be invoked concurrently with the same key.
 func (tc *Reconciler) processTaskRunExpired(namespace, name string, tr *apispipeline.TaskRun) error {
-	klog.V(4).Infof("Checking if TaskRun %s/%s is ready for cleanup", namespace, name)
+	tc.Logger.Info("Checking if TaskRun %s/%s is ready for cleanup", namespace, name)
 	if tr.HasPipelineRunOwnerReference() {
 		return nil
 	}
@@ -97,7 +96,7 @@ func (tc *Reconciler) processTaskRunExpired(namespace, name string, tr *apispipe
 		PropagationPolicy: &policy,
 		Preconditions:     &metav1.Preconditions{UID: &fresh.UID},
 	}
-	klog.V(4).Infof("Cleaning up TaskRun %s/%s", namespace, name)
+	tc.Logger.Info("Cleaning up TaskRun %s/%s", namespace, name)
 	return tc.PipelineClientSet.TektonV1alpha1().TaskRuns(fresh.Namespace).Delete(fresh.Name, options)
 }
 
@@ -110,7 +109,7 @@ func (tc *Reconciler) processTrTTL(tr *apispipeline.TaskRun) (expired bool, err 
 	}
 
 	now := tc.clock.Now()
-	t, err := trTimeLeft(tr, &now)
+	t, err := tc.trTimeLeft(tr, &now)
 	if err != nil {
 		return false, err
 	}
@@ -146,16 +145,16 @@ func getFinishAndExpireTime(tr *apispipeline.TaskRun) (*time.Time, *time.Time, e
 	return &finishAtUTC, &expireAtUTC, nil
 }
 
-func trTimeLeft(tr *apispipeline.TaskRun, since *time.Time) (*time.Duration, error) {
+func (tc *Reconciler) trTimeLeft(tr *apispipeline.TaskRun, since *time.Time) (*time.Duration, error) {
 	finishAt, expireAt, err := getFinishAndExpireTime(tr)
 	if err != nil {
 		return nil, err
 	}
 	if finishAt.UTC().After(since.UTC()) {
-		klog.Warningf("Warning: Found taskRun %s/%s succeeded in the future. This is likely due to time skew in the cluster. taskrun cleanup will be deferred.", tr.Namespace, tr.Name)
+		tc.Logger.Info("Warning: Found taskRun %s/%s succeeded in the future. This is likely due to time skew in the cluster. taskrun cleanup will be deferred.", tr.Namespace, tr.Name)
 	}
 	remaining := expireAt.UTC().Sub(since.UTC())
-	klog.V(4).Infof("Found taskRun %s/%s succeeded at %v, remaining TTL %v since %v, TTL will expire at %v", tr.Namespace, tr.Name, finishAt.UTC(), remaining, since.UTC(), expireAt.UTC())
+	tc.Logger.Info("Found taskRun %s/%s succeeded at %v, remaining TTL %v since %v, TTL will expire at %v", tr.Namespace, tr.Name, finishAt.UTC(), remaining, since.UTC(), expireAt.UTC())
 	return &remaining, nil
 }
 

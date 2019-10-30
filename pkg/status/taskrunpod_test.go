@@ -156,6 +156,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
+			ExpirationTime: &metav1.Time{Time: time.Now().Add(1 * time.Hour)},
 		},
 	}, {
 		desc: "running",
@@ -219,6 +220,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			}},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
+			ExpirationTime: &metav1.Time{Time: time.Now().Add(1 * time.Hour)},
 		},
 	}, {
 		desc: "failure-message",
@@ -238,6 +240,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			Steps: []v1alpha1.StepState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
+			ExpirationTime: &metav1.Time{Time: time.Now().Add(1 * time.Hour)},
 		},
 	}, {
 		desc:      "failure-unspecified",
@@ -254,6 +257,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			Steps: []v1alpha1.StepState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
+			ExpirationTime: &metav1.Time{Time: time.Now().Add(1 * time.Hour)},
 		},
 	}, {
 		desc: "pending-waiting-message",
