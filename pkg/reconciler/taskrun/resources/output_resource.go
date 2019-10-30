@@ -91,7 +91,7 @@ func AddOutputResources(
 		}
 
 		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, sourcePath)}
+		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
 		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
 		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {

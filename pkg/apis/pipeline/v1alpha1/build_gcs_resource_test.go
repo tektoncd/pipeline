@@ -33,7 +33,7 @@ var images = pipeline.Images{
 	GitImage:                 "override-with-git:latest",
 	CredsImage:               "override-with-creds:latest",
 	KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
-	BashNoopImage:            "override-with-bash-noop:latest",
+	ShellImage:               "busybox",
 	GsutilImage:              "override-with-gsutil-image:latest",
 	BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 	PRImage:                  "override-with-pr:latest",
@@ -112,7 +112,7 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 		Location:             "gs://fake-bucket",
 		Type:                 v1alpha1.PipelineResourceTypeStorage,
 		ArtifactType:         "Manifest",
-		BashNoopImage:        "override-with-bash-noop:latest",
+		ShellImage:           "busybox",
 		BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 	}
 
@@ -153,14 +153,13 @@ func Test_BuildGCSGetInputSteps(t *testing.T) {
 				Name:                 "gcs-valid",
 				Location:             "gs://some-bucket",
 				ArtifactType:         at,
-				BashNoopImage:        "override-with-bash-noop:latest",
+				ShellImage:           "busybox",
 				BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 			}
 			wantSteps := []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "create-dir-gcs-valid-9l9zj",
-				Image:   "override-with-bash-noop:latest",
-				Command: []string{"/ko-app/bash"},
-				Args:    []string{"-args", "mkdir -p /workspace"},
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace"},
 			}}, {Container: corev1.Container{
 				Name:    "storage-fetch-gcs-valid-mz4c7",
 				Image:   "gcr.io/cloud-builders/gcs-fetcher:latest",

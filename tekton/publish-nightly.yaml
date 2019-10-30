@@ -32,8 +32,6 @@ spec:
       type: image
     - name: builtNopImage
       type: image
-    - name: builtBashImage
-      type: image
     - name: builtGsutilImage
       type: image
     - name: builtControllerImage
@@ -80,8 +78,6 @@ spec:
         # Use the images we just built as base images
         ${inputs.params.pathToProject}/${outputs.resources.builtCredsInitImage.url}: ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
         ${inputs.params.pathToProject}/${outputs.resources.builtGitInitImage.url}: ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/build-base:latest
-
-        ${inputs.params.pathToProject}/${outputs.resources.builtBashImage.url}: busybox # image should have shell in $PATH
         ${inputs.params.pathToProject}/${outputs.resources.builtEntrypointImage.url}: busybox # image should have shell in $PATH
         ${inputs.params.pathToProject}/${outputs.resources.builtGsutilImage.url}: google/cloud-sdk:alpine # image should have gsutil in $PATH
       EOF
@@ -201,7 +197,6 @@ spec:
         ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtCredsInitImage.url}
         ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtGitInitImage.url}
         ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtNopImage.url}
-        ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtBashImage.url}
         ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtGsutilImage.url}
         ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtControllerImage.url}
         ${inputs.params.imageRegistry}/${inputs.params.pathToProject}/${outputs.resources.builtWebhookImage.url}

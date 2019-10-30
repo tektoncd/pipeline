@@ -50,7 +50,7 @@ var (
 		GitImage:                 "override-with-git:latest",
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
-		BashNoopImage:            "override-with-bash-noop:latest",
+		ShellImage:               "busybox",
 		GsutilImage:              "override-with-gsutil-image:latest",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",

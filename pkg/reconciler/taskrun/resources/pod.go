@@ -197,7 +197,7 @@ func makeWorkingDirScript(workingDirs map[string]bool) string {
 	return script
 }
 
-func makeWorkingDirInitializer(bashNoopImage string, steps []v1alpha1.Step) *v1alpha1.Step {
+func makeWorkingDirInitializer(shellImage string, steps []v1alpha1.Step) *v1alpha1.Step {
 	workingDirs := make(map[string]bool)
 	for _, step := range steps {
 		workingDirs[step.WorkingDir] = true
@@ -206,9 +206,9 @@ func makeWorkingDirInitializer(bashNoopImage string, steps []v1alpha1.Step) *v1a
 	if script := makeWorkingDirScript(workingDirs); script != "" {
 		return &v1alpha1.Step{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + workingDirInit),
-			Image:        bashNoopImage,
-			Command:      []string{"/ko-app/bash"},
-			Args:         []string{"-args", script},
+			Image:        shellImage,
+			Command:      []string{"sh"},
+			Args:         []string{"-c", script},
 			VolumeMounts: implicitVolumeMounts,
 			Env:          implicitEnvVars,
 			WorkingDir:   workspaceDir,
@@ -244,7 +244,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	initSteps := []v1alpha1.Step{*cred}
 	var podSteps []v1alpha1.Step
 
-	if workingDir := makeWorkingDirInitializer(images.BashNoopImage, taskSpec.Steps); workingDir != nil {
+	if workingDir := makeWorkingDirInitializer(images.ShellImage, taskSpec.Steps); workingDir != nil {
 		initSteps = append(initSteps, *workingDir)
 	}
 
@@ -253,10 +253,10 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	placeScripts := false
 	placeScriptsStep := v1alpha1.Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("place-scripts"),
-		Image:        images.BashNoopImage,
+		Image:        images.ShellImage,
 		TTY:          true,
-		Command:      []string{"/ko-app/bash"},
-		Args:         []string{"-args", ""},
+		Command:      []string{"sh"},
+		Args:         []string{"-c", ""},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}}
 

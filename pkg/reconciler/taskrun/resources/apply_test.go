@@ -35,7 +35,7 @@ var (
 		GitImage:                 "override-with-git:latest",
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer-image:latest",
-		BashNoopImage:            "override-with-bash-noop:latest",
+		ShellImage:               "busybox",
 		GsutilImage:              "override-with-gsutil-image:latest",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
@@ -174,7 +174,7 @@ var (
 			Name:  "simple-image",
 			Image: "some-image",
 		}}, {Container: corev1.Container{
-			Name:    "image-with-args-specified",
+			Name:    "image-with-c-specified",
 			Image:   "some-other-image",
 			Command: []string{"echo"},
 			Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
@@ -186,7 +186,7 @@ var (
 			Name:  "simple-image",
 			Image: "some-image",
 		}}, {Container: corev1.Container{
-			Name:    "image-with-args-specified",
+			Name:    "image-with-c-specified",
 			Image:   "some-other-image",
 			Command: []string{"echo"},
 			Args:    []string{"$(inputs.params.normal-param)", "second", "$(inputs.params.array-param)", "last"},
@@ -198,7 +198,7 @@ var (
 			Name:  "simple-image",
 			Image: "some-image",
 		}}, {Container: corev1.Container{
-			Name:    "image-with-args-specified",
+			Name:    "image-with-c-specified",
 			Image:   "some-other-image",
 			Command: []string{"cmd", "$(inputs.params.another-array-param)"},
 			Args:    []string{"first", "second", "$(inputs.params.array-param)", "last"},
@@ -210,7 +210,7 @@ var (
 			Name:  "simple-image",
 			Image: "image-$(inputs.params.string-param2)",
 		}}, {Container: corev1.Container{
-			Name:    "image-with-args-specified",
+			Name:    "image-with-c-specified",
 			Image:   "some-other-image",
 			Command: []string{"cmd", "$(inputs.params.array-param1)"},
 			Args:    []string{"$(inputs.params.array-param2)", "second", "$(inputs.params.array-param1)", "$(inputs.params.string-param1)", "last"},
