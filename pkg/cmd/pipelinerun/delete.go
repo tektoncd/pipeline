@@ -25,10 +25,6 @@ import (
 	cliopts "k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-type deleteOptions struct {
-	forceDelete bool
-}
-
 func deleteCommand(p cli.Params) *cobra.Command {
 	opts := &options.DeleteOptions{Resource: "pipelinerun", ForceDelete: false}
 	f := cliopts.NewPrintFlags("delete")
