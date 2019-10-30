@@ -173,7 +173,7 @@ func TestInput_Validate(t *testing.T) {
 		}},
 		Resources: []v1alpha1.TaskResourceBinding{{
 			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-				ResourceRef: v1alpha1.PipelineResourceRef{
+				ResourceRef: &v1alpha1.PipelineResourceRef{
 					Name: "testresource",
 				},
 				Name: "workspace",
@@ -195,14 +195,14 @@ func TestInput_Invalidate(t *testing.T) {
 		inputs: v1alpha1.TaskRunInputs{
 			Resources: []v1alpha1.TaskResourceBinding{{
 				PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-					ResourceRef: v1alpha1.PipelineResourceRef{
+					ResourceRef: &v1alpha1.PipelineResourceRef{
 						Name: "testresource1",
 					},
 					Name: "workspace",
 				},
 			}, {
 				PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-					ResourceRef: v1alpha1.PipelineResourceRef{
+					ResourceRef: &v1alpha1.PipelineResourceRef{
 						Name: "testresource2",
 					},
 					Name: "workspace",
@@ -215,7 +215,7 @@ func TestInput_Invalidate(t *testing.T) {
 		inputs: v1alpha1.TaskRunInputs{
 			Resources: []v1alpha1.TaskResourceBinding{{
 				PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-					ResourceRef: v1alpha1.PipelineResourceRef{
+					ResourceRef: &v1alpha1.PipelineResourceRef{
 						Name: "testresource",
 					},
 					Name: "resource",
@@ -235,7 +235,7 @@ func TestInput_Invalidate(t *testing.T) {
 		inputs: v1alpha1.TaskRunInputs{
 			Resources: []v1alpha1.TaskResourceBinding{{
 				PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-					ResourceRef: v1alpha1.PipelineResourceRef{
+					ResourceRef: &v1alpha1.PipelineResourceRef{
 						Name: "testresource",
 					},
 					ResourceSpec: &v1alpha1.PipelineResourceSpec{
@@ -284,7 +284,7 @@ func TestOutput_Validate(t *testing.T) {
 	i := v1alpha1.TaskRunOutputs{
 		Resources: []v1alpha1.TaskResourceBinding{{
 			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-				ResourceRef: v1alpha1.PipelineResourceRef{
+				ResourceRef: &v1alpha1.PipelineResourceRef{
 					Name: "testresource",
 				},
 				Name: "someimage",
@@ -305,14 +305,14 @@ func TestOutput_Invalidate(t *testing.T) {
 		outputs: v1alpha1.TaskRunOutputs{
 			Resources: []v1alpha1.TaskResourceBinding{{
 				PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-					ResourceRef: v1alpha1.PipelineResourceRef{
+					ResourceRef: &v1alpha1.PipelineResourceRef{
 						Name: "testresource1",
 					},
 					Name: "workspace",
 				},
 			}, {
 				PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
-					ResourceRef: v1alpha1.PipelineResourceRef{
+					ResourceRef: &v1alpha1.PipelineResourceRef{
 						Name: "testresource2",
 					},
 					Name: "workspace",

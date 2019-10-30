@@ -180,7 +180,7 @@ func (rcc *ResolvedConditionCheck) ToTaskResourceBindings() []v1alpha1.TaskResou
 			},
 		}
 		if r.SelfLink != "" {
-			tr.ResourceRef = v1alpha1.PipelineResourceRef{
+			tr.ResourceRef = &v1alpha1.PipelineResourceRef{
 				Name:       r.Name,
 				APIVersion: r.APIVersion,
 			}

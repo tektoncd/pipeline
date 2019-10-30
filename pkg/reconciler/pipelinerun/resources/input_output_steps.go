@@ -36,7 +36,7 @@ func GetOutputSteps(outputs map[string]*v1alpha1.PipelineResource, taskName, sto
 		// SelfLink is being checked there to determine if this PipelineResource is an instance that
 		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
 		if outputResource.SelfLink != "" {
-			taskOutputResource.ResourceRef = v1alpha1.PipelineResourceRef{
+			taskOutputResource.ResourceRef = &v1alpha1.PipelineResourceRef{
 				Name:       outputResource.Name,
 				APIVersion: outputResource.APIVersion,
 			}
@@ -66,7 +66,7 @@ func GetInputSteps(inputs map[string]*v1alpha1.PipelineResource, pt *v1alpha1.Pi
 		// SelfLink is being checked there to determine if this PipelineResource is an instance that
 		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
 		if inputResource.SelfLink != "" {
-			taskInputResource.ResourceRef = v1alpha1.PipelineResourceRef{
+			taskInputResource.ResourceRef = &v1alpha1.PipelineResourceRef{
 				Name:       inputResource.Name,
 				APIVersion: inputResource.APIVersion,
 			}

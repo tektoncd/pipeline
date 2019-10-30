@@ -330,7 +330,9 @@ func PipelineRunResourceBinding(name string, ops ...PipelineResourceBindingOp) P
 // PipelineResourceBindingRef set the ResourceRef name to the Resource called Name.
 func PipelineResourceBindingRef(name string) PipelineResourceBindingOp {
 	return func(b *v1alpha1.PipelineResourceBinding) {
-		b.ResourceRef.Name = name
+		b.ResourceRef = &v1alpha1.PipelineResourceRef{
+			Name: name,
+		}
 	}
 }
 

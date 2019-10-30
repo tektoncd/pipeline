@@ -30,14 +30,14 @@ func TestResolveTaskRun(t *testing.T) {
 	inputs := []v1alpha1.TaskResourceBinding{{
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "repoToBuildFrom",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "git-repo",
 			},
 		},
 	}, {
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "clusterToUse",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "k8s-cluster",
 			},
 		},
@@ -53,14 +53,14 @@ func TestResolveTaskRun(t *testing.T) {
 	outputs := []v1alpha1.TaskResourceBinding{{
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "imageToBuild",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "image",
 			},
 		},
 	}, {
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "gitRepoToUpdate",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "another-git-repo",
 			},
 		},
@@ -168,7 +168,7 @@ func TestResolveTaskRun_missingOutput(t *testing.T) {
 	outputs := []v1alpha1.TaskResourceBinding{{
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "repoToUpdate",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "another-git-repo",
 			},
 		}}}
@@ -184,7 +184,7 @@ func TestResolveTaskRun_missingInput(t *testing.T) {
 	inputs := []v1alpha1.TaskResourceBinding{{
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "repoToBuildFrom",
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "git-repo",
 			},
 		}}}
@@ -230,7 +230,7 @@ func TestResolveTaskRun_InvalidBothSpecified(t *testing.T) {
 		PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 			Name: "repoToBuildFrom",
 			// Can't specify both ResourceRef and ResourceSpec
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			ResourceRef: &v1alpha1.PipelineResourceRef{
 				Name: "git-repo",
 			},
 			ResourceSpec: &v1alpha1.PipelineResourceSpec{
@@ -267,7 +267,7 @@ func TestGetResourceFromBinding_Ref(t *testing.T) {
 		},
 	}
 	binding := &v1alpha1.PipelineResourceBinding{
-		ResourceRef: v1alpha1.PipelineResourceRef{
+		ResourceRef: &v1alpha1.PipelineResourceRef{
 			Name: "foo-resource",
 		},
 	}
@@ -331,7 +331,7 @@ func TestGetResourceFromBinding_NameAndSpec(t *testing.T) {
 				Value: "github.com/mycoolorg/mycoolrepo",
 			}},
 		},
-		ResourceRef: v1alpha1.PipelineResourceRef{
+		ResourceRef: &v1alpha1.PipelineResourceRef{
 			Name: "foo-resource",
 		},
 	}
@@ -347,7 +347,7 @@ func TestGetResourceFromBinding_NameAndSpec(t *testing.T) {
 
 func TestGetResourceFromBinding_ErrorGettingResource(t *testing.T) {
 	binding := &v1alpha1.PipelineResourceBinding{
-		ResourceRef: v1alpha1.PipelineResourceRef{
+		ResourceRef: &v1alpha1.PipelineResourceRef{
 			Name: "foo-resource",
 		},
 	}

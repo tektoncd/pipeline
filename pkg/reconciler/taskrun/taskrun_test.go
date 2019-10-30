@@ -2048,7 +2048,7 @@ func TestUpdateTaskRunStatus_withValidJson(t *testing.T) {
 					Resources: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -2058,7 +2058,7 @@ func TestUpdateTaskRunStatus_withValidJson(t *testing.T) {
 					Resources: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -2106,7 +2106,7 @@ func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
 					Resources: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},
@@ -2116,7 +2116,7 @@ func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
 					Resources: []v1alpha1.TaskResourceBinding{{
 						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 							Name: "source-image",
-							ResourceRef: v1alpha1.PipelineResourceRef{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
 								Name: "source-image-1",
 							},
 						},

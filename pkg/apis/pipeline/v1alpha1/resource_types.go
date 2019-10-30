@@ -149,7 +149,6 @@ type PipelineResource struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Spec holds the desired state of the PipelineResource from the client
-	// +optional
 	Spec PipelineResourceSpec `json:"spec,omitempty"`
 	// Status communicates the observed state of the PipelineResource from the controller
 	// +optional
@@ -163,10 +162,11 @@ type PipelineResourceBinding struct {
 	Name string `json:"name,omitempty"`
 	// ResourceRef is a reference to the instance of the actual PipelineResource
 	// that should be used
-	ResourceRef PipelineResourceRef `json:"resourceRef,omitempty"`
 	// +optional
+	ResourceRef *PipelineResourceRef `json:"resourceRef,omitempty"`
 	// ResourceSpec is specification of a resource that should be created and
 	// consumed by the task
+	// +optional
 	ResourceSpec *PipelineResourceSpec `json:"resourceSpec,omitempty"`
 }
 
