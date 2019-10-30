@@ -571,7 +571,9 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 // TaskResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
 func TaskResourceBindingRef(name string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
-		b.ResourceRef.Name = name
+		b.ResourceRef = &v1alpha1.PipelineResourceRef{
+			Name: name,
+		}
 	}
 }
 
