@@ -94,8 +94,8 @@ func Test_Valid_NewGCSResource(t *testing.T) {
 			SecretKey:  "secretKey",
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 		}},
-		BashNoopImage: "override-with-bash-noop:latest",
-		GsutilImage:   "override-with-gsutil-image:latest",
+		ShellImage:  "busybox",
+		GsutilImage: "override-with-gsutil-image:latest",
 	}
 
 	gcsRes, err := v1alpha1.NewGCSResource(images, pr)
@@ -163,14 +163,13 @@ func Test_GetInputSteps(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
 			}},
-			BashNoopImage: "override-with-bash-noop:latest",
-			GsutilImage:   "override-with-gsutil-image:latest",
+			ShellImage:  "busybox",
+			GsutilImage: "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "fetch-gcs-valid-mz4c7",
 			Image:   "override-with-gsutil-image:latest",
@@ -199,14 +198,13 @@ func Test_GetInputSteps(t *testing.T) {
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
-			BashNoopImage: "override-with-bash-noop:latest",
-			GsutilImage:   "override-with-gsutil-image:latest",
+			ShellImage:  "busybox",
+			GsutilImage: "override-with-gsutil-image:latest",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-mssqb",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "fetch-gcs-valid-78c5n",
 			Image:   "override-with-gsutil-image:latest",

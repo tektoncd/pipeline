@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -70,8 +69,8 @@ type ArtifactBucket struct {
 	Location string
 	Secrets  []SecretParam
 
-	BashNoopImage string
-	GsutilImage   string
+	ShellImage  string
+	GsutilImage string
 }
 
 // GetType returns the type of the artifact storage
@@ -86,22 +85,18 @@ func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
 
 // GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage
 func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []Step {
-	args := []string{"-args", fmt.Sprintf("cp -P -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
-		Image:   b.BashNoopImage,
-		Command: []string{"/ko-app/bash"},
-		Args: []string{
-			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),
-		},
+		Image:   b.ShellImage,
+		Command: []string{"mkdir", "-p", destinationPath},
 	}}, {Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-from-%s", name)),
 		Image:        b.GsutilImage,
 		Command:      []string{"/ko-app/gsutil"},
-		Args:         args,
+		Args:         []string{"-args", fmt.Sprintf("cp -P -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)},
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
 	}}}

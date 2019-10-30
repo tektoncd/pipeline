@@ -41,8 +41,8 @@ type GCSResource struct {
 	//Secret holds a struct to indicate a field name and corresponding secret name to populate it
 	Secrets []SecretParam `json:"secrets"`
 
-	BashNoopImage string `json:"-"`
-	GsutilImage   string `json:"-"`
+	ShellImage  string `json:"-"`
+	GsutilImage string `json:"-"`
 }
 
 // NewGCSResource creates a new GCS resource to pass to a Task
@@ -69,13 +69,13 @@ func NewGCSResource(images pipeline.Images, r *PipelineResource) (*GCSResource, 
 		return nil, xerrors.Errorf("GCSResource: Need Location to be specified in order to create GCS resource %s", r.Name)
 	}
 	return &GCSResource{
-		Name:          r.Name,
-		Type:          r.Spec.Type,
-		Location:      location,
-		TypeDir:       dir,
-		Secrets:       r.Spec.SecretParams,
-		BashNoopImage: images.BashNoopImage,
-		GsutilImage:   images.GsutilImage,
+		Name:        r.Name,
+		Type:        r.Spec.Type,
+		Location:    location,
+		TypeDir:     dir,
+		Secrets:     r.Spec.SecretParams,
+		ShellImage:  images.ShellImage,
+		GsutilImage: images.GsutilImage,
 	}, nil
 }
 
@@ -143,7 +143,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
 	steps := []Step{
-		CreateDirStep(s.BashNoopImage, s.Name, path),
+		CreateDirStep(s.ShellImage, s.Name, path),
 		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        s.GsutilImage,

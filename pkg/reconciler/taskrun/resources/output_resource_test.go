@@ -166,23 +166,20 @@ func TestValidOutputResources(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "source-mkdir-source-git-mz4c7",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p pipeline-task-name"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
 		}}, {Container: corev1.Container{
 			Name:    "source-copy-source-git-mssqb",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-name"},
+			Image:   "busybox",
+			Command: []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
@@ -231,23 +228,20 @@ func TestValidOutputResources(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "source-mkdir-source-git-mz4c7",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p pipeline-task-name"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
 		}}, {Container: corev1.Container{
 			Name:    "source-copy-source-git-mssqb",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-name"},
+			Image:   "busybox",
+			Command: []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
@@ -296,9 +290,8 @@ func TestValidOutputResources(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}},
 		wantVolumes: nil,
 	}, {
@@ -339,9 +332,8 @@ func TestValidOutputResources(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}},
 	}, {
 		name: "storage resource as both input and output",
@@ -405,22 +397,19 @@ func TestValidOutputResources(t *testing.T) {
 		wantSteps: []v1alpha1.Step{
 			{Container: corev1.Container{
 				Name:    "create-dir-source-workspace-9l9zj",
-				Image:   "override-with-bash-noop:latest",
-				Command: []string{"/ko-app/bash"},
-				Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 			}},
 			{Container: corev1.Container{
 				Name:         "source-mkdir-source-gcs-mz4c7",
-				Image:        "override-with-bash-noop:latest",
-				Command:      []string{"/ko-app/bash"},
-				Args:         []string{"-args", "mkdir -p pipeline-task-path"},
+				Image:        "busybox",
+				Command:      []string{"mkdir", "-p", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 			}},
 			{Container: corev1.Container{
 				Name:         "source-copy-source-gcs-mssqb",
-				Image:        "override-with-bash-noop:latest",
-				Command:      []string{"/ko-app/bash"},
-				Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
+				Image:        "busybox",
+				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 			}},
 			{Container: corev1.Container{
@@ -488,22 +477,19 @@ func TestValidOutputResources(t *testing.T) {
 		wantSteps: []v1alpha1.Step{
 			{Container: corev1.Container{
 				Name:    "create-dir-source-workspace-9l9zj",
-				Image:   "override-with-bash-noop:latest",
-				Command: []string{"/ko-app/bash"},
-				Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 			}},
 			{Container: corev1.Container{
 				Name:         "source-mkdir-source-gcs-mz4c7",
-				Image:        "override-with-bash-noop:latest",
-				Command:      []string{"/ko-app/bash"},
-				Args:         []string{"-args", "mkdir -p pipeline-task-path"},
+				Image:        "busybox",
+				Command:      []string{"mkdir", "-p", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 			}},
 			{Container: corev1.Container{
 				Name:         "source-copy-source-gcs-mssqb",
-				Image:        "override-with-bash-noop:latest",
-				Command:      []string{"/ko-app/bash"},
-				Args:         []string{"-args", "cp -r /workspace/output/source-workspace/. pipeline-task-path"},
+				Image:        "busybox",
+				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 			}},
 			{Container: corev1.Container{
@@ -565,9 +551,8 @@ func TestValidOutputResources(t *testing.T) {
 		wantSteps: []v1alpha1.Step{
 			{Container: corev1.Container{
 				Name:    "create-dir-source-workspace-9l9zj",
-				Image:   "override-with-bash-noop:latest",
-				Command: []string{"/ko-app/bash"},
-				Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-mz4c7",
@@ -627,9 +612,8 @@ func TestValidOutputResources(t *testing.T) {
 		wantSteps: []v1alpha1.Step{
 			{Container: corev1.Container{
 				Name:    "create-dir-source-workspace-9l9zj",
-				Image:   "override-with-bash-noop:latest",
-				Command: []string{"/ko-app/bash"},
-				Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-mz4c7",
@@ -692,9 +676,8 @@ func TestValidOutputResources(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}},
 	}, {
 		name: "Resource with TargetPath as output",
@@ -739,9 +722,8 @@ func TestValidOutputResources(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace"},
 		}}},
 	}, {
 		desc: "image output resource with no steps",
@@ -780,9 +762,8 @@ func TestValidOutputResources(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
@@ -887,9 +868,8 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "artifact-copy-to-source-git-mz4c7",
 			Image:   "override-with-gsutil-image:latest",
@@ -939,9 +919,8 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "artifact-copy-to-source-git-mz4c7",
 			Image:   "override-with-gsutil-image:latest",
@@ -986,9 +965,8 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "override-with-bash-noop:latest",
-			Command: []string{"/ko-app/bash"},
-			Args:    []string{"-args", "mkdir -p /workspace/output/source-workspace"},
+			Image:   "busybox",
+			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {

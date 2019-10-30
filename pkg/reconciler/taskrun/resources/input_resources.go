@@ -94,7 +94,7 @@ func AddInputResource(
 					for _, s := range cpSteps {
 						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
-							v1alpha1.CreateDirStep(images.BashNoopImage, boundResource.Name, dPath),
+							v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, dPath),
 							s)
 					}
 				} else {

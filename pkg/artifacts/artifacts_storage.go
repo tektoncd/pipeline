@@ -70,7 +70,7 @@ func InitializeArtifactStorage(images pipeline.Images, pr *v1alpha1.PipelineRun,
 		if err != nil {
 			return nil, err
 		}
-		return &v1alpha1.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc, BashNoopImage: images.BashNoopImage}, nil
+		return &v1alpha1.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc, ShellImage: images.ShellImage}, nil
 	}
 
 	return NewArtifactBucketConfigFromConfigMap(images)(configMap)
@@ -129,7 +129,7 @@ func GetArtifactStorage(images pipeline.Images, prName string, c kubernetes.Inte
 		return nil, xerrors.Errorf("couldn't determine if PVC was needed from config map: %w", err)
 	}
 	if pvc {
-		return &v1alpha1.ArtifactPVC{Name: prName, BashNoopImage: images.BashNoopImage}, nil
+		return &v1alpha1.ArtifactPVC{Name: prName, ShellImage: images.ShellImage}, nil
 	}
 	return NewArtifactBucketConfigFromConfigMap(images)(configMap)
 }
@@ -138,8 +138,8 @@ func GetArtifactStorage(images pipeline.Images, prName string, c kubernetes.Inte
 func NewArtifactBucketConfigFromConfigMap(images pipeline.Images) func(configMap *corev1.ConfigMap) (*v1alpha1.ArtifactBucket, error) {
 	return func(configMap *corev1.ConfigMap) (*v1alpha1.ArtifactBucket, error) {
 		c := &v1alpha1.ArtifactBucket{
-			BashNoopImage: images.BashNoopImage,
-			GsutilImage:   images.GsutilImage,
+			ShellImage:  images.ShellImage,
+			GsutilImage: images.GsutilImage,
 		}
 
 		if configMap.Data == nil {

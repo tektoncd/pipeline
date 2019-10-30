@@ -19,11 +19,10 @@ package main
 import (
 	"flag"
 
-	"knative.dev/pkg/injection/sharedmain"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"knative.dev/pkg/injection/sharedmain"
 )
 
 const (
@@ -42,8 +41,7 @@ var (
 		"The container image for preparing our Build's credentials.")
 	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest",
 		"The container image containing our kubeconfig writer binary.")
-	bashNoopImage = flag.String("bash-noop-image", "override-with-bash-noop:latest",
-		"The container image containing bash shell")
+	shellImage  = flag.String("shell-image", "busybox", "The container image containing a shell")
 	gsutilImage = flag.String("gsutil-image", "override-with-gsutil-image:latest",
 		"The container image containing gsutil")
 	buildGCSFetcherImage = flag.String("build-gcs-fetcher-image", "gcr.io/cloud-builders/gcs-fetcher:latest",
@@ -62,7 +60,7 @@ func main() {
 		GitImage:                 *gitImage,
 		CredsImage:               *credsImage,
 		KubeconfigWriterImage:    *kubeconfigWriterImage,
-		BashNoopImage:            *bashNoopImage,
+		ShellImage:               *shellImage,
 		GsutilImage:              *gsutilImage,
 		BuildGCSFetcherImage:     *buildGCSFetcherImage,
 		PRImage:                  *prImage,

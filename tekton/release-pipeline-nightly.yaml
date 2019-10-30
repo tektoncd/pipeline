@@ -29,8 +29,6 @@ spec:
     type: image
   - name: builtNopImage
     type: image
-  - name: builtBashImage
-    type: image
   - name: builtGsutilImage
     type: image
   - name: builtControllerImage
@@ -87,8 +85,6 @@ spec:
             resource: builtGitInitImage
           - name: builtNopImage
             resource: builtNopImage
-          - name: builtBashImage
-            resource: builtBashImage
           - name: builtGsutilImage
             resource: builtGsutilImage
           - name: builtControllerImage
@@ -133,8 +129,6 @@ spec:
   - name: builtGitInitImage
     type: image
   - name: builtNopImage
-    type: image
-  - name: builtBashImage
     type: image
   - name: builtGsutilImage
     type: image
@@ -230,8 +224,6 @@ spec:
             resource: builtGitInitImage
           - name: builtNopImage
             resource: builtNopImage
-          - name: builtBashImage
-            resource: builtBashImage
           - name: builtGsutilImage
             resource: builtGsutilImage
           - name: builtControllerImage
