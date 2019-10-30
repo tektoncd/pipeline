@@ -20,7 +20,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/Netflix/go-expect"
+	goexpect "github.com/Netflix/go-expect"
 	"github.com/hinshun/vt10x"
 	"github.com/stretchr/testify/require"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -29,7 +29,7 @@ import (
 type promptTest struct {
 	name      string
 	cmdArgs   []string
-	procedure func(*expect.Console) error
+	procedure func(*goexpect.Console) error
 }
 
 func (opts *logOptions) RunPromptTest(t *testing.T, test promptTest) {
@@ -64,16 +64,16 @@ func (opts *startOptions) RunPromptTest(t *testing.T, test promptTest) {
 	})
 }
 
-func stdio(c *expect.Console) terminal.Stdio {
+func stdio(c *goexpect.Console) terminal.Stdio {
 	return terminal.Stdio{In: c.Tty(), Out: c.Tty(), Err: c.Tty()}
 }
 
-func (pt *promptTest) runTest(t *testing.T, procedure func(*expect.Console) error, test func(terminal.Stdio) error) {
+func (pt *promptTest) runTest(t *testing.T, procedure func(*goexpect.Console) error, test func(terminal.Stdio) error) {
 	t.Parallel()
 
 	// Multiplex output to a buffer as well for the raw bytes.
 	buf := new(bytes.Buffer)
-	c, state, err := vt10x.NewVT10XConsole(expect.WithStdout(buf))
+	c, state, err := vt10x.NewVT10XConsole(goexpect.WithStdout(buf))
 	require.Nil(t, err)
 	defer c.Close()
 
@@ -96,7 +96,7 @@ func (pt *promptTest) runTest(t *testing.T, procedure func(*expect.Console) erro
 	t.Logf("Raw output: %q", buf.String())
 
 	// Dump the terminal's screen.
-	t.Logf("\n%s", expect.StripTrailingEmptyLines(state.String()))
+	t.Logf("\n%s", goexpect.StripTrailingEmptyLines(state.String()))
 }
 
 // WithStdio helps to test interactive command

@@ -21,7 +21,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/Netflix/go-expect"
+	goexpect "github.com/Netflix/go-expect"
 	"github.com/tektoncd/cli/pkg/cli"
 	"github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -57,7 +57,7 @@ func TestPipelineResource_resource_noName(t *testing.T) {
 		{
 			name: "no input for name",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -125,7 +125,7 @@ func TestPipelineResource_resource_already_exist(t *testing.T) {
 		{
 			name: "pre-existing-resource",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -175,7 +175,7 @@ func TestPipelineResource_allResourceType(t *testing.T) {
 		{
 			name: "check all type of resource",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -283,7 +283,7 @@ func TestPipelineResource_create_cloudEventResource(t *testing.T) {
 		{
 			name: "create-cloudEventResource",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -353,7 +353,7 @@ func TestPipelineResource_create_clusterResource_secure_password_text(t *testing
 		{
 			name: "clusterResource-securePasswordText",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -499,7 +499,7 @@ func TestPipelineResource_create_clusterResource_secure_token_text(t *testing.T)
 		{
 			name: "clusterResource-secureTokenText",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -649,7 +649,7 @@ func TestPipelineResource_create_gitResource(t *testing.T) {
 		{
 			name: "gitResource",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -746,7 +746,7 @@ func TestPipelineResource_create_imageResource(t *testing.T) {
 		{
 			name: "imageResource",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -848,7 +848,7 @@ func TestPipelineResource_create_clusterResource_secure_password_secret(t *testi
 		{
 			name: "clusterResource-securePasswordSecrets",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -1010,7 +1010,7 @@ func TestPipelineResource_create_clusterResource_secure_token_secret(t *testing.
 		{
 			name: "clusterResource-secureTokenSecrets",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -1184,7 +1184,7 @@ func TestPipelineResource_create_pullRequestResource(t *testing.T) {
 		{
 			name: "pullRequestResource",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -1313,7 +1313,7 @@ func TestPipelineResource_create_gcsStorageResource(t *testing.T) {
 		{
 			name: "gcsStorageResource",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}
@@ -1455,7 +1455,7 @@ func TestPipelineResource_create_buildGCSstorageResource(t *testing.T) {
 		{
 			name: "buildGCSstorageResource",
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
 					return err
 				}

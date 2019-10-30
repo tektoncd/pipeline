@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/Netflix/go-expect"
+	goexpect "github.com/Netflix/go-expect"
 	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -289,7 +289,7 @@ func Test_start_pipeline_interactive(t *testing.T) {
 			name:    "basic interaction",
 			cmdArgs: []string{pipelineName},
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Choose the git resource to use for git-repo:"); err != nil {
 					return err
 				}

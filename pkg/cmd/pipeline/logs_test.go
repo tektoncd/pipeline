@@ -22,7 +22,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/Netflix/go-expect"
+	goexpect "github.com/Netflix/go-expect"
 	"github.com/jonboulle/clockwork"
 	"github.com/tektoncd/cli/pkg/test"
 	cb "github.com/tektoncd/cli/pkg/test/builder"
@@ -243,7 +243,7 @@ func TestLogs_interactive_get_all_inputs(t *testing.T) {
 			name:    "basic interaction",
 			cmdArgs: []string{},
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Select pipeline :"); err != nil {
 					return err
 				}
@@ -362,7 +362,7 @@ func TestLogs_interactive_ask_runs(t *testing.T) {
 			name:    "basic interaction",
 			cmdArgs: []string{pipelineName},
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Select pipelinerun :"); err != nil {
 					return err
 				}
@@ -456,7 +456,7 @@ func TestLogs_interactive_limit_2(t *testing.T) {
 			name:    "basic interaction",
 			cmdArgs: []string{pipelineName},
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("output-pipeline"); err != nil {
 					return err
 				}
@@ -558,7 +558,7 @@ func TestLogs_interactive_limit_1(t *testing.T) {
 			name:    "basic interaction",
 			cmdArgs: []string{pipelineName},
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("output-pipeline"); err != nil {
 					return err
 				}
@@ -652,7 +652,7 @@ func TestLogs_interactive_ask_all_last_run(t *testing.T) {
 			name:    "basic interaction",
 			cmdArgs: []string{},
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("Select pipeline :"); err != nil {
 					return err
 				}
@@ -747,7 +747,7 @@ func TestLogs_interactive_ask_run_last_run(t *testing.T) {
 			name:    "basic interaction",
 			cmdArgs: []string{pipelineName},
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("output-pipeline"); err == nil {
 					return errors.New("unexpected error")
 				}
@@ -872,7 +872,7 @@ func TestLogs_have_one_get_one(t *testing.T) {
 			name:    "basic interaction",
 			cmdArgs: []string{pipelineName},
 
-			procedure: func(c *expect.Console) error {
+			procedure: func(c *goexpect.Console) error {
 				if _, err := c.ExpectString("output-pipeline"); err == nil {
 					return errors.New("unexpected error")
 				}
