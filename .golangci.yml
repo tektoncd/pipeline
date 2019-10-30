@@ -1,10 +1,8 @@
 run:
-  timeout: 20m
-
   build-tags:
-  - e2e
+    - e2e
   skip-dirs:
-  - vendor
+    - vendor
 linters-settings:
   errcheck:
     exclude: .errcheck.txt

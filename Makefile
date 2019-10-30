@@ -49,7 +49,7 @@ test: test-unit ## run all tests
 .PHONY: lint
 lint: ## run linter(s)
 	@echo "Linting..."
-	@golangci-lint run ./...
+	@golangci-lint run ./... --timeout 5m
 
 .PHONY: lint-yaml
 lint-yaml: ${YAML_FILES} ## runs yamllint on all yaml files
