@@ -472,7 +472,7 @@ spec:
 
 To surface the image digest in the output of the `taskRun` the builder tool
 should produce this information in a
-[OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/image-layout.md)
+[OCI Image Layout](https://github.com/opencontainers/image-spec/blob/master/image-layout.md)
 `index.json` file. This file should be placed on a location as specified in the
 task definition under the default resource directory, or the specified `targetPath`.
 If there is only one image in the `index.json` file, the digest of that image is exported;
