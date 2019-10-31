@@ -95,7 +95,7 @@ func Test_Valid_NewGCSResource(t *testing.T) {
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 		}},
 		ShellImage:  "busybox",
-		GsutilImage: "override-with-gsutil-image:latest",
+		GsutilImage: "google/cloud-sdk",
 	}
 
 	gcsRes, err := v1alpha1.NewGCSResource(images, pr)
@@ -164,7 +164,7 @@ func Test_GetInputSteps(t *testing.T) {
 				SecretKey:  "key.json",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-9l9zj",
@@ -172,9 +172,9 @@ func Test_GetInputSteps(t *testing.T) {
 			Command: []string{"mkdir", "-p", "/workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "fetch-gcs-valid-mz4c7",
-			Image:   "override-with-gsutil-image:latest",
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r gs://some-bucket /workspace"},
+			Image:   "google/cloud-sdk",
+			Command: []string{"gsutil"},
+			Args:    []string{"rsync", "-d", "-r", "gs://some-bucket", "/workspace"},
 			Env: []corev1.EnvVar{{
 				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 				Value: "/var/secret/secretName/key.json",
@@ -199,7 +199,7 @@ func Test_GetInputSteps(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "create-dir-gcs-valid-mssqb",
@@ -207,9 +207,9 @@ func Test_GetInputSteps(t *testing.T) {
 			Command: []string{"mkdir", "-p", "/workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "fetch-gcs-valid-78c5n",
-			Image:   "override-with-gsutil-image:latest",
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp gs://some-bucket /workspace"},
+			Image:   "google/cloud-sdk",
+			Command: []string{"gsutil"},
+			Args:    []string{"cp", "gs://some-bucket", "/workspace"},
 			Env: []corev1.EnvVar{{
 				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
 				Value: "/var/secret/secretName/key.json",
@@ -252,13 +252,13 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 				SecretKey:  "key.json",
 			}},
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-9l9zj",
-			Image:   "override-with-gsutil-image:latest",
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "rsync -d -r /workspace/ gs://some-bucket"},
+			Image:   "google/cloud-sdk",
+			Command: []string{"gsutil"},
+			Args:    []string{"rsync", "-d", "-r", "/workspace/", "gs://some-bucket"},
 			Env:     []corev1.EnvVar{{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"}},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "volume-gcs-valid-secretName",
@@ -279,13 +279,13 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 				SecretName: "secretName",
 				FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			}},
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mz4c7",
-			Image:   "override-with-gsutil-image:latest",
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp /workspace/* gs://some-bucket"},
+			Image:   "google/cloud-sdk",
+			Command: []string{"gsutil"},
+			Args:    []string{"cp", "/workspace/*", "gs://some-bucket"},
 			Env: []corev1.EnvVar{
 				{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secretName/key.json"},
 			},
@@ -300,13 +300,13 @@ func Test_GetOutputTaskModifier(t *testing.T) {
 			Name:        "gcs-valid",
 			Location:    "gs://some-bucket",
 			TypeDir:     false,
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 		},
 		wantSteps: []v1alpha1.Step{{Container: corev1.Container{
 			Name:    "upload-gcs-valid-mssqb",
-			Image:   "override-with-gsutil-image:latest",
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp /workspace/* gs://some-bucket"},
+			Image:   "google/cloud-sdk",
+			Command: []string{"gsutil"},
+			Args:    []string{"cp", "/workspace/*", "gs://some-bucket"},
 		}}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {

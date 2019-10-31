@@ -111,16 +111,6 @@ spec:
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: gsutil-image
-spec:
-  type: image
-  params:
-   - name: url
-     value: cmd/gsutil # Registry is provided via parameter, this is a hack see #569
----
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
   name: controller-image
 spec:
   type: image

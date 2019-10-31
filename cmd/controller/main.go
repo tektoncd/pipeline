@@ -42,7 +42,7 @@ var (
 	kubeconfigWriterImage = flag.String("kubeconfig-writer-image", "override-with-kubeconfig-writer:latest",
 		"The container image containing our kubeconfig writer binary.")
 	shellImage  = flag.String("shell-image", "busybox", "The container image containing a shell")
-	gsutilImage = flag.String("gsutil-image", "override-with-gsutil-image:latest",
+	gsutilImage = flag.String("gsutil-image", "google/cloud-sdk",
 		"The container image containing gsutil")
 	buildGCSFetcherImage = flag.String("build-gcs-fetcher-image", "gcr.io/cloud-builders/gcs-fetcher:latest",
 		"The container image containing our GCS fetcher binary.")
