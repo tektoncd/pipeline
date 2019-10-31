@@ -105,9 +105,9 @@ func (s *GCSResource) Replacements() map[string]string {
 func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModifier, error) {
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", path, s.Location)}
+		args = []string{"rsync", "-d", "-r", path, s.Location}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", filepath.Join(path, "*"), s.Location)}
+		args = []string{"cp", filepath.Join(path, "*"), s.Location}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
@@ -115,7 +115,7 @@ func (s *GCSResource) GetOutputTaskModifier(ts *TaskSpec, path string) (TaskModi
 	step := Step{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("upload-%s", s.Name)),
 		Image:        s.GsutilImage,
-		Command:      []string{"/ko-app/gsutil"},
+		Command:      []string{"gsutil"},
 		Args:         args,
 		VolumeMounts: secretVolumeMount,
 		Env:          envVars},
@@ -136,9 +136,9 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 	}
 	var args []string
 	if s.TypeDir {
-		args = []string{"-args", fmt.Sprintf("rsync -d -r %s %s", s.Location, path)}
+		args = []string{"rsync", "-d", "-r", s.Location, path}
 	} else {
-		args = []string{"-args", fmt.Sprintf("cp %s %s", s.Location, path)}
+		args = []string{"cp", s.Location, path}
 	}
 
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts(s.Name, gcsSecretVolumeMountPath, s.Secrets)
@@ -147,7 +147,7 @@ func (s *GCSResource) GetInputTaskModifier(ts *TaskSpec, path string) (TaskModif
 		{Container: corev1.Container{
 			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("fetch-%s", s.Name)),
 			Image:        s.GsutilImage,
-			Command:      []string{"/ko-app/gsutil"},
+			Command:      []string{"gsutil"},
 			Args:         args,
 			Env:          envVars,
 			VolumeMounts: secretVolumeMount,

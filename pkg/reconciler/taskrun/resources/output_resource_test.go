@@ -414,13 +414,13 @@ func TestValidOutputResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
-				Image: "override-with-gsutil-image:latest",
+				Image: "google/cloud-sdk",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "volume-source-gcs-sname",
 					MountPath: "/var/secret/sname",
 				}},
-				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+				Command: []string{"gsutil"},
+				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
 				Env: []corev1.EnvVar{{
 					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 				}},
@@ -494,15 +494,15 @@ func TestValidOutputResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-78c5n",
-				Image: "override-with-gsutil-image:latest",
+				Image: "google/cloud-sdk",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
 				Env: []corev1.EnvVar{{
 					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 				}},
-				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+				Command: []string{"gsutil"},
+				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
 			}},
 		},
 		wantVolumes: []corev1.Volume{{
@@ -556,15 +556,15 @@ func TestValidOutputResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-mz4c7",
-				Image: "override-with-gsutil-image:latest",
+				Image: "google/cloud-sdk",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
 				Env: []corev1.EnvVar{{
 					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 				}},
-				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+				Command: []string{"gsutil"},
+				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
 			}},
 		},
 		wantVolumes: []corev1.Volume{{
@@ -617,15 +617,15 @@ func TestValidOutputResources(t *testing.T) {
 			}},
 			{Container: corev1.Container{
 				Name:  "upload-source-gcs-mz4c7",
-				Image: "override-with-gsutil-image:latest",
+				Image: "google/cloud-sdk",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
 				}},
 				Env: []corev1.EnvVar{{
 					Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json",
 				}},
-				Command: []string{"/ko-app/gsutil"},
-				Args:    []string{"-args", "rsync -d -r /workspace/output/source-workspace gs://some-bucket"},
+				Command: []string{"gsutil"},
+				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
 			}},
 		},
 		wantVolumes: []corev1.Volume{{
@@ -872,9 +872,9 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "artifact-copy-to-source-git-mz4c7",
-			Image:   "override-with-gsutil-image:latest",
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -P -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},
+			Image:   "google/cloud-sdk",
+			Command: []string{"gsutil"},
+			Args:    []string{"cp", "-P", "-r", "/workspace/output/source-workspace", "gs://fake-bucket/pipeline-task-name"},
 		}}},
 	}, {
 		name: "git resource in output only with bucket storage",
@@ -923,9 +923,9 @@ func TestValidOutputResourcesWithBucketStorage(t *testing.T) {
 			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
 			Name:    "artifact-copy-to-source-git-mz4c7",
-			Image:   "override-with-gsutil-image:latest",
-			Command: []string{"/ko-app/gsutil"},
-			Args:    []string{"-args", "cp -P -r /workspace/output/source-workspace gs://fake-bucket/pipeline-task-name"},
+			Image:   "google/cloud-sdk",
+			Command: []string{"gsutil"},
+			Args:    []string{"cp", "-P", "-r", "/workspace/output/source-workspace", "gs://fake-bucket/pipeline-task-name"},
 		}}},
 	}, {
 		name: "git resource in output",

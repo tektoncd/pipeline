@@ -85,7 +85,6 @@ func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
 
 // GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage
 func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []Step {
-
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []Step{{Container: corev1.Container{
@@ -95,8 +94,8 @@ func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destination
 	}}, {Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-from-%s", name)),
 		Image:        b.GsutilImage,
-		Command:      []string{"/ko-app/gsutil"},
-		Args:         []string{"-args", fmt.Sprintf("cp -P -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)},
+		Command:      []string{"gsutil"},
+		Args:         []string{"cp", "-P", "-r", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath},
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
 	}}}
@@ -104,15 +103,13 @@ func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destination
 
 // GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage
 func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []Step {
-	args := []string{"-args", fmt.Sprintf("cp -P -r %s %s", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath))}
-
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-to-%s", name)),
 		Image:        b.GsutilImage,
-		Command:      []string{"/ko-app/gsutil"},
-		Args:         args,
+		Command:      []string{"gsutil"},
+		Args:         []string{"cp", "-P", "-r", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath)},
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
 	}}}

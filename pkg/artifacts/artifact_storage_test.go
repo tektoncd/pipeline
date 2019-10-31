@@ -19,14 +19,13 @@ package artifacts
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/system"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -41,7 +40,7 @@ var (
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
-		GsutilImage:              "override-with-gsutil-image:latest",
+		GsutilImage:              "google/cloud-sdk",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
@@ -220,7 +219,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 				SecretName: "secret1",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 		},
 		storagetype: "bucket",
 	}, {
@@ -292,7 +291,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
 			Location:    "gs://fake-bucket",
 			ShellImage:  "busybox",
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 		},
 		storagetype: "bucket",
 	}, {
@@ -313,7 +312,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
 			Location:    "s3://fake-bucket",
 			ShellImage:  "busybox",
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 			Secrets: []v1alpha1.SecretParam{{
 				FieldName:  "BOTO_CONFIG",
 				SecretKey:  "sakey",
@@ -474,7 +473,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 				SecretName: "secret1",
 			}},
 			ShellImage:  "busybox",
-			GsutilImage: "override-with-gsutil-image:latest",
+			GsutilImage: "google/cloud-sdk",
 		},
 	}, {
 		desc: "location empty",

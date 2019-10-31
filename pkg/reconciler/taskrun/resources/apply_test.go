@@ -36,7 +36,7 @@ var (
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer-image:latest",
 		ShellImage:               "busybox",
-		GsutilImage:              "override-with-gsutil-image:latest",
+		GsutilImage:              "google/cloud-sdk",
 		BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",

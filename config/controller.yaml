@@ -45,7 +45,7 @@ spec:
           "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",
           "-nop-image", "github.com/tektoncd/pipeline/cmd/nop",
           "-shell-image", "busybox",
-          "-gsutil-image","github.com/tektoncd/pipeline/cmd/gsutil",
+          "-gsutil-image", "google/cloud-sdk",
           "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",
           "-imagedigest-exporter-image", "github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "github.com/tektoncd/pipeline/cmd/pullrequest-init",
