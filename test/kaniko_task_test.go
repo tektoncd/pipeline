@@ -43,60 +43,6 @@ const (
 	revision = "1c9d566ecd13535f93789595740f20932f655905"
 )
 
-func getGitResource(namespace string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoGitResourceName, namespace, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("Url", "https://github.com/GoogleContainerTools/kaniko"),
-		tb.PipelineResourceSpecParam("Revision", revision),
-	))
-}
-
-func getImageResource(namespace, repo string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoImageResourceName, namespace, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeImage,
-		tb.PipelineResourceSpecParam("url", repo),
-	))
-}
-
-func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
-	taskSpecOps := []tb.TaskSpecOp{
-		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
-		tb.TaskOutputs(tb.OutputsResource("builtImage", v1alpha1.PipelineResourceTypeImage)),
-	}
-	stepOps := []tb.StepOp{
-		tb.StepArgs(
-			"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
-			fmt.Sprintf("--destination=%s", repo),
-			"--context=/workspace/gitsource",
-			"--oci-layout-path=/workspace/output/builtImage",
-		),
-	}
-	if withSecretConfig {
-		stepOps = append(stepOps,
-			tb.StepVolumeMount("kaniko-secret", "/secrets"),
-			tb.StepEnvVar("GOOGLE_APPLICATION_CREDENTIALS", "/secrets/config.json"),
-		)
-		taskSpecOps = append(taskSpecOps, tb.TaskVolume("kaniko-secret", tb.VolumeSource(corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: "kaniko-secret",
-			},
-		})))
-	}
-	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.13.0", stepOps...)
-	taskSpecOps = append(taskSpecOps, step)
-
-	return tb.Task(kanikoTaskName, namespace, tb.TaskSpec(taskSpecOps...))
-}
-
-func getTaskRun(namespace string) *v1alpha1.TaskRun {
-	return tb.TaskRun(kanikoTaskRunName, namespace, tb.TaskRunSpec(
-		tb.TaskRunTaskRef(kanikoTaskName),
-		tb.TaskRunTimeout(2*time.Minute),
-		tb.TaskRunInputs(tb.TaskRunInputsResource("gitsource", tb.TaskResourceBindingRef(kanikoGitResourceName))),
-		tb.TaskRunOutputs(tb.TaskRunOutputsResource("builtImage", tb.TaskResourceBindingRef(kanikoImageResourceName))),
-	))
-}
-
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
 	repo := ensureDockerRepo(t)
@@ -172,6 +118,60 @@ func TestKanikoTaskRun(t *testing.T) {
 	if digest != remoteDigest {
 		t.Fatalf("Expected local digest %s to match remote digest %s", digest, remoteDigest)
 	}
+}
+
+func getGitResource(namespace string) *v1alpha1.PipelineResource {
+	return tb.PipelineResource(kanikoGitResourceName, namespace, tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeGit,
+		tb.PipelineResourceSpecParam("Url", "https://github.com/GoogleContainerTools/kaniko"),
+		tb.PipelineResourceSpecParam("Revision", revision),
+	))
+}
+
+func getImageResource(namespace, repo string) *v1alpha1.PipelineResource {
+	return tb.PipelineResource(kanikoImageResourceName, namespace, tb.PipelineResourceSpec(
+		v1alpha1.PipelineResourceTypeImage,
+		tb.PipelineResourceSpecParam("url", repo),
+	))
+}
+
+func getTask(repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
+	taskSpecOps := []tb.TaskSpecOp{
+		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
+		tb.TaskOutputs(tb.OutputsResource("builtImage", v1alpha1.PipelineResourceTypeImage)),
+	}
+	stepOps := []tb.StepOp{
+		tb.StepArgs(
+			"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
+			fmt.Sprintf("--destination=%s", repo),
+			"--context=/workspace/gitsource",
+			"--oci-layout-path=/workspace/output/builtImage",
+		),
+	}
+	if withSecretConfig {
+		stepOps = append(stepOps,
+			tb.StepVolumeMount("kaniko-secret", "/secrets"),
+			tb.StepEnvVar("GOOGLE_APPLICATION_CREDENTIALS", "/secrets/config.json"),
+		)
+		taskSpecOps = append(taskSpecOps, tb.TaskVolume("kaniko-secret", tb.VolumeSource(corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "kaniko-secret",
+			},
+		})))
+	}
+	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.13.0", stepOps...)
+	taskSpecOps = append(taskSpecOps, step)
+
+	return tb.Task(kanikoTaskName, namespace, tb.TaskSpec(taskSpecOps...))
+}
+
+func getTaskRun(namespace string) *v1alpha1.TaskRun {
+	return tb.TaskRun(kanikoTaskRunName, namespace, tb.TaskRunSpec(
+		tb.TaskRunTaskRef(kanikoTaskName),
+		tb.TaskRunTimeout(2*time.Minute),
+		tb.TaskRunInputs(tb.TaskRunInputsResource("gitsource", tb.TaskResourceBindingRef(kanikoGitResourceName))),
+		tb.TaskRunOutputs(tb.TaskRunOutputsResource("builtImage", tb.TaskResourceBindingRef(kanikoImageResourceName))),
+	))
 }
 
 func getRemoteDigest(image string) (string, error) {
