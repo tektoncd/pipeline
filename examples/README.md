@@ -51,3 +51,12 @@ output-pipeline-run   Succeeded   True      2019-02-11T21:35:43Z
 
 You can also use `kubectl get tr` or `kubectl get pr` to query all `taskruns` or
 `pipelineruns` respectively.
+
+
+## Storage class
+
+[storageclass.yaml](storageclass.yaml) contains the configuration needed to
+[configure Tekton](https://github.com/tektoncd/pipeline/blob/master/docs/install.md#how-are-resources-shared-between-tasks)
+to use a storage class for the automatically created PVC that will work with
+[GKE regional clusters](https://cloud.google.com/kubernetes-engine/docs/concepts/regional-clusters#pd)
+when additional PVCs are created and used.

@@ -1,0 +1,20 @@
+# Some exampels use multiple PVCs and will be run against a regional GKE.
+# This means we have to make sure that the PVCs aren't created in different zones,
+# and the only way to do this is to create regional PVCs.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: regional-disk
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-ssd
+  replication-type: regional-pd
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-artifact-pvc
+  namespace: tekton-pipelines
+data:
+  # storage class of the PVC volume
+  storageClassName: regional-disk

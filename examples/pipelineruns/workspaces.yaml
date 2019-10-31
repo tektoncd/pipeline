@@ -1,0 +1,149 @@
+apiVersion:
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc1
+spec:
+  # Uses the storageClass defined in examples/storageclass.yaml
+  storageClassName: regional-disk
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion:
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc2
+spec:
+  # Uses the storageClass defined in examples/storageclass.yaml
+  storageClassName: regional-disk
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Task writes data to a predefined path
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-files
+spec:
+  steps:
+  - name: write-new-stuff-1
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo stuff1 > $(workspaces.volume1.path)/stuff1']
+  - name: write-new-stuff-2
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo stuff2 > $(workspaces.volume2.path)/stuff2']
+  workspaces:
+  - name: volume1
+    description: The first volume we will write stuff to
+  - name: volume2
+    description: The second volume we will write stuff to
+---
+# Reads a file from a predefined path and writes as well
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: files-exist-and-add-new
+spec:
+  steps:
+  - name: read1
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+      - '-c'
+      - '[[ stuff1 == $(cat $(workspaces.volume1.path)/stuff1) ]]'
+  - name: read2
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+      - '-c'
+      - '[[ stuff2 == $(cat $(workspaces.volume2.path)/stuff2) ]]'
+  - name: write-new-stuff-3
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo stuff3 > $(workspaces.volume1.path)/stuff3']
+  workspaces:
+  - name: volume1
+    description: The first volume which we will read from and write to
+  - name: volume2
+    description: The second volume which we will read from
+---
+# Reads a file from a predefined path and writes as well
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: files-exist
+spec:
+  steps:
+  - name: read1
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+      - '-c'
+      - '[[ stuff1 == $(cat $(workspaces.volume.path)/stuff1) ]]'
+  - name: read3
+    image: ubuntu
+    command: ["/bin/bash"]
+    args:
+      - '-c'
+      - '[[ stuff3 == $(cat $(workspaces.volume.path)/stuff3) ]]'
+  workspaces:
+  - name: volume
+    description: The volume we will read from
+---
+# First task writes files to two volumes. The next task ensures these files exist
+# then writes a third file to the first volume. The last Task ensures both expected
+# files exist on this volume.
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: volume-output-pipeline
+spec:
+  workspaces:
+  - name: someVolume
+  - name: someOtherVolume
+  tasks:
+  - name: first-create-files
+    taskRef:
+      name: create-files
+    workspaces:
+    - name: volume1
+      workspace: someVolume
+    - name: volume2
+      workspace: someOtherVolume
+  - name: then-check-and-write
+    taskRef:
+      name: files-exist-and-add-new
+    workspaces:
+    - name: volume1
+      workspace: someVolume
+    - name: volume2
+      workspace: someOtherVolume
+  - name: then-check
+    taskRef:
+      name: files-exist
+    workspaces:
+    - name: volume1
+      workspace: volume1
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: volume-output-pipeline-run
+spec:
+  pipelineRef:
+    name: volume-output-pipeline
+  serviceAccount: 'default'
+  workspaces:
+  - name: someVolume
+    persistentVolumeClaim:
+      claimName: pvc1
+  - name: someOtherVolume
+    persistentVolumeClaim:
+      claimName: pvc2

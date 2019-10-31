@@ -16,6 +16,7 @@ Creation of a `PipelineRun` will trigger the creation of
   - [Service account](#service-account)
   - [Service accounts](#service-accounts)
   - [Pod Template](#pod-template)
+  - [Workspaces](#workspaces)
 - [Cancelling a PipelineRun](#cancelling-a-pipelinerun)
 - [Examples](https://github.com/tektoncd/pipeline/tree/master/examples/pipelineruns)
 - [Logs](logs.md)
@@ -263,6 +264,32 @@ spec:
     - name: my-cache
       persistentVolumeClaim:
         claimName: my-volume-claim
+```
+
+## Workspaces
+
+If you are trying to use a [`Pipeline` that uses `workspaces`](pipelines.md#declared-workspaces),
+at runtime you need to map these `workspaces` to actual physical volumes with
+`workspaces`. Values in `workspaces` are
+[`Volumes`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/)
+(see https://kubernetes.io/docs/concepts/storage/volumes for possible values).
+
+For example to provide an existing PVC called `mypvc` for a `workspace` called
+`myworkspace` declared by the `Pipeline`:
+
+```yaml
+workspaces:
+- name: myworkspace
+  persistentVolumeClaim:
+    claimName: mypvc
+```
+
+Or to use [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) for the same `workspace`:
+
+```yaml
+workspaces:
+- name: myworkspace
+  emptyDir: {}
 ```
 
 ## Cancelling a PipelineRun

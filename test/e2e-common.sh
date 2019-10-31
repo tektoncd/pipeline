@@ -129,6 +129,11 @@ function run_yaml_tests() {
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
   ko apply -f config/ || fail_test "Build pipeline installation failed"
+
+  echo ">> Applying storage class configuration"
+  kubectl delete configmap config-artifact-pvc --namespace tekton-pipelines
+  kubectl apply -f examples/storageclass.yaml
+
   verify_pipeline_installation
 }
 

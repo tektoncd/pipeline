@@ -9,6 +9,7 @@ A `Task` declares:
 - [Inputs](#inputs)
 - [Outputs](#outputs)
 - [Steps](#steps)
+- [Workspaces](#workspaces)
 
 A `Task` is available within a namespace, and `ClusterTask` is available across
 entire Kubernetes cluster.
@@ -21,9 +22,8 @@ entire Kubernetes cluster.
     - [Step script](#step-script)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
-  - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
   - [Volumes](#volumes)
-  - [Container Template **deprecated**](#step-template)
+  - [Workspaces](#workspaces)
   - [Step Template](#step-template)
   - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
@@ -77,6 +77,8 @@ following fields:
     created by your `Task`
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your `Task`'s steps.
+  - [`workspaces`](#workspaces) - Specifies paths at which you expect volumes to
+    be mounted and available
   - [`stepTemplate`](#step-template) - Specifies a `Container` step
     definition to use as the basis for all steps within your `Task`.
   - [`sidecars`](#sidecars) - Specifies sidecar containers to run alongside
@@ -347,6 +349,37 @@ steps:
    args: ['-c', 'cd /workspace/tar-scratch-space/ && tar -cvf /workspace/customworkspace/rules_docker-master.tar rules_docker-master']
 ```
 
+### Workspaces
+
+`workspaces` are a way of declaring the path you expect to be made available to your
+executing `Task`. They are similar to [`volumes`](#volumes) but allow you to enforce
+at runtime that the volumes have been attached.
+
+The path that the workspace will be made available at is always relative to the dir
+`/tekton/workspaces/<workspace name>` and will be available via
+[variable substitution](#variable-substituation) with
+`$(workspaces.myworkspace.path)`.
+
+The actual volumes must be provided at runtime
+[in the `TaskRun`](taskruns.md#workspaces)
+or [in the `PipelineRun`](pipelineruns.md#workspaces).
+
+When a [`Pipeline`] uses `Tasks` that declare `workspaces`, it must
+also [declare the `workspaces` it expects, and map these to `Tasks`](pipelines.md#workspaces).
+
+For example:
+
+```yaml
+spec:
+  steps:
+  - name: write-message
+    image: ubuntu
+    command: ['bash']
+    args: ['-c', 'echo hello! > $(workspaces.messages.path)/message']
+  workspaces:
+  - name: messages
+    description: The folder where we write the message to
+```
 
 ### Volumes
 
@@ -459,9 +492,16 @@ has been created to track this bug.
 
 ### Variable Substitution
 
-`Tasks` support string replacement using values from all [`inputs`](#inputs) and
-[`outputs`](#outputs).
+`Tasks` support string replacement using values from:
 
+* [Inputs and Outputs](#input-and-output-substitution)
+* [`workspaces`](#workspaces)
+* [`volumes`](#variable-substitution-with-volumes)
+
+#### Input and Output substitution
+
+[`inputs`](#inputs) and [outputs](#outputs) attributes can be used in replacements,
+including [`params`](#params) and [resources](./resources.md#variable-substitution).
 
 Input parameters can be referenced in the `Task` spec using the variable substitution syntax below, 
 where `<name>` is the name of the parameter:
@@ -472,7 +512,7 @@ $(inputs.params.<name>)
 
 Param values from resources can also be accessed using [variable substitution](./resources.md#variable-substitution)
 
-#### Variable Substitution with Parameters of Type `Array`
+##### Variable Substitution with Parameters of Type `Array`
 
 Referenced parameters of type `array` will expand to insert the array elements in the reference string's spot.
 
@@ -513,6 +553,14 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
  - name: build-step
       image: gcr.io/cloud-builders/some-image
       args: ["build", "$(inputs.params.build-args)", "additonalArg"]
+```
+
+#### Workspace Substitution
+
+Paths to a `Task's` declared [workspaces](#workspaces) can be substituted with:
+
+```
+$(workspaces.myworkspace.path)
 ```
 
 #### Variable Substitution within Volumes

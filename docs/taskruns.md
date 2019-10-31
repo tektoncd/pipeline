@@ -15,9 +15,9 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Specifying a `Task`](#specifying-a-task)
   - [Input parameters](#input-parameters)
   - [Providing resources](#providing-resources)
-  - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
   - [Service Account](#service-account)
   - [Pod Template](#pod-template)
+  - [Workspaces](#workspaces)
 - [Status](#status)
   - [Steps](#steps)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
@@ -58,6 +58,8 @@ following fields:
   - [`podTemplate`](#pod-template) - Specifies a subset of
     [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
 	configuration that will be used as the basis for the `Task` pod.
+  - [`workspaces`](#workspaces) - Specify the actual volumes to use for the
+    [workspaces](tasks.md#workspaces) declared by a `Task`
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -227,7 +229,34 @@ spec:
         claimName: my-volume-claim
 ```
 
+## Workspaces
 
+For a `TaskRun` to execute [a `Task` that declares `workspaces`](tasks.md#workspaces),
+at runtime you need to map the `workspaces` to actual physical volumes with
+`workspaces`. Values in `workspaces` are
+[`Volumes`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/)
+(see https://kubernetes.io/docs/concepts/storage/volumes for possible values).
+
+If the declared `workspaces` are not provided at runtime, the `TaskRun` will fail
+with an error.
+
+For example to provide an existing PVC called `mypvc` for a `workspace` called
+`myworkspace` declared by the `Pipeline`:
+
+```yaml
+workspaces:
+- name: myworkspace
+  persistentVolumeClaim:
+    claimName: mypvc
+```
+
+Or to use [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) for the same `workspace`:
+
+```yaml
+workspaces:
+- name: myworkspace
+  emptyDir: {}
+```
 
 ## Status
 

@@ -6,6 +6,7 @@ This document defines `Pipelines` and their capabilities.
 
 - [Syntax](#syntax)
   - [Declared resources](#declared-resources)
+  - [Workspaces](#declared-workspaces)
   - [Parameters](#parameters)
   - [Pipeline Tasks](#pipeline-tasks)
     - [From](#from)
@@ -39,27 +40,28 @@ following fields:
       - [`from`](#from) - Used when the content of the
         [`PipelineResource`](resources.md) should come from the
         [output](tasks.md#outputs) of a previous [Pipeline Task](#pipeline-tasks)
-      - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-tasks)
-        should be executed after another Pipeline Task, but there is no
-        [output linking](#from) required
-      - [`retries`](#retries) - Used when the task is wanted to be executed if
-        it fails. Could be a network error or a missing dependency. It does not
-        apply to cancellations.
-      - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
-        conditions are evaluated to be true.
+    - [`runAfter`](#runAfter) - Used when the [Pipeline Task](#pipeline-tasks)
+      should be executed after another Pipeline Task, but there is no
+      [output linking](#from) required
+    - [`retries`](#retries) - Used when the task is wanted to be executed if
+      it fails. Could be a network error or a missing dependency. It does not
+      apply to cancellations.
+    - [`conditions`](#conditions) - Used when a task is to be executed only if the specified
+      conditions are evaluated to be true.
+    - [`workspaces](#pipeline-tasks) - Specify which of the [declared workspaces](#declared-workspaces)
+      to use for the `Task`
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
 ### Declared resources
 
-In order for a `Pipeline` to interact with the outside world, it will probably
-need [`PipelineResources`](resources.md) which will be given to
+Your `Pipeline` may need [`PipelineResources`](resources.md) which will be given to
 `Tasks` as inputs and outputs.
 
 Your `Pipeline` must declare the `PipelineResources` it needs in a `resources`
 section in the `spec`, giving each a name which will be used to refer to these
-`PipelineResources` in the `Tasks`.
+`PipelineResources` in the [Pipeline's `Tasks`](#pipeline-tasks).
 
 For example:
 
@@ -70,6 +72,22 @@ spec:
       type: git
     - name: my-image
       type: image
+```
+
+### Declared Workspaces
+
+Similar to [declaring resources](#declared-resources), if your `Pipeline`
+uses [`Tasks` that declare `workspaces`](tasks.md#workspaces), you must
+declare the workspaces your `Pipeline` expects, so you can
+[pass them to the `Tasks`](#pipeline-tasks).
+
+For example:
+
+```yaml
+spec:
+  workspaces:
+  - name: someVolume
+  - name: someOtherVolume
 ```
 
 ### Parameters
@@ -113,7 +131,33 @@ spec:
   tasks:
     - name: build-skaffold-web
       taskRef:
-        name: build-push
+        name: build-pusspec:
+  workspaces:
+  - name: someVolume
+  - name: someOtherVolume
+  tasks:
+  - name: first-create-files
+    taskRef:
+      name: create-files
+    workspaces:
+    - name: volume1
+      workspace: someVolume
+    - name: volume2
+      workspace: someOtherVolume
+  - name: then-check-and-write
+    taskRef:
+      name: files-exist-and-add-new
+    workspaces:
+    - name: volume1
+      workspace: someVolume
+    - name: volume2
+      workspace: someOtherVolume
+  - name: then-check
+    taskRef:
+      name: files-exist
+    workspaces:
+    - name: volume1
+      workspace: volume1h
       params:
         - name: pathToDockerFile
           value: Dockerfile
@@ -157,6 +201,11 @@ the `Pipeline` as inputs and outputs, for example:
 
 ```yaml
 spec:
+  resources:
+    - name: my-repo
+      type: git
+    - name: my-image
+      type: image
   tasks:
     - name: build-the-image
       taskRef:
@@ -168,6 +217,25 @@ spec:
         outputs:
           - name: image
             resource: my-image
+```
+
+[Declared workspaces](#declared-workspaces) can be provided to the `Task` as well,
+for example:
+
+```yaml
+spec:
+  workspaces:
+  - name: someVolume
+  - name: someOtherVolume
+  tasks:
+  - name: first-write-some-files
+    taskRef:
+      name: create-files
+    workspaces:
+    - name: volume1
+      workspace: someVolume
+    - name: volume2
+      workspace: someOtherVolume
 ```
 
 [Parameters](tasks.md#parameters) can also be provided:
