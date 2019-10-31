@@ -9,12 +9,11 @@ import (
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	//utilpointer "k8s.io/utils/pointer"
 	"knative.dev/pkg/apis"
 	"testing"
 )
 
-func newTaskRun(completionTime apis.VolatileTime, ttl *metav1.Duration) *apispipeline.TaskRun {
+func newTaskRun(completionTime, failedTime apis.VolatileTime, ttl *metav1.Duration) *apispipeline.TaskRun {
 	tr := tb.TaskRun("test-pipeline-run-with-annotations-hello-world-1-9l9zj", "foo",
 		//tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-with-annotations",
 		//	tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
@@ -35,6 +34,11 @@ func newTaskRun(completionTime apis.VolatileTime, ttl *metav1.Duration) *apispip
 		tr.Status.Conditions = append(tr.Status.Conditions, c)
 	}
 
+	if !failedTime.Inner.IsZero() {
+		c := apis.Condition{Type: apis.ConditionSucceeded, Status: v1.ConditionFalse, LastTransitionTime: failedTime}
+		tr.Status.Conditions = append(tr.Status.Conditions, c)
+	}
+
 	if ttl != nil {
 		tr.Spec.ExpirationSecondsTTL = ttl
 	}
@@ -51,9 +55,9 @@ func TestTimeLeft(t *testing.T) {
 	now := apis.VolatileTime{Inner: metav1.Now()}
 
 	testCases := []struct {
-		name           string
-		completionTime apis.VolatileTime
-		//failedTime       metav1.Time
+		name             string
+		completionTime 	 apis.VolatileTime
+		failedTime       apis.VolatileTime
 		ttl              *metav1.Duration
 		since            *time.Time
 		expectErr        bool
@@ -95,37 +99,37 @@ func TestTimeLeft(t *testing.T) {
 			since:            &now.Inner.Time,
 			expectedTimeLeft: durationPointer(5),
 		},
-		//{
-		//	name: "Error case: TaskRun failed now, no TTL",
-		//	failedTime:   metav1.Now(),
-		//	since:        &now.Inner.Time,
-		//	expectErr:    true,
-		//	expectErrStr: "should not be cleaned up",
-		//},
-		//{
-		//	name: "TaskRun failed now, 0s TTL",
-		//	failedTime:       metav1.Now(),
-		//	ttl:              &metav1.Duration{Duration:0 * time.Second},
-		//	since:            &now.Inner.Time,
-		//	expectedTimeLeft: durationPointer(0),
-		//},
-		//{
-		//	name: "TaskRun failed now, 10s TTL",
-		//	failedTime:       metav1.Now(),
-		//	ttl:              &metav1.Duration{Duration:10 * time.Second},
-		//	since:            &now.Inner.Time,
-		//	expectedTimeLeft: durationPointer(10),
-		//},
-		//{
-		//	name: "TaskRun failed 10s ago, 15s TTL",
-		//	failedTime:       metav1.NewTime(metav1.Now().Add(-10 * time.Second)),
-		//	ttl:              &metav1.Duration{Duration:15 * time.Second},
-		//	since:            &now.Inner.Time,
-		//	expectedTimeLeft: durationPointer(5),
-		//},
+		{
+			name: "Error case: TaskRun failed now, no TTL",
+			failedTime:   now,
+			since:        &now.Inner.Time,
+			expectErr:    true,
+			expectErrStr: "should not be cleaned up",
+		},
+		{
+			name: "TaskRun failed now, 0s TTL",
+			failedTime:       now,
+			ttl:              &metav1.Duration{Duration:0 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(0),
+		},
+		{
+			name: "TaskRun failed now, 10s TTL",
+			failedTime:       now,
+			ttl:              &metav1.Duration{Duration:10 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(10),
+		},
+		{
+			name: "TaskRun failed 10s ago, 15s TTL",
+			failedTime:       apis.VolatileTime{Inner: metav1.NewTime(now.Inner.Add(-10 * time.Second))},
+			ttl:              &metav1.Duration{Duration:15 * time.Second},
+			since:            &now.Inner.Time,
+			expectedTimeLeft: durationPointer(5),
+		},
 	}
 	for _, tc := range testCases {
-		tr := newTaskRun(tc.completionTime, tc.ttl)
+		tr := newTaskRun(tc.completionTime, tc.failedTime, tc.ttl)
 		reconcile := Reconciler{}
 		gotTrTimeLeft, gotTrErr := reconcile.trTimeLeft(tr, tc.since)
 

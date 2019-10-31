@@ -18,10 +18,10 @@ package pipelinerun
 
 import (
 	"context"
-	"k8s.io/client-go/util/workqueue"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask"
 	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/config"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -95,9 +96,27 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			DeleteFunc: impl.Enqueue,
 		})
 
+		AddPipelineRun := func(obj interface{}) {
+		pr := obj.(*v1alpha1.PipelineRun)
+		c.Logger.Infof("Adding PipelineRun %s/%s", pr.Namespace, pr.Name)
+
+		if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
+		impl.Enqueue(pr)
+		}
+		}
+
+		UpdatePipelineRun := func(old, cur interface{}) {
+		pr := cur.(*v1alpha1.PipelineRun)
+		c.Logger.Infof("Updating PipelineRun %s/%s", pr.Namespace, pr.Name)
+
+		if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
+		impl.Enqueue(pr)
+		}
+		}
+
 		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    c.AddPipelineRun,
-			UpdateFunc: c.UpdatePipelineRun,
+			AddFunc:    AddPipelineRun,
+			UpdateFunc: UpdatePipelineRun,
 		})
 
 		c.ListerSynced = pipelineRunInformer.Informer().HasSynced

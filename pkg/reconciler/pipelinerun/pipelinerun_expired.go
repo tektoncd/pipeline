@@ -4,49 +4,18 @@ import (
 	"fmt"
 	"time"
 
+	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
-
-	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-func (tc *Reconciler) AddPipelineRun(obj interface{}) {
-	pr := obj.(*apispipeline.PipelineRun)
-	tc.Logger.Infof("Adding PipelineRun %s/%s", pr.Namespace, pr.Name)
-
-	if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
-		tc.PrEnqueue(pr)
-	}
-}
-
-func (tc *Reconciler) UpdatePipelineRun(old, cur interface{}) {
-	pr := cur.(*apispipeline.PipelineRun)
-	tc.Logger.Infof("Updating PipelineRun %s/%s", pr.Namespace, pr.Name)
-
-	if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
-		tc.PrEnqueue(pr)
-	}
-}
-
-func (tc *Reconciler) PrEnqueue(pr *apispipeline.PipelineRun) {
-	tc.Logger.Infof("Add PipelineRun %s/%s to cleanup", pr.Namespace, pr.Name)
-	key, err := controller.KeyFunc(pr)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", pr, err))
-		return
-	}
-
-	tc.queue.Add(key)
-}
-
 func (tc *Reconciler) PrEnqueueAfter(pr *apispipeline.PipelineRun, after time.Duration) {
-	key, err := controller.KeyFunc(pr)
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(pr)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", pr, err))
+		tc.Logger.Errorf("couldn't get key for object %#v: %v", pr, err)
 		return
 	}
 
@@ -58,8 +27,9 @@ func (tc *Reconciler) PrEnqueueAfter(pr *apispipeline.PipelineRun, after time.Du
 // its TTL hasn't expired, it will be added to the queue after the TTL is expected
 // to expire.
 // This function is not meant to be invoked concurrently with the same key.
-func (tc *Reconciler) processPipelineRunExpired(namespace, name string, pr *apispipeline.PipelineRun) error {
-	if expired, err := tc.processPrTTL(pr); err != nil {
+func (tc *Reconciler) processPipelineRunExpired(namespace, name string, obj interface{}) error {
+	ob := obj.(*apispipeline.PipelineRun)
+	if expired, err := tc.processPrTTL(ob); err != nil {
 		return err
 	} else if !expired {
 		return nil
@@ -129,11 +99,11 @@ func getPrFinishAndExpireTime(pr *apispipeline.PipelineRun) (*time.Time, *time.T
 	if !pipelineRunCleanup(pr) {
 		return nil, nil, fmt.Errorf("PipelineRun %s/%s should not be cleaned up", pr.Namespace, pr.Name)
 	}
-	finishAt, err := PipelineRunFinishTime(pr)
+	finishAt, err := pipelineRunFinishTime(pr)
 	if err != nil {
 		return nil, nil, err
 	}
-	finishAtUTC := finishAt.UTC()
+	finishAtUTC := finishAt.Inner.UTC()
 	expireAtUTC := finishAtUTC.Add(pr.Spec.ExpirationSecondsTTL.Duration)
 	return &finishAtUTC, &expireAtUTC, nil
 }
@@ -152,19 +122,19 @@ func (tc *Reconciler) prTimeLeft(pr *apispipeline.PipelineRun, since *time.Time)
 }
 
 // PipelineRunFinishTime takes an already succeeded PipelineRun and returns the time it finishes.
-func PipelineRunFinishTime(pr *apispipeline.PipelineRun) (metav1.Time, error) {
+func pipelineRunFinishTime(pr *apispipeline.PipelineRun) (apis.VolatileTime, error) {
 	for _, con := range pr.Status.Conditions {
 		if con.Type == apis.ConditionSucceeded && con.Status == v1.ConditionTrue {
 			finishAt := con.LastTransitionTime
 			if finishAt.Inner.IsZero() {
-				return metav1.Time{}, fmt.Errorf("unable to find the time when the PipelineRun %s/%s succeeded", pr.Namespace, pr.Name)
+				return apis.VolatileTime{}, fmt.Errorf("unable to find the time when the PipelineRun %s/%s succeeded", pr.Namespace, pr.Name)
 			}
-			return con.LastTransitionTime.Inner, nil
+			return con.LastTransitionTime, nil
 		}
 	}
 
 	// This should never happen if the PipelineRuns has succeeded
-	return metav1.Time{}, fmt.Errorf("unable to find the status of the succeeded PipelineRun %s/%s", pr.Namespace, pr.Name)
+	return apis.VolatileTime{}, fmt.Errorf("unable to find the status of the succeeded PipelineRun %s/%s", pr.Namespace, pr.Name)
 }
 
 // pipelineRunCleanup checks whether a PipelineRun or PipelineRun has succeeded and has a TTL set.
