@@ -18,7 +18,6 @@ package taskrun
 
 import (
 	"context"
-	"k8s.io/client-go/util/workqueue"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -32,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	"k8s.io/client-go/tools/cache"
+        "k8s.io/client-go/util/workqueue"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
 	"knative.dev/pkg/configmap"
@@ -90,9 +90,27 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			UpdateFunc: controller.PassNew(impl.Enqueue),
 		})
 
+		AddTaskRun := func(obj interface{}) {
+			tr := obj.(*v1alpha1.TaskRun)
+			c.Logger.Infof("Adding TaskRun %s/%s", tr.Namespace, tr.Name)
+
+			if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
+				impl.Enqueue(tr)
+			}
+		}
+
+		UpdateTaskRun := func(old, cur interface{}) {
+			tr := cur.(*v1alpha1.TaskRun)
+			c.Logger.Infof("Updating TaskRun %s/%s", tr.Namespace, tr.Name)
+
+			if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
+				impl.Enqueue(tr)
+			}
+		}
+
 		taskRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    c.AddTaskRun,
-			UpdateFunc: c.UpdateTaskRun,
+			AddFunc:    AddTaskRun,
+			UpdateFunc: UpdateTaskRun,
 		})
 
 		c.ListerSynced = taskRunInformer.Informer().HasSynced

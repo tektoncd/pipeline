@@ -2,51 +2,20 @@ package taskrun
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	apispipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 )
 
-func (tc *Reconciler) AddTaskRun(obj interface{}) {
-	tr := obj.(*apispipeline.TaskRun)
-	tc.Logger.Infof("Adding TaskRun %s/%s", tr.Namespace, tr.Name)
-
-	if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
-		tc.TrEnqueue(tr)
-	}
-}
-
-func (tc *Reconciler) UpdateTaskRun(old, cur interface{}) {
-	tr := cur.(*apispipeline.TaskRun)
-	tc.Logger.Infof("Updating TaskRun %s/%s", tr.Namespace, tr.Name)
-
-	if tr.DeletionTimestamp == nil && taskRunCleanup(tr) {
-		tc.TrEnqueue(tr)
-	}
-}
-
-func (tc *Reconciler) TrEnqueue(tr *apispipeline.TaskRun) {
-	tc.Logger.Infof("Add TaskRun %s/%s to cleanup", tr.Namespace, tr.Name)
-	key, err := controller.KeyFunc(tr)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", tr, err))
-		return
-	}
-
-	tc.queue.Add(key)
-}
-
 func (tc *Reconciler) TrEnqueueAfter(tr *apispipeline.TaskRun, after time.Duration) {
-	key, err := controller.KeyFunc(tr)
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(tr)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", tr, err))
+		tc.Logger.Errorf("couldn't get key for object %#v: %v", tr, err)
 		return
 	}
 
@@ -141,7 +110,7 @@ func getFinishAndExpireTime(tr *apispipeline.TaskRun) (*time.Time, *time.Time, e
 	if err != nil {
 		return nil, nil, err
 	}
-	finishAtUTC := finishAt.UTC()
+	finishAtUTC := finishAt.Inner.UTC()
 	expireAtUTC := finishAtUTC.Add(tr.Spec.ExpirationSecondsTTL.Duration)
 	return &finishAtUTC, &expireAtUTC, nil
 }
@@ -156,26 +125,25 @@ func (tc *Reconciler) trTimeLeft(tr *apispipeline.TaskRun, since *time.Time) (*t
 	}
 
 	remaining := expireAt.UTC().Sub(since.UTC())
-	//tc.Logger.Infof("Found taskRun %s/%s succeeded at %v, remaining TTL %v since %v, TTL will expire at %v\n", tr.Namespace, tr.Name, finishAt.UTC(), remaining, since.UTC(), expireAt.UTC())
-	log.Printf("Found taskRun %s/%s succeeded at %v, remaining TTL %v since %v, TTL will expire at %v\n", tr.Namespace, tr.Name, finishAt.UTC(), remaining, since.UTC(), expireAt.UTC())
+	tc.Logger.Infof("Found taskRun %s/%s succeeded at %v, remaining TTL %v since %v, TTL will expire at %v\n", tr.Namespace, tr.Name, finishAt.UTC(), remaining, since.UTC(), expireAt.UTC())
 
 	return &remaining, nil
 }
 
 // taskRunFinishTime takes an already succeeded taskRun and returns the time it finishes.
-func taskRunFinishTime(tr *apispipeline.TaskRun) (metav1.Time, error) {
+func taskRunFinishTime(tr *apispipeline.TaskRun) (apis.VolatileTime, error) {
 	for _, con := range tr.Status.Conditions {
 		if con.Type == apis.ConditionSucceeded && con.Status == v1.ConditionTrue {
 			finishAt := con.LastTransitionTime
 			if finishAt.Inner.IsZero() {
-				return metav1.Time{}, fmt.Errorf("unable to find the time when the taskRun %s/%s succeeded", tr.Namespace, tr.Name)
+				return apis.VolatileTime{}, fmt.Errorf("unable to find the time when the taskRun %s/%s succeeded", tr.Namespace, tr.Name)
 			}
-			return con.LastTransitionTime.Inner, nil
+			return con.LastTransitionTime, nil
 		}
 	}
 
 	// This should never happen if the taskRuns has succeeded
-	return metav1.Time{}, fmt.Errorf("unable to find the status of the succeeded taskRun %s/%s", tr.Namespace, tr.Name)
+	return apis.VolatileTime{}, fmt.Errorf("unable to find the status of the succeeded taskRun %s/%s", tr.Namespace, tr.Name)
 }
 
 // taskRunCleanup checks whether a TaskRun or PipelineRun has succeeded and has a TTL set.
