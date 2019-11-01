@@ -43,7 +43,7 @@ spec:
           "-kubeconfig-writer-image", "github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-creds-image", "github.com/tektoncd/pipeline/cmd/creds-init",
           "-git-image", "github.com/tektoncd/pipeline/cmd/git-init",
-          "-nop-image", "github.com/tektoncd/pipeline/cmd/nop",
+          "-nop-image", "tianon/true",
           "-shell-image", "busybox",
           "-gsutil-image", "google/cloud-sdk",
           "-entrypoint-image", "github.com/tektoncd/pipeline/cmd/entrypoint",

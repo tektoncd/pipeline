@@ -33,8 +33,7 @@ const (
 var (
 	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
 		"The container image containing our entrypoint binary.")
-	nopImage = flag.String("nop-image", "override-with-nop:latest",
-		"The container image used to kill sidecars")
+	nopImage = flag.String("nop-image", "tianon/true", "The container image used to stop sidecars")
 	gitImage = flag.String("git-image", "override-with-git:latest",
 		"The container image containing our Git binary.")
 	credsImage = flag.String("creds-image", "override-with-creds:latest",

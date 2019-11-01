@@ -35,7 +35,7 @@ import (
 var (
 	images = pipeline.Images{
 		EntryPointImage:          "override-with-entrypoint:latest",
-		NopImage:                 "override-with-nop:latest",
+		NopImage:                 "tianon/true",
 		GitImage:                 "override-with-git:latest",
 		CredsImage:               "override-with-creds:latest",
 		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
