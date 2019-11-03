@@ -129,6 +129,10 @@ type TaskRunStatus struct {
 	// the digest of build container images
 	// optional
 	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
+
+	// The list has one entry per sidecar in the manifest. Each entry is
+	// represents the imageid of the corresponding sidecar.
+	Sidecars []SidecarState `json:"sidecars,omitempty"`
 }
 
 // GetCondition returns the Condition matching the given type.
@@ -159,6 +163,12 @@ type StepState struct {
 	Name          string `json:"name,omitempty"`
 	ContainerName string `json:"container,omitempty"`
 	ImageID       string `json:"imageID,omitempty"`
+}
+
+// SidecarState reports the results of sidecar in the Task.
+type SidecarState struct {
+	Name    string `json:"name,omitempty"`
+	ImageID string `json:"imageID,omitempty"`
 }
 
 // CloudEventDelivery is the target of a cloud event along with the state of

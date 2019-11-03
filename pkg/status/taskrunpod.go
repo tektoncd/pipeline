@@ -47,6 +47,7 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 	taskRun.Status.PodName = pod.Name
 
 	taskRun.Status.Steps = []v1alpha1.StepState{}
+	taskRun.Status.Sidecars = []v1alpha1.SidecarState{}
 	for _, s := range pod.Status.ContainerStatuses {
 		if resources.IsContainerStep(s.Name) {
 			taskRun.Status.Steps = append(taskRun.Status.Steps, v1alpha1.StepState{
@@ -54,6 +55,11 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 				Name:           resources.TrimContainerNamePrefix(s.Name),
 				ContainerName:  s.Name,
 				ImageID:        s.ImageID,
+			})
+		} else {
+			taskRun.Status.Sidecars = append(taskRun.Status.Sidecars, v1alpha1.SidecarState{
+				Name:    s.Name,
+				ImageID: s.ImageID,
 			})
 		}
 	}
