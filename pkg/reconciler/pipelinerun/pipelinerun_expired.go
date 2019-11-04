@@ -27,8 +27,9 @@ func (tc *Reconciler) PrEnqueueAfter(pr *apispipeline.PipelineRun, after time.Du
 // its TTL hasn't expired, it will be added to the queue after the TTL is expected
 // to expire.
 // This function is not meant to be invoked concurrently with the same key.
-func (tc *Reconciler) processPipelineRunExpired(namespace, name string, pr *apispipeline.PipelineRun) error {
-	if expired, err := tc.processPrTTL(pr); err != nil {
+func (tc *Reconciler) processPipelineRunExpired(namespace, name string, obj interface{}) error {
+	ob := obj.(*apispipeline.PipelineRun)
+	if expired, err := tc.processPrTTL(ob); err != nil {
 		return err
 	} else if !expired {
 		return nil
