@@ -21,7 +21,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 )
 
-const invalidParam = "invalid input format for param parameter : "
+const invalidParam = "invalid input format for param parameter: "
 
 func MergeParam(p []v1alpha1.Param, optPar []string) ([]v1alpha1.Param, error) {
 	params, err := parseParam(optPar)

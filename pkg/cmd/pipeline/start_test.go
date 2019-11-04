@@ -834,7 +834,7 @@ func Test_start_pipeline_res_err(t *testing.T) {
 		"--task-serviceaccount=task5=task3svc5",
 		"-n", "ns")
 
-	expected := "Error: invalid input format for resource parameter : git-reposcaffold-git\n"
+	expected := "Error: invalid input format for resource parameter: git-reposcaffold-git\n"
 	test.AssertOutput(t, expected, got)
 }
 
@@ -879,7 +879,7 @@ func Test_start_pipeline_param_err(t *testing.T) {
 		"--task-serviceaccount=task5=task3svc5",
 		"-n", "ns")
 
-	expected := "Error: invalid input format for param parameter : rev-paramrevision2\n"
+	expected := "Error: invalid input format for param parameter: rev-paramrevision2\n"
 	test.AssertOutput(t, expected, got)
 }
 
@@ -924,7 +924,7 @@ func Test_start_pipeline_label_err(t *testing.T) {
 		"--task-serviceaccount=task5=task3svc5",
 		"-n", "ns")
 
-	expected := "Error: invalid input format for label parameter : keyvalue\n"
+	expected := "Error: invalid input format for label parameter: keyvalue\n"
 	test.AssertOutput(t, expected, got)
 }
 

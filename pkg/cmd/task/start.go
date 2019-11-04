@@ -36,7 +36,7 @@ var (
 	errInvalidTask = "task name %s does not exist in namespace %s"
 )
 
-const invalidResource = "invalid input format for resource parameter : "
+const invalidResource = "invalid input format for resource parameter: "
 
 type startOptions struct {
 	cliparams          cli.Params

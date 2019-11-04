@@ -521,7 +521,7 @@ func Test_start_task_invalid_input_res(t *testing.T) {
 		"-i=my-repo git-repo",
 		"-n", "ns",
 	)
-	expected := "Error: invalid input format for resource parameter : my-repo git-repo\n"
+	expected := "Error: invalid input format for resource parameter: my-repo git-repo\n"
 	test.AssertOutput(t, expected, got)
 }
 
@@ -560,7 +560,7 @@ func Test_start_task_invalid_output_res(t *testing.T) {
 		"-o", "code-image image-final",
 		"-n", "ns",
 	)
-	expected := "Error: invalid input format for resource parameter : code-image image-final\n"
+	expected := "Error: invalid input format for resource parameter: code-image image-final\n"
 	test.AssertOutput(t, expected, got)
 }
 
@@ -599,7 +599,7 @@ func Test_start_task_invalid_param(t *testing.T) {
 		"-p", "myarg boom",
 		"-n", "ns",
 	)
-	expected := "Error: invalid input format for param parameter : myarg boom\n"
+	expected := "Error: invalid input format for param parameter: myarg boom\n"
 	test.AssertOutput(t, expected, got)
 }
 
@@ -638,7 +638,7 @@ func Test_start_task_invalid_label(t *testing.T) {
 		"-l", "myarg boom",
 		"-n", "ns",
 	)
-	expected := "Error: invalid input format for label parameter : myarg boom\n"
+	expected := "Error: invalid input format for label parameter: myarg boom\n"
 	test.AssertOutput(t, expected, got)
 }
 

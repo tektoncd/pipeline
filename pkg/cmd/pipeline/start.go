@@ -42,7 +42,7 @@ var (
 )
 
 const (
-	invalidResource = "invalid input format for resource parameter : "
+	invalidResource = "invalid input format for resource parameter: "
 	invalidSvc      = "invalid service account parameter: "
 )
 

@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-const invalidLabel = "invalid input format for label parameter : "
+const invalidLabel = "invalid input format for label parameter: "
 
 func MergeLabels(l map[string]string, optLabel []string) (map[string]string, error) {
 	labels, err := parseLabels(optLabel)
