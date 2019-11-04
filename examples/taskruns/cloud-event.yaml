@@ -2,7 +2,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: sink
-  namespace: default
 spec:
   selector:
     app: cloudevent
@@ -17,7 +16,6 @@ metadata:
   labels:
     app: cloudevent
   name: message-sink
-  namespace: default
 spec:
   containers:
   - env:
@@ -67,6 +65,7 @@ apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: send-cloud-event-task
+
 spec:
   outputs:
     resources:
@@ -75,6 +74,30 @@ spec:
       - name: notification
         type: cloudEvent
   steps:
+    - name: wait-for-sink
+      image: python:3-alpine
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/sh"]
+      args:
+      - -ce
+      - |
+        cat <<EOF | python
+        import http.client
+        import json
+        import sys
+        import time
+
+        while True:
+          conn = http.client.HTTPConnection("sink:8080")
+          try:
+            conn.request("GET", "/")
+            break
+          except:
+            # Perhaps the service is not setup yet, so service name does not
+            # resolve or it does not accept connections on 8080 yet
+            print("Not yet...")
+            time.sleep(10)
+        EOF
     - name: build-index-json
       image: busybox
       command:
@@ -83,8 +106,7 @@ spec:
       - -ce
       - |
         set -e
-        mkdir -p /builder/home/image-outputs/myimage/
-        cat <<EOF > /builder/home/image-outputs/myimage/index.json
+        cat <<EOF > $(outputs.resources.myimage.path)/index.json
         {
           "schemaVersion": 2,
           "manifests": [
@@ -117,7 +139,7 @@ spec:
       import time
 
       while True:
-        conn = http.client.HTTPConnection("sink.default:8080")
+        conn = http.client.HTTPConnection("sink:8080")
         try:
           conn.request("GET", "/")
         except:
@@ -140,6 +162,7 @@ spec:
         else:
           print("Not yet...")
           time.sleep(10)
+      EOF
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
