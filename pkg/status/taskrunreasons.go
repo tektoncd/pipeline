@@ -50,4 +50,8 @@ const (
 
 	// ReasonFailed indicates that the reason for the failure status is unknown or that one of the steps failed
 	ReasonFailed = "Failed"
+
+	// ReasonPending indicates that the reason for the TaskRun's status is
+	// that it's still pending execution.
+	ReasonPending = "Pending"
 )

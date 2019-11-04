@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -318,6 +319,8 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	cloudevent.InitializeCloudEvents(tr, prs)
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
+	// TODO(#1519): TryGetPod is only called by the reconciler, it should
+	// go in this file and be unexported.
 	pod, err := resources.TryGetPod(tr.Status, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
@@ -336,25 +339,28 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return err
 	}
 
-	if status.IsPodExceedingNodeResources(pod) {
-		c.Recorder.Eventf(tr, corev1.EventTypeWarning, status.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
-	}
-
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
 
-	addReady := status.UpdateStatusFromPod(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
-
-	status.SortTaskRunStepOrder(tr.Status.Steps, taskSpec.Steps)
-
-	updateTaskRunResourceResult(tr, pod, c.Logger)
-
-	after := tr.Status.GetCondition(apis.ConditionSucceeded)
-
-	if addReady {
-		if err := c.updateReady(pod); err != nil {
+	// Convert the Pod's status to a TaskRunStatus, and derive any pod
+	// annotations that should be applied to the pod.
+	if podAnnotations := podconvert.UpdateTaskRunStatusFromPod(pod, &tr.Status); podAnnotations != nil {
+		for k, v := range podAnnotations {
+			pod.Annotations[k] = v
+		}
+		if _, err := c.KubeClientSet.CoreV1().Pods(pod.Namespace).Update(pod); err != nil {
+			c.Logger.Errorf("Failed to update pod %q with READY annotation: %v", pod.Name, err)
 			return err
 		}
 	}
+	// TODO(#1519): This should be done in UpdateTaskRunStatusFromPod
+	status.SortTaskRunStepOrder(tr.Status.Steps, taskSpec.Steps)
+
+	after := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if after.Reason == status.ReasonExceededNodeResources {
+		c.Recorder.Eventf(tr, corev1.EventTypeWarning, status.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
+	}
+
+	updateTaskRunResourceResult(tr, pod, c.Logger)
 
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
@@ -363,31 +369,31 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 }
 
 func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
-	var reason, msg string
-	var succeededStatus corev1.ConditionStatus
 	if isExceededResourceQuotaError(err) {
-		succeededStatus = corev1.ConditionUnknown
-		reason = status.ReasonExceededResourceQuota
 		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
 		if !currentlyBackingOff {
 			go c.timeoutHandler.SetTaskRunTimer(tr, time.Until(backoff.NextAttempt))
 		}
-		msg = fmt.Sprintf("%s, reattempted %d times", status.GetExceededResourcesMessage(tr), backoff.NumAttempts)
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionUnknown,
+			Reason:  status.ReasonExceededResourceQuota,
+			Message: fmt.Sprintf("TaskRun exceeded available resources, reattempted %d times: %v", backoff.NumAttempts, err),
+		})
 	} else {
-		succeededStatus = corev1.ConditionFalse
-		reason = status.ReasonCouldntGetTask
+		var msg string
 		if tr.Spec.TaskRef != nil {
 			msg = fmt.Sprintf("Missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
 		} else {
 			msg = fmt.Sprintf("Invalid TaskSpec")
 		}
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  status.ReasonCouldntGetTask,
+			Message: fmt.Sprintf("%s: %v", msg, err),
+		})
 	}
-	tr.Status.SetCondition(&apis.Condition{
-		Type:    apis.ConditionSucceeded,
-		Status:  succeededStatus,
-		Reason:  reason,
-		Message: fmt.Sprintf("%s: %v", msg, err),
-	})
 	c.Recorder.Eventf(tr, corev1.EventTypeWarning, "BuildCreationFailed", "Failed to create build pod %q: %v", tr.Name, err)
 	c.Logger.Errorf("Failed to create build pod for task %q: %v", tr.Name, err)
 }
@@ -442,23 +448,6 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1
 	return newTr, nil
 }
 
-// updateReady updates a Pod to include the "ready" annotation, which will be projected by
-// the Downward API into a volume mounted by the entrypoint container. This will signal to
-// the entrypoint that the TaskRun can proceed.
-func (c *Reconciler) updateReady(pod *corev1.Pod) error {
-	newPod, err := c.KubeClientSet.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return xerrors.Errorf("Error getting Pod %q when updating ready annotation: %w", pod.Name, err)
-	}
-	updatePod := c.KubeClientSet.CoreV1().Pods(newPod.Namespace).Update
-	if err := resources.AddReadyAnnotation(newPod, updatePod); err != nil {
-		c.Logger.Errorf("Failed to update ready annotation for pod %q for taskrun %q: %v", pod.Name, pod.Name, err)
-		return xerrors.Errorf("Error adding ready annotation to Pod %q: %w", pod.Name, err)
-	}
-
-	return nil
-}
-
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
@@ -494,9 +483,8 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, err
 	}
 
-	ts, err = createRedirectedTaskSpec(c.KubeClientSet, c.Images.EntryPointImage, ts, tr, c.cache, c.Logger)
-	if err != nil {
-		return nil, xerrors.Errorf("couldn't create redirected TaskSpec: %w", err)
+	if err := redirectTaskSpec(c.KubeClientSet, c.Images.EntryPointImage, ts, tr, c.cache, c.Logger); err != nil {
+		return nil, xerrors.Errorf("couldn't redirect TaskSpec: %w", err)
 	}
 
 	var defaults []v1alpha1.ParamSpec
@@ -518,49 +506,40 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
 }
 
-// CreateRedirectedTaskSpec takes a TaskSpec, a persistent volume claim name, a taskrun and
+// redirectTaskSpec takes a TaskSpec, a persistent volume claim name, a taskrun and
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
-// its own copy of the TaskSpec and modifies it freely
-func createRedirectedTaskSpec(kubeclient kubernetes.Interface, entrypointImage string, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*v1alpha1.TaskSpec, error) {
+// its own copy of the TaskSpec and modifies it freely.
+func redirectTaskSpec(kubeclient kubernetes.Interface, entrypointImage string, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) error {
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
-	err := entrypoint.RedirectSteps(cache, ts.Steps, kubeclient, tr, logger)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to add entrypoint to steps of TaskRun %s: %w", tr.Name, err)
+	if err := entrypoint.RedirectSteps(cache, ts.Steps, kubeclient, tr, logger); err != nil {
+		return xerrors.Errorf("failed to add entrypoint to steps of TaskRun %s: %w", tr.Name, err)
 	}
 	// Add the step which will copy the entrypoint into the volume
 	// we are going to be using, so that all of the steps will have
 	// access to it.
 	entrypoint.AddCopyStep(entrypointImage, ts)
 
-	// Add the volume used for storing the binary and logs
+	// Add the volume used for storing the entrypoint binary.
 	ts.Volumes = append(ts.Volumes, corev1.Volume{
-		Name: entrypoint.MountName,
-		VolumeSource: corev1.VolumeSource{
-			// TODO(#107) we need to actually stream these logs somewhere, probably via sidecar.
-			// Currently these logs will be lost when the pod is unscheduled.
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
+		Name:         entrypoint.MountName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	})
-
 	ts.Volumes = append(ts.Volumes, corev1.Volume{
 		Name: entrypoint.DownwardMountName,
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path: entrypoint.DownwardMountReadyFile,
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: fmt.Sprintf("metadata.annotations['%s']", resources.ReadyAnnotation),
-						},
+				Items: []corev1.DownwardAPIVolumeFile{{
+					Path: entrypoint.DownwardMountReadyFile,
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: fmt.Sprintf("metadata.annotations['%s']", resources.ReadyAnnotation),
 					},
-				},
+				}},
 			},
 		},
 	})
-
-	return ts, nil
+	return nil
 }
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error

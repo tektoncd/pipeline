@@ -417,24 +417,6 @@ cat > ${tmpfile} << '%s'
 	}, nil
 }
 
-type UpdatePod func(*corev1.Pod) (*corev1.Pod, error)
-
-// AddReadyAnnotation adds the ready annotation if it is not present.
-// Returns any error that comes back from the passed-in update func.
-func AddReadyAnnotation(p *corev1.Pod, update UpdatePod) error {
-	if p.ObjectMeta.Annotations == nil {
-		p.ObjectMeta.Annotations = make(map[string]string)
-	}
-	if p.ObjectMeta.Annotations[ReadyAnnotation] != readyAnnotationValue {
-		p.ObjectMeta.Annotations[ReadyAnnotation] = readyAnnotationValue
-		_, err := update(p)
-
-		return err
-	}
-
-	return nil
-}
-
 func IsContainerStep(name string) bool {
 	return strings.HasPrefix(name, containerPrefix)
 }

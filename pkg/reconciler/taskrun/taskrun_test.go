@@ -1600,7 +1600,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	}
 }
 
-func TestCreateRedirectedTaskSpec(t *testing.T) {
+func TestRedirectTaskSpec(t *testing.T) {
 	tr := tb.TaskRun("tr", "tr", tb.TaskRunSpec(
 		tb.TaskRunServiceAccountName("sa"),
 	))
@@ -1616,8 +1616,8 @@ func TestCreateRedirectedTaskSpec(t *testing.T) {
 	observer, _ := observer.New(zap.InfoLevel)
 	entrypointCache, _ := entrypoint.NewCache()
 	c := fakekubeclientset.NewSimpleClientset()
-	ts, err := createRedirectedTaskSpec(c, "override-with-entrypoint:latest", &task.Spec, tr, entrypointCache, zap.New(observer).Sugar())
-	if err != nil {
+	ts := &task.Spec
+	if err := redirectTaskSpec(c, "override-with-entrypoint:latest", ts, tr, entrypointCache, zap.New(observer).Sugar()); err != nil {
 		t.Errorf("expected createRedirectedTaskSpec to pass: %v", err)
 	}
 	if len(ts.Steps) != expectedSteps {
@@ -1844,7 +1844,6 @@ func TestHandlePodCreationError(t *testing.T) {
 }
 
 func TestReconcileCloudEvents(t *testing.T) {
-
 	taskRunWithNoCEResources := tb.TaskRun("test-taskrun-no-ce-resources", "foo",
 		tb.TaskRunSpec(
 			tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),

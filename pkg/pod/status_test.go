@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package status
+package pod
 
 import (
 	"testing"
@@ -24,44 +24,40 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	fakeclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
-	tb "github.com/tektoncd/pipeline/test/builder"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
+	"github.com/tektoncd/pipeline/pkg/status"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var ignoreVolatileTime = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
 
-func TestUpdateStatusFromPod(t *testing.T) {
+func TestUpdateTaskRunStatusFromPod(t *testing.T) {
 	conditionRunning := apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
-		Reason:  ReasonRunning,
+		Reason:  status.ReasonRunning,
 		Message: "Not all Steps in the Task have finished executing",
 	}
 	conditionTrue := apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
-		Reason:  ReasonSucceeded,
+		Reason:  status.ReasonSucceeded,
 		Message: "All Steps have completed executing",
 	}
 	for _, c := range []struct {
-		desc      string
-		podStatus corev1.PodStatus
-		want      v1alpha1.TaskRunStatus
+		desc            string
+		podStatus       corev1.PodStatus
+		want            v1alpha1.TaskRunStatus
+		wantAnnotations map[string]string
 	}{{
 		desc:      "empty",
 		podStatus: corev1.PodStatus{},
-
 		want: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			Steps: []v1alpha1.StepState{},
 		},
 	}, {
 		desc: "ignore-creds-init",
@@ -180,6 +176,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				ContainerName: "step-running-step",
 			}},
 		},
+		wantAnnotations: map[string]string{readyAnnotationKey: readyAnnotationValue},
 	}, {
 		desc: "failure-terminated",
 		podStatus: corev1.PodStatus{
@@ -203,7 +200,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Reason:  ReasonFailed,
+					Reason:  status.ReasonFailed,
 					Message: `"step-failure" exited with code 123 (image: "image-id"); for logs run: kubectl -n foo logs pod -c step-failure`,
 				}},
 			},
@@ -231,11 +228,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Reason:  ReasonFailed,
+					Reason:  status.ReasonFailed,
 					Message: "boom",
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
@@ -247,11 +243,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionFalse,
-					Reason:  ReasonFailed,
+					Reason:  status.ReasonFailed,
 					Message: "build failed for unspecified reasons.",
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
@@ -276,7 +271,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionUnknown,
-					Reason:  "Pending",
+					Reason:  status.ReasonPending,
 					Message: `build step "step-status-name" is pending with reason "i'm pending"`,
 				}},
 			},
@@ -305,11 +300,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionUnknown,
-					Reason:  "Pending",
+					Reason:  status.ReasonPending,
 					Message: `pod status "the type":"Unknown"; message: "the message"`,
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
 		},
 	}, {
 		desc: "pending-message",
@@ -322,11 +316,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionUnknown,
-					Reason:  "Pending",
+					Reason:  status.ReasonPending,
 					Message: "pod status message",
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
 		},
 	}, {
 		desc:      "pending-no-message",
@@ -336,11 +329,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionUnknown,
-					Reason:  "Pending",
-					Message: "Pending",
+					Reason:  status.ReasonPending,
+					Message: status.ReasonPending,
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
 		},
 	}, {
 		desc: "pending-not-enough-node-resources",
@@ -356,31 +348,27 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionUnknown,
-					Reason:  ReasonExceededNodeResources,
-					Message: `TaskRun pod "taskRun" exceeded available resources`,
+					Reason:  status.ReasonExceededNodeResources,
+					Message: "TaskRun exceeded available resources",
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
 		},
 	}, {
 		desc: "with-running-sidecar",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodRunning,
-			ContainerStatuses: []corev1.ContainerStatus{
-				{
-					Name: "step-running-step",
-					State: corev1.ContainerState{
-						Running: &corev1.ContainerStateRunning{},
-					},
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-running-step",
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{},
 				},
-				{
-					Name: "running-sidecar",
-					State: corev1.ContainerState{
-						Running: &corev1.ContainerStateRunning{},
-					},
-					Ready: true,
+			}, {
+				Name: "running-sidecar",
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{},
 				},
-			},
+				Ready: true,
+			}},
 		},
 		want: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
@@ -394,15 +382,12 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				ContainerName: "step-running-step",
 			}},
 		},
+		wantAnnotations: map[string]string{readyAnnotationKey: readyAnnotationValue},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			observer, _ := observer.New(zap.InfoLevel)
-			logger := zap.New(observer).Sugar()
 			fakeClient := fakeclientset.NewSimpleClientset()
 			sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
 			pipelineResourceInformer := sharedInfomer.Tekton().V1alpha1().PipelineResources()
-			resourceLister := pipelineResourceInformer.Lister()
-			fakekubeclient := fakekubeclientset.NewSimpleClientset()
 
 			rs := []*v1alpha1.PipelineResource{{
 				ObjectMeta: metav1.ObjectMeta{
@@ -431,8 +416,13 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Status: c.podStatus,
 			}
 			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
-			tr := tb.TaskRun("taskRun", "foo", tb.TaskRunStatus(tb.TaskRunStartTime(startTime)))
-			UpdateStatusFromPod(tr, p, resourceLister, fakekubeclient, logger)
+			p.Status.StartTime = &metav1.Time{Time: startTime}
+
+			trs := &v1alpha1.TaskRunStatus{}
+			anns := UpdateTaskRunStatusFromPod(p, trs)
+			if d := cmp.Diff(c.wantAnnotations, anns); d != "" {
+				t.Errorf("Annotations: %s", d)
+			}
 
 			// Common traits, set for test case brevity.
 			c.want.PodName = "pod"
@@ -444,12 +434,11 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, tr.Status, ignoreVolatileTime, ensureTimeNotNil); d != "" {
-				t.Errorf("Wanted:%s %v", c.desc, c.want.Conditions[0])
-				t.Errorf("Diff:\n%s", d)
+			if d := cmp.Diff(&c.want, trs, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+				t.Errorf("Diff (-want, +got):\n%s", d)
 			}
-			if tr.Status.StartTime.Time != c.want.StartTime.Time {
-				t.Errorf("Expected TaskRun startTime to be unchanged but was %s", tr.Status.StartTime)
+			if trs.StartTime.Time != c.want.StartTime.Time {
+				t.Errorf("Expected TaskRun startTime to be unchanged but was %s", trs.StartTime)
 			}
 		})
 	}

@@ -662,26 +662,6 @@ func TestMakeLabels(t *testing.T) {
 	}
 }
 
-func TestAddReadyAnnotation(t *testing.T) {
-	pod := &corev1.Pod{}
-	updateFunc := func(p *corev1.Pod) (*corev1.Pod, error) { return p, nil }
-	if err := AddReadyAnnotation(pod, updateFunc); err != nil {
-		t.Errorf("error received: %v", err)
-	}
-	if v := pod.ObjectMeta.Annotations[ReadyAnnotation]; v != readyAnnotationValue {
-		t.Errorf("Annotation %q=%q missing from Pod", ReadyAnnotation, readyAnnotationValue)
-	}
-}
-
-func TestAddReadyAnnotationUpdateError(t *testing.T) {
-	testerror := xerrors.New("error updating pod")
-	pod := &corev1.Pod{}
-	updateFunc := func(p *corev1.Pod) (*corev1.Pod, error) { return p, testerror }
-	if err := AddReadyAnnotation(pod, updateFunc); err != testerror {
-		t.Errorf("expected %v received %v", testerror, err)
-	}
-}
-
 func TestMakeAnnotations(t *testing.T) {
 	for _, c := range []struct {
 		desc                     string
