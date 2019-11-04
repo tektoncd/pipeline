@@ -13,14 +13,14 @@ Download the latest binary executable for your operating system:
 
 * Mac OS X
 
-  - `tektoncd-cli` can be installed as a [brew tap](https://brew.sh) :
+  - `tektoncd-cli` can be installed as a [brew tap](https://brew.sh):
 
   ```shell
   brew tap tektoncd/tools
   brew install tektoncd-cli
   ```
 
-  - Or by the [released tarball](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Darwin_x86_64.tar.gz) :
+  - Or by the [released tarball](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Darwin_x86_64.tar.gz):
 
   ```shell
   # Get the tar.xz
