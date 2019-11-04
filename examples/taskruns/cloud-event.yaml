@@ -65,7 +65,6 @@ apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: send-cloud-event-task
-
 spec:
   outputs:
     resources:
@@ -76,7 +75,6 @@ spec:
   steps:
     - name: wait-for-sink
       image: python:3-alpine
-      imagePullPolicy: IfNotPresent
       script: |
         #!/usr/bin/env python3
         import http.client
@@ -97,7 +95,8 @@ spec:
     - name: build-index-json
       image: busybox
       script: |
-        set -e
+        #!/bin/sh
+        set -ex
         cat <<EOF > $(outputs.resources.myimage.path)/index.json
         {
           "schemaVersion": 2,
@@ -118,7 +117,6 @@ spec:
   steps:
   - name: polling
     image: python:3-alpine
-    imagePullPolicy: IfNotPresent
     script: |
       #!/usr/bin/env python3
       import http.client
@@ -169,7 +167,7 @@ spec:
         type: cloudEvent
         params:
         - name: targetURI
-          value: http://sink.default:8080
+          value: http://sink:8080
   taskRef:
     name: send-cloud-event-task
 ---
