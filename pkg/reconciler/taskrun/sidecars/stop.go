@@ -17,6 +17,7 @@ limitations under the License.
 package sidecars
 
 import (
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -37,7 +38,7 @@ func Stop(pod *corev1.Pod, nopImage string, updatePod UpdatePod) error {
 	updated := false
 	if pod.Status.Phase == corev1.PodRunning {
 		for _, s := range pod.Status.ContainerStatuses {
-			if s.State.Running != nil {
+			if resources.IsContainerSidecar(s.Name) && s.State.Running != nil {
 				for j, c := range pod.Spec.Containers {
 					if c.Name == s.Name && c.Image != nopImage {
 						updated = true

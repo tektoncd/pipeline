@@ -43,7 +43,7 @@ func TestStop(t *testing.T) {
 		description: "a running sidecar container should be stopped",
 		podPhase:    corev1.PodRunning,
 		sidecarContainer: corev1.Container{
-			Name:    "echo-hello",
+			Name:    "sidecar-echo-hello",
 			Image:   "echo-hello:latest",
 			Command: []string{"echo"},
 			Args:    []string{"hello"},
@@ -56,7 +56,7 @@ func TestStop(t *testing.T) {
 		description: "a pending pod should not have its sidecars stopped",
 		podPhase:    corev1.PodPending,
 		sidecarContainer: corev1.Container{
-			Name:    "echo-hello",
+			Name:    "sidecar-echo-hello",
 			Image:   "echo-hello:latest",
 			Command: []string{"echo"},
 			Args:    []string{"hello"},
@@ -69,7 +69,7 @@ func TestStop(t *testing.T) {
 		description: "a sidecar container that is not in a running state should not be stopped",
 		podPhase:    corev1.PodRunning,
 		sidecarContainer: corev1.Container{
-			Name:    "echo-hello",
+			Name:    "sidecar-echo-hello",
 			Image:   "echo-hello:latest",
 			Command: []string{"echo"},
 			Args:    []string{"hello"},

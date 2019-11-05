@@ -112,6 +112,7 @@ const (
 	workingDirInit       = "working-dir-initializer"
 	ReadyAnnotation      = "tekton.dev/ready"
 	readyAnnotationValue = "READY"
+	sidecarPrefix        = "sidecar-"
 )
 
 func makeCredentialInitializer(credsImage, serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*v1alpha1.Step, []corev1.Volume, error) {
@@ -381,8 +382,9 @@ cat > ${tmpfile} << '%s'
 	for _, s := range mergedPodSteps {
 		mergedPodContainers = append(mergedPodContainers, s.Container)
 	}
-	if len(taskSpec.Sidecars) > 0 {
-		mergedPodContainers = append(mergedPodContainers, taskSpec.Sidecars...)
+	for _, sc := range taskSpec.Sidecars {
+		sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
+		mergedPodContainers = append(mergedPodContainers, sc)
 	}
 
 	return &corev1.Pod{
@@ -437,6 +439,10 @@ func AddReadyAnnotation(p *corev1.Pod, update UpdatePod) error {
 
 func IsContainerStep(name string) bool {
 	return strings.HasPrefix(name, containerPrefix)
+}
+
+func IsContainerSidecar(name string) bool {
+	return strings.HasPrefix(name, sidecarPrefix)
 }
 
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
@@ -511,4 +517,10 @@ func findMaxResourceRequest(steps []v1alpha1.Step, resourceNames ...corev1.Resou
 // TrimContainerNamePrefix trim the container name prefix to get the corresponding step name
 func TrimContainerNamePrefix(containerName string) string {
 	return strings.TrimPrefix(containerName, containerPrefix)
+}
+
+// TrimSidecarNamePrefix trim the sidecar name prefix to get the corresponding
+// sidecar name
+func TrimSidecarNamePrefix(containerName string) string {
+	return strings.TrimPrefix(containerName, sidecarPrefix)
 }

@@ -434,7 +434,7 @@ func TestMakePod(t *testing.T) {
 				Image: "primary-image",
 			}}},
 			Sidecars: []corev1.Container{{
-				Name:  "sidecar-name",
+				Name:  "sc-name",
 				Image: "sidecar-image",
 			}},
 		},
@@ -463,7 +463,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}, {
-				Name:  "sidecar-name",
+				Name:  "sidecar-sc-name",
 				Image: "sidecar-image",
 				Resources: corev1.ResourceRequirements{
 					Requests: nil,
