@@ -376,7 +376,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
-		desc: "with-running-sidecar",
+		desc: "with-sidecar-running",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{
@@ -387,7 +387,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					},
 				},
 				{
-					Name:    "running-sidecar",
+					Name:    "sidecar-running",
 					ImageID: "image-id",
 					State: corev1.ContainerState{
 						Running: &corev1.ContainerStateRunning{},
@@ -408,7 +408,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				ContainerName: "step-running-step",
 			}},
 			Sidecars: []v1alpha1.SidecarState{{
-				Name:    "running-sidecar",
+				Name:    "running",
 				ImageID: "image-id",
 			}},
 		},
@@ -503,7 +503,7 @@ func TestCountSidecars(t *testing.T) {
 					},
 				},
 			}, {
-				Name: "stopped-sidecar-baz",
+				Name: "sidecar-stopped-baz",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 99,
@@ -518,7 +518,7 @@ func TestCountSidecars(t *testing.T) {
 		statuses: []corev1.ContainerStatus{
 			{Name: "step-ignore-me"},
 			{
-				Name:  "ready-sidecar",
+				Name:  "sidecar-ready",
 				Ready: true,
 				State: corev1.ContainerState{
 					Running: &corev1.ContainerStateRunning{
@@ -527,7 +527,7 @@ func TestCountSidecars(t *testing.T) {
 				},
 			},
 			{
-				Name: "unready-sidecar",
+				Name: "sidecar-unready",
 				State: corev1.ContainerState{
 					Running: &corev1.ContainerStateRunning{
 						StartedAt: metav1.NewTime(time.Now()),
