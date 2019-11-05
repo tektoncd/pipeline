@@ -43,7 +43,7 @@ func TestGetPipelineSpec_Ref(t *testing.T) {
 			Name: "mypipelinerun",
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
+			PipelineRef: &v1alpha1.PipelineRef{
 				Name: "orchestrate",
 			},
 		},
@@ -115,7 +115,7 @@ func TestGetPipelineSpec_Error(t *testing.T) {
 			Name: "mypipelinerun",
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
+			PipelineRef: &v1alpha1.PipelineRef{
 				Name: "orchestrate",
 			},
 		},

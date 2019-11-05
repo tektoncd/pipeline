@@ -282,7 +282,9 @@ func PipelineRunSpec(name string, ops ...PipelineRunSpecOp) PipelineRunOp {
 	return func(pr *v1alpha1.PipelineRun) {
 		prs := &pr.Spec
 
-		prs.PipelineRef.Name = name
+		prs.PipelineRef = &v1alpha1.PipelineRef{
+			Name: name,
+		}
 		// Set a default timeout
 		prs.Timeout = &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute}
 

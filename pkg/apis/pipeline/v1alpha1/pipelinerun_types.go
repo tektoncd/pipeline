@@ -45,7 +45,7 @@ var _ apis.Defaultable = (*PipelineRun)(nil)
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {
 	// +optional
-	PipelineRef PipelineRef `json:"pipelineRef,omitempty"`
+	PipelineRef *PipelineRef `json:"pipelineRef,omitempty"`
 	// +optional
 	PipelineSpec *PipelineSpec `json:"pipelineSpec,omitempty"`
 	// Resources is a list of bindings specifying which actual instances of

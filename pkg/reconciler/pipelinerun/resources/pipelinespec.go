@@ -32,7 +32,7 @@ func GetPipelineData(pipelineRun *v1alpha1.PipelineRun, getPipeline GetPipeline)
 	pipelineMeta := metav1.ObjectMeta{}
 	pipelineSpec := v1alpha1.PipelineSpec{}
 	switch {
-	case pipelineRun.Spec.PipelineRef.Name != "":
+	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
 		// Get related pipeline for pipelinerun
 		t, err := getPipeline(pipelineRun.Spec.PipelineRef.Name)
 		if err != nil {

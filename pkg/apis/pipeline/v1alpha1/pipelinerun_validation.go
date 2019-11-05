@@ -38,14 +38,14 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("spec")
 	}
 
-	// can't have both pipelinekRef and pipelineSpec at the same time
-	if ps.PipelineRef.Name != "" && ps.PipelineSpec != nil {
-		return apis.ErrDisallowedFields("spec.pipelineRef", "spec.pipelineSpec")
+	// can't have both pipelineRef and pipelineSpec at the same time
+	if (ps.PipelineRef != nil && ps.PipelineRef.Name != "") && ps.PipelineSpec != nil {
+		return apis.ErrDisallowedFields("spec.pipelineref", "spec.pipelinespec")
 	}
 
 	// Check that one of PipelineRef and PipelineSpec is present
-	if ps.PipelineRef.Name == "" && ps.PipelineSpec == nil {
-		return apis.ErrMissingField("spec.pipelineRef.name", "spec.pipelineSpec")
+	if (ps.PipelineRef == nil || (ps.PipelineRef != nil && ps.PipelineRef.Name == "")) && ps.PipelineSpec == nil {
+		return apis.ErrMissingField("spec.pipelineref.name", "spec.pipelinespec")
 	}
 
 	// Validate PipelineSpec if it's present

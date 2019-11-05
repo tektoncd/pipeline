@@ -88,12 +88,12 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		name: "PipelineRef upgrade context",
 		in: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 			},
 		},
 		want: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 				Timeout:     &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 		},
@@ -102,12 +102,12 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		name: "PipelineRef default config context",
 		in: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 			},
 		},
 		want: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 				Timeout:     &metav1.Duration{Duration: 5 * time.Minute},
 			},
 		},
@@ -127,12 +127,12 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		name: "PipelineRef default config context with sa",
 		in: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 			},
 		},
 		want: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef:        v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef:        &v1alpha1.PipelineRef{Name: "foo"},
 				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
 				ServiceAccountName: "tekton",
 			},
