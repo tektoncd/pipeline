@@ -27,10 +27,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -45,35 +43,13 @@ const (
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
-	c, namespace := setup(t)
+	c, namespace := setup(t, withRegistry)
 	t.Parallel()
 
 	repo := fmt.Sprintf("registry.%s:5000/kanikotasktest", namespace)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(t, c, namespace) }, t.Logf)
 	defer tearDown(t, c, namespace)
-
-	if _, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Create(getRegistryDeployment(namespace)); err != nil {
-		t.Fatalf("Failed to create the local registry deployment: %v", err)
-	}
-	service := getRegistryService(namespace)
-	if _, err := c.KubeClient.Kube.CoreV1().Services(namespace).Create(service); err != nil {
-		t.Fatalf("Failed to create the local registry service: %v", err)
-	}
-	set := labels.Set(service.Spec.Selector)
-	if pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: set.AsSelector().String()}); err != nil {
-		t.Fatalf("Failed to list Pods of service[%s] error:%v", service.GetName(), err)
-	} else {
-		if len(pods.Items) != 1 {
-			t.Fatalf("Only 1 pod for service %s should be running: %v", service, pods.Items)
-		}
-
-		if err := WaitForPodState(c, pods.Items[0].Name, namespace, func(pod *corev1.Pod) (bool, error) {
-			return pod.Status.Phase == "Running", nil
-		}, "PodContainersRunning"); err != nil {
-			t.Fatalf("Error waiting for Pod %q to run: %v", pods.Items[0].Name, err)
-		}
-	}
 
 	t.Logf("Creating Git PipelineResource %s", kanikoGitResourceName)
 	if _, err := c.PipelineResourceClient.Create(getGitResource(namespace)); err != nil {
@@ -138,52 +114,6 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 }
 
-func getRegistryDeployment(namespace string) *appsv1.Deployment {
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "registry",
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "registry",
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "registry",
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{{
-						Name:  "registry",
-						Image: "registry",
-					}},
-				},
-			},
-		},
-	}
-}
-
-func getRegistryService(namespace string) *corev1.Service {
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      "registry",
-		},
-		Spec: corev1.ServiceSpec{
-			Ports: []corev1.ServicePort{{
-				Port: 5000,
-			}},
-			Selector: map[string]string{
-				"app": "registry",
-			},
-		},
-	}
-}
-
 func getGitResource(namespace string) *v1alpha1.PipelineResource {
 	return tb.PipelineResource(kanikoGitResourceName, namespace, tb.PipelineResourceSpec(
 		v1alpha1.PipelineResourceTypeGit,
@@ -212,7 +142,7 @@ func getTask(repo, namespace string) *v1alpha1.Task {
 			"--oci-layout-path=/workspace/output/builtImage",
 			"--insecure",
 			"--insecure-pull",
-			"--insecure-registry=registry"+namespace+":5000/",
+			"--insecure-registry=registry."+namespace+":5000/",
 		),
 	}
 	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.13.0", stepOps...)
@@ -250,7 +180,7 @@ func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string,
 			RestartPolicy: corev1.RestartPolicyNever,
 		},
 	}); err != nil {
-		t.Fatalf("Failed to create the local registry service: %v", err)
+		t.Fatalf("Failed to create the skopeo-jq pod: %v", err)
 	}
 	if err := WaitForPodState(c, podName, namespace, func(pod *corev1.Pod) (bool, error) {
 		return pod.Status.Phase == "Succeeded" || pod.Status.Phase == "Failed", nil

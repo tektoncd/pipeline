@@ -44,7 +44,7 @@ import (
 
 var initMetrics sync.Once
 
-func setup(t *testing.T) (*clients, string) {
+func setup(t *testing.T, fn ...func(*testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
 	namespace := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("arendelle")
 
@@ -53,6 +53,11 @@ func setup(t *testing.T) (*clients, string) {
 	c := newClients(t, knativetest.Flags.Kubeconfig, knativetest.Flags.Cluster, namespace)
 	createNamespace(t, namespace, c.KubeClient)
 	verifyServiceAccountExistence(t, namespace, c.KubeClient)
+
+	for _, f := range fn {
+		f(t, c, namespace)
+	}
+
 	return c, namespace
 }
 
