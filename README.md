@@ -32,7 +32,10 @@ Download the latest binary executable for your operating system:
 * Windows
 
   - Uncompress the [zip file](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Windows_x86_64.zip)
-    and use it from the Windows PowerShell.
+  - Add the location of where the executable is to your `Path` by opening `Control Panel>System and Security>System>Advanced System Settings`
+  - Click on `Environment Variables`, select the `Path` variable, and click `Edit`
+  - Click `New` and add the location of the uncompressed zip to the `Path`
+  - Finish by clicking `Ok`
 
 * [Linux AMD 64](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Linux_x86_64.tar.gz)
 
