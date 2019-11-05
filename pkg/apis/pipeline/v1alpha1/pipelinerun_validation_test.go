@@ -63,7 +63,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					ServiceAccountName: "foo",
 				},
 			},
-			want: apis.ErrMissingField("spec.pipelineRef.name, spec.pipelineSpec"),
+			want: apis.ErrMissingField("spec.pipelineref.name, spec.pipelinespec"),
 		}, {
 			name: "negative pipeline timeout",
 			pr: v1alpha1.PipelineRun{
@@ -71,7 +71,7 @@ func TestPipelineRun_Invalidate(t *testing.T) {
 					Name: "pipelinelineName",
 				},
 				Spec: v1alpha1.PipelineRunSpec{
-					PipelineRef: v1alpha1.PipelineRef{
+					PipelineRef: &v1alpha1.PipelineRef{
 						Name: "prname",
 					},
 					Timeout: &metav1.Duration{Duration: -48 * time.Hour},
@@ -103,7 +103,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 					Name: "pipelinelineName",
 				},
 				Spec: v1alpha1.PipelineRunSpec{
-					PipelineRef: v1alpha1.PipelineRef{
+					PipelineRef: &v1alpha1.PipelineRef{
 						Name: "prname",
 					},
 				},
@@ -115,7 +115,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 					Name: "pipelinelineName",
 				},
 				Spec: v1alpha1.PipelineRunSpec{
-					PipelineRef: v1alpha1.PipelineRef{
+					PipelineRef: &v1alpha1.PipelineRef{
 						Name: "prname",
 					},
 					Timeout: &metav1.Duration{Duration: 0},
@@ -145,13 +145,13 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 	}, {
 		name: "pipelineRef without Pipeline Name",
 		spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{},
+			PipelineRef: &v1alpha1.PipelineRef{},
 		},
-		wantErr: apis.ErrMissingField("spec"),
+		wantErr: apis.ErrMissingField("spec.pipelineref.name", "spec.pipelinespec"),
 	}, {
 		name: "pipelineRef and pipelineSpec together",
 		spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: v1alpha1.PipelineRef{
+			PipelineRef: &v1alpha1.PipelineRef{
 				Name: "pipelinerefname",
 			},
 			PipelineSpec: &v1alpha1.PipelineSpec{
@@ -162,7 +162,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 					},
 				}}},
 		},
-		wantErr: apis.ErrDisallowedFields("spec.pipelineSpec", "spec.pipelineRef"),
+		wantErr: apis.ErrDisallowedFields("spec.pipelinespec", "spec.pipelineref"),
 	}}
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {

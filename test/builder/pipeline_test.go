@@ -152,7 +152,7 @@ func TestPipelineRun(t *testing.T) {
 			},
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef:         v1alpha1.PipelineRef{Name: "tomatoes"},
+			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccountName:  "sa",
 			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1alpha1.Param{{
@@ -220,7 +220,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			},
 		},
 		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef:         v1alpha1.PipelineRef{Name: "tomatoes"},
+			PipelineRef:         &v1alpha1.PipelineRef{Name: "tomatoes"},
 			ServiceAccountName:  "sa",
 			ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{TaskName: "foo", ServiceAccountName: "sa-2"}},
 			Params: []v1alpha1.Param{{
