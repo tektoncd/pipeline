@@ -334,8 +334,8 @@ Example file structure:
 /workspace/<resource>/status/<status>
 /workspace/<resource>/comments/
 /workspace/<resource>/comments/<comment>
-/workspace/<resource>/head
-/workspace/<resource>/base
+/workspace/<resource>/head.json
+/workspace/<resource>/base.json
 ```
 More details:
 
