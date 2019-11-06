@@ -29,6 +29,7 @@ var (
 	revision               = flag.String("revision", "", "The Git revision to make the repository HEAD")
 	path                   = flag.String("path", "", "Path of directory under which git repository will be copied")
 	terminationMessagePath = flag.String("terminationMessagePath", "/dev/termination-log", "Location of file containing termination message")
+	submodules             = flag.Bool("submodules", true, "Initialize and fetch git submodules")
 )
 
 func main() {
@@ -38,6 +39,11 @@ func main() {
 
 	if err := git.Fetch(logger, *revision, *path, *url); err != nil {
 		logger.Fatalf("Error fetching git repository: %s", err)
+	}
+	if *submodules {
+		if err := git.SubmoduleFetch(logger, *path); err != nil {
+			logger.Fatalf("Error initalizing or fetching the git submodules")
+		}
 	}
 
 	commit, err := git.Commit(logger, *revision, *path)
