@@ -1,5 +1,5 @@
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha2
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-app
@@ -26,7 +26,7 @@ roleRef:
   name: cluster-admin
   apiGroup: rbac.authorization.k8s.io
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha2
 kind: PipelineResource
 metadata:
   name: skaffold-image-leeroy-web-pipelinerun
@@ -36,7 +36,7 @@ spec:
   - name: url
     value: gcr.io/christiewilson-catfactory/leeroy-web
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha2
 kind: PipelineResource
 metadata:
   name: skaffold-git-pipelinerun
@@ -48,7 +48,7 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha2
 kind: Task
 metadata:
   name: unit-tests
@@ -70,7 +70,7 @@ spec:
     args:
     - "pass"
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha2
 kind: Task
 metadata:
   name: build-push
@@ -79,13 +79,13 @@ spec:
     resources:
     - name: workspace
       type: git
-    params:
-    - name: pathToDockerFile
-      description: The path to the dockerfile to build
-      default: /workspace/workspace/Dockerfile
-    - name: pathToContext
-      description: The build context used by Kaniko (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
-      default: /workspace/workspace
+  params:
+  - name: pathToDockerFile
+    description: The path to the dockerfile to build
+    default: /workspace/workspace/Dockerfile
+  - name: pathToContext
+    description: The build context used by Kaniko (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
+    default: /workspace/workspace
   outputs:
     resources:
     - name: builtImage
@@ -100,9 +100,9 @@ spec:
     command:
     - /kaniko/executor
     args:
-    - --dockerfile=$(inputs.params.pathToDockerFile)
+    - --dockerfile=$(params.pathToDockerFile)
     - --destination=$(outputs.resources.builtImage.url)
-    - --context=$(inputs.params.pathToContext)
+    - --context=$(params.pathToContext)
 ---
 #This task deploys with kubectl apply -f <filename>
 apiVersion: tekton.dev/v1alpha1
@@ -131,7 +131,7 @@ spec:
     - "w"
     - "-i"
     - "$(inputs.params.yqArg)"
-    - "$(inputs.params.path)"
+    - "$kube(inputs.params.path)"
     - "$(inputs.params.yamlPathToImage)"
     - "$(inputs.resources.image.url)"
   - name: run-kubectl
@@ -150,7 +150,7 @@ spec:
 # pushed are the ones that are deployed (that would require using the digest of
 # the built image, see https://github.com/tektoncd/pipeline/issues/216).
 
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha2
 kind: Pipeline
 metadata:
   name: demo-pipeline
@@ -239,7 +239,7 @@ spec:
     - name: yamlPathToImage
       value: "spec.template.spec.containers[0].image"
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha2
 kind: PipelineRun
 metadata:
   name: demo-pipeline-run-1

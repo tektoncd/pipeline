@@ -23,6 +23,7 @@ import (
 
 	apiconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	tklogging "github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"go.uber.org/zap"
@@ -95,6 +96,14 @@ func main() {
 		v1alpha1.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha1.TaskRun{},
 		v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
 		v1alpha1.SchemeGroupVersion.WithKind("Condition"):        &v1alpha1.Condition{},
+
+		v1alpha2.SchemeGroupVersion.WithKind("Pipeline"):         &v1alpha2.Pipeline{},
+		v1alpha2.SchemeGroupVersion.WithKind("PipelineResource"): &v1alpha2.PipelineResource{},
+		v1alpha2.SchemeGroupVersion.WithKind("Task"):             &v1alpha2.Task{},
+		v1alpha2.SchemeGroupVersion.WithKind("ClusterTask"):      &v1alpha2.ClusterTask{},
+		v1alpha2.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha2.TaskRun{},
+		v1alpha2.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha2.PipelineRun{},
+		v1alpha2.SchemeGroupVersion.WithKind("Condition"):        &v1alpha2.Condition{},
 	}
 
 	resourceAdmissionController := webhook.NewResourceAdmissionController(resourceHandlers, options, true)
@@ -104,7 +113,7 @@ func main() {
 
 	// Decorate contexts with the current state of the config.
 	ctxFunc := func(ctx context.Context) context.Context {
-		return v1alpha1.WithDefaultConfigurationName(store.ToContext(ctx))
+		return v1alpha2.WithUpgradeViaDefaulting(store.ToContext(ctx))
 	}
 
 	controller, err := webhook.New(kubeClient, options, admissionControllers, logger, ctxFunc)

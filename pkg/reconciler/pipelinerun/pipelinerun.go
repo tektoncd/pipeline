@@ -546,7 +546,7 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 				Kind: rprt.ResolvedTaskResources.Kind,
 			},
 			Inputs: v1alpha1.TaskRunInputs{
-				Params: rprt.PipelineTask.Params,
+				DeprecatedParams: rprt.PipelineTask.Params,
 			},
 			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
 			Timeout:            getTaskRunTimeout(pr),
@@ -671,8 +671,8 @@ func (c *Reconciler) makeConditionCheckContainer(rprt *resources.ResolvedPipelin
 			TaskSpec:           taskSpec,
 			ServiceAccountName: pr.GetServiceAccountName(rprt.PipelineTask.Name),
 			Inputs: v1alpha1.TaskRunInputs{
-				Params:    rcc.PipelineTaskCondition.Params,
-				Resources: rcc.ToTaskResourceBindings(),
+				DeprecatedParams: rcc.PipelineTaskCondition.Params,
+				Resources:        rcc.ToTaskResourceBindings(),
 			},
 			Timeout:     getTaskRunTimeout(pr),
 			PodTemplate: pr.Spec.PodTemplate,

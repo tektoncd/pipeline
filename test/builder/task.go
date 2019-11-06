@@ -264,7 +264,7 @@ func InputsParamSpec(name string, pt v1alpha1.ParamType, ops ...ParamSpecOp) Inp
 		for _, op := range ops {
 			op(ps)
 		}
-		i.Params = append(i.Params, *ps)
+		i.DeprecatedParams = append(i.DeprecatedParams, *ps)
 	}
 }
 
@@ -545,7 +545,7 @@ func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {
 func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunInputsOp {
 	arrayOrString := ArrayOrString(value, additionalValues...)
 	return func(i *v1alpha1.TaskRunInputs) {
-		i.Params = append(i.Params, v1alpha1.Param{
+		i.DeprecatedParams = append(i.DeprecatedParams, v1alpha1.Param{
 			Name:  name,
 			Value: *arrayOrString,
 		})

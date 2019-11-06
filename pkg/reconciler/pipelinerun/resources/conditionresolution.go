@@ -101,7 +101,7 @@ func (rcc *ResolvedConditionCheck) ConditionToTaskSpec() (*v1alpha1.TaskSpec, er
 	}
 
 	t.Inputs = &v1alpha1.Inputs{
-		Params: rcc.Condition.Spec.Params,
+		DeprecatedParams: rcc.Condition.Spec.Params,
 	}
 
 	for _, r := range rcc.Condition.Spec.Resources {

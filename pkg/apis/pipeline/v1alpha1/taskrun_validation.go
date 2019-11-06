@@ -80,7 +80,7 @@ func (i TaskRunInputs) Validate(ctx context.Context, path string) *apis.FieldErr
 	if err := validatePipelineResources(ctx, i.Resources, fmt.Sprintf("%s.Resources.Name", path)); err != nil {
 		return err
 	}
-	return validateParameters(i.Params)
+	return validateParameters(i.DeprecatedParams)
 }
 
 func (o TaskRunOutputs) Validate(ctx context.Context, path string) *apis.FieldError {

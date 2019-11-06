@@ -67,8 +67,8 @@ func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
 	var neededParams []string
 	paramTypes := make(map[string]v1alpha1.ParamType)
 	if inputs != nil {
-		neededParams = make([]string, 0, len(inputs.Params))
-		for _, inputResourceParam := range inputs.Params {
+		neededParams = make([]string, 0, len(inputs.DeprecatedParams))
+		for _, inputResourceParam := range inputs.DeprecatedParams {
 			neededParams = append(neededParams, inputResourceParam.Name)
 			paramTypes[inputResourceParam.Name] = inputResourceParam.Type
 		}
@@ -80,7 +80,7 @@ func validateParams(inputs *v1alpha1.Inputs, params []v1alpha1.Param) error {
 	missingParams := list.DiffLeft(neededParams, providedParams)
 	var missingParamsNoDefaults []string
 	for _, param := range missingParams {
-		for _, inputResourceParam := range inputs.Params {
+		for _, inputResourceParam := range inputs.DeprecatedParams {
 			if inputResourceParam.Name == param && inputResourceParam.Default == nil {
 				missingParamsNoDefaults = append(missingParamsNoDefaults, param)
 			}

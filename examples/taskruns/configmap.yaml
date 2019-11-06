@@ -5,29 +5,36 @@ metadata:
 data:
   test.data: tasks are my jam
 ---
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1alpha2
+kind: Task
+metadata:
+  name: foo
+spec:
+  steps:
+  - name: secret
+    image: ubuntu
+    command: ['bash']
+    args:
+    - '-c'
+    - '[[ $(cat /config/test.data) == $TEST_DATA ]]'
+    env:
+    - name: TEST_DATA
+      valueFrom:
+        configMapKeyRef:
+          name: config-for-testing-configmaps
+          key: test.data
+    volumeMounts:
+    - name: config-volume
+      mountPath: /config
+  volumes:
+  - name: config-volume
+    configMap:
+      name: config-for-testing-configmaps
+---
+apiVersion: tekton.dev/v1alpha2
 kind: TaskRun
 metadata:
   generateName: configmap-
 spec:
-  taskSpec:
-    steps:
-    - name: secret
-      image: ubuntu
-      command: ['bash']
-      args:
-      - '-c'
-      - '[[ $(cat /config/test.data) == $TEST_DATA ]]'
-      env:
-      - name: TEST_DATA
-        valueFrom:
-          configMapKeyRef:
-            name: config-for-testing-configmaps
-            key: test.data
-      volumeMounts:
-      - name: config-volume
-        mountPath: /config
-    volumes:
-    - name: config-volume
-      configMap:
-        name: config-for-testing-configmaps
+  taskRef:
+    name: foo

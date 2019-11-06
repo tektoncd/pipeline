@@ -30,6 +30,7 @@ import (
 // Check that TaskRun may be validated and defaulted.
 var _ apis.Validatable = (*TaskRun)(nil)
 var _ apis.Defaultable = (*TaskRun)(nil)
+var _ apis.Convertible = (*TaskRun)(nil)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {
@@ -75,7 +76,7 @@ type TaskRunInputs struct {
 	// +optional
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 	// +optional
-	Params []Param `json:"params,omitempty"`
+	DeprecatedParams []Param `json:"params,omitempty"`
 }
 
 // TaskResourceBinding points to the PipelineResource that

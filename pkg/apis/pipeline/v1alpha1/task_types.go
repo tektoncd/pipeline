@@ -44,6 +44,11 @@ type TaskSpec struct {
 	// Task is run.
 	// +optional
 	Outputs *Outputs `json:"outputs,omitempty"`
+	// Params is a list of input parameters required to run the task. Params
+	// must be supplied as inputs in TaskRuns unless they declare a default
+	// value.
+	// +optional
+	Params []ParamSpec `json:"params,omitempty"`
 
 	// Steps are the steps of the build; each step is run sequentially with the
 	// source mounted into /workspace.
@@ -76,6 +81,7 @@ type Step struct {
 // Check that Task may be validated and defaulted.
 var _ apis.Validatable = (*Task)(nil)
 var _ apis.Defaultable = (*Task)(nil)
+var _ apis.Convertible = (*Task)(nil)
 
 // +genclient
 // +genclient:noStatus
@@ -104,11 +110,13 @@ type Inputs struct {
 	// PipelineResources.
 	// +optional
 	Resources []TaskResource `json:"resources,omitempty"`
-	// Params is a list of input parameters required to run the task. Params
+
+	// Depraceted
+	// DeprecatedParams is a list of input parameters required to run the task. Params
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.
 	// +optional
-	Params []ParamSpec `json:"params,omitempty"`
+	DeprecatedParams []ParamSpec `json:"params,omitempty"`
 }
 
 // TaskResource defines an input or output Resource declared as a requirement

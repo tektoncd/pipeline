@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
@@ -230,6 +231,11 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	// and may not have had all of the assumed default specified.
 	tr.SetDefaults(v1alpha1.WithUpgradeViaDefaulting(ctx))
 
+	if err := tr.ConvertUp(ctx, &v1alpha2.TaskRun{}); err != nil {
+		// FIXME(vdemeester) handle cannot convert errors
+		return err
+	}
+
 	// If the taskrun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		before := tr.Status.GetCondition(apis.ConditionSucceeded)
@@ -295,7 +301,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return nil
 	}
 
-	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.Params, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.DeprecatedParams, rtr); err != nil {
 		c.Logger.Errorf("Failed to validate taskrun %q: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
@@ -501,7 +507,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 
 	var defaults []v1alpha1.ParamSpec
 	if ts.Inputs != nil {
-		defaults = append(defaults, ts.Inputs.Params...)
+		defaults = append(defaults, ts.Inputs.DeprecatedParams...)
 	}
 	// Apply parameter substitution from the taskrun.
 	ts = resources.ApplyParameters(ts, tr, defaults...)

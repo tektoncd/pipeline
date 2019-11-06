@@ -95,9 +95,11 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	if err := validateInputParameterVariables(ts.Steps, ts.Inputs); err != nil {
-		return err
-	}
+	/*
+		 	if err := validateInputParameterVariables(ts.Steps, ts.Inputs); err != nil {
+				return err
+			}
+	*/
 	if err := validateResourceVariables(ts.Steps, ts.Inputs, ts.Outputs); err != nil {
 		return err
 	}
@@ -154,7 +156,7 @@ func validateSteps(steps []Step) *apis.FieldError {
 }
 
 func validateInputParameterTypes(inputs *Inputs) *apis.FieldError {
-	for _, p := range inputs.Params {
+	for _, p := range inputs.DeprecatedParams {
 		// Ensure param has a valid type.
 		validType := false
 		for _, allowedType := range AllParamTypes {
@@ -186,7 +188,7 @@ func validateInputParameterVariables(steps []Step, inputs *Inputs) *apis.FieldEr
 	arrayParameterNames := map[string]struct{}{}
 
 	if inputs != nil {
-		for _, p := range inputs.Params {
+		for _, p := range inputs.DeprecatedParams {
 			parameterNames[p.Name] = struct{}{}
 			if p.Type == ParamTypeArray {
 				arrayParameterNames[p.Name] = struct{}{}

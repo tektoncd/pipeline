@@ -42,7 +42,7 @@ func ApplyParameters(spec *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, defaults ...
 		}
 	}
 	// Set and overwrite params with the ones from the TaskRun
-	for _, p := range tr.Spec.Inputs.Params {
+	for _, p := range tr.Spec.Inputs.DeprecatedParams {
 		if p.Value.Type == v1alpha1.ParamTypeString {
 			stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.StringVal
 		} else {

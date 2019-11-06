@@ -487,8 +487,8 @@ func (in *Inputs) DeepCopyInto(out *Inputs) {
 		*out = make([]TaskResource, len(*in))
 		copy(*out, *in)
 	}
-	if in.Params != nil {
-		in, out := &in.Params, &out.Params
+	if in.DeprecatedParams != nil {
+		in, out := &in.DeprecatedParams, &out.DeprecatedParams
 		*out = make([]ParamSpec, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
@@ -1673,8 +1673,8 @@ func (in *TaskRunInputs) DeepCopyInto(out *TaskRunInputs) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Params != nil {
-		in, out := &in.Params, &out.Params
+	if in.DeprecatedParams != nil {
+		in, out := &in.DeprecatedParams, &out.DeprecatedParams
 		*out = make([]Param, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
@@ -1846,6 +1846,13 @@ func (in *TaskSpec) DeepCopyInto(out *TaskSpec) {
 		in, out := &in.Outputs, &out.Outputs
 		*out = new(Outputs)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.Params != nil {
+		in, out := &in.Params, &out.Params
+		*out = make([]ParamSpec, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.Steps != nil {
 		in, out := &in.Steps, &out.Steps

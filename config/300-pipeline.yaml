@@ -17,6 +17,13 @@ metadata:
   name: pipelines.tekton.dev
 spec:
   group: tekton.dev
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+  - name: v1alpha2
+    served: true
+    storage: false
   names:
     kind: Pipeline
     plural: pipelines
@@ -28,4 +35,3 @@ spec:
   # starts to increment
   subresources:
     status: {}
-  version: v1alpha1

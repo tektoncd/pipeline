@@ -18,6 +18,9 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 )
 
 func (t *Task) SetDefaults(ctx context.Context) {
@@ -26,13 +29,27 @@ func (t *Task) SetDefaults(ctx context.Context) {
 
 // SetDefaults set any defaults for the task spec
 func (ts *TaskSpec) SetDefaults(ctx context.Context) {
+	if v1alpha2.IsUpgradeViaDefaulting(ctx) {
+		fmt.Println("********************************************")
+		v := v1alpha2.TaskSpec{}
+		if ts.ConvertUp(ctx, &v) == nil {
+			fmt.Printf("v: %+v\n", v)
+			fmt.Printf("v.inputs: %+v\n", v.Inputs)
+			fmt.Printf("v.outputs: %+v\n", v.Outputs)
+			alpha1 := TaskSpec{}
+			if alpha1.ConvertDown(ctx, v) == nil {
+				*ts = alpha1
+			}
+		}
+	}
+	fmt.Printf("ts: %+v\n", ts)
 	if ts.Inputs != nil {
 		ts.Inputs.SetDefaults(ctx)
 	}
 }
 
 func (inputs *Inputs) SetDefaults(ctx context.Context) {
-	for i := range inputs.Params {
-		inputs.Params[i].SetDefaults(ctx)
+	for i := range inputs.DeprecatedParams {
+		inputs.DeprecatedParams[i].SetDefaults(ctx)
 	}
 }
