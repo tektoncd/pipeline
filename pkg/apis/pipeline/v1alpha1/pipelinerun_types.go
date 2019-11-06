@@ -36,11 +36,11 @@ var (
 		Version: SchemeGroupVersion.Version,
 		Kind:    pipelineRunControllerName,
 	}
-)
 
-// Check that TaskRun may be validated and defaulted.
-var _ apis.Validatable = (*PipelineRun)(nil)
-var _ apis.Defaultable = (*PipelineRun)(nil)
+	// Check that TaskRun may be validated and defaulted.
+	_ apis.Validatable = (*PipelineRun)(nil)
+	_ apis.Defaultable = (*PipelineRun)(nil)
+)
 
 // PipelineRunSpec defines the desired state of PipelineRun
 type PipelineRunSpec struct {

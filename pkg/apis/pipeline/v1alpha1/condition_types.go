@@ -24,8 +24,10 @@ import (
 )
 
 // Check that Task may be validated and defaulted.
-var _ apis.Validatable = (*Condition)(nil)
-var _ apis.Defaultable = (*Condition)(nil)
+var (
+	_ apis.Validatable = (*Condition)(nil)
+	_ apis.Defaultable = (*Condition)(nil)
+)
 
 // +genclient
 // +genclient:noStatus
