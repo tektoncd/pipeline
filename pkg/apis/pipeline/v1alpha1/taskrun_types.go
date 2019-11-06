@@ -27,9 +27,11 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
-// Check that TaskRun may be validated and defaulted.
-var _ apis.Validatable = (*TaskRun)(nil)
-var _ apis.Defaultable = (*TaskRun)(nil)
+var (
+	// Check that TaskRun may be validated and defaulted.
+	_ apis.Validatable = (*TaskRun)(nil)
+	_ apis.Defaultable = (*TaskRun)(nil)
+)
 
 // TaskRunSpec defines the desired state of TaskRun
 type TaskRunSpec struct {

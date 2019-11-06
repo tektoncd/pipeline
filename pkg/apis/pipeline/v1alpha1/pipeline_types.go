@@ -40,9 +40,6 @@ type PipelineStatus struct {
 }
 
 // Check that Pipeline may be validated and defaulted.
-var _ apis.Validatable = (*Pipeline)(nil)
-var _ apis.Defaultable = (*Pipeline)(nil)
-
 // TaskKind defines the type of Task used by the pipeline.
 type TaskKind string
 
@@ -51,6 +48,11 @@ const (
 	NamespacedTaskKind TaskKind = "Task"
 	// ClusterTaskKind indicates that task type has a cluster scope.
 	ClusterTaskKind TaskKind = "ClusterTask"
+)
+
+var (
+	_ apis.Validatable = (*Pipeline)(nil)
+	_ apis.Defaultable = (*Pipeline)(nil)
 )
 
 // +genclient

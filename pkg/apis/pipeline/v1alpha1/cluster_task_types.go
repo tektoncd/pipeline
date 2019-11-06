@@ -22,8 +22,10 @@ import (
 )
 
 // Check that Task may be validated and defaulted.
-var _ apis.Validatable = (*ClusterTask)(nil)
-var _ apis.Defaultable = (*ClusterTask)(nil)
+var (
+	_ apis.Validatable = (*ClusterTask)(nil)
+	_ apis.Defaultable = (*ClusterTask)(nil)
+)
 
 // +genclient
 // +genclient:noStatus

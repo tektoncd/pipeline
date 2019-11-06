@@ -22,6 +22,12 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var (
+	// Check that Task may be validated and defaulted.
+	_ apis.Validatable = (*Task)(nil)
+	_ apis.Defaultable = (*Task)(nil)
+)
+
 func (t *Task) TaskSpec() TaskSpec {
 	return t.Spec
 }
@@ -72,10 +78,6 @@ type Step struct {
 	// If Script is not empty, the Step cannot have an Command or Args.
 	Script string `json:"script,omitempty"`
 }
-
-// Check that Task may be validated and defaulted.
-var _ apis.Validatable = (*Task)(nil)
-var _ apis.Defaultable = (*Task)(nil)
 
 // +genclient
 // +genclient:noStatus

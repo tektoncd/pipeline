@@ -50,8 +50,14 @@ const (
 	PipelineResourceTypeCloudEvent PipelineResourceType = "cloudEvent"
 )
 
-// AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypeCluster, PipelineResourceTypePullRequest, PipelineResourceTypeCloudEvent}
+var (
+	// AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
+	AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypeCluster, PipelineResourceTypePullRequest, PipelineResourceTypeCloudEvent}
+
+	// Check that PipelineResource may be validated and defaulted.
+	_ apis.Validatable = (*PipelineResource)(nil)
+	_ apis.Defaultable = (*PipelineResource)(nil)
+)
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {
@@ -171,10 +177,6 @@ type PipelineResourceSpec struct {
 // and TaskRuns.
 type PipelineResourceStatus struct {
 }
-
-// Check that PipelineResource may be validated and defaulted.
-var _ apis.Validatable = (*PipelineResource)(nil)
-var _ apis.Defaultable = (*PipelineResource)(nil)
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
