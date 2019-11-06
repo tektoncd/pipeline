@@ -16,16 +16,10 @@ on path `/pvc` by PipelineRun.
   adds a step to copy from PVC directory path:
   `/pvc/previous_task/resource_name`.
 
-Another alternatives is to use a GCS storage bucket to share the artifacts. This
-can be configured using a ConfigMap with the name `config-artifact-bucket` with
-the following attributes:
+Another alternatives is to use a GCS storage or S3 bucket to share the artifacts.
+This can be configured using a ConfigMap with the name `config-artifact-bucket`.
 
-- location: the address of the bucket (for example gs://mybucket)
-- bucket.service.account.secret.name: the name of the secret that will contain
-  the credentials for the service account with access to the bucket
-- bucket.service.account.secret.key: the key in the secret with the required
-  service account json. The bucket is recommended to be configured with a
-  retention policy after which files will be deleted.
+See [here](../install.md#how-are-resources-shared-between-tasks) for configuration details.
 
 Both options provide the same functionality to the pipeline. The choice is based
 on the infrastructure used, for example in some Kubernetes platforms, the
