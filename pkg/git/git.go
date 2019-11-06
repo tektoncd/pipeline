@@ -111,3 +111,45 @@ func Commit(logger *zap.SugaredLogger, revision, path string) (string, error) {
 	}
 	return strings.TrimSuffix(output, "\n"), nil
 }
+
+func SubmoduleFetch(logger *zap.SugaredLogger, path string) error {
+	// HACK: This is to get git+ssh to work since ssh doesn't respect the HOME
+	// env variable.
+	homepath, err := homedir.Dir()
+	if err != nil {
+		logger.Errorf("Unexpected error: getting the user home directory: %v", err)
+		return err
+	}
+	homeenv := os.Getenv("HOME")
+	euid := os.Geteuid()
+	// Special case the root user/directory
+	if euid == 0 {
+		if err := os.Symlink(homeenv+"/.ssh", "/root/.ssh"); err != nil {
+			// Only do a warning, in case we don't have a real home
+			// directory writable in our image
+			logger.Warnf("Unexpected error: creating symlink: %v", err)
+		}
+	} else if homeenv != "" && homeenv != homepath {
+		if _, err := os.Stat(homepath + "/.ssh"); os.IsNotExist(err) {
+			if err := os.Symlink(homeenv+"/.ssh", homepath+"/.ssh"); err != nil {
+				// Only do a warning, in case we don't have a real home
+				// directory writable in our image
+				logger.Warnf("Unexpected error: creating symlink: %v", err)
+			}
+		}
+	}
+
+	if path != "" {
+		if err := os.Chdir(path); err != nil {
+			return xerrors.Errorf("Failed to change directory with path %s; err: %w", path, err)
+		}
+	}
+	if _, err := run(logger, "", "submodule", "init"); err != nil {
+		return err
+	}
+	if _, err := run(logger, "", "submodule", "update", "--recursive"); err != nil {
+		return err
+	}
+	logger.Infof("Successfully initialized and updated submodules in path %s", path)
+	return nil
+}
