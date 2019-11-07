@@ -45,30 +45,8 @@ func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) 
 
 // Fetch fetches the specified git repository at the revision into path.
 func Fetch(logger *zap.SugaredLogger, revision, path, url string) error {
-	// HACK: This is to get git+ssh to work since ssh doesn't respect the HOME
-	// env variable.
-	homepath, err := homedir.Dir()
-	if err != nil {
-		logger.Errorf("Unexpected error: getting the user home directory: %v", err)
+	if err := ensureHomeEnv(logger); err != nil {
 		return err
-	}
-	homeenv := os.Getenv("HOME")
-	euid := os.Geteuid()
-	// Special case the root user/directory
-	if euid == 0 {
-		if err := os.Symlink(homeenv+"/.ssh", "/root/.ssh"); err != nil {
-			// Only do a warning, in case we don't have a real home
-			// directory writable in our image
-			logger.Warnf("Unexpected error: creating symlink: %v", err)
-		}
-	} else if homeenv != "" && homeenv != homepath {
-		if _, err := os.Stat(homepath + "/.ssh"); os.IsNotExist(err) {
-			if err := os.Symlink(homeenv+"/.ssh", homepath+"/.ssh"); err != nil {
-				// Only do a warning, in case we don't have a real home
-				// directory writable in our image
-				logger.Warnf("Unexpected error: creating symlink: %v", err)
-			}
-		}
 	}
 
 	if revision == "" {
@@ -113,6 +91,26 @@ func Commit(logger *zap.SugaredLogger, revision, path string) (string, error) {
 }
 
 func SubmoduleFetch(logger *zap.SugaredLogger, path string) error {
+	if err := ensureHomeEnv(logger); err != nil {
+		return err
+	}
+
+	if path != "" {
+		if err := os.Chdir(path); err != nil {
+			return xerrors.Errorf("Failed to change directory with path %s; err: %w", path, err)
+		}
+	}
+	if _, err := run(logger, "", "submodule", "init"); err != nil {
+		return err
+	}
+	if _, err := run(logger, "", "submodule", "update", "--recursive"); err != nil {
+		return err
+	}
+	logger.Infof("Successfully initialized and updated submodules in path %s", path)
+	return nil
+}
+
+func ensureHomeEnv(logger *zap.SugaredLogger) error {
 	// HACK: This is to get git+ssh to work since ssh doesn't respect the HOME
 	// env variable.
 	homepath, err := homedir.Dir()
@@ -138,18 +136,5 @@ func SubmoduleFetch(logger *zap.SugaredLogger, path string) error {
 			}
 		}
 	}
-
-	if path != "" {
-		if err := os.Chdir(path); err != nil {
-			return xerrors.Errorf("Failed to change directory with path %s; err: %w", path, err)
-		}
-	}
-	if _, err := run(logger, "", "submodule", "init"); err != nil {
-		return err
-	}
-	if _, err := run(logger, "", "submodule", "update", "--recursive"); err != nil {
-		return err
-	}
-	logger.Infof("Successfully initialized and updated submodules in path %s", path)
 	return nil
 }
