@@ -42,6 +42,24 @@ NAME	TYPE
 {{- end }}
 {{- end }}
 
+Params
+{{- $l := len .Pipeline.Spec.Params }}{{ if eq $l 0 }}
+No params
+{{- else }}
+NAME	TYPE	DEFAULT_VALUE
+{{- range $i, $p := .Pipeline.Spec.Params }}
+{{- if not $p.Default }}
+{{ $p.Name }}	{{ $p.Type }}	{{ "" }}
+{{- else }}
+{{- if eq $p.Type "string" }}
+{{ $p.Name }}	{{ $p.Type }}	{{ $p.Default.StringVal }}
+{{- else }}
+{{ $p.Name }}	{{ $p.Type }}	{{ $p.Default.ArrayVal }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 Tasks
 {{- $tl := len .Pipeline.Spec.Tasks }}{{ if eq $tl 0 }}
 No tasks

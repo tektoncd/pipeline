@@ -97,6 +97,8 @@ func TestPipelinesDescribe_empty(t *testing.T) {
 		"Name:   pipeline",
 		"\nResources",
 		"No resources\n",
+		"Params",
+		"No params\n",
 		"Tasks",
 		"No tasks\n",
 		"Pipelineruns",
@@ -164,6 +166,8 @@ func TestPipelinesDescribe_with_run(t *testing.T) {
 		"Name:   pipeline",
 		"\nResources",
 		"No resources\n",
+		"Params",
+		"No params\n",
 		"Tasks",
 		"No tasks\n",
 		"Pipelineruns",
@@ -236,6 +240,8 @@ func TestPipelinesDescribe_with_task_run(t *testing.T) {
 		"Name:   pipeline",
 		"\nResources",
 		"No resources\n",
+		"Params",
+		"No params\n",
 		"Tasks",
 		"NAME   TASKREF   RUNAFTER",
 		"task   taskref   [one two]\n",
@@ -250,7 +256,7 @@ func TestPipelinesDescribe_with_task_run(t *testing.T) {
 	}
 }
 
-func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
+func TestPipelinesDescribe_with_resource_param_task_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
@@ -263,6 +269,7 @@ func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 						tb.RunAfter("one", "two"),
 					),
 					tb.PipelineDeclaredResource("name", v1alpha1.PipelineResourceTypeGit),
+					tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
 				),
 			),
 		},
@@ -312,6 +319,9 @@ func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 		"\nResources",
 		"NAME   TYPE",
 		"name   git\n",
+		"Params",
+		"NAME             TYPE     DEFAULT_VALUE",
+		"pipeline-param   string   somethingdifferent\n",
 		"Tasks",
 		"NAME   TASKREF   RUNAFTER",
 		"task   taskref   [one two]\n",
@@ -326,7 +336,7 @@ func TestPipelinesDescribe_with_resource_task_run(t *testing.T) {
 	}
 }
 
-func TestPipelinesDescribe_with_multiple_resource_task_run(t *testing.T) {
+func TestPipelinesDescribe_with_multiple_resource_param_task_run(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
@@ -343,6 +353,10 @@ func TestPipelinesDescribe_with_multiple_resource_task_run(t *testing.T) {
 					tb.PipelineDeclaredResource("code-image", v1alpha1.PipelineResourceTypeImage),
 					tb.PipelineDeclaredResource("artifact-image", v1alpha1.PipelineResourceTypeImage),
 					tb.PipelineDeclaredResource("repo", v1alpha1.PipelineResourceTypeGit),
+					tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+					tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("booms", "booms", "booms")),
+					tb.PipelineParamSpec("pipeline-param2", v1alpha1.ParamTypeString),
+					tb.PipelineParamSpec("rev-param2", v1alpha1.ParamTypeArray),
 				),
 			),
 		},
@@ -396,6 +410,12 @@ func TestPipelinesDescribe_with_multiple_resource_task_run(t *testing.T) {
 		"repo             git",
 		"artifact-image   image",
 		"code-image       image\n",
+		"Params",
+		"NAME              TYPE     DEFAULT_VALUE",
+		"pipeline-param    string   somethingdifferent",
+		"rev-param         array    [booms booms booms]",
+		"pipeline-param2   string   ",
+		"rev-param2        array    \n",
 		"Tasks",
 		"NAME   TASKREF   RUNAFTER",
 		"task   taskref   [one two]\n",
