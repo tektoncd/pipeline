@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name:  pipelinerun-with-taskspec-to-echo-greetings
+spec:
+  pipelineSpec:
+    params:
+      - name: GREETINGS
+        description: "Greetings, default is Hello World!"
+        type: string
+        default: "Hello World!"
+    tasks:
+      - name: echo-good-morning
+        taskSpec:
+          inputs:
+            params:
+              - name: MESSAGE
+                type: string
+                default: "Hello World!"
+          steps:
+            - name: echo
+              image: ubuntu
+              command:
+                - echo
+              args:
+                - "$(inputs.params.MESSAGE)"
+        params:
+          - name: MESSAGE
+            value: $(params.GREETINGS)
+  params:
+    - name: GREETINGS
+      value: "Good Morning!"

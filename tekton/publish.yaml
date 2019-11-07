@@ -143,7 +143,7 @@ spec:
       done
 
       # Publish images and create release.yaml
-      ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/output/bucket/latest/release.yaml
+      ko resolve --preserve-import-paths -t $(inputs.params.versionTag) -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/output/bucket/latest/release.yaml
     volumeMounts:
       - name: gcp-secret
         mountPath: /secret
@@ -197,7 +197,6 @@ spec:
       do
         IMAGE_WITHOUT_SHA=${IMAGE%%@*}
         gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:latest
-        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:$(inputs.params.versionTag)
         for REGION in "${REGIONS[@]}"
         do
           for TAG in "latest" $(inputs.params.versionTag)

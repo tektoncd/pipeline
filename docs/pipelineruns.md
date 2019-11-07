@@ -98,6 +98,22 @@ kubectl logs $(kubectl get pods -o name | grep pipelinerun-echo-greetings-echo-g
 Good Night, Bob!
 ```
 
+Even further you can embed the spec of a `Task` directly in the `Pipeline`:
+
+```yaml
+spec:
+  pipelineSpec:
+    tasks:
+    - name: task1
+      taskSpec:
+        steps:
+          ...
+```
+
+[Here](../examples/pipelineruns/pipelinerun-with-pipelinespec-and-taskspec.yaml) is a sample `PipelineRun` with embedded
+the spec of the `Pipeline` directly in the `PipelineRun` along with the spec of the `Task` under `PipelineSpec`.
+
+
 ### Resources
 
 When running a [`Pipeline`](pipelines.md), you will need to specify the

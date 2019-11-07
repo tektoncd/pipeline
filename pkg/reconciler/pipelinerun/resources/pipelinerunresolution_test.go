@@ -41,38 +41,38 @@ const (
 
 var pts = []v1alpha1.PipelineTask{{
 	Name:    "mytask1",
-	TaskRef: v1alpha1.TaskRef{Name: "task"},
+	TaskRef: &v1alpha1.TaskRef{Name: "task"},
 }, {
 	Name:    "mytask2",
-	TaskRef: v1alpha1.TaskRef{Name: "task"},
+	TaskRef: &v1alpha1.TaskRef{Name: "task"},
 }, {
 	Name:    "mytask3",
-	TaskRef: v1alpha1.TaskRef{Name: "clustertask"},
+	TaskRef: &v1alpha1.TaskRef{Name: "clustertask"},
 }, {
 	Name:    "mytask4",
-	TaskRef: v1alpha1.TaskRef{Name: "task"},
+	TaskRef: &v1alpha1.TaskRef{Name: "task"},
 	Retries: 1,
 }, {
 	Name:    "mytask5",
-	TaskRef: v1alpha1.TaskRef{Name: "cancelledTask"},
+	TaskRef: &v1alpha1.TaskRef{Name: "cancelledTask"},
 	Retries: 2,
 }, {
 	Name:    "mytask6",
-	TaskRef: v1alpha1.TaskRef{Name: "taskWithConditions"},
+	TaskRef: &v1alpha1.TaskRef{Name: "taskWithConditions"},
 	Conditions: []v1alpha1.PipelineTaskCondition{{
 		ConditionRef: "always-true",
 	}},
 }, {
 	Name:     "mytask7",
-	TaskRef:  v1alpha1.TaskRef{Name: "taskWithOneParent"},
+	TaskRef:  &v1alpha1.TaskRef{Name: "taskWithOneParent"},
 	RunAfter: []string{"mytask6"},
 }, {
 	Name:     "mytask8",
-	TaskRef:  v1alpha1.TaskRef{Name: "taskWithTwoParents"},
+	TaskRef:  &v1alpha1.TaskRef{Name: "taskWithTwoParents"},
 	RunAfter: []string{"mytask1", "mytask6"},
 }, {
 	Name:     "mytask9",
-	TaskRef:  v1alpha1.TaskRef{Name: "taskHasParentWithRunAfter"},
+	TaskRef:  &v1alpha1.TaskRef{Name: "taskHasParentWithRunAfter"},
 	RunAfter: []string{"mytask8"},
 }}
 
@@ -1117,6 +1117,12 @@ func TestResolvePipelineRun(t *testing.T) {
 		tb.PipelineTask("mytask3", "task",
 			tb.PipelineTaskOutputResource("output1", "git-resource"),
 		),
+		tb.PipelineTask("mytask4", "",
+			tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
+					Name: "step1",
+				}}},
+			})),
 	))
 
 	r := &v1alpha1.PipelineResource{
@@ -1180,6 +1186,16 @@ func TestResolvePipelineRun(t *testing.T) {
 				"output1": r,
 			},
 		},
+	}, {
+		PipelineTask: &p.Spec.Tasks[3],
+		TaskRunName:  "pipelinerun-mytask4-78c5n",
+		TaskRun:      nil,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskName: "",
+			TaskSpec: &task.Spec,
+			Inputs:   map[string]*v1alpha1.PipelineResource{},
+			Outputs:  map[string]*v1alpha1.PipelineResource{},
+		},
 	}}
 
 	if d := cmp.Diff(expectedState, pipelineState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
@@ -1190,13 +1206,13 @@ func TestResolvePipelineRun(t *testing.T) {
 func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 	pts := []v1alpha1.PipelineTask{{
 		Name:    "mytask1",
-		TaskRef: v1alpha1.TaskRef{Name: "task"},
+		TaskRef: &v1alpha1.TaskRef{Name: "task"},
 	}, {
 		Name:    "mytask2",
-		TaskRef: v1alpha1.TaskRef{Name: "task"},
+		TaskRef: &v1alpha1.TaskRef{Name: "task"},
 	}, {
 		Name:    "mytask3",
-		TaskRef: v1alpha1.TaskRef{Name: "task"},
+		TaskRef: &v1alpha1.TaskRef{Name: "task"},
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
@@ -1233,7 +1249,7 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	pts := []v1alpha1.PipelineTask{{
 		Name:    "mytask1",
-		TaskRef: v1alpha1.TaskRef{Name: "task"},
+		TaskRef: &v1alpha1.TaskRef{Name: "task"},
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
 
@@ -1389,7 +1405,7 @@ func TestResolveConditionChecks(t *testing.T) {
 
 	pts := []v1alpha1.PipelineTask{{
 		Name:       "mytask1",
-		TaskRef:    v1alpha1.TaskRef{Name: "task"},
+		TaskRef:    &v1alpha1.TaskRef{Name: "task"},
 		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
@@ -1466,7 +1482,7 @@ func TestResolveConditionChecks_ConditionDoesNotExist(t *testing.T) {
 
 	pts := []v1alpha1.PipelineTask{{
 		Name:    "mytask1",
-		TaskRef: v1alpha1.TaskRef{Name: "task"},
+		TaskRef: &v1alpha1.TaskRef{Name: "task"},
 		Conditions: []v1alpha1.PipelineTaskCondition{{
 			ConditionRef: "does-not-exist",
 		}},
@@ -1523,7 +1539,7 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 
 	pts := []v1alpha1.PipelineTask{{
 		Name:       "mytask1",
-		TaskRef:    v1alpha1.TaskRef{Name: "task"},
+		TaskRef:    &v1alpha1.TaskRef{Name: "task"},
 		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
 	}}
 	providedResources := map[string]*v1alpha1.PipelineResource{}
@@ -1596,7 +1612,7 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 
 	pts := []v1alpha1.PipelineTask{{
 		Name:       "mytask1",
-		TaskRef:    v1alpha1.TaskRef{Name: "task"},
+		TaskRef:    &v1alpha1.TaskRef{Name: "task"},
 		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
 	}}
 

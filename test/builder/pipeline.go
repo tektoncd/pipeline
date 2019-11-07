@@ -132,14 +132,22 @@ func PipelineTask(name, taskName string, ops ...PipelineTaskOp) PipelineSpecOp {
 	return func(ps *v1alpha1.PipelineSpec) {
 		pTask := &v1alpha1.PipelineTask{
 			Name: name,
-			TaskRef: v1alpha1.TaskRef{
+		}
+		if taskName != "" {
+			pTask.TaskRef = &v1alpha1.TaskRef{
 				Name: taskName,
-			},
+			}
 		}
 		for _, op := range ops {
 			op(pTask)
 		}
 		ps.Tasks = append(ps.Tasks, *pTask)
+	}
+}
+
+func PipelineTaskSpec(spec *v1alpha1.TaskSpec) PipelineTaskOp {
+	return func(pt *v1alpha1.PipelineTask) {
+		pt.TaskSpec = spec
 	}
 }
 

@@ -32,7 +32,7 @@ func TestGetPipelineSpec_Ref(t *testing.T) {
 		Spec: v1alpha1.PipelineSpec{
 			Tasks: []v1alpha1.PipelineTask{{
 				Name: "mytask",
-				TaskRef: v1alpha1.TaskRef{
+				TaskRef: &v1alpha1.TaskRef{
 					Name: "mytask",
 				},
 			}},
@@ -73,7 +73,7 @@ func TestGetPipelineSpec_Embedded(t *testing.T) {
 			PipelineSpec: &v1alpha1.PipelineSpec{
 				Tasks: []v1alpha1.PipelineTask{{
 					Name: "mytask",
-					TaskRef: v1alpha1.TaskRef{
+					TaskRef: &v1alpha1.TaskRef{
 						Name: "mytask",
 					},
 				}},

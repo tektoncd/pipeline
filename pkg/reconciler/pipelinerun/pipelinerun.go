@@ -541,10 +541,6 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 			Annotations:     getTaskrunAnnotations(pr),
 		},
 		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: rprt.ResolvedTaskResources.TaskName,
-				Kind: rprt.ResolvedTaskResources.Kind,
-			},
 			Inputs: v1alpha1.TaskRunInputs{
 				Params: rprt.PipelineTask.Params,
 			},
@@ -552,6 +548,15 @@ func (c *Reconciler) createTaskRun(rprt *resources.ResolvedPipelineRunTask, pr *
 			Timeout:            getTaskRunTimeout(pr),
 			PodTemplate:        pr.Spec.PodTemplate,
 		}}
+
+	if rprt.ResolvedTaskResources.TaskName != "" {
+		tr.Spec.TaskRef = &v1alpha1.TaskRef{
+			Name: rprt.ResolvedTaskResources.TaskName,
+			Kind: rprt.ResolvedTaskResources.Kind,
+		}
+	} else if rprt.ResolvedTaskResources.TaskSpec != nil {
+		tr.Spec.TaskSpec = rprt.ResolvedTaskResources.TaskSpec
+	}
 
 	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
 	c.Logger.Infof("Creating a new TaskRun object %s", rprt.TaskRunName)

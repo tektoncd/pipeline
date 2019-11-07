@@ -284,6 +284,90 @@ func TestReconcile(t *testing.T) {
 	ensurePVCCreated(t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
 }
 
+func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
+	names.TestingSeed()
+
+	prs := []*v1alpha1.PipelineRun{
+		tb.PipelineRun("test-pipeline-run-success", "foo",
+			tb.PipelineRunSpec("test-pipeline"),
+		),
+	}
+	ps := []*v1alpha1.Pipeline{
+		tb.Pipeline("test-pipeline", "foo",
+			tb.PipelineSpec(
+				tb.PipelineTask("unit-test-task-spec", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+					Steps: []v1alpha1.Step{{Container: corev1.Container{
+						Name:  "mystep",
+						Image: "myimage"}}},
+				})),
+			),
+		),
+	}
+
+	d := test.Data{
+		PipelineRuns:      prs,
+		Pipelines:         ps,
+		Tasks:             nil,
+		ClusterTasks:      nil,
+		PipelineResources: nil,
+	}
+
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(context.Background(), "foo/test-pipeline-run-success"); err != nil {
+		t.Fatalf("Error reconciling: %s", err)
+	}
+
+	if len(clients.Pipeline.Actions()) == 0 {
+		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
+	}
+
+	t.Log("actions", clients.Pipeline.Actions())
+
+	// Check that the PipelineRun was reconciled correctly
+	reconciledRun, err := clients.Pipeline.Tekton().PipelineRuns("foo").Get("test-pipeline-run-success", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// Check that the expected TaskRun was created
+	actual := clients.Pipeline.Actions()[0].(ktesting.CreateAction).GetObject()
+	expectedTaskRun := tb.TaskRun("test-pipeline-run-success-unit-test-task-spec-9l9zj", "foo",
+		tb.TaskRunOwnerReference("PipelineRun", "test-pipeline-run-success",
+			tb.OwnerReferenceAPIVersion("tekton.dev/v1alpha1"),
+			tb.Controller, tb.BlockOwnerDeletion,
+		),
+		tb.TaskRunLabel("tekton.dev/pipeline", "test-pipeline"),
+		tb.TaskRunLabel("tekton.dev/pipelineRun", "test-pipeline-run-success"),
+		tb.TaskRunLabel(pipeline.GroupName+pipeline.PipelineTaskLabelKey, "unit-test-task-spec"),
+		tb.TaskRunSpec(tb.TaskRunTaskSpec(tb.Step("mystep", "myimage"))),
+	)
+
+	// ignore IgnoreUnexported ignore both after and before steps fields
+	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1alpha1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff (-want, +got): %s", expectedTaskRun, d)
+	}
+
+	// test taskrun is able to recreate correct pipeline-pvc-name
+	if expectedTaskRun.GetPipelineRunPVCName() != "test-pipeline-run-success-pvc" {
+		t.Errorf("expected to see TaskRun PVC name set to %q created but got %s", "test-pipeline-run-success-pvc", expectedTaskRun.GetPipelineRunPVCName())
+	}
+
+	if len(reconciledRun.Status.TaskRuns) != 1 {
+		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
+	}
+
+	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-task-spec-9l9zj"]; !exists {
+		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
+	}
+
+	// A PVC should have been created to deal with output -> input linking
+	ensurePVCCreated(t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
+}
+
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	ts := []*v1alpha1.Task{
 		tb.Task("a-task-that-exists", "foo"),
@@ -449,7 +533,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	pr := tb.PipelineRun("test-pipeline-run", "foo", tb.PipelineRunSpec("test-pipeline"))
 	pipelineTask := v1alpha1.PipelineTask{
 		Name:    "unit-test-1",
-		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+		TaskRef: &v1alpha1.TaskRef{Name: "unit-test-task"},
 	}
 	task := tb.Task("unit-test-task", "foo", tb.TaskSpec(
 		tb.TaskInputs(tb.InputsResource("workspace", v1alpha1.PipelineResourceTypeGit)),
@@ -505,7 +589,7 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 	failingCondition := tb.Condition("cond-2", "foo")
 
 	pipelineTask := v1alpha1.PipelineTask{
-		TaskRef: v1alpha1.TaskRef{Name: "unit-test-task"},
+		TaskRef: &v1alpha1.TaskRef{Name: "unit-test-task"},
 		Conditions: []v1alpha1.PipelineTaskCondition{{
 			ConditionRef: successCondition.Name,
 		}, {

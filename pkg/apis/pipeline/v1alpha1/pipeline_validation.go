@@ -126,19 +126,35 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	// Names cannot be duplicated
 	taskNames := map[string]struct{}{}
 	for i, t := range ps.Tasks {
-		// Task names are appended to the container name, which must exist and
-		// must be a valid k8s name
-		if errSlice := validation.IsQualifiedName(t.Name); len(errSlice) != 0 {
-			return apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("spec.tasks[%d].name", i))
+		// can't have both taskRef and taskSpec at the same time
+		if (t.TaskRef != nil && t.TaskRef.Name != "") && t.TaskSpec != nil {
+			return apis.ErrDisallowedFields(fmt.Sprintf("spec.tasks[%d].taskRef", i), fmt.Sprintf("spec.tasks[%d].taskSpec", i))
 		}
-		// TaskRef name must be a valid k8s name
-		if errSlice := validation.IsQualifiedName(t.TaskRef.Name); len(errSlice) != 0 {
-			return apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("spec.tasks[%d].taskRef.name", i))
+		// Check that one of TaskRef and TaskSpec is present
+		if (t.TaskRef == nil || (t.TaskRef != nil && t.TaskRef.Name == "")) && t.TaskSpec == nil {
+			return apis.ErrMissingField(fmt.Sprintf("spec.tasks[%d].taskRef", i), fmt.Sprintf("spec.tasks[%d].taskSpec", i))
 		}
-		if _, ok := taskNames[t.Name]; ok {
-			return apis.ErrMultipleOneOf(fmt.Sprintf("spec.tasks[%d].name", i))
+		// Validate TaskSpec if it's present
+		if t.TaskSpec != nil {
+			if err := t.TaskSpec.Validate(ctx); err != nil {
+				return err
+			}
 		}
-		taskNames[t.Name] = struct{}{}
+		if t.TaskRef != nil && t.TaskRef.Name != "" {
+			// Task names are appended to the container name, which must exist and
+			// must be a valid k8s name
+			if errSlice := validation.IsQualifiedName(t.Name); len(errSlice) != 0 {
+				return apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("spec.tasks[%d].name", i))
+			}
+			// TaskRef name must be a valid k8s name
+			if errSlice := validation.IsQualifiedName(t.TaskRef.Name); len(errSlice) != 0 {
+				return apis.ErrInvalidValue(strings.Join(errSlice, ","), fmt.Sprintf("spec.tasks[%d].taskRef.name", i))
+			}
+			if _, ok := taskNames[t.Name]; ok {
+				return apis.ErrMultipleOneOf(fmt.Sprintf("spec.tasks[%d].name", i))
+			}
+			taskNames[t.Name] = struct{}{}
+		}
 	}
 
 	// All declared resources should be used, and the Pipeline shouldn't try to use any resources

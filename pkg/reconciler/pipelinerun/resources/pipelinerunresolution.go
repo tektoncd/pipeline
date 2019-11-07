@@ -245,20 +245,29 @@ func ResolvePipelineRun(
 		// Find the Task that this PipelineTask is using
 		var t v1alpha1.TaskInterface
 		var err error
-		if pt.TaskRef.Kind == v1alpha1.ClusterTaskKind {
-			t, err = getClusterTask(pt.TaskRef.Name)
-		} else {
-			t, err = getTask(pt.TaskRef.Name)
-		}
-		if err != nil {
-			return nil, &TaskNotFoundError{
-				Name: pt.TaskRef.Name,
-				Msg:  err.Error(),
-			}
-		}
+		var spec v1alpha1.TaskSpec
+		var taskName string
+		var kind v1alpha1.TaskKind
 
-		spec := t.TaskSpec()
-		rtr, err := ResolvePipelineTaskResources(pt, &spec, t.TaskMetadata().Name, pt.TaskRef.Kind, providedResources)
+		if pt.TaskRef != nil {
+			if pt.TaskRef.Kind == v1alpha1.ClusterTaskKind {
+				t, err = getClusterTask(pt.TaskRef.Name)
+			} else {
+				t, err = getTask(pt.TaskRef.Name)
+			}
+			if err != nil {
+				return nil, &TaskNotFoundError{
+					Name: pt.TaskRef.Name,
+					Msg:  err.Error(),
+				}
+			}
+			spec = t.TaskSpec()
+			taskName = t.TaskMetadata().Name
+			kind = pt.TaskRef.Kind
+		} else {
+			spec = *pt.TaskSpec
+		}
+		rtr, err := ResolvePipelineTaskResources(pt, &spec, taskName, kind, providedResources)
 		if err != nil {
 			return nil, xerrors.Errorf("couldn't match referenced resources with declared resources: %w", err)
 		}

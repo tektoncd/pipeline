@@ -104,7 +104,7 @@ spec:
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
 ---
-#This task deploys with kubectl apply -f <filename>
+# This task deploys with kubectl apply -f <filename>
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
