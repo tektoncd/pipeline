@@ -92,6 +92,26 @@ spec:
     - "/workspace/bucket/latest/"
     - "/workspace/bucket/previous/"
 
+  - name: generate-release-version
+    image: alpine/git
+    command:
+    - /bin/sh
+    args:
+    - -ce
+    - |
+      set -e
+      set -x
+
+      # Can't use workingDir due to #1267
+      cd /workspace/go/src/github.com/tektoncd/pipeline
+
+      # Nightly releases use vYYYYMMDD-commit
+      COMMIT=$(git rev-parse HEAD | cut -c 1-10)
+      DATE=$(date +"%Y%m%d")
+      VERSION_TAG="$DATE-$COMMIT"
+
+      echo $VERSION_TAG > "/builder/home/version"
+
   - name: run-ko
     # TODO(#639) we should be able to use the image built by an upstream Task here instead of hardcoding
     image: gcr.io/tekton-nightly/ko-ci
@@ -109,6 +129,9 @@ spec:
     - |
       set -e
       set -x
+
+      # TODO(https://github.com/tektoncd/triggers/issues/87) if the versionTag could be generated dynamically, we could use the same Task for nightly + official releases
+      export VERSION_TAG="$(cat /builder/home/version)"
 
       # Auth with CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
       gcloud auth configure-docker
@@ -133,30 +156,10 @@ spec:
       done
 
       # Publish images and create release.yaml
-      ko resolve --preserve-import-paths -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/bucket/latest/release.yaml
+      ko resolve --preserve-import-paths -t $VERSION_TAG -f /workspace/go/src/github.com/tektoncd/pipeline/config/ > /workspace/bucket/latest/release.yaml
     volumeMounts:
       - name: gcp-secret
         mountPath: /secret
-
-  - name: generate-release-version
-    image: alpine/git
-    command:
-    - /bin/sh
-    args:
-    - -ce
-    - |
-      set -e
-      set -x
-
-      # Can't use workingDir due to #1267
-      cd /workspace/go/src/github.com/tektoncd/pipeline
-
-      # Nightly releases use vYYYYMMDD-commit
-      COMMIT=$(git rev-parse HEAD | cut -c 1-10)
-      DATE=$(date +"%Y%m%d")
-      VERSION_TAG="$DATE-$COMMIT"
-
-      echo $VERSION_TAG > "/builder/home/version"
 
   - name: copy-to-tagged-bucket
     image: busybox
@@ -215,7 +218,6 @@ spec:
       do
         IMAGE_WITHOUT_SHA=${IMAGE%%@*}
         gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:latest
-        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:$VERSION_TAG
         for REGION in "${REGIONS[@]}"
         do
           for TAG in "latest" $VERSION_TAG
