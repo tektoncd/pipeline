@@ -197,7 +197,6 @@ spec:
       do
         IMAGE_WITHOUT_SHA=${IMAGE%%@*}
         gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:latest
-        gcloud -q container images add-tag ${IMAGE} ${IMAGE_WITHOUT_SHA}:$(inputs.params.versionTag)
         for REGION in "${REGIONS[@]}"
         do
           for TAG in "latest" $(inputs.params.versionTag)
