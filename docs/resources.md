@@ -252,6 +252,9 @@ Params that can be added are the following:
     (branch, tag, commit SHA or ref) to clone. You can use this to control what
     commit [or branch](#using-a-branch) is used. _If no revision is specified,
     the resource will default to `latest` from `master`._
+1.  `submodules`: defines if the resource should initialize and
+    fetch the submodules, value is either `true` or `false`. _If not
+    specified, this will default to true_
 
 When used as an input, the Git resource includes the exact commit fetched in the `resourceResults`
 section of the `taskRun`'s status object:

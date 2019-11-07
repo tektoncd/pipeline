@@ -39,7 +39,8 @@ type GitResource struct {
 	// Git revision (branch, tag, commit SHA or ref) to clone.  See
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
-	Revision string `json:"revision"`
+	Revision   string `json:"revision"`
+	Submodules bool   `json:"submodules"`
 
 	GitImage string `json:"-"`
 }
@@ -50,9 +51,10 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 		return nil, xerrors.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	gitResource := GitResource{
-		Name:     r.Name,
-		Type:     r.Spec.Type,
-		GitImage: gitImage,
+		Name:       r.Name,
+		Type:       r.Spec.Type,
+		GitImage:   gitImage,
+		Submodules: true,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -60,6 +62,8 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 			gitResource.URL = param.Value
 		case strings.EqualFold(param.Name, "Revision"):
 			gitResource.Revision = param.Value
+		case strings.EqualFold(param.Name, "Submodules"):
+			gitResource.Submodules = toBool(param.Value, true)
 		}
 	}
 	// default revision to master if nothing is provided
@@ -67,6 +71,17 @@ func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) 
 		gitResource.Revision = "master"
 	}
 	return &gitResource, nil
+}
+
+func toBool(s string, d bool) bool {
+	switch s {
+	case "true":
+		return true
+	case "false":
+		return false
+	default:
+		return d
+	}
 }
 
 // GetName returns the name of the resource
