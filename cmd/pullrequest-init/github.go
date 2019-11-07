@@ -425,13 +425,26 @@ func (h *GitHubHandler) getStatuses(ctx context.Context, sha string, path string
 func (h *GitHubHandler) uploadStatuses(ctx context.Context, sha string, statuses []*Status) error {
 	var merr error
 
+	cs, _, err := h.Client.Repositories.GetCombinedStatus(ctx, h.owner, h.repo, sha, nil)
+	if err != nil {
+		return err
+	}
+
+	// Index the statuses so we can avoid sending them if they already exist.
+	csMap := map[string]string{}
+	for _, status := range cs.Statuses {
+		csMap[*status.Context] = *status.State
+	}
+
 	for _, s := range statuses {
 		state, ok := toGitHub[s.Code]
 		if !ok {
 			merr = multierror.Append(merr, fmt.Errorf("unknown status code %s", s.Code))
 			continue
 		}
-
+		if csMap[s.ID] == state {
+			continue
+		}
 		rs := &github.RepoStatus{
 			Context:     github.String(s.ID),
 			State:       github.String(state),
