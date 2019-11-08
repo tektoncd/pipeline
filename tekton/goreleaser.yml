@@ -42,6 +42,6 @@ spec:
       valueFrom:
         secretKeyRef:
           # FIXME(vdemeester): this need to be fixed upstream, template should work there
-          #name: $(inputs.params.github-token-secret)
+          # name: $(inputs.params.github-token-secret)
           name: bot-token-github
           key: bot-token

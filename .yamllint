@@ -1,6 +1,6 @@
 ignore: |
   /vendor
-  
+
 rules:
   braces: enable
   brackets: enable

@@ -62,4 +62,4 @@ spec:
       resources:
         inputs:
           - name: source
-            resource: source-repo    
+            resource: source-repo
