@@ -68,9 +68,17 @@ No params
 {{- if eq (len .Task.Spec.Inputs.Params) 0 }}
 No params
 {{- else }}
-NAME	TYPE
+NAME	TYPE	DEFAULT_VALUE
 {{- range $p := .Task.Spec.Inputs.Params }}
-{{ $p.Name }}	{{ $p.Type }}
+{{- if not $p.Default }}
+{{ $p.Name }}	{{ $p.Type }}	{{ "" }}
+{{- else }}
+{{- if eq $p.Type "string" }}
+{{ $p.Name }}	{{ $p.Type }}	{{ $p.Default.StringVal }}
+{{- else }}
+{{ $p.Name }}	{{ $p.Type }}	{{ $p.Default.ArrayVal }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

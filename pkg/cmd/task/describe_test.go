@@ -172,6 +172,7 @@ func TestTaskDescribe_OnlyNameParams(t *testing.T) {
 					tb.TaskInputs(
 						tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString),
 						tb.InputsParamSpec("myprint", v1alpha1.ParamTypeString),
+						tb.InputsParamSpec("myarray", v1alpha1.ParamTypeArray),
 					),
 				),
 			),
@@ -208,9 +209,10 @@ Output Resources
 No output resources
 
 Params
-NAME      TYPE
-myarg     string
-myprint   string
+NAME      TYPE     DEFAULT_VALUE
+myarg     string   
+myprint   string   
+myarray   array    
 
 Steps
 No steps
@@ -232,7 +234,9 @@ func TestTaskDescribe_Full(t *testing.T) {
 						tb.InputsResource("my-image", v1alpha1.PipelineResourceTypeImage),
 						tb.InputsResource("source-repo", v1alpha1.PipelineResourceTypeGit),
 						tb.InputsParamSpec("myarg", v1alpha1.ParamTypeString),
-						tb.InputsParamSpec("print", v1alpha1.ParamTypeString),
+						tb.InputsParamSpec("myarray", v1alpha1.ParamTypeArray),
+						tb.InputsParamSpec("print", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
+						tb.InputsParamSpec("output", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("booms", "booms", "booms")),
 					),
 					tb.TaskOutputs(
 						tb.OutputsResource("code-image", v1alpha1.PipelineResourceTypeImage),
@@ -300,9 +304,11 @@ artifact-image   image
 code-image       image
 
 Params
-NAME    TYPE
-myarg   string
-print   string
+NAME      TYPE     DEFAULT_VALUE
+myarg     string   
+myarray   array    
+print     string   somethingdifferent
+output    array    [booms booms booms]
 
 Steps
 NAME
