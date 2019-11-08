@@ -20,7 +20,7 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-#Builds an image via kaniko and pushes it to registry.
+# Builds an image via kaniko and pushes it to registry.
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:

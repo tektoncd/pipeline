@@ -17,9 +17,9 @@ kind: ConfigMap
 metadata:
   name: config-artifact-pvc
   namespace: tekton-pipelines
-data:
-  # size of the PVC volume
-  # size: 5Gi
-
-  # storage class of the PVC volume
-  # storageClassName: storage-class-name
+# data:
+#   # size of the PVC volume
+#   size: 5Gi
+#
+#   # storage class of the PVC volume
+#   storageClassName: storage-class-name
