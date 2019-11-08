@@ -857,7 +857,7 @@ kind: PipelineResource
 metadata:
   name: event-to-sink
 spec:
-  type: cloudevent
+  type: cloudEvent
   params:
   - name: targetURI
     value: http://sink:8080
