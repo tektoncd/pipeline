@@ -20,39 +20,39 @@ Download the latest binary executable for your operating system:
   brew install tektoncd/tools/tektoncd-cli
   ```
 
-  - Or by the [released tarball](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Darwin_x86_64.tar.gz):
+  - Or by the [released tarball](https://github.com/tektoncd/cli/releases/download/v0.5.0/tkn_0.5.0_Darwin_x86_64.tar.gz):
 
   ```shell
   # Get the tar.xz
-  curl -LO https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Darwin_x86_64.tar.gz
+  curl -LO https://github.com/tektoncd/cli/releases/download/v0.5.0/tkn_0.5.0_Darwin_x86_64.tar.gz
   # Extract tkn to your PATH (e.g. /usr/local/bin)
-  sudo tar xvzf tkn_0.4.0_Darwin_x86_64.tar.gz -C /usr/local/bin tkn
+  sudo tar xvzf tkn_0.5.0_Darwin_x86_64.tar.gz -C /usr/local/bin tkn
   ```
 
 * Windows
 
-  - Uncompress the [zip file](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Windows_x86_64.zip)
+  - Uncompress the [zip file](https://github.com/tektoncd/cli/releases/download/v0.5.0/tkn_0.5.0_Windows_x86_64.zip)
   - Add the location of where the executable is to your `Path` by opening `Control Panel>System and Security>System>Advanced System Settings`
   - Click on `Environment Variables`, select the `Path` variable, and click `Edit`
   - Click `New` and add the location of the uncompressed zip to the `Path`
   - Finish by clicking `Ok`
 
-* [Linux AMD 64](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Linux_x86_64.tar.gz)
+* [Linux AMD 64](https://github.com/tektoncd/cli/releases/download/v0.5.0/tkn_0.5.0_Linux_x86_64.tar.gz)
 
   ```shell
   # Get the tar.xz
-  curl -LO https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Linux_x86_64.tar.gz
+  curl -LO https://github.com/tektoncd/cli/releases/download/v0.5.0/tkn_0.5.0_Linux_x86_64.tar.gz
   # Extract tkn to your PATH (e.g. /usr/local/bin)
-  sudo tar xvzf tkn_0.4.0_Linux_x86_64.tar.gz -C /usr/local/bin/ tkn
+  sudo tar xvzf tkn_0.5.0_Linux_x86_64.tar.gz -C /usr/local/bin/ tkn
   ```
 
-* [Linux ARM 64](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Linux_arm64.tar.gz)
+* [Linux ARM 64](https://github.com/tektoncd/cli/releases/download/v0.5.0/tkn_0.5.0_Linux_arm64.tar.gz)
 
   ```shell
   # Get the tar.xz
-  curl -LO https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Linux_arm64.tar.gz
+  curl -LO https://github.com/tektoncd/cli/releases/download/v0.5.0/tkn_0.5.0_Linux_arm64.tar.gz
   # Extract tkn to your PATH (e.g. /usr/local/bin)
-  sudo tar xvzf tkn_0.4.0_Linux_arm64.tar.gz -C /usr/local/bin/ tkn
+  sudo tar xvzf tkn_0.5.0_Linux_arm64.tar.gz -C /usr/local/bin/ tkn
   ```
 
   If you are running on any of the following rpm based distros:
@@ -72,7 +72,7 @@ Download the latest binary executable for your operating system:
   dnf install tektoncd-cli
   ```
 
-If you have [go](https://golang.org/) installed, `GO111MODULE="on" go get github.com/tektoncd/cli@v0.4.0` is all you need!
+If you have [go](https://golang.org/) installed, `GO111MODULE="on" go get github.com/tektoncd/cli@v0.5.0` is all you need!
 
 ### `tkn` as a `kubectl` plugin
 
