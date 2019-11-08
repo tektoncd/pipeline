@@ -16,7 +16,8 @@
 
 # Helper functions for E2E tests.
 
-source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
+go get -d github.com/tektoncd/plumbing
+source $(go list -m -f '{{.Dir}}' github.com/tektoncd/plumbing)/scripts/e2e-tests.sh
 
 function teardown() {
     subheader "Tearing down Tekton Pipelines"

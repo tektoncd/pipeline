@@ -63,11 +63,15 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 		hook, err = s.parseDeploymentHook(data)
 	case "deployment_status":
 		hook, err = s.parseDeploymentStatusHook(data)
+	case "fork":
+		hook, err = s.parseForkHook(data)
 	// case "issues":
 	case "issue_comment":
 		hook, err = s.parseIssueCommentHook(data)
 	case "installation", "integration_installation":
 		hook, err = s.parseInstallationHook(data)
+	case "installation_repositories", "integration_installation_repositories":
+		hook, err = s.parseInstallationRepositoryHook(data)
 	case "label":
 		hook, err = s.parseLabelHook(data)
 	case "ping":
@@ -80,6 +84,8 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 		hook, err = s.parsePullRequestReviewCommentHook(data)
 	case "release":
 		hook, err = s.parseReleaseHook(data)
+	case "repository":
+		hook, err = s.parseRepositoryHook(data)
 	case "status":
 		hook, err = s.parseStatusHook(data)
 	default:
@@ -190,6 +196,16 @@ func (s *webhookService) parseDeploymentStatusHook(data []byte) (scm.Webhook, er
 	return to, err
 }
 
+func (s *webhookService) parseForkHook(data []byte) (scm.Webhook, error) {
+	src := new(forkHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertForkHook(src)
+	return to, err
+}
+
 func (s *webhookService) parseLabelHook(data []byte) (scm.Webhook, error) {
 	src := new(labelHook)
 	err := json.Unmarshal(data, src)
@@ -207,6 +223,16 @@ func (s *webhookService) parseReleaseHook(data []byte) (scm.Webhook, error) {
 		return nil, err
 	}
 	to := convertReleaseHook(src)
+	return to, err
+}
+
+func (s *webhookService) parseRepositoryHook(data []byte) (scm.Webhook, error) {
+	src := new(repositoryHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertRepositoryHook(src)
 	return to, err
 }
 
@@ -297,6 +323,16 @@ func (s *webhookService) parseInstallationHook(data []byte) (*scm.InstallationHo
 	return dst, nil
 }
 
+func (s *webhookService) parseInstallationRepositoryHook(data []byte) (*scm.InstallationRepositoryHook, error) {
+	src := new(installationRepositoryHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	dst := convertInstallationRepositoryHook(src)
+	return dst, nil
+}
+
 //
 // native data structures
 //
@@ -345,6 +381,13 @@ type (
 		Installation *installationRef `json:"installation"`
 	}
 
+	// github deployment_status payload
+	forkHook struct {
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Installation *installationRef `json:"installation"`
+	}
+
 	// github label payload
 	labelHook struct {
 		Action       string           `json:"action"`
@@ -360,6 +403,14 @@ type (
 		Repository   repository       `json:"repository"`
 		Sender       user             `json:"sender"`
 		Label        label            `json:"label"`
+		Installation *installationRef `json:"installation"`
+	}
+
+	// github repository payload
+	repositoryHook struct {
+		Action       string           `json:"action"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
 		Installation *installationRef `json:"installation"`
 	}
 
@@ -532,6 +583,15 @@ type (
 		Sender       *user         `json:"sender"`
 	}
 
+	// installationRepositoryHook a webhook invoked when the GitHub App is installed
+	installationRepositoryHook struct {
+		Action              string        `json:"action"`
+		RepositoriesAdded   []*repository `json:"repositories_added"`
+		RepositoriesRemoved []*repository `json:"repositories_removed"`
+		Installation        *installation `json:"installation"`
+		Sender              *user         `json:"sender"`
+	}
+
 	// github app installation
 	installation struct {
 		ID                  int64  `json:"id"`
@@ -572,6 +632,19 @@ func convertInstallationHook(dst *installationHook) *scm.InstallationHook {
 	return &scm.InstallationHook{
 		Action:       convertAction(dst.Action),
 		Repos:        convertRepositoryList(dst.Repositories),
+		Sender:       *convertUser(dst.Sender),
+		Installation: convertInstallation(dst.Installation),
+	}
+}
+
+func convertInstallationRepositoryHook(dst *installationRepositoryHook) *scm.InstallationRepositoryHook {
+	if dst == nil {
+		return nil
+	}
+	return &scm.InstallationRepositoryHook{
+		Action:       convertAction(dst.Action),
+		ReposAdded:   convertRepositoryList(dst.RepositoriesAdded),
+		ReposRemoved: convertRepositoryList(dst.RepositoriesRemoved),
 		Sender:       *convertUser(dst.Sender),
 		Installation: convertInstallation(dst.Installation),
 	}
@@ -669,6 +742,14 @@ func convertDeploymentStatusHook(dst *deploymentStatusHook) *scm.DeploymentStatu
 	}
 }
 
+func convertForkHook(dst *forkHook) *scm.ForkHook {
+	return &scm.ForkHook{
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
 func convertLabelHook(dst *labelHook) *scm.LabelHook {
 	return &scm.LabelHook{
 		Action:       convertAction(dst.Action),
@@ -685,6 +766,15 @@ func convertReleaseHook(dst *releaseHook) *scm.ReleaseHook {
 		Repo:         *convertRepository(&dst.Repository),
 		Sender:       *convertUser(&dst.Sender),
 		Label:        convertLabel(dst.Label),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
+func convertRepositoryHook(dst *repositoryHook) *scm.RepositoryHook {
+	return &scm.RepositoryHook{
+		Action:       convertAction(dst.Action),
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
 		Installation: convertInstallationRef(dst.Installation),
 	}
 }

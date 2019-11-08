@@ -39,7 +39,9 @@ func main() {
 	logger = logger.With(
 		zap.String("resource_type", "pullrequest"),
 		zap.String("mode", *mode))
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 	ctx := context.Background()
 
 	token := os.Getenv("AUTH_TOKEN")

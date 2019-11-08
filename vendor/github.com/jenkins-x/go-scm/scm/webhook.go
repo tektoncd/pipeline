@@ -12,23 +12,26 @@ import (
 type WebhookKind string
 
 const (
-	WebhookKindBranch             WebhookKind = "branch"
-	WebhookKindCheckRun           WebhookKind = "check_run"
-	WebhookKindCheckSuite         WebhookKind = "check_suite"
-	WebhookKindDeploy             WebhookKind = "deploy"
-	WebhookKindDeploymentStatus   WebhookKind = "deployment_status"
-	WebhookKindInstallation       WebhookKind = "installation"
-	WebhookKindIssue              WebhookKind = "issue"
-	WebhookKindIssueComment       WebhookKind = "issue_comment"
-	WebhookKindLabel              WebhookKind = "label"
-	WebhookKindPing               WebhookKind = "ping"
-	WebhookKindPullRequest        WebhookKind = "pull_request"
-	WebhookKindPullRequestComment WebhookKind = "pull_request_comment"
-	WebhookKindPush               WebhookKind = "push"
-	WebhookKindRelease            WebhookKind = "release"
-	WebhookKindReviewCommentHook  WebhookKind = "review_comment"
-	WebhookKindStatus             WebhookKind = "status"
-	WebhookKindTag                WebhookKind = "tag"
+	WebhookKindBranch                 WebhookKind = "branch"
+	WebhookKindCheckRun               WebhookKind = "check_run"
+	WebhookKindCheckSuite             WebhookKind = "check_suite"
+	WebhookKindDeploy                 WebhookKind = "deploy"
+	WebhookKindDeploymentStatus       WebhookKind = "deployment_status"
+	WebhookKindFork                   WebhookKind = "fork"
+	WebhookKindInstallation           WebhookKind = "installation"
+	WebhookKindInstallationRepository WebhookKind = "installation_repository"
+	WebhookKindIssue                  WebhookKind = "issue"
+	WebhookKindIssueComment           WebhookKind = "issue_comment"
+	WebhookKindLabel                  WebhookKind = "label"
+	WebhookKindPing                   WebhookKind = "ping"
+	WebhookKindPullRequest            WebhookKind = "pull_request"
+	WebhookKindPullRequestComment     WebhookKind = "pull_request_comment"
+	WebhookKindPush                   WebhookKind = "push"
+	WebhookKindRelease                WebhookKind = "release"
+	WebhookKindRepository             WebhookKind = "repository"
+	WebhookKindReviewCommentHook      WebhookKind = "review_comment"
+	WebhookKindStatus                 WebhookKind = "status"
+	WebhookKindTag                    WebhookKind = "tag"
 )
 
 var (
@@ -126,6 +129,13 @@ type (
 		Installation *InstallationRef
 	}
 
+	// ForkHook represents a fork event
+	ForkHook struct {
+		Repo         Repository
+		Sender       User
+		Installation *InstallationRef
+	}
+
 	// TagHook represents a tag event, eg create and delete
 	// github event types.
 	TagHook struct {
@@ -164,6 +174,16 @@ type (
 		Installation *Installation
 	}
 
+	// InstallationRepositoryHook represents an installation of a GitHub App
+	InstallationRepositoryHook struct {
+		Action              Action
+		RepositorySelection string
+		ReposAdded          []*Repository
+		ReposRemoved        []*Repository
+		Sender              User
+		Installation        *Installation
+	}
+
 	// InstallationRef references a GitHub app install on a webhook
 	InstallationRef struct {
 		ID     int64
@@ -179,12 +199,20 @@ type (
 		Installation *InstallationRef
 	}
 
-	// ReleaseHook represents a relese event
+	// ReleaseHook represents a release event
 	ReleaseHook struct {
 		Action       Action
 		Repo         Repository
 		Sender       User
 		Label        Label
+		Installation *InstallationRef
+	}
+
+	// RepositoryHook represents a repository event
+	RepositoryHook struct {
+		Action       Action
+		Repo         Repository
+		Sender       User
 		Installation *InstallationRef
 	}
 
@@ -280,23 +308,26 @@ type (
 
 // Kind() returns the kind of webhook
 
-func (h *PingHook) Kind() WebhookKind               { return WebhookKindPing }
-func (h *PushHook) Kind() WebhookKind               { return WebhookKindPush }
-func (h *BranchHook) Kind() WebhookKind             { return WebhookKindBranch }
-func (h *DeployHook) Kind() WebhookKind             { return WebhookKindDeploy }
-func (h *TagHook) Kind() WebhookKind                { return WebhookKindTag }
-func (h *IssueHook) Kind() WebhookKind              { return WebhookKindIssue }
-func (h *IssueCommentHook) Kind() WebhookKind       { return WebhookKindIssueComment }
-func (h *PullRequestHook) Kind() WebhookKind        { return WebhookKindPullRequest }
-func (h *PullRequestCommentHook) Kind() WebhookKind { return WebhookKindPullRequestComment }
-func (h *ReviewCommentHook) Kind() WebhookKind      { return WebhookKindReviewCommentHook }
-func (h *InstallationHook) Kind() WebhookKind       { return WebhookKindInstallation }
-func (h *LabelHook) Kind() WebhookKind              { return WebhookKindLabel }
-func (h *StatusHook) Kind() WebhookKind             { return WebhookKindStatus }
-func (h *CheckRunHook) Kind() WebhookKind           { return WebhookKindCheckRun }
-func (h *CheckSuiteHook) Kind() WebhookKind         { return WebhookKindCheckSuite }
-func (h *DeploymentStatusHook) Kind() WebhookKind   { return WebhookKindDeploymentStatus }
-func (h *ReleaseHook) Kind() WebhookKind            { return WebhookKindRelease }
+func (h *PingHook) Kind() WebhookKind                   { return WebhookKindPing }
+func (h *PushHook) Kind() WebhookKind                   { return WebhookKindPush }
+func (h *BranchHook) Kind() WebhookKind                 { return WebhookKindBranch }
+func (h *DeployHook) Kind() WebhookKind                 { return WebhookKindDeploy }
+func (h *TagHook) Kind() WebhookKind                    { return WebhookKindTag }
+func (h *IssueHook) Kind() WebhookKind                  { return WebhookKindIssue }
+func (h *IssueCommentHook) Kind() WebhookKind           { return WebhookKindIssueComment }
+func (h *PullRequestHook) Kind() WebhookKind            { return WebhookKindPullRequest }
+func (h *PullRequestCommentHook) Kind() WebhookKind     { return WebhookKindPullRequestComment }
+func (h *ReviewCommentHook) Kind() WebhookKind          { return WebhookKindReviewCommentHook }
+func (h *InstallationHook) Kind() WebhookKind           { return WebhookKindInstallation }
+func (h *LabelHook) Kind() WebhookKind                  { return WebhookKindLabel }
+func (h *StatusHook) Kind() WebhookKind                 { return WebhookKindStatus }
+func (h *CheckRunHook) Kind() WebhookKind               { return WebhookKindCheckRun }
+func (h *CheckSuiteHook) Kind() WebhookKind             { return WebhookKindCheckSuite }
+func (h *DeploymentStatusHook) Kind() WebhookKind       { return WebhookKindDeploymentStatus }
+func (h *ReleaseHook) Kind() WebhookKind                { return WebhookKindRelease }
+func (h *RepositoryHook) Kind() WebhookKind             { return WebhookKindRepository }
+func (h *ForkHook) Kind() WebhookKind                   { return WebhookKindFork }
+func (h *InstallationRepositoryHook) Kind() WebhookKind { return WebhookKindInstallationRepository }
 
 // Repository() defines the repository webhook and provides
 // a convenient way to get the associated repository without
@@ -318,10 +349,19 @@ func (h *CheckRunHook) Repository() Repository           { return h.Repo }
 func (h *CheckSuiteHook) Repository() Repository         { return h.Repo }
 func (h *DeploymentStatusHook) Repository() Repository   { return h.Repo }
 func (h *ReleaseHook) Repository() Repository            { return h.Repo }
+func (h *RepositoryHook) Repository() Repository         { return h.Repo }
+func (h *ForkHook) Repository() Repository               { return h.Repo }
 
 func (h *InstallationHook) Repository() Repository {
 	if len(h.Repos) > 0 {
 		return *h.Repos[0]
+	}
+	return Repository{}
+}
+
+func (h *InstallationRepositoryHook) Repository() Repository {
+	if len(h.ReposAdded) > 0 {
+		return *h.ReposAdded[0]
 	}
 	return Repository{}
 }
@@ -344,8 +384,19 @@ func (h *CheckRunHook) GetInstallationRef() *InstallationRef           { return 
 func (h *CheckSuiteHook) GetInstallationRef() *InstallationRef         { return h.Installation }
 func (h *DeploymentStatusHook) GetInstallationRef() *InstallationRef   { return h.Installation }
 func (h *ReleaseHook) GetInstallationRef() *InstallationRef            { return h.Installation }
+func (h *RepositoryHook) GetInstallationRef() *InstallationRef         { return h.Installation }
+func (h *ForkHook) GetInstallationRef() *InstallationRef               { return h.Installation }
 
 func (h *InstallationHook) GetInstallationRef() *InstallationRef {
+	if h.Installation == nil {
+		return nil
+	}
+	return &InstallationRef{
+		ID: h.Installation.ID,
+	}
+}
+
+func (h *InstallationRepositoryHook) GetInstallationRef() *InstallationRef {
 	if h.Installation == nil {
 		return nil
 	}

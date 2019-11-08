@@ -35,7 +35,9 @@ var (
 func main() {
 	flag.Parse()
 	logger, _ := logging.NewLogger("", "git-init")
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	if err := git.Fetch(logger, *revision, *path, *url); err != nil {
 		logger.Fatalf("Error fetching git repository: %s", err)

@@ -29,7 +29,9 @@ func main() {
 
 	// ignore atomic level because we are not watching this config for any updates
 	logger, _ := logging.NewLogger("", "creds-init")
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 	for _, c := range builders {
