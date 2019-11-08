@@ -18,7 +18,9 @@ package monitoring
 
 import (
 	"context"
+	"fmt"
 	"math"
+	"net/url"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -46,6 +48,8 @@ func defaultUptimeCheckClientOptions() []option.ClientOption {
 	return []option.ClientOption{
 		option.WithEndpoint("monitoring.googleapis.com:443"),
 		option.WithScopes(DefaultAuthScopes()...),
+		option.WithGRPCDialOption(grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(math.MaxInt32))),
 	}
 }
 
@@ -94,7 +98,7 @@ type UptimeCheckClient struct {
 // NewUptimeCheckClient creates a new uptime check service client.
 //
 // The UptimeCheckService API is used to manage (list, create, delete, edit)
-// uptime check configurations in the Stackdriver Monitoring product. An uptime
+// Uptime check configurations in the Stackdriver Monitoring product. An Uptime
 // check is a piece of configuration that determines which resources and
 // services to monitor for availability. These configurations can also be
 // configured interactively by navigating to the [Cloud Console]
@@ -136,10 +140,11 @@ func (c *UptimeCheckClient) setGoogleClientInfo(keyval ...string) {
 	c.xGoogMetadata = metadata.Pairs("x-goog-api-client", gax.XGoogHeader(kv...))
 }
 
-// ListUptimeCheckConfigs lists the existing valid uptime check configurations for the project,
-// leaving out any invalid configurations.
+// ListUptimeCheckConfigs lists the existing valid Uptime check configurations for the project
+// (leaving out any invalid configurations).
 func (c *UptimeCheckClient) ListUptimeCheckConfigs(ctx context.Context, req *monitoringpb.ListUptimeCheckConfigsRequest, opts ...gax.CallOption) *UptimeCheckConfigIterator {
-	ctx = insertMetadata(ctx, c.xGoogMetadata)
+	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "parent", url.QueryEscape(req.GetParent())))
+	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
 	opts = append(c.CallOptions.ListUptimeCheckConfigs[0:len(c.CallOptions.ListUptimeCheckConfigs):len(c.CallOptions.ListUptimeCheckConfigs)], opts...)
 	it := &UptimeCheckConfigIterator{}
 	req = proto.Clone(req).(*monitoringpb.ListUptimeCheckConfigsRequest)
@@ -171,12 +176,14 @@ func (c *UptimeCheckClient) ListUptimeCheckConfigs(ctx context.Context, req *mon
 	}
 	it.pageInfo, it.nextFunc = iterator.NewPageInfo(fetch, it.bufLen, it.takeBuf)
 	it.pageInfo.MaxSize = int(req.PageSize)
+	it.pageInfo.Token = req.PageToken
 	return it
 }
 
-// GetUptimeCheckConfig gets a single uptime check configuration.
+// GetUptimeCheckConfig gets a single Uptime check configuration.
 func (c *UptimeCheckClient) GetUptimeCheckConfig(ctx context.Context, req *monitoringpb.GetUptimeCheckConfigRequest, opts ...gax.CallOption) (*monitoringpb.UptimeCheckConfig, error) {
-	ctx = insertMetadata(ctx, c.xGoogMetadata)
+	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
+	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
 	opts = append(c.CallOptions.GetUptimeCheckConfig[0:len(c.CallOptions.GetUptimeCheckConfig):len(c.CallOptions.GetUptimeCheckConfig)], opts...)
 	var resp *monitoringpb.UptimeCheckConfig
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
@@ -190,9 +197,10 @@ func (c *UptimeCheckClient) GetUptimeCheckConfig(ctx context.Context, req *monit
 	return resp, nil
 }
 
-// CreateUptimeCheckConfig creates a new uptime check configuration.
+// CreateUptimeCheckConfig creates a new Uptime check configuration.
 func (c *UptimeCheckClient) CreateUptimeCheckConfig(ctx context.Context, req *monitoringpb.CreateUptimeCheckConfigRequest, opts ...gax.CallOption) (*monitoringpb.UptimeCheckConfig, error) {
-	ctx = insertMetadata(ctx, c.xGoogMetadata)
+	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "parent", url.QueryEscape(req.GetParent())))
+	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
 	opts = append(c.CallOptions.CreateUptimeCheckConfig[0:len(c.CallOptions.CreateUptimeCheckConfig):len(c.CallOptions.CreateUptimeCheckConfig)], opts...)
 	var resp *monitoringpb.UptimeCheckConfig
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
@@ -206,12 +214,13 @@ func (c *UptimeCheckClient) CreateUptimeCheckConfig(ctx context.Context, req *mo
 	return resp, nil
 }
 
-// UpdateUptimeCheckConfig updates an uptime check configuration. You can either replace the entire
+// UpdateUptimeCheckConfig updates an Uptime check configuration. You can either replace the entire
 // configuration with a new one or replace only certain fields in the current
-// configuration by specifying the fields to be updated via "updateMask".
+// configuration by specifying the fields to be updated via updateMask.
 // Returns the updated configuration.
 func (c *UptimeCheckClient) UpdateUptimeCheckConfig(ctx context.Context, req *monitoringpb.UpdateUptimeCheckConfigRequest, opts ...gax.CallOption) (*monitoringpb.UptimeCheckConfig, error) {
-	ctx = insertMetadata(ctx, c.xGoogMetadata)
+	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "uptime_check_config.name", url.QueryEscape(req.GetUptimeCheckConfig().GetName())))
+	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
 	opts = append(c.CallOptions.UpdateUptimeCheckConfig[0:len(c.CallOptions.UpdateUptimeCheckConfig):len(c.CallOptions.UpdateUptimeCheckConfig)], opts...)
 	var resp *monitoringpb.UptimeCheckConfig
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
@@ -225,11 +234,12 @@ func (c *UptimeCheckClient) UpdateUptimeCheckConfig(ctx context.Context, req *mo
 	return resp, nil
 }
 
-// DeleteUptimeCheckConfig deletes an uptime check configuration. Note that this method will fail
-// if the uptime check configuration is referenced by an alert policy or
+// DeleteUptimeCheckConfig deletes an Uptime check configuration. Note that this method will fail
+// if the Uptime check configuration is referenced by an alert policy or
 // other dependent configs that would be rendered invalid by the deletion.
 func (c *UptimeCheckClient) DeleteUptimeCheckConfig(ctx context.Context, req *monitoringpb.DeleteUptimeCheckConfigRequest, opts ...gax.CallOption) error {
-	ctx = insertMetadata(ctx, c.xGoogMetadata)
+	md := metadata.Pairs("x-goog-request-params", fmt.Sprintf("%s=%v", "name", url.QueryEscape(req.GetName())))
+	ctx = insertMetadata(ctx, c.xGoogMetadata, md)
 	opts = append(c.CallOptions.DeleteUptimeCheckConfig[0:len(c.CallOptions.DeleteUptimeCheckConfig):len(c.CallOptions.DeleteUptimeCheckConfig)], opts...)
 	err := gax.Invoke(ctx, func(ctx context.Context, settings gax.CallSettings) error {
 		var err error
@@ -239,7 +249,7 @@ func (c *UptimeCheckClient) DeleteUptimeCheckConfig(ctx context.Context, req *mo
 	return err
 }
 
-// ListUptimeCheckIps returns the list of IPs that checkers run from
+// ListUptimeCheckIps returns the list of IP addresses that checkers run from
 func (c *UptimeCheckClient) ListUptimeCheckIps(ctx context.Context, req *monitoringpb.ListUptimeCheckIpsRequest, opts ...gax.CallOption) *UptimeCheckIpIterator {
 	ctx = insertMetadata(ctx, c.xGoogMetadata)
 	opts = append(c.CallOptions.ListUptimeCheckIps[0:len(c.CallOptions.ListUptimeCheckIps):len(c.CallOptions.ListUptimeCheckIps)], opts...)
@@ -273,6 +283,7 @@ func (c *UptimeCheckClient) ListUptimeCheckIps(ctx context.Context, req *monitor
 	}
 	it.pageInfo, it.nextFunc = iterator.NewPageInfo(fetch, it.bufLen, it.takeBuf)
 	it.pageInfo.MaxSize = int(req.PageSize)
+	it.pageInfo.Token = req.PageToken
 	return it
 }
 

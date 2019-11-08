@@ -52,7 +52,9 @@ func main() {
 		log.Fatalf("Error parsing logging configuration: %v", err)
 	}
 	logger, atomicLevel := logging.NewLoggerFromConfig(config, WebhookLogKey)
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 	logger = logger.With(zap.String(logkey.ControllerType, "webhook"))
 
 	logger.Info("Starting the Configuration Webhook")

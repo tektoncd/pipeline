@@ -42,7 +42,9 @@ The output is an array of PipelineResourceResult, ex: [{"name":"image","digest":
 func main() {
 	flag.Parse()
 	logger, _ := logging.NewLogger("", "image-digest-exporter")
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	imageResources := []*v1alpha1.ImageResource{}
 	if err := json.Unmarshal([]byte(*images), &imageResources); err != nil {

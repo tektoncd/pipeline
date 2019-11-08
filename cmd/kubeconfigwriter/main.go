@@ -40,7 +40,9 @@ func main() {
 	flag.Parse()
 
 	logger, _ := logging.NewLogger("", "kubeconfig")
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	cr := v1alpha1.ClusterResource{}
 	err := json.Unmarshal([]byte(*clusterConfig), &cr)

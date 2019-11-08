@@ -90,18 +90,22 @@ func defaultMapResource(res *resource.Resource) *monitoredrespb.MonitoredResourc
 	if res == nil || res.Labels == nil {
 		return result
 	}
-	if res.Type == resourcekeys.ContainerType {
+
+	switch {
+	case res.Type == resourcekeys.ContainerType:
 		result.Type = "k8s_container"
 		match = k8sResourceMap
-	} else if v, ok := res.Labels[resourcekeys.CloudKeyProvider]; ok {
-		if v == resourcekeys.CloudProviderGCP {
-			result.Type = "gce_instance"
-			match = gcpResourceMap
-		} else if v == resourcekeys.CloudProviderAWS {
-			result.Type = "aws_ec2_instance"
-			match = awsResourceMap
-		}
+	case res.Type == resourcekeys.K8SType:
+		result.Type = "k8s_pod"
+		match = k8sResourceMap
+	case res.Labels[resourcekeys.CloudKeyProvider] == resourcekeys.CloudProviderGCP:
+		result.Type = "gce_instance"
+		match = gcpResourceMap
+	case res.Labels[resourcekeys.CloudKeyProvider] == resourcekeys.CloudProviderAWS:
+		result.Type = "aws_ec2_instance"
+		match = awsResourceMap
 	}
+
 	result.Labels = transformResource(match, res.Labels)
 	if result.Type == "aws_ec2_instance" {
 		if v, ok := result.Labels["region"]; ok {
