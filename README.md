@@ -17,7 +17,7 @@ Download the latest binary executable for your operating system:
 
   ```shell
   brew tap tektoncd/tools
-  brew install tektoncd-cli
+  brew install tektoncd/tools/tektoncd-cli
   ```
 
   - Or by the [released tarball](https://github.com/tektoncd/cli/releases/download/v0.4.0/tkn_0.4.0_Darwin_x86_64.tar.gz):
