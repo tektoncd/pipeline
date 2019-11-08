@@ -209,7 +209,7 @@ Output Resources
 No output resources
 
 Params
-NAME      TYPE     DEFAULT_VALUE
+NAME      TYPE     DEFAULT VALUE
 myarg     string   
 myprint   string   
 myarray   array    
@@ -304,7 +304,7 @@ artifact-image   image
 code-image       image
 
 Params
-NAME      TYPE     DEFAULT_VALUE
+NAME      TYPE     DEFAULT VALUE
 myarg     string   
 myarray   array    
 print     string   somethingdifferent
