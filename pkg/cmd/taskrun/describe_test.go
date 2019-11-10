@@ -30,6 +30,36 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+func setStepStateTerminated(reason string) tb.StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				Reason: reason,
+			},
+		}
+	}
+}
+
+func setStepStateWaiting(reason string) tb.StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Waiting: &corev1.ContainerStateWaiting{
+				Reason: reason,
+			},
+		}
+	}
+}
+
+func setStepStateRunning(time metav1.Time) tb.StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Running: &corev1.ContainerStateRunning{
+				StartedAt: time,
+			},
+		}
+	}
+}
+
 func TestTaskRunDescribe_invalid_namespace(t *testing.T) {
 	cs, _ := test.SeedTestData(t, pipelinetest.Data{
 		Namespaces: []*corev1.Namespace{
@@ -134,6 +164,8 @@ No steps
 func TestTaskRunDescribe_only_taskrun(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
+	reasonCompleted := setStepStateTerminated("Completed")
+
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun("tr-1", "ns",
 			tb.TaskRunStatus(
@@ -144,11 +176,11 @@ func TestTaskRunDescribe_only_taskrun(t *testing.T) {
 				}),
 				tb.StepState(
 					cb.StepName("step1"),
-					tb.StateTerminated(0),
+					reasonCompleted,
 				),
 				tb.StepState(
 					cb.StepName("step2"),
-					tb.StateTerminated(0),
+					reasonCompleted,
 				),
 			),
 			tb.TaskRunSpec(
@@ -206,9 +238,9 @@ input    param
 input2   param2
 
 Steps
-NAME
-step1
-step2
+NAME    STATUS
+step1   Completed
+step2   Completed
 `
 
 	test.AssertOutput(t, expected, actual)
@@ -345,6 +377,8 @@ No steps
 func TestTaskRunDescribe_no_resourceref(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
+	reasonCompleted := setStepStateTerminated("Completed")
+
 	trs := []*v1alpha1.TaskRun{
 		tb.TaskRun("tr-1", "ns",
 			tb.TaskRunStatus(
@@ -355,11 +389,11 @@ func TestTaskRunDescribe_no_resourceref(t *testing.T) {
 				}),
 				tb.StepState(
 					cb.StepName("step1"),
-					tb.StateTerminated(0),
+					reasonCompleted,
 				),
 				tb.StepState(
 					cb.StepName("step2"),
-					tb.StateTerminated(0),
+					reasonCompleted,
 				),
 			),
 			tb.TaskRunSpec(
@@ -417,9 +451,265 @@ input    param
 input2   param2
 
 Steps
-NAME
-step1
-step2
+NAME    STATUS
+step1   Completed
+step2   Completed
+`
+
+	test.AssertOutput(t, expected, actual)
+}
+
+func TestTaskRunDescribe_step_status_default(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	reasonFailed := setStepStateTerminated("Error")
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clockwork.NewFakeClock().Now().Add(20*time.Second)),
+				tb.StatusCondition(apis.Condition{
+					Status: corev1.ConditionFalse,
+					Reason: resources.ReasonFailed,
+				}),
+				tb.StepState(
+					cb.StepName("step1"),
+					reasonFailed,
+				),
+				tb.StepState(
+					cb.StepName("step2"),
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("t1"),
+				tb.TaskRunInputs(tb.TaskRunInputsParam("input", "param")),
+				tb.TaskRunInputs(tb.TaskRunInputsParam("input2", "param2")),
+				tb.TaskRunInputs(tb.TaskRunInputsResource("git")),
+				tb.TaskRunInputs(tb.TaskRunInputsResource("image-input", tb.TaskResourceBindingRef("image"))),
+				tb.TaskRunOutputs(tb.TaskRunOutputsResource("image-output")),
+				tb.TaskRunOutputs(tb.TaskRunOutputsResource("image-output2")),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		TaskRuns: trs,
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
+
+	taskrun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(taskrun, "desc", "tr-1", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:        tr-1
+Namespace:   ns
+Task Ref:    t1
+
+Status
+STARTED         DURATION    STATUS
+9 minutes ago   ---         Failed
+
+Input Resources
+NAME          RESOURCE REF
+git           
+image-input   image
+
+Output Resources
+NAME            RESOURCE REF
+image-output    
+image-output2   
+
+Params
+NAME     VALUE
+input    param
+input2   param2
+
+Steps
+NAME    STATUS
+step1   Error
+step2   ---
+`
+
+	test.AssertOutput(t, expected, actual)
+}
+
+func TestTaskRunDescribe_step_status_pending(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	reasonWaiting := setStepStateWaiting("PodInitializing")
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clockwork.NewFakeClock().Now().Add(20*time.Second)),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+					Reason: "Running",
+				}),
+				tb.StepState(
+					cb.StepName("step1"),
+					reasonWaiting,
+				),
+				tb.StepState(
+					cb.StepName("step2"),
+					reasonWaiting,
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("t1"),
+				tb.TaskRunInputs(tb.TaskRunInputsParam("input", "param")),
+				tb.TaskRunInputs(tb.TaskRunInputsParam("input2", "param2")),
+				tb.TaskRunInputs(tb.TaskRunInputsResource("git")),
+				tb.TaskRunInputs(tb.TaskRunInputsResource("image-input", tb.TaskResourceBindingRef("image"))),
+				tb.TaskRunOutputs(tb.TaskRunOutputsResource("image-output")),
+				tb.TaskRunOutputs(tb.TaskRunOutputsResource("image-output2")),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		TaskRuns: trs,
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
+
+	taskrun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(taskrun, "desc", "tr-1", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:        tr-1
+Namespace:   ns
+Task Ref:    t1
+
+Status
+STARTED         DURATION    STATUS
+9 minutes ago   ---         Running
+
+Input Resources
+NAME          RESOURCE REF
+git           
+image-input   image
+
+Output Resources
+NAME            RESOURCE REF
+image-output    
+image-output2   
+
+Params
+NAME     VALUE
+input    param
+input2   param2
+
+Steps
+NAME    STATUS
+step1   PodInitializing
+step2   PodInitializing
+`
+
+	test.AssertOutput(t, expected, actual)
+}
+
+func TestTaskRunDescribe_step_status_running(t *testing.T) {
+	clock := clockwork.NewFakeClock()
+
+	reasonRunning := setStepStateRunning(metav1.Time{Time: time.Now()})
+
+	trs := []*v1alpha1.TaskRun{
+		tb.TaskRun("tr-1", "ns",
+			tb.TaskRunStatus(
+				tb.TaskRunStartTime(clockwork.NewFakeClock().Now().Add(20*time.Second)),
+				tb.StatusCondition(apis.Condition{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+					Reason: "Running",
+				}),
+				tb.StepState(
+					cb.StepName("step1"),
+					reasonRunning,
+				),
+				tb.StepState(
+					cb.StepName("step2"),
+					reasonRunning,
+				),
+			),
+			tb.TaskRunSpec(
+				tb.TaskRunTaskRef("t1"),
+				tb.TaskRunInputs(tb.TaskRunInputsParam("input", "param")),
+				tb.TaskRunInputs(tb.TaskRunInputsParam("input2", "param2")),
+				tb.TaskRunInputs(tb.TaskRunInputsResource("git")),
+				tb.TaskRunInputs(tb.TaskRunInputsResource("image-input", tb.TaskResourceBindingRef("image"))),
+				tb.TaskRunOutputs(tb.TaskRunOutputsResource("image-output")),
+				tb.TaskRunOutputs(tb.TaskRunOutputsResource("image-output2")),
+			),
+		),
+	}
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		TaskRuns: trs,
+		Namespaces: []*corev1.Namespace{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "ns",
+				},
+			},
+		},
+	})
+
+	p := &test.Params{Tekton: cs.Pipeline, Clock: clock, Kube: cs.Kube}
+
+	taskrun := Command(p)
+	clock.Advance(10 * time.Minute)
+	actual, err := test.ExecuteCommand(taskrun, "desc", "tr-1", "-n", "ns")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	expected := `Name:        tr-1
+Namespace:   ns
+Task Ref:    t1
+
+Status
+STARTED         DURATION    STATUS
+9 minutes ago   ---         Running
+
+Input Resources
+NAME          RESOURCE REF
+git           
+image-input   image
+
+Output Resources
+NAME            RESOURCE REF
+image-output    
+image-output2   
+
+Params
+NAME     VALUE
+input    param
+input2   param2
+
+Steps
+NAME    STATUS
+step1   Running
+step2   Running
 `
 
 	test.AssertOutput(t, expected, actual)

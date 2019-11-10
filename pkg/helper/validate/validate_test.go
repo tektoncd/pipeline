@@ -16,6 +16,7 @@ package validate
 
 import (
 	"testing"
+	"time"
 
 	"github.com/tektoncd/cli/pkg/test"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -73,4 +74,52 @@ func TestTaskRefExists_Not_Present(t *testing.T) {
 
 	output := TaskRefExists(spec)
 	test.AssertOutput(t, "", output)
+}
+
+func TestStepReasonExists_Terminated_Not_Present(t *testing.T) {
+	state := v1alpha1.StepState{}
+
+	output := StepReasonExists(state)
+	test.AssertOutput(t, "---", output)
+}
+
+func TestStepReasonExists_Terminated_Present(t *testing.T) {
+	state := v1alpha1.StepState{
+		ContainerState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				Reason: "Completed",
+			},
+		},
+	}
+
+	output := StepReasonExists(state)
+	test.AssertOutput(t, "Completed", output)
+}
+
+func TestStepReasonExists_Running_Present(t *testing.T) {
+	state := v1alpha1.StepState{
+		ContainerState: corev1.ContainerState{
+			Running: &corev1.ContainerStateRunning{
+				StartedAt: metav1.Time{
+					Time: time.Now(),
+				},
+			},
+		},
+	}
+
+	output := StepReasonExists(state)
+	test.AssertOutput(t, "Running", output)
+}
+
+func TestStepReasonExists_Waiting_Present(t *testing.T) {
+	state := v1alpha1.StepState{
+		ContainerState: corev1.ContainerState{
+			Waiting: &corev1.ContainerStateWaiting{
+				Reason: "PodInitializing",
+			},
+		},
+	}
+
+	output := StepReasonExists(state)
+	test.AssertOutput(t, "PodInitializing", output)
 }

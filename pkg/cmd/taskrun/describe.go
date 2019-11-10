@@ -90,9 +90,10 @@ Steps
 {{- $l := len .TaskRun.Status.Steps }}{{ if eq $l 0 }}
 No steps
 {{- else }}
-NAME
-{{- range $steps := .TaskRun.Status.Steps }}
-{{ $steps.Name }}
+NAME	STATUS
+{{- range $step := .TaskRun.Status.Steps }}
+{{- $reason := stepReasonExists $step }}
+{{ $step.Name }}	{{ $reason }}
 {{- end }}
 {{- end }}
 `
@@ -156,11 +157,12 @@ func printTaskRunDescription(s *cli.Stream, trName string, p cli.Params) error {
 	}
 
 	funcMap := template.FuncMap{
-		"formatAge":       formatted.Age,
-		"formatDuration":  formatted.Duration,
-		"formatCondition": formatted.Condition,
-		"hasFailed":       hasFailed,
-		"taskRefExists":   validate.TaskRefExists,
+		"formatAge":        formatted.Age,
+		"formatDuration":   formatted.Duration,
+		"formatCondition":  formatted.Condition,
+		"hasFailed":        hasFailed,
+		"taskRefExists":    validate.TaskRefExists,
+		"stepReasonExists": validate.StepReasonExists,
 	}
 
 	w := tabwriter.NewWriter(s.Out, 0, 5, 3, ' ', tabwriter.TabIndent)

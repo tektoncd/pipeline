@@ -24,6 +24,7 @@ import (
 
 const (
 	fieldNotPresent = ""
+	pendingState    = "---"
 )
 
 type params interface {
@@ -55,4 +56,23 @@ func TaskRefExists(spec v1alpha1.TaskRunSpec) string {
 	}
 
 	return spec.TaskRef.Name
+}
+
+// Check if step is in waiting, running, or terminated state by checking StepState of the step.
+func StepReasonExists(state v1alpha1.StepState) string {
+
+	if state.Waiting == nil {
+
+		if state.Running != nil {
+			return "Running"
+		}
+
+		if state.Terminated != nil {
+			return state.Terminated.Reason
+		}
+
+		return pendingState
+	}
+
+	return state.Waiting.Reason
 }
