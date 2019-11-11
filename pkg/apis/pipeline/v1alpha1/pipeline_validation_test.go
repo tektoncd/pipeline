@@ -22,6 +22,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestPipeline_Validate(t *testing.T) {
@@ -72,6 +73,41 @@ func TestPipeline_Validate(t *testing.T) {
 			tb.PipelineTask("foo", "_foo-task"),
 		)),
 		failureExpected: true,
+	}, {
+		name: "pipeline spec missing tasfref and taskspec",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("", ""),
+			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{})),
+		)),
+		failureExpected: true,
+	}, {
+		name: "pipeline spec with taskref and taskspec",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("foo", "foo-task", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
+					Name:  "foo",
+					Image: "bar",
+				}}},
+			},
+			)))),
+		failureExpected: true,
+	}, {
+		name: "pipeline spec invalid taskspec",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{})),
+		)),
+		failureExpected: true,
+	}, {
+		name: "pipeline spec valid taskspec",
+		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
+			tb.PipelineTask("", "", tb.PipelineTaskSpec(&v1alpha1.TaskSpec{
+				Steps: []v1alpha1.Step{{Container: corev1.Container{
+					Name:  "foo",
+					Image: "bar",
+				}}},
+			},
+			)))),
+		failureExpected: false,
 	}, {
 		name: "no duplicate tasks",
 		p: tb.Pipeline("pipeline", "namespace", tb.PipelineSpec(
