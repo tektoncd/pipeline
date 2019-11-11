@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package pullrequest
 
 import (
 	"encoding/json"
@@ -51,22 +51,18 @@ func TestToDisk(t *testing.T) {
 				{Name: "foo/bar"},
 			},
 		},
-		Status: &scm.CombinedStatus{
-			State: scm.StateSuccess,
-			Sha:   "sha1",
-			Statuses: []*scm.Status{
-				{
-					Label:  "123",
-					State:  scm.StateSuccess,
-					Desc:   "foobar",
-					Target: "https://foo.bar",
-				},
-				{
-					Label:  "cla/foo",
-					State:  scm.StateSuccess,
-					Desc:   "bazbat",
-					Target: "https://baz.bat",
-				},
+		Statuses: []*scm.Status{
+			{
+				Label:  "123",
+				State:  scm.StateSuccess,
+				Desc:   "foobar",
+				Target: "https://foo.bar",
+			},
+			{
+				Label:  "cla/foo",
+				State:  scm.StateSuccess,
+				Desc:   "bazbat",
+				Target: "https://baz.bat",
 			},
 		},
 		Comments: []*scm.Comment{{
@@ -107,7 +103,7 @@ func TestToDisk(t *testing.T) {
 		readAndUnmarshal(t, filepath.Join(d, "status", fi.Name()), &status)
 		statuses[status.Target] = status
 	}
-	for _, s := range rsrc.Status.Statuses {
+	for _, s := range rsrc.Statuses {
 		actualStatus, ok := statuses[s.Target]
 		if !ok {
 			t.Errorf("Expected status with ID: %s, not found: %v", s.Target, statuses)
@@ -346,7 +342,7 @@ func TestFromDisk(t *testing.T) {
 	for _, s := range statuses {
 		statusMap[s.Label] = s
 	}
-	for _, s := range rsrc.Status.Statuses {
+	for _, s := range rsrc.Statuses {
 		if diff := cmp.Diff(statusMap[s.Label], *s); diff != "" {
 			t.Errorf("Get status: -want +got: %s", diff)
 		}

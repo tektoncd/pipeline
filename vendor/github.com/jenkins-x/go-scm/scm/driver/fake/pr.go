@@ -42,6 +42,35 @@ func (s *pullService) ListComments(ctx context.Context, repo string, number int,
 	return append([]*scm.Comment{}, f.PullRequestComments[number]...), nil, nil
 }
 
+func (s *pullService) ListLabels(context.Context, string, int, scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+	r := []*scm.Label{}
+	for _, l := range s.data.PullRequestLabelsExisting {
+		r = append(r, &scm.Label{
+			Name: l,
+		})
+	}
+	return r, nil, nil
+}
+
+func (s *pullService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
+	s.data.PullRequestLabelsAdded = append(s.data.PullRequestLabelsAdded, label)
+	s.data.PullRequestLabelsExisting = append(s.data.PullRequestLabelsExisting, label)
+	return nil, nil
+}
+
+func (s *pullService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
+	s.data.PullRequestLabelsRemoved = append(s.data.PullRequestLabelsRemoved, label)
+
+	left := []string{}
+	for _, l := range s.data.PullRequestLabelsExisting {
+		if l != label {
+			left = append(left, l)
+		}
+	}
+	s.data.PullRequestLabelsExisting = left
+	return nil, nil
+}
+
 func (s *pullService) Merge(context.Context, string, int) (*scm.Response, error) {
 	panic("implement me")
 }
@@ -52,17 +81,24 @@ func (s *pullService) Close(context.Context, string, int) (*scm.Response, error)
 
 func (s *pullService) CreateComment(ctx context.Context, repo string, number int, comment *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
 	f := s.data
-	f.IssueCommentsAdded = append(f.IssueCommentsAdded, fmt.Sprintf("%s#%d:%s", repo, number, comment.Body))
 	answer := &scm.Comment{
 		ID:     f.IssueCommentID,
 		Body:   comment.Body,
 		Author: scm.User{Login: botName},
 	}
-	f.IssueComments[number] = append(f.IssueComments[number], answer)
+	f.PullRequestComments[number] = append(f.PullRequestComments[number], answer)
 	f.IssueCommentID++
 	return answer, nil, nil
 }
 
-func (s *pullService) DeleteComment(context.Context, string, int, int) (*scm.Response, error) {
-	panic("implement me")
+func (s *pullService) DeleteComment(ctx context.Context, repo string, number int, id int) (*scm.Response, error) {
+	f := s.data
+	newComments := []*scm.Comment{}
+	for _, c := range f.PullRequestComments[number] {
+		if c.ID != id {
+			newComments = append(newComments, c)
+		}
+	}
+	f.PullRequestComments[number] = newComments
+	return nil, nil
 }

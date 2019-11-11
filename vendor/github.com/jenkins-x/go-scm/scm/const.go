@@ -107,6 +107,9 @@ const (
 	ActionEdited
 	ActionSubmitted
 	ActionDismissed
+
+	// check run / check suite
+	ActionCompleted
 )
 
 // String returns the string representation of Action.
@@ -148,6 +151,8 @@ func (a Action) String() (s string) {
 		return "review_request_removed"
 	case ActionReadyForReview:
 		return "ready_for_review"
+	case ActionCompleted:
+		return "completed"
 	default:
 		return
 	}
@@ -185,6 +190,8 @@ func (a *Action) UnmarshalJSON(data []byte) error {
 		*a = ActionSync
 	case "merged":
 		*a = ActionMerge
+	case "completed":
+		*a = ActionCompleted
 	}
 	return nil
 }
