@@ -51,25 +51,37 @@ func (s *webhookService) Parse(req *http.Request, fn scm.SecretFunc) (scm.Webhoo
 	var hook scm.Webhook
 	event := req.Header.Get("X-GitHub-Event")
 	switch event {
-	case "ping":
-		hook, err = s.parsePingHook(data, guid)
-	case "push":
-		hook, err = s.parsePushHook(data, guid)
+	case "check_run":
+		hook, err = s.parseCheckRunHook(data)
+	case "check_suite":
+		hook, err = s.parseCheckSuiteHook(data)
 	case "create":
 		hook, err = s.parseCreateHook(data)
 	case "delete":
 		hook, err = s.parseDeleteHook(data)
-	case "pull_request":
-		hook, err = s.parsePullRequestHook(data, guid)
-	case "pull_request_review_comment":
-		hook, err = s.parsePullRequestReviewCommentHook(data)
 	case "deployment":
 		hook, err = s.parseDeploymentHook(data)
+	case "deployment_status":
+		hook, err = s.parseDeploymentStatusHook(data)
 	// case "issues":
 	case "issue_comment":
 		hook, err = s.parseIssueCommentHook(data)
 	case "installation", "integration_installation":
 		hook, err = s.parseInstallationHook(data)
+	case "label":
+		hook, err = s.parseLabelHook(data)
+	case "ping":
+		hook, err = s.parsePingHook(data, guid)
+	case "push":
+		hook, err = s.parsePushHook(data, guid)
+	case "pull_request":
+		hook, err = s.parsePullRequestHook(data, guid)
+	case "pull_request_review_comment":
+		hook, err = s.parsePullRequestReviewCommentHook(data)
+	case "release":
+		hook, err = s.parseReleaseHook(data)
+	case "status":
+		hook, err = s.parseStatusHook(data)
 	default:
 		log.WithField("Event", event).Warnf("unknown webhook")
 		return nil, scm.UnknownWebhook{event}
@@ -146,6 +158,66 @@ func (s *webhookService) parseDeleteHook(data []byte) (scm.Webhook, error) {
 	dst := convertTagHook(src)
 	dst.Action = scm.ActionDelete
 	return dst, nil
+}
+
+func (s *webhookService) parseCheckRunHook(data []byte) (scm.Webhook, error) {
+	src := new(checkRunHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertCheckRunHook(src)
+	return to, err
+}
+
+func (s *webhookService) parseCheckSuiteHook(data []byte) (scm.Webhook, error) {
+	src := new(checkSuiteHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertCheckSuiteHook(src)
+	return to, err
+}
+
+func (s *webhookService) parseDeploymentStatusHook(data []byte) (scm.Webhook, error) {
+	src := new(deploymentStatusHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertDeploymentStatusHook(src)
+	return to, err
+}
+
+func (s *webhookService) parseLabelHook(data []byte) (scm.Webhook, error) {
+	src := new(labelHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertLabelHook(src)
+	return to, err
+}
+
+func (s *webhookService) parseReleaseHook(data []byte) (scm.Webhook, error) {
+	src := new(releaseHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertReleaseHook(src)
+	return to, err
+}
+
+func (s *webhookService) parseStatusHook(data []byte) (scm.Webhook, error) {
+	src := new(statusHook)
+	err := json.Unmarshal(data, src)
+	if err != nil {
+		return nil, err
+	}
+	to := convertStatusHook(src)
+	return to, err
 }
 
 func (s *webhookService) parseDeploymentHook(data []byte) (scm.Webhook, error) {
@@ -243,6 +315,59 @@ type (
 	pingHook struct {
 		Repository   repository       `json:"repository"`
 		Sender       user             `json:"sender"`
+		Installation *installationRef `json:"installation"`
+	}
+
+	// github check_run payload
+	checkRunHook struct {
+		Action       string           `json:"action"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Label        label            `json:"label"`
+		Installation *installationRef `json:"installation"`
+	}
+
+	// github check_suite payload
+	checkSuiteHook struct {
+		Action       string           `json:"action"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Label        label            `json:"label"`
+		Installation *installationRef `json:"installation"`
+	}
+
+	// github deployment_status payload
+	deploymentStatusHook struct {
+		Action       string           `json:"action"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Label        label            `json:"label"`
+		Installation *installationRef `json:"installation"`
+	}
+
+	// github label payload
+	labelHook struct {
+		Action       string           `json:"action"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Label        label            `json:"label"`
+		Installation *installationRef `json:"installation"`
+	}
+
+	// github release payload
+	releaseHook struct {
+		Action       string           `json:"action"`
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Label        label            `json:"label"`
+		Installation *installationRef `json:"installation"`
+	}
+
+	// github status payload
+	statusHook struct {
+		Repository   repository       `json:"repository"`
+		Sender       user             `json:"sender"`
+		Label        label            `json:"label"`
 		Installation *installationRef `json:"installation"`
 	}
 
@@ -514,6 +639,65 @@ func convertPingHook(dst *pingHook) *scm.PingHook {
 	}
 }
 
+func convertCheckRunHook(dst *checkRunHook) *scm.CheckRunHook {
+	return &scm.CheckRunHook{
+		Action:       convertAction(dst.Action),
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Label:        convertLabel(dst.Label),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
+func convertCheckSuiteHook(dst *checkSuiteHook) *scm.CheckSuiteHook {
+	return &scm.CheckSuiteHook{
+		Action:       convertAction(dst.Action),
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Label:        convertLabel(dst.Label),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
+func convertDeploymentStatusHook(dst *deploymentStatusHook) *scm.DeploymentStatusHook {
+	return &scm.DeploymentStatusHook{
+		Action:       convertAction(dst.Action),
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Label:        convertLabel(dst.Label),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
+func convertLabelHook(dst *labelHook) *scm.LabelHook {
+	return &scm.LabelHook{
+		Action:       convertAction(dst.Action),
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Label:        convertLabel(dst.Label),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
+func convertReleaseHook(dst *releaseHook) *scm.ReleaseHook {
+	return &scm.ReleaseHook{
+		Action:       convertAction(dst.Action),
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Label:        convertLabel(dst.Label),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
+func convertStatusHook(dst *statusHook) *scm.StatusHook {
+	return &scm.StatusHook{
+		Repo:         *convertRepository(&dst.Repository),
+		Sender:       *convertUser(&dst.Sender),
+		Label:        convertLabel(dst.Label),
+		Installation: convertInstallationRef(dst.Installation),
+	}
+}
+
 func convertPushHook(src *pushHook) *scm.PushHook {
 	dst := &scm.PushHook{
 		Ref:     src.Ref,
@@ -774,6 +958,8 @@ func convertAction(src string) (action scm.Action) {
 		return scm.ActionMerge
 	case "synchronize", "synchronized":
 		return scm.ActionSync
+	case "complete", "completed":
+		return scm.ActionCompleted
 	default:
 		return
 	}
