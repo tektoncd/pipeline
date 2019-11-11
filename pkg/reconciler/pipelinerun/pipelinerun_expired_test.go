@@ -1,6 +1,7 @@
 package pipelinerun
 
 import (
+	"github.com/tektoncd/pipeline/test"
 	"strings"
 	"time"
 
@@ -36,7 +37,7 @@ func newPipelineRun(completionTime, failedTime apis.VolatileTime, ttl *metav1.Du
 	}
 
 	if ttl != nil {
-		pr.Spec.ExpirationSecondsTTL= ttl
+		pr.Spec.ExpirationSecondsTTL = ttl
 	}
 
 	return pr
@@ -62,7 +63,7 @@ func TestTimeLeft(t *testing.T) {
 	}{
 		{
 			name:         "Error case: PipelineRun unfinished",
-			ttl:          &metav1.Duration{Duration:10 * time.Second},
+			ttl:          &metav1.Duration{Duration: 10 * time.Second},
 			since:        &now.Inner.Time,
 			expectErr:    true,
 			expectErrStr: "should not be cleaned up",
@@ -77,57 +78,41 @@ func TestTimeLeft(t *testing.T) {
 		{
 			name:             "PipelineRun completed now, 0s TTL",
 			completionTime:   now,
-			ttl:              &metav1.Duration{Duration:0 * time.Second},
+			ttl:              &metav1.Duration{Duration: 0 * time.Second},
 			since:            &now.Inner.Time,
 			expectedTimeLeft: durationPointer(0),
 		},
 		{
 			name:             "PipelineRun completed now, 10s TTL",
 			completionTime:   now,
-			ttl:              &metav1.Duration{Duration:10 * time.Second},
+			ttl:              &metav1.Duration{Duration: 10 * time.Second},
 			since:            &now.Inner.Time,
 			expectedTimeLeft: durationPointer(10),
 		},
 		{
 			name:             "PipelineRun completed 10s ago, 15s TTL",
 			completionTime:   apis.VolatileTime{Inner: metav1.NewTime(now.Inner.Add(-10 * time.Second))},
-			ttl:              &metav1.Duration{Duration:15 * time.Second},
-			since:            &now.Inner.Time,
-			expectedTimeLeft: durationPointer(5),
-		},
-		{
-			name: "Error case: PipelineRun failed now, no TTL",
-			failedTime:   now,
-			since:        &now.Inner.Time,
-			expectErr:    true,
-			expectErrStr: "should not be cleaned up",
-		},
-		{
-			name: "PipelineRun failed now, 0s TTL",
-			//failedTime:       now,
-			ttl:              &metav1.Duration{Duration:0 * time.Second},
-			since:            &now.Inner.Time,
-			expectedTimeLeft: durationPointer(0),
-		},
-		{
-			name: "PipelineRun failed now, 10s TTL",
-			failedTime:       now,
-			ttl:              &metav1.Duration{Duration:10 * time.Second},
-			since:            &now.Inner.Time,
-			expectedTimeLeft: durationPointer(10),
-		},
-		{
-			name: "PipelineRun failed 10s ago, 15s TTL",
-			failedTime:       apis.VolatileTime{Inner: metav1.NewTime(now.Inner.Add(-10 * time.Second))},
-			ttl:              &metav1.Duration{Duration:15 * time.Second},
+			ttl:              &metav1.Duration{Duration: 15 * time.Second},
 			since:            &now.Inner.Time,
 			expectedTimeLeft: durationPointer(5),
 		},
 	}
 	for _, tc := range PrTestCases {
 		pr := newPipelineRun(tc.completionTime, tc.failedTime, tc.ttl)
-		reconcile := Reconciler{}
-		gotPrTimeLeft, gotPrErr := reconcile.prTimeLeft(pr, tc.since)
+		d := test.Data{
+			PipelineRuns: []*apispipeline.PipelineRun{pr},
+		}
+		testAssets, cancel := getPipelineRunController(t, d)
+		defer cancel()
+		p, ok := testAssets.Controller.Reconciler.(*Reconciler)
+		if !ok {
+			t.Errorf("failed to construct instance of taskrun reconciler")
+			return
+		}
+
+		// Prevent backoff timer from starting
+		p.timeoutHandler.SetPipelineRunCallbackFunc(nil)
+		gotPrTimeLeft, gotPrErr := p.prTimeLeft(pr, tc.since)
 
 		if tc.expectErr != (gotPrErr != nil) {
 			t.Errorf("%s: expected error is %t, got %t, error: %v", tc.name, tc.expectErr, gotPrErr != nil, gotPrErr)
@@ -145,4 +130,3 @@ func TestTimeLeft(t *testing.T) {
 		}
 	}
 }
-

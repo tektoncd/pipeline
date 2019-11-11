@@ -30,8 +30,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/cache"
-        "k8s.io/client-go/util/workqueue"
+	"k8s.io/client-go/util/workqueue"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	podinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod"
 	"knative.dev/pkg/configmap"
@@ -77,7 +78,8 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			timeoutHandler:    timeoutHandler,
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           metrics,
-			queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ttl_taskruns_to_delete"),
+			//recorder: eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "ttl-after-finished-controller"}),
+			queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ttl_taskruns_to_delete"),
 		}
 		impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
@@ -113,6 +115,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			UpdateFunc: UpdateTaskRun,
 		})
 
+		c.taskRunLister = taskRunInformer.Lister()
 		c.ListerSynced = taskRunInformer.Informer().HasSynced
 
 		c.tracker = tracker.New(impl.EnqueueKey, controller.GetTrackerLease(ctx))
@@ -122,6 +125,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
+		c.clock = clock.RealClock{}
 		// FIXME(vdemeester) it was never set
 		//entrypoint cache will be initialized by controller if not provided
 		c.Logger.Info("Setting up Entrypoint cache")

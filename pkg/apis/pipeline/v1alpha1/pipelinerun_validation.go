@@ -63,7 +63,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	}
 
 	if ps.ExpirationSecondsTTL != nil {
-		// DelayDeleteTTL should be a valid duration of at least 0.
+		// ExpirationSecondsTTL should be a valid duration of at least 0.
 		if ps.ExpirationSecondsTTL.Duration < 0 {
 			return apis.ErrInvalidValue(fmt.Sprintf("%s should be >= 0", ps.ExpirationSecondsTTL.Duration.String()), "spec.expirationSecondsTTL")
 		}

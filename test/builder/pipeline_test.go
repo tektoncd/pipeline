@@ -179,7 +179,6 @@ func TestPipelineRun(t *testing.T) {
 			},
 			StartTime:      &metav1.Time{Time: startTime},
 			CompletionTime: &metav1.Time{Time: completedTime},
-			ExpirationTime: &metav1.Time{Time: completedTime.Add(1 * time.Hour)},
 			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
 				"trname": {PipelineTaskName: "task-1"},
 			},
@@ -207,6 +206,7 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 					Value: "git",
 				}}})),
 		tb.PipelineRunServiceAccountNameTask("foo", "sa-2"),
+		tb.PipelineRunExpirationSecondsTTL(1*time.Hour),
 	), tb.PipelineRunStatus(tb.PipelineRunStatusCondition(
 		apis.Condition{Type: apis.ConditionSucceeded}),
 		tb.PipelineRunStartTime(startTime),
@@ -258,7 +258,6 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
 				"trname": {PipelineTaskName: "task-1"},
 			},
-			ExpirationTime: &metav1.Time{Time: completedTime.Add(1 * time.Hour)},
 		},
 	}
 	if d := cmp.Diff(expectedPipelineRun, pipelineRun); d != "" {

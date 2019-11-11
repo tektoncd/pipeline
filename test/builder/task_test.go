@@ -165,6 +165,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					tb.TaskResourceBindingPaths("output-folder"),
 				),
 			),
+			tb.TaskRunExpirationSecondsTTL(1*time.Minute),
 		),
 		tb.TaskRunStatus(
 			tb.PodName("my-pod-name"),
@@ -223,7 +224,7 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				}},
 			},
 			Timeout:              &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			ExpirationSecondsTTL: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			ExpirationSecondsTTL: &metav1.Duration{Duration: 1 * time.Minute},
 			TaskRef: &v1alpha1.TaskRef{
 				Name:       "task-output",
 				Kind:       v1alpha1.ClusterTaskKind,

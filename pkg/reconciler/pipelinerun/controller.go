@@ -32,6 +32,7 @@ import (
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/config"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -97,21 +98,21 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 		})
 
 		AddPipelineRun := func(obj interface{}) {
-		pr := obj.(*v1alpha1.PipelineRun)
-		c.Logger.Infof("Adding PipelineRun %s/%s", pr.Namespace, pr.Name)
+			pr := obj.(*v1alpha1.PipelineRun)
+			c.Logger.Infof("Adding PipelineRun %s/%s", pr.Namespace, pr.Name)
 
-		if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
-		impl.Enqueue(pr)
-		}
+			if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
+				impl.Enqueue(pr)
+			}
 		}
 
 		UpdatePipelineRun := func(old, cur interface{}) {
-		pr := cur.(*v1alpha1.PipelineRun)
-		c.Logger.Infof("Updating PipelineRun %s/%s", pr.Namespace, pr.Name)
+			pr := cur.(*v1alpha1.PipelineRun)
+			c.Logger.Infof("Updating PipelineRun %s/%s", pr.Namespace, pr.Name)
 
-		if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
-		impl.Enqueue(pr)
-		}
+			if pr.DeletionTimestamp == nil && pipelineRunCleanup(pr) {
+				impl.Enqueue(pr)
+			}
 		}
 
 		pipelineRunInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -119,6 +120,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			UpdateFunc: UpdatePipelineRun,
 		})
 
+		c.pipelineRunLister = pipelineRunInformer.Lister()
 		c.ListerSynced = pipelineRunInformer.Informer().HasSynced
 
 		c.tracker = tracker.New(impl.EnqueueKey, 30*time.Minute)
@@ -126,6 +128,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			UpdateFunc: controller.PassNew(impl.EnqueueControllerOf),
 		})
 
+		c.clock = clock.RealClock{}
 		c.Logger.Info("Setting up ConfigMap receivers")
 		c.configStore = config.NewStore(images, c.Logger.Named("config-store"))
 		c.configStore.WatchConfigs(opt.ConfigMapWatcher)

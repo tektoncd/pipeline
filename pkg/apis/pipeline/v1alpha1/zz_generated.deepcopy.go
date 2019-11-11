@@ -1035,6 +1035,11 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 		**out = **in
 	}
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.ExpirationSecondsTTL != nil {
+		in, out := &in.ExpirationSecondsTTL, &out.ExpirationSecondsTTL
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	return
 }
 
@@ -1090,6 +1095,10 @@ func (in *PipelineRunStatus) DeepCopyInto(out *PipelineRunStatus) {
 			}
 			(*out)[key] = outVal
 		}
+	}
+	if in.ExpirationTime != nil {
+		in, out := &in.ExpirationTime, &out.ExpirationTime
+		*out = (*in).DeepCopy()
 	}
 	return
 }
@@ -1762,6 +1771,11 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 		**out = **in
 	}
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.ExpirationSecondsTTL != nil {
+		in, out := &in.ExpirationSecondsTTL, &out.ExpirationSecondsTTL
+		*out = new(metav1.Duration)
+		**out = **in
+	}
 	return
 }
 
@@ -1812,6 +1826,10 @@ func (in *TaskRunStatus) DeepCopyInto(out *TaskRunStatus) {
 		in, out := &in.ResourcesResult, &out.ResourcesResult
 		*out = make([]PipelineResourceResult, len(*in))
 		copy(*out, *in)
+	}
+	if in.ExpirationTime != nil {
+		in, out := &in.ExpirationTime, &out.ExpirationTime
+		*out = (*in).DeepCopy()
 	}
 	return
 }
