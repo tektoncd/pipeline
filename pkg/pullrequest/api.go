@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package pullrequest
 
 import (
 	"context"
 	"io/ioutil"
 	"strconv"
+
+	"golang.org/x/xerrors"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/jenkins-x/go-scm/scm"
@@ -53,31 +55,37 @@ func (h *Handler) Download(ctx context.Context) (*Resource, error) {
 	h.logger.Info("finding pr")
 	pr, _, err := h.client.PullRequests.Find(ctx, h.repo, h.prNum)
 	if err != nil {
-		h.logger.Infof("finding pr: %v", err)
-		return nil, err
+		return nil, xerrors.Errorf("finding pr: %s", h.prNum, err)
 	}
 
 	// Statuses
 	h.logger.Info("finding combined status")
-	status, out, err := h.client.Repositories.FindCombinedStatus(ctx, h.repo, pr.Sha)
+	status, out, err := h.client.Repositories.ListStatus(ctx, h.repo, pr.Sha, scm.ListOptions{})
 	if err != nil {
 		body, _ := ioutil.ReadAll(out.Body)
 		defer out.Body.Close()
 		h.logger.Warnf("%v: %s", err, string(body))
-		return nil, err
+		return nil, xerrors.Errorf("finding combined status: %s", h.prNum, err)
 	}
 
 	// Comments
 	// TODO: Pagination.
-	h.logger.Info("finding comments")
-	comments, _, err := h.client.Issues.ListComments(ctx, h.repo, h.prNum, scm.ListOptions{})
+	h.logger.Info("finding comments: %v", h)
+	comments, _, err := h.client.PullRequests.ListComments(ctx, h.repo, h.prNum, scm.ListOptions{})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("finding comments: %s", h.prNum, err)
 	}
+	h.logger.Info("found comments: %v", comments)
+
+	labels, _, err := h.client.PullRequests.ListLabels(ctx, h.repo, h.prNum, scm.ListOptions{})
+	if err != nil {
+		return nil, xerrors.Errorf("finding labels: %s", h.prNum, err)
+	}
+	pr.Labels = labels
 
 	r := &Resource{
 		PR:       pr,
-		Status:   status,
+		Statuses: status,
 		Comments: comments,
 	}
 	populateManifest(r)
@@ -112,7 +120,7 @@ func (h *Handler) Upload(ctx context.Context, r *Resource) error {
 		merr = multierror.Append(merr, err)
 	}
 
-	if err := h.uploadStatuses(ctx, r.Status); err != nil {
+	if err := h.uploadStatuses(ctx, r.Statuses, r.PR.Sha); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
@@ -133,15 +141,15 @@ func (h *Handler) uploadLabels(ctx context.Context, manifest Manifest, raw []*sc
 
 	// Fetch current labels associated to the PR. We'll need to keep track of
 	// which labels are new and should not be modified.
-	currentLabels, _, err := h.client.Issues.ListLabels(ctx, h.repo, h.prNum, scm.ListOptions{})
+	currentLabels, _, err := h.client.PullRequests.ListLabels(ctx, h.repo, h.prNum, scm.ListOptions{})
 	if err != nil {
-		return err
+		return xerrors.Errorf("listing labels %s: %w", h.prNum, err)
 	}
 	current := make(map[string]bool)
 	for _, l := range currentLabels {
 		current[l.Name] = true
 	}
-	h.logger.Infof("Current labels: %v", current)
+	h.logger.Debugf("Current labels: %v", current)
 
 	var merr error
 
@@ -152,10 +160,10 @@ func (h *Handler) uploadLabels(ctx context.Context, manifest Manifest, raw []*sc
 			create = append(create, l)
 		}
 	}
-	h.logger.Infof("Creating labels %v for PR %d", create, h.prNum)
+	h.logger.Debugf("Creating labels %v for PR %d", create, h.prNum)
 	for _, l := range create {
-		if _, err := h.client.Issues.AddLabel(ctx, h.repo, h.prNum, l); err != nil {
-			merr = multierror.Append(merr, err)
+		if _, err := h.client.PullRequests.AddLabel(ctx, h.repo, h.prNum, l); err != nil {
+			merr = multierror.Append(merr, xerrors.Errorf("adding label %s: %w", l, err))
 		}
 	}
 
@@ -163,14 +171,14 @@ func (h *Handler) uploadLabels(ctx context.Context, manifest Manifest, raw []*sc
 	// the manifest.
 	for l := range current {
 		if !labels[l] && manifest[l] {
-			h.logger.Infof("Removing label %s for PR %d", l, h.prNum)
-			if _, err := h.client.Issues.DeleteLabel(ctx, h.repo, h.prNum, l); err != nil {
-				merr = multierror.Append(merr, err)
+			h.logger.Debugf("Removing label %s for PR %d", l, h.prNum)
+			if _, err := h.client.PullRequests.DeleteLabel(ctx, h.repo, h.prNum, l); err != nil {
+				merr = multierror.Append(merr, xerrors.Errorf("finding pr %s: %w", h.prNum, err))
 			}
 		}
 	}
 
-	return err
+	return merr
 }
 
 func (h *Handler) uploadComments(ctx context.Context, manifest Manifest, comments []*scm.Comment) error {
@@ -190,11 +198,11 @@ func (h *Handler) uploadComments(ctx context.Context, manifest Manifest, comment
 
 	var merr error
 	if err := h.maybeDeleteComments(ctx, manifest, existingComments); err != nil {
-		merr = multierror.Append(merr, err)
+		merr = multierror.Append(merr, xerrors.Errorf("deleting comments: %s", existingComments, err))
 	}
 
 	if err := h.createNewComments(ctx, newComments); err != nil {
-		merr = multierror.Append(merr, err)
+		merr = multierror.Append(merr, xerrors.Errorf("creating comments: %s", newComments, err))
 	}
 
 	return merr
@@ -204,7 +212,7 @@ func (h *Handler) uploadComments(ctx context.Context, manifest Manifest, comment
 // SCM and exists in the manifest (therefore was present during resource
 // initialization).
 func (h *Handler) maybeDeleteComments(ctx context.Context, manifest Manifest, comments map[int]*scm.Comment) error {
-	currentComments, _, err := h.client.Issues.ListComments(ctx, h.repo, h.prNum, scm.ListOptions{})
+	currentComments, _, err := h.client.PullRequests.ListComments(ctx, h.repo, h.prNum, scm.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -223,16 +231,15 @@ func (h *Handler) maybeDeleteComments(ctx context.Context, manifest Manifest, co
 		if _, ok := manifest[strconv.Itoa(ec.ID)]; !ok {
 			// Comment did not exist when resource created, so this was created
 			// recently. To not modify this comment.
-			h.logger.Infof("Not tracking comment %d. Skipping.", ec.ID)
+			h.logger.Debugf("Not tracking comment %d. Skipping.", ec.ID)
 			continue
 		}
 
 		// Comment existed beforehand, user intentionally deleted. Remove from
 		// upstream source.
 		h.logger.Infof("Deleting comment %d for PR %d", ec.ID, h.prNum)
-		if _, err := h.client.Issues.DeleteComment(ctx, h.repo, h.prNum, ec.ID); err != nil {
-			h.logger.Warnf("Error deleting comment: %v", err)
-			merr = multierror.Append(merr, err)
+		if _, err := h.client.PullRequests.DeleteComment(ctx, h.repo, h.prNum, ec.ID); err != nil {
+			merr = multierror.Append(merr, xerrors.Errorf("deleting comment: %s", ec.ID, err))
 			continue
 		}
 	}
@@ -246,34 +253,36 @@ func (h *Handler) createNewComments(ctx context.Context, comments []*scm.Comment
 			Body: dc.Body,
 		}
 		h.logger.Infof("Creating comment %s for PR %d", c.Body, h.prNum)
-		if _, _, err := h.client.Issues.CreateComment(ctx, h.repo, h.prNum, c); err != nil {
-			h.logger.Warnf("Error creating comment: %v", err)
-			merr = multierror.Append(merr, err)
+		if _, _, err := h.client.PullRequests.CreateComment(ctx, h.repo, h.prNum, c); err != nil {
+			merr = multierror.Append(merr, xerrors.Errorf("creating comment: %s", c, err))
 		}
 	}
 	return merr
 }
 
-func (h *Handler) uploadStatuses(ctx context.Context, status *scm.CombinedStatus) error {
-	if status == nil {
+func (h *Handler) uploadStatuses(ctx context.Context, statuses []*scm.Status, sha string) error {
+	if statuses == nil {
+		h.logger.Info("Skipping statuses, nothing to set.")
 		return nil
 	}
 
-	cs, _, err := h.client.Repositories.FindCombinedStatus(ctx, h.repo, status.Sha)
+	h.logger.Infof("Looking for existing status on %s", sha)
+	cs, _, err := h.client.Repositories.ListStatus(ctx, h.repo, sha, scm.ListOptions{})
 	if err != nil {
 		return err
 	}
 
 	// Index the statuses so we can avoid sending them if they already exist.
 	csMap := map[string]scm.State{}
-	for _, s := range cs.Statuses {
+	for _, s := range cs {
 		csMap[s.Label] = s.State
 	}
 
 	var merr error
 
-	for _, s := range status.Statuses {
+	for _, s := range statuses {
 		if csMap[s.Label] == s.State {
+			h.logger.Infof("Skipping setting %s because it already matches", s.Label)
 			continue
 		}
 
@@ -283,8 +292,9 @@ func (h *Handler) uploadStatuses(ctx context.Context, status *scm.CombinedStatus
 			Desc:   s.Desc,
 			Target: s.Target,
 		}
-		if _, _, err := h.client.Repositories.CreateStatus(ctx, h.repo, status.Sha, si); err != nil {
-			merr = multierror.Append(merr, err)
+		h.logger.Infof("Creating status %s on %s", si.Label, sha)
+		if _, _, err := h.client.Repositories.CreateStatus(ctx, h.repo, sha, si); err != nil {
+			merr = multierror.Append(merr, xerrors.Errorf("creating status: %s", si.Label, err))
 			continue
 		}
 	}

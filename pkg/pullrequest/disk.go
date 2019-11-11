@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package pullrequest
 
 import (
 	"encoding/gob"
@@ -52,7 +52,7 @@ const (
 // Resource represents a complete SCM resource that should be recorded to disk.
 type Resource struct {
 	PR       *scm.PullRequest
-	Status   *scm.CombinedStatus
+	Statuses []*scm.Status
 	Comments []*scm.Comment
 
 	// Manifests contain data about the resource when it was written to disk.
@@ -88,7 +88,7 @@ func ToDisk(r *Resource, path string) error {
 	}
 
 	// Now status
-	if err := statusToDisk(statusesPath, r.Status.Statuses); err != nil {
+	if err := statusToDisk(statusesPath, r.Statuses); err != nil {
 		log.Print(err)
 		return err
 	}
@@ -187,7 +187,7 @@ func FromDisk(path string) (*Resource, error) {
 	r.Manifests["labels"] = manifest
 
 	statusesPath := filepath.Join(path, "status")
-	r.Status, err = statusesFromDisk(statusesPath)
+	r.Statuses, err = statusesFromDisk(statusesPath)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +294,7 @@ func labelsFromDisk(path string) ([]*scm.Label, Manifest, error) {
 	return labels, manifest, nil
 }
 
-func statusesFromDisk(path string) (*scm.CombinedStatus, error) {
+func statusesFromDisk(path string) ([]*scm.Status, error) {
 	fis, err := ioutil.ReadDir(path)
 	if isNotExistError(err) {
 		return nil, nil
@@ -315,9 +315,7 @@ func statusesFromDisk(path string) (*scm.CombinedStatus, error) {
 		}
 		statuses = append(statuses, &status)
 	}
-	return &scm.CombinedStatus{
-		Statuses: statuses,
-	}, nil
+	return statuses, nil
 }
 
 func refFromDisk(path, name string) (scm.PullRequestBranch, error) {

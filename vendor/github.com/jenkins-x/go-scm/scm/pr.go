@@ -98,6 +98,9 @@ type (
 		// ListComments returns the pull request comment list.
 		ListComments(context.Context, string, int, ListOptions) ([]*Comment, *Response, error)
 
+		// ListLabels returns the labels on a pull request
+		ListLabels(context.Context, string, int, ListOptions) ([]*Label, *Response, error)
+
 		// Merge merges the repository pull request.
 		Merge(context.Context, string, int) (*Response, error)
 
@@ -109,6 +112,12 @@ type (
 
 		// DeleteComment deletes an pull request comment.
 		DeleteComment(context.Context, string, int, int) (*Response, error)
+
+		// AddLabel adds a label to a pull request.
+		AddLabel(ctx context.Context, repo string, number int, label string) (*Response, error)
+
+		// DeleteLabel deletes a label from a pull request
+		DeleteLabel(ctx context.Context, repo string, number int, label string) (*Response, error)
 	}
 )
 

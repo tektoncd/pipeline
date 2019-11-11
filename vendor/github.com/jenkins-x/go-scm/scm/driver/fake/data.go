@@ -3,20 +3,23 @@ package fake
 import "github.com/jenkins-x/go-scm/scm"
 
 type Data struct {
-	Issues              map[int][]*scm.Issue
-	OrgMembers          map[string][]string
-	Collaborators       []string
-	IssueComments       map[int][]*scm.Comment
-	IssueCommentID      int
-	PullRequests        map[int]*scm.PullRequest
-	PullRequestChanges  map[int][]*scm.Change
-	PullRequestComments map[int][]*scm.Comment
-	ReviewID            int
-	Reviews             map[int][]*scm.Review
-	Statuses            map[string][]*scm.Status
-	IssueEvents         map[int][]*scm.ListedIssueEvent
-	Commits             map[string]*scm.Commit
-	TestRef             string
+	Issues                    map[int][]*scm.Issue
+	OrgMembers                map[string][]string
+	Collaborators             []string
+	IssueComments             map[int][]*scm.Comment
+	IssueCommentID            int
+	PullRequests              map[int]*scm.PullRequest
+	PullRequestChanges        map[int][]*scm.Change
+	PullRequestComments       map[int][]*scm.Comment
+	PullRequestLabelsAdded    []string
+	PullRequestLabelsRemoved  []string
+	PullRequestLabelsExisting []string
+	ReviewID                  int
+	Reviews                   map[int][]*scm.Review
+	Statuses                  map[string][]*scm.Status
+	IssueEvents               map[int][]*scm.ListedIssueEvent
+	Commits                   map[string]*scm.Commit
+	TestRef                   string
 
 	//All Labels That Exist In The Repo
 	RepoLabelsExisting []string
@@ -62,29 +65,32 @@ type DeletedRef struct {
 // NewData create a new set of fake data
 func NewData() *Data {
 	return &Data{
-		Issues:                map[int][]*scm.Issue{},
-		OrgMembers:            map[string][]string{},
-		Collaborators:         []string{},
-		IssueComments:         map[int][]*scm.Comment{},
-		PullRequests:          map[int]*scm.PullRequest{},
-		PullRequestChanges:    map[int][]*scm.Change{},
-		PullRequestComments:   map[int][]*scm.Comment{},
-		Reviews:               map[int][]*scm.Review{},
-		Statuses:              map[string][]*scm.Status{},
-		IssueEvents:           map[int][]*scm.ListedIssueEvent{},
-		Commits:               map[string]*scm.Commit{},
-		MilestoneMap:          map[string]int{},
-		CommitMap:             map[string][]scm.Commit{},
-		RemoteFiles:           map[string]map[string]string{},
-		TestRef:               "abcde",
-		IssueLabelsAdded:      []string{},
-		IssueLabelsExisting:   []string{},
-		IssueLabelsRemoved:    []string{},
-		IssueCommentsAdded:    []string{},
-		IssueCommentsDeleted:  []string{},
-		IssueReactionsAdded:   []string{},
-		CommentReactionsAdded: []string{},
-		AssigneesAdded:        []string{},
-		UserPermissions:       map[string]map[string]string{},
+		Issues:                    map[int][]*scm.Issue{},
+		OrgMembers:                map[string][]string{},
+		Collaborators:             []string{},
+		IssueComments:             map[int][]*scm.Comment{},
+		PullRequests:              map[int]*scm.PullRequest{},
+		PullRequestChanges:        map[int][]*scm.Change{},
+		PullRequestComments:       map[int][]*scm.Comment{},
+		PullRequestLabelsAdded:    []string{},
+		PullRequestLabelsRemoved:  []string{},
+		PullRequestLabelsExisting: []string{},
+		Reviews:                   map[int][]*scm.Review{},
+		Statuses:                  map[string][]*scm.Status{},
+		IssueEvents:               map[int][]*scm.ListedIssueEvent{},
+		Commits:                   map[string]*scm.Commit{},
+		MilestoneMap:              map[string]int{},
+		CommitMap:                 map[string][]scm.Commit{},
+		RemoteFiles:               map[string]map[string]string{},
+		TestRef:                   "abcde",
+		IssueLabelsAdded:          []string{},
+		IssueLabelsExisting:       []string{},
+		IssueLabelsRemoved:        []string{},
+		IssueCommentsAdded:        []string{},
+		IssueCommentsDeleted:      []string{},
+		IssueReactionsAdded:       []string{},
+		CommentReactionsAdded:     []string{},
+		AssigneesAdded:            []string{},
+		UserPermissions:           map[string]map[string]string{},
 	}
 }

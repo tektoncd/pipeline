@@ -376,7 +376,7 @@ spec:
     - name: url
       value: https://github.com/wizzbangcorp/wizzbang/pulls/1
   secrets:
-    - fieldName: githubToken
+    - fieldName: authToken
       secretName: github-secrets
       secretKey: token
 ---
@@ -393,16 +393,18 @@ data:
 Params that can be added are the following:
 
 1.  `url`: represents the location of the pull request to fetch.
+1.  `provider`: represents the SCM provider to use. This will be "guessed" based on the url if not set.
+    Valid values are `github` or `gitlab` today.
 
 #### Statuses
 
 The following status codes are available to use for the Pull Request resource:
 https://godoc.org/github.com/jenkins-x/go-scm/scm#State
 
-#### GitHub
+#### Pull Request
 
-The `pullRequest` resource will look for GitHub OAuth authentication tokens in
-spec secrets with a field name called `githubToken`.
+The `pullRequest` resource will look for GitHub or Gitlab OAuth authentication tokens in
+spec secrets with a field name called `authToken`.
 
 URLs should be of the form: https://github.com/tektoncd/pipeline/pull/1
 

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package pullrequest
 
 import (
 	"context"
@@ -49,7 +49,7 @@ func defaultResource() *Resource {
 			Sha:  "sha2",
 			Repo: scm.Repository{Name: "repo1"},
 		},
-		Labels: []*scm.Label{{Name: "tacocat"}},
+		Labels: []*scm.Label{},
 	}
 	r := &Resource{
 		PR: pr,
@@ -63,14 +63,13 @@ func defaultResource() *Resource {
 				Body: "abc123",
 			},
 		},
-		Status: &scm.CombinedStatus{
-			Sha: pr.Sha,
-			Statuses: []*scm.Status{{
+		Statuses: []*scm.Status{
+			{
 				Label:  "Tekton",
 				State:  scm.StateSuccess,
 				Desc:   "Test all the things!",
 				Target: "https://tekton.dev",
-			}},
+			},
 		},
 	}
 	populateManifest(r)
@@ -84,7 +83,8 @@ func newHandler(t *testing.T) (*Handler, *fake.Data) {
 	r := defaultResource()
 	data.PullRequests[prNum] = r.PR
 	data.IssueComments[prNum] = r.Comments
-	data.Statuses[r.PR.Sha] = r.Status.Statuses
+	data.PullRequestComments[prNum] = r.Comments
+	data.Statuses[r.PR.Sha] = r.Statuses
 
 	return NewHandler(logger, client, repo, prNum), data
 }
@@ -107,10 +107,7 @@ func TestDownload(t *testing.T) {
 	want := &Resource{
 		PR:       pr,
 		Comments: data.IssueComments[prNum],
-		Status: &scm.CombinedStatus{
-			Sha:      data.PullRequests[prNum].Sha,
-			Statuses: data.Statuses[pr.Sha],
-		},
+		Statuses: data.Statuses[pr.Sha],
 	}
 	populateManifest(want)
 
@@ -234,7 +231,7 @@ func TestUpload_NewStatus(t *testing.T) {
 		Label: "CI",
 		State: scm.StateFailure,
 	}
-	r.Status.Statuses = append(r.Status.Statuses, s)
+	r.Statuses = append(r.Statuses, s)
 
 	if err := h.Upload(ctx, r); err != nil {
 		t.Fatal(err)
@@ -255,7 +252,7 @@ func TestUpload_UpdateStatus(t *testing.T) {
 	h, _ := newHandler(t)
 
 	r := defaultResource()
-	r.Status.Statuses[0].State = scm.StateCanceled
+	r.Statuses[0].State = scm.StateCanceled
 
 	if err := h.Upload(ctx, r); err != nil {
 		t.Fatal(err)
@@ -321,7 +318,7 @@ func TestUpload_ManifestLabel(t *testing.T) {
 
 	// Create a new label out of band of the resource. The upload should not
 	// affect this.
-	if _, err := h.client.Issues.AddLabel(ctx, h.repo, h.prNum, "z"); err != nil {
+	if _, err := h.client.PullRequests.AddLabel(ctx, h.repo, h.prNum, "z"); err != nil {
 		t.Fatal(err)
 	}
 
