@@ -67,30 +67,33 @@ var (
 				Name: "output",
 				Type: "git",
 			}},
-			Tasks: []v1alpha1.PipelineTask{{
-				Name: "task1",
-				TaskRef: v1alpha1.TaskRef{
-					Name: "task",
+			Tasks: []v1alpha1.PipelineTask{
+				{
+					Name: "task1",
+					TaskRef: &v1alpha1.TaskRef{
+						Name: "task",
+					},
+					Resources: &v1alpha1.PipelineTaskResources{
+						Outputs: []v1alpha1.PipelineTaskOutputResource{{
+							Name:     "foo",
+							Resource: "output",
+						}},
+					},
 				},
-				Resources: &v1alpha1.PipelineTaskResources{
-					Outputs: []v1alpha1.PipelineTaskOutputResource{{
-						Name:     "foo",
-						Resource: "output",
-					}},
+				{
+					Name: "task2",
+					TaskRef: &v1alpha1.TaskRef{
+						Name: "task",
+					},
+					Resources: &v1alpha1.PipelineTaskResources{
+						Inputs: []v1alpha1.PipelineTaskInputResource{{
+							Name:     "foo",
+							Resource: "output",
+							From:     []string{"task1"},
+						}},
+					},
 				},
-			}, {
-				Name: "task2",
-				TaskRef: v1alpha1.TaskRef{
-					Name: "task",
-				},
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name:     "foo",
-						Resource: "output",
-						From:     []string{"task1"},
-					}},
-				},
-			}},
+			},
 		},
 	}
 )
@@ -392,7 +395,7 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 			Tasks: []v1alpha1.PipelineTask{
 				{
 					Name: "task1",
-					TaskRef: v1alpha1.TaskRef{
+					TaskRef: &v1alpha1.TaskRef{
 						Name: "task",
 					},
 					Resources: &v1alpha1.PipelineTaskResources{
@@ -408,7 +411,7 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 				},
 				{
 					Name: "task2",
-					TaskRef: v1alpha1.TaskRef{
+					TaskRef: &v1alpha1.TaskRef{
 						Name: "task",
 					},
 					Resources: &v1alpha1.PipelineTaskResources{

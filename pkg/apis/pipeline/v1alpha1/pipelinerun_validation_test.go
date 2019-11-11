@@ -157,7 +157,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			PipelineSpec: &v1alpha1.PipelineSpec{
 				Tasks: []v1alpha1.PipelineTask{{
 					Name: "mytask",
-					TaskRef: v1alpha1.TaskRef{
+					TaskRef: &v1alpha1.TaskRef{
 						Name: "mytask",
 					},
 				}}},
@@ -184,7 +184,7 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 			PipelineSpec: &v1alpha1.PipelineSpec{
 				Tasks: []v1alpha1.PipelineTask{{
 					Name: "mytask",
-					TaskRef: v1alpha1.TaskRef{
+					TaskRef: &v1alpha1.TaskRef{
 						Name: "mytask",
 					},
 				}},
