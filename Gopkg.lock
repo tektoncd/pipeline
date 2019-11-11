@@ -382,18 +382,19 @@
   version = "v0.3.7"
 
 [[projects]]
-  digest = "1:a8c65321b38b41bf6a74d08cb0941e039a9e4762230ba446d86b1c5d71772e38"
+  digest = "1:38e5eeb972785c4bd1021ecb58f7deffade4058a69240f3b456f03e417cbc2b1"
   name = "github.com/jenkins-x/go-scm"
   packages = [
     "scm",
     "scm/driver/fake",
     "scm/driver/github",
+    "scm/driver/gitlab",
     "scm/driver/internal/hmac",
     "scm/driver/internal/null",
   ]
   pruneopts = "NUT"
-  revision = "e94d536581a8e4d5197b9cde009c6fc0077ab6a5"
-  version = "v1.5.58"
+  revision = "c020b7a8afa157563c4dfc5cbc90dcb2147d05c4"
+  version = "v1.5.63"
 
 [[projects]]
   digest = "1:1f2aebae7e7c856562355ec0198d8ca2fa222fb05e5b1b66632a1fce39631885"
@@ -1365,6 +1366,7 @@
     "github.com/jenkins-x/go-scm/scm",
     "github.com/jenkins-x/go-scm/scm/driver/fake",
     "github.com/jenkins-x/go-scm/scm/driver/github",
+    "github.com/jenkins-x/go-scm/scm/driver/gitlab",
     "github.com/knative/test-infra/tools/dep-collector",
     "github.com/mitchellh/go-homedir",
     "github.com/pkg/errors",

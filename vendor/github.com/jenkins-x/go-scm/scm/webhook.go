@@ -12,17 +12,23 @@ import (
 type WebhookKind string
 
 const (
-	WebhookKindPing               WebhookKind = "ping"
-	WebhookKindPush               WebhookKind = "push"
 	WebhookKindBranch             WebhookKind = "branch"
+	WebhookKindCheckRun           WebhookKind = "check_run"
+	WebhookKindCheckSuite         WebhookKind = "check_suite"
 	WebhookKindDeploy             WebhookKind = "deploy"
-	WebhookKindTag                WebhookKind = "tag"
+	WebhookKindDeploymentStatus   WebhookKind = "deployment_status"
+	WebhookKindInstallation       WebhookKind = "installation"
 	WebhookKindIssue              WebhookKind = "issue"
 	WebhookKindIssueComment       WebhookKind = "issue_comment"
+	WebhookKindLabel              WebhookKind = "label"
+	WebhookKindPing               WebhookKind = "ping"
 	WebhookKindPullRequest        WebhookKind = "pull_request"
 	WebhookKindPullRequestComment WebhookKind = "pull_request_comment"
+	WebhookKindPush               WebhookKind = "push"
+	WebhookKindRelease            WebhookKind = "release"
 	WebhookKindReviewCommentHook  WebhookKind = "review_comment"
-	WebhookKindInstallation       WebhookKind = "installation"
+	WebhookKindStatus             WebhookKind = "status"
+	WebhookKindTag                WebhookKind = "tag"
 )
 
 var (
@@ -41,6 +47,7 @@ type (
 
 	// Label on a PR
 	Label struct {
+		ID          int64
 		URL         string
 		Name        string
 		Description string
@@ -92,6 +99,33 @@ type (
 		Installation *InstallationRef
 	}
 
+	// CheckRunHook represents a check run event
+	CheckRunHook struct {
+		Action       Action
+		Repo         Repository
+		Sender       User
+		Label        Label
+		Installation *InstallationRef
+	}
+
+	// CheckSuiteHook represents a check suite event
+	CheckSuiteHook struct {
+		Action       Action
+		Repo         Repository
+		Sender       User
+		Label        Label
+		Installation *InstallationRef
+	}
+
+	// DeploymentStatusHook represents a check suite event
+	DeploymentStatusHook struct {
+		Action       Action
+		Repo         Repository
+		Sender       User
+		Label        Label
+		Installation *InstallationRef
+	}
+
 	// TagHook represents a tag event, eg create and delete
 	// github event types.
 	TagHook struct {
@@ -134,6 +168,33 @@ type (
 	InstallationRef struct {
 		ID     int64
 		NodeID string
+	}
+
+	// LabelHook represents a label event
+	LabelHook struct {
+		Action       Action
+		Repo         Repository
+		Sender       User
+		Label        Label
+		Installation *InstallationRef
+	}
+
+	// ReleaseHook represents a relese event
+	ReleaseHook struct {
+		Action       Action
+		Repo         Repository
+		Sender       User
+		Label        Label
+		Installation *InstallationRef
+	}
+
+	// StatusHook represents a status event
+	StatusHook struct {
+		Action       Action
+		Repo         Repository
+		Sender       User
+		Label        Label
+		Installation *InstallationRef
 	}
 
 	// Account represents the account of a GitHub app install
@@ -230,6 +291,12 @@ func (h *PullRequestHook) Kind() WebhookKind        { return WebhookKindPullRequ
 func (h *PullRequestCommentHook) Kind() WebhookKind { return WebhookKindPullRequestComment }
 func (h *ReviewCommentHook) Kind() WebhookKind      { return WebhookKindReviewCommentHook }
 func (h *InstallationHook) Kind() WebhookKind       { return WebhookKindInstallation }
+func (h *LabelHook) Kind() WebhookKind              { return WebhookKindLabel }
+func (h *StatusHook) Kind() WebhookKind             { return WebhookKindStatus }
+func (h *CheckRunHook) Kind() WebhookKind           { return WebhookKindCheckRun }
+func (h *CheckSuiteHook) Kind() WebhookKind         { return WebhookKindCheckSuite }
+func (h *DeploymentStatusHook) Kind() WebhookKind   { return WebhookKindDeploymentStatus }
+func (h *ReleaseHook) Kind() WebhookKind            { return WebhookKindRelease }
 
 // Repository() defines the repository webhook and provides
 // a convenient way to get the associated repository without
@@ -245,6 +312,12 @@ func (h *IssueCommentHook) Repository() Repository       { return h.Repo }
 func (h *PullRequestHook) Repository() Repository        { return h.Repo }
 func (h *PullRequestCommentHook) Repository() Repository { return h.Repo }
 func (h *ReviewCommentHook) Repository() Repository      { return h.Repo }
+func (h *LabelHook) Repository() Repository              { return h.Repo }
+func (h *StatusHook) Repository() Repository             { return h.Repo }
+func (h *CheckRunHook) Repository() Repository           { return h.Repo }
+func (h *CheckSuiteHook) Repository() Repository         { return h.Repo }
+func (h *DeploymentStatusHook) Repository() Repository   { return h.Repo }
+func (h *ReleaseHook) Repository() Repository            { return h.Repo }
 
 func (h *InstallationHook) Repository() Repository {
 	if len(h.Repos) > 0 {
@@ -265,6 +338,12 @@ func (h *IssueCommentHook) GetInstallationRef() *InstallationRef       { return 
 func (h *PullRequestHook) GetInstallationRef() *InstallationRef        { return h.Installation }
 func (h *PullRequestCommentHook) GetInstallationRef() *InstallationRef { return h.Installation }
 func (h *ReviewCommentHook) GetInstallationRef() *InstallationRef      { return h.Installation }
+func (h *LabelHook) GetInstallationRef() *InstallationRef              { return h.Installation }
+func (h *StatusHook) GetInstallationRef() *InstallationRef             { return h.Installation }
+func (h *CheckRunHook) GetInstallationRef() *InstallationRef           { return h.Installation }
+func (h *CheckSuiteHook) GetInstallationRef() *InstallationRef         { return h.Installation }
+func (h *DeploymentStatusHook) GetInstallationRef() *InstallationRef   { return h.Installation }
+func (h *ReleaseHook) GetInstallationRef() *InstallationRef            { return h.Installation }
 
 func (h *InstallationHook) GetInstallationRef() *InstallationRef {
 	if h.Installation == nil {

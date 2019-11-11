@@ -25,10 +25,10 @@ import (
 )
 
 const (
-	prSource         = "pr-source"
-	githubTokenField = "githubToken"
+	prSource       = "pr-source"
+	authTokenField = "authToken"
 	// nolint: gosec
-	githubTokenEnv = "GITHUB_TOKEN"
+	authTokenEnv = "AUTH_TOKEN"
 )
 
 // PullRequestResource is an endpoint from which to get data which is required
@@ -37,9 +37,11 @@ type PullRequestResource struct {
 	Name string               `json:"name"`
 	Type PipelineResourceType `json:"type"`
 
-	// GitHub URL pointing to the pull request.
+	// URL pointing to the pull request.
 	// Example: https://github.com/owner/repo/pulls/1
 	URL string `json:"url"`
+	// SCM provider (github or gitlab today). This will be guessed from URL if not set.
+	Provider string `json:"provider"`
 	// Secrets holds a struct to indicate a field name and corresponding secret name to populate it.
 	Secrets []SecretParam `json:"secrets"`
 
@@ -60,6 +62,8 @@ func NewPullRequestResource(prImage string, r *PipelineResource) (*PullRequestRe
 	for _, param := range r.Spec.Params {
 		if strings.EqualFold(param.Name, "URL") {
 			prResource.URL = param.Value
+		} else if strings.EqualFold(param.Name, "Provider") {
+			prResource.Provider = param.Value
 		}
 	}
 
@@ -84,9 +88,10 @@ func (s *PullRequestResource) GetURL() string {
 // Replacements is used for template replacement on a PullRequestResource inside of a Taskrun.
 func (s *PullRequestResource) Replacements() map[string]string {
 	return map[string]string{
-		"name": s.Name,
-		"type": string(s.Type),
-		"url":  s.URL,
+		"name":     s.Name,
+		"type":     string(s.Type),
+		"url":      s.URL,
+		"provider": s.Provider,
 	}
 }
 
@@ -106,12 +111,15 @@ func (s *PullRequestResource) GetOutputTaskModifier(ts *TaskSpec, sourcePath str
 
 func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 	args := []string{"-url", s.URL, "-path", sourcePath, "-mode", mode}
+	if s.Provider != "" {
+		args = append(args, []string{"-provider", s.Provider}...)
+	}
 
 	evs := []corev1.EnvVar{}
 	for _, sec := range s.Secrets {
-		if strings.EqualFold(sec.FieldName, githubTokenField) {
+		if strings.EqualFold(sec.FieldName, authTokenField) {
 			ev := corev1.EnvVar{
-				Name: githubTokenEnv,
+				Name: authTokenEnv,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
