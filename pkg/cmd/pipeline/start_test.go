@@ -1007,6 +1007,11 @@ func Test_getPipelineResourceByFormat(t *testing.T) {
 				tb.PipelineResourceSpecParam("location", "/home/tektoncd"),
 			),
 		),
+		tb.PipelineResource("scaffold-cloud", "ns",
+			tb.PipelineResourceSpec("cloudEvent",
+				tb.PipelineResourceSpecParam("targetURI", "http://sink:8080"),
+			),
+		),
 	}
 
 	ns := []*corev1.Namespace{
@@ -1047,6 +1052,12 @@ func Test_getPipelineResourceByFormat(t *testing.T) {
 
 	output = getOptionsByType(resFormat, "storage")
 	expected = []string{"scaffold-storage (/home/tektoncd)"}
+	if !reflect.DeepEqual(output, expected) {
+		t.Errorf("output storage = %v, want %v", output, expected)
+	}
+
+	output = getOptionsByType(resFormat, "cloudEvent")
+	expected = []string{"scaffold-cloud (http://sink:8080)"}
 	if !reflect.DeepEqual(output, expected) {
 		t.Errorf("output storage = %v, want %v", output, expected)
 	}
@@ -2196,6 +2207,101 @@ func Test_start_pipeline_clusterRes_withExistingRes_createNew(t *testing.T) {
 				}
 
 				if _, err := c.SendLine("cadata"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectEOF(); err != nil {
+					return err
+				}
+
+				tekton := cs.Pipeline.Tekton()
+				runs, err := tekton.PipelineRuns("ns").List(v1.ListOptions{})
+				if err != nil {
+					return err
+				}
+
+				if runs.Items != nil && runs.Items[0].Spec.PipelineRef.Name != pipelineName {
+					return errors.New("pipelinerun not found")
+				}
+
+				c.Close()
+				return nil
+			},
+		},
+	}
+	opts := startOpts("ns", cs, false, "svc1", []string{"task1=svc1"})
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			opts.RunPromptTest(t, test)
+		})
+	}
+}
+
+func Test_start_pipeline_cloudEventRes_withExistingRes_createNew(t *testing.T) {
+
+	pipelineName := "cloudpipeline"
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, "ns",
+				tb.PipelineSpec(
+					tb.PipelineDeclaredResource("cloudres", "cloudEvent"),
+					tb.PipelineTask("unit-test-1", "unit-test-task",
+						tb.PipelineTaskInputResource("clusres", "clusterresource"),
+					),
+				),
+			),
+		},
+
+		PipelineResources: []*v1alpha1.PipelineResource{
+			tb.PipelineResource("cloudresource", "ns",
+				tb.PipelineResourceSpec("cloudEvent",
+					tb.PipelineResourceSpecParam("targetURI", "https://10.20.30.40/"),
+				),
+			),
+		},
+	})
+
+	tests := []promptTest{
+		{
+			name:    "newCloudResource",
+			cmdArgs: []string{pipelineName},
+
+			procedure: func(c *expect.Console) error {
+				if _, err := c.ExpectString("Choose the cloudEvent resource to use for cloudres"); err != nil {
+					return err
+				}
+
+				if _, err := c.Send(string(terminal.KeyArrowDown)); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("create new \"cloudEvent\" resource"); err != nil {
+					return err
+				}
+
+				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("newcloudresource"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Enter a value for targetURI :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("https://10.10.10.10"); err != nil {
+					return err
+				}
+
+				if _, err := c.Send(string(terminal.KeyEnter)); err != nil {
 					return err
 				}
 

@@ -66,6 +66,7 @@ type resourceOptionsFilter struct {
 	cluster     []string
 	storage     []string
 	pullRequest []string
+	cloudEvent  []string
 }
 
 // NameArg validates that the first argument is a valid pipeline name
@@ -237,10 +238,9 @@ func (opt *startOptions) getInputResources(resources resourceOptionsFilter, pipe
 				return err
 			}
 			opt.Resources = append(opt.Resources, res.Name+"="+newres.Name)
-		} else {
-			name := strings.TrimSpace(strings.Split(ans, " ")[0])
-			opt.Resources = append(opt.Resources, res.Name+"="+name)
 		}
+		name := strings.TrimSpace(strings.Split(ans, " ")[0])
+		opt.Resources = append(opt.Resources, res.Name+"="+name)
 	}
 	return nil
 }
@@ -329,6 +329,13 @@ func getPipelineResourcesByFormat(resources []v1alpha1.PipelineResource) (ret re
 				}
 			}
 			ret.cluster = append(ret.cluster, fmt.Sprintf("%s (%s)", res.Name, output))
+		case "cloudEvent":
+			for _, param := range res.Spec.Params {
+				if param.Name == "targetURI" {
+					output = param.Value + output
+				}
+			}
+			ret.cloudEvent = append(ret.cloudEvent, fmt.Sprintf("%s (%s)", res.Name, output))
 		}
 	}
 	return
@@ -349,6 +356,9 @@ func getOptionsByType(resources resourceOptionsFilter, restype string) []string 
 	}
 	if restype == "storage" {
 		return resources.storage
+	}
+	if restype == "cloudEvent" {
+		return resources.cloudEvent
 	}
 	return []string{}
 }
@@ -566,6 +576,7 @@ func (opt *startOptions) createPipelineResource(resName string, resType v1alpha1
 		v1alpha1.PipelineResourceTypeImage:       res.AskImageParams,
 		v1alpha1.PipelineResourceTypeCluster:     res.AskClusterParams,
 		v1alpha1.PipelineResourceTypePullRequest: res.AskPullRequestParams,
+		v1alpha1.PipelineResourceTypeCloudEvent:  res.AskCloudEventParams,
 	}
 	if res.PipelineResource.Spec.Type != "" {
 		if err := resourceTypeParams[res.PipelineResource.Spec.Type](); err != nil {
