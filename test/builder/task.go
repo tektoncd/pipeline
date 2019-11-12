@@ -372,21 +372,21 @@ func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
 	spec.Timeout = nil
 }
 
-// TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
+// TaskRunNodeSelector sets the NodeSelector to the TaskRunSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.NodeSelector = values
 	}
 }
 
-// TaskRunTolerations sets the Tolerations to the PipelineSpec.
+// TaskRunTolerations sets the Tolerations to the TaskRunSpec.
 func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.Tolerations = values
 	}
 }
 
-// TaskRunAffinity sets the Affinity to the PipelineSpec.
+// TaskRunAffinity sets the Affinity to the TaskRunSpec.
 func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.Affinity = affinity
