@@ -30,6 +30,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	"golang.org/x/xerrors"
@@ -95,11 +96,12 @@ func TestGetArgs(t *testing.T) {
 	// multiple commands
 	// no args
 	for _, c := range []struct {
-		desc         string
-		stepNum      int
-		commands     []string
-		args         []string
-		expectedArgs []string
+		desc          string
+		stepNum       int
+		errorStrategy entrypoint.ErrorStrategy
+		commands      []string
+		args          []string
+		expectedArgs  []string
 	}{{
 		desc:     "Args for first step",
 		stepNum:  0,
@@ -136,9 +138,24 @@ func TestGetArgs(t *testing.T) {
 			"-entrypoint", "ls",
 			"--",
 		},
+	}, {
+		desc:          "Ignore prior step errors",
+		stepNum:       0,
+		errorStrategy: entrypoint.IgnorePriorStepErrors,
+		commands:      []string{"echo"},
+		args:          []string{"hello", "world"},
+		expectedArgs: []string{
+			"-wait_file", "/builder/downward/ready",
+			"-post_file", "/builder/tools/0",
+			"-error_strategy", string(entrypoint.IgnorePriorStepErrors),
+			"-wait_file_content",
+			"-entrypoint", "echo",
+			"--",
+			"hello", "world",
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			a := GetArgs(c.stepNum, c.commands, c.args)
+			a := GetArgs(c.stepNum, c.errorStrategy, c.commands, c.args)
 			if d := cmp.Diff(a, c.expectedArgs); d != "" {
 				t.Errorf("Didn't get expected arguments, difference: %s", d)
 			}

@@ -18,15 +18,16 @@ package entrypoint
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"golang.org/x/xerrors"
 )
 
 func TestEntrypointerFailures(t *testing.T) {
 	for _, c := range []struct {
 		desc, postFile string
+		errorStrategy  ErrorStrategy
 		waitFiles      []string
 		waiter         Waiter
 		runner         Runner
@@ -51,6 +52,11 @@ func TestEntrypointerFailures(t *testing.T) {
 		waiter:        &fakeErrorWaiter{},
 		expectedError: "waiter failed",
 		postFile:      "bar",
+	}, {
+		desc:          "invalid error strategy",
+		runner:        &fakeErrorRunner{},
+		errorStrategy: "foo_strategy",
+		expectedError: "invalid error strategy",
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw := c.waiter
@@ -63,19 +69,20 @@ func TestEntrypointerFailures(t *testing.T) {
 			}
 			fpw := &fakePostWriter{}
 			err := Entrypointer{
-				Entrypoint: "echo",
-				WaitFiles:  c.waitFiles,
-				PostFile:   c.postFile,
-				Args:       []string{"some", "args"},
-				Waiter:     fw,
-				Runner:     fr,
-				PostWriter: fpw,
+				Entrypoint:    "echo",
+				WaitFiles:     c.waitFiles,
+				PostFile:      c.postFile,
+				ErrorStrategy: c.errorStrategy,
+				Args:          []string{"some", "args"},
+				Waiter:        fw,
+				Runner:        fr,
+				PostWriter:    fpw,
 			}.Go()
 			if err == nil {
 				t.Fatalf("Entrpointer didn't fail")
 			}
-			if d := cmp.Diff(c.expectedError, err.Error()); d != "" {
-				t.Errorf("Entrypointer error diff -want, +got: %v", d)
+			if !strings.Contains(err.Error(), c.expectedError) {
+				t.Errorf("Expected error containing %q, received %q", c.expectedError, err.Error())
 			}
 
 			if c.postFile != "" {
@@ -95,7 +102,9 @@ func TestEntrypointerFailures(t *testing.T) {
 func TestEntrypointer(t *testing.T) {
 	for _, c := range []struct {
 		desc, entrypoint, postFile string
+		errorStrategy              ErrorStrategy
 		waitFiles, args            []string
+		fakeWaiter                 *fakeWaiter
 	}{{
 		desc: "do nothing",
 	}, {
@@ -121,17 +130,27 @@ func TestEntrypointer(t *testing.T) {
 	}, {
 		desc:      "multiple wait files",
 		waitFiles: []string{"waitforme", "metoo", "methree"},
+	}, {
+		desc:          "ignore errors from prior steps",
+		fakeWaiter:    &fakeWaiter{waitError: SkipError("an error from prior step")},
+		waitFiles:     []string{"waitforme"},
+		errorStrategy: IgnorePriorStepErrors,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
+			fw := c.fakeWaiter
+			if fw == nil {
+				fw = &fakeWaiter{}
+			}
+			fr, fpw := &fakeRunner{}, &fakePostWriter{}
 			err := Entrypointer{
-				Entrypoint: c.entrypoint,
-				WaitFiles:  c.waitFiles,
-				PostFile:   c.postFile,
-				Args:       c.args,
-				Waiter:     fw,
-				Runner:     fr,
-				PostWriter: fpw,
+				Entrypoint:    c.entrypoint,
+				WaitFiles:     c.waitFiles,
+				PostFile:      c.postFile,
+				ErrorStrategy: c.errorStrategy,
+				Args:          c.args,
+				Waiter:        fw,
+				Runner:        fr,
+				PostWriter:    fpw,
 			}.Go()
 			if err != nil {
 				t.Fatalf("Entrypointer failed: %v", err)
@@ -177,10 +196,16 @@ func TestEntrypointer(t *testing.T) {
 	}
 }
 
-type fakeWaiter struct{ waited []string }
+type fakeWaiter struct {
+	waitError error
+	waited    []string
+}
 
 func (f *fakeWaiter) Wait(file string, _ bool) error {
 	f.waited = append(f.waited, file)
+	if f.waitError != nil {
+		return f.waitError
+	}
 	return nil
 }
 

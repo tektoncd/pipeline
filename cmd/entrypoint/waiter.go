@@ -21,7 +21,7 @@ var _ entrypoint.Waiter = (*realWaiter)(nil)
 // immediately.
 //
 // If a file of the same name with a ".err" extension exists then this Wait
-// will end with a skipError.
+// will end with an entrypoint.SkipError.
 func (*realWaiter) Wait(file string, expectContent bool) error {
 	if file == "" {
 		return nil
@@ -35,13 +35,7 @@ func (*realWaiter) Wait(file string, expectContent bool) error {
 			return xerrors.Errorf("Waiting for %q: %w", file, err)
 		}
 		if _, err := os.Stat(file + ".err"); err == nil {
-			return skipError("error file present, bail and skip the step")
+			return entrypoint.SkipError("error file present, bail and skip the step")
 		}
 	}
-}
-
-type skipError string
-
-func (e skipError) Error() string {
-	return string(e)
 }

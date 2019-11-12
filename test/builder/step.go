@@ -15,6 +15,7 @@ package builder
 
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -139,5 +140,12 @@ func StepTerminationMessagePath(terminationMessagePath string) StepOp {
 func StepTerminationMessagePolicy(terminationMessagePolicy corev1.TerminationMessagePolicy) StepOp {
 	return func(step *v1alpha1.Step) {
 		step.TerminationMessagePolicy = terminationMessagePolicy
+	}
+}
+
+// StepErrorStrategy sets the error strategy of the step.
+func StepErrorStrategy(strat entrypoint.ErrorStrategy) StepOp {
+	return func(step *v1alpha1.Step) {
+		step.ErrorStrategy = strat
 	}
 }

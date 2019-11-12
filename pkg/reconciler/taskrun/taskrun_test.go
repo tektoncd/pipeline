@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	epconsts "github.com/tektoncd/pipeline/pkg/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
@@ -42,6 +43,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2142,5 +2144,52 @@ func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
 				t.Errorf("post build steps mismatch (-want, +got): %s", d)
 			}
 		})
+	}
+}
+
+func TestPropagateDefaultErrorStrategy(t *testing.T) {
+	for _, c := range []struct {
+		desc string
+		task *v1alpha1.Task
+		want *v1alpha1.TaskSpec
+	}{{
+		desc: "propagates task default error strategy to steps",
+		task: tb.Task("example", "default", tb.TaskSpec(
+			tb.Step("one", "foo", tb.StepCommand("echo")),
+			tb.Step("two", "foo", tb.StepCommand("ls")),
+			tb.TaskDefaultErrorStrategy(epconsts.IgnorePriorStepErrors),
+		)),
+		want: &v1alpha1.TaskSpec{
+			DefaultErrorStrategy: epconsts.IgnorePriorStepErrors,
+			Steps: []v1alpha1.Step{{
+				Container:     v1.Container{Name: "one", Image: "foo", Command: []string{"echo"}},
+				ErrorStrategy: epconsts.IgnorePriorStepErrors,
+			}, {
+				Container:     v1.Container{Name: "two", Image: "foo", Command: []string{"ls"}},
+				ErrorStrategy: epconsts.IgnorePriorStepErrors,
+			}},
+		},
+	}, {
+		desc: "doesnt overwrite existing step error strategy",
+		task: tb.Task("example", "default", tb.TaskSpec(
+			tb.Step("one", "foo", tb.StepCommand("echo"), tb.StepErrorStrategy(epconsts.SkipOnPriorStepErrors)),
+			tb.Step("two", "foo", tb.StepCommand("ls")),
+			tb.TaskDefaultErrorStrategy(epconsts.IgnorePriorStepErrors),
+		)),
+		want: &v1alpha1.TaskSpec{
+			DefaultErrorStrategy: epconsts.IgnorePriorStepErrors,
+			Steps: []v1alpha1.Step{{
+				Container:     v1.Container{Name: "one", Image: "foo", Command: []string{"echo"}},
+				ErrorStrategy: epconsts.SkipOnPriorStepErrors,
+			}, {
+				Container:     v1.Container{Name: "two", Image: "foo", Command: []string{"ls"}},
+				ErrorStrategy: epconsts.IgnorePriorStepErrors,
+			}},
+		},
+	}} {
+		result := propagateDefaultErrorStrategy(&c.task.Spec)
+		if d := cmp.Diff(c.want, result); d != "" {
+			t.Errorf("error strategy mismatch (-want, +got): %s", d)
+		}
 	}
 }

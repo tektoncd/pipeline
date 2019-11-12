@@ -494,6 +494,8 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, err
 	}
 
+	ts = propagateDefaultErrorStrategy(ts)
+
 	ts, err = createRedirectedTaskSpec(c.KubeClientSet, c.Images.EntryPointImage, ts, tr, c.cache, c.Logger)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't create redirected TaskSpec: %w", err)
@@ -518,7 +520,22 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
 }
 
-// CreateRedirectedTaskSpec takes a TaskSpec, a persistent volume claim name, a taskrun and
+// propagateDefaultErrorStrategy takes a task spec and copies its default error
+// strategy, if present, into the error strategy field of any step that doesnt
+// specify its own.
+func propagateDefaultErrorStrategy(ts *v1alpha1.TaskSpec) *v1alpha1.TaskSpec {
+	if strings.TrimSpace(string(ts.DefaultErrorStrategy)) == "" {
+		return ts
+	}
+	for i := range ts.Steps {
+		if strings.TrimSpace(string(ts.Steps[i].ErrorStrategy)) == "" {
+			ts.Steps[i].ErrorStrategy = ts.DefaultErrorStrategy
+		}
+	}
+	return ts
+}
+
+// createRedirectedTaskSpec takes a TaskSpec, a persistent volume claim name, a taskrun and
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the TaskSpec and modifies it freely

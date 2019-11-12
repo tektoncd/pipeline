@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -187,6 +188,14 @@ func TaskVolume(name string, ops ...VolumeOp) TaskSpecOp {
 			op(v)
 		}
 		spec.Volumes = append(spec.Volumes, *v)
+	}
+}
+
+// TaskDefaultErrorStrategy sets the default error strategy on
+// the provided TaskSpec.
+func TaskDefaultErrorStrategy(strat entrypoint.ErrorStrategy) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		spec.DefaultErrorStrategy = strat
 	}
 }
 

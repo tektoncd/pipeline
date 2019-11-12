@@ -204,6 +204,16 @@ func TestTaskSpecValidate(t *testing.T) {
 				hello world`,
 			}},
 		},
+	}, {
+		name: "valid error strategy in step",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+				},
+				ErrorStrategy: "IgnorePriorStepErrors",
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -661,6 +671,20 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: "script cannot be used with args or command",
 			Paths:   []string{"steps.script"},
+		},
+	}, {
+		name: "step with invalid error strategy",
+		fields: fields{
+			Steps: []v1alpha1.Step{{
+				Container: corev1.Container{
+					Image: "myimage",
+				},
+				ErrorStrategy: "FooBarStrategyBaz",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "errorStrategy must be one of SkipOnPriorStepErrors, IgnorePriorStepErrors",
+			Paths:   []string{"steps.errorStrategy"},
 		},
 	}}
 	for _, tt := range tests {

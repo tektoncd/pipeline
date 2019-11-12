@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -103,6 +104,15 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateResourceVariables(ts.Steps, ts.Inputs, ts.Outputs); err != nil {
 		return err
 	}
+
+	if strings.TrimSpace(string(ts.DefaultErrorStrategy)) != "" {
+		if !entrypoint.IsValidErrorStrategy(ts.DefaultErrorStrategy) {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("defaultErrorStrategy must be one of %s", strings.Join(entrypoint.GetErrorStrategyNames(), ", ")),
+				Paths:   []string{"defaultErrorStrategy"},
+			}
+		}
+	}
 	return nil
 }
 
@@ -140,6 +150,15 @@ func validateSteps(steps []Step) *apis.FieldError {
 				return &apis.FieldError{
 					Message: "script must start with a shebang (#!)",
 					Paths:   []string{"script"},
+				}
+			}
+		}
+
+		if strings.TrimSpace(string(s.ErrorStrategy)) != "" {
+			if !entrypoint.IsValidErrorStrategy(s.ErrorStrategy) {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("errorStrategy must be one of %s", strings.Join(entrypoint.GetErrorStrategyNames(), ", ")),
+					Paths:   []string{"errorStrategy"},
 				}
 			}
 		}

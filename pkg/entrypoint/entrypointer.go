@@ -17,7 +17,9 @@ limitations under the License.
 package entrypoint
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 )
 
 // Entrypointer holds fields for running commands with redirected
@@ -36,6 +38,9 @@ type Entrypointer struct {
 	// PostFile is the file to write when complete. If not specified, no
 	// file is written.
 	PostFile string
+	// ErrorStrategy dictates how this step responds to error files
+	// written by prior steps
+	ErrorStrategy ErrorStrategy
 
 	// Waiter encapsulates waiting for files to exist.
 	Waiter Waiter
@@ -65,8 +70,24 @@ type PostWriter interface {
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
 func (e Entrypointer) Go() error {
+
+	if strings.TrimSpace(string(e.ErrorStrategy)) == "" {
+		e.ErrorStrategy = SkipOnPriorStepErrors
+	}
+
+	if !IsValidErrorStrategy(e.ErrorStrategy) {
+		supportedStrategies := strings.Join(GetErrorStrategyNames(), ", ")
+		return fmt.Errorf("invalid error strategy %q, expected one of: %s", e.ErrorStrategy, supportedStrategies)
+	}
+
+	ignoredSkipError := false
+
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent); err != nil {
+			if _, ok := err.(SkipError); ok && e.ErrorStrategy == IgnorePriorStepErrors {
+				ignoredSkipError = true
+				continue
+			}
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too.
 			e.WritePostFile(e.PostFile, err)
@@ -80,8 +101,15 @@ func (e Entrypointer) Go() error {
 
 	err := e.Runner.Run(e.Args...)
 
-	// Write the post file *no matter what*
-	e.WritePostFile(e.PostFile, err)
+	if err == nil && ignoredSkipError {
+		// Don't return an error to the caller since this step has succeeded just fine
+		// but DO write an error file so that subsequent steps know a previous step has
+		// failed.
+		e.WritePostFile(e.PostFile, errors.New("propagate skip error to next step"))
+	} else {
+		// Write the post file *no matter what*
+		e.WritePostFile(e.PostFile, err)
+	}
 
 	return err
 }

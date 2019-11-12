@@ -19,6 +19,7 @@ entire Kubernetes cluster.
 - [Syntax](#syntax)
   - [Steps](#steps)
     - [Step script](#step-script)
+    - [Error Strategies](#error-strategies)
   - [Inputs](#inputs)
   - [Outputs](#outputs)
   - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
@@ -26,6 +27,7 @@ entire Kubernetes cluster.
   - [Container Template **deprecated**](#step-template)
   - [Step Template](#step-template)
   - [Variable Substitution](#variable-substitution)
+  - [Default Error Strategy](#default-error-strategy)
 - [Examples](#examples)
 - [Debugging Tips](#debugging)
 
@@ -209,6 +211,77 @@ steps:
     /bin/my-binary
 ```
 
+#### Error Strategies
+
+When a step fails for any reason the default behaviour of subsequent steps is
+to skip running. This makes sense most of the time - a failed Step means a
+failed Task and a failed Task means there's probably no reason to run any
+remaining Steps.
+
+There are certain use cases that call for steps to run even when the Task is in
+a failed state. For example, a unit test might have failed but the subsequent
+step to upload the test results should continue to execute. Another example: a
+build process has failed in one step but the next step should post that build's
+status to a pull request. For these use-cases Tekton supports error strategies.
+An error strategy tells a step how to proceed in the face of previous steps'
+failures. Currently there are two supported strategies:
+
+1. `SkipOnPriorStepErrors` - this is the default strategy. If a prior step
+has failed then the current one should be skipped.
+2. `IgnorePriorStepErrors` - this strategy tells a step to perform its work
+regardless of a previous step's failure.
+
+To illustrate the usage of these strategies consider the following Task:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-and-upload
+spec:
+  serviceAccountName: test-results-uploader
+  taskSpec:
+    steps:
+    - name: unit-tests
+      image: node:12.13-alpine
+      script: |
+        #!/usr/bin/env node
+        const fs = require('fs');
+        fs.writeFileSync('/workspace/test-results.xml', '<tests status="failed" />');
+        process.exit(1);
+    - name: upload-test-results
+      errorStrategy: IgnorePriorStepErrors
+      image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+      script: |
+        #!/usr/bin/env sh
+        set -e
+        set -x
+        gsutil cp /workspace/test-results.xml gs://my-test-results-bucket/demo/test-results.xml
+    - name: report-test-success
+      errorStrategy: SkipOnPriorStepErrors
+      image: alpine
+      script: |
+        #!/usr/bin/env sh
+        echo "Tests Succeeded!"
+    - name: write-final-message
+      errorStrategy: IgnorePriorStepErrors
+      image: alpine
+      script: |
+        #!/usr/bin/env sh
+        echo "Fin."
+```
+
+If the first step, `unit-tests`, passes then all steps in the Task will run.
+However, if the `unit-tests` step fails only steps 2 and 4 will run - the
+test results will be uploaded and the message `"Fin."` will be logged but
+step 3 (`report-test-success`) will be skipped.
+
+Notice also that step 1, `unit-tests`, did not declare an error strategy.
+By default the strategy will be set to `SkipOnPriorStepErrors`.
+
+Finally, it's worth noting that this TaskRun will still have a failed status
+regardless of any steps succeeding after one errors out.
+
 ### Inputs
 
 A `Task` can declare the inputs it needs, which can be either or both of:
@@ -229,7 +302,11 @@ Parameters name are limited to alpha-numeric characters, `-` and `_` and can
 only start with alpha characters and `_`. For example, `fooIs-Bar_` is a valid
 parameter name, `barIsBa$` or `0banana` are not.
 
-Each declared parameter has a `type` field, assumed to be `string` if not provided by the user. The other possible type is `array` — useful, for instance, when a dynamic number of compilation flags need to be supplied to a task building an application. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
+Each declared parameter has a `type` field, assumed to be `string` if not
+provided by the user. The other possible type is `array` — useful, for instance,
+when a dynamic number of compilation flags need to be supplied to a task
+building an application. When the actual parameter value is supplied, its
+parsed type is validated against the `type` field.
 
 ##### Usage
 
@@ -523,6 +600,50 @@ can be parameterized. Current support includes for widely used types of volumes
 like configmap, secret and PersistentVolumeClaim. Here is an
 [example](#using-kubernetes-configmap-as-volume-source) on how to use this in
 Task definitions.
+
+### Default Error Strategy
+
+As described in the [error strategies](#error-strategies) section, you can declare
+what a Step should do when a prior step has already failed. The default behaviour
+is to skip its work but you can also tell it to ignore prior errors and execute
+regardless. The default behaviour is configurable at the Task level using the
+`defaultErrorStrategy` field. The `defaultErrorStrategy` can be set to any of the
+values supported by the `errorStrategies` field and will become the error strategy
+of any Step that does not itself declare a strategy. Consider this example Task:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  name: test-and-upload
+spec:
+  serviceAccountName: test-results-uploader
+  taskSpec:
+    defaultErrorStrategy: IgnorePriorStepErrors
+    steps:
+    - name: unit-tests
+      image: node:12.13-alpine
+      script: |
+        #!/usr/bin/env node
+        const fs = require('fs');
+        fs.writeFileSync('/workspace/test-results.xml', '<tests status="failed" />');
+        process.exit(1);
+    - name: upload-test-results
+      image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+      script: |
+        #!/usr/bin/env sh
+        set -e
+        set -x
+        gsutil cp /workspace/test-results.xml gs://my-test-results-bucket/demo/test-results.xml
+    - name: write-final-message
+      image: alpine
+      script: |
+        #!/usr/bin/env sh
+        echo "Fin."
+```
+
+In this example Task all of the steps will run regardless of whether any failures.
+
 
 ## Examples
 

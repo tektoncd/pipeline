@@ -33,6 +33,7 @@ var (
 	waitFiles       = flag.String("wait_file", "", "Comma-separated list of paths to wait for")
 	waitFileContent = flag.Bool("wait_file_content", false, "If specified, expect wait_file to have content")
 	postFile        = flag.String("post_file", "", "If specified, file to write upon completion")
+	errorStrategy   = flag.String("error_strategy", "", "The strategy to use if a prior step has errored")
 
 	waitPollingInterval = time.Second
 )
@@ -45,6 +46,7 @@ func main() {
 		WaitFiles:       strings.Split(*waitFiles, ","),
 		WaitFileContent: *waitFileContent,
 		PostFile:        *postFile,
+		ErrorStrategy:   entrypoint.ErrorStrategy(*errorStrategy),
 		Args:            flag.Args(),
 		Waiter:          &realWaiter{},
 		Runner:          &realRunner{},
@@ -52,7 +54,7 @@ func main() {
 	}
 	if err := e.Go(); err != nil {
 		switch t := err.(type) {
-		case skipError:
+		case entrypoint.SkipError:
 			log.Print("Skipping step because a previous step failed")
 			os.Exit(1)
 		case *exec.ExitError:

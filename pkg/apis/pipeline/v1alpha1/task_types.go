@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -59,6 +60,10 @@ type TaskSpec struct {
 	// Sidecars are run alongside the Task's step containers. They begin before
 	// the steps start and end after the steps complete.
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
+
+	// DefaultErrorStrategy sets the error strategy for any step that doesn't
+	// include one of its own.
+	DefaultErrorStrategy entrypoint.ErrorStrategy `json:"defaultErrorStrategy,omitempty"`
 }
 
 // Step embeds the Container type, which allows it to include fields not
@@ -70,6 +75,14 @@ type Step struct {
 	//
 	// If Script is not empty, the Step cannot have an Command or Args.
 	Script string `json:"script,omitempty"`
+
+	// ErrorStrategy dictates how this step will behave when errors
+	// occurred in prior steps.
+	//
+	// Possible values are SkipOnPriorStepErrors or IgnorePriorStepErrors.
+	//
+	// Defaults to SkipOnPriorStepErrors.
+	ErrorStrategy entrypoint.ErrorStrategy `json:"errorStrategy,omitempty"`
 }
 
 // +genclient

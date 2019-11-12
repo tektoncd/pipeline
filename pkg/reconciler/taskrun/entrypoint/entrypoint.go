@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -132,7 +133,7 @@ func RedirectStep(cache *Cache, stepNum int, step *v1alpha1.Step, kubeclient kub
 		}
 	}
 
-	step.Args = GetArgs(stepNum, step.Command, step.Args)
+	step.Args = GetArgs(stepNum, step.ErrorStrategy, step.Command, step.Args)
 	step.Command = []string{binaryLocation}
 	step.VolumeMounts = append(step.VolumeMounts, toolsMount)
 	// The first step in a Task waits for the existence of a file projected into the Pod
@@ -146,7 +147,7 @@ func RedirectStep(cache *Cache, stepNum int, step *v1alpha1.Step, kubeclient kub
 
 // GetArgs returns the arguments that should be specified for the step which has been wrapped
 // such that it will execute our custom entrypoint instead of the user provided Command and Args.
-func GetArgs(stepNum int, commands, args []string) []string {
+func GetArgs(stepNum int, errorStrategy entrypoint.ErrorStrategy, commands, args []string) []string {
 	waitFile := getWaitFile(stepNum)
 	// The binary we want to run must be separated from its arguments by --
 	// so if commands has more than one value, we'll move the other values
@@ -158,6 +159,9 @@ func GetArgs(stepNum int, commands, args []string) []string {
 	argsForEntrypoint := []string{
 		"-wait_file", waitFile,
 		"-post_file", getWaitFile(stepNum + 1),
+	}
+	if errorStrategy != "" {
+		argsForEntrypoint = append(argsForEntrypoint, "-error_strategy", string(errorStrategy))
 	}
 	if stepNum == 0 {
 		argsForEntrypoint = append(argsForEntrypoint, "-wait_file_content")
