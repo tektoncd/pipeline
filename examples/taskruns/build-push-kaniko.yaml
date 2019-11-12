@@ -55,6 +55,8 @@ spec:
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
     - --oci-layout-path=$(inputs.resources.builtImage.path)
+    securityContext:
+      runAsUser: 0
   sidecars:
     - image: registry
       name: registry
