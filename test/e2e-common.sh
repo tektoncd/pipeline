@@ -28,6 +28,10 @@ function teardown() {
     wait_until_object_does_not_exist namespace tekton-pipelines
 }
 
+function tekton_setup() {
+  install_secrets
+}
+
 function output_yaml_test_results() {
   # If formatting fails for any reason, use yaml as a fall back.
   kubectl get $1.tekton.dev -o=custom-columns-file=${REPO_ROOT_DIR}/test/columns.txt || \
@@ -131,6 +135,16 @@ function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
   ko apply -f config/ || fail_test "Build pipeline installation failed"
   verify_pipeline_installation
+}
+
+function install_secrets() {
+  echo ">> Installing secrets for e2e tests"
+  local secretName="e2e-secret"
+  set -x
+  kubectl create secret generic "${secretName}" --from-file=/etc/e2e-secret
+  
+  # Verify secret exists
+  kubectl get secret "${secretName}"
 }
 
 # Install the Tekton pipeline crd based on the release number
