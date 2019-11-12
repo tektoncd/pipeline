@@ -130,6 +130,7 @@ func getImageResource(namespace, repo string) *v1alpha1.PipelineResource {
 }
 
 func getTask(repo, namespace string) *v1alpha1.Task {
+	root := int64(0)
 	taskSpecOps := []tb.TaskSpecOp{
 		tb.TaskInputs(tb.InputsResource("gitsource", v1alpha1.PipelineResourceTypeGit)),
 		tb.TaskOutputs(tb.OutputsResource("builtImage", v1alpha1.PipelineResourceTypeImage)),
@@ -144,6 +145,7 @@ func getTask(repo, namespace string) *v1alpha1.Task {
 			"--insecure-pull",
 			"--insecure-registry=registry."+namespace+":5000/",
 		),
+		tb.StepSecurityContext(&corev1.SecurityContext{RunAsUser: &root}),
 	}
 	step := tb.Step("kaniko", "gcr.io/kaniko-project/executor:v0.13.0", stepOps...)
 	taskSpecOps = append(taskSpecOps, step)
