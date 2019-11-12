@@ -19,39 +19,30 @@ package test
 
 import (
 	"testing"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
 func withRegistry(t *testing.T, c *clients, namespace string) {
-	if _, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Create(getRegistryDeployment(namespace)); err != nil {
+	deployment := getRegistryDeployment(namespace)
+	if _, err := c.KubeClient.Kube.AppsV1().Deployments(namespace).Create(deployment); err != nil {
 		t.Fatalf("Failed to create the local registry deployment: %v", err)
 	}
+	if err := WaitForDeploymentState(c, deployment.Name, namespace, func(d *appsv1.Deployment) (bool, error) {
+		var replicas int32 = 1
+		if d.Spec.Replicas != nil {
+			replicas = *d.Spec.Replicas
+		}
+		return d.Status.ReadyReplicas == replicas, nil
+	}, "DeploymentPodRunning"); err != nil {
+		t.Fatalf("Error waiting for Deployment %q to be ready: %v", deployment.Name, err)
+	}
+
 	service := getRegistryService(namespace)
 	if _, err := c.KubeClient.Kube.CoreV1().Services(namespace).Create(service); err != nil {
 		t.Fatalf("Failed to create the local registry service: %v", err)
-	}
-	set := labels.Set(service.Spec.Selector)
-
-	// Give it a little bit of time to at least create the pod
-	time.Sleep(5 * time.Second)
-
-	if pods, err := c.KubeClient.Kube.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: set.AsSelector().String()}); err != nil {
-		t.Fatalf("Failed to list Pods of service[%s] error:%v", service.GetName(), err)
-	} else {
-		if len(pods.Items) != 1 {
-			t.Fatalf("Only 1 pod for service %s should be running: %v", service, pods.Items)
-		}
-
-		if err := WaitForPodState(c, pods.Items[0].Name, namespace, func(pod *corev1.Pod) (bool, error) {
-			return pod.Status.Phase == "Running", nil
-		}, "PodContainersRunning"); err != nil {
-			t.Fatalf("Error waiting for Pod %q to run: %v", pods.Items[0].Name, err)
-		}
 	}
 }
 
