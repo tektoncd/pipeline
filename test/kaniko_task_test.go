@@ -164,6 +164,11 @@ func getTaskRun(namespace string) *v1alpha1.TaskRun {
 	))
 }
 
+// getRemoteDigest starts a pod to query the registry from the namespace itself, using skopeo (and jq).
+// The reason we have to do that is because the image is pushed on a local registry that is not exposed
+// to the "outside" of the test, this means it can be query by the test itself. It can only be query from
+// a pod in the namespace. skopeo is able to do that query and we use jq to extract the digest from its
+// output. The image used for this pod is build in the tektoncd/plumbing repository.
 func getRemoteDigest(t *testing.T, c *clients, namespace, image string) (string, error) {
 	t.Helper()
 	podName := "skopeo-jq"
