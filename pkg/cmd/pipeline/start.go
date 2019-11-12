@@ -210,7 +210,7 @@ func (opt *startOptions) getInputResources(resources resourceOptionsFilter, pipe
 			}
 			fmt.Printf("resource status %s\n\n", newres.Status)
 			opt.Resources = append(opt.Resources, res.Name+"="+newres.Name)
-			return nil
+			continue
 		}
 
 		// shows create option in the resource list

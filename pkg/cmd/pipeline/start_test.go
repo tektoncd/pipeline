@@ -1417,6 +1417,144 @@ func Test_start_pipeline_newGitRes_noExistingRes(t *testing.T) {
 	}
 }
 
+func Test_start_pipeline_newMultipleRes_noExistingRes(t *testing.T) {
+
+	pipelineName := "gitpipeline"
+
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{
+		Pipelines: []*v1alpha1.Pipeline{
+			tb.Pipeline(pipelineName, "ns",
+				tb.PipelineSpec(
+					tb.PipelineDeclaredResource("git-repo", "git"),
+					tb.PipelineDeclaredResource("source-repo", "git"),
+					tb.PipelineTask("first-create-file", "create-file",
+						tb.PipelineTaskInputResource("workspace", "git-repo"),
+						tb.PipelineTaskOutputResource("workspace2", "source-repo"),
+					),
+					tb.PipelineTask("then-check", "check-stuff-file-exists",
+						tb.PipelineTaskInputResource("workspace", "git-repo", tb.From("first-create-file")),
+					),
+				),
+			),
+		},
+
+		Tasks: []*v1alpha1.Task{
+			tb.Task("check-stuff-file-exists", "ns",
+				tb.TaskSpec(
+					tb.TaskInputs(
+						tb.InputsResource("workspace", "git",
+							tb.ResourceTargetPath("newworkspace")),
+					),
+					tb.Step("read", "ubuntu",
+						tb.StepCommand("/bin/bash"),
+						tb.StepArgs("-c", "cat", "/workspace/newworkspace/stuff"),
+					),
+				),
+			),
+			tb.Task("create-file", "ns",
+				tb.TaskSpec(
+					tb.TaskInputs(
+						tb.InputsResource("workspace", "git",
+							tb.ResourceTargetPath("damnworkspace")),
+					),
+					tb.TaskOutputs(
+						tb.OutputsResource("workspace", "git"),
+					),
+					tb.Step("read-docs-old", "ubuntu",
+						tb.StepCommand("/bin/bash"),
+						tb.StepArgs("-c", "ls -la /workspace/damnworkspace/docs/README.md"),
+					),
+					tb.Step("write-new-stuff", "ubuntu",
+						tb.StepCommand("bash"),
+						tb.StepArgs("-c", "ln -s /workspace/damnworkspace /workspace/output/workspace && echo some stuff > /workspace/output/workspace/stuff"),
+					),
+				),
+			),
+		},
+	})
+
+	tests := []promptTest{
+		{
+			name:    "newGitResource",
+			cmdArgs: []string{pipelineName},
+
+			procedure: func(c *expect.Console) error {
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("newgitres"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("https://github.com/GoogleContainerTools/skaffold"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Enter a value for revision :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("master"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Enter a name for a pipeline resource :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("newgitres2"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Enter a value for url :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("https://github.com/GoogleContainerTools/skaffold2"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Enter a value for revision :"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("master"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectEOF(); err != nil {
+					return err
+				}
+
+				tekton := cs.Pipeline.Tekton()
+				runs, err := tekton.PipelineRuns("ns").List(v1.ListOptions{})
+				if err != nil {
+					return err
+				}
+
+				if runs.Items != nil && runs.Items[0].Spec.PipelineRef.Name != pipelineName {
+					return errors.New("pipelinerun not found")
+				}
+
+				c.Close()
+				return nil
+			},
+		},
+	}
+	opts := startOpts("ns", cs, false, "svc1", []string{"task1=svc1"})
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			opts.RunPromptTest(t, test)
+		})
+	}
+}
+
 func Test_start_pipeline_gitRes_withExistingRes_useExisting(t *testing.T) {
 
 	pipelineName := "gitpipeline"
