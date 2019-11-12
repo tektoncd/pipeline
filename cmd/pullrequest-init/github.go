@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/oauth2"
 
 	"github.com/jenkins-x/go-scm/scm/driver/github"
 	"go.uber.org/zap"
 )
 
-func NewGitHubHandler(logger *zap.SugaredLogger, raw string) (*Handler, error) {
+func NewGitHubHandler(ctx context.Context, logger *zap.SugaredLogger, raw string) (*Handler, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return nil, err
@@ -26,6 +30,14 @@ func NewGitHubHandler(logger *zap.SugaredLogger, raw string) (*Handler, error) {
 	}
 
 	client := github.NewDefault()
+	token := os.Getenv("GITHUB_TOKEN")
+	if token != "" {
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
+		hc := oauth2.NewClient(ctx, ts)
+		client.Client = hc
+	}
 	ownerRepo := fmt.Sprintf("%s/%s", owner, repo)
 	return NewHandler(logger, client, ownerRepo, prNumber), nil
 }

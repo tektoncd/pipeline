@@ -35,7 +35,7 @@ func main() {
 	defer logger.Sync()
 	ctx := context.Background()
 
-	client, err := NewGitHubHandler(logger, *prURL)
+	client, err := NewGitHubHandler(ctx, logger, *prURL)
 	if err != nil {
 		logger.Fatalf("error creating GitHub client: %v", err)
 	}

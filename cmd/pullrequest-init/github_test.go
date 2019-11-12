@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"go.uber.org/zap"
@@ -13,7 +14,7 @@ func TestNewGitHubHandler(t *testing.T) {
 		"https://github.tekton.dev/foo/bar/pull/1",
 	} {
 		t.Run(url, func(t *testing.T) {
-			h, err := NewGitHubHandler(zaptest.NewLogger(t, zaptest.WrapOptions(zap.AddCaller())).Sugar(), url)
+			h, err := NewGitHubHandler(context.Background(), zaptest.NewLogger(t, zaptest.WrapOptions(zap.AddCaller())).Sugar(), url)
 			if err != nil {
 				t.Fatalf("error creating GitHubHandler: %v", err)
 			}
