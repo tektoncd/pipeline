@@ -49,6 +49,22 @@ var invalidResource = v1alpha1.TaskResource{
 	},
 }
 
+var optionalResource = v1alpha1.TaskResource{
+	ResourceDeclaration: v1alpha1.ResourceDeclaration{
+		Name:     "source",
+		Type:     "git",
+		Optional: true,
+	},
+}
+
+var requiredResource = v1alpha1.TaskResource{
+	ResourceDeclaration: v1alpha1.ResourceDeclaration{
+		Name:     "source",
+		Type:     "git",
+		Optional: false,
+	},
+}
+
 var validSteps = []v1alpha1.Step{{Container: corev1.Container{
 	Name:  "mystep",
 	Image: "myimage",
@@ -106,6 +122,22 @@ func TestTaskSpecValidate(t *testing.T) {
 			Steps: validSteps,
 		},
 	}, {
+		name: "valid inputs (required)",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{requiredResource},
+			},
+			Steps: validSteps,
+		},
+	}, {
+		name: "valid inputs (optional)",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{optionalResource},
+			},
+			Steps: validSteps,
+		},
+	}, {
 		name: "valid outputs",
 		fields: fields{
 			Outputs: &v1alpha1.Outputs{
@@ -132,6 +164,22 @@ func TestTaskSpecValidate(t *testing.T) {
 			},
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validImageResource},
+			},
+			Steps: validSteps,
+		},
+	}, {
+		name: "valid outputs (required)",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{requiredResource},
+			},
+			Steps: validSteps,
+		},
+	}, {
+		name: "valid outputs (optional)",
+		fields: fields{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{optionalResource},
 			},
 			Steps: validSteps,
 		},

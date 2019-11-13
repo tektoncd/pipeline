@@ -29,14 +29,27 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 	rtr := tb.ResolvedTaskResources(
 		tb.ResolvedTaskResourcesTaskSpec(
 			tb.Step("mystep", "myimage", tb.StepCommand("mycmd")),
-			tb.TaskInputs(tb.InputsResource("resource-to-build", v1alpha1.PipelineResourceTypeGit)),
-			tb.TaskOutputs(tb.OutputsResource("resource-to-provide", v1alpha1.PipelineResourceTypeImage)),
+			tb.TaskInputs(
+				tb.InputsResource("resource-to-build", v1alpha1.PipelineResourceTypeGit),
+				tb.InputsResource("optional-resource-to-build", v1alpha1.PipelineResourceTypeGit, tb.ResourceOptional(true)),
+			),
+			tb.TaskOutputs(
+				tb.OutputsResource("resource-to-provide", v1alpha1.PipelineResourceTypeImage),
+				tb.OutputsResource("optional-resource-to-provide", v1alpha1.PipelineResourceTypeImage, tb.ResourceOptional(true)),
+			),
 		),
 		tb.ResolvedTaskResourcesInputs("resource-to-build", tb.PipelineResource("example-resource", "foo",
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
 				tb.PipelineResourceSpecParam("foo", "bar"),
 			))),
+		tb.ResolvedTaskResourcesInputs("optional-resource-to-build", tb.PipelineResource("example-resource", "foo",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit,
+				tb.PipelineResourceSpecParam("foo", "bar"),
+			))),
 		tb.ResolvedTaskResourcesOutputs("resource-to-provide", tb.PipelineResource("example-image", "bar",
+			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage)),
+		),
+		tb.ResolvedTaskResourcesOutputs("optional-resource-to-provide", tb.PipelineResource("example-image", "bar",
 			tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage)),
 		))
 	if err := taskrun.ValidateResolvedTaskResources([]v1alpha1.Param{}, rtr); err != nil {
@@ -164,6 +177,26 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 			tb.TaskInputs(tb.InputsResource("testinput", v1alpha1.PipelineResourceTypeGit))),
 			tb.ResolvedTaskResourcesInputs("testinput", r),
 			tb.ResolvedTaskResourcesOutputs("someextraoutput", r),
+		),
+	}, {
+		name: "required-input-resource-missing",
+		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
+			tb.TaskInputs(tb.InputsResource("requiredgitinput", v1alpha1.PipelineResourceTypeGit,
+				tb.ResourceOptional(false)))),
+		),
+	}, {
+		name: "required-output-resource-missing",
+		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
+			tb.TaskOutputs(tb.OutputsResource("requiredgitoutput", v1alpha1.PipelineResourceTypeGit,
+				tb.ResourceOptional(false)))),
+		),
+	}, {
+		name: "required-input-and-output-resource-missing",
+		rtr: tb.ResolvedTaskResources(tb.ResolvedTaskResourcesTaskSpec(
+			tb.TaskInputs(tb.InputsResource("requiredimageinput", v1alpha1.PipelineResourceTypeImage,
+				tb.ResourceOptional(false))),
+			tb.TaskOutputs(tb.OutputsResource("requiredimageoutput", v1alpha1.PipelineResourceTypeImage,
+				tb.ResourceOptional(false)))),
 		),
 	}}
 

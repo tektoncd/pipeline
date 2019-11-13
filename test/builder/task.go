@@ -239,6 +239,12 @@ func InputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops
 	}
 }
 
+func ResourceOptional(optional bool) TaskResourceOp {
+	return func(r *v1alpha1.TaskResource) {
+		r.Optional = optional
+	}
+}
+
 func ResourceTargetPath(path string) TaskResourceOp {
 	return func(r *v1alpha1.TaskResource) {
 		r.TargetPath = path
@@ -246,13 +252,17 @@ func ResourceTargetPath(path string) TaskResourceOp {
 }
 
 // OutputsResource adds a resource, with specified name and type, to the Outputs.
-func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType) OutputsOp {
+func OutputsResource(name string, resourceType v1alpha1.PipelineResourceType, ops ...TaskResourceOp) OutputsOp {
 	return func(o *v1alpha1.Outputs) {
-		o.Resources = append(o.Resources, v1alpha1.TaskResource{
+		r := &v1alpha1.TaskResource{
 			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: name,
 				Type: resourceType,
-			}})
+			}}
+		for _, op := range ops {
+			op(r)
+		}
+		o.Resources = append(o.Resources, *r)
 	}
 }
 

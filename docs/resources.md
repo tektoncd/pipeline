@@ -16,6 +16,12 @@ For example:
 --------------------------------------------------------------------------------
 
 -   [Syntax](#syntax)
+-   [Using Resources](#using-resources)
+    - [Variable substitution](#variable-substitution)
+    - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
+    - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
+    - [Resource Status](#resource-status)
+    - [Optional Resources](#optional-resources)
 -   [Resource types](#resource-types)
     -   [Git Resource](#git-resource)
     -   [Pull Request Resource](#pull-request-resource)
@@ -25,7 +31,6 @@ For example:
         -   [GCS Storage Resource](#gcs-storage-resource)
         -   [BuildGCS Storage Resource](#buildgcs-storage-resource)
     -   [Cloud Event Resource](#cloud-event-resource)
--   [Using Resources](#using-resources)
 
 ## Syntax
 
@@ -46,6 +51,8 @@ following fields:
 -   Optional:
     -   [`params`](#resource-types) - Parameters which are specific to each type
         of `PipelineResource`
+    -   [`optional`](#optional-resources) - Boolean flag to mark a resource optional
+        (by default, `optional` is set to `false` making resources mandatory).
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -217,6 +224,30 @@ resourcesResult:
   resourceRef:
     name: skaffold-image-leeroy-web
 ```
+
+### Optional Resources
+
+By default, a resource is declared as mandatory unless `optional` is set `true` for that resource.
+Resources declared as `optional` in a `Task` does not have be specified in `TaskRun`.
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: task-check-optional-resources
+spec:
+  inputs:
+    resources:
+      - name: git-repo
+        type: git
+        optional: true
+```
+
+You can refer to different examples demonstrating usage of optional resources in `Task` and `Condition`:
+
+- [Task](../examples/taskruns/optional-resources.yaml)
+- [Cluster Task](../examples/taskruns/optional-resources-with-clustertask.yaml)
+- [Condition](../examples/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
 
 ## Resource Types
 

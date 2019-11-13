@@ -75,7 +75,12 @@ func AddInputResource(
 	for i := len(taskSpec.Inputs.Resources) - 1; i >= 0; i-- {
 		input := taskSpec.Inputs.Resources[i]
 		boundResource, err := getBoundResource(input.Name, taskRun.Spec.Inputs.Resources)
-		if err != nil {
+		// Continue if the declared resource is optional and not specified in TaskRun
+		// boundResource is nil if the declared resource in Task does not have any resource specified in the TaskRun
+		if input.Optional && boundResource == nil {
+			continue
+		} else if err != nil {
+			// throw an error for required resources, if not specified in the TaskRun
 			return nil, fmt.Errorf("failed to get bound resource: %w", err)
 		}
 		resource, ok := inputResources[boundResource.Name]

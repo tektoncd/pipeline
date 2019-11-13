@@ -1147,7 +1147,7 @@ func TestInvalidOutputResources(t *testing.T) {
 		},
 		wantErr: false,
 	}, {
-		desc: "no outputs defined in tasktun but defined in task",
+		desc: "no outputs defined in taskrun but defined in task",
 		task: &v1alpha1.Task{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "task1",
@@ -1207,6 +1207,62 @@ func TestInvalidOutputResources(t *testing.T) {
 							Type: "storage",
 						}}},
 				},
+			},
+		},
+		wantErr: true,
+	}, {
+		desc: "optional outputs declared",
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:     "source-workspace",
+						Type:     "git",
+						Optional: true,
+					}}},
+				},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-optional-output",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
+			},
+		},
+		wantErr: false,
+	}, {
+		desc: "required outputs declared",
+		task: &v1alpha1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "task1",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskSpec{
+				Outputs: &v1alpha1.Outputs{
+					Resources: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name:     "source-workspace",
+						Type:     "git",
+						Optional: false,
+					}}},
+				},
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun-run-required-output",
+				Namespace: "marshmallow",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "pipelinerun",
+				}},
 			},
 		},
 		wantErr: true,

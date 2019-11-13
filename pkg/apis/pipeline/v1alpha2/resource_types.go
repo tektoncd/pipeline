@@ -94,6 +94,11 @@ type ResourceDeclaration struct {
 	// will be copied.
 	// +optional
 	TargetPath string `json:"targetPath,omitempty"`
+	// Optional declares the resource as optional.
+	// By default optional is set to false which makes a resource required.
+	// optional: true - the resource is considered optional
+	// optional: false - the resource is considered required (equivalent of not specifying it)
+	Optional bool `json:"optional,omitempty"`
 }
 
 // TaskModifier is an interface to be implemented by different PipelineResources
