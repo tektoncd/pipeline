@@ -20,6 +20,9 @@ Start tasks
 # start task foo by creating a taskrun named "foo-run-xyz123" from the namespace "bar"
 tkn task start foo -s ServiceAccountName -n bar
 
+The task can either be specified by reference in a cluster using the positional argument
+or in a file using the --filename argument.
+
 For params value, if you want to provide multiple values, provide them comma separated
 like cat,foo,bar
 
@@ -27,6 +30,7 @@ like cat,foo,bar
 ### Options
 
 ```
+  -f, --filename string          filename containing a task definition
   -h, --help                     help for start
   -i, --inputresource strings    pass the input resource name and ref as name=ref
   -l, --labels strings           pass labels as label=value.

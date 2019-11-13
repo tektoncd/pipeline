@@ -14,6 +14,7 @@ require (
 	github.com/cpuguy83/go-md2man v1.0.10
 	github.com/evanphx/json-patch v4.1.0+incompatible // indirect
 	github.com/fatih/color v1.7.0
+	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-cmp v0.3.1
 	github.com/google/go-containerregistry v0.0.0-20190320210540-8d4083db9aa0 // indirect
 	github.com/google/gofuzz v0.0.0-20161122191042-44d81051d367 // indirect

@@ -17,7 +17,10 @@ package task
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
+
+	"github.com/ghodss/yaml"
 
 	"github.com/spf13/cobra"
 	"github.com/tektoncd/cli/pkg/cli"
@@ -48,6 +51,7 @@ type startOptions struct {
 	Last               bool
 	Labels             []string
 	ShowLog            bool
+	Filename           string
 }
 
 // NameArg validates that the first argument is a valid task name
@@ -90,6 +94,9 @@ func startCommand(p cli.Params) *cobra.Command {
 # start task foo by creating a taskrun named "foo-run-xyz123" from the namespace "bar"
 tkn task start foo -s ServiceAccountName -n bar
 
+The task can either be specified by reference in a cluster using the positional argument
+or in a file using the --filename argument.
+
 For params value, if you want to provide multiple values, provide them comma separated
 like cat,foo,bar
 `,
@@ -98,7 +105,13 @@ like cat,foo,bar
 			if err := flags.InitParams(p, cmd); err != nil {
 				return err
 			}
-			return NameArg(args, p)
+			if len(args) != 0 {
+				return NameArg(args, p)
+			}
+			if opt.Filename == "" {
+				return errors.New("Either a task name or a --filename parameter must be supplied")
+			}
+			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opt.stream = &cli.Stream{
@@ -106,7 +119,7 @@ like cat,foo,bar
 				Err: cmd.OutOrStderr(),
 			}
 
-			return startTask(opt, args[0])
+			return startTask(opt, args)
 		},
 	}
 
@@ -118,22 +131,50 @@ like cat,foo,bar
 	c.Flags().BoolVarP(&opt.Last, "last", "L", false, "re-run the task using last taskrun values")
 	c.Flags().StringSliceVarP(&opt.Labels, "labels", "l", []string{}, "pass labels as label=value.")
 	c.Flags().BoolVarP(&opt.ShowLog, "showlog", "", true, "show logs right after starting the task")
+	c.Flags().StringVarP(&opt.Filename, "filename", "f", "", "filename containing a task definition")
 
 	_ = c.MarkZshCompPositionalArgumentCustom(1, "__tkn_get_task")
 
 	return c
 }
 
-func startTask(opt startOptions, tname string) error {
+// Setting as var for stubbing in tests
+var parseTask = func(p string) (*v1alpha1.Task, error) {
+	b, err := ioutil.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+	task := v1alpha1.Task{}
+	if err := yaml.Unmarshal(b, &task); err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
+func startTask(opt startOptions, args []string) error {
 	tr := &v1alpha1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    opt.cliparams.Namespace(),
-			GenerateName: tname + "-run-",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{Name: tname},
+			Namespace: opt.cliparams.Namespace(),
 		},
 	}
+
+	var tname string
+	if len(args) > 0 {
+		tname = args[0]
+		tr.Spec = v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{Name: tname},
+		}
+	} else {
+		task, err := parseTask(opt.Filename)
+		if err != nil {
+			return err
+		}
+		tname = task.ObjectMeta.Name
+		tr.Spec = v1alpha1.TaskRunSpec{
+			TaskSpec: &task.Spec,
+		}
+	}
+	tr.ObjectMeta.GenerateName = tname + "-run-"
 
 	cs, err := opt.cliparams.Clients()
 	if err != nil {

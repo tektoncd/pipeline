@@ -20,6 +20,10 @@ Start tasks
 
 .SH OPTIONS
 .PP
+\fB\-f\fP, \fB\-\-filename\fP=""
+    filename containing a task definition
+
+.PP
 \fB\-h\fP, \fB\-\-help\fP[=false]
     help for start
 
@@ -71,6 +75,10 @@ Start tasks
 .SH start task foo by creating a taskrun named "foo\-run\-xyz123" from the namespace "bar"
 .PP
 tkn task start foo \-s ServiceAccountName \-n bar
+
+.PP
+The task can either be specified by reference in a cluster using the positional argument
+or in a file using the \-\-filename argument.
 
 .PP
 For params value, if you want to provide multiple values, provide them comma separated

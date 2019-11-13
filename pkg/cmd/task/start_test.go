@@ -94,11 +94,34 @@ func Test_start_has_task_arg(t *testing.T) {
 	c := Command(&test.Params{})
 
 	_, err := test.ExecuteCommand(c, "start", "-n", "ns")
-
 	if err == nil {
 		t.Error("Expecting an error but it's empty")
 	}
-	test.AssertOutput(t, "missing task name", err.Error())
+	test.AssertOutput(t, "Either a task name or a --filename parameter must be supplied", err.Error())
+}
+
+func Test_start_has_task_filename(t *testing.T) {
+	ns := []*corev1.Namespace{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "ns",
+			},
+		},
+	}
+	cs, _ := test.SeedTestData(t, pipelinetest.Data{Namespaces: ns})
+	c := Command(&test.Params{Tekton: cs.Pipeline, Kube: cs.Kube})
+
+	oldParseTask := parseTask
+	defer func() {
+		parseTask = oldParseTask
+	}()
+	parseTask = func(p string) (*v1alpha1.Task, error) {
+		return tb.Task("task", "ns"), nil
+	}
+	_, err := test.ExecuteCommand(c, "start", "-n", "ns", "--filename=foo", "--showlog=false")
+	if err != nil {
+		t.Errorf("Not expecting an error, but got %s", err)
+	}
 }
 
 func Test_start_task_not_found(t *testing.T) {
