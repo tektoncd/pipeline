@@ -67,10 +67,14 @@ func AddOutputResources(
 	needsPvc := false
 	for _, output := range taskSpec.Outputs.Resources {
 		boundResource, err := getBoundResource(output.Name, taskRun.Spec.Outputs.Resources)
-		if err != nil {
+		// Continue if the declared resource is optional and not specified in TaskRun
+		// boundResource is nil if the declared resource in Task does not have any resource specified in the TaskRun
+		if output.Optional && boundResource == nil {
+			continue
+		} else if err != nil {
+			// throw an error for required resources, if not specified in the TaskRun
 			return nil, fmt.Errorf("failed to get bound resource: %w", err)
 		}
-
 		resource, ok := outputResources[boundResource.Name]
 		if !ok || resource == nil {
 			return nil, fmt.Errorf("failed to get output pipeline Resource for task %q resource %v", taskName, boundResource)

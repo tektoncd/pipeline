@@ -40,24 +40,37 @@ func validateOutputResources(outputs *v1alpha1.Outputs, providedResources map[st
 
 func validateResources(requiredResources []v1alpha1.TaskResource, providedResources map[string]*v1alpha1.PipelineResource) error {
 	required := make([]string, 0, len(requiredResources))
+	optional := make([]string, 0, len(requiredResources))
 	for _, resource := range requiredResources {
-		required = append(required, resource.Name)
+		if resource.Optional {
+			// create a list of optional resources
+			optional = append(optional, resource.Name)
+		} else {
+			// create a list of required resources
+			required = append(required, resource.Name)
+		}
 	}
 	provided := make([]string, 0, len(providedResources))
 	for resource := range providedResources {
 		provided = append(provided, resource)
 	}
-	err := list.IsSame(required, provided)
-	if err != nil {
-		return fmt.Errorf("taskRun's declared resources didn't match usage in Task: %w", err)
+	// verify that the list of required resources does exist in the provided resources
+	missing := list.DiffLeft(required, provided)
+	if len(missing) > 0 {
+		return fmt.Errorf("Task's declared required resources are missing from the TaskRun: %s", missing)
+	}
+	// verify that the list of provided resources does not have any extra resources (outside of required and optional resources combined)
+	extra := list.DiffLeft(provided, append(required, optional...))
+	if len(extra) > 0 {
+		return fmt.Errorf("TaskRun's declared resources didn't match usage in Task: %s", extra)
 	}
 	for _, resource := range requiredResources {
 		r := providedResources[resource.Name]
-		if r == nil {
+		if !resource.Optional && r == nil {
 			// This case should never be hit due to the check for missing resources at the beginning of the function
 			return fmt.Errorf("resource %q is missing", resource.Name)
 		}
-		if resource.Type != r.Spec.Type {
+		if r != nil && resource.Type != r.Spec.Type {
 			return fmt.Errorf("resource %q should be type %q but was %q", resource.Name, r.Spec.Type, resource.Type)
 		}
 	}

@@ -209,7 +209,7 @@ type PipelineResourceList struct {
 type ResourceDeclaration = v1alpha2.ResourceDeclaration
 
 // ResourceFromType returns an instance of the correct PipelineResource object type which can be
-// used to add input and ouput containers as well as volumes to a TaskRun's pod in order to realize
+// used to add input and output containers as well as volumes to a TaskRun's pod in order to realize
 // a PipelineResource in a pod.
 func ResourceFromType(r *PipelineResource, images pipeline.Images) (PipelineResourceInterface, error) {
 	switch r.Spec.Type {

@@ -63,7 +63,8 @@ var (
 			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: "git-duplicate-space",
 				Type: "git",
-			}}},
+			}},
+		},
 	}
 	gcsInputs = &v1alpha1.Inputs{
 		Resources: []v1alpha1.TaskResource{{
@@ -97,6 +98,20 @@ var (
 				Name: "target-cluster",
 				Type: "cluster",
 			}}},
+	}
+	optionalGitInputs = &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name:     "gitspace",
+				Type:     "git",
+				Optional: false,
+			}}, {
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name:     "git-optional-space",
+				Type:     "git",
+				Optional: true,
+			}},
+		},
 	}
 )
 
@@ -279,6 +294,15 @@ func TestAddResourceToTask(t *testing.T) {
 		},
 		Spec: v1alpha1.TaskSpec{
 			Inputs: gcsInputs,
+		},
+	}
+	taskWithOptionalGitSources := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "build-from-repo-with-optional-source",
+			Namespace: "marshmallow",
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: optionalGitInputs,
 		},
 	}
 
@@ -773,6 +797,42 @@ func TestAddResourceToTask(t *testing.T) {
 				}},
 			}}},
 		},
+	}, {
+		desc: "optional git input resource",
+		task: taskWithOptionalGitSources,
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "build-from-repo-with-optional-git",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "simpleTask",
+				},
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: []v1alpha1.TaskResourceBinding{{
+						PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+							ResourceRef: &v1alpha1.PipelineResourceRef{
+								Name: "the-git-with-branch",
+							},
+							Name: "gitspace",
+						},
+					}},
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: optionalGitInputs,
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Name:       "git-source-the-git-with-branch-9l9zj",
+				Image:      "override-with-git:latest",
+				Command:    []string{"/ko-app/git-init"},
+				Args:       []string{"-url", "https://github.com/grafeas/kritis", "-revision", "branch", "-path", "/workspace/gitspace"},
+				WorkingDir: "/workspace",
+				Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"}},
+			}}},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			setUp()
@@ -797,6 +857,14 @@ func TestStorageInputResource(t *testing.T) {
 			ResourceDeclaration: v1alpha1.ResourceDeclaration{
 				Name: "gcs-input-resource",
 				Type: "storage",
+			}}},
+	}
+	optionalStorageInputs := &v1alpha1.Inputs{
+		Resources: []v1alpha1.TaskResource{{
+			ResourceDeclaration: v1alpha1.ResourceDeclaration{
+				Name:     "gcs-input-resource",
+				Type:     "storage",
+				Optional: true,
 			}}},
 	}
 
@@ -953,6 +1021,30 @@ func TestStorageInputResource(t *testing.T) {
 				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name2"}},
 			}},
 		},
+	}, {
+		desc: "optional inputs with no resource spec and no resource ref",
+		task: &v1alpha1.Task{
+			Spec: v1alpha1.TaskSpec{
+				Inputs: optionalStorageInputs,
+			},
+		},
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "get-storage-run-with-optional-inputs",
+				Namespace: "marshmallow",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				Inputs: v1alpha1.TaskRunInputs{
+					Resources: nil,
+					Params:    nil,
+				},
+			},
+		},
+		wantErr: false,
+		want: &v1alpha1.TaskSpec{
+			Inputs: optionalStorageInputs,
+			Steps:  nil,
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
@@ -1050,11 +1142,11 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 		want: &v1alpha1.TaskSpec{
 			Inputs: gitInputs,
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:    "artifact-dest-mkdir-gitspace-mssqb",
+				Name:    "artifact-dest-mkdir-gitspace-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gitspace"},
 			}}, {Container: corev1.Container{
-				Name:         "artifact-copy-from-gitspace-78c5n",
+				Name:         "artifact-copy-from-gitspace-mz4c7",
 				Image:        "google/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gitspace"},
@@ -1092,11 +1184,11 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 		want: &v1alpha1.TaskSpec{
 			Inputs: gcsInputs,
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:    "artifact-dest-mkdir-workspace-6nl7g",
+				Name:    "artifact-dest-mkdir-workspace-mssqb",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
-				Name:         "artifact-copy-from-workspace-j2tds",
+				Name:         "artifact-copy-from-workspace-78c5n",
 				Image:        "google/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gcs-dir"},
@@ -1142,22 +1234,22 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 		want: &v1alpha1.TaskSpec{
 			Inputs: multipleGcsInputs,
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:    "artifact-dest-mkdir-workspace-twkr2",
+				Name:    "artifact-dest-mkdir-workspace-vr6ds",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
-				Name:         "artifact-copy-from-workspace-mnq6l",
+				Name:         "artifact-copy-from-workspace-l22wn",
 				Image:        "google/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,
 				VolumeMounts: gcsVolumeMounts,
 			}}, {Container: corev1.Container{
-				Name:    "artifact-dest-mkdir-workspace2-vr6ds",
+				Name:    "artifact-dest-mkdir-workspace2-6nl7g",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
 			}}, {Container: corev1.Container{
-				Name:         "artifact-copy-from-workspace2-l22wn",
+				Name:         "artifact-copy-from-workspace2-j2tds",
 				Image:        "google/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path2/*", "/workspace/gcs-dir"},
