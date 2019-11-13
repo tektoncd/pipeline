@@ -41,8 +41,16 @@ const (
 	revision = "1c9d566ecd13535f93789595740f20932f655905"
 )
 
+var (
+	skipRootUserTests = "false"
+)
+
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
+	if skipRootUserTests == "true" {
+		t.Skip("Skip test as skipRootUserTests set to true")
+	}
+
 	c, namespace := setup(t, withRegistry)
 	t.Parallel()
 
