@@ -4,6 +4,11 @@ metadata:
   generateName: step-script-
 spec:
   taskSpec:
+    inputs:
+      params:
+      - name: PARAM
+        default: param-value
+
     steps:
     - name: bash
       image: ubuntu
@@ -58,3 +63,15 @@ spec:
       script: |
         #!/usr/bin/perl
         print "Hello from Perl!"
+
+    # Test that param values are replaced.
+    - name: params-applied
+      image: python
+      script: |
+        #!/usr/bin/env python3
+        v = '$(input.params.PARAM)'
+        if v != 'param-value':
+          print('Param values not applied')
+          print('Got: ', v)
+          quit()
+
