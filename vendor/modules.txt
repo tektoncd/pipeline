@@ -251,7 +251,7 @@ github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources
 github.com/tektoncd/pipeline/pkg/system
 github.com/tektoncd/pipeline/test
 github.com/tektoncd/pipeline/test/builder
-# github.com/tektoncd/plumbing v0.0.0-20191024160724-ea00721be13d
+# github.com/tektoncd/plumbing v0.0.0-20191114095731-51c53a31e779
 github.com/tektoncd/plumbing/scripts
 # go.opencensus.io v0.22.1
 go.opencensus.io
