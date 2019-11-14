@@ -26,6 +26,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*PipelineResource)(nil)
+
 func (r *PipelineResource) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(r.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")

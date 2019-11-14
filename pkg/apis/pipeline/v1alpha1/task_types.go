@@ -19,13 +19,6 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
-)
-
-var (
-	// Check that Task may be validated and defaulted.
-	_ apis.Validatable = (*Task)(nil)
-	_ apis.Defaultable = (*Task)(nil)
 )
 
 func (t *Task) TaskSpec() TaskSpec {

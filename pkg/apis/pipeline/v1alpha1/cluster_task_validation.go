@@ -22,6 +22,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*ClusterTask)(nil)
+
 func (t *ClusterTask) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")

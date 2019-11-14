@@ -16,7 +16,13 @@ limitations under the License.
 
 package v1alpha1
 
-import "context"
+import (
+	"context"
+
+	"knative.dev/pkg/apis"
+)
+
+var _ apis.Defaultable = (*PipelineResource)(nil)
 
 func (t *PipelineResource) SetDefaults(ctx context.Context) {
 	t.Spec.SetDefaults(ctx)

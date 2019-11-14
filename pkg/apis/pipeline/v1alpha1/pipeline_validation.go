@@ -28,6 +28,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*Pipeline)(nil)
+
 // Validate checks that the Pipeline structure is valid but does not validate
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
