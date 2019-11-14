@@ -23,6 +23,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*Condition)(nil)
+
 func (c Condition) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(c.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")

@@ -22,7 +22,10 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
+
+var _ apis.Defaultable = (*PipelineRun)(nil)
 
 func (pr *PipelineRun) SetDefaults(ctx context.Context) {
 	pr.Spec.SetDefaults(ctx)

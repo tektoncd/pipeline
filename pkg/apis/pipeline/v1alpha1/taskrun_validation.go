@@ -25,6 +25,8 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var _ apis.Validatable = (*TaskRun)(nil)
+
 // Validate taskrun
 func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateObjectMetadata(tr.GetObjectMeta()).ViaField("metadata"); err != nil {

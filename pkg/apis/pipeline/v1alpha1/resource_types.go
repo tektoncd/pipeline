@@ -22,7 +22,6 @@ import (
 	"golang.org/x/xerrors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
 )
 
 // PipelineResourceType represents the type of endpoint the pipelineResource is, so that the
@@ -57,14 +56,8 @@ const (
 	PipelineResourceTypeCloudEvent PipelineResourceType = "cloudEvent"
 )
 
-var (
-	// AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-	AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypeCluster, PipelineResourceTypePullRequest, PipelineResourceTypeCloudEvent}
-
-	// Check that PipelineResource may be validated and defaulted.
-	_ apis.Validatable = (*PipelineResource)(nil)
-	_ apis.Defaultable = (*PipelineResource)(nil)
-)
+// AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
+var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypeCluster, PipelineResourceTypePullRequest, PipelineResourceTypeCloudEvent}
 
 // PipelineResourceInterface interface to be implemented by different PipelineResource types
 type PipelineResourceInterface interface {

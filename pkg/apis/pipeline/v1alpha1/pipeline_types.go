@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
 )
 
 // PipelineSpec defines the desired state of Pipeline.
@@ -48,11 +47,6 @@ const (
 	NamespacedTaskKind TaskKind = "Task"
 	// ClusterTaskKind indicates that task type has a cluster scope.
 	ClusterTaskKind TaskKind = "ClusterTask"
-)
-
-var (
-	_ apis.Validatable = (*Pipeline)(nil)
-	_ apis.Defaultable = (*Pipeline)(nil)
 )
 
 // +genclient
