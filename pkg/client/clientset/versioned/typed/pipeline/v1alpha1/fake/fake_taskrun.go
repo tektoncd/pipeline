@@ -131,7 +131,7 @@ func (c *FakeTaskRuns) DeleteCollection(options *v1.DeleteOptions, listOptions v
 // Patch applies the patch and returns the patched taskRun.
 func (c *FakeTaskRuns) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TaskRun, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(taskrunsResource, c.ns, name, data, subresources...), &v1alpha1.TaskRun{})
+		Invokes(testing.NewPatchSubresourceAction(taskrunsResource, c.ns, name, pt, data, subresources...), &v1alpha1.TaskRun{})
 
 	if obj == nil {
 		return nil, err
