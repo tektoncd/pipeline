@@ -608,11 +608,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e2155887812e57c490cb743ec4d388681253f69965fd1203d9bbc75c9e512b6d"
+  digest = "1:6adfb125a4b886c749f68f3b7c46c4e9e489e175574ec5ed80c507cbeb91efa1"
   name = "github.com/tektoncd/plumbing"
   packages = ["scripts"]
   pruneopts = "UT"
-  revision = "ea00721be13d2549caf5550db5de50b9902f1075"
+  revision = "51c53a31e7791871544c7a6526b6e0ad6ce25d65"
 
 [[projects]]
   digest = "1:b7d98c64e9467a8e5e67509031cd6baee81fba090ba2c3d30df1ff3d02d1d035"
@@ -1369,7 +1369,9 @@
     "go.uber.org/zap",
     "go.uber.org/zap/zaptest",
     "go.uber.org/zap/zaptest/observer",
+    "golang.org/x/oauth2",
     "golang.org/x/xerrors",
+    "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
     "k8s.io/api/rbac/v1beta1",
     "k8s.io/apimachinery/pkg/api/equality",

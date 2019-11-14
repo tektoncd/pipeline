@@ -21,6 +21,7 @@ source $(dirname ${BASH_SOURCE})/library.sh
 
 # Custom configuration of presubmit tests
 readonly DISABLE_MD_LINTING=${DISABLE_MD_LINTING:-0}
+readonly DISABLE_YAML_LINTING=${DISABLE_YAML_LINTING:-0}
 readonly DISABLE_MD_LINK_CHECK=${DISABLE_MD_LINK_CHECK:-0}
 readonly PRESUBMIT_TEST_FAIL_FAST=${PRESUBMIT_TEST_FAIL_FAST:-0}
 
@@ -129,9 +130,22 @@ function markdown_build_tests() {
   return ${failed}
 }
 
+# Perform yaml build tests if necessary, unless disabled.
+function yaml_build_tests() {
+  (( DISABLE_YAML_LINTING )) && return 0
+  subheader "Linting the yaml files"
+  local yamlfiles=""
+  for file in $(echo "${CHANGED_FILES}" | grep '\.yaml$\|\.yml$' | grep -v ^vendor/); do
+    [[ -f "${file}" ]] && yamlfiles="${yamlfiles} ${file}"
+  done
+  [[ -z "${yamlfiles}" ]] && return 0
+  yamllint ${yamlfiles}
+}
+
 # Default build test runner that:
 # * check go code style with gofmt
 # * check markdown files
+# * check yaml files
 # * `go build` on the entire repo
 # * run `/hack/verify-codegen.sh` (if it exists)
 # * check licenses in all go packages
@@ -146,6 +160,8 @@ function default_build_test_runner() {
   echo "$gofmt_out"
   # Perform markdown build checks first
   markdown_build_tests || failed=1
+  # Check yaml using yamllint
+  yaml_build_tests || failed=1
   # For documentation PRs, just check the md files
   (( IS_DOCUMENTATION_PR )) && return ${failed}
   # Skip build test if there is no go code
