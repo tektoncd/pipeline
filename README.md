@@ -72,7 +72,15 @@ Download the latest binary executable for your operating system:
   dnf install tektoncd-cli
   ```
 
-If you have [go](https://golang.org/) installed, `GO111MODULE="on" go get github.com/tektoncd/cli@v0.5.0` is all you need!
+* Source install
+
+  If you have [go](https://golang.org/) installed, and you want to compile the CLI from source you can checkout the [Git repository](https://github.com/tektoncd/cli) and run the following commands:
+
+```shell
+export GO111MODULE=on
+make bin/tkn
+```
+  This will output the `tkn` binary in `bin/tkn`
 
 ### `tkn` as a `kubectl` plugin
 
