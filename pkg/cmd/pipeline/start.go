@@ -238,6 +238,7 @@ func (opt *startOptions) getInputResources(resources resourceOptionsFilter, pipe
 				return err
 			}
 			opt.Resources = append(opt.Resources, res.Name+"="+newres.Name)
+			continue
 		}
 		name := strings.TrimSpace(strings.Split(ans, " ")[0])
 		opt.Resources = append(opt.Resources, res.Name+"="+name)
@@ -247,14 +248,24 @@ func (opt *startOptions) getInputResources(resources resourceOptionsFilter, pipe
 
 func (opt *startOptions) getInputParams(pipeline *v1alpha1.Pipeline) error {
 	for _, param := range pipeline.Spec.Params {
-		var ans string
+		var ans, ques, defaultValue string
+		ques = fmt.Sprintf("Value for param `%s` of type `%s`?", param.Name, param.Type)
+		input := &survey.Input{}
+		if param.Default != nil {
+			if param.Type == "string" {
+				defaultValue = param.Default.StringVal
+			} else {
+				defaultValue = strings.Join(param.Default.ArrayVal, ",")
+			}
+			ques = ques + fmt.Sprintf(" (Default is `%s`)", defaultValue)
+			input.Default = defaultValue
+		}
+		input.Message = ques
+
 		var qs = []*survey.Question{
 			{
-				Name: "pipeline param",
-				Prompt: &survey.Input{
-					Message: fmt.Sprintf("Value of param `%s` ? (Default is %s)", param.Name, param.Default.StringVal),
-					Default: param.Default.StringVal,
-				},
+				Name:   "pipeline param",
+				Prompt: input,
 			},
 		}
 

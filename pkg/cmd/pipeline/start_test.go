@@ -260,6 +260,7 @@ func Test_start_pipeline_interactive(t *testing.T) {
 					tb.PipelineDeclaredResource("git-repo", "git"),
 					tb.PipelineParamSpec("pipeline-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("somethingdifferent")),
 					tb.PipelineParamSpec("rev-param", v1alpha1.ParamTypeString, tb.ParamSpecDefault("revision")),
+					tb.PipelineParamSpec("array-param", v1alpha1.ParamTypeArray, tb.ParamSpecDefault("revision1", "revision2")),
 					tb.PipelineTask("unit-test-1", "unit-test-task",
 						tb.PipelineTaskInputResource("workspace", "git-repo"),
 						tb.PipelineTaskOutputResource("image-to-use", "best-image"),
@@ -302,7 +303,7 @@ func Test_start_pipeline_interactive(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Value of param `pipeline-param` ?"); err != nil {
+				if _, err := c.ExpectString("Value for param `pipeline-param` of type `string`? (Default is `somethingdifferent`)"); err != nil {
 					return err
 				}
 
@@ -310,11 +311,19 @@ func Test_start_pipeline_interactive(t *testing.T) {
 					return err
 				}
 
-				if _, err := c.ExpectString("Value of param `rev-param` ?"); err != nil {
+				if _, err := c.ExpectString("Value for param `rev-param` of type `string`? (Default is `revision`)"); err != nil {
 					return err
 				}
 
-				if _, err := c.SendLine("test2"); err != nil {
+				if _, err := c.SendLine("test1"); err != nil {
+					return err
+				}
+
+				if _, err := c.ExpectString("Value for param `array-param` of type `array`? (Default is `revision1,revision2`)"); err != nil {
+					return err
+				}
+
+				if _, err := c.SendLine("test2, test3"); err != nil {
 					return err
 				}
 
