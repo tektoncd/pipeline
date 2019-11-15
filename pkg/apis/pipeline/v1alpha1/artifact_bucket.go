@@ -19,48 +19,15 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
-)
-
-const (
-	// BucketConfigName is the name of the configmap containing all
-	// customizations for the storage bucket.
-	BucketConfigName = "config-artifact-bucket"
-
-	// BucketLocationKey is the name of the configmap entry that specifies
-	// loction of the bucket.
-	BucketLocationKey = "location"
-
-	// BucketServiceAccountSecretName is the name of the configmap entry that specifies
-	// the name of the secret that will provide the servie account with bucket access.
-	// This secret must  have a key called serviceaccount that will have a value with
-	// the service account with access to the bucket
-	BucketServiceAccountSecretName = "bucket.service.account.secret.name"
-
-	// BucketServiceAccountSecretKey is the name of the configmap entry that specifies
-	// the secret key that will have a value with the service account json with access
-	// to the bucket
-	BucketServiceAccountSecretKey = "bucket.service.account.secret.key"
-
-	// BucketServiceAccountFieldName is the name of the configmap entry that specifies
-	// the field name that should be used for the service account.
-	// Valid values: GOOGLE_APPLICATION_CREDENTIALS, BOTO_CONFIG. Defaults to GOOGLE_APPLICATION_CREDENTIALS.
-	BucketServiceAccountFieldName = "bucket.service.account.field.name"
-)
-
-const (
-	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
-	ArtifactStorageBucketType = "bucket"
-
-	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
-	ArtifactStoragePVCType = "pvc"
 )
 
 // For some reason gosec thinks this string has enough entropy to be a potential secret.
 // The nosec comment disables it for this line.
 /* #nosec */
-var secretVolumeMountPath = "/var/bucketsecret"
+const secretVolumeMountPath = "/var/bucketsecret"
 
 // ArtifactBucket contains the Storage bucket configuration defined in the
 // Bucket config map.
@@ -75,7 +42,7 @@ type ArtifactBucket struct {
 
 // GetType returns the type of the artifact storage
 func (b *ArtifactBucket) GetType() string {
-	return ArtifactStorageBucketType
+	return pipeline.ArtifactStorageBucketType
 }
 
 // StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage
