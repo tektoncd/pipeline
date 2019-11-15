@@ -131,7 +131,7 @@ func (c *FakePipelineRuns) DeleteCollection(options *v1.DeleteOptions, listOptio
 // Patch applies the patch and returns the patched pipelineRun.
 func (c *FakePipelineRuns) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PipelineRun, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(pipelinerunsResource, c.ns, name, data, subresources...), &v1alpha1.PipelineRun{})
+		Invokes(testing.NewPatchSubresourceAction(pipelinerunsResource, c.ns, name, pt, data, subresources...), &v1alpha1.PipelineRun{})
 
 	if obj == nil {
 		return nil, err

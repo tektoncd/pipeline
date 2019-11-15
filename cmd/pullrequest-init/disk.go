@@ -17,12 +17,16 @@ limitations under the License.
 package main
 
 import (
+	"encoding/gob"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/jenkins-x/go-scm/scm"
 )
 
 // This file contains functions used to write a PR to disk. The representation is as follows:
@@ -40,8 +44,23 @@ import (
 
 // Filenames for labels and statuses are URL encoded for safety.
 
-// ToDisk converts a PullRequest object to an on-disk representation at the specified path.
-func ToDisk(pr *PullRequest, path string) error {
+const (
+	manifestPath = ".MANIFEST"
+)
+
+// Resource represents a complete SCM resource that should be recorded to disk.
+type Resource struct {
+	PR       *scm.PullRequest
+	Status   *scm.CombinedStatus
+	Comments []*scm.Comment
+
+	// Manifests contain data about the resource when it was written to disk.
+	Manifests map[string]Manifest
+}
+
+// ToDisk converts a PullRequest object to an on-disk representation at the
+// specified path. When written, the underlying Manifests
+func ToDisk(r *Resource, path string) error {
 	labelsPath := filepath.Join(path, "labels")
 	commentsPath := filepath.Join(path, "comments")
 	statusesPath := filepath.Join(path, "status")
@@ -54,59 +73,71 @@ func ToDisk(pr *PullRequest, path string) error {
 	}
 
 	// Start with comments
-	if err := commentsToDisk(commentsPath, pr.Comments); err != nil {
+	if err := commentsToDisk(commentsPath, r.Comments); err != nil {
 		return err
 	}
 
 	// Now labels
-	if err := labelsToDisk(labelsPath, pr.Labels); err != nil {
+	if err := labelsToDisk(labelsPath, r.PR.Labels); err != nil {
 		return err
 	}
 
 	// Now status
-	if err := statusToDisk(statusesPath, pr.Statuses); err != nil {
+	if err := statusToDisk(statusesPath, r.Status.Statuses); err != nil {
+		log.Print(err)
+
 		return err
 	}
 
 	// Now refs
-	if err := refToDisk("head", path, pr.Head); err != nil {
+	if err := refToDisk("head", path, r.PR.Head); err != nil {
 		return err
 	}
-	if err := refToDisk("base", path, pr.Base); err != nil {
+	if err := refToDisk("base", path, r.PR.Base); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func commentsToDisk(path string, comments []*Comment) error {
+func commentsToDisk(path string, comments []*scm.Comment) error {
+	manifest := Manifest{}
 	for _, c := range comments {
-		commentPath := filepath.Join(path, strconv.FormatInt(c.ID, 10)+".json")
+		id := strconv.Itoa(c.ID)
+		commentPath := filepath.Join(path, id+".json")
 		b, err := json.Marshal(c)
 		if err != nil {
 			return err
 		}
-		if err := ioutil.WriteFile(commentPath, b, 0700); err != nil {
+		if err := ioutil.WriteFile(commentPath, b, 0600); err != nil {
 			return err
 		}
+		manifest[id] = true
 	}
-	return nil
+
+	// Create a manifest to keep track of the comments that existed when the
+	// resource was initialized. This is used to verify that a comment that
+	// doesn't exist on disk was actually deleted by the user and not newly
+	// created during upload.
+	return manifestToDisk(manifest, filepath.Join(path, manifestPath))
 }
 
-func labelsToDisk(path string, labels []*Label) error {
+func labelsToDisk(path string, labels []*scm.Label) error {
+	manifest := Manifest{}
 	for _, l := range labels {
-		name := url.QueryEscape(l.Text)
+		name := url.QueryEscape(l.Name)
 		labelPath := filepath.Join(path, name)
-		if err := ioutil.WriteFile(labelPath, []byte{}, 0700); err != nil {
+		if err := ioutil.WriteFile(labelPath, []byte{}, 0600); err != nil {
 			return err
 		}
+		manifest[name] = true
 	}
-	return nil
+	return manifestToDisk(manifest, filepath.Join(path, manifestPath))
 }
 
-func statusToDisk(path string, statuses []*Status) error {
+func statusToDisk(path string, statuses []*scm.Status) error {
 	for _, s := range statuses {
-		statusName := url.QueryEscape(s.ID) + ".json"
+		statusName := url.QueryEscape(s.Label) + ".json"
 		statusPath := filepath.Join(path, statusName)
 		b, err := json.Marshal(s)
 		if err != nil {
@@ -119,7 +150,7 @@ func statusToDisk(path string, statuses []*Status) error {
 	return nil
 }
 
-func refToDisk(name, path string, r *GitReference) error {
+func refToDisk(name, path string, r scm.PullRequestBranch) error {
 	b, err := json.Marshal(r)
 	if err != nil {
 		return err
@@ -128,112 +159,162 @@ func refToDisk(name, path string, r *GitReference) error {
 }
 
 // FromDisk outputs a PullRequest object from an on-disk representation at the specified path.
-func FromDisk(path string) (*PullRequest, error) {
-	labelsPath := filepath.Join(path, "labels")
-	commentsPath := filepath.Join(path, "comments")
-	statusesPath := filepath.Join(path, "status")
-
-	pr := PullRequest{}
+func FromDisk(path string) (*Resource, error) {
+	r := &Resource{
+		PR:        &scm.PullRequest{},
+		Manifests: make(map[string]Manifest),
+	}
 
 	var err error
+	var manifest Manifest
 
-	// Start with comments
-	pr.Comments, err = commentsFromDisk(commentsPath)
+	commentsPath := filepath.Join(path, "comments")
+	r.Comments, manifest, err = commentsFromDisk(commentsPath)
+	if err != nil {
+		return nil, err
+	}
+	r.Manifests["comments"] = manifest
+
+	labelsPath := filepath.Join(path, "labels")
+	r.PR.Labels, manifest, err = labelsFromDisk(labelsPath)
+	if err != nil {
+		return nil, err
+	}
+	r.Manifests["labels"] = manifest
+
+	statusesPath := filepath.Join(path, "status")
+	r.Status, err = statusesFromDisk(statusesPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Now Labels
-	pr.Labels, err = labelsFromDisk(labelsPath)
+	r.PR.Base, err = refFromDisk(path, "base.json")
+	if err != nil {
+		return nil, err
+	}
+	r.PR.Head, err = refFromDisk(path, "head.json")
 	if err != nil {
 		return nil, err
 	}
 
-	// Now statuses
-	pr.Statuses, err = statusesFromDisk(statusesPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Finally refs
-
-	pr.Base, err = refFromDisk(path, "base.json")
-	if err != nil {
-		return nil, err
-	}
-	pr.Head, err = refFromDisk(path, "head.json")
-	if err != nil {
-		return nil, err
-	}
-	return &pr, nil
+	return r, nil
 }
 
-func commentsFromDisk(path string) ([]*Comment, error) {
-	fis, err := ioutil.ReadDir(path)
+// Manifest is a list of sub-resources that exist within the PR resource to
+// determine whether an item existed when the resource was initialized.
+type Manifest map[string]bool
+
+func manifestToDisk(manifest Manifest, path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := gob.NewEncoder(f)
+	return enc.Encode(manifest)
+}
+
+func manifestFromDisk(path string) (Manifest, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	comments := []*Comment{}
+	defer f.Close()
+
+	m := Manifest{}
+	dec := gob.NewDecoder(f)
+	if err := dec.Decode(&m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func commentsFromDisk(path string) ([]*scm.Comment, Manifest, error) {
+	fis, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	comments := []*scm.Comment{}
 	for _, fi := range fis {
+		if fi.Name() == manifestPath {
+			continue
+		}
 		b, err := ioutil.ReadFile(filepath.Join(path, fi.Name()))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		comment := Comment{}
+		comment := scm.Comment{}
 		if err := json.Unmarshal(b, &comment); err != nil {
 			// The comment might be plain text.
-			comment.Text = string(b)
+			comment.Body = string(b)
 		}
 		comments = append(comments, &comment)
 	}
-	return comments, nil
+
+	manifest, err := manifestFromDisk(filepath.Join(path, manifestPath))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return comments, manifest, nil
 }
 
-func labelsFromDisk(path string) ([]*Label, error) {
+func labelsFromDisk(path string) ([]*scm.Label, Manifest, error) {
 	fis, err := ioutil.ReadDir(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	labels := []*Label{}
+	labels := []*scm.Label{}
 	for _, fi := range fis {
+		if fi.Name() == manifestPath {
+			continue
+		}
 		text, err := url.QueryUnescape(fi.Name())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		labels = append(labels, &Label{Text: text})
+		labels = append(labels, &scm.Label{Name: text})
 	}
-	return labels, nil
+
+	manifest, err := manifestFromDisk(filepath.Join(path, manifestPath))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return labels, manifest, nil
 }
 
-func statusesFromDisk(path string) ([]*Status, error) {
+func statusesFromDisk(path string) (*scm.CombinedStatus, error) {
 	fis, err := ioutil.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
 
-	statuses := []*Status{}
+	statuses := []*scm.Status{}
 	for _, fi := range fis {
 		b, err := ioutil.ReadFile(filepath.Join(path, fi.Name()))
 		if err != nil {
 			return nil, err
 		}
-		status := Status{}
+		status := scm.Status{}
 		if err := json.Unmarshal(b, &status); err != nil {
 			return nil, err
 		}
 		statuses = append(statuses, &status)
 	}
-	return statuses, nil
+	return &scm.CombinedStatus{
+		Statuses: statuses,
+	}, nil
 }
 
-func refFromDisk(path, name string) (*GitReference, error) {
+func refFromDisk(path, name string) (scm.PullRequestBranch, error) {
 	b, err := ioutil.ReadFile(filepath.Join(path, name))
 	if err != nil {
-		return nil, err
+		return scm.PullRequestBranch{}, err
 	}
-	ref := GitReference{}
+	ref := scm.PullRequestBranch{}
 	if err := json.Unmarshal(b, &ref); err != nil {
-		return nil, err
+		return scm.PullRequestBranch{}, err
 	}
-	return &ref, nil
+	return ref, nil
 }

@@ -22,7 +22,7 @@ import (
 	"context"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
-	factory "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/factory"
+	factory "github.com/tektoncd/pipeline/pkg/client/injection/informers/factory"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 	logging "knative.dev/pkg/logging"
@@ -45,8 +45,8 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 func Get(ctx context.Context) v1alpha1.PipelineRunInformer {
 	untyped := ctx.Value(Key{})
 	if untyped == nil {
-		logging.FromContext(ctx).Fatalf(
-			"Unable to fetch %T from context.", (v1alpha1.PipelineRunInformer)(nil))
+		logging.FromContext(ctx).Panic(
+			"Unable to fetch github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1.PipelineRunInformer from context.")
 	}
 	return untyped.(v1alpha1.PipelineRunInformer)
 }

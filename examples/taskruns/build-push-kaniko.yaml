@@ -1,33 +1,17 @@
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-image-leeroy-web
+  name: skaffold-image-leeroy-web-build-push-kaniko
 spec:
   type: image
   params:
   - name: url
-    value: gcr.io/christiewilson-catfactory/leeroy-web # Replace this URL with $KO_DOCKER_REPO
----
-# This demo modifies the cluster (deploys to it) you must use a service
-# account with permission to admin the cluster (or make your default user an admin
-# of the `default` namespace with default-cluster-admin.
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: default-cluster-admin
-subjects:
-  - kind: ServiceAccount
-    name: default
-    namespace: default
-roleRef:
-  kind: ClusterRole
-  name: cluster-admin
-  apiGroup: rbac.authorization.k8s.io
+    value: localhost:5000/leeroy-web
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
-  name: skaffold-git
+  name: skaffold-git-build-push-kaniko
 spec:
   type: git
   params:
@@ -36,7 +20,7 @@ spec:
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
-#Builds an image via kaniko and pushes it to registry.
+# Builds an image via kaniko and pushes it to registry.
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
@@ -59,7 +43,7 @@ spec:
       type: image
   steps:
   - name: build-and-push
-    image: gcr.io/kaniko-project/executor:v0.9.0
+    image: gcr.io/kaniko-project/executor:v0.13.0
     # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
     env:
     - name: "DOCKER_CONFIG"
@@ -70,6 +54,12 @@ spec:
     - --dockerfile=$(inputs.params.pathToDockerFile)
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
+    - --oci-layout-path=$(inputs.resources.builtImage.path)
+    securityContext:
+      runAsUser: 0
+  sidecars:
+    - image: registry
+      name: registry
 ---
 apiVersion: tekton.dev/v1alpha1
 kind: TaskRun
@@ -82,7 +72,7 @@ spec:
     resources:
     - name: workspace
       resourceRef:
-        name: skaffold-git
+        name: skaffold-git-build-push-kaniko
     params:
     - name: pathToDockerFile
       value: Dockerfile
@@ -92,4 +82,4 @@ spec:
     resources:
     - name: builtImage
       resourceRef:
-        name: skaffold-image-leeroy-web
+        name: skaffold-image-leeroy-web-build-push-kaniko

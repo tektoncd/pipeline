@@ -25,7 +25,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -46,6 +45,7 @@ func getBoundResource(resourceName string, boundResources []v1alpha1.TaskResourc
 // 3. If resource has paths declared then fresh copy of resource is not fetched
 func AddInputResource(
 	kubeclient kubernetes.Interface,
+	images pipeline.Images,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
@@ -60,12 +60,13 @@ func AddInputResource(
 
 	pvcName := taskRun.GetPipelineRunPVCName()
 	mountPVC := false
+	mountSecrets := false
 
 	prNameFromLabel := taskRun.Labels[pipeline.GroupName+pipeline.PipelineRunLabelKey]
 	if prNameFromLabel == "" {
 		prNameFromLabel = pvcName
 	}
-	as, err := artifacts.GetArtifactStorage(prNameFromLabel, kubeclient, logger)
+	as, err := artifacts.GetArtifactStorage(images, prNameFromLabel, kubeclient, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +86,7 @@ func AddInputResource(
 		dPath := destinationPath(input.Name, input.TargetPath)
 		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
 		// to the desired destination directory, as long as the resource exports output to be copied
-		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
 				cpSteps := as.GetCopyFromStorageToSteps(boundResource.Name, path, dPath)
 				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
@@ -93,7 +94,7 @@ func AddInputResource(
 					for _, s := range cpSteps {
 						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}
 						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
-							v1alpha1.CreateDirStep(boundResource.Name, dPath),
+							v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, dPath),
 							s)
 					}
 				} else {
@@ -105,41 +106,26 @@ func AddInputResource(
 		// source is copied from previous task so skip fetching download container definition
 		if len(copyStepsFromPrevTasks) > 0 {
 			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
-			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
+			mountSecrets = true
 		} else {
 			// Allow the resource to mutate the task.
 			modifier, err := resource.GetInputTaskModifier(taskSpec, dPath)
 			if err != nil {
 				return nil, err
 			}
-			v1alpha1.ApplyTaskModifier(taskSpec, modifier)
+			if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+				return nil, xerrors.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
+			}
 		}
 	}
 
 	if mountPVC {
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 	}
+	if mountSecrets {
+		taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
+	}
 	return taskSpec, nil
-}
-
-func getResource(r *v1alpha1.TaskResourceBinding, getter GetResource) (*v1alpha1.PipelineResource, error) {
-	// Check both resource ref or resource Spec are not present. Taskrun webhook should catch this in validation error.
-	if r.ResourceRef.Name != "" && r.ResourceSpec != nil {
-		return nil, xerrors.New("Both ResourseRef and ResourceSpec are defined. Expected only one")
-	}
-
-	if r.ResourceRef.Name != "" {
-		return getter(r.ResourceRef.Name)
-	}
-	if r.ResourceSpec != nil {
-		return &v1alpha1.PipelineResource{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: r.Name,
-			},
-			Spec: *r.ResourceSpec,
-		}, nil
-	}
-	return nil, xerrors.New("Neither ResourseRef not ResourceSpec is defined")
 }
 
 func destinationPath(name, path string) string {

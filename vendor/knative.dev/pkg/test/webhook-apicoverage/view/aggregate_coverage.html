@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<style type="text/css">
+  <!--
+
+  .tab { margin-left: 50px; }
+
+  .styleheader {color: white; size: A4}
+
+  .values {color: yellow; size: A3}
+
+  table, th, td { border: 1px solid white; text-align: center}
+
+  .braces {color: white; size: A3}
+  -->
+</style>
+<body style="background-color:rgb(0,0,0); font-family: Arial">
+<table style="width: 30%">
+  <tr class="styleheader"><td>Total Fields</td><td>{{ .TotalFields }}</td></tr>
+  <tr class="styleheader"><td>Covered Fields</td><td>{{ .CoveredFields }}</td></tr>
+  <tr class="styleheader"><td>Ignored Fields</td><td>{{ .IgnoredFields }}</td></tr>
+  <tr class="styleheader"><td>Coverage Percentage</td><td>{{ .PercentCoverage }}</td></tr>
+</table>
+</body>
+</html>

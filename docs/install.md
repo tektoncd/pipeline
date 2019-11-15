@@ -51,11 +51,11 @@ To add the Tekton Pipelines component to an existing cluster:
    and its dependencies:
 
    ```bash
-   kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
+   kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
    ```
 
    _(Previous versions will be available at `previous/$VERSION_NUMBER`, e.g.
-   https://storage.googleapis.com/tekton-releases/previous/0.2.0/release.yaml.)_
+   https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.2.0/release.yaml.)_
 
 1. Run the
    [`kubectl get`](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#get)
@@ -118,31 +118,87 @@ for more information_
 ### How are resources shared between tasks
 
 Pipelines need a way to share resources between tasks. The alternatives are a
-[Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+[Persistent volume](https://kubernetes.io/docs/concepts/storage/persistent-volumes/),
+an [S3 Bucket](https://aws.amazon.com/s3/)
 or a [GCS storage bucket](https://cloud.google.com/storage/)
 
 The PVC option can be configured using a ConfigMap with the name
 `config-artifact-pvc` and the following attributes:
 
-- size: the size of the volume (5Gi by default)
-- storageClassName: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
+- `size`: the size of the volume (5Gi by default)
+- `storageClassName`: the [storage class](https://kubernetes.io/docs/concepts/storage/storage-classes/) of the volume (default storage class by default). The possible values depend on the cluster configuration and the underlying infrastructure provider.
 
-The GCS storage bucket can be configured using a ConfigMap with the name
+The GCS storage bucket or the S3 bucket can be configured using a ConfigMap with the name
 `config-artifact-bucket` with the following attributes:
 
-- location: the address of the bucket (for example gs://mybucket)
-- bucket.service.account.secret.name: the name of the secret that will contain
+- `location`: the address of the bucket (for example gs://mybucket or s3://mybucket)
+- `bucket.service.account.secret.name`: the name of the secret that will contain
   the credentials for the service account with access to the bucket
-- bucket.service.account.secret.key: the key in the secret with the required
+- `bucket.service.account.secret.key`: the key in the secret with the required
   service account json.
 - The bucket is recommended to be configured with a retention policy after which
   files will be deleted.
+- `bucket.service.account.field.name`: the name of the environment variable to use when specifying the
+  secret path. Defaults to `GOOGLE_APPLICATION_CREDENTIALS`. Set to `BOTO_CONFIG` if using S3 instead of GCS.
+
+*Note:* When using an S3 bucket, there is a restriction that the bucket is located in the us-east-1 region.
+This is a limitation coming from using [gsutil](https://cloud.google.com/storage/docs/gsutil) with a boto configuration
+behind the scene to access the S3 bucket.
+
+An typical configuration to use an S3 bucket is available below :
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tekton-storage
+type: kubernetes.io/opaque
+stringData:
+  boto-config: |
+    [Credentials]
+    aws_access_key_id = AWS_ACCESS_KEY_ID
+    aws_secret_access_key = AWS_SECRET_ACCESS_KEY
+    [s3]
+    host = s3.us-east-1.amazonaws.com
+    [Boto]
+    https_validate_certificates = True
+---
+apiVersion: v1
+data: null
+kind: ConfigMap
+metadata:
+  name: config-artifact-pvc
+data:
+  location: s3://mybucket
+  bucket.service.account.secret.name: tekton-storage
+  bucket.service.account.secret.key: boto-config
+  bucket.service.account.field.name: BOTO_CONFIG
+```
 
 Both options provide the same functionality to the pipeline. The choice is based
 on the infrastructure used, for example in some Kubernetes platforms, the
 creation of a persistent volume could be slower than uploading/downloading files
 to a bucket, or if the the cluster is running in multiple zones, the access to
 the persistent volume can fail.
+
+### Overriding  default ServiceAccount used for TaskRun and PipelineRun
+
+The ConfigMap `config-defaults` can be used to override default service account
+e.g. to override the default service account (`default`) to `tekton` apply the
+following
+
+```yaml
+
+### config-defaults.yaml
+apiVersion: v1
+kind: ConfigMap
+data:
+  default-service-account: "tekton"
+
+```
+
+*NOTE:* The `_example` key contains of the keys that can be overriden and their
+default values.
 
 ## Custom Releases
 

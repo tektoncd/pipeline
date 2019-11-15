@@ -88,12 +88,12 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		name: "PipelineRef upgrade context",
 		in: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 			},
 		},
 		want: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 				Timeout:     &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 		},
@@ -102,12 +102,12 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		name: "PipelineRef default config context",
 		in: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 			},
 		},
 		want: &v1alpha1.PipelineRun{
 			Spec: v1alpha1.PipelineRunSpec{
-				PipelineRef: v1alpha1.PipelineRef{Name: "foo"},
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
 				Timeout:     &metav1.Duration{Duration: 5 * time.Minute},
 			},
 		},
@@ -119,6 +119,33 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				},
 				Data: map[string]string{
 					"default-timeout-minutes": "5",
+				},
+			})
+			return s.ToContext(ctx)
+		},
+	}, {
+		name: "PipelineRef default config context with sa",
+		in: &v1alpha1.PipelineRun{
+			Spec: v1alpha1.PipelineRunSpec{
+				PipelineRef: &v1alpha1.PipelineRef{Name: "foo"},
+			},
+		},
+		want: &v1alpha1.PipelineRun{
+			Spec: v1alpha1.PipelineRunSpec{
+				PipelineRef:        &v1alpha1.PipelineRef{Name: "foo"},
+				Timeout:            &metav1.Duration{Duration: 5 * time.Minute},
+				ServiceAccountName: "tekton",
+			},
+		},
+		wc: func(ctx context.Context) context.Context {
+			s := config.NewStore(logtesting.TestLogger(t))
+			s.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: config.DefaultsConfigName,
+				},
+				Data: map[string]string{
+					"default-timeout-minutes": "5",
+					"default-service-account": "tekton",
 				},
 			})
 			return s.ToContext(ctx)

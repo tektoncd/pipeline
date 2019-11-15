@@ -18,6 +18,7 @@ package taskrun
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -34,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/sidecars"
 	"github.com/tektoncd/pipeline/pkg/status"
+
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -55,7 +57,6 @@ const (
 
 	// imageDigestExporterContainerName defines the name of the container that will collect the
 	// built images digest
-	imageDigestExporterContainerName = "step-image-digest-exporter"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -71,6 +72,7 @@ type Reconciler struct {
 	tracker           tracker.Interface
 	cache             *entrypoint.Cache
 	timeoutHandler    *reconciler.TimeoutSet
+	metrics           *Recorder
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -80,6 +82,10 @@ var _ controller.Reconciler = (*Reconciler)(nil)
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
 func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
+	// In case of reconcile errors, we store the error in a multierror, attempt
+	// to update, and return the original error combined with any update error
+	var merr error
+
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
@@ -94,7 +100,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.Logger.Infof("task run %q in work queue no longer exists", key)
 		return nil
 	} else if err != nil {
-		c.Logger.Errorf("Error retreiving TaskRun %q: %s", name, err)
+		c.Logger.Errorf("Error retrieving TaskRun %q: %s", name, err)
 		return err
 	}
 
@@ -111,6 +117,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	if tr.IsDone() {
+		c.Logger.Infof("taskrun done : %s \n", tr.Name)
 		var merr *multierror.Error
 		// Try to send cloud events first
 		cloudEventErr := cloudevent.SendCloudEvents(tr, c.cloudEventClient, c.Logger)
@@ -126,7 +133,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.timeoutHandler.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
-			err = sidecars.Stop(pod, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Update)
+			err = sidecars.Stop(pod, c.Images.NopImage, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Update)
 		} else if errors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}
@@ -134,37 +141,64 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 			c.Logger.Errorf("Error stopping sidecars for TaskRun %q: %v", name, err)
 			merr = multierror.Append(merr, err)
 		}
+
+		go func(metrics *Recorder) {
+			err := metrics.DurationAndCount(tr)
+			if err != nil {
+				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			}
+			err = metrics.RecordPodLatency(pod, tr)
+			if err != nil {
+				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
+
 		return merr.ErrorOrNil()
 	}
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
 	if err := c.reconcile(ctx, tr); err != nil {
 		c.Logger.Errorf("Reconcile error: %v", err.Error())
-		return err
+		merr = multierror.Append(merr, err)
 	}
-	return c.updateStatusLabelsAndAnnotations(tr, original)
+	return multierror.Append(merr, c.updateStatusLabelsAndAnnotations(tr, original)).ErrorOrNil()
 }
 
 func (c *Reconciler) updateStatusLabelsAndAnnotations(tr, original *v1alpha1.TaskRun) error {
-	var err error
-	if equality.Semantic.DeepEqual(original.Status, tr.Status) {
+	var updated bool
+
+	if !equality.Semantic.DeepEqual(original.Status, tr.Status) {
 		// If we didn't change anything then don't call updateStatus.
 		// This is important because the copy we loaded from the informer's
 		// cache may be stale and we don't want to overwrite a prior update
 		// to status with this stale state.
-	} else if _, err := c.updateStatus(tr); err != nil {
-		c.Logger.Warn("Failed to update taskRun status", zap.Error(err))
-		return err
+		if _, err := c.updateStatus(tr); err != nil {
+			c.Logger.Warn("Failed to update taskRun status", zap.Error(err))
+			return err
+		}
+		updated = true
 	}
+
 	// Since we are using the status subresource, it is not possible to update
 	// the status and labels/annotations simultaneously.
-	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) {
+	if !reflect.DeepEqual(original.ObjectMeta.Labels, tr.ObjectMeta.Labels) || !reflect.DeepEqual(original.ObjectMeta.Annotations, tr.ObjectMeta.Annotations) {
 		if _, err := c.updateLabelsAndAnnotations(tr); err != nil {
 			c.Logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
 			return err
 		}
+		updated = true
 	}
-	return err
+
+	if updated {
+		go func(metrics *Recorder) {
+			err := metrics.RunningTaskRuns(c.taskRunLister)
+			if err != nil {
+				c.Logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
+	}
+
+	return nil
 }
 
 func (c *Reconciler) getTaskFunc(tr *v1alpha1.TaskRun) (resources.GetTask, v1alpha1.TaskKind) {
@@ -312,7 +346,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 
 	status.SortTaskRunStepOrder(tr.Status.Steps, taskSpec.Steps)
 
-	updateTaskRunResourceResult(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
+	updateTaskRunResourceResult(tr, pod, c.Logger)
 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -358,17 +392,29 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 	c.Logger.Errorf("Failed to create build pod for task %q: %v", tr.Name, err)
 }
 
-func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLister listers.PipelineResourceLister, kubeclient kubernetes.Interface, logger *zap.SugaredLogger) {
-	if resources.TaskRunHasOutputImageResource(resourceLister.PipelineResources(taskRun.Namespace).Get, taskRun) && taskRun.IsSuccessful() {
+func updateTaskRunResourceResult(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, logger *zap.SugaredLogger) {
+	if taskRun.IsSuccessful() {
 		for _, cs := range pod.Status.ContainerStatuses {
-			if strings.HasPrefix(cs.Name, imageDigestExporterContainerName) {
-				err := resources.UpdateTaskRunStatusWithResourceResult(taskRun, []byte(cs.State.Terminated.Message))
-				if err != nil {
-					logger.Errorf("Error getting output from image-digest-exporter for %s/%s: %s", taskRun.Name, taskRun.Namespace, err)
+			if cs.State.Terminated != nil {
+				msg := cs.State.Terminated.Message
+				if msg != "" {
+					if err := updateTaskRunStatusWithResourceResult(taskRun, []byte(msg)); err != nil {
+						logger.Infof("No resource result from %s for %s/%s: %s", cs.Name, taskRun.Name, taskRun.Namespace, err)
+					}
 				}
 			}
 		}
 	}
+}
+
+// updateTaskRunStatusWithResourceResult if there is an update to the outout image resource, add to taskrun status result
+func updateTaskRunStatusWithResourceResult(taskRun *v1alpha1.TaskRun, logContent []byte) error {
+	results := []v1alpha1.PipelineResourceResult{}
+	if err := json.Unmarshal(logContent, &results); err != nil {
+		return xerrors.Errorf("Failed to unmarshal output image exporter JSON output: %w", err)
+	}
+	taskRun.Status.ResourcesResult = append(taskRun.Status.ResourcesResult, results...)
+	return nil
 }
 
 func (c *Reconciler) updateStatus(taskrun *v1alpha1.TaskRun) (*v1alpha1.TaskRun, error) {
@@ -417,12 +463,12 @@ func (c *Reconciler) updateReady(pod *corev1.Pod) error {
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
 	ts := rtr.TaskSpec.DeepCopy()
-	inputResources, err := resourceImplBinding(rtr.Inputs)
+	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)
 	if err != nil {
 		c.Logger.Errorf("Failed to initialize input resources: %v", err)
 		return nil, err
 	}
-	outputResources, err := resourceImplBinding(rtr.Outputs)
+	outputResources, err := resourceImplBinding(rtr.Outputs, c.Images)
 	if err != nil {
 		c.Logger.Errorf("Failed to initialize output resources: %v", err)
 		return nil, err
@@ -430,25 +476,25 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 
 	// Get actual resource
 
-	err = resources.AddOutputImageDigestExporter(tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
+	err = resources.AddOutputImageDigestExporter(c.Images.ImageDigestExporterImage, tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output image resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	ts, err = resources.AddInputResource(c.KubeClientSet, rtr.TaskName, ts, tr, inputResources, c.Logger)
+	ts, err = resources.AddInputResource(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	ts, err = resources.AddOutputResources(c.KubeClientSet, rtr.TaskName, ts, tr, outputResources, c.Logger)
+	ts, err = resources.AddOutputResources(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources, c.Logger)
 	if err != nil {
 		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
 	}
 
-	ts, err = createRedirectedTaskSpec(c.KubeClientSet, ts, tr, c.cache, c.Logger)
+	ts, err = createRedirectedTaskSpec(c.KubeClientSet, c.Images.EntryPointImage, ts, tr, c.cache, c.Logger)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't create redirected TaskSpec: %w", err)
 	}
@@ -464,7 +510,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
-	pod, err := resources.MakePod(tr, *ts, c.KubeClientSet)
+	pod, err := resources.MakePod(c.Images, tr, *ts, c.KubeClientSet)
 	if err != nil {
 		return nil, xerrors.Errorf("translating Build to Pod: %w", err)
 	}
@@ -476,7 +522,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 // an entrypoint cache creates a build where all entrypoints are switched to
 // be the entrypoint redirector binary. This function assumes that it receives
 // its own copy of the TaskSpec and modifies it freely
-func createRedirectedTaskSpec(kubeclient kubernetes.Interface, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*v1alpha1.TaskSpec, error) {
+func createRedirectedTaskSpec(kubeclient kubernetes.Interface, entrypointImage string, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*v1alpha1.TaskSpec, error) {
 	// RedirectSteps the entrypoint in each container so that we can use our custom
 	// entrypoint which copies logs to the volume
 	err := entrypoint.RedirectSteps(cache, ts.Steps, kubeclient, tr, logger)
@@ -486,7 +532,7 @@ func createRedirectedTaskSpec(kubeclient kubernetes.Interface, ts *v1alpha1.Task
 	// Add the step which will copy the entrypoint into the volume
 	// we are going to be using, so that all of the steps will have
 	// access to it.
-	entrypoint.AddCopyStep(ts)
+	entrypoint.AddCopyStep(entrypointImage, ts)
 
 	// Add the volume used for storing the binary and logs
 	ts.Volumes = append(ts.Volumes, corev1.Volume{
@@ -549,10 +595,10 @@ func isExceededResourceQuotaError(err error) bool {
 }
 
 // resourceImplBinding maps pipeline resource names to the actual resource type implementations
-func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource) (map[string]v1alpha1.PipelineResourceInterface, error) {
+func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images pipeline.Images) (map[string]v1alpha1.PipelineResourceInterface, error) {
 	p := make(map[string]v1alpha1.PipelineResourceInterface)
 	for rName, r := range resources {
-		i, err := v1alpha1.ResourceFromType(r)
+		i, err := v1alpha1.ResourceFromType(r, images)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
 		}

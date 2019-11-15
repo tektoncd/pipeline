@@ -19,6 +19,7 @@ package config
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"knative.dev/pkg/configmap"
@@ -42,17 +43,20 @@ func ToContext(ctx context.Context, c *Config) context.Context {
 // +k8s:deepcopy-gen=false
 type Store struct {
 	*configmap.UntypedStore
+
+	images pipeline.Images
 }
 
-func NewStore(logger configmap.Logger) *Store {
+func NewStore(images pipeline.Images, logger configmap.Logger) *Store {
 	return &Store{
 		UntypedStore: configmap.NewUntypedStore(
 			"pipelinerun",
 			logger,
 			configmap.Constructors{
-				v1alpha1.BucketConfigName: artifacts.NewArtifactBucketConfigFromConfigMap,
+				v1alpha1.BucketConfigName: artifacts.NewArtifactBucketConfigFromConfigMap(images),
 			},
 		),
+		images: images,
 	}
 }
 
@@ -65,7 +69,9 @@ func (s *Store) Load() *Config {
 	if ep == nil {
 		return &Config{
 			ArtifactBucket: &v1alpha1.ArtifactBucket{
-				Location: "",
+				Location:    "",
+				ShellImage:  s.images.ShellImage,
+				GsutilImage: s.images.GsutilImage,
 			},
 		}
 	}

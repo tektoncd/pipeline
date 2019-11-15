@@ -19,6 +19,7 @@ package resources
 import (
 	"path/filepath"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"go.uber.org/zap"
@@ -28,13 +29,6 @@ import (
 
 var (
 	outputDir = "/workspace/output/"
-
-	// allowedOutputResource checks if an output resource type produces
-	// an output that should be copied to the PVC
-	allowedOutputResources = map[v1alpha1.PipelineResourceType]bool{
-		v1alpha1.PipelineResourceTypeStorage: true,
-		v1alpha1.PipelineResourceTypeGit:     true,
-	}
 )
 
 // AddOutputResources reads the output resources and adds the corresponding container steps
@@ -51,6 +45,7 @@ var (
 // 2. If resource is declared in outputs only then the default is /output/resource_name
 func AddOutputResources(
 	kubeclient kubernetes.Interface,
+	images pipeline.Images,
 	taskName string,
 	taskSpec *v1alpha1.TaskSpec,
 	taskRun *v1alpha1.TaskRun,
@@ -65,7 +60,7 @@ func AddOutputResources(
 	taskSpec = taskSpec.DeepCopy()
 
 	pvcName := taskRun.GetPipelineRunPVCName()
-	as, err := artifacts.GetArtifactStorage(pvcName, kubeclient, logger)
+	as, err := artifacts.GetArtifactStorage(images, pvcName, kubeclient, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -89,13 +84,15 @@ func AddOutputResources(
 		}
 
 		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(boundResource.Name, sourcePath)}
+		mkdirSteps := []v1alpha1.Step{v1alpha1.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
 		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
 
-		if allowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
+		needsPvc := false
+		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []v1alpha1.Step
 			for _, dPath := range boundResource.Paths {
 				newSteps = append(newSteps, as.GetCopyToStorageFromSteps(resource.GetName(), sourcePath, dPath)...)
+				needsPvc = true
 			}
 			taskSpec.Steps = append(taskSpec.Steps, newSteps...)
 			taskSpec.Volumes = append(taskSpec.Volumes, as.GetSecretsVolumes()...)
@@ -106,8 +103,11 @@ func AddOutputResources(
 		if err != nil {
 			return nil, err
 		}
-		v1alpha1.ApplyTaskModifier(taskSpec, modifier)
+		if err := v1alpha1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+			return nil, xerrors.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
+		}
 
+		// Attach the PVC that will be used for `from` copying.
 		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
 			if pvcName == "" {
 				return taskSpec, nil
@@ -119,7 +119,9 @@ func AddOutputResources(
 					return taskSpec, nil
 				}
 			}
-			taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
+			if needsPvc {
+				taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
+			}
 		}
 	}
 	return taskSpec, nil

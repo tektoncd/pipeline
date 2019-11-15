@@ -127,7 +127,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 						primaryTerminated = true
 					}
 				}
-				if c.Name == sidecarContainerName {
+				if c.Name == fmt.Sprintf("sidecar-%s", sidecarContainerName) {
 					if c.State.Terminated == nil {
 						t.Errorf("Sidecar container has a nil Terminated status but non-nil is expected.")
 					} else {

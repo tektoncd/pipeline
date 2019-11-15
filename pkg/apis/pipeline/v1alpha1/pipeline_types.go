@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
 )
 
 // PipelineSpec defines the desired state of Pipeline.
@@ -40,9 +39,6 @@ type PipelineStatus struct {
 }
 
 // Check that Pipeline may be validated and defaulted.
-var _ apis.Validatable = (*Pipeline)(nil)
-var _ apis.Defaultable = (*Pipeline)(nil)
-
 // TaskKind defines the type of Task used by the pipeline.
 type TaskKind string
 
@@ -71,6 +67,18 @@ type Pipeline struct {
 	// controller.
 	// +optional
 	Status PipelineStatus `json:"status"`
+}
+
+func (p *Pipeline) PipelineMetadata() metav1.ObjectMeta {
+	return p.ObjectMeta
+}
+
+func (p *Pipeline) PipelineSpec() PipelineSpec {
+	return p.Spec
+}
+
+func (p *Pipeline) Copy() PipelineInterface {
+	return p.DeepCopy()
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
@@ -178,7 +186,7 @@ type PipelineTaskInputResource struct {
 type PipelineTaskOutputResource struct {
 	// Name is the name of the PipelineResource as declared by the Task.
 	Name string `json:"name"`
-	// Resource is the name of the DeclaredPipelienResource to use.
+	// Resource is the name of the DeclaredPipelineResource to use.
 	Resource string `json:"resource"`
 }
 

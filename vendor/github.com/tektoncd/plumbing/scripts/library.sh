@@ -33,8 +33,8 @@ fi
 # Useful environment variables
 [[ -n "${PROW_JOB_ID:-}" ]] && IS_PROW=1 || IS_PROW=0
 readonly IS_PROW
-readonly REPO_ROOT_DIR="$(git rev-parse --show-toplevel)"
-readonly REPO_NAME="$(basename ${REPO_ROOT_DIR})"
+readonly REPO_ROOT_DIR="${REPO_ROOT_DIR:-$(git rev-parse --show-toplevel 2> /dev/null)}"
+readonly REPO_NAME="${REPO_NAME:-$(basename ${REPO_ROOT_DIR} 2> /dev/null)}"
 
 # Set ARTIFACTS to an empty temp dir if unset
 if [[ -z "${ARTIFACTS:-}" ]]; then
@@ -310,23 +310,6 @@ function report_go_test() {
   return ${failed}
 }
 
-# Install the latest stable Tekton/serving in the current cluster.
-function start_latest_tekton_serving() {
-  header "Starting Tekton Serving"
-  subheader "Installing Istio"
-  echo "Running Istio CRD from ${TEKTON_ISTIO_CRD_YAML}"
-  kubectl apply -f ${TEKTON_ISTIO_CRD_YAML} || return 1
-  wait_until_batch_job_complete istio-system || return 1
-  echo "Installing Istio from ${TEKTON_ISTIO_YAML}"
-  kubectl apply -f ${TEKTON_ISTIO_YAML} || return 1
-  wait_until_pods_running istio-system || return 1
-  kubectl label namespace default istio-injection=enabled || return 1
-  subheader "Installing Tekton Serving"
-  echo "Installing Serving from ${TEKTON_SERVING_RELEASE}"
-  kubectl apply -f ${TEKTON_SERVING_RELEASE} || return 1
-  wait_until_pods_running tekton-serving || return 1
-}
-
 # Run a go tool, installing it first if necessary.
 # Parameters: $1 - tool package/dir for go get/install.
 #             $2 - tool to run.
@@ -455,3 +438,96 @@ function get_canonical_path() {
 
 readonly _PLUMBING_SCRIPTS_DIR="$(dirname $(get_canonical_path ${BASH_SOURCE[0]}))"
 readonly REPO_NAME_FORMATTED="Tekton $(capitalize ${REPO_NAME//-/})"
+
+# Helper functions to run YAML tests
+# Taken from tektoncd/pipeline test/e2e-common.sh
+function validate_run() {
+  local tests_finished=0
+  for i in {1..60}; do
+    local finished="$(kubectl get $1.tekton.dev --output=jsonpath='{.items[*].status.conditions[*].status}')"
+    if [[ ! "$finished" == *"Unknown"* ]]; then
+      tests_finished=1
+      break
+    fi
+    sleep 10
+  done
+
+  return ${tests_finished}
+}
+
+function check_results() {
+  local failed=0
+  results="$(kubectl get $1.tekton.dev --output=jsonpath='{range .items[*]}{.metadata.name}={.status.conditions[*].type}{.status.conditions[*].status}{" "}{end}')"
+  for result in ${results}; do
+    if [[ ! "${result,,}" == *"=succeededtrue" ]]; then
+      echo "ERROR: test ${result} but should be succeededtrue"
+      failed=1
+    fi
+  done
+
+  return ${failed}
+}
+
+function create_resources() {
+  local resource=$1
+  echo ">> Creating resources ${resource}"
+
+  # Applying the resources, either *taskruns or * *pipelineruns
+  for file in $(find ${REPO_ROOT_DIR}/examples/${resource}s/ -name *.yaml | sort); do
+    perl -p -e 's/gcr.io\/christiewilson-catfactory/$ENV{KO_DOCKER_REPO}/g' ${file} | ko apply -f - || return 1
+  done
+}
+
+function run_tests() {
+  local resource=$1
+
+  # Wait for tests to finish.
+  echo ">> Waiting for tests to finish for ${resource}"
+  if validate_run $resource; then
+    echo "ERROR: tests timed out"
+  fi
+
+  # Check that tests passed.
+  echo ">> Checking test results for ${resource}"
+  if check_results $resource; then
+    echo ">> All YAML tests passed"
+    return 0
+  fi
+  return 1
+}
+
+function run_yaml_tests() {
+  echo ">> Starting tests for the resource ${1}"
+  create_resources ${1}
+  if ! run_tests ${1}; then
+    return 1
+  fi
+  return 0
+}
+
+function output_yaml_test_results() {
+  # If formatting fails for any reason, use yaml as a fall back.
+  kubectl get $1.tekton.dev -o=custom-columns-file=${REPO_ROOT_DIR}/test/columns.txt || \
+    kubectl get $1.tekton.dev -oyaml
+}
+
+function output_pods_logs() {
+    echo ">>> $1"
+    kubectl get $1.tekton.dev -o yaml
+    local runs=$(kubectl get $1.tekton.dev --output=jsonpath="{.items[*].metadata.name}")
+    set +e
+    for run in ${runs}; do
+	echo ">>>> $1 ${run}"
+	case "$1" in
+	    "taskrun")
+		tkn taskrun logs ${run}
+		;;
+	    "pipelinerun")
+		tkn pipelinerun logs ${run}
+		;;
+	esac
+    done
+    set -e
+    echo ">>>> Pods"
+    kubectl get pods -o yaml
+}

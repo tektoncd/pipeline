@@ -19,6 +19,7 @@ package reconciler
 import (
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineScheme "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"go.uber.org/zap"
@@ -79,11 +80,14 @@ type Base struct {
 	// performance benefits, raw logger also preserves type-safety at
 	// the expense of slightly greater verbosity.
 	Logger *zap.SugaredLogger
+
+	// Images contains images to use for certain internal container
+	Images pipeline.Images
 }
 
 // NewBase instantiates a new instance of Base implementing
 // the common & boilerplate code between our reconcilers.
-func NewBase(opt Options, controllerAgentName string) *Base {
+func NewBase(opt Options, controllerAgentName string, images pipeline.Images) *Base {
 	// Enrich the logs with controller name
 	logger := opt.Logger.Named(controllerAgentName).With(zap.String(logkey.ControllerType, controllerAgentName))
 
@@ -110,6 +114,7 @@ func NewBase(opt Options, controllerAgentName string) *Base {
 		ConfigMapWatcher:  opt.ConfigMapWatcher,
 		Recorder:          recorder,
 		Logger:            logger,
+		Images:            images,
 	}
 
 	return base

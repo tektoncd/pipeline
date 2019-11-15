@@ -47,6 +47,7 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 	taskRun.Status.PodName = pod.Name
 
 	taskRun.Status.Steps = []v1alpha1.StepState{}
+	taskRun.Status.Sidecars = []v1alpha1.SidecarState{}
 	for _, s := range pod.Status.ContainerStatuses {
 		if resources.IsContainerStep(s.Name) {
 			taskRun.Status.Steps = append(taskRun.Status.Steps, v1alpha1.StepState{
@@ -54,6 +55,11 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 				Name:           resources.TrimContainerNamePrefix(s.Name),
 				ContainerName:  s.Name,
 				ImageID:        s.ImageID,
+			})
+		} else if resources.IsContainerSidecar(s.Name) {
+			taskRun.Status.Sidecars = append(taskRun.Status.Sidecars, v1alpha1.SidecarState{
+				Name:    resources.TrimSidecarNamePrefix(s.Name),
+				ImageID: s.ImageID,
 			})
 		}
 	}
@@ -145,7 +151,7 @@ func areStepsComplete(pod *corev1.Pod) bool {
 
 func countSidecars(pod *corev1.Pod) (total int, readyOrTerminated int) {
 	for _, s := range pod.Status.ContainerStatuses {
-		if !resources.IsContainerStep(s.Name) {
+		if resources.IsContainerSidecar(s.Name) {
 			if s.State.Running != nil && s.Ready {
 				readyOrTerminated++
 			} else if s.State.Terminated != nil {

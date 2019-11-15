@@ -21,6 +21,7 @@ source $(dirname ${BASH_SOURCE})/library.sh
 
 # Custom configuration of presubmit tests
 readonly DISABLE_MD_LINTING=${DISABLE_MD_LINTING:-0}
+readonly DISABLE_YAML_LINTING=${DISABLE_YAML_LINTING:-0}
 readonly DISABLE_MD_LINK_CHECK=${DISABLE_MD_LINK_CHECK:-0}
 readonly PRESUBMIT_TEST_FAIL_FAST=${PRESUBMIT_TEST_FAIL_FAST:-0}
 
@@ -49,7 +50,7 @@ function pr_only_contains() {
 # List changed files in the current PR.
 # This is implemented as a function so it can be mocked in unit tests.
 function list_changed_files() {
-  /workspace/githubhelper -list-changed-files
+  githubhelper -list-changed-files
 }
 
 # Initialize flags and context for presubmit tests:
@@ -129,15 +130,38 @@ function markdown_build_tests() {
   return ${failed}
 }
 
+# Perform yaml build tests if necessary, unless disabled.
+function yaml_build_tests() {
+  (( DISABLE_YAML_LINTING )) && return 0
+  subheader "Linting the yaml files"
+  local yamlfiles=""
+  for file in $(echo "${CHANGED_FILES}" | grep '\.yaml$\|\.yml$' | grep -v ^vendor/); do
+    [[ -f "${file}" ]] && yamlfiles="${yamlfiles} ${file}"
+  done
+  [[ -z "${yamlfiles}" ]] && return 0
+  yamllint ${yamlfiles}
+}
+
 # Default build test runner that:
+# * check go code style with gofmt
 # * check markdown files
+# * check yaml files
 # * `go build` on the entire repo
 # * run `/hack/verify-codegen.sh` (if it exists)
 # * check licenses in all go packages
 function default_build_test_runner() {
   local failed=0
+  # Check go code style with gofmt; exclude vendor/ files
+  subheader "Checking go code style with gofmt"
+  gofmt_out=$(gofmt -d $(find * -name '*.go' ! -path 'vendor/*'))
+  if [[ -n "$gofmt_out" ]]; then
+    failed=1
+  fi
+  echo "$gofmt_out"
   # Perform markdown build checks first
   markdown_build_tests || failed=1
+  # Check yaml using yamllint
+  yaml_build_tests || failed=1
   # For documentation PRs, just check the md files
   (( IS_DOCUMENTATION_PR )) && return ${failed}
   # Skip build test if there is no go code

@@ -17,14 +17,9 @@ limitations under the License.
 package sidecars
 
 import (
-	"flag"
-
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-var (
-	nopImage = flag.String("nop-image", "override-with-nop:latest", "The container image used to kill sidecars")
 )
 
 type GetPod func(string, metav1.GetOptions) (*corev1.Pod, error)
@@ -39,15 +34,15 @@ type UpdatePod func(*corev1.Pod) (*corev1.Pod, error)
 // image, which in turn quickly exits. If the sidecar defines a command then
 // it will exit with a non-zero status. When we check for TaskRun success we
 // have to check for the containers we care about - not the final Pod status.
-func Stop(pod *corev1.Pod, updatePod UpdatePod) error {
+func Stop(pod *corev1.Pod, nopImage string, updatePod UpdatePod) error {
 	updated := false
 	if pod.Status.Phase == corev1.PodRunning {
 		for _, s := range pod.Status.ContainerStatuses {
-			if s.State.Running != nil {
+			if resources.IsContainerSidecar(s.Name) && s.State.Running != nil {
 				for j, c := range pod.Spec.Containers {
-					if c.Name == s.Name && c.Image != *nopImage {
+					if c.Name == s.Name && c.Image != nopImage {
 						updated = true
-						pod.Spec.Containers[j].Image = *nopImage
+						pod.Spec.Containers[j].Image = nopImage
 					}
 				}
 			}

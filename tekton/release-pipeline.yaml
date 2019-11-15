@@ -29,8 +29,6 @@ spec:
     type: image
   - name: builtNopImage
     type: image
-  - name: builtBashImage
-    type: image
   - name: builtGsutilImage
     type: image
   - name: builtControllerImage
@@ -43,13 +41,30 @@ spec:
     type: image
   - name: builtGcsFetcherImage
     type: image
+  - name: notification
+    type: cloudEvent
   tasks:
+    - name: precheck
+      taskRef:
+        name: prerelease-checks
+      params:
+        - name: package
+          value: $(params.package)
+        - name: versionTag
+          value: $(params.versionTag)
+      resources:
+        inputs:
+          - name: release-bucket
+            resource: bucket
+          - name: source-to-release
+            resource: source-repo
     - name: lint
+      runAfter: [precheck]
       taskRef:
         name: golangci-lint
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
         - name: flags
           value: -v
       resources:
@@ -62,7 +77,7 @@ spec:
         name: golang-test
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
       resources:
         inputs:
           - name: source
@@ -73,7 +88,7 @@ spec:
         name: golang-build
       params:
         - name: package
-          value: ${params.package}
+          value: $(params.package)
       resources:
         inputs:
           - name: source
@@ -84,11 +99,11 @@ spec:
         name: publish-tekton-pipelines
       params:
         - name: pathToProject
-          value: ${params.package}
+          value: $(params.package)
         - name: versionTag
-          value: ${params.versionTag}
+          value: $(params.versionTag)
         - name: imageRegistry
-          value: ${params.imageRegistry}
+          value: $(params.imageRegistry)
       resources:
         inputs:
           - name: source
@@ -110,8 +125,6 @@ spec:
             resource: builtGitInitImage
           - name: builtNopImage
             resource: builtNopImage
-          - name: builtBashImage
-            resource: builtBashImage
           - name: builtGsutilImage
             resource: builtGsutilImage
           - name: builtControllerImage
@@ -124,3 +137,5 @@ spec:
             resource: builtPullRequestInitImage
           - name: builtGcsFetcherImage
             resource: builtGcsFetcherImage
+          - name: notification
+            resource: notification

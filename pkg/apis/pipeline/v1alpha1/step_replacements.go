@@ -19,8 +19,9 @@ package v1alpha1
 func ApplyStepReplacements(step *Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	step.Name = ApplyReplacements(step.Name, stringReplacements)
 	step.Image = ApplyReplacements(step.Image, stringReplacements)
+	step.Script = ApplyReplacements(step.Script, stringReplacements)
 
-	//Use ApplyArrayReplacements here, as additional args may be added via an array parameter.
+	// Use ApplyArrayReplacements here, as additional args may be added via an array parameter.
 	var newArgs []string
 	for _, a := range step.Args {
 		newArgs = append(newArgs, ApplyArrayReplacements(a, stringReplacements, arrayReplacements)...)
@@ -52,7 +53,7 @@ func ApplyStepReplacements(step *Step, stringReplacements map[string]string, arr
 	}
 	step.WorkingDir = ApplyReplacements(step.WorkingDir, stringReplacements)
 
-	//Use ApplyArrayReplacements here, as additional commands may be added via an array parameter.
+	// Use ApplyArrayReplacements here, as additional commands may be added via an array parameter.
 	var newCommand []string
 	for _, c := range step.Command {
 		newCommand = append(newCommand, ApplyArrayReplacements(c, stringReplacements, arrayReplacements)...)

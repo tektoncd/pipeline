@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -27,18 +28,25 @@ import (
 type PipelineResourceStorageType string
 
 const (
-	// PipelineResourceTypeGCS indicates that resource source is a GCS blob/directory.
-	PipelineResourceTypeGCS      PipelineResourceType = "gcs"
+	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
+	PipelineResourceTypeGCS PipelineResourceType = "gcs"
+
+	// PipelineResourceTypeBuildGCS is the subtype for the BuildGCSResources, which is simialr to the GCSResource but
+	// with additional funcitonality that was added to be compatible with knative build.
 	PipelineResourceTypeBuildGCS PipelineResourceType = "build-gcs"
 )
 
-// PipelineResourceInterface interface to be implemented by different PipelineResource types
+// PipelineStorageResourceInterface is the interface for subtypes of the storage type.
+// It adds a function to the PipelineResourceInterface for retrieving secrets that are usually
+// needed for storage PipelineResources.
 type PipelineStorageResourceInterface interface {
 	PipelineResourceInterface
 	GetSecretParams() []SecretParam
 }
 
-func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, error) {
+// NewStorageResource returns an instance of the requested storage subtype, which can be used
+// to add input and output steps and volumes to an executing pod.
+func NewStorageResource(images pipeline.Images, r *PipelineResource) (PipelineStorageResourceInterface, error) {
 	if r.Spec.Type != PipelineResourceTypeStorage {
 		return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource from a %s Pipeline Resource", r.Spec.Type)
 	}
@@ -47,9 +55,9 @@ func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, 
 		if strings.EqualFold(param.Name, "type") {
 			switch {
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeGCS)):
-				return NewGCSResource(r)
+				return NewGCSResource(images, r)
 			case strings.EqualFold(param.Value, string(PipelineResourceTypeBuildGCS)):
-				return NewBuildGCSResource(r)
+				return NewBuildGCSResource(images, r)
 			default:
 				return nil, xerrors.Errorf("%s is an invalid or unimplemented PipelineStorageResource", param.Value)
 			}
@@ -58,7 +66,7 @@ func NewStorageResource(r *PipelineResource) (PipelineStorageResourceInterface, 
 	return nil, xerrors.Errorf("StoreResource: Cannot create a storage resource without type %s in spec", r.Name)
 }
 
-func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec *TaskSpec) ([]corev1.Volume, error) {
+func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec TaskSpec) []corev1.Volume {
 	var storageVol []corev1.Volume
 	mountedSecrets := map[string]string{}
 
@@ -84,5 +92,5 @@ func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec *TaskSpec) ([
 			mountedSecrets[volName] = ""
 		}
 	}
-	return storageVol, nil
+	return storageVol
 }

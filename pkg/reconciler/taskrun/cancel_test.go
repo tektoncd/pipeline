@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"go.uber.org/zap"
@@ -29,7 +30,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestCancelTaskRun(t *testing.T) {
@@ -83,7 +83,7 @@ func TestCancelTaskRun(t *testing.T) {
 				d.Pods = []*corev1.Pod{tc.pod}
 			}
 
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := ttesting.SetupFakeContext(t)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			c, _ := test.SeedTestData(t, ctx, d)

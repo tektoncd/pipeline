@@ -155,7 +155,7 @@ func NewDurableConnection(target string, messageChan chan []byte, logger *zap.Su
 			select {
 			case <-ticker.C:
 				if err := c.write(websocket.PingMessage, []byte{}); err != nil {
-					logger.Errorw("Failed to send ping message", zap.Error(err))
+					logger.Errorw("Failed to send ping message to "+target, zap.Error(err))
 				}
 			case <-c.closeChan:
 				return

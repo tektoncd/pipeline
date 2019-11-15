@@ -20,11 +20,25 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
+
+var images = pipeline.Images{
+	EntryPointImage:          "override-with-entrypoint:latest",
+	NopImage:                 "tianon/true",
+	GitImage:                 "override-with-git:latest",
+	CredsImage:               "override-with-creds:latest",
+	KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
+	ShellImage:               "busybox",
+	GsutilImage:              "google/cloud-sdk",
+	BuildGCSFetcherImage:     "gcr.io/cloud-builders/gcs-fetcher:latest",
+	PRImage:                  "override-with-pr:latest",
+	ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
+}
 
 func Test_Invalid_BuildGCSResource(t *testing.T) {
 	for _, tc := range []struct {
@@ -78,7 +92,7 @@ func Test_Invalid_BuildGCSResource(t *testing.T) {
 		)),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := v1alpha1.NewStorageResource(tc.pipelineResource)
+			_, err := v1alpha1.NewStorageResource(images, tc.pipelineResource)
 			if err == nil {
 				t.Error("Expected error creating BuildGCS resource")
 			}
@@ -94,13 +108,15 @@ func Test_Valid_NewBuildGCSResource(t *testing.T) {
 		tb.PipelineResourceSpecParam("ArtifactType", "Manifest"),
 	))
 	expectedGCSResource := &v1alpha1.BuildGCSResource{
-		Name:         "build-gcs-resource",
-		Location:     "gs://fake-bucket",
-		Type:         v1alpha1.PipelineResourceTypeStorage,
-		ArtifactType: "Manifest",
+		Name:                 "build-gcs-resource",
+		Location:             "gs://fake-bucket",
+		Type:                 v1alpha1.PipelineResourceTypeStorage,
+		ArtifactType:         "Manifest",
+		ShellImage:           "busybox",
+		BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 	}
 
-	r, err := v1alpha1.NewBuildGCSResource(pr)
+	r, err := v1alpha1.NewBuildGCSResource(images, pr)
 	if err != nil {
 		t.Fatalf("Unexpected error creating BuildGCS resource: %s", err)
 	}
@@ -134,15 +150,16 @@ func Test_BuildGCSGetInputSteps(t *testing.T) {
 	} {
 		t.Run(string(at), func(t *testing.T) {
 			resource := &v1alpha1.BuildGCSResource{
-				Name:         "gcs-valid",
-				Location:     "gs://some-bucket",
-				ArtifactType: at,
+				Name:                 "gcs-valid",
+				Location:             "gs://some-bucket",
+				ArtifactType:         at,
+				ShellImage:           "busybox",
+				BuildGCSFetcherImage: "gcr.io/cloud-builders/gcs-fetcher:latest",
 			}
 			wantSteps := []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "create-dir-gcs-valid-9l9zj",
-				Image:   "override-with-bash-noop:latest",
-				Command: []string{"/ko-app/bash"},
-				Args:    []string{"-args", "mkdir -p /workspace"},
+				Image:   "busybox",
+				Command: []string{"mkdir", "-p", "/workspace"},
 			}}, {Container: corev1.Container{
 				Name:    "storage-fetch-gcs-valid-mz4c7",
 				Image:   "gcr.io/cloud-builders/gcs-fetcher:latest",
@@ -170,7 +187,7 @@ func TestBuildGCS_InvalidArtifactType(t *testing.T) {
 		tb.PipelineResourceSpecParam("type", "build-gcs"),
 		tb.PipelineResourceSpecParam("ArtifactType", "InVaLiD"),
 	))
-	if _, err := v1alpha1.NewBuildGCSResource(pr); err == nil {
+	if _, err := v1alpha1.NewBuildGCSResource(images, pr); err == nil {
 		t.Error("NewBuildGCSResource: expected error")
 	}
 }

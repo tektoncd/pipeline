@@ -17,7 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"flag"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -29,9 +28,6 @@ const WorkspaceDir = "/workspace"
 
 var (
 	gitSource = "git-source"
-	// The container with Git that we use to implement the Git source step.
-	gitImage = flag.String("git-image", "override-with-git:latest",
-		"The container image containing our Git binary.")
 )
 
 // GitResource is an endpoint from which to get data which is required
@@ -43,17 +39,22 @@ type GitResource struct {
 	// Git revision (branch, tag, commit SHA or ref) to clone.  See
 	// https://git-scm.com/docs/gitrevisions#_specifying_revisions for more
 	// information.
-	Revision string `json:"revision"`
+	Revision   string `json:"revision"`
+	Submodules bool   `json:"submodules"`
+
+	GitImage string `json:"-"`
 }
 
 // NewGitResource creates a new git resource to pass to a Task
-func NewGitResource(r *PipelineResource) (*GitResource, error) {
+func NewGitResource(gitImage string, r *PipelineResource) (*GitResource, error) {
 	if r.Spec.Type != PipelineResourceTypeGit {
 		return nil, xerrors.Errorf("GitResource: Cannot create a Git resource from a %s Pipeline Resource", r.Spec.Type)
 	}
 	gitResource := GitResource{
-		Name: r.Name,
-		Type: r.Spec.Type,
+		Name:       r.Name,
+		Type:       r.Spec.Type,
+		GitImage:   gitImage,
+		Submodules: true,
 	}
 	for _, param := range r.Spec.Params {
 		switch {
@@ -61,6 +62,8 @@ func NewGitResource(r *PipelineResource) (*GitResource, error) {
 			gitResource.URL = param.Value
 		case strings.EqualFold(param.Name, "Revision"):
 			gitResource.Revision = param.Value
+		case strings.EqualFold(param.Name, "Submodules"):
+			gitResource.Submodules = toBool(param.Value, true)
 		}
 	}
 	// default revision to master if nothing is provided
@@ -68,6 +71,17 @@ func NewGitResource(r *PipelineResource) (*GitResource, error) {
 		gitResource.Revision = "master"
 	}
 	return &gitResource, nil
+}
+
+func toBool(s string, d bool) bool {
+	switch s {
+	case "true":
+		return true
+	case "false":
+		return false
+	default:
+		return d
+	}
 }
 
 // GetName returns the name of the resource
@@ -95,6 +109,7 @@ func (s *GitResource) Replacements() map[string]string {
 	}
 }
 
+// GetInputTaskModifier returns the TaskModifier to be used when this resource is an input.
 func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifier, error) {
 	args := []string{"-url", s.URL,
 		"-revision", s.Revision,
@@ -105,10 +120,15 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 	step := Step{
 		Container: corev1.Container{
 			Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
-			Image:      *gitImage,
+			Image:      s.GitImage,
 			Command:    []string{"/ko-app/git-init"},
 			Args:       args,
 			WorkingDir: WorkspaceDir,
+			// This is used to populate the ResourceResult status.
+			Env: []corev1.EnvVar{{
+				Name:  "TEKTON_RESOURCE_NAME",
+				Value: s.Name,
+			}},
 		},
 	}
 	return &InternalTaskModifier{
@@ -116,6 +136,7 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 	}, nil
 }
 
+// GetOutputTaskModifier returns a No-op TaskModifier.
 func (s *GitResource) GetOutputTaskModifier(_ *TaskSpec, _ string) (TaskModifier, error) {
 	return &InternalTaskModifier{}, nil
 }

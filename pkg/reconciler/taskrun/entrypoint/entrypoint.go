@@ -17,7 +17,6 @@ limitations under the License.
 package entrypoint
 
 import (
-	"flag"
 	"fmt"
 	"strconv"
 
@@ -38,27 +37,24 @@ const (
 	// MountName is the name of the pvc being mounted (which
 	// will contain the entrypoint binary and eventually the logs)
 	MountName              = "tools"
-	MountPoint             = "/builder/tools"
+	mountPoint             = "/builder/tools"
 	DownwardMountName      = "downward"
 	DownwardMountPoint     = "/builder/downward"
 	DownwardMountReadyFile = "ready"
-	BinaryLocation         = MountPoint + "/entrypoint"
-	JSONConfigEnvVar       = "ENTRYPOINT_OPTIONS"
+	binaryLocation         = mountPoint + "/entrypoint"
 	InitContainerName      = "place-tools"
 	cacheSize              = 1024
 )
 
-var toolsMount = corev1.VolumeMount{
-	Name:      MountName,
-	MountPath: MountPoint,
-}
-var downwardMount = corev1.VolumeMount{
-	Name:      DownwardMountName,
-	MountPath: DownwardMountPoint,
-}
 var (
-	entrypointImage = flag.String("entrypoint-image", "override-with-entrypoint:latest",
-		"The container image containing our entrypoint binary.")
+	toolsMount = corev1.VolumeMount{
+		Name:      MountName,
+		MountPath: mountPoint,
+	}
+	downwardMount = corev1.VolumeMount{
+		Name:      DownwardMountName,
+		MountPath: DownwardMountPoint,
+	}
 )
 
 // Cache is a simple caching mechanism allowing for caching the results of
@@ -96,13 +92,11 @@ func AddToEntrypointCache(c *Cache, sha string, ep []string) {
 // copy the entrypoint binary from the entrypoint image into the
 // volume mounted at MountPoint, so that it can be mounted by
 // subsequent steps and used to capture logs.
-func AddCopyStep(spec *v1alpha1.TaskSpec) {
+func AddCopyStep(entrypointImage string, spec *v1alpha1.TaskSpec) {
 	cp := corev1.Container{
-		Name:    InitContainerName,
-		Image:   *entrypointImage,
-		Command: []string{"/bin/sh"},
-		// based on the ko version, the binary could be in one of two different locations
-		Args:         []string{"-c", fmt.Sprintf("cp /ko-app/entrypoint %s", BinaryLocation)},
+		Name:         InitContainerName,
+		Image:        entrypointImage,
+		Command:      []string{"cp", "/ko-app/entrypoint", binaryLocation},
 		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	spec.Steps = append([]v1alpha1.Step{{Container: cp}}, spec.Steps...)
@@ -139,7 +133,7 @@ func RedirectStep(cache *Cache, stepNum int, step *v1alpha1.Step, kubeclient kub
 	}
 
 	step.Args = GetArgs(stepNum, step.Command, step.Args)
-	step.Command = []string{BinaryLocation}
+	step.Command = []string{binaryLocation}
 	step.VolumeMounts = append(step.VolumeMounts, toolsMount)
 	// The first step in a Task waits for the existence of a file projected into the Pod
 	// from the Downward API. That file will be populated only when all sidecars are ready,
@@ -180,7 +174,7 @@ func getWaitFile(stepNum int) string {
 		return fmt.Sprintf("%s/%s", DownwardMountPoint, DownwardMountReadyFile)
 	}
 
-	return fmt.Sprintf("%s/%s", MountPoint, strconv.Itoa(stepNum-1))
+	return fmt.Sprintf("%s/%s", mountPoint, strconv.Itoa(stepNum-1))
 }
 
 // GetRemoteEntrypoint accepts a cache of digest lookups, as well as the digest
@@ -238,7 +232,7 @@ func getRemoteImage(image string, kubeclient kubernetes.Interface, taskRun *v1al
 
 	kc, err := k8schain.New(kubeclient, k8schain.Options{
 		Namespace:          taskRun.Namespace,
-		ServiceAccountName: taskRun.Spec.ServiceAccount,
+		ServiceAccountName: taskRun.GetServiceAccountName(),
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("Failed to create k8schain: %w", err)

@@ -335,6 +335,13 @@ func TaskRunStartTime(startTime time.Time) TaskRunStatusOp {
 	}
 }
 
+// TaskRunCompletionTime sets the start time to the TaskRunStatus.
+func TaskRunCompletionTime(completionTime time.Time) TaskRunStatusOp {
+	return func(s *v1alpha1.TaskRunStatus) {
+		s.CompletionTime = &metav1.Time{Time: completionTime}
+	}
+}
+
 // TaskRunCloudEvent adds an event to the TaskRunStatus.
 func TaskRunCloudEvent(target, error string, retryCount int32, condition v1alpha1.CloudEventCondition) TaskRunStatusOp {
 	return func(s *v1alpha1.TaskRunStatus) {
@@ -365,24 +372,31 @@ func TaskRunNilTimeout(spec *v1alpha1.TaskRunSpec) {
 	spec.Timeout = nil
 }
 
-// TaskRunNodeSelector sets the NodeSelector to the PipelineSpec.
+// TaskRunNodeSelector sets the NodeSelector to the TaskRunSpec.
 func TaskRunNodeSelector(values map[string]string) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.NodeSelector = values
 	}
 }
 
-// TaskRunTolerations sets the Tolerations to the PipelineSpec.
+// TaskRunTolerations sets the Tolerations to the TaskRunSpec.
 func TaskRunTolerations(values []corev1.Toleration) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.Tolerations = values
 	}
 }
 
-// TaskRunAffinity sets the Affinity to the PipelineSpec.
+// TaskRunAffinity sets the Affinity to the TaskRunSpec.
 func TaskRunAffinity(affinity *corev1.Affinity) TaskRunSpecOp {
 	return func(spec *v1alpha1.TaskRunSpec) {
 		spec.PodTemplate.Affinity = affinity
+	}
+}
+
+// TaskRunPodSecurityContext sets the SecurityContext to the TaskRunSpec (through PodTemplate).
+func TaskRunPodSecurityContext(context *corev1.PodSecurityContext) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.PodTemplate.SecurityContext = context
 	}
 }
 
@@ -508,9 +522,17 @@ func TaskRunTaskSpec(ops ...TaskSpecOp) TaskRunSpecOp {
 }
 
 // TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
-func TaskRunServiceAccount(sa string) TaskRunSpecOp {
+func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 	return func(trs *v1alpha1.TaskRunSpec) {
-		trs.ServiceAccount = sa
+		trs.ServiceAccountName = sa
+	}
+}
+
+// TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
+func TaskRunDeprecatedServiceAccount(sa, deprecatedSA string) TaskRunSpecOp {
+	return func(trs *v1alpha1.TaskRunSpec) {
+		trs.ServiceAccountName = sa
+		trs.DeprecatedServiceAccount = deprecatedSA
 	}
 }
 
@@ -542,7 +564,9 @@ func TaskRunInputsParam(name, value string, additionalValues ...string) TaskRunI
 func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInputsOp {
 	return func(i *v1alpha1.TaskRunInputs) {
 		binding := &v1alpha1.TaskResourceBinding{
-			Name: name,
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+				Name: name,
+			},
 		}
 		for _, op := range ops {
 			op(binding)
@@ -554,7 +578,9 @@ func TaskRunInputsResource(name string, ops ...TaskResourceBindingOp) TaskRunInp
 // TaskResourceBindingRef set the PipelineResourceRef name to the TaskResourceBinding.
 func TaskResourceBindingRef(name string) TaskResourceBindingOp {
 	return func(b *v1alpha1.TaskResourceBinding) {
-		b.ResourceRef.Name = name
+		b.ResourceRef = &v1alpha1.PipelineResourceRef{
+			Name: name,
+		}
 	}
 }
 
@@ -596,8 +622,7 @@ func TaskRunOutputs(ops ...TaskRunOutputsOp) TaskRunSpecOp {
 func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOutputsOp {
 	return func(i *v1alpha1.TaskRunOutputs) {
 		binding := &v1alpha1.TaskResourceBinding{
-			Name: name,
-			ResourceRef: v1alpha1.PipelineResourceRef{
+			PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
 				Name: name,
 			},
 		}

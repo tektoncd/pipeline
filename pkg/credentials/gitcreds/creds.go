@@ -40,7 +40,7 @@ func flags(fs *flag.FlagSet) {
 	basicConfig = basicGitConfig{entries: make(map[string]basicEntry)}
 	fs.Var(&basicConfig, basicAuthFlag, "List of secret=url pairs.")
 
-	sshConfig = sshGitConfig{entries: make(map[string]sshEntry)}
+	sshConfig = sshGitConfig{entries: make(map[string][]sshEntry)}
 	fs.Var(&sshConfig, sshFlag, "List of secret=url pairs.")
 }
 

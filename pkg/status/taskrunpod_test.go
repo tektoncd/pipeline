@@ -61,7 +61,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{conditionRunning},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps:    []v1alpha1.StepState{},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
 		desc: "ignore-creds-init",
@@ -92,6 +93,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Name:          "state-name",
 				ContainerName: "step-state-name",
 			}},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
 		desc: "ignore-init-containers",
@@ -126,6 +128,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				ContainerName: "step-state-name",
 				ImageID:       "image-id",
 			}},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
 		desc: "success",
@@ -154,6 +157,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				ContainerName: "step-step-push",
 				ImageID:       "image-id",
 			}},
+			Sidecars: []v1alpha1.SidecarState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
@@ -179,6 +183,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Name:          "running-step",
 				ContainerName: "step-running-step",
 			}},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
 		desc: "failure-terminated",
@@ -217,6 +222,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				ContainerName: "step-failure",
 				ImageID:       "image-id",
 			}},
+			Sidecars: []v1alpha1.SidecarState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
@@ -235,7 +241,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Message: "boom",
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps:    []v1alpha1.StepState{},
+			Sidecars: []v1alpha1.SidecarState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
@@ -251,7 +258,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Message: "build failed for unspecified reasons.",
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps:    []v1alpha1.StepState{},
+			Sidecars: []v1alpha1.SidecarState{},
 			// We don't actually care about the time, just that it's not nil
 			CompletionTime: &metav1.Time{Time: time.Now()},
 		},
@@ -289,6 +297,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Name:          "status-name",
 				ContainerName: "step-status-name",
 			}},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
 		desc: "pending-pod-condition",
@@ -309,7 +318,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Message: `pod status "the type":"Unknown"; message: "the message"`,
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps:    []v1alpha1.StepState{},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
 		desc: "pending-message",
@@ -326,7 +336,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Message: "pod status message",
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps:    []v1alpha1.StepState{},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
 		desc:      "pending-no-message",
@@ -340,7 +351,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Message: "Pending",
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps:    []v1alpha1.StepState{},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
 		desc: "pending-not-enough-node-resources",
@@ -360,10 +372,11 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Message: `TaskRun pod "taskRun" exceeded available resources`,
 				}},
 			},
-			Steps: []v1alpha1.StepState{},
+			Steps:    []v1alpha1.StepState{},
+			Sidecars: []v1alpha1.SidecarState{},
 		},
 	}, {
-		desc: "with-running-sidecar",
+		desc: "with-sidecar-running",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodRunning,
 			ContainerStatuses: []corev1.ContainerStatus{
@@ -374,7 +387,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					},
 				},
 				{
-					Name: "running-sidecar",
+					Name:    "sidecar-running",
+					ImageID: "image-id",
 					State: corev1.ContainerState{
 						Running: &corev1.ContainerStateRunning{},
 					},
@@ -392,6 +406,10 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				},
 				Name:          "running-step",
 				ContainerName: "step-running-step",
+			}},
+			Sidecars: []v1alpha1.SidecarState{{
+				Name:    "running",
+				ImageID: "image-id",
 			}},
 		},
 	}} {
@@ -485,7 +503,7 @@ func TestCountSidecars(t *testing.T) {
 					},
 				},
 			}, {
-				Name: "stopped-sidecar-baz",
+				Name: "sidecar-stopped-baz",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
 						ExitCode: 99,
@@ -500,7 +518,7 @@ func TestCountSidecars(t *testing.T) {
 		statuses: []corev1.ContainerStatus{
 			{Name: "step-ignore-me"},
 			{
-				Name:  "ready-sidecar",
+				Name:  "sidecar-ready",
 				Ready: true,
 				State: corev1.ContainerState{
 					Running: &corev1.ContainerStateRunning{
@@ -509,7 +527,7 @@ func TestCountSidecars(t *testing.T) {
 				},
 			},
 			{
-				Name: "unready-sidecar",
+				Name: "sidecar-unready",
 				State: corev1.ContainerState{
 					Running: &corev1.ContainerStateRunning{
 						StartedAt: metav1.NewTime(time.Now()),

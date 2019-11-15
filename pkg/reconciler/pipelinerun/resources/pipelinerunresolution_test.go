@@ -17,7 +17,7 @@ limitations under the License.
 package resources
 
 import (
-	"strings"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -1031,51 +1031,75 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 }
 
 func TestGetResourcesFromBindings(t *testing.T) {
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
-		tb.PipelineDeclaredResource("git-resource", "git"),
-	))
 	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
+		tb.PipelineRunResourceBinding("image-resource", tb.PipelineResourceBindingResourceSpec(
+			&v1alpha1.PipelineResourceSpec{
+				Type: v1alpha1.PipelineResourceTypeImage,
+				Params: []v1alpha1.ResourceParam{{
+					Name:  "url",
+					Value: "gcr.io/sven",
+				}},
+			}),
+		),
 	))
-	m, err := GetResourcesFromBindings(p, pr)
+	r := tb.PipelineResource("sweet-resource", "namespace")
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		if name != "sweet-resource" {
+			return nil, fmt.Errorf("Request for unexpected resource %s", name)
+		}
+		return r, nil
+	}
+	m, err := GetResourcesFromBindings(pr, getResource)
 	if err != nil {
 		t.Fatalf("didn't expect error getting resources from bindings but got: %v", err)
 	}
-	expectedResources := map[string]v1alpha1.PipelineResourceRef{
-		"git-resource": {
-			Name: "sweet-resource",
-		},
+
+	r1, ok := m["git-resource"]
+	if !ok {
+		t.Errorf("Missing expected resource git-resource: %v", m)
+	} else if d := cmp.Diff(r, r1); d != "" {
+		t.Errorf("Expected resources didn't match actual -want, +got: %v", d)
 	}
-	if d := cmp.Diff(expectedResources, m); d != "" {
-		t.Fatalf("Expected resources didn't match actual -want, +got: %v", d)
+
+	r2, ok := m["image-resource"]
+	if !ok {
+		t.Errorf("Missing expected resource image-resource: %v", m)
+	} else if r2.Spec.Type != v1alpha1.PipelineResourceTypeImage ||
+		len(r2.Spec.Params) != 1 ||
+		r2.Spec.Params[0].Name != "url" ||
+		r2.Spec.Params[0].Value != "gcr.io/sven" {
+		t.Errorf("Did not get expected image resource, got %v", r2.Spec)
 	}
 }
 
 func TestGetResourcesFromBindings_Missing(t *testing.T) {
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
-		tb.PipelineDeclaredResource("git-resource", "git"),
-		tb.PipelineDeclaredResource("image-resource", "image"),
-	))
+	//p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+	//	tb.PipelineDeclaredResource("git-resource", "git"),
+	//	tb.PipelineDeclaredResource("image-resource", "image"),
+	//))
 	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
-	_, err := GetResourcesFromBindings(p, pr)
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		return nil, fmt.Errorf("Request for unexpected resource %s", name)
+	}
+	_, err := GetResourcesFromBindings(pr, getResource)
 	if err == nil {
 		t.Fatalf("Expected error indicating `image-resource` was missing but got no error")
 	}
 }
 
-func TestGetResourcesFromBindings_Extra(t *testing.T) {
-	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
-		tb.PipelineDeclaredResource("git-resource", "git"),
-	))
+func TestGetResourcesFromBindings_ErrorGettingResource(t *testing.T) {
 	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
-		tb.PipelineRunResourceBinding("image-resource", tb.PipelineResourceBindingRef("sweet-resource2")),
 	))
-	_, err := GetResourcesFromBindings(p, pr)
+	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
+		return nil, xerrors.Errorf("IT HAS ALL GONE WRONG")
+	}
+	_, err := GetResourcesFromBindings(pr, getResource)
 	if err == nil {
-		t.Fatalf("Expected error indicating `image-resource` was extra but got no error")
+		t.Fatalf("Expected error indicating resource couldnt be retrieved but got no error")
 	}
 }
 
@@ -1094,11 +1118,6 @@ func TestResolvePipelineRun(t *testing.T) {
 			tb.PipelineTaskOutputResource("output1", "git-resource"),
 		),
 	))
-	providedResources := map[string]v1alpha1.PipelineResourceRef{
-		"git-resource": {
-			Name: "someresource",
-		},
-	}
 
 	r := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1108,6 +1127,7 @@ func TestResolvePipelineRun(t *testing.T) {
 			Type: v1alpha1.PipelineResourceTypeGit,
 		},
 	}
+	providedResources := map[string]*v1alpha1.PipelineResource{"git-resource": r}
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun",
@@ -1118,10 +1138,9 @@ func TestResolvePipelineRun(t *testing.T) {
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, nil }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return r, nil }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return nil, nil }
 
-	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, p.Spec.Tasks, providedResources)
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, p.Spec.Tasks, providedResources)
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}
@@ -1163,8 +1182,8 @@ func TestResolvePipelineRun(t *testing.T) {
 		},
 	}}
 
-	if d := cmp.Diff(pipelineState, expectedState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-		t.Errorf("Expected to get current pipeline state %v, but actual differed: %s", expectedState, d)
+	if d := cmp.Diff(expectedState, pipelineState, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
+		t.Errorf("Expected to get current pipeline state %v, but actual differed (-want, +got): %s", expectedState, d)
 	}
 }
 
@@ -1179,21 +1198,18 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 		Name:    "mytask3",
 		TaskRef: v1alpha1.TaskRef{Name: "task"},
 	}}
-	providedResources := map[string]v1alpha1.PipelineResourceRef{}
+	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, xerrors.New("should not get called")
-	}
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return nil, nil }
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pipelinerun",
 		},
 	}
-	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, pts, providedResources)
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, pts, providedResources)
 	if err != nil {
 		t.Fatalf("Did not expect error when resolving PipelineRun without Resources: %v", err)
 	}
@@ -1219,7 +1235,7 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 		Name:    "mytask1",
 		TaskRef: v1alpha1.TaskRef{Name: "task"},
 	}}
-	providedResources := map[string]v1alpha1.PipelineResourceRef{}
+	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	// Return an error when the Task is retrieved, as if it didn't exist
 	getTask := func(name string) (v1alpha1.TaskInterface, error) {
@@ -1232,9 +1248,6 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("taskrun"), name)
 	}
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, xerrors.New("should not get called")
-	}
 	getCondition := func(name string) (*v1alpha1.Condition, error) {
 		return nil, nil
 	}
@@ -1243,7 +1256,7 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 			Name: "pipelinerun",
 		},
 	}
-	_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, pts, providedResources)
+	_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, pts, providedResources)
 	switch err := err.(type) {
 	case nil:
 		t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
@@ -1273,14 +1286,11 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 			),
 		)),
 	}}
-	providedResources := map[string]v1alpha1.PipelineResourceRef{}
+	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, xerrors.New("shouldnt be called")
-	}
 	getCondition := func(name string) (*v1alpha1.Condition, error) {
 		return nil, nil
 	}
@@ -1292,239 +1302,9 @@ func TestResolvePipelineRun_ResourceBindingsDontExist(t *testing.T) {
 					Name: "pipelinerun",
 				},
 			}
-			_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, tt.p.Spec.Tasks, providedResources)
+			_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, tt.p.Spec.Tasks, providedResources)
 			if err == nil {
 				t.Fatalf("Expected error when bindings are in incorrect state for Pipeline %s but got none", p.Name)
-			}
-		})
-	}
-}
-
-func TestResolvePipelineRun_ResourcesDontExist(t *testing.T) {
-	tests := []struct {
-		name string
-		p    *v1alpha1.Pipeline
-	}{{
-		name: "input doesnt exist",
-		p: tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
-			tb.PipelineTask("mytask1", "task",
-				tb.PipelineTaskInputResource("input1", "git-resource"),
-			),
-		)),
-	}, {
-		name: "output doesnt exist",
-		p: tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
-			tb.PipelineTask("mytask1", "task",
-				tb.PipelineTaskOutputResource("input1", "git-resource"),
-			),
-		)),
-	}}
-	providedResources := map[string]v1alpha1.PipelineResourceRef{
-		"git-resource": {
-			Name: "doesnt-exist",
-		},
-	}
-
-	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
-	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return &trs[0], nil }
-	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return clustertask, nil }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, errors.NewNotFound(v1alpha1.Resource("pipelineresource"), name)
-	}
-	getCondition := func(name string) (*v1alpha1.Condition, error) {
-		return nil, nil
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			pr := v1alpha1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "pipelinerun",
-				},
-			}
-			_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, tt.p.Spec.Tasks, providedResources)
-			switch err := err.(type) {
-			case nil:
-				t.Fatalf("Expected error getting non-existent Resources for Pipeline %s but got none", p.Name)
-			case *ResourceNotFoundError:
-				// expected error
-			default:
-				t.Fatalf("Expected specific error type returned by func for non-existent Resource for Pipeline %s but got %s", p.Name, err)
-			}
-		})
-	}
-}
-
-func TestValidateFrom(t *testing.T) {
-	r := tb.PipelineResource("holygrail", namespace, tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage))
-	state := []*ResolvedPipelineRunTask{{
-		PipelineTask: &v1alpha1.PipelineTask{
-			Name: "quest",
-		},
-		ResolvedTaskResources: tb.ResolvedTaskResources(
-			tb.ResolvedTaskResourcesTaskSpec(
-				tb.TaskOutputs(tb.OutputsResource("sweet-artifact", v1alpha1.PipelineResourceTypeImage)),
-			),
-			tb.ResolvedTaskResourcesOutputs("sweet-artifact", r),
-		),
-	}, {
-		PipelineTask: &v1alpha1.PipelineTask{
-			Name: "winning",
-			Resources: &v1alpha1.PipelineTaskResources{
-				Inputs: []v1alpha1.PipelineTaskInputResource{{
-					Name: "awesome-thing",
-					From: []string{"quest"},
-				}},
-			}},
-		ResolvedTaskResources: tb.ResolvedTaskResources(
-			tb.ResolvedTaskResourcesTaskSpec(
-				tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
-			),
-			tb.ResolvedTaskResourcesInputs("awesome-thing", r),
-		),
-	}}
-	err := ValidateFrom(state)
-	if err != nil {
-		t.Fatalf("Didn't expect error when validating valid from clause but got: %v", err)
-	}
-}
-
-func TestValidateFrom_Invalid(t *testing.T) {
-	r := tb.PipelineResource("holygrail", namespace, tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage))
-	otherR := tb.PipelineResource("holyhandgrenade", namespace, tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeImage))
-
-	for _, tc := range []struct {
-		name        string
-		state       []*ResolvedPipelineRunTask
-		errContains string
-	}{{
-		name: "from tries to reference input",
-		state: []*ResolvedPipelineRunTask{{
-			PipelineTask: &v1alpha1.PipelineTask{
-				Name: "quest",
-			},
-			ResolvedTaskResources: tb.ResolvedTaskResources(
-				tb.ResolvedTaskResourcesTaskSpec(
-					tb.TaskInputs(tb.InputsResource("sweet-artifact", v1alpha1.PipelineResourceTypeImage)),
-				),
-				tb.ResolvedTaskResourcesInputs("sweet-artifact", r),
-			),
-		}, {
-			PipelineTask: &v1alpha1.PipelineTask{
-				Name: "winning",
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "awesome-thing",
-						From: []string{"quest"},
-					}},
-				}},
-			ResolvedTaskResources: tb.ResolvedTaskResources(
-				tb.ResolvedTaskResourcesTaskSpec(
-					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
-				),
-				tb.ResolvedTaskResourcesInputs("awesome-thing", r),
-			),
-		}},
-		errContains: "ambiguous",
-	}, {
-		name: "from resource doesn't exist",
-		state: []*ResolvedPipelineRunTask{{
-			PipelineTask: &v1alpha1.PipelineTask{
-				Name: "quest",
-			},
-			ResolvedTaskResources: tb.ResolvedTaskResources(),
-		}, {
-			PipelineTask: &v1alpha1.PipelineTask{
-				Name: "winning",
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "awesome-thing",
-						From: []string{"quest"},
-					}},
-				}},
-			ResolvedTaskResources: tb.ResolvedTaskResources(
-				tb.ResolvedTaskResourcesTaskSpec(
-					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
-				),
-				tb.ResolvedTaskResourcesInputs("awesome-thing", r),
-			),
-		}},
-		errContains: "ambiguous",
-	}, {
-		name: "from task doesn't exist",
-		state: []*ResolvedPipelineRunTask{{
-			PipelineTask: &v1alpha1.PipelineTask{
-				Name: "winning",
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "awesome-thing",
-						From: []string{"quest"},
-					}},
-				}},
-			ResolvedTaskResources: tb.ResolvedTaskResources(
-				tb.ResolvedTaskResourcesTaskSpec(
-					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
-				),
-				tb.ResolvedTaskResourcesInputs("awesome-thing", r),
-			),
-		}},
-		errContains: "does not exist",
-	}, {
-		name: "from task refers to itself",
-		state: []*ResolvedPipelineRunTask{{
-			PipelineTask: &v1alpha1.PipelineTask{
-				Name: "winning",
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "awesome-thing",
-						From: []string{"winning"},
-					}},
-				}},
-			ResolvedTaskResources: tb.ResolvedTaskResources(
-				tb.ResolvedTaskResourcesTaskSpec(
-					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
-				),
-				tb.ResolvedTaskResourcesInputs("awesome-thing", r),
-			),
-		}},
-		errContains: "from itself",
-	}, {
-		name: "from is bound to different resource",
-		state: []*ResolvedPipelineRunTask{{
-			PipelineTask: &v1alpha1.PipelineTask{
-				Name: "quest",
-			},
-			ResolvedTaskResources: tb.ResolvedTaskResources(
-				tb.ResolvedTaskResourcesTaskSpec(
-					tb.TaskOutputs(tb.OutputsResource("sweet-artifact", v1alpha1.PipelineResourceTypeImage)),
-				),
-				tb.ResolvedTaskResourcesOutputs("sweet-artifact", r),
-			),
-		}, {
-			PipelineTask: &v1alpha1.PipelineTask{
-				Name: "winning",
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "awesome-thing",
-						From: []string{"quest"},
-					}},
-				}},
-			ResolvedTaskResources: tb.ResolvedTaskResources(
-				tb.ResolvedTaskResourcesTaskSpec(
-					tb.TaskInputs(tb.InputsResource("awesome-thing", v1alpha1.PipelineResourceTypeImage)),
-				),
-				tb.ResolvedTaskResourcesInputs("awesome-thing", otherR),
-			),
-		}},
-		errContains: "ambiguous",
-	}} {
-		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateFrom(tc.state)
-			if err == nil {
-				t.Fatalf("Expected error when validating invalid from but got none")
-			}
-			if !strings.Contains(err.Error(), tc.errContains) {
-				t.Errorf("Expected error to contain %q but was: %v", tc.errContains, err)
 			}
 		})
 	}
@@ -1539,11 +1319,6 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 			tb.PipelineTaskInputResource("input1", "git-resource"),
 		),
 	))
-	providedResources := map[string]v1alpha1.PipelineResourceRef{
-		"git-resource": {
-			Name: "someresource",
-		},
-	}
 
 	r := &v1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1553,6 +1328,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 			Type: v1alpha1.PipelineResourceTypeGit,
 		},
 	}
+	providedResources := map[string]*v1alpha1.PipelineResource{"git-resource": r}
 	taskrunStatus := map[string]*v1alpha1.PipelineRunTaskRunStatus{}
 	taskrunStatus["pipelinerun-mytask-with-a-really-long-name-to-trigger-tru-9l9zj"] = &v1alpha1.PipelineRunTaskRunStatus{
 		PipelineTaskName: "mytask-with-a-really-long-name-to-trigger-truncation",
@@ -1573,9 +1349,8 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) { return r, nil }
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return nil, nil }
-	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, p.Spec.Tasks, providedResources)
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, p.Spec.Tasks, providedResources)
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}
@@ -1617,13 +1392,10 @@ func TestResolveConditionChecks(t *testing.T) {
 		TaskRef:    v1alpha1.TaskRef{Name: "task"},
 		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
 	}}
-	providedResources := map[string]v1alpha1.PipelineResourceRef{}
+	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, xerrors.New("should not get called")
-	}
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return &condition, nil }
 	pr := v1alpha1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1651,6 +1423,7 @@ func TestResolveConditionChecks(t *testing.T) {
 				Condition:             &condition,
 				ConditionCheck:        v1alpha1.NewConditionCheck(cc),
 				PipelineTaskCondition: &ptc,
+				ResolvedResources:     providedResources,
 			}},
 		},
 		{
@@ -1667,19 +1440,20 @@ func TestResolveConditionChecks(t *testing.T) {
 				ConditionCheckName:    "pipelinerun-mytask1-mssqb-always-true-78c5n",
 				Condition:             &condition,
 				PipelineTaskCondition: &ptc,
+				ResolvedResources:     providedResources,
 			}},
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			pipelineState, err := ResolvePipelineRun(pr, getTask, tc.getTaskRun, getClusterTask, getResource, getCondition, pts, providedResources)
+			pipelineState, err := ResolvePipelineRun(pr, getTask, tc.getTaskRun, getClusterTask, getCondition, pts, providedResources)
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun without Conditions: %v", err)
 			}
 
-			if d := cmp.Diff(pipelineState[0].ResolvedConditionChecks, tc.expectedConditionCheck, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-				t.Fatalf("ConditionChecks did not resolve as expected for case %s : %s", tc.name, d)
+			if d := cmp.Diff(tc.expectedConditionCheck, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
+				t.Fatalf("ConditionChecks did not resolve as expected for case %s (-want, +got) : %s", tc.name, d)
 			}
 		})
 	}
@@ -1697,7 +1471,7 @@ func TestResolveConditionChecks_ConditionDoesNotExist(t *testing.T) {
 			ConditionRef: "does-not-exist",
 		}},
 	}}
-	providedResources := map[string]v1alpha1.PipelineResourceRef{}
+	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
@@ -1709,9 +1483,6 @@ func TestResolveConditionChecks_ConditionDoesNotExist(t *testing.T) {
 		return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
 	}
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, xerrors.New("should not get called")
-	}
 	getCondition := func(name string) (*v1alpha1.Condition, error) {
 		return nil, errors.NewNotFound(v1alpha1.Resource("condition"), name)
 	}
@@ -1721,7 +1492,7 @@ func TestResolveConditionChecks_ConditionDoesNotExist(t *testing.T) {
 		},
 	}
 
-	_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, pts, providedResources)
+	_, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, pts, providedResources)
 
 	switch err := err.(type) {
 	case nil:
@@ -1755,7 +1526,7 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		TaskRef:    v1alpha1.TaskRef{Name: "task"},
 		Conditions: []v1alpha1.PipelineTaskCondition{ptc},
 	}}
-	providedResources := map[string]v1alpha1.PipelineResourceRef{}
+	providedResources := map[string]*v1alpha1.PipelineResource{}
 
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) {
@@ -1767,9 +1538,6 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
 	}
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		return nil, xerrors.New("should not get called")
-	}
 	getCondition := func(name string) (*v1alpha1.Condition, error) { return &condition, nil }
 
 	ccStatus := make(map[string]*v1alpha1.PipelineRunConditionCheckStatus)
@@ -1791,7 +1559,7 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		},
 	}
 
-	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, pts, providedResources)
+	pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, pts, providedResources)
 	if err != nil {
 		t.Fatalf("Did not expect error when resolving PipelineRun without Conditions: %v", err)
 	}
@@ -1800,10 +1568,11 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 		Condition:             &condition,
 		ConditionCheck:        v1alpha1.NewConditionCheck(cc),
 		PipelineTaskCondition: &ptc,
+		ResolvedResources:     providedResources,
 	}}
 
-	if d := cmp.Diff(pipelineState[0].ResolvedConditionChecks, expectedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-		t.Fatalf("ConditionChecks did not resolve as expected : %s", d)
+	if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
+		t.Fatalf("ConditionChecks did not resolve as expected (-want, +got): %s", d)
 	}
 }
 
@@ -1834,13 +1603,11 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 	getTask := func(name string) (v1alpha1.TaskInterface, error) { return task, nil }
 	getTaskRun := func(name string) (*v1alpha1.TaskRun, error) { return nil, nil }
 	getClusterTask := func(name string) (v1alpha1.TaskInterface, error) { return nil, xerrors.New("should not get called") }
-	getResource := func(name string) (*v1alpha1.PipelineResource, error) {
-		if name == "some-repo" {
-			return gitResource, nil
-		}
-		return nil, xerrors.Errorf("getResource called with unexpected name: %s", name)
-	}
-	getCondition := func(name string) (*v1alpha1.Condition, error) {
+
+	// This err result is required to satisfy the type alias on this function, but it triggers
+	// a false positive in the linter: https://github.com/mvdan/unparam/issues/40
+	// nolint: unparam
+	getCondition := func(_ string) (*v1alpha1.Condition, error) {
 		return condition, nil
 	}
 
@@ -1852,39 +1619,22 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 
 	tcs := []struct {
 		name              string
-		providedResources map[string]v1alpha1.PipelineResourceRef
+		providedResources map[string]*v1alpha1.PipelineResource
 		wantErr           bool
 		expected          map[string]*v1alpha1.PipelineResource
 	}{{
-		name: "resource exists",
-		providedResources: map[string]v1alpha1.PipelineResourceRef{
-			"blah": {
-				Name: "some-repo",
-			},
-		},
-		expected: map[string]*v1alpha1.PipelineResource{
-			"workspace": gitResource,
-		},
+		name:              "resource exists",
+		providedResources: map[string]*v1alpha1.PipelineResource{"blah": gitResource},
+		expected:          map[string]*v1alpha1.PipelineResource{"workspace": gitResource},
 	}, {
-		name: "resource does not exist",
-		providedResources: map[string]v1alpha1.PipelineResourceRef{
-			"blah": {
-				Name: "some-other-repo",
-			},
-		},
-		wantErr: true,
-	}, {
-		name: "undeclared resource",
-		providedResources: map[string]v1alpha1.PipelineResourceRef{
-			"foo": {
-				Name: "some-repo",
-			}},
-		wantErr: true,
+		name:              "resource does not exist",
+		providedResources: map[string]*v1alpha1.PipelineResource{},
+		wantErr:           true,
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getResource, getCondition, pts, tc.providedResources)
+			pipelineState, err := ResolvePipelineRun(pr, getTask, getTaskRun, getClusterTask, getCondition, pts, tc.providedResources)
 
 			if tc.wantErr {
 				if err == nil {
@@ -1900,10 +1650,51 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 					PipelineTaskCondition: &ptc,
 					ResolvedResources:     tc.expected,
 				}}
-				if d := cmp.Diff(pipelineState[0].ResolvedConditionChecks, expectedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{})); d != "" {
-					t.Fatalf("ConditionChecks did not resolve as expected : %s", d)
+				if d := cmp.Diff(expectedConditionChecks, pipelineState[0].ResolvedConditionChecks, cmpopts.IgnoreUnexported(v1alpha1.TaskRunSpec{}, ResolvedConditionCheck{})); d != "" {
+					t.Fatalf("ConditionChecks did not resolve as expected (-want, +got): %s", d)
 				}
 			}
 		})
+	}
+}
+
+func TestValidateResourceBindings(t *testing.T) {
+	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+		tb.PipelineDeclaredResource("git-resource", "git"),
+	))
+	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
+	))
+	err := ValidateResourceBindings(&p.Spec, pr)
+	if err != nil {
+		t.Fatalf("didn't expect error getting resources from bindings but got: %v", err)
+	}
+}
+
+func TestValidateResourceBindings_Missing(t *testing.T) {
+	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+		tb.PipelineDeclaredResource("git-resource", "git"),
+		tb.PipelineDeclaredResource("image-resource", "image"),
+	))
+	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
+	))
+	err := ValidateResourceBindings(&p.Spec, pr)
+	if err == nil {
+		t.Fatalf("Expected error indicating `image-resource` was missing but got no error")
+	}
+}
+
+func TestGetResourcesFromBindings_Extra(t *testing.T) {
+	p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
+		tb.PipelineDeclaredResource("git-resource", "git"),
+	))
+	pr := tb.PipelineRun("pipelinerun", "namespace", tb.PipelineRunSpec("pipeline",
+		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
+		tb.PipelineRunResourceBinding("image-resource", tb.PipelineResourceBindingRef("sweet-resource2")),
+	))
+	err := ValidateResourceBindings(&p.Spec, pr)
+	if err == nil {
+		t.Fatalf("Expected error indicating `image-resource` was extra but got no error")
 	}
 }

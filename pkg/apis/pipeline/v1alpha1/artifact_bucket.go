@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -43,6 +42,11 @@ const (
 	// the secret key that will have a value with the service account json with access
 	// to the bucket
 	BucketServiceAccountSecretKey = "bucket.service.account.secret.key"
+
+	// BucketServiceAccountFieldName is the name of the configmap entry that specifies
+	// the field name that should be used for the service account.
+	// Valid values: GOOGLE_APPLICATION_CREDENTIALS, BOTO_CONFIG. Defaults to GOOGLE_APPLICATION_CREDENTIALS.
+	BucketServiceAccountFieldName = "bucket.service.account.field.name"
 )
 
 const (
@@ -53,6 +57,9 @@ const (
 	ArtifactStoragePVCType = "pvc"
 )
 
+// For some reason gosec thinks this string has enough entropy to be a potential secret.
+// The nosec comment disables it for this line.
+/* #nosec */
 var secretVolumeMountPath = "/var/bucketsecret"
 
 // ArtifactBucket contains the Storage bucket configuration defined in the
@@ -61,6 +68,9 @@ type ArtifactBucket struct {
 	Name     string
 	Location string
 	Secrets  []SecretParam
+
+	ShellImage  string
+	GsutilImage string
 }
 
 // GetType returns the type of the artifact storage
@@ -75,22 +85,17 @@ func (b *ArtifactBucket) StorageBasePath(pr *PipelineRun) string {
 
 // GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage
 func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []Step {
-	args := []string{"-args", fmt.Sprintf("cp -P -r %s %s", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath)}
-
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []Step{{Container: corev1.Container{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
-		Image:   *BashNoopImage,
-		Command: []string{"/ko-app/bash"},
-		Args: []string{
-			"-args", strings.Join([]string{"mkdir", "-p", destinationPath}, " "),
-		},
+		Image:   b.ShellImage,
+		Command: []string{"mkdir", "-p", destinationPath},
 	}}, {Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-from-%s", name)),
-		Image:        *gsutilImage,
-		Command:      []string{"/ko-app/gsutil"},
-		Args:         args,
+		Image:        b.GsutilImage,
+		Command:      []string{"gsutil"},
+		Args:         []string{"cp", "-P", "-r", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath},
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
 	}}}
@@ -98,15 +103,13 @@ func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destination
 
 // GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage
 func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []Step {
-	args := []string{"-args", fmt.Sprintf("cp -P -r %s %s", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath))}
-
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
 	return []Step{{Container: corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-to-%s", name)),
-		Image:        *gsutilImage,
-		Command:      []string{"/ko-app/gsutil"},
-		Args:         args,
+		Image:        b.GsutilImage,
+		Command:      []string{"gsutil"},
+		Args:         []string{"cp", "-P", "-r", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath)},
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
 	}}}

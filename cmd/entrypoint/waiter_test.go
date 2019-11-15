@@ -32,7 +32,7 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 		t.Errorf("error creating temp file: %v", err)
 	}
 	os.Remove(tmp.Name())
-	rw := RealWaiter{}
+	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
 		err := rw.Wait(tmp.Name(), false)
@@ -55,7 +55,7 @@ func TestRealWaiterWaitWithFile(t *testing.T) {
 		t.Errorf("error creating temp file: %v", err)
 	}
 	defer os.Remove(tmp.Name())
-	rw := RealWaiter{}
+	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
 		err := rw.Wait(tmp.Name(), false)
@@ -78,7 +78,7 @@ func TestRealWaiterWaitMissingContent(t *testing.T) {
 		t.Errorf("error creating temp file: %v", err)
 	}
 	defer os.Remove(tmp.Name())
-	rw := RealWaiter{}
+	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
 		err := rw.Wait(tmp.Name(), true)
@@ -101,7 +101,7 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 		t.Errorf("error creating temp file: %v", err)
 	}
 	defer os.Remove(tmp.Name())
-	rw := RealWaiter{}
+	rw := realWaiter{}
 	doneCh := make(chan struct{})
 	go func() {
 		err := rw.Wait(tmp.Name(), true)

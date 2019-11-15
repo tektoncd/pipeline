@@ -1,0 +1,17 @@
+[
+  {
+    "Login": "raymond_smith",
+    "Name": "Raymond Smith",
+    "Avatar": "https://www.gravatar.com/avatar/c2525a7f58ae3776070e44c106c48e15?s=80&d=identicon"
+  },
+  {
+    "Login": "john_doe",
+    "Name": "John Doe",
+    "Avatar": "https://www.gravatar.com/avatar/c2525a7f58ae3776070e44c106c48e15?s=80&d=identicon"
+  },
+  {
+    "Login": "foo_bar",
+    "Name": "Foo bar",
+    "Avatar": "https://www.gravatar.com/avatar/c2525a7f58ae3776070e44c106c48e15?s=80&d=identicon"
+  }
+]

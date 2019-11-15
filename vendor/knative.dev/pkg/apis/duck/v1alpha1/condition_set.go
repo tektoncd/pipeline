@@ -218,11 +218,7 @@ func (r conditionsImpl) isTerminal(t ConditionType) bool {
 		}
 	}
 
-	if t == r.happy {
-		return true
-	}
-
-	return false
+	return t == r.happy
 }
 
 func (r conditionsImpl) severity(t ConditionType) ConditionSeverity {
