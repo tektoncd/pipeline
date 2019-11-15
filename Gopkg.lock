@@ -1005,7 +1005,7 @@
   version = "kubernetes-1.13.12"
 
 [[projects]]
-  digest = "1:f0dfe2000e516eba8c5218d6f03d1f12b7583d0224b8b6a4fff5f2f443f4ce08"
+  digest = "1:137a54a8d65f19ad70365cd3edb98d6e47c817f260cd4189bef767b2d0d3b37d"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1158,6 +1158,7 @@
     "pkg/version",
     "plugin/pkg/client/auth/exec",
     "plugin/pkg/client/auth/gcp",
+    "plugin/pkg/client/auth/oidc",
     "rest",
     "rest/watch",
     "testing",
@@ -1404,6 +1405,7 @@
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/kubernetes/typed/core/v1",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
+    "k8s.io/client-go/plugin/pkg/client/auth/oidc",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
