@@ -222,7 +222,7 @@ type PipelineTaskRun struct {
 // GetTaskRunRef for pipelinerun
 func (pr *PipelineRun) GetTaskRunRef() corev1.ObjectReference {
 	return corev1.ObjectReference{
-		APIVersion: "tekton.dev/v1alpha1",
+		APIVersion: SchemeGroupVersion.String(),
 		Kind:       "TaskRun",
 		Namespace:  pr.Namespace,
 		Name:       pr.Name,
