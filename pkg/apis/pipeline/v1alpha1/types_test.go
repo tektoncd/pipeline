@@ -30,4 +30,5 @@ func TestTypes(t *testing.T) {
 	var _ webhook.GenericCRD = (*v1alpha1.PipelineResource)(nil)
 	var _ webhook.GenericCRD = (*v1alpha1.Task)(nil)
 	var _ webhook.GenericCRD = (*v1alpha1.TaskRun)(nil)
+	var _ webhook.GenericCRD = (*v1alpha1.Condition)(nil)
 }
