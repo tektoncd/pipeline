@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"knative.dev/pkg/configmap"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -76,6 +78,14 @@ var (
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 )
+
+func getRunner(k kubernetes.Interface) string {
+	cfg, err := configmap.Load("config-entrypoint")
+	if err != nil {
+		return ""
+	}
+	return cfg["runner"]
+}
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
@@ -138,12 +148,13 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
 	// container to place the entrypoint binary.
-	entrypointInit, stepContainers, err := orderContainers(images.EntrypointImage, stepContainers, taskSpec.Results)
+	runner := getRunner(kubeclient)
+	entrypointInit, stepContainers, err := orderContainers(images.EntrypointImage, stepContainers, runner, taskSpec.Results)
 	if err != nil {
 		return nil, err
 	}
 	initContainers = append(initContainers, entrypointInit)
-	volumes = append(volumes, toolsVolume, downwardVolume)
+	volumes = append(volumes, toolsVolume, downwardVolume, logCfgVolume)
 
 	limitRangeMin, err := getLimitRangeMinimum(taskRun.Namespace, kubeclient)
 	if err != nil {

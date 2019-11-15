@@ -37,8 +37,11 @@ const (
 	downwardMountPoint     = "/tekton/downward"
 	terminationPath        = "/tekton/termination"
 	downwardMountReadyFile = "ready"
-	readyAnnotation        = "tekton.dev/ready"
-	readyAnnotationValue   = "READY"
+	logCfgMountName        = "log-config"
+	logCfgMountPoint       = "/tekton/logCfg"
+
+	readyAnnotation      = "tekton.dev/ready"
+	readyAnnotationValue = "READY"
 
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
@@ -74,6 +77,26 @@ var (
 		Name:      downwardVolumeName,
 		MountPath: downwardMountPoint,
 	}
+
+	logCfgMount = corev1.VolumeMount{
+		Name:      logCfgMountName,
+		MountPath: logCfgMountPoint,
+	}
+	logCfgVolume = corev1.Volume{
+		Name: logCfgMountName,
+		VolumeSource: corev1.VolumeSource{
+			DownwardAPI: &corev1.DownwardAPIVolumeSource{
+				Items: []corev1.DownwardAPIVolumeFile{
+					{
+						Path: "labels",
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: "metadata.labels",
+						},
+					},
+				},
+			},
+		},
+	}
 )
 
 // orderContainers returns the specified steps, modified so that they are
@@ -86,7 +109,7 @@ var (
 // method, using entrypoint_lookup.go.
 //
 // TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
-func orderContainers(entrypointImage string, steps []corev1.Container, results []v1alpha1.TaskResult) (corev1.Container, []corev1.Container, error) {
+func orderContainers(entrypointImage string, steps []corev1.Container, runner string, results []v1alpha1.TaskResult) (corev1.Container, []corev1.Container, error) {
 	initContainer := corev1.Container{
 		Name:         "place-tools",
 		Image:        entrypointImage,
@@ -120,6 +143,11 @@ func orderContainers(entrypointImage string, steps []corev1.Container, results [
 		}
 		argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, results)...)
 
+		if runner != "" {
+			argsForEntrypoint = append(argsForEntrypoint, "-runner", runner)
+
+		}
+
 		cmd, args := s.Command, s.Args
 		if len(cmd) == 0 {
 			return corev1.Container{}, nil, fmt.Errorf("Step %d did not specify command", i)
@@ -134,6 +162,7 @@ func orderContainers(entrypointImage string, steps []corev1.Container, results [
 		steps[i].Command = []string{entrypointBinary}
 		steps[i].Args = argsForEntrypoint
 		steps[i].VolumeMounts = append(steps[i].VolumeMounts, toolsMount)
+		steps[i].VolumeMounts = append(steps[i].VolumeMounts, logCfgMount)
 		steps[i].TerminationMessagePath = terminationPath
 	}
 	// Mount the Downward volume into the first step container.

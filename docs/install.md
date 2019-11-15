@@ -292,7 +292,35 @@ data:
 
 You can create a custom release of Tekton Pipelines by following and customizing the steps in [Creating an official release](https://github.com/tektoncd/pipeline/blob/master/tekton/README.md#create-an-official-release). For example, you might want to customize the container images built and used by Tekton Pipelines.
 
-## Next steps
+## Task Output
+
+By default, the stdout/stderr from the steps inside of a `TaskRun` are passed along unmodified.
+However, there is a configuration option to instruct the Tekton system to wrap output in a JSON
+object, and include additional metadata. This feature can be useful if you are using Tekton with
+a logging capture system capable of ingesting structured logs, like Stackdriver on GKE or an
+ELK stack.
+
+To enable this mode, you can apply the following configuration map:
+
+```yaml
+### config-defaults.yaml
+
+apiVersion: v1`
+kind: ConfigMap
+data:
+  runner: logging
+```
+
+With this set, lines from stdout/stderr will be captured and wrapped into a JSON object, like this:
+
+```json
+{"message":"foo","tekton.dev/task":"deploy-yaml","tekton.dev/taskRun":"deploy-yaml-56p5x"}
+```
+
+The text is placed under the `message` key, and all labels on the `Taskrun` beginning with the `tekton.dev`
+prefix are included in the object.
+
+## Next Steps
 
 To get started with Tekton Pipelines, see the [Tekton Pipelines Tutorial](./tutorial.md) and take a look at our [examples](https://github.com/tektoncd/pipeline/tree/master/examples).
 

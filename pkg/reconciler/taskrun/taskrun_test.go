@@ -203,6 +203,19 @@ var (
 			},
 		},
 	}
+	logVolume = corev1.Volume{
+		Name: "log-config",
+		VolumeSource: corev1.VolumeSource{
+			DownwardAPI: &corev1.DownwardAPIVolumeSource{
+				Items: []corev1.DownwardAPIVolumeFile{{
+					Path: "labels",
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.labels",
+					},
+				}},
+			},
+		},
+	}
 
 	getMkdirResourceContainer = func(name, dir, suffix string, ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
@@ -222,6 +235,7 @@ var (
 			tb.WorkingDir(workspaceDir),
 			tb.EnvVar("HOME", "/tekton/home"),
 			tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+			tb.VolumeMount("log-config", "/tekton/logCfg"),
 			tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 			tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 			tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -305,7 +319,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodServiceAccountName(defaultSAName),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
@@ -324,6 +338,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -344,7 +359,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodServiceAccountName("test-sa"),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-sa-step", "foo",
@@ -363,6 +378,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -573,7 +589,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
@@ -592,6 +608,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -612,7 +629,7 @@ func TestReconcile(t *testing.T) {
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodServiceAccountName("test-sa"),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-sa-step", "foo",
@@ -631,6 +648,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -651,7 +669,7 @@ func TestReconcile(t *testing.T) {
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
 				tb.PodVolumes(
-					workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume,
+					workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume,
 					corev1.Volume{
 						Name: "volume-configmap",
 						VolumeSource: corev1.VolumeSource{
@@ -675,6 +693,7 @@ func TestReconcile(t *testing.T) {
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "git-resource"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
@@ -688,6 +707,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
@@ -700,6 +720,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
@@ -713,6 +734,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
@@ -730,7 +752,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-git-source-git-resource-9l9zj", "override-with-git:latest",
@@ -756,6 +778,7 @@ func TestReconcile(t *testing.T) {
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "git-resource"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -769,6 +792,7 @@ func TestReconcile(t *testing.T) {
 						"/tekton/termination", "-entrypoint", "/mycmd", "--", "--my-arg=foo"),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
@@ -787,7 +811,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
@@ -806,6 +830,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -824,7 +849,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-git-source-workspace-9l9zj", "override-with-git:latest",
@@ -849,6 +874,7 @@ func TestReconcile(t *testing.T) {
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -862,6 +888,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
@@ -880,7 +907,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
@@ -898,6 +925,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -916,7 +944,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-credentials-variable",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume),
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, toolsVolume, downwardVolume, logVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-mycontainer", "myimage",
@@ -935,6 +963,7 @@ func TestReconcile(t *testing.T) {
 					tb.WorkingDir(workspaceDir),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("log-config", "/tekton/logCfg"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),

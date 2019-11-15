@@ -58,6 +58,8 @@ spec:
         volumeMounts:
         - name: config-logging
           mountPath: /etc/config-logging
+        - name: config-entrypoint
+          mountPath: /etc/config-entrypoint
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -68,6 +70,7 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
         - name: CONFIG_ARTIFACT_BUCKET_NAME
+
           value: config-artifact-bucket
         - name: CONFIG_ARTIFACT_PVC_NAME
           value: config-artifact-pvc
@@ -77,6 +80,9 @@ spec:
         - name: config-logging
           configMap:
             name: config-logging
+        - name: config-entrypoint
+          configMap:
+            name: config-entrypoint
 ---
 apiVersion: v1
 kind: Service
