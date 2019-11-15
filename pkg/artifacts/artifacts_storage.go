@@ -45,6 +45,30 @@ const (
 
 	// PvcStorageClassNameKey is the name of the configmap entry that specifies the storage class of the PVC to create
 	PvcStorageClassNameKey = "storageClassName"
+
+	// BucketConfigName is the name of the configmap containing all
+	// customizations for the storage bucket.
+	BucketConfigName = "config-artifact-bucket"
+
+	// BucketLocationKey is the name of the configmap entry that specifies
+	// loction of the bucket.
+	BucketLocationKey = "location"
+
+	// BucketServiceAccountSecretName is the name of the configmap entry that specifies
+	// the name of the secret that will provide the servie account with bucket access.
+	// This secret must  have a key called serviceaccount that will have a value with
+	// the service account with access to the bucket
+	BucketServiceAccountSecretName = "bucket.service.account.secret.name"
+
+	// BucketServiceAccountSecretKey is the name of the configmap entry that specifies
+	// the secret key that will have a value with the service account json with access
+	// to the bucket
+	BucketServiceAccountSecretKey = "bucket.service.account.secret.key"
+
+	// BucketServiceAccountFieldName is the name of the configmap entry that specifies
+	// the field name that should be used for the service account.
+	// Valid values: GOOGLE_APPLICATION_CREDENTIALS, BOTO_CONFIG. Defaults to GOOGLE_APPLICATION_CREDENTIALS.
+	BucketServiceAccountFieldName = "bucket.service.account.field.name"
 )
 
 // ArtifactStorageInterface is an interface to define the steps to copy
@@ -116,7 +140,7 @@ func InitializeArtifactStorage(images pipeline.Images, pr *v1alpha1.PipelineRun,
 		return &ArtifactStorageNone{}, nil
 	}
 
-	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(BucketConfigName, metav1.GetOptions{})
 	shouldCreatePVC, err := ConfigMapNeedsPVC(configMap, err, logger)
 	if err != nil {
 		return nil, err
@@ -135,7 +159,7 @@ func InitializeArtifactStorage(images pipeline.Images, pr *v1alpha1.PipelineRun,
 // CleanupArtifactStorage will delete the PipelineRun's artifact storage PVC if it exists. The PVC is created for using
 // an output workspace or artifacts from one Task to another Task. No other PVCs will be impacted by this cleanup.
 func CleanupArtifactStorage(pr *v1alpha1.PipelineRun, c kubernetes.Interface, logger *zap.SugaredLogger) error {
-	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(BucketConfigName, metav1.GetOptions{})
 	shouldCreatePVC, err := ConfigMapNeedsPVC(configMap, err, logger)
 	if err != nil {
 		return err
@@ -165,10 +189,10 @@ func ConfigMapNeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.Sugar
 		logger.Warn("the configmap has no data")
 		return true, nil
 	}
-	if location, ok := configMap.Data[v1alpha1.BucketLocationKey]; !ok {
+	if location, ok := configMap.Data[BucketLocationKey]; !ok {
 		return true, nil
 	} else {
-		logger.Warnf("the configmap key %q is empty", v1alpha1.BucketLocationKey)
+		logger.Warnf("the configmap key %q is empty", BucketLocationKey)
 		if strings.TrimSpace(location) == "" {
 			return true, nil
 		}
@@ -179,7 +203,7 @@ func ConfigMapNeedsPVC(configMap *corev1.ConfigMap, err error, logger *zap.Sugar
 // GetArtifactStorage returns the storage interface to enable
 // consumer code to get a container step for copy to/from storage
 func GetArtifactStorage(images pipeline.Images, prName string, c kubernetes.Interface, logger *zap.SugaredLogger) (ArtifactStorageInterface, error) {
-	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(v1alpha1.BucketConfigName, metav1.GetOptions{})
+	configMap, err := c.CoreV1().ConfigMaps(system.GetNamespace()).Get(BucketConfigName, metav1.GetOptions{})
 	pvc, err := ConfigMapNeedsPVC(configMap, err, logger)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't determine if PVC was needed from config map: %w", err)
@@ -201,16 +225,16 @@ func NewArtifactBucketConfigFromConfigMap(images pipeline.Images) func(configMap
 		if configMap.Data == nil {
 			return c, nil
 		}
-		if location, ok := configMap.Data[v1alpha1.BucketLocationKey]; !ok {
+		if location, ok := configMap.Data[BucketLocationKey]; !ok {
 			c.Location = ""
 		} else {
 			c.Location = location
 		}
 		sp := v1alpha1.SecretParam{}
-		if secretName, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretName]; ok {
-			if secretKey, ok := configMap.Data[v1alpha1.BucketServiceAccountSecretKey]; ok {
+		if secretName, ok := configMap.Data[BucketServiceAccountSecretName]; ok {
+			if secretKey, ok := configMap.Data[BucketServiceAccountSecretKey]; ok {
 				sp.FieldName = "GOOGLE_APPLICATION_CREDENTIALS"
-				if fieldName, ok := configMap.Data[v1alpha1.BucketServiceAccountFieldName]; ok {
+				if fieldName, ok := configMap.Data[BucketServiceAccountFieldName]; ok {
 					sp.FieldName = fieldName
 				}
 				sp.SecretName = secretName

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -38,7 +39,7 @@ type ArtifactPVC struct {
 
 // GetType returns the type of the artifact storage.
 func (p *ArtifactPVC) GetType() string {
-	return ArtifactStoragePVCType
+	return pipeline.ArtifactStoragePVCType
 }
 
 // StorageBasePath returns the path to be used to store artifacts in a pipelinerun temporary storage.

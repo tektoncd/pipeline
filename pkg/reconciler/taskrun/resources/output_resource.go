@@ -108,7 +108,7 @@ func AddOutputResources(
 		}
 
 		// Attach the PVC that will be used for `from` copying.
-		if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+		if as.GetType() == pipeline.ArtifactStoragePVCType {
 			if pvcName == "" {
 				return taskSpec, nil
 			}

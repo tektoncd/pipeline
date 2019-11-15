@@ -89,7 +89,7 @@ func AddInputResource(
 		if v1alpha1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			for _, path := range boundResource.Paths {
 				cpSteps := as.GetCopyFromStorageToSteps(boundResource.Name, path, dPath)
-				if as.GetType() == v1alpha1.ArtifactStoragePVCType {
+				if as.GetType() == pipeline.ArtifactStoragePVCType {
 					mountPVC = true
 					for _, s := range cpSteps {
 						s.VolumeMounts = []corev1.VolumeMount{v1alpha1.GetPvcMount(pvcName)}

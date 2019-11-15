@@ -124,12 +124,12 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "gs://fake-bucket",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "gs://fake-bucket",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		pvcNeeded: false,
@@ -138,12 +138,12 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		pvcNeeded: true,
@@ -152,11 +152,11 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		pvcNeeded: true,
@@ -165,7 +165,7 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 		},
 		pvcNeeded: true,
@@ -174,10 +174,10 @@ func TestConfigMapNeedsPVC(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey: "gs://fake-bucket",
+				BucketLocationKey: "gs://fake-bucket",
 			},
 		},
 		pvcNeeded: false,
@@ -241,12 +241,12 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "gs://fake-bucket",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "gs://fake-bucket",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
@@ -265,12 +265,12 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -284,11 +284,11 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -302,7 +302,7 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -316,10 +316,10 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey: "gs://fake-bucket",
+				BucketLocationKey: "gs://fake-bucket",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
@@ -333,13 +333,13 @@ func TestInitializeArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "s3://fake-bucket",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
-				v1alpha1.BucketServiceAccountFieldName:  "BOTO_CONFIG",
+				BucketLocationKey:              "s3://fake-bucket",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
+				BucketServiceAccountFieldName:  "BOTO_CONFIG",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
@@ -461,12 +461,12 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "gs://fake-bucket",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "gs://fake-bucket",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 	}, {
@@ -474,12 +474,12 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 	}} {
@@ -512,12 +512,12 @@ func TestCleanupArtifactStorage(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 	}, {
@@ -525,11 +525,11 @@ func TestCleanupArtifactStorage(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 	}, {
@@ -537,7 +537,7 @@ func TestCleanupArtifactStorage(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 		},
 	}} {
@@ -603,12 +603,12 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "gs://fake-bucket",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "gs://fake-bucket",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactBucket{
@@ -626,12 +626,12 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketLocationKey:              "",
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketLocationKey:              "",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -643,11 +643,11 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 			Data: map[string]string{
-				v1alpha1.BucketServiceAccountSecretName: "secret1",
-				v1alpha1.BucketServiceAccountSecretKey:  "sakey",
+				BucketServiceAccountSecretName: "secret1",
+				BucketServiceAccountSecretKey:  "sakey",
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{
@@ -659,7 +659,7 @@ func TestGetArtifactStorageWithConfigMap(t *testing.T) {
 		configMap: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: system.GetNamespace(),
-				Name:      v1alpha1.BucketConfigName,
+				Name:      BucketConfigName,
 			},
 		},
 		expectedArtifactStorage: &v1alpha1.ArtifactPVC{

@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"github.com/tektoncd/pipeline/pkg/logging"
 	"github.com/tektoncd/pipeline/test/names"
 	"go.uber.org/zap"
@@ -1172,12 +1173,12 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "tekton-pipelines",
-						Name:      v1alpha1.BucketConfigName,
+						Name:      artifacts.BucketConfigName,
 					},
 					Data: map[string]string{
-						v1alpha1.BucketLocationKey:              "gs://fake-bucket",
-						v1alpha1.BucketServiceAccountSecretName: "gcs-config",
-						v1alpha1.BucketServiceAccountSecretKey:  "my-key",
+						artifacts.BucketLocationKey:              "gs://fake-bucket",
+						artifacts.BucketServiceAccountSecretName: "gcs-config",
+						artifacts.BucketServiceAccountSecretKey:  "my-key",
 					},
 				},
 			)
