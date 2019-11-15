@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dag
+package dag_test
 
 import (
 	"testing"
@@ -22,9 +22,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/list"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func testGraph(t *testing.T) *v1alpha1.DAG {
+func testGraph(t *testing.T) *dag.Graph {
 	//  b     a
 	//  |    / \
 	//  |   |   x
@@ -33,30 +36,24 @@ func testGraph(t *testing.T) *v1alpha1.DAG {
 	//   \ /    z
 	//    w
 	t.Helper()
-	g, err := v1alpha1.BuildDAG([]v1alpha1.PipelineTask{
-		{
-			Name: "a",
-		},
-		{
-			Name: "b",
-		},
-		{
-			Name:     "w",
-			RunAfter: []string{"b", "y"},
-		},
-		{
-			Name:     "x",
-			RunAfter: []string{"a"},
-		},
-		{
-			Name:     "y",
-			RunAfter: []string{"a", "x"},
-		},
-		{
-			Name:     "z",
-			RunAfter: []string{"x"},
-		},
-	})
+	tasks := []v1alpha1.PipelineTask{{
+		Name: "a",
+	}, {
+		Name: "b",
+	}, {
+		Name:     "w",
+		RunAfter: []string{"b", "y"},
+	}, {
+		Name:     "x",
+		RunAfter: []string{"a"},
+	}, {
+		Name:     "y",
+		RunAfter: []string{"a", "x"},
+	}, {
+		Name:     "z",
+		RunAfter: []string{"x"},
+	}}
+	g, err := dag.Build(v1alpha1.PipelineTaskList(tasks))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,73 +65,73 @@ func TestGetSchedulable(t *testing.T) {
 	tcs := []struct {
 		name          string
 		finished      []string
-		expectedTasks map[string]v1alpha1.PipelineTask
+		expectedTasks map[string]struct{}
 	}{{
 		name:     "nothing-done",
 		finished: []string{},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"a": {Name: "a"},
-			"b": {Name: "b"},
+		expectedTasks: map[string]struct{}{
+			"a": {},
+			"b": {},
 		},
 	}, {
 		name:     "a-done",
 		finished: []string{"a"},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"b": {Name: "b"},
-			"x": {Name: "x"},
+		expectedTasks: map[string]struct{}{
+			"b": {},
+			"x": {},
 		},
 	}, {
 		name:     "b-done",
 		finished: []string{"b"},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"a": {Name: "a"},
+		expectedTasks: map[string]struct{}{
+			"a": {},
 		},
 	}, {
 		name:     "a-and-b-done",
 		finished: []string{"a", "b"},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"x": {Name: "x"},
+		expectedTasks: map[string]struct{}{
+			"x": {},
 		},
 	}, {
 		name:     "a-x-done",
 		finished: []string{"a", "x"},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"b": {Name: "b"},
-			"y": {Name: "y"},
-			"z": {Name: "z"},
+		expectedTasks: map[string]struct{}{
+			"b": {},
+			"y": {},
+			"z": {},
 		},
 	}, {
 		name:     "a-x-b-done",
 		finished: []string{"a", "x", "b"},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"y": {Name: "y"},
-			"z": {Name: "z"},
+		expectedTasks: map[string]struct{}{
+			"y": {},
+			"z": {},
 		},
 	}, {
 		name:     "a-x-y-done",
 		finished: []string{"a", "x", "y"},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"b": {Name: "b"},
-			"z": {Name: "z"},
+		expectedTasks: map[string]struct{}{
+			"b": {},
+			"z": {},
 		},
 	}, {
 		name:     "a-x-y-done",
 		finished: []string{"a", "x", "y"},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"b": {Name: "b"},
-			"z": {Name: "z"},
+		expectedTasks: map[string]struct{}{
+			"b": {},
+			"z": {},
 		},
 	}, {
 		name:     "a-x-y-b-done",
 		finished: []string{"a", "x", "y", "b"},
-		expectedTasks: map[string]v1alpha1.PipelineTask{
-			"w": {Name: "w"},
-			"z": {Name: "z"},
+		expectedTasks: map[string]struct{}{
+			"w": {},
+			"z": {},
 		},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			tasks, err := GetSchedulable(g, tc.finished...)
+			tasks, err := dag.GetSchedulable(g, tc.finished...)
 			if err != nil {
 				t.Fatalf("Didn't expect error when getting next tasks for %v but got %v", tc.finished, err)
 			}
@@ -174,9 +171,312 @@ func TestGetSchedulable_Invalid(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := GetSchedulable(g, tc.finished...)
+			_, err := dag.GetSchedulable(g, tc.finished...)
 			if err == nil {
 				t.Fatalf("Expected error for invalid done tasks %v but got none", tc.finished)
+			}
+		})
+	}
+}
+
+func sameNodes(l, r []*dag.Node) error {
+	lNames, rNames := []string{}, []string{}
+	for _, n := range l {
+		lNames = append(lNames, n.Task.HashKey())
+	}
+	for _, n := range r {
+		rNames = append(rNames, n.Task.HashKey())
+	}
+
+	return list.IsSame(lNames, rNames)
+}
+
+func assertSameDAG(t *testing.T, l, r *dag.Graph) {
+	t.Helper()
+	lKeys, rKeys := []string{}, []string{}
+
+	for k := range l.Nodes {
+		lKeys = append(lKeys, k)
+	}
+	for k := range r.Nodes {
+		rKeys = append(rKeys, k)
+	}
+
+	// For the DAGs to be the same, they must contain the same nodes
+	err := list.IsSame(lKeys, rKeys)
+	if err != nil {
+		t.Fatalf("DAGS contain different nodes: %v", err)
+	}
+
+	// If they contain the same nodes, the DAGs will be the same if all
+	// of the nodes have the same linkages
+	for k, rn := range r.Nodes {
+		ln := l.Nodes[k]
+
+		err := sameNodes(rn.Prev, ln.Prev)
+		if err != nil {
+			t.Errorf("The %s nodes in the DAG have different previous nodes: %v", k, err)
+		}
+		err = sameNodes(rn.Next, ln.Next)
+		if err != nil {
+			t.Errorf("The %s nodes in the DAG have different next nodes: %v", k, err)
+		}
+	}
+}
+
+func TestBuild_Parallel(t *testing.T) {
+	a := v1alpha1.PipelineTask{Name: "a"}
+	b := v1alpha1.PipelineTask{Name: "b"}
+	c := v1alpha1.PipelineTask{Name: "c"}
+
+	// This test make sure we can create a Pipeline with no links between any Tasks
+	// (all tasks run in parallel)
+	//    a   b   c
+	p := &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{a, b, c},
+		},
+	}
+	expectedDAG := &dag.Graph{
+		Nodes: map[string]*dag.Node{
+			"a": {Task: a},
+			"b": {Task: b},
+			"c": {Task: c},
+		},
+	}
+	g, err := dag.Build(v1alpha1.PipelineTaskList(p.Spec.Tasks))
+	if err != nil {
+		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
+	}
+	assertSameDAG(t, expectedDAG, g)
+}
+
+func TestBuild_JoinMultipleRoots(t *testing.T) {
+	a := v1alpha1.PipelineTask{Name: "a"}
+	b := v1alpha1.PipelineTask{Name: "b"}
+	c := v1alpha1.PipelineTask{Name: "c"}
+	xDependsOnA := v1alpha1.PipelineTask{
+		Name: "x",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+		},
+	}
+	yDependsOnARunsAfterB := v1alpha1.PipelineTask{
+		Name:     "y",
+		RunAfter: []string{"b"},
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+		},
+	}
+	zDependsOnX := v1alpha1.PipelineTask{
+		Name: "z",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"x"}}},
+		},
+	}
+
+	//   a    b   c
+	//   | \ /
+	//   x  y
+	//   |
+	//   z
+
+	nodeA := &dag.Node{Task: a}
+	nodeB := &dag.Node{Task: b}
+	nodeC := &dag.Node{Task: c}
+	nodeX := &dag.Node{Task: xDependsOnA}
+	nodeY := &dag.Node{Task: yDependsOnARunsAfterB}
+	nodeZ := &dag.Node{Task: zDependsOnX}
+
+	nodeA.Next = []*dag.Node{nodeX, nodeY}
+	nodeB.Next = []*dag.Node{nodeY}
+	nodeX.Prev = []*dag.Node{nodeA}
+	nodeX.Next = []*dag.Node{nodeZ}
+	nodeY.Prev = []*dag.Node{nodeA, nodeB}
+	nodeZ.Prev = []*dag.Node{nodeX}
+
+	expectedDAG := &dag.Graph{
+		Nodes: map[string]*dag.Node{
+			"a": nodeA,
+			"b": nodeB,
+			"c": nodeC,
+			"x": nodeX,
+			"y": nodeY,
+			"z": nodeZ},
+	}
+	p := &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{a, xDependsOnA, yDependsOnARunsAfterB, zDependsOnX, b, c},
+		},
+	}
+	g, err := dag.Build(v1alpha1.PipelineTaskList(p.Spec.Tasks))
+	if err != nil {
+		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
+	}
+	assertSameDAG(t, expectedDAG, g)
+}
+
+func TestBuild_FanInFanOut(t *testing.T) {
+	a := v1alpha1.PipelineTask{Name: "a"}
+	dDependsOnA := v1alpha1.PipelineTask{
+		Name: "d",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+		},
+	}
+	eRunsAfterA := v1alpha1.PipelineTask{
+		Name:     "e",
+		RunAfter: []string{"a"},
+	}
+	fDependsOnDAndE := v1alpha1.PipelineTask{
+		Name: "f",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"d", "e"}}},
+		},
+	}
+	gRunsAfterF := v1alpha1.PipelineTask{
+		Name:     "g",
+		RunAfter: []string{"f"},
+	}
+
+	// This test make sure we don't detect cycle (A -> B -> B -> …) when there is not.
+	// This means we "visit" a twice, from two different path ; but there is no cycle.
+	//   a
+	//  / \
+	// d   e
+	//  \ /
+	//   f
+	//   |
+	//   g
+	nodeA := &dag.Node{Task: a}
+	nodeD := &dag.Node{Task: dDependsOnA}
+	nodeE := &dag.Node{Task: eRunsAfterA}
+	nodeF := &dag.Node{Task: fDependsOnDAndE}
+	nodeG := &dag.Node{Task: gRunsAfterF}
+
+	nodeA.Next = []*dag.Node{nodeD, nodeE}
+	nodeD.Prev = []*dag.Node{nodeA}
+	nodeD.Next = []*dag.Node{nodeF}
+	nodeE.Prev = []*dag.Node{nodeA}
+	nodeE.Next = []*dag.Node{nodeF}
+	nodeF.Prev = []*dag.Node{nodeD, nodeE}
+	nodeF.Next = []*dag.Node{nodeG}
+	nodeG.Prev = []*dag.Node{nodeF}
+
+	expectedDAG := &dag.Graph{
+		Nodes: map[string]*dag.Node{
+			"a": nodeA,
+			"d": nodeD,
+			"e": nodeE,
+			"f": nodeF,
+			"g": nodeG,
+		},
+	}
+	p := &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+		Spec: v1alpha1.PipelineSpec{
+			Tasks: []v1alpha1.PipelineTask{a, dDependsOnA, eRunsAfterA, fDependsOnDAndE, gRunsAfterF},
+		},
+	}
+	g, err := dag.Build(v1alpha1.PipelineTaskList(p.Spec.Tasks))
+	if err != nil {
+		t.Fatalf("didn't expect error creating valid Pipeline %v but got %v", p, err)
+	}
+	assertSameDAG(t, expectedDAG, g)
+}
+
+func TestBuild_Invalid(t *testing.T) {
+	a := v1alpha1.PipelineTask{Name: "a"}
+	xDependsOnA := v1alpha1.PipelineTask{
+		Name: "x",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+		},
+	}
+	zDependsOnX := v1alpha1.PipelineTask{
+		Name: "z",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"x"}}},
+		},
+	}
+	aDependsOnZ := v1alpha1.PipelineTask{
+		Name: "a",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"z"}}},
+		},
+	}
+	xAfterA := v1alpha1.PipelineTask{
+		Name:     "x",
+		RunAfter: []string{"a"},
+	}
+	zAfterX := v1alpha1.PipelineTask{
+		Name:     "z",
+		RunAfter: []string{"x"},
+	}
+	aAfterZ := v1alpha1.PipelineTask{
+		Name:     "a",
+		RunAfter: []string{"z"},
+	}
+	selfLinkFrom := v1alpha1.PipelineTask{
+		Name: "a",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"a"}}},
+		},
+	}
+	selfLinkAfter := v1alpha1.PipelineTask{
+		Name:     "a",
+		RunAfter: []string{"a"},
+	}
+	invalidTaskFrom := v1alpha1.PipelineTask{
+		Name: "a",
+		Resources: &v1alpha1.PipelineTaskResources{
+			Inputs: []v1alpha1.PipelineTaskInputResource{{From: []string{"none"}}},
+		},
+	}
+	invalidTaskAfter := v1alpha1.PipelineTask{
+		Name:     "a",
+		RunAfter: []string{"none"},
+	}
+
+	tcs := []struct {
+		name string
+		spec v1alpha1.PipelineSpec
+	}{{
+		name: "self-link-from",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{selfLinkFrom}},
+	}, {
+		name: "self-link-after",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{selfLinkAfter}},
+	}, {
+		name: "cycle-from",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xDependsOnA, zDependsOnX, aDependsOnZ}},
+	}, {
+		name: "cycle-runAfter",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xAfterA, zAfterX, aAfterZ}},
+	}, {
+		name: "cycle-both",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{xDependsOnA, zAfterX, aDependsOnZ}},
+	}, {
+		name: "duplicate-tasks",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{a, a}},
+	}, {
+		name: "invalid-task-name-from",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTaskFrom}},
+	}, {
+		name: "invalid-task-name-after",
+		spec: v1alpha1.PipelineSpec{Tasks: []v1alpha1.PipelineTask{invalidTaskAfter}},
+	},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &v1alpha1.Pipeline{
+				ObjectMeta: metav1.ObjectMeta{Name: tc.name},
+				Spec:       tc.spec,
+			}
+			if _, err := dag.Build(v1alpha1.PipelineTaskList(p.Spec.Tasks)); err == nil {
+				t.Errorf("expected to see an error for invalid DAG in pipeline %v but had none", tc.spec)
 			}
 		})
 	}

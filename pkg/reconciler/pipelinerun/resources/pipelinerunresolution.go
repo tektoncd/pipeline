@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
@@ -131,7 +132,7 @@ func (state PipelineRunState) IsDone() (isDone bool) {
 
 // GetNextTasks will return the next ResolvedPipelineRunTasks to execute, which are the ones in the
 // list of candidateTasks which aren't yet indicated in state to be running.
-func (state PipelineRunState) GetNextTasks(candidateTasks map[string]v1alpha1.PipelineTask) []*ResolvedPipelineRunTask {
+func (state PipelineRunState) GetNextTasks(candidateTasks map[string]struct{}) []*ResolvedPipelineRunTask {
 	tasks := []*ResolvedPipelineRunTask{}
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok && t.TaskRun == nil {
@@ -317,7 +318,7 @@ func getTaskRunName(taskRunsStatus map[string]*v1alpha1.PipelineRunTaskRunStatus
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
-func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState, logger *zap.SugaredLogger, dag *v1alpha1.DAG) *apis.Condition {
+func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState, logger *zap.SugaredLogger, dag *dag.Graph) *apis.Condition {
 	// We have 4 different states here:
 	// 1. Timed out -> Failed
 	// 2. Any one TaskRun has failed - >Failed. This should change with #1020 and #1023
@@ -379,7 +380,7 @@ func GetPipelineConditionStatus(pr *v1alpha1.PipelineRun, state PipelineRunState
 // isSkipped returns true if a Task in a TaskRun will not be run either because
 //  its Condition Checks failed or because one of the parent tasks's conditions failed
 // Note that this means isSkipped returns false if a conditionCheck is in progress
-func isSkipped(rprt *ResolvedPipelineRunTask, stateMap map[string]*ResolvedPipelineRunTask, d *v1alpha1.DAG) bool {
+func isSkipped(rprt *ResolvedPipelineRunTask, stateMap map[string]*ResolvedPipelineRunTask, d *dag.Graph) bool {
 	// Taskrun not skipped if it already exists
 	if rprt.TaskRun != nil {
 		return false
@@ -397,7 +398,7 @@ func isSkipped(rprt *ResolvedPipelineRunTask, stateMap map[string]*ResolvedPipel
 	// if any of the parents have been skipped, skip as well
 	node := d.Nodes[rprt.PipelineTask.Name]
 	for _, p := range node.Prev {
-		skip := isSkipped(stateMap[p.Task.Name], stateMap, d)
+		skip := isSkipped(stateMap[p.Task.HashKey()], stateMap, d)
 		if skip {
 			return true
 		}
