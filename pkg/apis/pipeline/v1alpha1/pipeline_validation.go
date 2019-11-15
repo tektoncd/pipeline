@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/list"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -112,7 +113,7 @@ func validateFrom(tasks []PipelineTask) error {
 // cycle or that they rely on values from Tasks that ran previously, and that the PipelineResource
 // is actually an output of the Task it should come from.
 func validateGraph(tasks []PipelineTask) error {
-	if _, err := BuildDAG(tasks); err != nil {
+	if _, err := dag.Build(PipelineTaskList(tasks)); err != nil {
 		return err
 	}
 	return nil

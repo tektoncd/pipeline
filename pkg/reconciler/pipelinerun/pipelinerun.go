@@ -264,7 +264,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1alpha1.PipelineRun) er
 		pr.ObjectMeta.Annotations[key] = value
 	}
 
-	d, err := v1alpha1.BuildDAG(pipelineSpec.Tasks)
+	d, err := dag.Build(v1alpha1.PipelineTaskList(pipelineSpec.Tasks))
 	if err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.SetCondition(&apis.Condition{

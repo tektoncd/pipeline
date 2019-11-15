@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	tb "github.com/tektoncd/pipeline/test/builder"
 	"github.com/tektoncd/pipeline/test/names"
@@ -451,160 +452,160 @@ var taskCancelled = PipelineRunState{{
 	},
 }}
 
-func DagFromState(state PipelineRunState) (*v1alpha1.DAG, error) {
+func DagFromState(state PipelineRunState) (*dag.Graph, error) {
 	pts := []v1alpha1.PipelineTask{}
 	for _, rprt := range state {
 		pts = append(pts, *rprt.PipelineTask)
 	}
-	return v1alpha1.BuildDAG(pts)
+	return dag.Build(v1alpha1.PipelineTaskList(pts))
 }
 
 func TestGetNextTasks(t *testing.T) {
 	tcs := []struct {
 		name         string
 		state        PipelineRunState
-		candidates   map[string]v1alpha1.PipelineTask
+		candidates   map[string]struct{}
 		expectedNext []*ResolvedPipelineRunTask
 	}{{
 		name:         "no-tasks-started-no-candidates",
 		state:        noneStartedState,
-		candidates:   map[string]v1alpha1.PipelineTask{},
+		candidates:   map[string]struct{}{},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "no-tasks-started-one-candidate",
 		state: noneStartedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
+		candidates: map[string]struct{}{
+			"mytask1": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{noneStartedState[0]},
 	}, {
 		name:  "no-tasks-started-other-candidate",
 		state: noneStartedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{noneStartedState[1]},
 	}, {
 		name:  "no-tasks-started-both-candidates",
 		state: noneStartedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask1": {},
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{noneStartedState[0], noneStartedState[1]},
 	}, {
 		name:         "one-task-started-no-candidates",
 		state:        oneStartedState,
-		candidates:   map[string]v1alpha1.PipelineTask{},
+		candidates:   map[string]struct{}{},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "one-task-started-one-candidate",
 		state: oneStartedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
+		candidates: map[string]struct{}{
+			"mytask1": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "one-task-started-other-candidate",
 		state: oneStartedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{oneStartedState[1]},
 	}, {
 		name:  "one-task-started-both-candidates",
 		state: oneStartedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask1": {},
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{oneStartedState[1]},
 	}, {
 		name:         "one-task-finished-no-candidates",
 		state:        oneFinishedState,
-		candidates:   map[string]v1alpha1.PipelineTask{},
+		candidates:   map[string]struct{}{},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "one-task-finished-one-candidate",
 		state: oneFinishedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
+		candidates: map[string]struct{}{
+			"mytask1": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "one-task-finished-other-candidate",
 		state: oneFinishedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{oneFinishedState[1]},
 	}, {
 		name:  "one-task-finished-both-candidate",
 		state: oneFinishedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask1": {},
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{oneFinishedState[1]},
 	}, {
 		name:         "one-task-failed-no-candidates",
 		state:        oneFailedState,
-		candidates:   map[string]v1alpha1.PipelineTask{},
+		candidates:   map[string]struct{}{},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "one-task-failed-one-candidate",
 		state: oneFailedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
+		candidates: map[string]struct{}{
+			"mytask1": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "one-task-failed-other-candidate",
 		state: oneFailedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{oneFailedState[1]},
 	}, {
 		name:  "one-task-failed-both-candidates",
 		state: oneFailedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask1": {},
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{oneFailedState[1]},
 	}, {
 		name:         "all-finished-no-candidates",
 		state:        allFinishedState,
-		candidates:   map[string]v1alpha1.PipelineTask{},
+		candidates:   map[string]struct{}{},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "all-finished-one-candidate",
 		state: allFinishedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
+		candidates: map[string]struct{}{
+			"mytask1": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "all-finished-other-candidate",
 		state: allFinishedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "all-finished-both-candidates",
 		state: allFinishedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask1": pts[0],
-			"mytask2": pts[1],
+		candidates: map[string]struct{}{
+			"mytask1": {},
+			"mytask2": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "one-cancelled-one-candidate",
 		state: taskCancelled,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask5": pts[4],
+		candidates: map[string]struct{}{
+			"mytask5": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}}
@@ -677,48 +678,48 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 	tcs := []struct {
 		name         string
 		state        PipelineRunState
-		candidates   map[string]v1alpha1.PipelineTask
+		candidates   map[string]struct{}
 		expectedNext []*ResolvedPipelineRunTask
 	}{{
 		name:  "tasks-cancelled-no-candidates",
 		state: taskCancelledByStatusState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask5": pts[4],
+		candidates: map[string]struct{}{
+			"mytask5": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "tasks-cancelled-bySpec-no-candidates",
 		state: taskCancelledBySpecState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask5": pts[4],
+		candidates: map[string]struct{}{
+			"mytask5": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "tasks-running-no-candidates",
 		state: taskRunningState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask5": pts[4],
+		candidates: map[string]struct{}{
+			"mytask5": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "tasks-succeeded-bySpec-no-candidates",
 		state: taskSucceededState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask5": pts[4],
+		candidates: map[string]struct{}{
+			"mytask5": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "tasks-retried-no-candidates",
 		state: taskRetriedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask5": pts[3],
+		candidates: map[string]struct{}{
+			"mytask5": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:  "tasks-retried-one-candidates",
 		state: taskExpectedState,
-		candidates: map[string]v1alpha1.PipelineTask{
-			"mytask5": pts[3],
+		candidates: map[string]struct{}{
+			"mytask5": {},
 		},
 		expectedNext: []*ResolvedPipelineRunTask{taskExpectedState[0]},
 	}}

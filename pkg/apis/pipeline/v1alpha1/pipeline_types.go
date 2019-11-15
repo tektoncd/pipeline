@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -111,6 +112,31 @@ type PipelineTask struct {
 	// Parameters declares parameters passed to this task.
 	// +optional
 	Params []Param `json:"params,omitempty"`
+}
+
+func (pt PipelineTask) HashKey() string {
+	return pt.Name
+}
+
+func (pt PipelineTask) Deps() []string {
+	deps := []string{}
+	deps = append(deps, pt.RunAfter...)
+	if pt.Resources != nil {
+		for _, rd := range pt.Resources.Inputs {
+			deps = append(deps, rd.From...)
+		}
+	}
+	return deps
+}
+
+type PipelineTaskList []PipelineTask
+
+func (l PipelineTaskList) Items() []dag.Task {
+	tasks := []dag.Task{}
+	for _, t := range l {
+		tasks = append(tasks, dag.Task(t))
+	}
+	return tasks
 }
 
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.
