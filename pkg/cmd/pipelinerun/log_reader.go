@@ -95,10 +95,8 @@ func (lr *LogReader) readLiveLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-chan 
 
 		wg.Wait()
 
-		if pr.Status.Conditions != nil {
-			if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
-				errC <- fmt.Errorf(pr.Status.Conditions[0].Message)
-			}
+		if !empty(pr.Status) && pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+			errC <- fmt.Errorf(pr.Status.Conditions[0].Message)
 		}
 	}()
 
@@ -134,7 +132,8 @@ func (lr *LogReader) readAvailableLogs(pr *v1alpha1.PipelineRun) (<-chan Log, <-
 
 			pipeLogs(logC, errC, tlr)
 		}
-		if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+
+		if !empty(pr.Status) && pr.Status.Conditions[0].Status == corev1.ConditionFalse {
 			errC <- fmt.Errorf(pr.Status.Conditions[0].Message)
 		}
 	}()
@@ -213,5 +212,10 @@ func pipeLogs(logC chan<- Log, errC chan<- error, tlr *taskrun.LogReader) {
 }
 
 func empty(status v1alpha1.PipelineRunStatus) bool {
+
+	if status.Conditions == nil {
+		return true
+	}
+
 	return len(status.Conditions) == 0
 }
