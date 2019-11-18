@@ -105,7 +105,7 @@ func GetSchedulable(g *Graph, doneTasks ...string) (map[string]struct{}, error) 
 		}
 	}
 
-	visitedNames := make([]string, len(visited))
+	var visitedNames []string
 	for v := range visited {
 		visitedNames = append(visitedNames, v)
 	}
@@ -217,7 +217,7 @@ func isSchedulable(doneTasks map[string]struct{}, prevs []*Node) bool {
 }
 
 func toMap(t ...string) map[string]struct{} {
-	m := make(map[string]struct{}, len(t))
+	m := map[string]struct{}{}
 	for _, s := range t {
 		m[s] = struct{}{}
 	}
