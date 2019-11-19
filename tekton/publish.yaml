@@ -31,10 +31,6 @@ spec:
       type: image
     - name: builtGitInitImage
       type: image
-    - name: builtNopImage
-      type: image
-    - name: builtGsutilImage
-      type: image
     - name: builtControllerImage
       type: image
     - name: builtWebhookImage
@@ -81,7 +77,6 @@ spec:
         $(inputs.params.pathToProject)/$(outputs.resources.builtCredsInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
         $(inputs.params.pathToProject)/$(outputs.resources.builtGitInitImage.url): $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/build-base:latest
         $(inputs.params.pathToProject)/$(outputs.resources.builtEntrypointImage.url): busybox # image should have shell in $PATH
-        $(inputs.params.pathToProject)/$(outputs.resources.builtGsutilImage.url): google/cloud-sdk:alpine # image should have gsutil in $PATH
       EOF
 
       cat /workspace/go/src/github.com/tektoncd/pipeline/.ko.yaml
@@ -178,8 +173,6 @@ spec:
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtKubeconfigWriterImage.url)
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtCredsInitImage.url)
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtGitInitImage.url)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtNopImage.url)
-        $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtGsutilImage.url)
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtControllerImage.url)
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtWebhookImage.url)
         $(inputs.params.imageRegistry)/$(inputs.params.pathToProject)/$(outputs.resources.builtDigestExporterImage.url)
