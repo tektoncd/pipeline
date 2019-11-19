@@ -130,7 +130,6 @@ To use [`tkn`](https://github.com/tektoncd/cli) to run the `publish-tekton-pipel
 		--resource=builtKubeconfigWriterImage=kubeconfigwriter-image \
 		--resource=builtCredsInitImage=creds-init-image \
 		--resource=builtGitInitImage=git-init-image \
-		--resource=builtNopImage=nop-image \
 		--resource=builtControllerImage=controller-image \
 		--resource=builtWebhookImage=webhook-image \
 		--resource=builtDigestExporterImage=digest-exporter-image \

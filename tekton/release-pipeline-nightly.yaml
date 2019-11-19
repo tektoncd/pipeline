@@ -27,10 +27,6 @@ spec:
     type: image
   - name: builtGitInitImage
     type: image
-  - name: builtNopImage
-    type: image
-  - name: builtGsutilImage
-    type: image
   - name: builtControllerImage
     type: image
   - name: builtWebhookImage
@@ -83,10 +79,6 @@ spec:
             resource: builtCredsInitImage
           - name: builtGitInitImage
             resource: builtGitInitImage
-          - name: builtNopImage
-            resource: builtNopImage
-          - name: builtGsutilImage
-            resource: builtGsutilImage
           - name: builtControllerImage
             resource: builtControllerImage
           - name: builtWebhookImage
@@ -127,10 +119,6 @@ spec:
   - name: builtCredsInitImage
     type: image
   - name: builtGitInitImage
-    type: image
-  - name: builtNopImage
-    type: image
-  - name: builtGsutilImage
     type: image
   - name: builtControllerImage
     type: image
@@ -222,10 +210,6 @@ spec:
             resource: builtCredsInitImage
           - name: builtGitInitImage
             resource: builtGitInitImage
-          - name: builtNopImage
-            resource: builtNopImage
-          - name: builtGsutilImage
-            resource: builtGsutilImage
           - name: builtControllerImage
             resource: builtControllerImage
           - name: builtWebhookImage
