@@ -400,11 +400,38 @@ func TaskRunPodSecurityContext(context *corev1.PodSecurityContext) TaskRunSpecOp
 	}
 }
 
-// StateTerminated set Terminated to the StepState.
+// StateTerminated sets Terminated to the StepState.
 func StateTerminated(exitcode int) StepStateOp {
 	return func(s *v1alpha1.StepState) {
 		s.ContainerState = corev1.ContainerState{
 			Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(exitcode)},
+		}
+	}
+}
+
+// SetStepStateTerminated sets Terminated state of a step.
+func SetStepStateTerminated(terminated corev1.ContainerStateTerminated) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Terminated: &terminated,
+		}
+	}
+}
+
+// SetStepStateRunning sets Running state of a step.
+func SetStepStateRunning(running corev1.ContainerStateRunning) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Running: &running,
+		}
+	}
+}
+
+// SetStepStateWaiting sets Waiting state of a step.
+func SetStepStateWaiting(waiting corev1.ContainerStateWaiting) StepStateOp {
+	return func(s *v1alpha1.StepState) {
+		s.ContainerState = corev1.ContainerState{
+			Waiting: &waiting,
 		}
 	}
 }
