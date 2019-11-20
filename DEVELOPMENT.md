@@ -168,7 +168,8 @@ environment variables (we recommend adding them to your `.bashrc`):
 1. `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will
    work properly.
 1. `KO_DOCKER_REPO`: The docker repository to which developer images should be
-   pushed (e.g. `gcr.io/[gcloud-project]`). You can also run a local registry
+   pushed (e.g. `gcr.io/[gcloud-project]`). You can also
+   [run a local registry](https://docs.docker.com/registry/deploying/)
    and set `KO_DOCKER_REPO` to reference the registry (e.g. at
    `localhost:5000/mypipelineimages`).
 
