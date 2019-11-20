@@ -25,7 +25,6 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -34,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -106,34 +106,36 @@ const (
 	containerPrefix            = "step-"
 	unnamedInitContainerPrefix = "step-unnamed-"
 	// Name of the credential initialization container.
-	credsInit = "credential-initializer"
-	// Name of the working dir initialization container.
-	workingDirInit       = "working-dir-initializer"
+	credsInit            = "credential-initializer"
 	ReadyAnnotation      = "tekton.dev/ready"
 	readyAnnotationValue = "READY"
 	sidecarPrefix        = "sidecar-"
 )
 
-func makeCredentialInitializer(credsImage, serviceAccountName, namespace string, kubeclient kubernetes.Interface) (*v1alpha1.Step, []corev1.Volume, error) {
+// TODO(jasonhall): If there are no creds to initialize, return a nil Container
+// and don't add it to initContainers, instead of appending an init container
+// that runs and does nothing.
+func makeCredentialInitializer(credsImage, serviceAccountName, namespace string, kubeclient kubernetes.Interface) (corev1.Container, []corev1.Volume, error) {
 	if serviceAccountName == "" {
 		serviceAccountName = "default"
 	}
 
 	sa, err := kubeclient.CoreV1().ServiceAccounts(namespace).Get(serviceAccountName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, err
+		return corev1.Container{}, nil, err
 	}
 
 	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
 
-	// Collect the volume declarations, there mounts into the cred-init container, and the arguments to it.
-	volumes := []corev1.Volume{}
+	// Collect the volume declarations, there mounts into the cred-init
+	// container, and the arguments to it.
+	var volumes []corev1.Volume
 	volumeMounts := implicitVolumeMounts
 	args := []string{}
 	for _, secretEntry := range sa.Secrets {
 		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(secretEntry.Name, metav1.GetOptions{})
 		if err != nil {
-			return nil, nil, err
+			return corev1.Container{}, nil, err
 		}
 
 		matched := false
@@ -161,87 +163,42 @@ func makeCredentialInitializer(credsImage, serviceAccountName, namespace string,
 		}
 	}
 
-	return &v1alpha1.Step{Container: corev1.Container{
+	return corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + credsInit),
 		Image:        credsImage,
 		Command:      []string{"/ko-app/creds-init"},
 		Args:         args,
-		VolumeMounts: volumeMounts,
 		Env:          implicitEnvVars,
-		WorkingDir:   workspaceDir,
-	}}, volumes, nil
-}
-
-func makeWorkingDirScript(workingDirs map[string]bool) string {
-	script := ""
-	var orderedDirs []string
-
-	for wd := range workingDirs {
-		if wd != "" {
-			orderedDirs = append(orderedDirs, wd)
-		}
-	}
-	sort.Strings(orderedDirs)
-
-	for _, wd := range orderedDirs {
-		p := filepath.Clean(wd)
-		if rel, err := filepath.Rel(workspaceDir, p); err == nil && !strings.HasPrefix(rel, ".") {
-			if script == "" {
-				script = fmt.Sprintf("mkdir -p %s", p)
-			} else {
-				script = fmt.Sprintf("%s %s", script, p)
-			}
-		}
-	}
-
-	return script
-}
-
-func makeWorkingDirInitializer(shellImage string, steps []v1alpha1.Step) *v1alpha1.Step {
-	workingDirs := make(map[string]bool)
-	for _, step := range steps {
-		workingDirs[step.WorkingDir] = true
-	}
-
-	if script := makeWorkingDirScript(workingDirs); script != "" {
-		return &v1alpha1.Step{Container: corev1.Container{
-			Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + workingDirInit),
-			Image:        shellImage,
-			Command:      []string{"sh"},
-			Args:         []string{"-c", script},
-			VolumeMounts: implicitVolumeMounts,
-			Env:          implicitEnvVars,
-			WorkingDir:   workspaceDir,
-		}}
-	}
-	return nil
+		VolumeMounts: volumeMounts,
+	}, volumes, nil
 }
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
 func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
-	cred, secrets, err := makeCredentialInitializer(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, kubeclient)
+	credsInitContainer, secrets, err := makeCredentialInitializer(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, kubeclient)
 	if err != nil {
 		return nil, err
 	}
-	initSteps := []v1alpha1.Step{*cred}
-	var podSteps []v1alpha1.Step
+	initContainers := []corev1.Container{credsInitContainer}
 
-	if workingDir := makeWorkingDirInitializer(images.ShellImage, taskSpec.Steps); workingDir != nil {
-		initSteps = append(initSteps, *workingDir)
+	if workingDirInit := pod.WorkingDirInit(images.ShellImage, taskSpec.Steps); workingDirInit != nil {
+		initContainers = append(initContainers, *workingDirInit)
 	}
+
+	var podSteps []v1alpha1.Step
 
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 
 	placeScripts := false
-	placeScriptsStep := v1alpha1.Step{Container: corev1.Container{
+	placeScriptsInitContainer := corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("place-scripts"),
 		Image:        images.ShellImage,
 		TTY:          true,
 		Command:      []string{"sh"},
 		Args:         []string{"-c", ""},
 		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
-	}}
+	}
 
 	for i, s := range taskSpec.Steps {
 		s.Env = append(implicitEnvVars, s.Env...)
@@ -279,7 +236,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			// interpreted as env vars and likely end up replaced
 			// with empty strings. See
 			// https://stackoverflow.com/a/27921346
-			placeScriptsStep.Args[1] += fmt.Sprintf(`tmpfile="%s"
+			placeScriptsInitContainer.Args[1] += fmt.Sprintf(`tmpfile="%s"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << '%s'
 %s
@@ -315,8 +272,11 @@ cat > ${tmpfile} << '%s'
 		}
 		// use the container name to add the entrypoint binary as an
 		// init container.
+		// TODO(jasonhall): Entrypoint init container should be
+		// explicitly added as an init container, not added to steps
+		// then pulled out when translating to Pod containers.
 		if s.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
-			initSteps = append(initSteps, s)
+			initContainers = append(initContainers, s.Container)
 		} else {
 			zeroNonMaxResourceRequests(&s, i, maxIndicesByResource)
 			podSteps = append(podSteps, s)
@@ -334,7 +294,7 @@ cat > ${tmpfile} << '%s'
 	// a script.
 	if placeScripts {
 		volumes = append(volumes, scriptsVolume)
-		initSteps = append(initSteps, placeScriptsStep)
+		initContainers = append(initContainers, placeScriptsInitContainer)
 	}
 
 	if err := v1alpha1.ValidateVolumes(volumes); err != nil {
@@ -348,14 +308,6 @@ cat > ${tmpfile} << '%s'
 	}
 	gibberish := hex.EncodeToString(b)
 
-	mergedInitSteps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, initSteps)
-	if err != nil {
-		return nil, err
-	}
-	var mergedInitContainers []corev1.Container
-	for _, s := range mergedInitSteps {
-		mergedInitContainers = append(mergedInitContainers, s.Container)
-	}
 	mergedPodSteps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, podSteps)
 	if err != nil {
 		return nil, err
@@ -388,7 +340,7 @@ cat > ${tmpfile} << '%s'
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy:      corev1.RestartPolicyNever,
-			InitContainers:     mergedInitContainers,
+			InitContainers:     initContainers,
 			Containers:         mergedPodContainers,
 			ServiceAccountName: taskRun.GetServiceAccountName(),
 			Volumes:            volumes,
