@@ -207,7 +207,6 @@ var (
 	getCredentialsInitContainer = func(suffix string, ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
 			tb.Command("/ko-app/creds-init"),
-			tb.WorkingDir(workspaceDir),
 			tb.EnvVar("HOME", "/builder/home"),
 			tb.VolumeMount("workspace", workspaceDir),
 			tb.VolumeMount("home", "/builder/home"),
@@ -1118,8 +1117,8 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj", tb.EnvVar("FRUIT", "APPLE")),
-				getPlaceToolsInitContainer(tb.EnvVar("FRUIT", "APPLE")),
+				getCredentialsInitContainer("9l9zj"),
+				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-env-step", "foo", tb.Command(entrypointLocation),
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file", "/builder/downward/ready", "-post_file", "/builder/tools/0", "-wait_file_content", "-entrypoint", "/mycmd", "--"),

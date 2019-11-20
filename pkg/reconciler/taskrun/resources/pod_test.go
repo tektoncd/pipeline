@@ -108,14 +108,14 @@ func TestTryGetPod(t *testing.T) {
 func TestMakePod(t *testing.T) {
 	names.TestingSeed()
 
-	implicitVolumeMountsWithSecrets := append(implicitVolumeMounts, corev1.VolumeMount{
+	secretsVolumeMounts := []corev1.VolumeMount{{
 		Name:      "secret-volume-multi-creds-9l9zj",
 		MountPath: "/var/build-secrets/multi-creds",
-	})
-	implicitVolumesWithSecrets := append(implicitVolumes, corev1.Volume{
+	}}
+	secretsVolumes := []corev1.Volume{{
 		Name:         "secret-volume-multi-creds-9l9zj",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
-	})
+	}}
 
 	runtimeClassName := "gvisor"
 
@@ -149,7 +149,6 @@ func TestMakePod(t *testing.T) {
 				Args:         []string{},
 				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-name",
@@ -191,9 +190,8 @@ func TestMakePod(t *testing.T) {
 					"-basic-git=multi-creds=github.com",
 					"-basic-git=multi-creds=gitlab.com",
 				},
+				VolumeMounts: append(implicitVolumeMounts, secretsVolumeMounts...),
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMountsWithSecrets,
-				WorkingDir:   workspaceDir,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-name",
@@ -209,7 +207,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: implicitVolumesWithSecrets,
+			Volumes: append(implicitVolumes, secretsVolumes...),
 		},
 	}, {
 		desc: "with-deprecated-service-account",
@@ -235,9 +233,8 @@ func TestMakePod(t *testing.T) {
 					"-basic-git=multi-creds=github.com",
 					"-basic-git=multi-creds=gitlab.com",
 				},
+				VolumeMounts: append(implicitVolumeMounts, secretsVolumeMounts...),
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMountsWithSecrets,
-				WorkingDir:   workspaceDir,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-name",
@@ -253,7 +250,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: implicitVolumesWithSecrets,
+			Volumes: append(implicitVolumes, secretsVolumes...),
 		},
 	}, {
 		desc: "with-pod-template",
@@ -280,9 +277,8 @@ func TestMakePod(t *testing.T) {
 				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
-				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
+				Env:          implicitEnvVars,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-name",
@@ -324,9 +320,8 @@ func TestMakePod(t *testing.T) {
 				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
-				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
+				Env:          implicitEnvVars,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-a-very-very-long-character-step-name-to-trigger-max-len",
@@ -362,9 +357,8 @@ func TestMakePod(t *testing.T) {
 				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
-				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
+				Env:          implicitEnvVars,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-ends-with-invalid",
@@ -398,17 +392,14 @@ func TestMakePod(t *testing.T) {
 				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
-				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
+				Env:          implicitEnvVars,
 			}, {
-				Name:         containerPrefix + workingDirInit + "-mz4c7",
-				Image:        shellImage,
-				Command:      []string{"sh"},
-				Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
-				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
+				Name:       "working-dir-initializer-mz4c7",
+				Image:      shellImage,
+				Command:    []string{"sh"},
+				Args:       []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
+				WorkingDir: workspaceDir,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-name",
@@ -445,9 +436,8 @@ func TestMakePod(t *testing.T) {
 				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
-				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
+				Env:          implicitEnvVars,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-primary-name",
@@ -502,9 +492,8 @@ print("Hello from Python")`,
 				Image:        credsImage,
 				Command:      []string{"/ko-app/creds-init"},
 				Args:         []string{},
-				Env:          implicitEnvVars,
 				VolumeMounts: implicitVolumeMounts,
-				WorkingDir:   workspaceDir,
+				Env:          implicitEnvVars,
 			}, {
 				Name:    "place-scripts-mz4c7",
 				Image:   images.ShellImage,
@@ -600,8 +589,8 @@ script-heredoc-randomly-generated-j2tds
 				t.Errorf("Pod name got %q, want %q", got.Name, wantName)
 			}
 
-			if d := cmp.Diff(&got.Spec, c.want, resourceQuantityCmp); d != "" {
-				t.Errorf("Diff spec:\n%s", d)
+			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
+				t.Errorf("Diff(-want, +got):\n%s", d)
 			}
 
 			wantAnnotations := map[string]string{ReadyAnnotation: ""}
@@ -719,32 +708,6 @@ func TestMakeAnnotations(t *testing.T) {
 				if receivedValue != v {
 					t.Errorf("expected annotation %q=%q, received %q=%q", k, v, k, receivedValue)
 				}
-			}
-		})
-	}
-}
-
-func TestMakeWorkingDirScript(t *testing.T) {
-	for _, c := range []struct {
-		desc        string
-		workingDirs map[string]bool
-		want        string
-	}{{
-		desc:        "default",
-		workingDirs: map[string]bool{"/workspace": true},
-		want:        "",
-	}, {
-		desc:        "simple",
-		workingDirs: map[string]bool{"/workspace/foo": true, "/workspace/bar": true, "/baz": true},
-		want:        "mkdir -p /workspace/bar /workspace/foo",
-	}, {
-		desc:        "empty",
-		workingDirs: map[string]bool{"/workspace": true, "": true, "/baz": true, "/workspacedir": true},
-		want:        "",
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			if script := makeWorkingDirScript(c.workingDirs); script != c.want {
-				t.Errorf("Expected `%v`, got `%v`", c.want, script)
 			}
 		})
 	}
