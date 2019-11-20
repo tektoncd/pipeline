@@ -29,9 +29,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/credentials"
-	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
-	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
@@ -105,82 +102,23 @@ const (
 	// Prefixes to add to the name of the init containers.
 	containerPrefix            = "step-"
 	unnamedInitContainerPrefix = "step-unnamed-"
-	// Name of the credential initialization container.
-	credsInit            = "credential-initializer"
-	ReadyAnnotation      = "tekton.dev/ready"
-	readyAnnotationValue = "READY"
-	sidecarPrefix        = "sidecar-"
+	ReadyAnnotation            = "tekton.dev/ready"
+	readyAnnotationValue       = "READY"
+	sidecarPrefix              = "sidecar-"
 )
-
-// TODO(jasonhall): If there are no creds to initialize, return a nil Container
-// and don't add it to initContainers, instead of appending an init container
-// that runs and does nothing.
-func makeCredentialInitializer(credsImage, serviceAccountName, namespace string, kubeclient kubernetes.Interface) (corev1.Container, []corev1.Volume, error) {
-	if serviceAccountName == "" {
-		serviceAccountName = "default"
-	}
-
-	sa, err := kubeclient.CoreV1().ServiceAccounts(namespace).Get(serviceAccountName, metav1.GetOptions{})
-	if err != nil {
-		return corev1.Container{}, nil, err
-	}
-
-	builders := []credentials.Builder{dockercreds.NewBuilder(), gitcreds.NewBuilder()}
-
-	// Collect the volume declarations, there mounts into the cred-init
-	// container, and the arguments to it.
-	var volumes []corev1.Volume
-	volumeMounts := implicitVolumeMounts
-	args := []string{}
-	for _, secretEntry := range sa.Secrets {
-		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(secretEntry.Name, metav1.GetOptions{})
-		if err != nil {
-			return corev1.Container{}, nil, err
-		}
-
-		matched := false
-		for _, b := range builders {
-			if sa := b.MatchingAnnotations(secret); len(sa) > 0 {
-				matched = true
-				args = append(args, sa...)
-			}
-		}
-
-		if matched {
-			name := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("secret-volume-%s", secret.Name))
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      name,
-				MountPath: credentials.VolumeName(secret.Name),
-			})
-			volumes = append(volumes, corev1.Volume{
-				Name: name,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: secret.Name,
-					},
-				},
-			})
-		}
-	}
-
-	return corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(containerPrefix + credsInit),
-		Image:        credsImage,
-		Command:      []string{"/ko-app/creds-init"},
-		Args:         args,
-		Env:          implicitEnvVars,
-		VolumeMounts: volumeMounts,
-	}, volumes, nil
-}
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
 func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
-	credsInitContainer, secrets, err := makeCredentialInitializer(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, kubeclient)
-	if err != nil {
+	var initContainers []corev1.Container
+	var volumes []corev1.Volume
+
+	if credsInitContainer, secretsVolumes, err := pod.CredsInit(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
 		return nil, err
+	} else if credsInitContainer != nil {
+		initContainers = append(initContainers, *credsInitContainer)
+		volumes = append(volumes, secretsVolumes...)
 	}
-	initContainers := []corev1.Container{credsInitContainer}
 
 	if workingDirInit := pod.WorkingDirInit(images.ShellImage, taskSpec.Steps); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
@@ -284,11 +222,11 @@ cat > ${tmpfile} << '%s'
 	}
 
 	// Add podTemplate Volumes to the explicitly declared use volumes
-	volumes := append(taskSpec.Volumes, taskRun.Spec.PodTemplate.Volumes...)
+	volumes = append(volumes, taskSpec.Volumes...)
+	volumes = append(volumes, taskRun.Spec.PodTemplate.Volumes...)
 	// Add our implicit volumes and any volumes needed for secrets to the explicitly
 	// declared user volumes.
 	volumes = append(volumes, implicitVolumes...)
-	volumes = append(volumes, secrets...)
 
 	// Add the volume shared to place a script file, if any step specified
 	// a script.
