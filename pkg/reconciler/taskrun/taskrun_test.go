@@ -206,19 +206,6 @@ var (
 		},
 	}
 
-	getCredentialsInitContainer = func(suffix string, ops ...tb.ContainerOp) tb.PodSpecOp {
-		actualOps := []tb.ContainerOp{
-			tb.Command("/ko-app/creds-init"),
-			tb.EnvVar("HOME", "/builder/home"),
-			tb.VolumeMount("workspace", workspaceDir),
-			tb.VolumeMount("home", "/builder/home"),
-		}
-
-		actualOps = append(actualOps, ops...)
-
-		return tb.PodInitContainer("step-credential-initializer-"+suffix, "override-with-creds:latest", actualOps...)
-	}
-
 	getMkdirResourceContainer = func(name, dir, suffix string, ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
 			tb.Command("/builder/tools/entrypoint"),
@@ -320,7 +307,6 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				tb.PodServiceAccountName(defaultSAName),
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -353,7 +339,6 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-sa-step", "foo",
 					tb.Command(entrypointLocation),
@@ -609,7 +594,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -642,7 +626,6 @@ func TestReconcile(t *testing.T) {
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-sa-step", "foo",
 					tb.Command(entrypointLocation),
@@ -675,7 +658,6 @@ func TestReconcile(t *testing.T) {
 				tb.PodServiceAccountName("test-deprecated-sa"),
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-sa-step", "foo",
 					tb.Command(entrypointLocation),
@@ -716,7 +698,6 @@ func TestReconcile(t *testing.T) {
 					},
 				}, toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("78c5n"),
 				getPlaceToolsInitContainer(),
 				getMkdirResourceContainer("myimage", "/workspace/output/myimage", "mssqb"),
 				tb.PodContainer("step-git-source-git-resource-mz4c7", "override-with-git:latest",
@@ -805,7 +786,6 @@ func TestReconcile(t *testing.T) {
 					},
 				}, toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("l22wn"),
 				getPlaceToolsInitContainer(),
 				getMkdirResourceContainer("git-resource", "/workspace/output/git-resource", "6nl7g"),
 				tb.PodContainer("step-create-dir-git-resource-78c5n", "busybox",
@@ -924,7 +904,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("mz4c7"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-git-source-git-resource-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
@@ -973,7 +952,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -1004,7 +982,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("mz4c7"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-git-source-workspace-9l9zj", "override-with-git:latest",
 					tb.Command(entrypointLocation),
@@ -1054,7 +1031,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -1087,7 +1063,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),
@@ -1119,7 +1094,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-env-step", "foo", tb.Command(entrypointLocation),
 					tb.Command(entrypointLocation),
@@ -1152,7 +1126,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-step1", "foo",
 					tb.Command(entrypointLocation),
@@ -1221,7 +1194,6 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				tb.PodVolumes(toolsVolume, downward, workspaceVolume, homeVolume),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getCredentialsInitContainer("9l9zj"),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-simple-step", "foo",
 					tb.Command(entrypointLocation),

@@ -78,14 +78,6 @@ func TestMakePod(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
-			}},
 			Containers: []corev1.Container{{
 				Name:         "step-name",
 				Image:        "image",
@@ -117,7 +109,7 @@ func TestMakePod(t *testing.T) {
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:    containerPrefix + credsInit + "-mz4c7",
+				Name:    "credential-initializer-mz4c7",
 				Image:   credsImage,
 				Command: []string{"/ko-app/creds-init"},
 				Args: []string{
@@ -143,7 +135,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, secretsVolumes...),
+			Volumes: append(secretsVolumes, implicitVolumes...),
 		},
 	}, {
 		desc: "with-deprecated-service-account",
@@ -160,7 +152,7 @@ func TestMakePod(t *testing.T) {
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:    containerPrefix + credsInit + "-mz4c7",
+				Name:    "credential-initializer-mz4c7",
 				Image:   credsImage,
 				Command: []string{"/ko-app/creds-init"},
 				Args: []string{
@@ -186,7 +178,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, secretsVolumes...),
+			Volumes: append(secretsVolumes, implicitVolumes...),
 		},
 	}, {
 		desc: "with-pod-template",
@@ -208,14 +200,6 @@ func TestMakePod(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				VolumeMounts: implicitVolumeMounts,
-				Env:          implicitEnvVars,
-			}},
 			Containers: []corev1.Container{{
 				Name:         "step-name",
 				Image:        "image",
@@ -251,14 +235,6 @@ func TestMakePod(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				VolumeMounts: implicitVolumeMounts,
-				Env:          implicitEnvVars,
-			}},
 			Containers: []corev1.Container{{
 				Name:         "step-a-very-very-long-character-step-name-to-trigger-max-len",
 				Image:        "image",
@@ -288,14 +264,6 @@ func TestMakePod(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				VolumeMounts: implicitVolumeMounts,
-				Env:          implicitEnvVars,
-			}},
 			Containers: []corev1.Container{{
 				Name:         "step-ends-with-invalid",
 				Image:        "image",
@@ -324,14 +292,7 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				VolumeMounts: implicitVolumeMounts,
-				Env:          implicitEnvVars,
-			}, {
-				Name:       "working-dir-initializer-mz4c7",
+				Name:       "working-dir-initializer-9l9zj",
 				Image:      shellImage,
 				Command:    []string{"sh"},
 				Args:       []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
@@ -367,14 +328,6 @@ func TestMakePod(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				VolumeMounts: implicitVolumeMounts,
-				Env:          implicitEnvVars,
-			}},
 			Containers: []corev1.Container{{
 				Name:         "step-primary-name",
 				Image:        "primary-image",
@@ -424,28 +377,21 @@ print("Hello from Python")`,
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:         containerPrefix + credsInit + "-9l9zj",
-				Image:        credsImage,
-				Command:      []string{"/ko-app/creds-init"},
-				Args:         []string{},
-				VolumeMounts: implicitVolumeMounts,
-				Env:          implicitEnvVars,
-			}, {
-				Name:    "place-scripts-mz4c7",
+				Name:    "place-scripts-9l9zj",
 				Image:   images.ShellImage,
 				Command: []string{"sh"},
 				TTY:     true,
-				Args: []string{"-c", `tmpfile="/builder/scripts/script-0-mssqb"
+				Args: []string{"-c", `tmpfile="/builder/scripts/script-0-mz4c7"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-78c5n'
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-mssqb'
 echo hello from step one
-script-heredoc-randomly-generated-78c5n
-tmpfile="/builder/scripts/script-1-6nl7g"
+script-heredoc-randomly-generated-mssqb
+tmpfile="/builder/scripts/script-1-78c5n"
 touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << 'script-heredoc-randomly-generated-j2tds'
+cat > ${tmpfile} << 'script-heredoc-randomly-generated-6nl7g'
 #!/usr/bin/env python
 print("Hello from Python")
-script-heredoc-randomly-generated-j2tds
+script-heredoc-randomly-generated-6nl7g
 `},
 				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 			}},
@@ -453,7 +399,7 @@ script-heredoc-randomly-generated-j2tds
 				Name:         "step-one",
 				Image:        "image",
 				Command:      []string{"entrypointer"},
-				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-0-mssqb"},
+				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-0-mz4c7"},
 				Env:          implicitEnvVars,
 				VolumeMounts: append(implicitVolumeMounts, scriptsVolumeMount),
 				WorkingDir:   workspaceDir,
@@ -468,7 +414,7 @@ script-heredoc-randomly-generated-j2tds
 				Name:         "step-two",
 				Image:        "image",
 				Command:      []string{"entrypointer"},
-				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-1-6nl7g"},
+				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-1-78c5n"},
 				Env:          implicitEnvVars,
 				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}}, append(implicitVolumeMounts, scriptsVolumeMount)...),
 				WorkingDir:   workspaceDir,
