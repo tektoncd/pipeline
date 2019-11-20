@@ -35,7 +35,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/sidecars"
 	"github.com/tektoncd/pipeline/pkg/status"
-
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -318,7 +317,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	cloudevent.InitializeCloudEvents(tr, prs)
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
-	pod, err := resources.TryGetPod(tr.Status, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get)
+	pod, err := tryGetPod(tr.Status, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get)
 	if err != nil {
 		c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
 		return err
@@ -605,4 +604,21 @@ func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images
 		p[rName] = i
 	}
 	return p, nil
+}
+
+// getPodFunc returns the Pod for the given pod name
+type getPodFunc func(string, metav1.GetOptions) (*corev1.Pod, error)
+
+// tryGetPod fetches the TaskRun's pod, returning nil if it has not been created or it does not exist.
+func tryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp getPodFunc) (*corev1.Pod, error) {
+	if taskRunStatus.PodName == "" {
+		return nil, nil
+	}
+
+	pod, err := gp(taskRunStatus.PodName, metav1.GetOptions{})
+	if err == nil || errors.IsNotFound(err) {
+		return pod, nil
+	}
+
+	return nil, err
 }

@@ -43,9 +43,11 @@ import (
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8sruntimeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
@@ -2140,6 +2142,68 @@ func TestUpdateTaskRunStatus_withInvalidJson(t *testing.T) {
 			}
 			if d := cmp.Diff(c.want, c.taskRun.Status.ResourcesResult); d != "" {
 				t.Errorf("post build steps mismatch (-want, +got): %s", d)
+			}
+		})
+	}
+}
+
+func TestTryGetPod(t *testing.T) {
+	err := xerrors.New("something went wrong")
+	for _, c := range []struct {
+		desc    string
+		trs     v1alpha1.TaskRunStatus
+		gp      getPodFunc
+		wantNil bool
+		wantErr error
+	}{{
+		desc: "no-pod",
+		trs:  v1alpha1.TaskRunStatus{},
+		gp: func(string, metav1.GetOptions) (*corev1.Pod, error) {
+			t.Errorf("Did not expect pod to be fetched")
+			return nil, nil
+		},
+		wantNil: true,
+		wantErr: nil,
+	}, {
+		desc: "non-existent-pod",
+		trs: v1alpha1.TaskRunStatus{
+			PodName: "no-longer-exist",
+		},
+		gp: func(name string, opts metav1.GetOptions) (*corev1.Pod, error) {
+			return nil, kerrors.NewNotFound(schema.GroupResource{}, name)
+		},
+		wantNil: true,
+		wantErr: nil,
+	}, {
+		desc: "existing-pod",
+		trs: v1alpha1.TaskRunStatus{
+			PodName: "exists",
+		},
+		gp: func(name string, opts metav1.GetOptions) (*corev1.Pod, error) {
+			return &corev1.Pod{}, nil
+		},
+		wantNil: false,
+		wantErr: nil,
+	}, {
+		desc: "pod-fetch-error",
+		trs: v1alpha1.TaskRunStatus{
+			PodName: "something-went-wrong",
+		},
+		gp: func(name string, opts metav1.GetOptions) (*corev1.Pod, error) {
+			return nil, err
+		},
+		wantNil: true,
+		wantErr: err,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			pod, err := tryGetPod(c.trs, c.gp)
+			if err != c.wantErr {
+				t.Fatalf("tryGetPod: %v", err)
+			}
+
+			wasNil := pod == nil
+			if wasNil != c.wantNil {
+				t.Errorf("Pod got %v, want %v", wasNil, c.wantNil)
 			}
 		})
 	}
