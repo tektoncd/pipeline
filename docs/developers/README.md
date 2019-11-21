@@ -182,10 +182,17 @@ with updated container image. The nop container image exits immediately
 The container is considered `Terminated` by Kubernetes and the TaskRun's Pod
 stops.
 
-There is a known issue with this implementation of sidecar support. When the
-`nop` image does provide the sidecar's command, the sidecar will continue to
+There are known issues with the existing implementation of sidecars:
+
+- When the `nop` image does provide the sidecar's command, the sidecar will continue to
 run even after `nop` has been swapped into the sidecar container's image
 field. See https://github.com/tektoncd/pipeline/issues/1347 for the issue
 tracking this bug. Until this issue is resolved the best way to avoid it is to
 avoid overriding the `nop` image when deploying the tekton controller, or
 ensuring that the overridden `nop` image contains as few commands as possible.
+
+- `kubectl get pods` will show a Completed pod when a sidecar exits successfully
+but an Error when the sidecar exits with an error. This is only apparent when
+using `kubectl` to get the pods of a TaskRun, not when describing the Pod
+using `kubectl describe pod ...` nor when looking at the TaskRun, but can be quite
+confusing.
