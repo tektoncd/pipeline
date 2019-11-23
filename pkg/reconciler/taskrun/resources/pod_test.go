@@ -292,11 +292,12 @@ func TestMakePod(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
-				Name:       "working-dir-initializer-9l9zj",
-				Image:      shellImage,
-				Command:    []string{"sh"},
-				Args:       []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
-				WorkingDir: workspaceDir,
+				Name:         "working-dir-initializer-9l9zj",
+				Image:        shellImage,
+				Command:      []string{"sh"},
+				Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
+				WorkingDir:   workspaceDir,
+				VolumeMounts: implicitVolumeMounts,
 			}},
 			Containers: []corev1.Container{{
 				Name:         "step-name",

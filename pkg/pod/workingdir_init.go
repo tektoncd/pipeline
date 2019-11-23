@@ -41,7 +41,7 @@ const (
 // TODO(jasonhall): This should take []corev1.Container instead of
 // []corev1.Step, but this makes it easier to use in pod.go. When pod.go is
 // cleaned up, this can take []corev1.Container.
-func WorkingDirInit(shellImage string, steps []v1alpha1.Step) *corev1.Container {
+func WorkingDirInit(shellImage string, steps []v1alpha1.Step, volumeMounts []corev1.VolumeMount) *corev1.Container {
 	// Gather all unique workingDirs.
 	workingDirs := map[string]struct{}{}
 	for _, step := range steps {
@@ -75,10 +75,11 @@ func WorkingDirInit(shellImage string, steps []v1alpha1.Step) *corev1.Container 
 	}
 
 	return &corev1.Container{
-		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(workingDirInit),
-		Image:      shellImage,
-		Command:    []string{"sh"},
-		Args:       []string{"-c", "mkdir -p " + strings.Join(relativeDirs, " ")},
-		WorkingDir: workspaceDir,
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(workingDirInit),
+		Image:        shellImage,
+		Command:      []string{"sh"},
+		Args:         []string{"-c", "mkdir -p " + strings.Join(relativeDirs, " ")},
+		WorkingDir:   workspaceDir,
+		VolumeMounts: volumeMounts,
 	}
 }

@@ -120,7 +120,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		volumes = append(volumes, secretsVolumes...)
 	}
 
-	if workingDirInit := pod.WorkingDirInit(images.ShellImage, taskSpec.Steps); workingDirInit != nil {
+	if workingDirInit := pod.WorkingDirInit(images.ShellImage, taskSpec.Steps, implicitVolumeMounts); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
 	}
 
