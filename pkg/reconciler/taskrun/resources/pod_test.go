@@ -25,8 +25,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/test/names"
-	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,14 +44,21 @@ var (
 func TestMakePod(t *testing.T) {
 	names.TestingSeed()
 
-	secretsVolumeMounts := []corev1.VolumeMount{{
+	secretsVolumeMount := corev1.VolumeMount{
 		Name:      "secret-volume-multi-creds-9l9zj",
 		MountPath: "/var/build-secrets/multi-creds",
-	}}
-	secretsVolumes := []corev1.Volume{{
+	}
+	secretsVolume := corev1.Volume{
 		Name:         "secret-volume-multi-creds-9l9zj",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
-	}}
+	}
+
+	placeToolsInit := corev1.Container{
+		Name:         "place-tools",
+		Image:        images.EntrypointImage,
+		Command:      []string{"cp", "/ko-app/entrypoint", "/builder/tools/entrypoint"},
+		VolumeMounts: []corev1.VolumeMount{pod.ToolsMount},
+	}
 
 	runtimeClassName := "gvisor"
 
@@ -59,30 +66,39 @@ func TestMakePod(t *testing.T) {
 	defer func() { randReader = rand.Reader }()
 
 	for _, c := range []struct {
-		desc        string
-		trs         v1alpha1.TaskRunSpec
-		ts          v1alpha1.TaskSpec
-		annotations map[string]string
-		want        *corev1.PodSpec
-		wantErr     error
+		desc            string
+		trs             v1alpha1.TaskRunSpec
+		ts              v1alpha1.TaskSpec
+		want            *corev1.PodSpec
+		wantAnnotations map[string]string
 	}{{
 		desc: "simple",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:  "name",
-				Image: "image",
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
 		},
-		annotations: map[string]string{
-			"simple-annotation-key": "simple-annotation-val",
-		},
 		want: &corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
 			Containers: []corev1.Container{{
-				Name:         "step-name",
-				Image:        "image",
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -92,14 +108,15 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: implicitVolumes,
+			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}, {
-		desc: "with-service-account",
+		desc: "with service account",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:  "name",
-				Image: "image",
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
 		},
 		trs: v1alpha1.TaskRunSpec{
@@ -118,14 +135,27 @@ func TestMakePod(t *testing.T) {
 					"-basic-git=multi-creds=github.com",
 					"-basic-git=multi-creds=gitlab.com",
 				},
-				VolumeMounts: append(implicitVolumeMounts, secretsVolumeMounts...),
+				VolumeMounts: append(implicitVolumeMounts, secretsVolumeMount),
 				Env:          implicitEnvVars,
-			}},
+			},
+				placeToolsInit,
+			},
 			Containers: []corev1.Container{{
-				Name:         "step-name",
-				Image:        "image",
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -135,14 +165,15 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(secretsVolumes, implicitVolumes...),
+			Volumes: append(implicitVolumes, secretsVolume, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}, {
-		desc: "with-deprecated-service-account",
+		desc: "with_deprecated_service_account",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:  "name",
-				Image: "image",
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
 		},
 		trs: v1alpha1.TaskRunSpec{
@@ -161,14 +192,27 @@ func TestMakePod(t *testing.T) {
 					"-basic-git=multi-creds=github.com",
 					"-basic-git=multi-creds=gitlab.com",
 				},
-				VolumeMounts: append(implicitVolumeMounts, secretsVolumeMounts...),
+				VolumeMounts: append(implicitVolumeMounts, secretsVolumeMount),
 				Env:          implicitEnvVars,
-			}},
+			},
+				placeToolsInit,
+			},
 			Containers: []corev1.Container{{
-				Name:         "step-name",
-				Image:        "image",
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -178,14 +222,15 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(secretsVolumes, implicitVolumes...),
+			Volumes: append(implicitVolumes, secretsVolume, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}, {
-		desc: "with-pod-template",
+		desc: "with pod template",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:  "name",
-				Image: "image",
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
 		},
 		trs: v1alpha1.TaskRunSpec{
@@ -199,12 +244,24 @@ func TestMakePod(t *testing.T) {
 			},
 		},
 		want: &corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
 			Containers: []corev1.Container{{
-				Name:         "step-name",
-				Image:        "image",
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -214,7 +271,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: implicitVolumes,
+			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
 			SecurityContext: &corev1.PodSecurityContext{
 				Sysctls: []corev1.Sysctl{
 					{Name: "net.ipv4.tcp_syncookies", Value: "1"},
@@ -223,23 +280,33 @@ func TestMakePod(t *testing.T) {
 			RuntimeClassName: &runtimeClassName,
 		},
 	}, {
-		desc: "very-long-step-name",
+		desc: "very long step name",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:  "a-very-very-long-character-step-name-to-trigger-max-len----and-invalid-characters",
-				Image: "image",
+				Name:    "a-very-very-long-character-step-name-to-trigger-max-len----and-invalid-characters",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
 		},
-		annotations: map[string]string{
-			"simple-annotation-key": "simple-annotation-val",
-		},
 		want: &corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
 			Containers: []corev1.Container{{
-				Name:         "step-a-very-very-long-character-step-name-to-trigger-max-len",
-				Image:        "image",
+				Name:    "step-a-very-very-long-character-step-name-to-trigger-max-len", // step name trimmed.
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -249,26 +316,36 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: implicitVolumes,
+			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}, {
-		desc: "step-name-ends-with-non-alphanumeric",
+		desc: "step name ends with non alphanumeric",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:  "ends-with-invalid-%%__$$",
-				Image: "image",
+				Name:    "ends-with-invalid-%%__$$",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
 		},
-		annotations: map[string]string{
-			"simple-annotation-key": "simple-annotation-val",
-		},
 		want: &corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
 			Containers: []corev1.Container{{
-				Name:         "step-ends-with-invalid",
-				Image:        "image",
+				Name:    "step-ends-with-invalid", // invalid suffix removed.
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -278,14 +355,15 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: implicitVolumes,
+			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}, {
-		desc: "working-dir-in-workspace-dir",
+		desc: "workingDir in workspace",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:       "name",
 				Image:      "image",
+				Command:    []string{"cmd"}, // avoid entrypoint lookup.
 				WorkingDir: filepath.Join(workspaceDir, "test"),
 			}}},
 		},
@@ -298,12 +376,25 @@ func TestMakePod(t *testing.T) {
 				Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
 				WorkingDir:   workspaceDir,
 				VolumeMounts: implicitVolumeMounts,
-			}},
+			},
+				placeToolsInit,
+			},
 			Containers: []corev1.Container{{
-				Name:         "step-name",
-				Image:        "image",
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   filepath.Join(workspaceDir, "test"),
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -313,27 +404,41 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: implicitVolumes,
+			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}, {
-		desc: "additional-sidecar-container",
+		desc: "sidecar container",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:  "primary-name",
-				Image: "primary-image",
+				Name:    "primary-name",
+				Image:   "primary-image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
 			}}},
 			Sidecars: []corev1.Container{{
 				Name:  "sc-name",
 				Image: "sidecar-image",
 			}},
 		},
+		wantAnnotations: map[string]string{},
 		want: &corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
 			Containers: []corev1.Container{{
-				Name:         "step-primary-name",
-				Image:        "primary-image",
+				Name:    "step-primary-name",
+				Image:   "primary-image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: implicitVolumeMounts,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -349,17 +454,91 @@ func TestMakePod(t *testing.T) {
 					Requests: nil,
 				},
 			}},
-			Volumes: implicitVolumes,
+			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
+		},
+	}, {
+		desc: "resource request",
+		ts: v1alpha1.TaskSpec{
+			Steps: []v1alpha1.Step{{Container: corev1.Container{
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("8"),
+						corev1.ResourceMemory: resource.MustParse("10Gi"),
+					},
+				},
+			}}, {Container: corev1.Container{
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("100Gi"),
+					},
+				},
+			}}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit},
+			Containers: []corev1.Container{{
+				Name:    "step-unnamed-0",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:          implicitEnvVars,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("8"),
+						corev1.ResourceMemory:           resource.MustParse("0"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}, {
+				Name:    "step-unnamed-1",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/tools/0",
+					"-post_file",
+					"/builder/tools/1",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				Env:          implicitEnvVars,
+				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount}, implicitVolumeMounts...),
+				WorkingDir:   workspaceDir,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("0"),
+						corev1.ResourceMemory:           resource.MustParse("100Gi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
+					},
+				},
+			}},
+			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}, {
 		desc: "step with script",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{
 				Container: corev1.Container{
-					Name:    "one",
-					Image:   "image",
-					Command: []string{"entrypointer"},
-					Args:    []string{"wait-file", "out-file", "-entrypoint", "image-entrypoint", "--"},
+					Name:  "one",
+					Image: "image",
 				},
 				Script: "echo hello from step one",
 			}, {
@@ -367,9 +546,6 @@ func TestMakePod(t *testing.T) {
 					Name:         "two",
 					Image:        "image",
 					VolumeMounts: []corev1.VolumeMount{{Name: "i-have-a-volume-mount"}},
-					Command:      []string{"entrypointer"},
-					// args aren't valid, but just in case they end up here we'll replace them.
-					Args: []string{"wait-file", "out-file", "-entrypoint", "image-entrypoint", "--", "args", "somehow"},
 				},
 				Script: `#!/usr/bin/env python
 print("Hello from Python")`,
@@ -394,15 +570,29 @@ cat > ${tmpfile} << 'script-heredoc-randomly-generated-6nl7g'
 print("Hello from Python")
 script-heredoc-randomly-generated-6nl7g
 `},
-				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+				VolumeMounts: []corev1.VolumeMount{pod.ScriptsVolumeMount},
+			}, {
+				Name:         "place-tools",
+				Image:        images.EntrypointImage,
+				Command:      []string{"cp", "/ko-app/entrypoint", "/builder/tools/entrypoint"},
+				VolumeMounts: []corev1.VolumeMount{pod.ToolsMount},
 			}},
 			Containers: []corev1.Container{{
-				Name:         "step-one",
-				Image:        "image",
-				Command:      []string{"entrypointer"},
-				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-0-mz4c7"},
+				Name:    "step-one",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/builder/tools/0",
+					"-entrypoint",
+					"/builder/scripts/script-0-mz4c7",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append(implicitVolumeMounts, scriptsVolumeMount),
+				VolumeMounts: append([]corev1.VolumeMount{pod.ScriptsVolumeMount, pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -412,12 +602,20 @@ script-heredoc-randomly-generated-6nl7g
 					},
 				},
 			}, {
-				Name:         "step-two",
-				Image:        "image",
-				Command:      []string{"entrypointer"},
-				Args:         []string{"wait-file", "out-file", "-entrypoint", "/builder/scripts/script-1-78c5n"},
+				Name:    "step-two",
+				Image:   "image",
+				Command: []string{"/builder/tools/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/builder/tools/0",
+					"-post_file",
+					"/builder/tools/1",
+					"-entrypoint",
+					"/builder/scripts/script-1-78c5n",
+					"--",
+				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}}, append(implicitVolumeMounts, scriptsVolumeMount)...),
+				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, pod.ScriptsVolumeMount, pod.ToolsMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -427,14 +625,14 @@ script-heredoc-randomly-generated-6nl7g
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, scriptsVolume),
+			Volumes: append(implicitVolumes, pod.ScriptsVolume, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
-			cs := fakek8s.NewSimpleClientset(
-				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "service-account"},
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "service-account", Namespace: "default"},
 					Secrets: []corev1.ObjectReference{{
 						Name: "multi-creds",
 					}},
@@ -456,13 +654,16 @@ script-heredoc-randomly-generated-6nl7g
 			)
 			tr := &v1alpha1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "taskrun-name",
-					Annotations: c.annotations,
+					Name: "taskrun-name",
 				},
 				Spec: c.trs,
 			}
-			got, err := MakePod(images, tr, c.ts, cs)
-			if err != c.wantErr {
+			entrypointCache, err := pod.NewEntrypointCache(kubeclient)
+			if err != nil {
+				t.Fatalf("NewEntrypointCache: %v", err)
+			}
+			got, err := MakePod(images, tr, c.ts, kubeclient, entrypointCache)
+			if err != nil {
 				t.Fatalf("MakePod: %v", err)
 			}
 
@@ -474,16 +675,6 @@ script-heredoc-randomly-generated-6nl7g
 
 			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
 				t.Errorf("Diff(-want, +got):\n%s", d)
-			}
-
-			wantAnnotations := map[string]string{ReadyAnnotation: ""}
-			if c.annotations != nil {
-				for key, val := range c.annotations {
-					wantAnnotations[key] = val
-				}
-			}
-			if d := cmp.Diff(got.Annotations, wantAnnotations); d != "" {
-				t.Errorf("Diff annotations:\n%s", d)
 			}
 		})
 	}
@@ -529,68 +720,6 @@ func TestMakeLabels(t *testing.T) {
 			})
 			if d := cmp.Diff(got, c.want); d != "" {
 				t.Errorf("Diff labels:\n%s", d)
-			}
-		})
-	}
-}
-
-func TestAddReadyAnnotation(t *testing.T) {
-	pod := &corev1.Pod{}
-	updateFunc := func(p *corev1.Pod) (*corev1.Pod, error) { return p, nil }
-	if err := AddReadyAnnotation(pod, updateFunc); err != nil {
-		t.Errorf("error received: %v", err)
-	}
-	if v := pod.ObjectMeta.Annotations[ReadyAnnotation]; v != readyAnnotationValue {
-		t.Errorf("Annotation %q=%q missing from Pod", ReadyAnnotation, readyAnnotationValue)
-	}
-}
-
-func TestAddReadyAnnotationUpdateError(t *testing.T) {
-	testerror := xerrors.New("error updating pod")
-	pod := &corev1.Pod{}
-	updateFunc := func(p *corev1.Pod) (*corev1.Pod, error) { return p, testerror }
-	if err := AddReadyAnnotation(pod, updateFunc); err != testerror {
-		t.Errorf("expected %v received %v", testerror, err)
-	}
-}
-
-func TestMakeAnnotations(t *testing.T) {
-	for _, c := range []struct {
-		desc                     string
-		taskRun                  *v1alpha1.TaskRun
-		expectedAnnotationSubset map[string]string
-	}{{
-		desc: "a taskruns annotations are copied to the pod",
-		taskRun: &v1alpha1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "a-taskrun",
-				Annotations: map[string]string{
-					"foo": "bar",
-					"baz": "quux",
-				},
-			},
-		},
-		expectedAnnotationSubset: map[string]string{
-			"foo": "bar",
-			"baz": "quux",
-		},
-	}, {
-		desc:    "initial pod annotations contain the ReadyAnnotation to pause steps until sidecars are ready",
-		taskRun: &v1alpha1.TaskRun{},
-		expectedAnnotationSubset: map[string]string{
-			ReadyAnnotation: "",
-		},
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			annos := makeAnnotations(c.taskRun)
-			for k, v := range c.expectedAnnotationSubset {
-				receivedValue, ok := annos[k]
-				if !ok {
-					t.Errorf("expected annotation %q was missing", k)
-				}
-				if receivedValue != v {
-					t.Errorf("expected annotation %q=%q, received %q=%q", k, v, k, receivedValue)
-				}
 			}
 		})
 	}

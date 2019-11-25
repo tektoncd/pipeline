@@ -54,7 +54,7 @@ var (
 func main() {
 	flag.Parse()
 	images := pipeline.Images{
-		EntryPointImage:          *entrypointImage,
+		EntrypointImage:          *entrypointImage,
 		NopImage:                 *nopImage,
 		GitImage:                 *gitImage,
 		CredsImage:               *credsImage,

@@ -23,7 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,16 +49,16 @@ func UpdateStatusFromPod(taskRun *v1alpha1.TaskRun, pod *corev1.Pod, resourceLis
 	taskRun.Status.Steps = []v1alpha1.StepState{}
 	taskRun.Status.Sidecars = []v1alpha1.SidecarState{}
 	for _, s := range pod.Status.ContainerStatuses {
-		if resources.IsContainerStep(s.Name) {
+		if podconvert.IsContainerStep(s.Name) {
 			taskRun.Status.Steps = append(taskRun.Status.Steps, v1alpha1.StepState{
 				ContainerState: *s.State.DeepCopy(),
-				Name:           resources.TrimContainerNamePrefix(s.Name),
+				Name:           podconvert.TrimStepPrefix(s.Name),
 				ContainerName:  s.Name,
 				ImageID:        s.ImageID,
 			})
-		} else if resources.IsContainerSidecar(s.Name) {
+		} else if podconvert.IsContainerSidecar(s.Name) {
 			taskRun.Status.Sidecars = append(taskRun.Status.Sidecars, v1alpha1.SidecarState{
-				Name:    resources.TrimSidecarNamePrefix(s.Name),
+				Name:    podconvert.TrimSidecarPrefix(s.Name),
 				ImageID: s.ImageID,
 			})
 		}
@@ -128,7 +128,7 @@ func updateIncompleteTaskRun(taskRun *v1alpha1.TaskRun, pod *corev1.Pod) {
 func didTaskRunFail(pod *corev1.Pod) bool {
 	f := pod.Status.Phase == corev1.PodFailed
 	for _, s := range pod.Status.ContainerStatuses {
-		if resources.IsContainerStep(s.Name) {
+		if podconvert.IsContainerStep(s.Name) {
 			if s.State.Terminated != nil {
 				f = f || s.State.Terminated.ExitCode != 0
 			}
@@ -140,7 +140,7 @@ func didTaskRunFail(pod *corev1.Pod) bool {
 func areStepsComplete(pod *corev1.Pod) bool {
 	stepsComplete := len(pod.Status.ContainerStatuses) > 0 && pod.Status.Phase == corev1.PodRunning
 	for _, s := range pod.Status.ContainerStatuses {
-		if resources.IsContainerStep(s.Name) {
+		if podconvert.IsContainerStep(s.Name) {
 			if s.State.Terminated == nil {
 				stepsComplete = false
 			}
@@ -151,7 +151,7 @@ func areStepsComplete(pod *corev1.Pod) bool {
 
 func countSidecars(pod *corev1.Pod) (total int, readyOrTerminated int) {
 	for _, s := range pod.Status.ContainerStatuses {
-		if resources.IsContainerSidecar(s.Name) {
+		if podconvert.IsContainerSidecar(s.Name) {
 			if s.State.Running != nil && s.Ready {
 				readyOrTerminated++
 			} else if s.State.Terminated != nil {

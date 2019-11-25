@@ -45,7 +45,7 @@ import (
 var (
 	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
 	images                   = pipeline.Images{
-		EntryPointImage:          "override-with-entrypoint:latest",
+		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "tianon/true",
 		GitImage:                 "override-with-git:latest",
 		CredsImage:               "override-with-creds:latest",

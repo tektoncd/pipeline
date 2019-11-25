@@ -74,7 +74,7 @@ func TestWorkingDirInit(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			// TODO(jasonhall): WorkingDirInit should take
+			// TODO(#1605): WorkingDirInit should take
 			// Containers instead of Steps, but while we're
 			// cleaning up pod.go it's easier to have it take
 			// Steps. This test doesn't care, so let's hide this

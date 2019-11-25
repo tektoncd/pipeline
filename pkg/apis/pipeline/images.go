@@ -19,8 +19,8 @@ package pipeline
 // Images holds the images reference for a number of container images used
 // across tektoncd pipelines.
 type Images struct {
-	// EntryPointImage is container image containing our entrypoint binary.
-	EntryPointImage string
+	// EntrypointImage is container image containing our entrypoint binary.
+	EntrypointImage string
 	// NopImage is the container image used to kill sidecars.
 	NopImage string
 	// GitImage is the container image with Git that we use to implement the Git source step.

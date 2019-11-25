@@ -6,8 +6,7 @@ spec:
   taskSpec:
     steps:
     - image: busybox
-      command: ['/bin/sh']
+      # NB: command is not set, so it must be looked up from the registry.
       args: ['-c', 'sleep 3 && touch foo']
     - image: busybox
-      command: ['/bin/sh']
       args: ['-c', 'ls', 'foo']
