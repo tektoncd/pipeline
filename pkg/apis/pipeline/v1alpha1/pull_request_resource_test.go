@@ -98,7 +98,7 @@ func containerTestCases(mode string) []testcase {
 			Command:    []string{"/ko-app/pullrequest-init"},
 			Args:       []string{"-url", "https://example.com", "-path", "/workspace", "-mode", mode},
 			Env: []corev1.EnvVar{{
-				Name: "GITHUBTOKEN",
+				Name: "GITHUB_TOKEN",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{

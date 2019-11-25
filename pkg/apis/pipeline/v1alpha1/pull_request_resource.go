@@ -25,8 +25,10 @@ import (
 )
 
 const (
-	prSource       = "pr-source"
-	githubTokenEnv = "githubToken"
+	prSource         = "pr-source"
+	githubTokenField = "githubToken"
+	// nolint: gosec
+	githubTokenEnv = "GITHUB_TOKEN"
 )
 
 // PullRequestResource is an endpoint from which to get data which is required
@@ -107,9 +109,9 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 
 	evs := []corev1.EnvVar{}
 	for _, sec := range s.Secrets {
-		if strings.EqualFold(sec.FieldName, githubTokenEnv) {
+		if strings.EqualFold(sec.FieldName, githubTokenField) {
 			ev := corev1.EnvVar{
-				Name: strings.ToUpper(sec.FieldName),
+				Name: githubTokenEnv,
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
