@@ -27,8 +27,8 @@ import (
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelineresource"
 	taskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/taskrun"
+	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -67,6 +67,11 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			Logger:            logger,
 		}
 
+		entrypointCache, err := pod.NewEntrypointCache(kubeclientset)
+		if err != nil {
+			logger.Fatalf("Error creating entrypoint cache: %v", err)
+		}
+
 		c := &Reconciler{
 			Base:              reconciler.NewBase(opt, taskRunAgentName, images),
 			taskRunLister:     taskRunInformer.Lister(),
@@ -76,6 +81,7 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			timeoutHandler:    timeoutHandler,
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           metrics,
+			entrypointCache:   entrypointCache,
 		}
 		impl := controller.NewImpl(c, c.Logger, taskRunControllerName)
 
@@ -94,14 +100,6 @@ func NewController(images pipeline.Images) func(context.Context, configmap.Watch
 			FilterFunc: controller.Filter(v1alpha1.SchemeGroupVersion.WithKind("TaskRun")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
-
-		// FIXME(vdemeester) it was never set
-		//entrypoint cache will be initialized by controller if not provided
-		c.Logger.Info("Setting up Entrypoint cache")
-		c.cache = nil
-		if c.cache == nil {
-			c.cache, _ = entrypoint.NewCache()
-		}
 
 		return impl
 	}

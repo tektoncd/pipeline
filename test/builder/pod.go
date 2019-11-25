@@ -37,8 +37,9 @@ type PodStatusOp func(status *corev1.PodStatus)
 func Pod(name, namespace string, ops ...PodOp) *corev1.Pod {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      name,
+			Namespace:   namespace,
+			Name:        name,
+			Annotations: map[string]string{},
 		},
 	}
 	for _, op := range ops {

@@ -38,7 +38,7 @@ const (
 // If no such directories need to be created (i.e., no relative workingDirs
 // are specified), this method returns nil, as no init container is necessary.
 //
-// TODO(jasonhall): This should take []corev1.Container instead of
+// TODO(#1605): This should take []corev1.Container instead of
 // []corev1.Step, but this makes it easier to use in pod.go. When pod.go is
 // cleaned up, this can take []corev1.Container.
 func WorkingDirInit(shellImage string, steps []v1alpha1.Step, volumeMounts []corev1.VolumeMount) *corev1.Container {

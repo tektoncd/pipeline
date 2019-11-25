@@ -25,13 +25,11 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
-	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,8 +44,6 @@ const (
 	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
 	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
 	ManagedByLabelValue = "tekton-pipelines"
-
-	scriptsDir = "/builder/scripts"
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -85,34 +81,18 @@ var (
 	// Random byte reader used for pod name generation.
 	// var for testing.
 	randReader = rand.Reader
-
-	// Volume definition attached to Pods generated from TaskRuns that have
-	// steps that specify a Script.
-	scriptsVolume = corev1.Volume{
-		Name:         "place-scripts",
-		VolumeSource: emptyVolumeSource,
-	}
-	scriptsVolumeMount = corev1.VolumeMount{
-		Name:      "place-scripts",
-		MountPath: scriptsDir,
-	}
-)
-
-const (
-	// Prefixes to add to the name of the init containers.
-	containerPrefix            = "step-"
-	unnamedInitContainerPrefix = "step-unnamed-"
-	ReadyAnnotation            = "tekton.dev/ready"
-	readyAnnotationValue       = "READY"
-	sidecarPrefix              = "sidecar-"
 )
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
-func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface) (*corev1.Pod, error) {
+func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache pod.EntrypointCache) (*corev1.Pod, error) {
 	var initContainers []corev1.Container
 	var volumes []corev1.Volume
 
+	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
+	volumes = append(volumes, implicitVolumes...)
+
+	// Inititalize any credentials found in annotated Secrets.
 	if credsInitContainer, secretsVolumes, err := pod.CredsInit(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
 		return nil, err
 	} else if credsInitContainer != nil {
@@ -120,120 +100,91 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 		volumes = append(volumes, secretsVolumes...)
 	}
 
+	// Initialize any workingDirs under /workspace.
 	if workingDirInit := pod.WorkingDirInit(images.ShellImage, taskSpec.Steps, implicitVolumeMounts); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
 	}
 
-	var podSteps []v1alpha1.Step
-
-	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
-
-	placeScripts := false
-	placeScriptsInitContainer := corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("place-scripts"),
-		Image:        images.ShellImage,
-		TTY:          true,
-		Command:      []string{"sh"},
-		Args:         []string{"-c", ""},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+	// Merge step template with steps.
+	steps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, taskSpec.Steps)
+	if err != nil {
+		return nil, err
 	}
 
-	for i, s := range taskSpec.Steps {
-		s.Env = append(implicitEnvVars, s.Env...)
-		// TODO(mattmoor): Check that volumeMounts match volumes.
+	// Convert any steps with Script to command+args.
+	// If any are found, append an init container to initialize scripts.
+	scriptsInit, stepContainers := pod.ConvertScripts(images.ShellImage, steps)
+	if scriptsInit != nil {
+		initContainers = append(initContainers, *scriptsInit)
+		volumes = append(volumes, pod.ScriptsVolume)
+	}
 
-		// Add implicit volume mounts, unless the user has requested
-		// their own volume mount at that path.
+	// Resolve entrypoint for any steps that don't specify command.
+	stepContainers, err = pod.ResolveEntrypoints(entrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers)
+	if err != nil {
+		return nil, err
+	}
+
+	// Rewrite steps with entrypoint binary. Append the entrypoint init
+	// container to place the entrypoint binary.
+	entrypointInit, stepContainers, err := pod.OrderContainers(images.EntrypointImage, stepContainers)
+	if err != nil {
+		return nil, err
+	}
+	initContainers = append(initContainers, entrypointInit)
+	volumes = append(volumes, pod.ToolsVolume, pod.DownwardVolume)
+
+	// Zero out non-max resource requests.
+	// TODO(jasonhall): Split this out so it's more easily testable.
+	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
+	for i := range stepContainers {
+		zeroNonMaxResourceRequests(&stepContainers[i], i, maxIndicesByResource)
+	}
+
+	// Add implicit env vars.
+	// They're prepended to the list, so that if the user specified any
+	// themselves their value takes precedence.
+	for i, s := range stepContainers {
+		env := append(implicitEnvVars, s.Env...)
+		stepContainers[i].Env = env
+	}
+
+	// Add implicit volume mounts to each step, unless the step specifies
+	// its own volume mount at that path.
+	for i, s := range stepContainers {
 		requestedVolumeMounts := map[string]bool{}
 		for _, vm := range s.VolumeMounts {
 			requestedVolumeMounts[filepath.Clean(vm.MountPath)] = true
 		}
+		var toAdd []corev1.VolumeMount
 		for _, imp := range implicitVolumeMounts {
 			if !requestedVolumeMounts[filepath.Clean(imp.MountPath)] {
-				s.VolumeMounts = append(s.VolumeMounts, imp)
+				toAdd = append(toAdd, imp)
 			}
 		}
+		vms := append(s.VolumeMounts, toAdd...)
+		stepContainers[i].VolumeMounts = vms
+	}
 
-		// If the step specifies a Script, generate and invoke an
-		// executable script file containing each item in the script.
-		if s.Script != "" {
-			placeScripts = true
-			// Append to the place-scripts script to place the
-			// script file in a known location in the scripts volume.
-			tmpFile := filepath.Join(scriptsDir, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("script-%d", i)))
-			// heredoc is the "here document" placeholder string
-			// used to cat script contents into the file. Typically
-			// this is the string "EOF" but if this value were
-			// "EOF" it would prevent users from including the
-			// string "EOF" in their own scripts. Instead we
-			// randomly generate a string to (hopefully) prevent
-			// collisions.
-			heredoc := names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("script-heredoc-randomly-generated")
-			// NOTE: quotes around the heredoc string are
-			// important. Without them, ${}s in the file are
-			// interpreted as env vars and likely end up replaced
-			// with empty strings. See
-			// https://stackoverflow.com/a/27921346
-			placeScriptsInitContainer.Args[1] += fmt.Sprintf(`tmpfile="%s"
-touch ${tmpfile} && chmod +x ${tmpfile}
-cat > ${tmpfile} << '%s'
-%s
-%s
-`, tmpFile, heredoc, s.Script, heredoc)
-			// The entrypoint redirecter has already run on this
-			// step, so we just need to replace the image's
-			// entrypoint (if any) with the script to run.
-			// Validation prevents step args from being passed, but
-			// just to be careful we'll replace any that survived
-			// entrypoint redirection here.
-
-			// TODO(jasonhall): It's confusing that entrypoint
-			// redirection isn't done as part of MakePod, and the
-			// interaction of these two modifications to container
-			// args might be confusing to debug in the future.
-			s.Args = append(s.Args, tmpFile)
-			for i := 0; i < len(s.Args); i++ {
-				if s.Args[i] == "-entrypoint" {
-					s.Args = append(s.Args[:i+1], tmpFile)
-				}
-			}
-			s.VolumeMounts = append(s.VolumeMounts, scriptsVolumeMount)
-		}
-
+	// This loop:
+	// - defaults workingDir to /workspace
+	// - sets container name to add "step-" prefix or "step-unnamed-#" if not specified.
+	// TODO(jasonhall): Remove this loop and make each transformation in
+	// isolation.
+	for i, s := range stepContainers {
 		if s.WorkingDir == "" {
-			s.WorkingDir = workspaceDir
+			stepContainers[i].WorkingDir = workspaceDir
 		}
 		if s.Name == "" {
-			s.Name = fmt.Sprintf("%v%d", unnamedInitContainerPrefix, i)
+			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%sunnamed-%d", pod.StepPrefix, i))
 		} else {
-			s.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, s.Name))
-		}
-		// use the container name to add the entrypoint binary as an
-		// init container.
-		// TODO(jasonhall): Entrypoint init container should be
-		// explicitly added as an init container, not added to steps
-		// then pulled out when translating to Pod containers.
-		if s.Name == names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", containerPrefix, entrypoint.InitContainerName)) {
-			initContainers = append(initContainers, s.Container)
-		} else {
-			zeroNonMaxResourceRequests(&s, i, maxIndicesByResource)
-			podSteps = append(podSteps, s)
+			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%s%s", pod.StepPrefix, s.Name))
 		}
 	}
 
 	// Add podTemplate Volumes to the explicitly declared use volumes
 	volumes = append(volumes, taskSpec.Volumes...)
 	volumes = append(volumes, taskRun.Spec.PodTemplate.Volumes...)
-	// Add our implicit volumes and any volumes needed for secrets to the explicitly
-	// declared user volumes.
-	volumes = append(volumes, implicitVolumes...)
-
-	// Add the volume shared to place a script file, if any step specified
-	// a script.
-	if placeScripts {
-		volumes = append(volumes, scriptsVolume)
-		initContainers = append(initContainers, placeScriptsInitContainer)
-	}
 
 	if err := v1alpha1.ValidateVolumes(volumes); err != nil {
 		return nil, err
@@ -246,16 +197,10 @@ cat > ${tmpfile} << '%s'
 	}
 	gibberish := hex.EncodeToString(b)
 
-	mergedPodSteps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, podSteps)
-	if err != nil {
-		return nil, err
-	}
-	var mergedPodContainers []corev1.Container
-	for _, s := range mergedPodSteps {
-		mergedPodContainers = append(mergedPodContainers, s.Container)
-	}
+	// Merge sidecar containers with step containers.
+	mergedPodContainers := stepContainers
 	for _, sc := range taskSpec.Sidecars {
-		sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
+		sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", pod.SidecarPrefix, sc.Name))
 		mergedPodContainers = append(mergedPodContainers, sc)
 	}
 
@@ -273,7 +218,7 @@ cat > ${tmpfile} << '%s'
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
 			},
-			Annotations: makeAnnotations(taskRun),
+			Annotations: taskRun.Annotations,
 			Labels:      makeLabels(taskRun),
 		},
 		Spec: corev1.PodSpec{
@@ -289,32 +234,6 @@ cat > ${tmpfile} << '%s'
 			RuntimeClassName:   taskRun.Spec.PodTemplate.RuntimeClassName,
 		},
 	}, nil
-}
-
-type UpdatePod func(*corev1.Pod) (*corev1.Pod, error)
-
-// AddReadyAnnotation adds the ready annotation if it is not present.
-// Returns any error that comes back from the passed-in update func.
-func AddReadyAnnotation(p *corev1.Pod, update UpdatePod) error {
-	if p.ObjectMeta.Annotations == nil {
-		p.ObjectMeta.Annotations = make(map[string]string)
-	}
-	if p.ObjectMeta.Annotations[ReadyAnnotation] != readyAnnotationValue {
-		p.ObjectMeta.Annotations[ReadyAnnotation] = readyAnnotationValue
-		_, err := update(p)
-
-		return err
-	}
-
-	return nil
-}
-
-func IsContainerStep(name string) bool {
-	return strings.HasPrefix(name, containerPrefix)
-}
-
-func IsContainerSidecar(name string) bool {
-	return strings.HasPrefix(name, sidecarPrefix)
 }
 
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.
@@ -335,17 +254,6 @@ func makeLabels(s *v1alpha1.TaskRun) map[string]string {
 	return labels
 }
 
-// makeAnnotations constructs the annotations we will propagate from TaskRuns to Pods
-// and adds any other annotations that will be needed to initialize a Pod.
-func makeAnnotations(s *v1alpha1.TaskRun) map[string]string {
-	annotations := make(map[string]string, len(s.ObjectMeta.Annotations)+1)
-	for k, v := range s.ObjectMeta.Annotations {
-		annotations[k] = v
-	}
-	annotations[ReadyAnnotation] = ""
-	return annotations
-}
-
 // zeroNonMaxResourceRequests zeroes out the container's cpu, memory, or
 // ephemeral storage resource requests if the container does not have the
 // largest request out of all containers in the pod. This is done because Tekton
@@ -353,13 +261,13 @@ func makeAnnotations(s *v1alpha1.TaskRun) map[string]string {
 // one at a time, so we want pods to only request the maximum resources needed
 // at any single point in time. If no container has an explicit resource
 // request, all requests are set to 0.
-func zeroNonMaxResourceRequests(step *v1alpha1.Step, stepIndex int, maxIndicesByResource map[corev1.ResourceName]int) {
-	if step.Resources.Requests == nil {
-		step.Resources.Requests = corev1.ResourceList{}
+func zeroNonMaxResourceRequests(c *corev1.Container, stepIndex int, maxIndicesByResource map[corev1.ResourceName]int) {
+	if c.Resources.Requests == nil {
+		c.Resources.Requests = corev1.ResourceList{}
 	}
 	for name, maxIdx := range maxIndicesByResource {
 		if maxIdx != stepIndex {
-			step.Resources.Requests[name] = zeroQty
+			c.Resources.Requests[name] = zeroQty
 		}
 	}
 }
@@ -384,15 +292,4 @@ func findMaxResourceRequest(steps []v1alpha1.Step, resourceNames ...corev1.Resou
 		}
 	}
 	return maxIdxs
-}
-
-// TrimContainerNamePrefix trim the container name prefix to get the corresponding step name
-func TrimContainerNamePrefix(containerName string) string {
-	return strings.TrimPrefix(containerName, containerPrefix)
-}
-
-// TrimSidecarNamePrefix trim the sidecar name prefix to get the corresponding
-// sidecar name
-func TrimSidecarNamePrefix(containerName string) string {
-	return strings.TrimPrefix(containerName, sidecarPrefix)
 }

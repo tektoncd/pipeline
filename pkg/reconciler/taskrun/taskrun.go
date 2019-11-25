@@ -29,11 +29,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/sidecars"
 	"github.com/tektoncd/pipeline/pkg/status"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
@@ -41,7 +40,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
@@ -69,7 +67,7 @@ type Reconciler struct {
 	resourceLister    listers.PipelineResourceLister
 	cloudEventClient  cloudevent.CEClient
 	tracker           tracker.Interface
-	cache             *entrypoint.Cache
+	entrypointCache   podconvert.EntrypointCache
 	timeoutHandler    *reconciler.TimeoutSet
 	metrics           *Recorder
 }
@@ -132,7 +130,7 @@ func (c *Reconciler) Reconcile(ctx context.Context, key string) error {
 		c.timeoutHandler.Release(tr)
 		pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
 		if err == nil {
-			err = sidecars.Stop(pod, c.Images.NopImage, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Update)
+			err = podconvert.StopSidecars(c.Images.NopImage, c.KubeClientSet, *pod)
 		} else if errors.IsNotFound(err) {
 			return merr.ErrorOrNil()
 		}
@@ -317,10 +315,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	cloudevent.InitializeCloudEvents(tr, prs)
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
-	pod, err := tryGetPod(tr.Status, c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get)
-	if err != nil {
-		c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
-		return err
+	var pod *corev1.Pod
+	if tr.Status.PodName != "" {
+		pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(tr.Status.PodName, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			// Keep going, this will result in the Pod being created below.
+		} else if err != nil {
+			c.Logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
+			return err
+		}
 	}
 	if pod == nil {
 		pod, err = c.createPod(tr, rtr)
@@ -350,7 +353,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	if addReady {
-		if err := c.updateReady(pod); err != nil {
+		if err := podconvert.UpdateReady(c.KubeClientSet, *pod); err != nil {
 			return err
 		}
 	}
@@ -441,23 +444,6 @@ func (c *Reconciler) updateLabelsAndAnnotations(tr *v1alpha1.TaskRun) (*v1alpha1
 	return newTr, nil
 }
 
-// updateReady updates a Pod to include the "ready" annotation, which will be projected by
-// the Downward API into a volume mounted by the entrypoint container. This will signal to
-// the entrypoint that the TaskRun can proceed.
-func (c *Reconciler) updateReady(pod *corev1.Pod) error {
-	newPod, err := c.KubeClientSet.CoreV1().Pods(pod.Namespace).Get(pod.Name, metav1.GetOptions{})
-	if err != nil {
-		return xerrors.Errorf("Error getting Pod %q when updating ready annotation: %w", pod.Name, err)
-	}
-	updatePod := c.KubeClientSet.CoreV1().Pods(newPod.Namespace).Update
-	if err := resources.AddReadyAnnotation(newPod, updatePod); err != nil {
-		c.Logger.Errorf("Failed to update ready annotation for pod %q for taskrun %q: %v", pod.Name, pod.Name, err)
-		return xerrors.Errorf("Error adding ready annotation to Pod %q: %w", pod.Name, err)
-	}
-
-	return nil
-}
-
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
@@ -493,11 +479,6 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 		return nil, err
 	}
 
-	ts, err = createRedirectedTaskSpec(c.KubeClientSet, c.Images.EntryPointImage, ts, tr, c.cache, c.Logger)
-	if err != nil {
-		return nil, xerrors.Errorf("couldn't create redirected TaskSpec: %w", err)
-	}
-
 	var defaults []v1alpha1.ParamSpec
 	if ts.Inputs != nil {
 		defaults = append(defaults, ts.Inputs.Params...)
@@ -509,57 +490,12 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
-	pod, err := resources.MakePod(c.Images, tr, *ts, c.KubeClientSet)
+	pod, err := resources.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache)
 	if err != nil {
 		return nil, xerrors.Errorf("translating Build to Pod: %w", err)
 	}
 
 	return c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(pod)
-}
-
-// CreateRedirectedTaskSpec takes a TaskSpec, a persistent volume claim name, a taskrun and
-// an entrypoint cache creates a build where all entrypoints are switched to
-// be the entrypoint redirector binary. This function assumes that it receives
-// its own copy of the TaskSpec and modifies it freely
-func createRedirectedTaskSpec(kubeclient kubernetes.Interface, entrypointImage string, ts *v1alpha1.TaskSpec, tr *v1alpha1.TaskRun, cache *entrypoint.Cache, logger *zap.SugaredLogger) (*v1alpha1.TaskSpec, error) {
-	// RedirectSteps the entrypoint in each container so that we can use our custom
-	// entrypoint which copies logs to the volume
-	err := entrypoint.RedirectSteps(cache, ts.Steps, kubeclient, tr, logger)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to add entrypoint to steps of TaskRun %s: %w", tr.Name, err)
-	}
-	// Add the step which will copy the entrypoint into the volume
-	// we are going to be using, so that all of the steps will have
-	// access to it.
-	entrypoint.AddCopyStep(entrypointImage, ts)
-
-	// Add the volume used for storing the binary and logs
-	ts.Volumes = append(ts.Volumes, corev1.Volume{
-		Name: entrypoint.MountName,
-		VolumeSource: corev1.VolumeSource{
-			// TODO(#107) we need to actually stream these logs somewhere, probably via sidecar.
-			// Currently these logs will be lost when the pod is unscheduled.
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
-
-	ts.Volumes = append(ts.Volumes, corev1.Volume{
-		Name: entrypoint.DownwardMountName,
-		VolumeSource: corev1.VolumeSource{
-			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path: entrypoint.DownwardMountReadyFile,
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: fmt.Sprintf("metadata.annotations['%s']", resources.ReadyAnnotation),
-						},
-					},
-				},
-			},
-		},
-	})
-
-	return ts, nil
 }
 
 type DeletePod func(podName string, options *metav1.DeleteOptions) error
@@ -604,21 +540,4 @@ func resourceImplBinding(resources map[string]*v1alpha1.PipelineResource, images
 		p[rName] = i
 	}
 	return p, nil
-}
-
-// getPodFunc returns the Pod for the given pod name
-type getPodFunc func(string, metav1.GetOptions) (*corev1.Pod, error)
-
-// tryGetPod fetches the TaskRun's pod, returning nil if it has not been created or it does not exist.
-func tryGetPod(taskRunStatus v1alpha1.TaskRunStatus, gp getPodFunc) (*corev1.Pod, error) {
-	if taskRunStatus.PodName == "" {
-		return nil, nil
-	}
-
-	pod, err := gp(taskRunStatus.PodName, metav1.GetOptions{})
-	if err == nil || errors.IsNotFound(err) {
-		return pod, nil
-	}
-
-	return nil, err
 }
