@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
@@ -26,7 +27,7 @@ import (
 var _ apis.Validatable = (*Condition)(nil)
 
 func (c Condition) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(c.GetObjectMeta()); err != nil {
+	if err := validate.ObjectMetadata(c.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 	return c.Spec.Validate(ctx).ViaField("Spec")

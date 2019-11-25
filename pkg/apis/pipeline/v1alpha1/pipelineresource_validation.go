@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"knative.dev/pkg/apis"
 )
@@ -29,7 +30,7 @@ import (
 var _ apis.Validatable = (*PipelineResource)(nil)
 
 func (r *PipelineResource) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(r.GetObjectMeta()); err != nil {
+	if err := validate.ObjectMetadata(r.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 
