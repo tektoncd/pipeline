@@ -14,23 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package validate_test
 
 import (
 	"strings"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestMetadataInvalidLongName(t *testing.T) {
 
 	invalidMetas := []*metav1.ObjectMeta{
-		{Name: strings.Repeat("s", maxLength+1)},
+		{Name: strings.Repeat("s", validate.MaxLength+1)},
 		{Name: "bad.name"},
 	}
 	for _, invalidMeta := range invalidMetas {
-		if err := validateObjectMetadata(invalidMeta); err == nil {
+		if err := validate.ObjectMetadata(invalidMeta); err == nil {
 			t.Errorf("Failed to validate object meta data: %s", err)
 		}
 	}

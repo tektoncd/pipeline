@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package validate
 
 import (
 	"strings"
@@ -23,9 +23,9 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-const maxLength = 63
+const MaxLength = 63
 
-func validateObjectMetadata(meta metav1.Object) *apis.FieldError {
+func ObjectMetadata(meta metav1.Object) *apis.FieldError {
 	name := meta.GetName()
 
 	if strings.Contains(name, ".") {
@@ -35,7 +35,7 @@ func validateObjectMetadata(meta metav1.Object) *apis.FieldError {
 		}
 	}
 
-	if len(name) > maxLength {
+	if len(name) > MaxLength {
 		return &apis.FieldError{
 			Message: "Invalid resource name: length must be no more than 63 characters",
 			Paths:   []string{"name"},

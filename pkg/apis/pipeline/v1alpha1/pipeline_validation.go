@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"golang.org/x/xerrors"
@@ -34,7 +35,7 @@ var _ apis.Validatable = (*Pipeline)(nil)
 // Validate checks that the Pipeline structure is valid but does not validate
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
-	if err := validateObjectMetadata(p.GetObjectMeta()); err != nil {
+	if err := validate.ObjectMetadata(p.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}
 	return p.Spec.Validate(ctx)
