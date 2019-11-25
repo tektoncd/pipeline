@@ -413,6 +413,16 @@ google.golang.org/grpc/tap
 gopkg.in/inf.v0
 # gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2
+# gotest.tools/v3 v3.0.0
+gotest.tools/v3/assert
+gotest.tools/v3/assert/cmp
+gotest.tools/v3/env
+gotest.tools/v3/fs
+gotest.tools/v3/icmd
+gotest.tools/v3/internal/difflib
+gotest.tools/v3/internal/format
+gotest.tools/v3/internal/source
+gotest.tools/v3/x/subtest
 # k8s.io/api v0.0.0-20190226173710-145d52631d00
 k8s.io/api/admissionregistration/v1alpha1
 k8s.io/api/admissionregistration/v1beta1

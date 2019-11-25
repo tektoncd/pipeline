@@ -41,14 +41,16 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/tektoncd/pipeline v0.8.0
 	github.com/tektoncd/plumbing v0.0.0-20191114095731-51c53a31e779
-	go.opencensus.io v0.22.1 // indirect
+	go.opencensus.io v0.22.1
 	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392 // indirect
 	golang.org/x/net v0.0.0-20190923162816-aa69164e4478 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
 	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe // indirect
-	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7 // indirect
+	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.2.2
+	gotest.tools/v3 v3.0.0
 	k8s.io/api v0.0.0-20190226173710-145d52631d00
 	k8s.io/apimachinery v0.0.0-20190221084156-01f179d85dbc
 	k8s.io/cli-runtime v0.0.0-20190325194458-f2b4781c3ae1
