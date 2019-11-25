@@ -15,13 +15,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1_test
+package substitution_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	"knative.dev/pkg/apis"
 )
 
@@ -111,7 +111,7 @@ func TestValidateVariables(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := v1alpha1.ValidateVariable("somefield", tc.args.input, tc.args.prefix, tc.args.contextPrefix, tc.args.locationName, tc.args.path, tc.args.vars)
+			got := substitution.ValidateVariable("somefield", tc.args.input, tc.args.prefix, tc.args.contextPrefix, tc.args.locationName, tc.args.path, tc.args.vars)
 
 			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("ValidateVariable() error did not match expected error %s", d)
@@ -173,7 +173,7 @@ func TestApplyReplacements(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actualOutput := v1alpha1.ApplyReplacements(tt.args.input, tt.args.replacements)
+			actualOutput := substitution.ApplyReplacements(tt.args.input, tt.args.replacements)
 			if d := cmp.Diff(actualOutput, tt.expectedOutput); d != "" {
 				t.Errorf("ApplyReplacements() output did not match expected value %s", d)
 			}
@@ -225,7 +225,7 @@ func TestApplyArrayReplacements(t *testing.T) {
 		expectedOutput: []string{"1", "2"},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			actualOutput := v1alpha1.ApplyArrayReplacements(tc.args.input, tc.args.stringReplacements, tc.args.arrayReplacements)
+			actualOutput := substitution.ApplyArrayReplacements(tc.args.input, tc.args.stringReplacements, tc.args.arrayReplacements)
 			if d := cmp.Diff(actualOutput, tc.expectedOutput); d != "" {
 				t.Errorf("ApplyArrayReplacements() output did not match expected value %s", d)
 			}

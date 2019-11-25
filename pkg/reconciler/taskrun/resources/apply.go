@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
@@ -95,15 +96,15 @@ func ApplyReplacements(spec *v1alpha1.TaskSpec, stringReplacements map[string]st
 
 	// Apply variable expansion to the build's volumes
 	for i, v := range spec.Volumes {
-		spec.Volumes[i].Name = v1alpha1.ApplyReplacements(v.Name, stringReplacements)
+		spec.Volumes[i].Name = substitution.ApplyReplacements(v.Name, stringReplacements)
 		if v.VolumeSource.ConfigMap != nil {
-			spec.Volumes[i].ConfigMap.Name = v1alpha1.ApplyReplacements(v.ConfigMap.Name, stringReplacements)
+			spec.Volumes[i].ConfigMap.Name = substitution.ApplyReplacements(v.ConfigMap.Name, stringReplacements)
 		}
 		if v.VolumeSource.Secret != nil {
-			spec.Volumes[i].Secret.SecretName = v1alpha1.ApplyReplacements(v.Secret.SecretName, stringReplacements)
+			spec.Volumes[i].Secret.SecretName = substitution.ApplyReplacements(v.Secret.SecretName, stringReplacements)
 		}
 		if v.PersistentVolumeClaim != nil {
-			spec.Volumes[i].PersistentVolumeClaim.ClaimName = v1alpha1.ApplyReplacements(v.PersistentVolumeClaim.ClaimName, stringReplacements)
+			spec.Volumes[i].PersistentVolumeClaim.ClaimName = substitution.ApplyReplacements(v.PersistentVolumeClaim.ClaimName, stringReplacements)
 		}
 	}
 
