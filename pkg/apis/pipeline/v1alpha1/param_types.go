@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 // ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
@@ -116,11 +118,11 @@ func (arrayOrString ArrayOrString) MarshalJSON() ([]byte, error) {
 
 func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	if arrayOrString.Type == ParamTypeString {
-		arrayOrString.StringVal = ApplyReplacements(arrayOrString.StringVal, stringReplacements)
+		arrayOrString.StringVal = substitution.ApplyReplacements(arrayOrString.StringVal, stringReplacements)
 	} else {
 		var newArrayVal []string
 		for _, v := range arrayOrString.ArrayVal {
-			newArrayVal = append(newArrayVal, ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
+			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
 		arrayOrString.ArrayVal = newArrayVal
 	}
