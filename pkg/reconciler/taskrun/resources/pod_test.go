@@ -56,7 +56,7 @@ func TestMakePod(t *testing.T) {
 	placeToolsInit := corev1.Container{
 		Name:         "place-tools",
 		Image:        images.EntrypointImage,
-		Command:      []string{"cp", "/ko-app/entrypoint", "/builder/tools/entrypoint"},
+		Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
 		VolumeMounts: []corev1.VolumeMount{pod.ToolsMount},
 	}
 
@@ -86,13 +86,13 @@ func TestMakePod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -143,13 +143,13 @@ func TestMakePod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -192,13 +192,13 @@ func TestMakePod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -237,13 +237,13 @@ func TestMakePod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "step-a-very-very-long-character-step-name-to-trigger-max-len", // step name trimmed.
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -276,13 +276,13 @@ func TestMakePod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "step-ends-with-invalid", // invalid suffix removed.
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -325,13 +325,13 @@ func TestMakePod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -369,13 +369,13 @@ func TestMakePod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "step-primary-name",
 				Image:   "primary-image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -428,13 +428,13 @@ func TestMakePod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "step-unnamed-0",
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -452,12 +452,12 @@ func TestMakePod(t *testing.T) {
 			}, {
 				Name:    "step-unnamed-1",
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-post_file",
-					"/builder/tools/1",
+					"/tekton/tools/1",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -501,12 +501,12 @@ print("Hello from Python")`,
 				Image:   images.ShellImage,
 				Command: []string{"sh"},
 				TTY:     true,
-				Args: []string{"-c", `tmpfile="/builder/scripts/script-0-mz4c7"
+				Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-mz4c7"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-mssqb'
 echo hello from step one
 script-heredoc-randomly-generated-mssqb
-tmpfile="/builder/scripts/script-1-78c5n"
+tmpfile="/tekton/scripts/script-1-78c5n"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-6nl7g'
 #!/usr/bin/env python
@@ -517,21 +517,21 @@ script-heredoc-randomly-generated-6nl7g
 			}, {
 				Name:         "place-tools",
 				Image:        images.EntrypointImage,
-				Command:      []string{"cp", "/ko-app/entrypoint", "/builder/tools/entrypoint"},
+				Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
 				VolumeMounts: []corev1.VolumeMount{pod.ToolsMount},
 			}},
 			Containers: []corev1.Container{{
 				Name:    "step-one",
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/downward/ready",
+					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-entrypoint",
-					"/builder/scripts/script-0-mz4c7",
+					"/tekton/scripts/script-0-mz4c7",
 					"--",
 				},
 				Env:          implicitEnvVars,
@@ -547,14 +547,14 @@ script-heredoc-randomly-generated-6nl7g
 			}, {
 				Name:    "step-two",
 				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
+				Command: []string{"/tekton/tools/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/builder/tools/0",
+					"/tekton/tools/0",
 					"-post_file",
-					"/builder/tools/1",
+					"/tekton/tools/1",
 					"-entrypoint",
-					"/builder/scripts/script-1-78c5n",
+					"/tekton/scripts/script-1-78c5n",
 					"--",
 				},
 				Env:          implicitEnvVars,
