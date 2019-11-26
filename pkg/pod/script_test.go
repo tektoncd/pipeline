@@ -57,12 +57,12 @@ func TestConvertScripts(t *testing.T) {
 		Image:   shellImage,
 		TTY:     true,
 		Command: []string{"sh"},
-		Args: []string{"-c", `tmpfile="/builder/scripts/script-0-mz4c7"
+		Args: []string{"-c", `tmpfile="/tekton/scripts/script-0-mz4c7"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-mssqb'
 script-1
 script-heredoc-randomly-generated-mssqb
-tmpfile="/builder/scripts/script-2-78c5n"
+tmpfile="/tekton/scripts/script-2-78c5n"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'script-heredoc-randomly-generated-6nl7g'
 script-3
@@ -72,13 +72,13 @@ script-heredoc-randomly-generated-6nl7g
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
-		Command:      []string{"/builder/scripts/script-0-mz4c7"},
+		Command:      []string{"/tekton/scripts/script-0-mz4c7"},
 		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
 	}, {
 		Image: "step-2",
 	}, {
 		Image:        "step-3",
-		Command:      []string{"/builder/scripts/script-2-78c5n"},
+		Command:      []string{"/tekton/scripts/script-2-78c5n"},
 		VolumeMounts: append(preExistingVolumeMounts, ScriptsVolumeMount),
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {

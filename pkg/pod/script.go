@@ -11,7 +11,7 @@ import (
 
 const (
 	scriptsVolumeName = "scripts"
-	scriptsDir        = "/builder/scripts"
+	scriptsDir        = "/tekton/scripts"
 )
 
 var (

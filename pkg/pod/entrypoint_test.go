@@ -36,9 +36,9 @@ func TestOrderContainers(t *testing.T) {
 		Image:   "step-1",
 		Command: []string{entrypointBinary},
 		Args: []string{
-			"-wait_file", "/builder/downward/ready",
+			"-wait_file", "/tekton/downward/ready",
 			"-wait_file_content",
-			"-post_file", "/builder/tools/0",
+			"-post_file", "/tekton/tools/0",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
@@ -47,8 +47,8 @@ func TestOrderContainers(t *testing.T) {
 		Image:   "step-2",
 		Command: []string{entrypointBinary},
 		Args: []string{
-			"-wait_file", "/builder/tools/0",
-			"-post_file", "/builder/tools/1",
+			"-wait_file", "/tekton/tools/0",
+			"-post_file", "/tekton/tools/1",
 			"-entrypoint", "cmd1", "--",
 			"cmd2", "cmd3",
 			"arg1", "arg2",
@@ -58,8 +58,8 @@ func TestOrderContainers(t *testing.T) {
 		Image:   "step-3",
 		Command: []string{entrypointBinary},
 		Args: []string{
-			"-wait_file", "/builder/tools/1",
-			"-post_file", "/builder/tools/2",
+			"-wait_file", "/tekton/tools/1",
+			"-post_file", "/tekton/tools/2",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
