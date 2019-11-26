@@ -1,3 +1,19 @@
+/*
+Copyright 2019 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package pod
 
 import (
@@ -18,24 +34,22 @@ var (
 	// Volume definition attached to Pods generated from TaskRuns that have
 	// steps that specify a Script.
 	// TODO(#1605): Generate volumeMount names, to avoid collisions.
-	// TODO(#1605): Unexport these vars when Pod conversion is entirely within
-	// this package.
-	ScriptsVolume = corev1.Volume{
+	scriptsVolume = corev1.Volume{
 		Name:         scriptsVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
-	ScriptsVolumeMount = corev1.VolumeMount{
+	scriptsVolumeMount = corev1.VolumeMount{
 		Name:      scriptsVolumeName,
 		MountPath: scriptsDir,
 	}
 )
 
-// ConvertScripts converts any steps that specify a Script field into a normal Container.
+// convertScripts converts any steps that specify a Script field into a normal Container.
 //
 // It does this by prepending a container that writes specified Script bodies
 // to executable files in a shared volumeMount, then produces Containers that
 // simply run those executable files.
-func ConvertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container, []corev1.Container) {
+func convertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container, []corev1.Container) {
 	placeScripts := false
 	placeScriptsInit := corev1.Container{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("place-scripts"),
@@ -43,7 +57,7 @@ func ConvertScripts(shellImage string, steps []v1alpha1.Step) (*corev1.Container
 		TTY:          true,
 		Command:      []string{"sh"},
 		Args:         []string{"-c", ""},
-		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 	}
 
 	var containers []corev1.Container
@@ -78,7 +92,7 @@ cat > ${tmpfile} << '%s'
 
 		// Set the command to execute the correct script in the mounted volume.
 		steps[i].Command = []string{tmpFile}
-		steps[i].VolumeMounts = append(steps[i].VolumeMounts, ScriptsVolumeMount)
+		steps[i].VolumeMounts = append(steps[i].VolumeMounts, scriptsVolumeMount)
 		containers = append(containers, steps[i].Container)
 	}
 

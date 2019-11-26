@@ -27,12 +27,12 @@ type EntrypointCache interface {
 	Get(imageName, namespace, serviceAccountName string) (cmd []string, d name.Digest, err error)
 }
 
-// ResolveEntrypoints looks up container image ENTRYPOINTs for all steps that
+// resolveEntrypoints looks up container image ENTRYPOINTs for all steps that
 // don't specify a Command.
 //
 // Images that are not specified by digest will be specified by digest after
 // lookup in the resulting list of containers.
-func ResolveEntrypoints(cache EntrypointCache, namespace, serviceAccountName string, steps []corev1.Container) ([]corev1.Container, error) {
+func resolveEntrypoints(cache EntrypointCache, namespace, serviceAccountName string, steps []corev1.Container) ([]corev1.Container, error) {
 	// Keep a local cache of image->digest lookups, just for the scope of
 	// resolving this set of steps. If the image is pushed to, we need to
 	// resolve its digest and entrypoint again, but we can skip lookups

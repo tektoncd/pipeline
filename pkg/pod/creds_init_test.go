@@ -28,7 +28,6 @@ import (
 )
 
 const (
-	credsImage         = "creds-image"
 	serviceAccountName = "my-service-account"
 	namespace          = "namespacey-mcnamespace"
 )
@@ -101,7 +100,7 @@ func TestCredsInit(t *testing.T) {
 		},
 		want: &corev1.Container{
 			Name:    "credential-initializer-mz4c7",
-			Image:   credsImage,
+			Image:   images.CredsImage,
 			Command: []string{"/ko-app/creds-init"},
 			Args: []string{
 				"-basic-docker=my-creds=https://docker.io",
@@ -119,9 +118,9 @@ func TestCredsInit(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
 			kubeclient := fakek8s.NewSimpleClientset(c.objs...)
-			got, volumes, err := CredsInit(credsImage, serviceAccountName, namespace, kubeclient, volumeMounts, envVars)
+			got, volumes, err := credsInit(images.CredsImage, serviceAccountName, namespace, kubeclient, volumeMounts, envVars)
 			if err != nil {
-				t.Fatalf("CredsInit: %v", err)
+				t.Fatalf("credsInit: %v", err)
 			}
 			if got == nil && len(volumes) > 0 {
 				t.Errorf("Got nil creds-init container, with non-empty volumes: %v", volumes)

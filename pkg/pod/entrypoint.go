@@ -1,3 +1,19 @@
+/*
+Copyright 2019 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package pod
 
 import (
@@ -19,48 +35,46 @@ const (
 	downwardVolumeName     = "downward"
 	downwardMountPoint     = "/tekton/downward"
 	downwardMountReadyFile = "ready"
-	ReadyAnnotation        = "tekton.dev/ready"
-	ReadyAnnotationValue   = "READY"
+	readyAnnotation        = "tekton.dev/ready"
+	readyAnnotationValue   = "READY"
 
-	StepPrefix    = "step-"
-	SidecarPrefix = "sidecar-"
+	stepPrefix    = "step-"
+	sidecarPrefix = "sidecar-"
 )
 
 var (
 	// TODO(#1605): Generate volumeMount names, to avoid collisions.
-	// TODO(#1605): Unexport these vars when Pod conversion is entirely within
-	// this package.
-	ToolsMount = corev1.VolumeMount{
+	toolsMount = corev1.VolumeMount{
 		Name:      toolsVolumeName,
 		MountPath: mountPoint,
 	}
-	ToolsVolume = corev1.Volume{
+	toolsVolume = corev1.Volume{
 		Name:         toolsVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
 
 	// TODO(#1605): Signal sidecar readiness by injecting entrypoint,
 	// remove dependency on Downward API.
-	DownwardVolume = corev1.Volume{
+	downwardVolume = corev1.Volume{
 		Name: downwardVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
 				Items: []corev1.DownwardAPIVolumeFile{{
 					Path: downwardMountReadyFile,
 					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: fmt.Sprintf("metadata.annotations['%s']", ReadyAnnotation),
+						FieldPath: fmt.Sprintf("metadata.annotations['%s']", readyAnnotation),
 					},
 				}},
 			},
 		},
 	}
-	DownwardMount = corev1.VolumeMount{
+	downwardMount = corev1.VolumeMount{
 		Name:      downwardVolumeName,
 		MountPath: downwardMountPoint,
 	}
 )
 
-// OrderContainers returns the specified steps, modified so that they are
+// orderContainers returns the specified steps, modified so that they are
 // executed in order by overriding the entrypoint binary. It also returns the
 // init container that places the entrypoint binary pulled from the
 // entrypointImage.
@@ -70,12 +84,12 @@ var (
 // method, using entrypoint_lookup.go.
 //
 // TODO(#1605): Also use entrypoint injection to order sidecar start/stop.
-func OrderContainers(entrypointImage string, steps []corev1.Container) (corev1.Container, []corev1.Container, error) {
+func orderContainers(entrypointImage string, steps []corev1.Container) (corev1.Container, []corev1.Container, error) {
 	toolsInit := corev1.Container{
 		Name:         "place-tools",
 		Image:        entrypointImage,
 		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
-		VolumeMounts: []corev1.VolumeMount{ToolsMount},
+		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 
 	if len(steps) == 0 {
@@ -114,10 +128,10 @@ func OrderContainers(entrypointImage string, steps []corev1.Container) (corev1.C
 
 		steps[i].Command = []string{entrypointBinary}
 		steps[i].Args = argsForEntrypoint
-		steps[i].VolumeMounts = append(steps[i].VolumeMounts, ToolsMount)
+		steps[i].VolumeMounts = append(steps[i].VolumeMounts, toolsMount)
 	}
 	// Mount the Downward volume into the first step container.
-	steps[0].VolumeMounts = append(steps[0].VolumeMounts, DownwardMount)
+	steps[0].VolumeMounts = append(steps[0].VolumeMounts, downwardMount)
 
 	return toolsInit, steps, nil
 }
@@ -135,8 +149,8 @@ func UpdateReady(kubeclient kubernetes.Interface, pod corev1.Pod) error {
 	if newPod.ObjectMeta.Annotations == nil {
 		newPod.ObjectMeta.Annotations = map[string]string{}
 	}
-	if newPod.ObjectMeta.Annotations[ReadyAnnotation] != ReadyAnnotationValue {
-		newPod.ObjectMeta.Annotations[ReadyAnnotation] = ReadyAnnotationValue
+	if newPod.ObjectMeta.Annotations[readyAnnotation] != readyAnnotationValue {
+		newPod.ObjectMeta.Annotations[readyAnnotation] = readyAnnotationValue
 		if _, err := kubeclient.CoreV1().Pods(newPod.Namespace).Update(newPod); err != nil {
 			return fmt.Errorf("Error adding ready annotation to Pod %q: %w", pod.Name, err)
 		}
@@ -173,8 +187,16 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 	return nil
 }
 
-func IsContainerStep(name string) bool    { return strings.HasPrefix(name, StepPrefix) }
-func IsContainerSidecar(name string) bool { return strings.HasPrefix(name, SidecarPrefix) }
+// TODO(#1605): Move taskrunpod.go into pkg/pod and unexport these methods.
 
-func TrimStepPrefix(name string) string    { return strings.TrimPrefix(name, StepPrefix) }
-func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, SidecarPrefix) }
+// IsContainerStep returns true if the container name indicates that it represents a step.
+func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
+
+// IsContainerSidecar returns true if the container name indicates that it represents a sidecar.
+func IsContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
+
+// TrimStepPrefix returns the container name, stripped of its step prefix.
+func TrimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
+
+// TrimSidecarPrefix returns the container name, stripped of its sidecar prefix.
+func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }

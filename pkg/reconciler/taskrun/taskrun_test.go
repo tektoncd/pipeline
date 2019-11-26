@@ -30,7 +30,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/status"
@@ -289,7 +288,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-run-success-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -328,7 +327,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -551,7 +550,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-run-success-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -589,7 +588,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -628,7 +627,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-substitution-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task-with-substitution"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-substitution"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -718,7 +717,7 @@ func TestReconcile(t *testing.T) {
 		taskRun: taskRunWithTaskSpec,
 		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-123456", "foo",
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -778,7 +777,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-cluster-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -815,7 +814,7 @@ func TestReconcile(t *testing.T) {
 		taskRun: taskRunWithResourceSpecAndTaskSpec,
 		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-123456", "foo",
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -873,7 +872,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-pod-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-pod"),
-			tb.PodLabel(resources.ManagedByLabelKey, resources.ManagedByLabelValue),
+			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -1204,7 +1203,7 @@ func makePod(taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) (*corev1.Pod, error
 		return nil, err
 	}
 
-	return resources.MakePod(images, taskRun, task.Spec, kubeclient, entrypointCache)
+	return pod.MakePod(images, taskRun, task.Spec, kubeclient, entrypointCache)
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {

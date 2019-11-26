@@ -25,8 +25,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const shellImage = "shell-image"
-
 func TestWorkingDirInit(t *testing.T) {
 	volumeMounts := []corev1.VolumeMount{{
 		Name:      "workspace",
@@ -66,7 +64,7 @@ func TestWorkingDirInit(t *testing.T) {
 		}},
 		want: &corev1.Container{
 			Name:         "working-dir-initializer-9l9zj",
-			Image:        shellImage,
+			Image:        images.ShellImage,
 			Command:      []string{"sh"},
 			Args:         []string{"-c", "mkdir -p /workspace/bbb aaa zzz"},
 			WorkingDir:   workspaceDir,
@@ -85,7 +83,7 @@ func TestWorkingDirInit(t *testing.T) {
 				steps = append(steps, v1alpha1.Step{Container: c})
 			}
 
-			got := WorkingDirInit(shellImage, steps, volumeMounts)
+			got := workingDirInit(images.ShellImage, steps, volumeMounts)
 			if d := cmp.Diff(c.want, got); d != "" {
 				t.Fatalf("Diff (-want, +got): %s", d)
 			}

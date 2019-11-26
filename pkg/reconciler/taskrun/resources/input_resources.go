@@ -128,6 +128,8 @@ func AddInputResource(
 	return taskSpec, nil
 }
 
+const workspaceDir = "/workspace"
+
 func destinationPath(name, path string) string {
 	if path == "" {
 		return filepath.Join(workspaceDir, name)

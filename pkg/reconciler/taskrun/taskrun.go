@@ -490,7 +490,7 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
-	pod, err := resources.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache)
+	pod, err := podconvert.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache)
 	if err != nil {
 		return nil, xerrors.Errorf("translating Build to Pod: %w", err)
 	}
