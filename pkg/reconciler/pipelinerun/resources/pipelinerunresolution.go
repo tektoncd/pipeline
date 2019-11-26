@@ -408,7 +408,8 @@ func isSkipped(rprt *ResolvedPipelineRunTask, stateMap map[string]*ResolvedPipel
 
 func resolveConditionChecks(pt *v1alpha1.PipelineTask, taskRunStatus map[string]*v1alpha1.PipelineRunTaskRunStatus, taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition, providedResources map[string]*v1alpha1.PipelineResource) ([]*ResolvedConditionCheck, error) {
 	rccs := []*ResolvedConditionCheck{}
-	for _, ptc := range pt.Conditions {
+	for i := range pt.Conditions {
+		ptc := pt.Conditions[i]
 		cName := ptc.ConditionRef
 		c, err := getCondition(cName)
 		if err != nil {
