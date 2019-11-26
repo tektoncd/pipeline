@@ -33,7 +33,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
-	"github.com/tektoncd/pipeline/pkg/status"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 	corev1 "k8s.io/api/core/v1"
@@ -243,7 +242,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  status.ReasonFailedResolution,
+			Reason:  podconvert.ReasonFailedResolution,
 			Message: err.Error(),
 		})
 		return nil
@@ -286,7 +285,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  status.ReasonFailedResolution,
+			Reason:  podconvert.ReasonFailedResolution,
 			Message: err.Error(),
 		})
 		return nil
@@ -297,7 +296,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  status.ReasonFailedValidation,
+			Reason:  podconvert.ReasonFailedValidation,
 			Message: err.Error(),
 		})
 		return nil
@@ -338,25 +337,24 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 		return err
 	}
 
-	if status.IsPodExceedingNodeResources(pod) {
-		c.Recorder.Eventf(tr, corev1.EventTypeWarning, status.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
+	if podconvert.IsPodExceedingNodeResources(pod) {
+		c.Recorder.Eventf(tr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
 	}
 
-	before := tr.Status.GetCondition(apis.ConditionSucceeded)
-
-	addReady := status.UpdateStatusFromPod(tr, pod, c.resourceLister, c.KubeClientSet, c.Logger)
-
-	status.SortTaskRunStepOrder(tr.Status.Steps, taskSpec.Steps)
-
-	updateTaskRunResourceResult(tr, pod, c.Logger)
-
-	after := tr.Status.GetCondition(apis.ConditionSucceeded)
-
-	if addReady {
+	if podconvert.SidecarsReady(pod.Status) {
 		if err := podconvert.UpdateReady(c.KubeClientSet, *pod); err != nil {
 			return err
 		}
 	}
+
+	before := tr.Status.GetCondition(apis.ConditionSucceeded)
+
+	// Convert the Pod's status to the equivalent TaskRun Status.
+	tr.Status = podconvert.MakeTaskRunStatus(*tr, pod, *taskSpec)
+
+	updateTaskRunResourceResult(tr, pod, c.Logger)
+
+	after := tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	reconciler.EmitEvent(c.Recorder, before, after, tr)
 	c.Logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, after)
@@ -369,15 +367,15 @@ func (c *Reconciler) handlePodCreationError(tr *v1alpha1.TaskRun, err error) {
 	var succeededStatus corev1.ConditionStatus
 	if isExceededResourceQuotaError(err) {
 		succeededStatus = corev1.ConditionUnknown
-		reason = status.ReasonExceededResourceQuota
+		reason = podconvert.ReasonExceededResourceQuota
 		backoff, currentlyBackingOff := c.timeoutHandler.GetBackoff(tr)
 		if !currentlyBackingOff {
 			go c.timeoutHandler.SetTaskRunTimer(tr, time.Until(backoff.NextAttempt))
 		}
-		msg = fmt.Sprintf("%s, reattempted %d times", status.GetExceededResourcesMessage(tr), backoff.NumAttempts)
+		msg = fmt.Sprintf("TaskRun Pod exceeded available resources, reattempted %d times", backoff.NumAttempts)
 	} else {
 		succeededStatus = corev1.ConditionFalse
-		reason = status.ReasonCouldntGetTask
+		reason = podconvert.ReasonCouldntGetTask
 		if tr.Spec.TaskRef != nil {
 			msg = fmt.Sprintf("Missing or invalid Task %s/%s", tr.Namespace, tr.Spec.TaskRef.Name)
 		} else {
@@ -517,7 +515,7 @@ func (c *Reconciler) updateTaskRunStatusForTimeout(tr *v1alpha1.TaskRun, dp Dele
 	tr.Status.SetCondition(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
-		Reason:  status.ReasonTimedOut,
+		Reason:  podconvert.ReasonTimedOut,
 		Message: timeoutMsg,
 	})
 	// update tr completed time

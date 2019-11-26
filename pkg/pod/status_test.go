@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package status
+package pod
 
 import (
 	"testing"
@@ -22,32 +22,20 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	fakeclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
-	informers "github.com/tektoncd/pipeline/pkg/client/informers/externalversions"
-	tb "github.com/tektoncd/pipeline/test/builder"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest/observer"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var ignoreVolatileTime = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
 
-func TestUpdateStatusFromPod(t *testing.T) {
+func TestMakeTaskRunStatus(t *testing.T) {
 	conditionRunning := apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionUnknown,
 		Reason:  ReasonRunning,
 		Message: "Not all Steps in the Task have finished executing",
-	}
-	conditionTrue := apis.Condition{
-		Type:    apis.ConditionSucceeded,
-		Status:  corev1.ConditionTrue,
-		Reason:  ReasonSucceeded,
-		Message: "All Steps have completed executing",
 	}
 	for _, c := range []struct {
 		desc      string
@@ -146,7 +134,12 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		},
 		want: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{conditionTrue},
+				Conditions: []apis.Condition{{
+					Type:    apis.ConditionSucceeded,
+					Status:  corev1.ConditionTrue,
+					Reason:  ReasonSucceeded,
+					Message: "All Steps have completed executing",
+				}},
 			},
 			Steps: []v1alpha1.StepState{{
 				ContainerState: corev1.ContainerState{
@@ -369,7 +362,7 @@ func TestUpdateStatusFromPod(t *testing.T) {
 					Type:    apis.ConditionSucceeded,
 					Status:  corev1.ConditionUnknown,
 					Reason:  ReasonExceededNodeResources,
-					Message: `TaskRun pod "taskRun" exceeded available resources`,
+					Message: "TaskRun Pod exceeded available resources",
 				}},
 			},
 			Steps:    []v1alpha1.StepState{},
@@ -379,22 +372,19 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		desc: "with-sidecar-running",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodRunning,
-			ContainerStatuses: []corev1.ContainerStatus{
-				{
-					Name: "step-running-step",
-					State: corev1.ContainerState{
-						Running: &corev1.ContainerStateRunning{},
-					},
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-running-step",
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{},
 				},
-				{
-					Name:    "sidecar-running",
-					ImageID: "image-id",
-					State: corev1.ContainerState{
-						Running: &corev1.ContainerStateRunning{},
-					},
-					Ready: true,
+			}, {
+				Name:    "sidecar-running",
+				ImageID: "image-id",
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{},
 				},
-			},
+				Ready: true,
+			}},
 		},
 		want: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{
@@ -414,33 +404,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			observer, _ := observer.New(zap.InfoLevel)
-			logger := zap.New(observer).Sugar()
-			fakeClient := fakeclientset.NewSimpleClientset()
-			sharedInfomer := informers.NewSharedInformerFactory(fakeClient, 0)
-			pipelineResourceInformer := sharedInfomer.Tekton().V1alpha1().PipelineResources()
-			resourceLister := pipelineResourceInformer.Lister()
-			fakekubeclient := fakekubeclientset.NewSimpleClientset()
-
-			rs := []*v1alpha1.PipelineResource{{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "source-image",
-					Namespace: "marshmallow",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: "image",
-				},
-			}}
-
-			for _, r := range rs {
-				err := pipelineResourceInformer.Informer().GetIndexer().Add(r)
-				if err != nil {
-					t.Errorf("pipelineResourceInformer.Informer().GetIndexer().Add(r) failed with err: %s", err)
-				}
-			}
-
 			now := metav1.Now()
-			p := &corev1.Pod{
+			pod := &corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod",
 					Namespace:         "foo",
@@ -449,8 +414,17 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				Status: c.podStatus,
 			}
 			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
-			tr := tb.TaskRun("taskRun", "foo", tb.TaskRunStatus(tb.TaskRunStartTime(startTime)))
-			UpdateStatusFromPod(tr, p, resourceLister, fakekubeclient, logger)
+			tr := v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run",
+					Namespace: "foo",
+				},
+				Status: v1alpha1.TaskRunStatus{
+					StartTime: &metav1.Time{Time: startTime},
+				},
+			}
+
+			got := MakeTaskRunStatus(tr, pod, v1alpha1.TaskSpec{})
 
 			// Common traits, set for test case brevity.
 			c.want.PodName = "pod"
@@ -462,9 +436,8 @@ func TestUpdateStatusFromPod(t *testing.T) {
 				}
 				return y != nil
 			})
-			if d := cmp.Diff(c.want, tr.Status, ignoreVolatileTime, ensureTimeNotNil); d != "" {
-				t.Errorf("Wanted:%s %v", c.desc, c.want.Conditions[0])
-				t.Errorf("Diff:\n%s", d)
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil); d != "" {
+				t.Errorf("Diff(-want, +got): %s", d)
 			}
 			if tr.Status.StartTime.Time != c.want.StartTime.Time {
 				t.Errorf("Expected TaskRun startTime to be unchanged but was %s", tr.Status.StartTime)
@@ -473,27 +446,23 @@ func TestUpdateStatusFromPod(t *testing.T) {
 	}
 }
 
-func TestCountSidecars(t *testing.T) {
-	tests := []struct {
-		description               string
-		expectedCount             int
-		expectedReadyOrTerminated int
-		statuses                  []corev1.ContainerStatus
+func TestSidecarsReady(t *testing.T) {
+	for _, c := range []struct {
+		desc     string
+		statuses []corev1.ContainerStatus
+		want     bool
 	}{{
-		description:               "three steps and no sidecars",
-		expectedCount:             0,
-		expectedReadyOrTerminated: 0,
+		desc: "no sidecars",
 		statuses: []corev1.ContainerStatus{
-			{Name: "step-foo"},
-			{Name: "step-bar"},
-			{Name: "step-baz"},
+			{Name: "step-ignore-me"},
+			{Name: "step-ignore-me"},
+			{Name: "step-ignore-me"},
 		},
+		want: true,
 	}, {
-		description:               "one step and two sidecars both terminated or ready",
-		expectedCount:             2,
-		expectedReadyOrTerminated: 2,
+		desc: "both sidecars ready",
 		statuses: []corev1.ContainerStatus{
-			{Name: "step-foo"},
+			{Name: "step-ignore-me"},
 			{
 				Name:  "sidecar-bar",
 				Ready: true,
@@ -502,7 +471,9 @@ func TestCountSidecars(t *testing.T) {
 						StartedAt: metav1.NewTime(time.Now()),
 					},
 				},
-			}, {
+			},
+			{Name: "step-ignore-me"},
+			{
 				Name: "sidecar-stopped-baz",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
@@ -510,11 +481,11 @@ func TestCountSidecars(t *testing.T) {
 					},
 				},
 			},
+			{Name: "step-ignore-me"},
 		},
+		want: true,
 	}, {
-		description:               "one step and two sidecars one ready and one not",
-		expectedCount:             2,
-		expectedReadyOrTerminated: 1,
+		desc: "one sidecar ready, one not running",
 		statuses: []corev1.ContainerStatus{
 			{Name: "step-ignore-me"},
 			{
@@ -526,30 +497,96 @@ func TestCountSidecars(t *testing.T) {
 					},
 				},
 			},
+			{Name: "step-ignore-me"},
 			{
 				Name: "sidecar-unready",
+				State: corev1.ContainerState{
+					Waiting: &corev1.ContainerStateWaiting{},
+				},
+			},
+			{Name: "step-ignore-me"},
+		},
+		want: false,
+	}, {
+		desc: "one sidecar running but not ready",
+		statuses: []corev1.ContainerStatus{
+			{Name: "step-ignore-me"},
+			{
+				Name:  "sidecar-running-not-ready",
+				Ready: false, // Not ready.
 				State: corev1.ContainerState{
 					Running: &corev1.ContainerStateRunning{
 						StartedAt: metav1.NewTime(time.Now()),
 					},
 				},
 			},
+			{Name: "step-ignore-me"},
 		},
-	}}
-	for _, test := range tests {
-		t.Run(test.description, func(t *testing.T) {
-			p := &corev1.Pod{
-				Status: corev1.PodStatus{
-					ContainerStatuses: test.statuses,
-				},
-			}
-			count, readyOrTerminated := countSidecars(p)
-			if count != test.expectedCount {
-				t.Errorf("incorrect count of sidecars, expected %d got %d", test.expectedCount, count)
-			}
-			if readyOrTerminated != test.expectedReadyOrTerminated {
-				t.Errorf("incorrect count of ready or terminated sidecars, expected %d got %d", test.expectedReadyOrTerminated, readyOrTerminated)
+		want: false,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			got := SidecarsReady(corev1.PodStatus{
+				Phase:             corev1.PodRunning,
+				ContainerStatuses: c.statuses,
+			})
+			if got != c.want {
+				t.Errorf("SidecarsReady got %t, want %t", got, c.want)
 			}
 		})
+	}
+}
+
+func TestSortTaskRunStepOrder(t *testing.T) {
+	steps := []v1alpha1.Step{{Container: corev1.Container{
+		Name: "hello",
+	}}, {Container: corev1.Container{
+		Name: "exit",
+	}}, {Container: corev1.Container{
+		Name: "world",
+	}}}
+
+	stepStates := []v1alpha1.StepState{{
+		ContainerState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 0,
+				Reason:   "Completed",
+			},
+		},
+		Name: "world",
+	}, {
+		ContainerState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 1,
+				Reason:   "Error",
+			},
+		},
+		Name: "exit",
+	}, {
+		ContainerState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 0,
+				Reason:   "Completed",
+			},
+		},
+		Name: "hello",
+	}, {
+		ContainerState: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 0,
+				Reason:   "Completed",
+			},
+		},
+		Name: "nop",
+	}}
+
+	gotStates := sortTaskRunStepOrder(stepStates, steps)
+	var gotNames []string
+	for _, g := range gotStates {
+		gotNames = append(gotNames, g.Name)
+	}
+
+	want := []string{"hello", "exit", "world", "nop"}
+	if d := cmp.Diff(want, gotNames); d != "" {
+		t.Errorf("Unexpected step order (-want, +got): %s", d)
 	}
 }
