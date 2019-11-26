@@ -27,11 +27,8 @@ import (
 
 func TestWorkingDirInit(t *testing.T) {
 	volumeMounts := []corev1.VolumeMount{{
-		Name:      "workspace",
-		MountPath: "/workspace",
-	}, {
-		Name:      "home",
-		MountPath: "/builder/home",
+		Name:      "my-volume-mount",
+		MountPath: "/blah",
 	}}
 
 	names.TestingSeed()

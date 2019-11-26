@@ -431,7 +431,7 @@ Note: Because `known_hosts` is a non-standard extension of
 ### Least privilege
 
 The secrets as outlined here will be stored into `$HOME` (by convention the
-volume: `/builder/home`), and will be available to `Source` and all `Steps`.
+volume: `/tekton/home`), and will be available to `Source` and all `Steps`.
 
 For sensitive credentials that should not be made available to some steps, do
 not use the mechanisms outlined here. Instead, the user should declare an

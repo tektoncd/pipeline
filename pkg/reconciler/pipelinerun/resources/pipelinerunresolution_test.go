@@ -1412,12 +1412,14 @@ func TestResolveConditionChecks(t *testing.T) {
 		{
 			name: "conditionCheck exists",
 			getTaskRun: func(name string) (*v1alpha1.TaskRun, error) {
-				if name == "pipelinerun-mytask1-9l9zj-always-true-mz4c7" {
+				switch name {
+				case "pipelinerun-mytask1-9l9zj-always-true-mz4c7":
 					return cc, nil
-				} else if name == "pipelinerun-mytask1-9l9zj" {
+				case "pipelinerun-mytask1-9l9zj":
 					return &trs[0], nil
+				default:
+					return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
 				}
-				return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
 			},
 			expectedConditionCheck: TaskConditionCheckState{{
 				ConditionCheckName:    "pipelinerun-mytask1-9l9zj-always-true-mz4c7",

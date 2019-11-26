@@ -10,4 +10,4 @@ spec:
       command: ['bash']
       args:
       - '-c'
-      - '[[ $HOME == /builder/home ]]'
+      - '[[ $HOME == /tekton/home ]]'
