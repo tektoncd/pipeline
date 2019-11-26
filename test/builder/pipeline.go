@@ -352,30 +352,12 @@ func PipelineRunServiceAccountName(sa string) PipelineRunSpecOp {
 	}
 }
 
-// PipelineRunServiceAccount sets the service account to the PipelineRunSpec.
-func PipelineRunDeprecatedServiceAccountName(sa, deprecatedSA string) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.ServiceAccountName = sa
-		prs.DeprecatedServiceAccount = deprecatedSA
-	}
-}
-
 // PipelineRunServiceAccountTask configures the service account for given Task in PipelineRun.
 func PipelineRunServiceAccountNameTask(taskName, sa string) PipelineRunSpecOp {
 	return func(prs *v1alpha1.PipelineRunSpec) {
 		prs.ServiceAccountNames = append(prs.ServiceAccountNames, v1alpha1.PipelineRunSpecServiceAccountName{
 			TaskName:           taskName,
 			ServiceAccountName: sa,
-		})
-	}
-}
-
-// PipelineRunServiceAccountTask configures the service account for given Task in PipelineRun.
-func PipelineRunDeprecatedServiceAccountTask(taskName, sa string) PipelineRunSpecOp {
-	return func(prs *v1alpha1.PipelineRunSpec) {
-		prs.DeprecatedServiceAccounts = append(prs.DeprecatedServiceAccounts, v1alpha1.DeprecatedPipelineRunSpecServiceAccount{
-			TaskName:                 taskName,
-			DeprecatedServiceAccount: sa,
 		})
 	}
 }

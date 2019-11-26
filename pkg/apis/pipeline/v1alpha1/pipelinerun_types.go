@@ -52,12 +52,6 @@ type PipelineRunSpec struct {
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-	// DeprecatedServiceAccount is a depreciated alias for ServiceAccountName.
-	// Deprecated: Use serviceAccountName instead.
-	// +optional
-	DeprecatedServiceAccount string `json:"serviceAccount,omitempty"`
-	// +optional
-	DeprecatedServiceAccounts []DeprecatedPipelineRunSpecServiceAccount `json:"serviceAccounts,omitempty"`
 	// +optional
 	ServiceAccountNames []PipelineRunSpecServiceAccountName `json:"serviceAccountNames,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
@@ -154,16 +148,6 @@ func (pr *PipelineRunStatus) InitializeConditions() {
 		pr.StartTime = &metav1.Time{Time: time.Now()}
 	}
 	pipelineRunCondSet.Manage(pr).InitializeConditions()
-}
-
-// DeprecatedPipelineRunSpecServiceAccount can be used to configure specific
-// ServiceAccount for a concrete Task
-// Deprecated: Use pipelineRunSpecServiceAccountName instead.
-type DeprecatedPipelineRunSpecServiceAccount struct {
-	TaskName string `json:"taskName,omitempty"`
-	// DeprecatedServiceAccount is a depreciated alias for ServiceAccountName.
-	// Deprecated: Use serviceAccountName instead.
-	DeprecatedServiceAccount string `json:"serviceAccount,omitempty"`
 }
 
 // PipelineRunSpecServiceAccountName can be used to configure specific
@@ -279,14 +263,6 @@ func (pr *PipelineRun) IsTimedOut() bool {
 // PipelineTask if configured, otherwise it returns the PipelineRun's serviceAccountName.
 func (pr *PipelineRun) GetServiceAccountName(pipelineTaskName string) string {
 	serviceAccountName := pr.Spec.ServiceAccountName
-	if serviceAccountName == "" {
-		serviceAccountName = pr.Spec.DeprecatedServiceAccount
-	}
-	for _, sa := range pr.Spec.DeprecatedServiceAccounts {
-		if sa.TaskName == pipelineTaskName {
-			serviceAccountName = sa.DeprecatedServiceAccount
-		}
-	}
 	for _, sa := range pr.Spec.ServiceAccountNames {
 		if sa.TaskName == pipelineTaskName {
 			serviceAccountName = sa.ServiceAccountName

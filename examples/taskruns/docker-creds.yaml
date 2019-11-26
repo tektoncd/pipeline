@@ -33,7 +33,7 @@ kind: TaskRun
 metadata:
   name: docker-creds
 spec:
-  serviceAccount: robot-docker-basic
+  serviceAccountName: robot-docker-basic
   taskSpec:
     steps:
     - name: test

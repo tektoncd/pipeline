@@ -555,14 +555,6 @@ func TaskRunServiceAccountName(sa string) TaskRunSpecOp {
 	}
 }
 
-// TaskRunServiceAccount sets the serviceAccount to the TaskRunSpec.
-func TaskRunDeprecatedServiceAccount(sa, deprecatedSA string) TaskRunSpecOp {
-	return func(trs *v1alpha1.TaskRunSpec) {
-		trs.ServiceAccountName = sa
-		trs.DeprecatedServiceAccount = deprecatedSA
-	}
-}
-
 // TaskRunInputs sets inputs to the TaskRunSpec.
 // Any number of TaskRunInputs modifier can be passed to transform it.
 func TaskRunInputs(ops ...TaskRunInputsOp) TaskRunSpecOp {

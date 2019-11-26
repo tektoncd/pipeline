@@ -93,7 +93,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	volumes = append(volumes, implicitVolumes...)
 
 	// Inititalize any credentials found in annotated Secrets.
-	if credsInitContainer, secretsVolumes, err := pod.CredsInit(images.CredsImage, taskRun.GetServiceAccountName(), taskRun.Namespace, kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
+	if credsInitContainer, secretsVolumes, err := pod.CredsInit(images.CredsImage, taskRun.Spec.ServiceAccountName, taskRun.Namespace, kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
 		return nil, err
 	} else if credsInitContainer != nil {
 		initContainers = append(initContainers, *credsInitContainer)
@@ -225,7 +225,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers:     initContainers,
 			Containers:         mergedPodContainers,
-			ServiceAccountName: taskRun.GetServiceAccountName(),
+			ServiceAccountName: taskRun.Spec.ServiceAccountName,
 			Volumes:            volumes,
 			NodeSelector:       taskRun.Spec.PodTemplate.NodeSelector,
 			Tolerations:        taskRun.Spec.PodTemplate.Tolerations,
