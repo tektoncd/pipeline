@@ -35,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -292,7 +293,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 	}
 
 	if err := ValidateResolvedTaskResources(tr.Spec.Inputs.Params, rtr); err != nil {
-		c.Logger.Errorf("Failed to validate taskrun %q: %v", tr.Name, err)
+		c.Logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
@@ -300,6 +301,16 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1alpha1.TaskRun) error 
 			Message: err.Error(),
 		})
 		return nil
+	}
+
+	if err := workspace.ValidateBindings(taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
+		c.Logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
+		tr.Status.SetCondition(&apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  podconvert.ReasonFailedValidation,
+			Message: err.Error(),
+		})
 	}
 
 	// Initialize the cloud events if at least a CloudEventResource is defined
@@ -455,19 +466,19 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 
 	err = resources.AddOutputImageDigestExporter(c.Images.ImageDigestExporterImage, tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
-		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output image resource error %v", tr.Name, err)
+		c.Logger.Errorf("Failed to create a pod for taskrun: %s due to output image resource error %v", tr.Name, err)
 		return nil, err
 	}
 
 	ts, err = resources.AddInputResource(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources, c.Logger)
 	if err != nil {
-		c.Logger.Errorf("Failed to create a build for taskrun: %s due to input resource error %v", tr.Name, err)
+		c.Logger.Errorf("Failed to create a pod for taskrun: %s due to input resource error %v", tr.Name, err)
 		return nil, err
 	}
 
 	ts, err = resources.AddOutputResources(c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources, c.Logger)
 	if err != nil {
-		c.Logger.Errorf("Failed to create a build for taskrun: %s due to output resource error %v", tr.Name, err)
+		c.Logger.Errorf("Failed to create a pod for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
 	}
 
@@ -481,6 +492,15 @@ func (c *Reconciler) createPod(tr *v1alpha1.TaskRun, rtr *resources.ResolvedTask
 	// Apply bound resource substitution from the taskrun.
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
+
+	// Apply workspace resource substitution
+	ts = resources.ApplyWorkspaces(ts, ts.Workspaces, tr.Spec.Workspaces)
+
+	ts, err = workspace.Apply(*ts, tr.Spec.Workspaces)
+	if err != nil {
+		c.Logger.Errorf("Failed to create a pod for taskrun: %s due to workspace error %v", tr.Name, err)
+		return nil, err
+	}
 
 	pod, err := podconvert.MakePod(c.Images, tr, *ts, c.KubeClientSet, c.entrypointCache)
 	if err != nil {

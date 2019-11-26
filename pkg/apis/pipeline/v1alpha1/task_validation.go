@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
@@ -47,6 +48,9 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("steps")
 	}
 	if err := ValidateVolumes(ts.Volumes).ViaField("volumes"); err != nil {
+		return err
+	}
+	if err := ValidateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate); err != nil {
 		return err
 	}
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
@@ -104,6 +108,45 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 	}
 	if err := validateResourceVariables(ts.Steps, ts.Inputs, ts.Outputs); err != nil {
 		return err
+	}
+	return nil
+}
+
+// ValidateDeclaredWorkspaces will make sure that the declared workspaces do not try to use
+// a mount path which conflicts with any other declared workspaces, with the explicitly
+// declared volume mounts, or with the stepTemplate. The names must also be unique.
+func ValidateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
+	mountPaths := map[string]struct{}{}
+	for _, step := range steps {
+		for _, vm := range step.VolumeMounts {
+			mountPaths[filepath.Clean(vm.MountPath)] = struct{}{}
+		}
+	}
+	if stepTemplate != nil {
+		for _, vm := range stepTemplate.VolumeMounts {
+			mountPaths[filepath.Clean(vm.MountPath)] = struct{}{}
+		}
+	}
+
+	wsNames := map[string]struct{}{}
+	for _, w := range workspaces {
+		// Workspace names must be unique
+		if _, ok := wsNames[w.Name]; ok {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("workspace name %q must be unique", w.Name),
+				Paths:   []string{"workspaces.name"},
+			}
+		}
+		wsNames[w.Name] = struct{}{}
+		// Workspaces must not try to use mount paths that are already used
+		mountPath := filepath.Clean(w.GetMountPath())
+		if _, ok := mountPaths[mountPath]; ok {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("workspace mount path %q must be unique", mountPath),
+				Paths:   []string{"workspaces.mountpath"},
+			}
+		}
+		mountPaths[mountPath] = struct{}{}
 	}
 	return nil
 }

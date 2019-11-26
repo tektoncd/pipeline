@@ -61,6 +61,7 @@ func TestTask(t *testing.T) {
 		tb.TaskStepTemplate(
 			tb.EnvVar("FRUIT", "BANANA"),
 		),
+		tb.TaskWorkspace("bread", "kind of bread", "/bread/path"),
 	))
 	expectedTask := &v1alpha1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-task", Namespace: "foo"},
@@ -120,6 +121,11 @@ func TestTask(t *testing.T) {
 					Value: "BANANA",
 				}},
 			},
+			Workspaces: []v1alpha1.WorkspaceDeclaration{{
+				Name:        "bread",
+				Description: "kind of bread",
+				MountPath:   "/bread/path",
+			}},
 		},
 	}
 	if d := cmp.Diff(expectedTask, task); d != "" {
@@ -181,6 +187,8 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 					tb.TaskResourceBindingPaths("output-folder"),
 				),
 			),
+			tb.TaskRunWorkspaceEmptyDir("bread", "path"),
+			tb.TaskRunWorkspacePVC("pizza", "", "pool-party"),
 		),
 		tb.TaskRunStatus(
 			tb.PodName("my-pod-name"),
@@ -244,6 +252,17 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 				Kind:       v1alpha1.ClusterTaskKind,
 				APIVersion: "a1",
 			},
+			Workspaces: []v1alpha1.WorkspaceBinding{{
+				Name:     "bread",
+				SubPath:  "path",
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			}, {
+				Name:    "pizza",
+				SubPath: "",
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "pool-party",
+				},
+			}},
 		},
 		Status: v1alpha1.TaskRunStatus{
 			Status: duckv1beta1.Status{

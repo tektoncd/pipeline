@@ -23,7 +23,7 @@ entire Kubernetes cluster.
   - [Outputs](#outputs)
   - [Controlling where resources are mounted](#controlling-where-resources-are-mounted)
   - [Volumes](#volumes)
-  - [Container Template **deprecated**](#step-template)
+  - [Workspaces](#workspaces)
   - [Step Template](#step-template)
   - [Variable Substitution](#variable-substitution)
 - [Examples](#examples)
@@ -77,6 +77,8 @@ following fields:
     created by your `Task`
   - [`volumes`](#volumes) - Specifies one or more volumes that you want to make
     available to your `Task`'s steps.
+  - [`workspaces`](#workspaces) - Specifies paths at which you expect volumes to
+    be mounted and available
   - [`stepTemplate`](#step-template) - Specifies a `Container` step
     definition to use as the basis for all steps within your `Task`.
   - [`sidecars`](#sidecars) - Specifies sidecar containers to run alongside
@@ -132,7 +134,6 @@ the body of a `Task`.
 
 If multiple `steps` are defined, they will be executed in the same order as they
 are defined, if the `Task` is invoked by a [`TaskRun`](taskruns.md).
-
 Each `steps` in a `Task` must specify a container image that adheres to the
 [container contract](./container-contract.md). For each of the `steps` fields,
 or container images that you define:
@@ -377,6 +378,44 @@ For example, use volumes to accomplish one of the following common tasks:
   unsafe_. Use [kaniko](https://github.com/GoogleContainerTools/kaniko) instead.
   This is used only for the purposes of demonstration.
 
+### Workspaces
+
+`workspaces` are a way of declaring volumes you expect to be made available to your
+executing `Task` and the path to make them available at. They are similar to
+[`volumes`](#volumes) but allow you to enforce at runtime that the volumes have
+been attached and [allow you to specify subpaths](taskruns.md#workspaces) in the volumes
+to attach.
+
+The volume will be made available at `/workspace/myworkspace`, or you can override
+this with `mountPath`. The value at `mountPath` can be anywhere on your pod's filesystem.
+The path will be available via [variable substitution](#variable-substitution) with
+`$(workspaces.myworkspace.path)`.
+
+The actual volumes must be provided at runtime
+[in the `TaskRun`](taskruns.md#workspaces).
+In a future iteration ([#1438](https://github.com/tektoncd/pipeline/issues/1438))
+it [will be possible to specify these in the `PipelineRun`](pipelineruns.md#workspaces)
+as well.
+
+For example:
+
+```yaml
+spec:
+  steps:
+  - name: write-message
+    image: ubuntu
+    script: |
+      #!/usr/bin/env bash
+      set -xe
+      echo hello! > $(workspaces.messages.path)/message
+  workspaces:
+  - name: messages
+    description: The folder where we write the message to
+    mountPath: /custom/path/relative/to/root
+```
+
+_For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
+
 ### Step Template
 
 Specifies a [`Container`](https://kubernetes.io/docs/concepts/containers/)
@@ -464,9 +503,17 @@ has been created to track this bug.
 
 ### Variable Substitution
 
-`Tasks` support string replacement using values from all [`inputs`](#inputs) and
-[`outputs`](#outputs).
+`Tasks` support string replacement using values from:
 
+* [Inputs and Outputs](#input-and-output-substitution)
+  * [Array params](#variable-substitution-with-parameters-of-type-array)
+* [`workspaces`](#variable-substitution-with-workspaces)
+* [`volumes`](#variable-substitution-with-volumes)
+
+#### Input and Output substitution
+
+[`inputs`](#inputs) and [`outputs`](#outputs) attributes can be used in replacements,
+including [`params`](#params) and [`resources`](./resources.md#variable-substitution).
 
 Input parameters can be referenced in the `Task` spec using the variable substitution syntax below,
 where `<name>` is the name of the parameter:
@@ -477,7 +524,7 @@ $(inputs.params.<name>)
 
 Param values from resources can also be accessed using [variable substitution](./resources.md#variable-substitution)
 
-#### Variable Substitution with Parameters of Type `Array`
+##### Variable Substitution with Parameters of Type `Array`
 
 Referenced parameters of type `array` will expand to insert the array elements in the reference string's spot.
 
@@ -518,6 +565,21 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
  - name: build-step
       image: gcr.io/cloud-builders/some-image
       args: ["build", "$(inputs.params.build-args)", "additonalArg"]
+```
+
+#### Variable Substitution with Workspaces
+
+Paths to a `Task's` declared [workspaces](#workspaces) can be substituted with:
+
+```
+$(workspaces.myworkspace.path)
+```
+
+Since the name of the `Volume` is not known until runtime and is randomized, you can also
+substitute the volume name with:
+
+```
+$(workspaces.myworkspace.volume)
 ```
 
 #### Variable Substitution within Volumes

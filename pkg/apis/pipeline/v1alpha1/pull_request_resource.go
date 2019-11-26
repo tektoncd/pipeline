@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -138,7 +139,7 @@ func (s *PullRequestResource) getSteps(mode string, sourcePath string) []Step {
 		Image:      s.PRImage,
 		Command:    []string{"/ko-app/pullrequest-init"},
 		Args:       args,
-		WorkingDir: WorkspaceDir,
+		WorkingDir: pipeline.WorkspaceDir,
 		Env:        evs,
 	}}}
 }

@@ -21,11 +21,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 )
-
-const WorkspaceDir = "/workspace"
 
 var (
 	gitSource = "git-source"
@@ -145,7 +144,7 @@ func (s *GitResource) GetInputTaskModifier(_ *TaskSpec, path string) (TaskModifi
 			Image:      s.GitImage,
 			Command:    []string{"/ko-app/git-init"},
 			Args:       args,
-			WorkingDir: WorkspaceDir,
+			WorkingDir: pipeline.WorkspaceDir,
 			// This is used to populate the ResourceResult status.
 			Env: []corev1.EnvVar{{
 				Name:  "TEKTON_RESOURCE_NAME",

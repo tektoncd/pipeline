@@ -61,6 +61,9 @@ type TaskSpec struct {
 	// Sidecars are run alongside the Task's step containers. They begin before
 	// the steps start and end after the steps complete.
 	Sidecars []corev1.Container `json:"sidecars,omitempty"`
+
+	// Workspaces are the volumes that this Task requires.
+	Workspaces []WorkspaceDeclaration
 }
 
 // Step embeds the Container type, which allows it to include fields not
