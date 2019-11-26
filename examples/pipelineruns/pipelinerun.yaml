@@ -246,7 +246,7 @@ metadata:
 spec:
   pipelineRef:
     name: demo-pipeline
-  serviceAccount: 'default'
+  serviceAccountName: 'default'
   resources:
   - name: source-repo
     resourceRef:

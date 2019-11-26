@@ -75,7 +75,7 @@ metadata:
 spec:
   pipelineRef:
     name: list-files-pipeline
-  serviceAccount: 'default'
+  serviceAccountName: 'default'
   resources:
     - name: source-repo
       resourceRef:

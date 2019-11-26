@@ -41,7 +41,7 @@ kind: TaskRun
 metadata:
   generateName: pull-private-image-
 spec:
-  serviceAccount: test-build-robot
+  serviceAccountName: test-build-robot
   taskSpec:
     steps:
     - name: pull

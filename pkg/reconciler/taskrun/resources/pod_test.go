@@ -168,64 +168,7 @@ func TestMakePod(t *testing.T) {
 			Volumes: append(implicitVolumes, secretsVolume, pod.ToolsVolume, pod.DownwardVolume),
 		},
 	}, {
-		desc: "with_deprecated_service_account",
-		ts: v1alpha1.TaskSpec{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
-				Name:    "name",
-				Image:   "image",
-				Command: []string{"cmd"}, // avoid entrypoint lookup.
-			}}},
-		},
-		trs: v1alpha1.TaskRunSpec{
-			DeprecatedServiceAccount: "service-account",
-		},
-		want: &corev1.PodSpec{
-			ServiceAccountName: "service-account",
-			RestartPolicy:      corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{{
-				Name:    "credential-initializer-mz4c7",
-				Image:   credsImage,
-				Command: []string{"/ko-app/creds-init"},
-				Args: []string{
-					"-basic-docker=multi-creds=https://docker.io",
-					"-basic-docker=multi-creds=https://us.gcr.io",
-					"-basic-git=multi-creds=github.com",
-					"-basic-git=multi-creds=gitlab.com",
-				},
-				VolumeMounts: append(implicitVolumeMounts, secretsVolumeMount),
-				Env:          implicitEnvVars,
-			},
-				placeToolsInit,
-			},
-			Containers: []corev1.Container{{
-				Name:    "step-name",
-				Image:   "image",
-				Command: []string{"/builder/tools/entrypoint"},
-				Args: []string{
-					"-wait_file",
-					"/builder/downward/ready",
-					"-wait_file_content",
-					"-post_file",
-					"/builder/tools/0",
-					"-entrypoint",
-					"cmd",
-					"--",
-				},
-				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
-				WorkingDir:   workspaceDir,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("0"),
-						corev1.ResourceMemory:           resource.MustParse("0"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-					},
-				},
-			}},
-			Volumes: append(implicitVolumes, secretsVolume, pod.ToolsVolume, pod.DownwardVolume),
-		},
-	}, {
-		desc: "with pod template",
+		desc: "with-pod-template",
 		ts: v1alpha1.TaskSpec{
 			Steps: []v1alpha1.Step{{Container: corev1.Container{
 				Name:    "name",

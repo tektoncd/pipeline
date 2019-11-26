@@ -26,7 +26,7 @@ kind: TaskRun
 metadata:
   name: git-ssh-creds
 spec:
-  serviceAccount: robot-git-ssh
+  serviceAccountName: robot-git-ssh
   inputs:
     resources:
     - name: gitssh
