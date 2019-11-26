@@ -14,9 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package resources provides methods to convert a Build CRD to a k8s Pod
-// resource.
-package resources
+package pod
 
 import (
 	"crypto/rand"
@@ -29,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"github.com/tektoncd/pipeline/pkg/pod"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,9 +50,6 @@ var (
 		Version: v1alpha1.SchemeGroupVersion.Version,
 		Kind:    "TaskRun",
 	}
-	emptyVolumeSource = corev1.VolumeSource{
-		EmptyDir: &corev1.EmptyDirVolumeSource{},
-	}
 	// These are injected into all of the source/step containers.
 	implicitEnvVars = []corev1.EnvVar{{
 		Name:  "HOME",
@@ -70,10 +64,10 @@ var (
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "workspace",
-		VolumeSource: emptyVolumeSource,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}, {
 		Name:         "home",
-		VolumeSource: emptyVolumeSource,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
 
 	zeroQty = resource.MustParse("0")
@@ -85,7 +79,7 @@ var (
 
 // MakePod converts TaskRun and TaskSpec objects to a Pod which implements the taskrun specified
 // by the supplied CRD.
-func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache pod.EntrypointCache) (*corev1.Pod, error) {
+func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha1.TaskSpec, kubeclient kubernetes.Interface, entrypointCache EntrypointCache) (*corev1.Pod, error) {
 	var initContainers []corev1.Container
 	var volumes []corev1.Volume
 
@@ -93,7 +87,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	volumes = append(volumes, implicitVolumes...)
 
 	// Inititalize any credentials found in annotated Secrets.
-	if credsInitContainer, secretsVolumes, err := pod.CredsInit(images.CredsImage, taskRun.Spec.ServiceAccountName, taskRun.Namespace, kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
+	if credsInitContainer, secretsVolumes, err := credsInit(images.CredsImage, taskRun.Spec.ServiceAccountName, taskRun.Namespace, kubeclient, implicitVolumeMounts, implicitEnvVars); err != nil {
 		return nil, err
 	} else if credsInitContainer != nil {
 		initContainers = append(initContainers, *credsInitContainer)
@@ -101,11 +95,12 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	}
 
 	// Initialize any workingDirs under /workspace.
-	if workingDirInit := pod.WorkingDirInit(images.ShellImage, taskSpec.Steps, implicitVolumeMounts); workingDirInit != nil {
+	if workingDirInit := workingDirInit(images.ShellImage, taskSpec.Steps, implicitVolumeMounts); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
 	}
 
 	// Merge step template with steps.
+	// TODO(#1605): Move MergeSteps to pkg/pod
 	steps, err := v1alpha1.MergeStepsWithStepTemplate(taskSpec.StepTemplate, taskSpec.Steps)
 	if err != nil {
 		return nil, err
@@ -113,29 +108,29 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
-	scriptsInit, stepContainers := pod.ConvertScripts(images.ShellImage, steps)
+	scriptsInit, stepContainers := convertScripts(images.ShellImage, steps)
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
-		volumes = append(volumes, pod.ScriptsVolume)
+		volumes = append(volumes, scriptsVolume)
 	}
 
 	// Resolve entrypoint for any steps that don't specify command.
-	stepContainers, err = pod.ResolveEntrypoints(entrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers)
+	stepContainers, err = resolveEntrypoints(entrypointCache, taskRun.Namespace, taskRun.Spec.ServiceAccountName, stepContainers)
 	if err != nil {
 		return nil, err
 	}
 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
 	// container to place the entrypoint binary.
-	entrypointInit, stepContainers, err := pod.OrderContainers(images.EntrypointImage, stepContainers)
+	entrypointInit, stepContainers, err := orderContainers(images.EntrypointImage, stepContainers)
 	if err != nil {
 		return nil, err
 	}
 	initContainers = append(initContainers, entrypointInit)
-	volumes = append(volumes, pod.ToolsVolume, pod.DownwardVolume)
+	volumes = append(volumes, toolsVolume, downwardVolume)
 
 	// Zero out non-max resource requests.
-	// TODO(jasonhall): Split this out so it's more easily testable.
+	// TODO(#1605): Split this out so it's more easily testable.
 	maxIndicesByResource := findMaxResourceRequest(taskSpec.Steps, corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage)
 	for i := range stepContainers {
 		zeroNonMaxResourceRequests(&stepContainers[i], i, maxIndicesByResource)
@@ -169,16 +164,16 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	// This loop:
 	// - defaults workingDir to /workspace
 	// - sets container name to add "step-" prefix or "step-unnamed-#" if not specified.
-	// TODO(jasonhall): Remove this loop and make each transformation in
+	// TODO(#1605): Remove this loop and make each transformation in
 	// isolation.
 	for i, s := range stepContainers {
 		if s.WorkingDir == "" {
 			stepContainers[i].WorkingDir = workspaceDir
 		}
 		if s.Name == "" {
-			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%sunnamed-%d", pod.StepPrefix, i))
+			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%sunnamed-%d", stepPrefix, i))
 		} else {
-			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%s%s", pod.StepPrefix, s.Name))
+			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%s%s", stepPrefix, s.Name))
 		}
 	}
 
@@ -200,7 +195,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	// Merge sidecar containers with step containers.
 	mergedPodContainers := stepContainers
 	for _, sc := range taskSpec.Sidecars {
-		sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", pod.SidecarPrefix, sc.Name))
+		sc.Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%v%v", sidecarPrefix, sc.Name))
 		mergedPodContainers = append(mergedPodContainers, sc)
 	}
 

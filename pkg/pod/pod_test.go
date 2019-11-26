@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resources
+package pod
 
 import (
 	"crypto/rand"
@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -34,11 +34,14 @@ import (
 )
 
 var (
+	images = pipeline.Images{
+		EntrypointImage: "entrypoint-image",
+		CredsImage:      "override-with-creds:latest",
+		ShellImage:      "busybox",
+	}
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
-	credsImage = "override-with-creds:latest"
-	shellImage = "busybox"
 )
 
 func TestMakePod(t *testing.T) {
@@ -57,7 +60,7 @@ func TestMakePod(t *testing.T) {
 		Name:         "place-tools",
 		Image:        images.EntrypointImage,
 		Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
-		VolumeMounts: []corev1.VolumeMount{pod.ToolsMount},
+		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 
 	runtimeClassName := "gvisor"
@@ -98,7 +101,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -108,7 +111,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
 	}, {
 		desc: "with service account",
@@ -127,7 +130,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy:      corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:    "credential-initializer-mz4c7",
-				Image:   credsImage,
+				Image:   images.CredsImage,
 				Command: []string{"/ko-app/creds-init"},
 				Args: []string{
 					"-basic-docker=multi-creds=https://docker.io",
@@ -155,7 +158,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -165,7 +168,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, secretsVolume, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, secretsVolume, toolsVolume, downwardVolume),
 		},
 	}, {
 		desc: "with-pod-template",
@@ -204,7 +207,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -214,7 +217,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 			SecurityContext: &corev1.PodSecurityContext{
 				Sysctls: []corev1.Sysctl{
 					{Name: "net.ipv4.tcp_syncookies", Value: "1"},
@@ -249,7 +252,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -259,7 +262,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
 	}, {
 		desc: "step name ends with non alphanumeric",
@@ -288,7 +291,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -298,7 +301,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
 	}, {
 		desc: "workingDir in workspace",
@@ -314,7 +317,7 @@ func TestMakePod(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{{
 				Name:         "working-dir-initializer-9l9zj",
-				Image:        shellImage,
+				Image:        images.ShellImage,
 				Command:      []string{"sh"},
 				Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(workspaceDir, "test"))},
 				WorkingDir:   workspaceDir,
@@ -337,7 +340,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   filepath.Join(workspaceDir, "test"),
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -347,7 +350,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
 	}, {
 		desc: "sidecar container",
@@ -381,7 +384,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -397,7 +400,7 @@ func TestMakePod(t *testing.T) {
 					Requests: nil,
 				},
 			}},
-			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
 	}, {
 		desc: "resource request",
@@ -440,7 +443,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -463,7 +466,7 @@ func TestMakePod(t *testing.T) {
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ToolsMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{toolsMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -473,7 +476,7 @@ func TestMakePod(t *testing.T) {
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
 		},
 	}, {
 		desc: "step with script",
@@ -513,12 +516,12 @@ cat > ${tmpfile} << 'script-heredoc-randomly-generated-6nl7g'
 print("Hello from Python")
 script-heredoc-randomly-generated-6nl7g
 `},
-				VolumeMounts: []corev1.VolumeMount{pod.ScriptsVolumeMount},
+				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 			}, {
 				Name:         "place-tools",
 				Image:        images.EntrypointImage,
 				Command:      []string{"cp", "/ko-app/entrypoint", "/tekton/tools/entrypoint"},
-				VolumeMounts: []corev1.VolumeMount{pod.ToolsMount},
+				VolumeMounts: []corev1.VolumeMount{toolsMount},
 			}},
 			Containers: []corev1.Container{{
 				Name:    "step-one",
@@ -535,7 +538,7 @@ script-heredoc-randomly-generated-6nl7g
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{pod.ScriptsVolumeMount, pod.ToolsMount, pod.DownwardMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, toolsMount, downwardMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -558,7 +561,7 @@ script-heredoc-randomly-generated-6nl7g
 					"--",
 				},
 				Env:          implicitEnvVars,
-				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, pod.ScriptsVolumeMount, pod.ToolsMount}, implicitVolumeMounts...),
+				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, scriptsVolumeMount, toolsMount}, implicitVolumeMounts...),
 				WorkingDir:   workspaceDir,
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -568,7 +571,7 @@ script-heredoc-randomly-generated-6nl7g
 					},
 				},
 			}},
-			Volumes: append(implicitVolumes, pod.ScriptsVolume, pod.ToolsVolume, pod.DownwardVolume),
+			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume),
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -601,7 +604,7 @@ script-heredoc-randomly-generated-6nl7g
 				},
 				Spec: c.trs,
 			}
-			entrypointCache, err := pod.NewEntrypointCache(kubeclient)
+			entrypointCache, err := NewEntrypointCache(kubeclient)
 			if err != nil {
 				t.Fatalf("NewEntrypointCache: %v", err)
 			}

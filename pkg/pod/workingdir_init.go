@@ -26,12 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const (
-	workspaceDir   = "/workspace"
-	workingDirInit = "working-dir-initializer"
-)
-
-// WorkingDirInit returns a Container that should be run as an init
+// workingDirInit returns a Container that should be run as an init
 // container to ensure that all steps' workingDirs relative to the workspace
 // exist.
 //
@@ -41,7 +36,7 @@ const (
 // TODO(#1605): This should take []corev1.Container instead of
 // []corev1.Step, but this makes it easier to use in pod.go. When pod.go is
 // cleaned up, this can take []corev1.Container.
-func WorkingDirInit(shellImage string, steps []v1alpha1.Step, volumeMounts []corev1.VolumeMount) *corev1.Container {
+func workingDirInit(shellImage string, steps []v1alpha1.Step, volumeMounts []corev1.VolumeMount) *corev1.Container {
 	// Gather all unique workingDirs.
 	workingDirs := map[string]struct{}{}
 	for _, step := range steps {
@@ -75,7 +70,7 @@ func WorkingDirInit(shellImage string, steps []v1alpha1.Step, volumeMounts []cor
 	}
 
 	return &corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(workingDirInit),
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("working-dir-initializer"),
 		Image:        shellImage,
 		Command:      []string{"sh"},
 		Args:         []string{"-c", "mkdir -p " + strings.Join(relativeDirs, " ")},

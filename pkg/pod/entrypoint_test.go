@@ -1,3 +1,19 @@
+/*
+Copyright 2019 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package pod
 
 import (
@@ -9,8 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
 )
-
-const entrypointImage = "entrypoint"
 
 var volumeMount = corev1.VolumeMount{
 	Name:      "my-mount",
@@ -42,7 +56,7 @@ func TestOrderContainers(t *testing.T) {
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
-		VolumeMounts: []corev1.VolumeMount{ToolsMount, DownwardMount},
+		VolumeMounts: []corev1.VolumeMount{toolsMount, downwardMount},
 	}, {
 		Image:   "step-2",
 		Command: []string{entrypointBinary},
@@ -53,7 +67,7 @@ func TestOrderContainers(t *testing.T) {
 			"cmd2", "cmd3",
 			"arg1", "arg2",
 		},
-		VolumeMounts: []corev1.VolumeMount{volumeMount, ToolsMount},
+		VolumeMounts: []corev1.VolumeMount{volumeMount, toolsMount},
 	}, {
 		Image:   "step-3",
 		Command: []string{entrypointBinary},
@@ -63,11 +77,11 @@ func TestOrderContainers(t *testing.T) {
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
-		VolumeMounts: []corev1.VolumeMount{ToolsMount},
+		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}}
-	gotInit, got, err := OrderContainers(entrypointImage, steps)
+	gotInit, got, err := orderContainers(images.EntrypointImage, steps)
 	if err != nil {
-		t.Fatalf("OrderContainers: %v", err)
+		t.Fatalf("orderContainers: %v", err)
 	}
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("Diff (-want, +got): %s", d)
@@ -75,9 +89,9 @@ func TestOrderContainers(t *testing.T) {
 
 	wantInit := corev1.Container{
 		Name:         "place-tools",
-		Image:        entrypointImage,
+		Image:        images.EntrypointImage,
 		Command:      []string{"cp", "/ko-app/entrypoint", entrypointBinary},
-		VolumeMounts: []corev1.VolumeMount{ToolsMount},
+		VolumeMounts: []corev1.VolumeMount{toolsMount},
 	}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
 		t.Errorf("Init Container Diff (-want, +got): %s", d)
@@ -98,7 +112,7 @@ func TestUpdateReady(t *testing.T) {
 			},
 		},
 		wantAnnotations: map[string]string{
-			ReadyAnnotation: ReadyAnnotationValue,
+			readyAnnotation: readyAnnotationValue,
 		},
 	}, {
 		desc: "Pod with existing annotations has it appended",
@@ -112,7 +126,7 @@ func TestUpdateReady(t *testing.T) {
 		},
 		wantAnnotations: map[string]string{
 			"something":     "else",
-			ReadyAnnotation: ReadyAnnotationValue,
+			readyAnnotation: readyAnnotationValue,
 		},
 	}, {
 		desc: "Pod with other annotation value has it updated",
@@ -120,12 +134,12 @@ func TestUpdateReady(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pod",
 				Annotations: map[string]string{
-					ReadyAnnotation: "something else",
+					readyAnnotation: "something else",
 				},
 			},
 		},
 		wantAnnotations: map[string]string{
-			ReadyAnnotation: ReadyAnnotationValue,
+			readyAnnotation: readyAnnotationValue,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -150,11 +164,11 @@ const nopImage = "nop-image"
 // image.
 func TestStopSidecars(t *testing.T) {
 	stepContainer := corev1.Container{
-		Name:  StepPrefix + "my-step",
+		Name:  stepPrefix + "my-step",
 		Image: "foo",
 	}
 	sidecarContainer := corev1.Container{
-		Name:    SidecarPrefix + "-my-sidecar",
+		Name:    sidecarPrefix + "my-sidecar",
 		Image:   "original-image",
 		Command: []string{"my", "command"},
 		Args:    []string{"my", "args"},

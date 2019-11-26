@@ -28,12 +28,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const (
-	// Name of the credential initialization container.
-	credsInit = "credential-initializer"
-)
-
-func CredsInit(credsImage string, serviceAccountName, namespace string, kubeclient kubernetes.Interface, volumeMounts []corev1.VolumeMount, implicitEnvVars []corev1.EnvVar) (*corev1.Container, []corev1.Volume, error) {
+// credsInit returns an init container that initializes credentials based on
+// annotated secrets available to the service account.
+//
+// If no such secrets are found, it returns a nil container, and no creds init
+// process is necessary.
+//
+// If it finds secrets, it also returns a set of Volumes to attach to the Pod
+// to provide those secrets to this initialization.
+func credsInit(credsImage string, serviceAccountName, namespace string, kubeclient kubernetes.Interface, volumeMounts []corev1.VolumeMount, implicitEnvVars []corev1.EnvVar) (*corev1.Container, []corev1.Volume, error) {
 	if serviceAccountName == "" {
 		serviceAccountName = "default"
 	}
@@ -84,7 +87,7 @@ func CredsInit(credsImage string, serviceAccountName, namespace string, kubeclie
 	}
 
 	return &corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(credsInit),
+		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("credential-initializer"),
 		Image:        credsImage,
 		Command:      []string{"/ko-app/creds-init"},
 		Args:         args,
