@@ -167,6 +167,17 @@ func Sidecar(name, image string, ops ...ContainerOp) TaskSpecOp {
 	}
 }
 
+// TaskWorkspace adds a workspace declaration.
+func TaskWorkspace(name, desc, mountPath string) TaskSpecOp {
+	return func(spec *v1alpha1.TaskSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceDeclaration{
+			Name:        name,
+			Description: desc,
+			MountPath:   mountPath,
+		})
+	}
+}
+
 // TaskStepTemplate adds a base container for all steps in the task.
 func TaskStepTemplate(ops ...ContainerOp) TaskSpecOp {
 	return func(spec *v1alpha1.TaskSpec) {
@@ -659,6 +670,30 @@ func TaskRunOutputsResource(name string, ops ...TaskResourceBindingOp) TaskRunOu
 			op(binding)
 		}
 		i.Resources = append(i.Resources, *binding)
+	}
+}
+
+// TaskRunWorkspaceEmptyDir adds a workspace binding to an empty dir volume source.
+func TaskRunWorkspaceEmptyDir(name, subPath string) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
+			Name:     name,
+			SubPath:  subPath,
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		})
+	}
+}
+
+// TaskRunWorkspacePVC adds a workspace binding to a PVC volume source.
+func TaskRunWorkspacePVC(name, subPath, claimName string) TaskRunSpecOp {
+	return func(spec *v1alpha1.TaskRunSpec) {
+		spec.Workspaces = append(spec.Workspaces, v1alpha1.WorkspaceBinding{
+			Name:    name,
+			SubPath: subPath,
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: claimName,
+			},
+		})
 	}
 }
 

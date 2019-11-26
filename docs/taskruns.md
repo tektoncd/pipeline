@@ -18,6 +18,7 @@ A `TaskRun` runs until all `steps` have completed or until a failure occurs.
   - [Overriding where resources are copied from](#overriding-where-resources-are-copied-from)
   - [Service Account](#service-account)
   - [Pod Template](#pod-template)
+  - [Workspaces](#workspaces)
 - [Status](#status)
   - [Steps](#steps)
 - [Cancelling a TaskRun](#cancelling-a-taskrun)
@@ -57,7 +58,9 @@ following fields:
     to configure the default timeout.
   - [`podTemplate`](#pod-template) - Specifies a subset of
     [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#pod-v1-core)
-	configuration that will be used as the basis for the `Task` pod.
+	  configuration that will be used as the basis for the `Task` pod.
+  - [`workspaces`](#workspaces) - Specify the actual volumes to use for the
+    [workspaces](tasks.md#workspaces) declared by a `Task`
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -227,7 +230,45 @@ spec:
         claimName: my-volume-claim
 ```
 
+## Workspaces
 
+For a `TaskRun` to execute [a `Task` that declares `workspaces`](tasks.md#workspaces),
+at runtime you need to map the `workspaces` to actual physical volumes with
+`workspaces`. Values in `workspaces` are
+[`Volumes`](https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/), however currently we only support a subset of `VolumeSources`:
+
+* [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir)
+* [`persistentVolumeClaim`](https://kubernetes.io/docs/concepts/storage/volumes/#persistentvolumeclaim)
+
+_If you need support for a `VolumeSource` not listed here
+[please open an issue](https://github.com/tektoncd/pipeline/issues) or feel free to
+[contribute a PR](https://github.com/tektoncd/pipeline/blob/master/CONTRIBUTING.md)._
+
+
+If the declared `workspaces` are not provided at runtime, the `TaskRun` will fail
+with an error.
+
+For example to provide an existing PVC called `mypvc` for a `workspace` called
+`myworkspace` declared by the `Pipeline`, using the `my-subdir` folder which already exists
+on the PVC (there will be an error if it does not exist):
+
+```yaml
+workspaces:
+- name: myworkspace
+  persistentVolumeClaim:
+    claimName: mypvc
+  subPath: my-subdir
+```
+
+Or to use [`emptyDir`](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) for the same `workspace`:
+
+```yaml
+workspaces:
+- name: myworkspace
+  emptyDir: {}
+```
+
+_For a complete example see [workspace.yaml](../examples/taskruns/workspace.yaml)._
 
 ## Status
 

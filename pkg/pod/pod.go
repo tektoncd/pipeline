@@ -30,8 +30,7 @@ import (
 )
 
 const (
-	workspaceDir = "/workspace"
-	homeDir      = "/tekton/home"
+	homeDir = "/tekton/home"
 
 	taskRunLabelKey     = pipeline.GroupName + pipeline.TaskRunLabelKey
 	ManagedByLabelKey   = "app.kubernetes.io/managed-by"
@@ -52,7 +51,7 @@ var (
 	}}
 	implicitVolumeMounts = []corev1.VolumeMount{{
 		Name:      "tekton-internal-workspace",
-		MountPath: workspaceDir,
+		MountPath: pipeline.WorkspaceDir,
 	}, {
 		Name:      "tekton-internal-home",
 		MountPath: homeDir,
@@ -153,7 +152,7 @@ func MakePod(images pipeline.Images, taskRun *v1alpha1.TaskRun, taskSpec v1alpha
 	// isolation.
 	for i, s := range stepContainers {
 		if s.WorkingDir == "" {
-			stepContainers[i].WorkingDir = workspaceDir
+			stepContainers[i].WorkingDir = pipeline.WorkspaceDir
 		}
 		if s.Name == "" {
 			stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(fmt.Sprintf("%sunnamed-%d", stepPrefix, i))

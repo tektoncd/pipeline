@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/builder"
+	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -453,6 +454,7 @@ func TestApplyArrayParameters(t *testing.T) {
 		})
 	}
 }
+
 func TestApplyParameters(t *testing.T) {
 	tr := &v1alpha1.TaskRun{
 		Spec: v1alpha1.TaskRunSpec{
@@ -574,5 +576,117 @@ func TestApplyResources(t *testing.T) {
 				t.Errorf("ApplyResources() -want, +got: %v", d)
 			}
 		})
+	}
+}
+
+func TestApplyWorkspaces(t *testing.T) {
+	names.TestingSeed()
+	ts := &v1alpha1.TaskSpec{
+		StepTemplate: &corev1.Container{
+			Env: []corev1.EnvVar{{
+				Name:  "template-var",
+				Value: "$(workspaces.myws.volume)",
+			}},
+		},
+		Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Name:       "$(workspaces.myws.volume)",
+			Image:      "$(workspaces.otherws.volume)",
+			WorkingDir: "$(workspaces.otherws.volume)",
+			Args:       []string{"$(workspaces.myws.path)"},
+		}}, {Container: corev1.Container{
+			Name:  "foo",
+			Image: "bar",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(workspaces.myws.volume)",
+				MountPath: "path/to/$(workspaces.otherws.path)",
+				SubPath:   "$(workspaces.myws.volume)",
+			}},
+		}}, {Container: corev1.Container{
+			Name:  "foo",
+			Image: "bar",
+			Env: []corev1.EnvVar{{
+				Name:  "foo",
+				Value: "$(workspaces.myws.volume)",
+			}, {
+				Name: "baz",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "$(workspaces.myws.volume)"},
+						Key:                  "$(workspaces.myws.volume)",
+					},
+				},
+			}},
+			EnvFrom: []corev1.EnvFromSource{{
+				Prefix: "$(workspaces.myws.volume)",
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "$(workspaces.myws.volume)"},
+				},
+			}},
+		}}},
+		Volumes: []corev1.Volume{{
+			Name: "$(workspaces.myws.volume)",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "$(workspaces.myws.volume)",
+					},
+				},
+			}}, {
+			Name: "some-secret",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "$(workspaces.myws.volume)",
+				},
+			}}, {
+			Name: "some-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "$(workspaces.myws.volume)",
+				},
+			},
+		},
+		},
+	}
+	want := applyMutation(ts, func(spec *v1alpha1.TaskSpec) {
+		spec.StepTemplate.Env[0].Value = "ws-9l9zj"
+
+		spec.Steps[0].Name = "ws-9l9zj"
+		spec.Steps[0].Image = "ws-mz4c7"
+		spec.Steps[0].WorkingDir = "ws-mz4c7"
+		spec.Steps[0].Args = []string{"/workspace/myws"}
+
+		spec.Steps[1].VolumeMounts[0].Name = "ws-9l9zj"
+		spec.Steps[1].VolumeMounts[0].MountPath = "path/to//foo"
+		spec.Steps[1].VolumeMounts[0].SubPath = "ws-9l9zj"
+
+		spec.Steps[2].Env[0].Value = "ws-9l9zj"
+		spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "ws-9l9zj"
+		spec.Steps[2].Env[1].ValueFrom.SecretKeyRef.Key = "ws-9l9zj"
+		spec.Steps[2].EnvFrom[0].Prefix = "ws-9l9zj"
+		spec.Steps[2].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "ws-9l9zj"
+
+		spec.Volumes[0].Name = "ws-9l9zj"
+		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "ws-9l9zj"
+		spec.Volumes[1].VolumeSource.Secret.SecretName = "ws-9l9zj"
+		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "ws-9l9zj"
+	})
+	w := []v1alpha1.WorkspaceDeclaration{{
+		Name: "myws",
+	}, {
+		Name:      "otherws",
+		MountPath: "/foo",
+	}}
+	wb := []v1alpha1.WorkspaceBinding{{
+		Name: "myws",
+		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+			ClaimName: "foo",
+		},
+	}, {
+		Name:     "otherws",
+		EmptyDir: &corev1.EmptyDirVolumeSource{},
+	}}
+	got := resources.ApplyWorkspaces(ts, w, wb)
+	if d := cmp.Diff(got, want); d != "" {
+		t.Errorf("ApplyParameters() got diff %s", d)
 	}
 }
