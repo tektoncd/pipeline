@@ -29,10 +29,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/pod"
+	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	"github.com/tektoncd/pipeline/pkg/status"
 	"github.com/tektoncd/pipeline/pkg/system"
 	"github.com/tektoncd/pipeline/test"
 	tb "github.com/tektoncd/pipeline/test/builder"
@@ -288,7 +287,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-run-success-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -327,7 +326,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -401,8 +400,8 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
-			if condition != nil && condition.Reason != status.ReasonRunning {
-				t.Errorf("Expected reason %q but was %s", status.ReasonRunning, condition.Reason)
+			if condition != nil && condition.Reason != podconvert.ReasonRunning {
+				t.Errorf("Expected reason %q but was %s", podconvert.ReasonRunning, condition.Reason)
 			}
 
 			if tr.Status.PodName == "" {
@@ -550,7 +549,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-run-success-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-run-success"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -588,7 +587,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-with-sa"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -627,7 +626,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-substitution-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task-with-substitution"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-substitution"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -717,7 +716,7 @@ func TestReconcile(t *testing.T) {
 		taskRun: taskRunWithTaskSpec,
 		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-123456", "foo",
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-taskspec"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -777,7 +776,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-cluster-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-cluster-task"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -814,7 +813,7 @@ func TestReconcile(t *testing.T) {
 		taskRun: taskRunWithResourceSpecAndTaskSpec,
 		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-123456", "foo",
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-resource-spec"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -872,7 +871,7 @@ func TestReconcile(t *testing.T) {
 		wantPod: tb.Pod("test-taskrun-with-pod-pod-123456", "foo",
 			tb.PodLabel(taskNameLabelKey, "test-task"),
 			tb.PodLabel(taskRunNameLabelKey, "test-taskrun-with-pod"),
-			tb.PodLabel(pod.ManagedByLabelKey, pod.ManagedByLabelValue),
+			tb.PodLabel(podconvert.ManagedByLabelKey, podconvert.ManagedByLabelValue),
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
 				tb.OwnerReferenceAPIVersion(currentApiVersion)),
 			tb.PodSpec(
@@ -943,8 +942,8 @@ func TestReconcile(t *testing.T) {
 			if condition == nil || condition.Status != corev1.ConditionUnknown {
 				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
 			}
-			if condition != nil && condition.Reason != status.ReasonRunning {
-				t.Errorf("Expected reason %q but was %s", status.ReasonRunning, condition.Reason)
+			if condition != nil && condition.Reason != podconvert.ReasonRunning {
+				t.Errorf("Expected reason %q but was %s", podconvert.ReasonRunning, condition.Reason)
 			}
 
 			if tr.Status.PodName == "" {
@@ -1115,18 +1114,15 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 		name    string
 		taskRun *v1alpha1.TaskRun
 		reason  string
-	}{
-		{
-			name:    "task run with no task",
-			taskRun: noTaskRun,
-			reason:  status.ReasonFailedResolution,
-		},
-		{
-			name:    "task run with no task",
-			taskRun: withWrongRef,
-			reason:  status.ReasonFailedResolution,
-		},
-	}
+	}{{
+		name:    "task run with no task",
+		taskRun: noTaskRun,
+		reason:  podconvert.ReasonFailedResolution,
+	}, {
+		name:    "task run with no task",
+		taskRun: withWrongRef,
+		reason:  podconvert.ReasonFailedResolution,
+	}}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1198,12 +1194,12 @@ func makePod(taskRun *v1alpha1.TaskRun, task *v1alpha1.Task) (*corev1.Pod, error
 		},
 	})
 
-	entrypointCache, err := pod.NewEntrypointCache(kubeclient)
+	entrypointCache, err := podconvert.NewEntrypointCache(kubeclient)
 	if err != nil {
 		return nil, err
 	}
 
-	return pod.MakePod(images, taskRun, task.Spec, kubeclient, entrypointCache)
+	return podconvert.MakePod(images, taskRun, task.Spec, kubeclient, entrypointCache)
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {
@@ -1261,7 +1257,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 	if d := cmp.Diff(&apis.Condition{
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionTrue,
-		Reason:  status.ReasonSucceeded,
+		Reason:  podconvert.ReasonSucceeded,
 		Message: "All Steps have completed executing",
 	}, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
 		t.Errorf("Did not get expected condition (-want, +got): %v", d)
@@ -1458,13 +1454,13 @@ func TestHandlePodCreationError(t *testing.T) {
 		err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionUnknown,
-		expectedReason: status.ReasonExceededResourceQuota,
+		expectedReason: podconvert.ReasonExceededResourceQuota,
 	}, {
 		description:    "errors other than exceeded quota fail the taskrun",
 		err:            errors.New("this is a fatal error"),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionFalse,
-		expectedReason: status.ReasonCouldntGetTask,
+		expectedReason: podconvert.ReasonCouldntGetTask,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {

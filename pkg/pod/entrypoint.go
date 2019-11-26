@@ -169,7 +169,7 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 	updated := false
 	if newPod.Status.Phase == corev1.PodRunning {
 		for _, s := range newPod.Status.ContainerStatuses {
-			if IsContainerSidecar(s.Name) && s.State.Running != nil {
+			if isContainerSidecar(s.Name) && s.State.Running != nil {
 				for j, c := range newPod.Spec.Containers {
 					if c.Name == s.Name && c.Image != nopImage {
 						updated = true
@@ -187,16 +187,14 @@ func StopSidecars(nopImage string, kubeclient kubernetes.Interface, pod corev1.P
 	return nil
 }
 
-// TODO(#1605): Move taskrunpod.go into pkg/pod and unexport these methods.
+// isContainerStep returns true if the container name indicates that it represents a step.
+func isContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
 
-// IsContainerStep returns true if the container name indicates that it represents a step.
-func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
+// isContainerSidecar returns true if the container name indicates that it represents a sidecar.
+func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
 
-// IsContainerSidecar returns true if the container name indicates that it represents a sidecar.
-func IsContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
+// trimStepPrefix returns the container name, stripped of its step prefix.
+func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
-// TrimStepPrefix returns the container name, stripped of its step prefix.
-func TrimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
-
-// TrimSidecarPrefix returns the container name, stripped of its sidecar prefix.
-func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }
+// trimSidecarPrefix returns the container name, stripped of its sidecar prefix.
+func trimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }
