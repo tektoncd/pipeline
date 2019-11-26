@@ -73,8 +73,8 @@ spec:
     - -ce
     - |
       set -ex
-      mkdir -p /builder/home/image-outputs/builtImage1
-      cat <<EOF > /builder/home/image-outputs/builtImage1/index.json
+      mkdir -p /tekton/home/image-outputs/builtImage1
+      cat <<EOF > /tekton/home/image-outputs/builtImage1/index.json
       {
         "schemaVersion": 2,
         "manifests": [
@@ -94,8 +94,8 @@ spec:
     - -ce
     - |
       set -e
-      mkdir -p /builder/home/image-outputs/builtImage2
-      cat <<EOF > /builder/home/image-outputs/builtImage2/index.json
+      mkdir -p /tekton/home/image-outputs/builtImage2
+      cat <<EOF > /tekton/home/image-outputs/builtImage2/index.json
       {
         "schemaVersion": 2,
         "manifests": [
