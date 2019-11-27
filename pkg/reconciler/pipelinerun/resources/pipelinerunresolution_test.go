@@ -1341,7 +1341,9 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 			Name: "pipelinerun",
 		},
 		Status: v1alpha1.PipelineRunStatus{
-			TaskRuns: taskrunStatus,
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				TaskRuns: taskrunStatus,
+			},
 		},
 	}
 
@@ -1647,8 +1649,10 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 			Name: "pipelinerun",
 		},
 		Status: v1alpha1.PipelineRunStatus{
-			Status:   duckv1beta1.Status{},
-			TaskRuns: trStatus,
+			Status: duckv1beta1.Status{},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				TaskRuns: trStatus,
+			},
 		},
 	}
 

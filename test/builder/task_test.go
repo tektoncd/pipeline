@@ -230,13 +230,15 @@ func TestTaskRunWithTaskRef(t *testing.T) {
 			},
 		},
 		Status: v1alpha1.TaskRunStatus{
-			PodName: "my-pod-name",
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
-			}}},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				PodName: "my-pod-name",
+				Steps: []v1alpha1.StepState{{ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+				}}},
+			},
 		},
 	}
 	if d := cmp.Diff(expectedTaskRun, taskRun); d != "" {

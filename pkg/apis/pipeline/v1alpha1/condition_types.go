@@ -44,6 +44,14 @@ type Condition struct {
 type ConditionCheckStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
+	// ConditionCheckStatusFields inlines the status fields.
+	ConditionCheckStatusFields `json:",inline"`
+}
+
+// ConditionCheckStatusFields holds the fields of ConfigurationCheck's status.
+// This is defined separately and inlined so that other types can readily
+// consume these fields via duck typing.
+type ConditionCheckStatusFields struct {
 	// PodName is the name of the pod responsible for executing this condition check.
 	PodName string `json:"podName"`
 

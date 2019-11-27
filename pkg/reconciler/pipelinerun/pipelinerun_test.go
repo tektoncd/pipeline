@@ -466,18 +466,21 @@ func TestUpdateTaskRunsState(t *testing.T) {
 	expectedTaskRunsStatus["test-pipeline-run-success-unit-test-1"] = &v1alpha1.PipelineRunTaskRunStatus{
 		PipelineTaskName: "unit-test-1",
 		Status: &v1alpha1.TaskRunStatus{
-			Steps: []v1alpha1.StepState{{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
-				},
-			}},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				Steps: []v1alpha1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+					},
+				}}},
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
 		},
 	}
 	expectedPipelineRunStatus := v1alpha1.PipelineRunStatus{
-		TaskRuns: expectedTaskRunsStatus,
+		PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+			TaskRuns: expectedTaskRunsStatus,
+		},
 	}
 
 	state := []*resources.ResolvedPipelineRunTask{{
@@ -531,8 +534,10 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 	successConditionCheckStatus := &v1alpha1.PipelineRunConditionCheckStatus{
 		ConditionName: successCondition.Name,
 		Status: &v1alpha1.ConditionCheckStatus{
-			Check: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+			ConditionCheckStatusFields: v1alpha1.ConditionCheckStatusFields{
+				Check: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+				},
 			},
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}},
@@ -542,8 +547,10 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 	failingConditionCheckStatus := &v1alpha1.PipelineRunConditionCheckStatus{
 		ConditionName: failingCondition.Name,
 		Status: &v1alpha1.ConditionCheckStatus{
-			Check: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+			ConditionCheckStatusFields: v1alpha1.ConditionCheckStatusFields{
+				Check: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+				},
 			},
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
