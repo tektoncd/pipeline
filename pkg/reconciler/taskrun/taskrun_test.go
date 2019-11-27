@@ -1136,7 +1136,9 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		t.Fatalf("MakePod: %v", err)
 	}
 	taskRun.Status = v1alpha1.TaskRunStatus{
-		PodName: pod.Name,
+		TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+			PodName: pod.Name,
+		},
 	}
 	d := test.Data{
 		TaskRuns: []*v1alpha1.TaskRun{taskRun},

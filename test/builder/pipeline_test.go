@@ -174,10 +174,12 @@ func TestPipelineRun(t *testing.T) {
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			StartTime:      &metav1.Time{Time: startTime},
-			CompletionTime: &metav1.Time{Time: completedTime},
-			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
-				"trname": {PipelineTaskName: "task-1"},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime:      &metav1.Time{Time: startTime},
+				CompletionTime: &metav1.Time{Time: completedTime},
+				TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+					"trname": {PipelineTaskName: "task-1"},
+				},
 			},
 		},
 	}
@@ -247,10 +249,12 @@ func TestPipelineRunWithResourceSpec(t *testing.T) {
 			Status: duckv1beta1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
-			StartTime:      &metav1.Time{Time: startTime},
-			CompletionTime: &metav1.Time{Time: completedTime},
-			TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
-				"trname": {PipelineTaskName: "task-1"},
+			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+				StartTime:      &metav1.Time{Time: startTime},
+				CompletionTime: &metav1.Time{Time: completedTime},
+				TaskRuns: map[string]*v1alpha1.PipelineRunTaskRunStatus{
+					"trname": {PipelineTaskName: "task-1"},
+				},
 			},
 		},
 	}

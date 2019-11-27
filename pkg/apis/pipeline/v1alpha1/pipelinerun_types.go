@@ -98,6 +98,14 @@ type PipelineRef struct {
 type PipelineRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
+	// PipelineRunStatusFields inlines the status fields.
+	PipelineRunStatusFields `json:",inline"`
+}
+
+// PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
+// This is defined separately and inlined so that other types can readily
+// consume these fields via duck typing.
+type PipelineRunStatusFields struct {
 	// StartTime is the time the PipelineRun is actually started.
 	// +optional
 	StartTime *metav1.Time `json:"startTime,omitempty"`

@@ -161,11 +161,13 @@ func (rcc *ResolvedConditionCheck) NewConditionCheckStatus() *v1alpha1.Condition
 	}
 
 	return &v1alpha1.ConditionCheckStatus{
-		Status:         trs.Status,
-		PodName:        trs.PodName,
-		StartTime:      trs.StartTime,
-		CompletionTime: trs.CompletionTime,
-		Check:          checkStep,
+		Status: trs.Status,
+		ConditionCheckStatusFields: v1alpha1.ConditionCheckStatusFields{
+			PodName:        trs.PodName,
+			StartTime:      trs.StartTime,
+			CompletionTime: trs.CompletionTime,
+			Check:          checkStep,
+		},
 	}
 }
 

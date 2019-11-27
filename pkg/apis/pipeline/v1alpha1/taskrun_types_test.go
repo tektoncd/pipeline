@@ -132,13 +132,17 @@ func TestTaskRunHasStarted(t *testing.T) {
 	}, {
 		name: "trWithStartTime",
 		trStatus: v1alpha1.TaskRunStatus{
-			StartTime: &metav1.Time{Time: time.Now()},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: time.Now()},
+			},
 		},
 		expectedValue: true,
 	}, {
 		name: "trWithZeroStartTime",
 		trStatus: v1alpha1.TaskRunStatus{
-			StartTime: &metav1.Time{},
+			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+				StartTime: &metav1.Time{},
+			},
 		},
 		expectedValue: false,
 	}}

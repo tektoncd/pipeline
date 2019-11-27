@@ -93,6 +93,14 @@ var taskRunCondSet = apis.NewBatchConditionSet()
 type TaskRunStatus struct {
 	duckv1beta1.Status `json:",inline"`
 
+	// TaskRunStatusFields inlines the status fields.
+	TaskRunStatusFields `json:",inline"`
+}
+
+// TaskRunStatusFields holds the fields of TaskRun's status.  This is defined
+// separately and inlined so that other types can readily consume these fields
+// via duck typing.
+type TaskRunStatusFields struct {
 	// PodName is the name of the pod responsible for executing this task's steps.
 	PodName string `json:"podName"`
 
