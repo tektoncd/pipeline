@@ -1511,11 +1511,12 @@ func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 		{
 			name: "conditionCheck exists",
 			getTaskRun: func(name string) (*v1alpha1.TaskRun, error) {
-				if name == "pipelinerun-mytask1-9l9zj-always-true-mz4c7" {
+				switch name {
+				case "pipelinerun-mytask1-9l9zj-always-true-mz4c7":
 					return cc1, nil
-				} else if name == "pipelinerun-mytask1-9l9zj" {
+				case "pipelinerun-mytask1-9l9zj":
 					return &trs[0], nil
-				} else if name == "pipelinerun-mytask1-9l9zj-always-true-mssqb" {
+				case "pipelinerun-mytask1-9l9zj-always-true-mssqb":
 					return cc2, nil
 				}
 				return nil, xerrors.Errorf("getTaskRun called with unexpected name %s", name)
