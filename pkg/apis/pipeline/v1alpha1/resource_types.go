@@ -147,14 +147,9 @@ type PipelineResourceSpec struct {
 	SecretParams []SecretParam `json:"secrets,omitempty"`
 }
 
-// PipelineResourceStatus does not contain anything because Resources on their own
-// do not have a status, they just hold data which is later used by PipelineRuns
-// and TaskRuns.
-type PipelineResourceStatus struct {
-}
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient:noStatus
 
 // PipelineResource describes a resource that is an input to or output from a
 // Task.
@@ -167,9 +162,6 @@ type PipelineResource struct {
 
 	// Spec holds the desired state of the PipelineResource from the client
 	Spec PipelineResourceSpec `json:"spec,omitempty"`
-	// Status communicates the observed state of the PipelineResource from the controller
-	// +optional
-	Status PipelineResourceStatus `json:"status,omitempty"`
 }
 
 // PipelineResourceBinding connects a reference to an instance of a PipelineResource

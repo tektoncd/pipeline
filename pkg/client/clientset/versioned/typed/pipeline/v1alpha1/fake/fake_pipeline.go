@@ -100,18 +100,6 @@ func (c *FakePipelines) Update(pipeline *v1alpha1.Pipeline) (result *v1alpha1.Pi
 	return obj.(*v1alpha1.Pipeline), err
 }
 
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakePipelines) UpdateStatus(pipeline *v1alpha1.Pipeline) (*v1alpha1.Pipeline, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(pipelinesResource, "status", c.ns, pipeline), &v1alpha1.Pipeline{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.Pipeline), err
-}
-
 // Delete takes name of the pipeline and deletes it. Returns an error if one occurs.
 func (c *FakePipelines) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.

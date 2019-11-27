@@ -39,7 +39,6 @@ type PipelinesGetter interface {
 type PipelineInterface interface {
 	Create(*v1alpha1.Pipeline) (*v1alpha1.Pipeline, error)
 	Update(*v1alpha1.Pipeline) (*v1alpha1.Pipeline, error)
-	UpdateStatus(*v1alpha1.Pipeline) (*v1alpha1.Pipeline, error)
 	Delete(name string, options *v1.DeleteOptions) error
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.Pipeline, error)
@@ -127,22 +126,6 @@ func (c *pipelines) Update(pipeline *v1alpha1.Pipeline) (result *v1alpha1.Pipeli
 		Namespace(c.ns).
 		Resource("pipelines").
 		Name(pipeline.Name).
-		Body(pipeline).
-		Do().
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-
-func (c *pipelines) UpdateStatus(pipeline *v1alpha1.Pipeline) (result *v1alpha1.Pipeline, err error) {
-	result = &v1alpha1.Pipeline{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("pipelines").
-		Name(pipeline.Name).
-		SubResource("status").
 		Body(pipeline).
 		Do().
 		Into(result)

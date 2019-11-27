@@ -33,12 +33,6 @@ type PipelineSpec struct {
 	Params []ParamSpec `json:"params,omitempty"`
 }
 
-// PipelineStatus does not contain anything because Pipelines on their own
-// do not have a status, they just hold data which is later used by a
-// PipelineRun.
-type PipelineStatus struct {
-}
-
 // Check that Pipeline may be validated and defaulted.
 // TaskKind defines the type of Task used by the pipeline.
 type TaskKind string
@@ -52,6 +46,7 @@ const (
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient:noStatus
 
 // Pipeline describes a list of Tasks to execute. It expresses how outputs
 // of tasks feed into inputs of subsequent tasks.
@@ -64,10 +59,6 @@ type Pipeline struct {
 	// Spec holds the desired state of the Pipeline from the client
 	// +optional
 	Spec PipelineSpec `json:"spec"`
-	// Status communicates the observed state of the Pipeline from the
-	// controller.
-	// +optional
-	Status PipelineStatus `json:"status"`
 }
 
 func (p *Pipeline) PipelineMetadata() metav1.ObjectMeta {
